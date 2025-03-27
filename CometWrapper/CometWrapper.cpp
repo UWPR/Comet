@@ -87,6 +87,23 @@ void CometSearchManagerWrapper::FinalizeSingleSpectrumSearch()
     }
 }
 
+bool CometSearchManagerWrapper::InitializeSingleSpectrumMS1Search()
+{
+   if (!_pSearchMgr)
+   {
+      return false;
+   }
+   return _pSearchMgr->InitializeSingleSpectrumMS1Search();
+}
+
+void CometSearchManagerWrapper::FinalizeSingleSpectrumMS1Search()
+{
+   if (_pSearchMgr)
+   {
+      _pSearchMgr->FinalizeSingleSpectrumMS1Search();
+   }
+}
+
 bool CometSearchManagerWrapper::DoSearch()
 {
     if (!_pSearchMgr)
@@ -96,7 +113,6 @@ bool CometSearchManagerWrapper::DoSearch()
 
     return _pSearchMgr->DoSearch();
 }
-
 
 bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(int topN,
     int iPrecursorCharge,
@@ -157,6 +173,37 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(int topN,
     }
 
     return isSuccess;
+}
+
+bool CometSearchManagerWrapper::DoMS1SearchMultiResults(int topN,
+                                                        double dRT,
+                                                        cli::array<double>^ pdMass,
+                                                        cli::array<double>^ pdInten,
+                                                        int iNumPeaks,
+                                                        [Out] List<ScoreWrapper^>^% score)
+{
+   if (!_pSearchMgr)
+   {
+      return false;
+   }
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+   vector<std::string> stdStringszPeptide;
+   vector<std::string> stdStringszProtein;
+
+   vector<Scores> scores;
+   vector<vector<Fragment>> matchedFragments;
+
+   // perform the search
+   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(topN, dRT, ptrMasses, ptrInten, iNumPeaks, scores);
+
+   score = gcnew List<ScoreWrapper^>();
+   for (auto eachScore : scores)
+   {
+      score->Add(gcnew ScoreWrapper(eachScore));
+   }
+
+   return isSuccess;
 }
 
 bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList)

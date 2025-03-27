@@ -410,7 +410,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
 
                // remove all terminating chars
                while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))
-                  szProteinName[strlen(szProteinName) - 1] == '\0';
+                  szProteinName[strlen(szProteinName) - 1] = '\0';
 
                if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
                   szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
@@ -524,7 +524,7 @@ bool CometMassSpecUtils::SeekPrevNextAA(struct Results *pOutput,
 
    if (szSequence == NULL)
    {
-      printf(" Error: cannot allocate memory for szSequence[%d]\n", strSeq.size() + 1);
+      printf(" Error: cannot allocate memory for szSequence[%ld]\n", strSeq.size() + 1);
       exit(1);
    }
    strcpy(szSequence, strSeq.c_str());

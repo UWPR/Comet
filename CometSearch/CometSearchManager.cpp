@@ -260,8 +260,10 @@ static void SetMSLevelFilter(MSReader &mstReader)
 
    if (g_staticParams.options.iMSLevel == 3)
       msLevel.push_back(MS3);
-   else
+   else if (g_staticParams.options.iMSLevel == 2)
       msLevel.push_back(MS2);
+   else if (g_staticParams.options.iMSLevel == 1)
+      msLevel.push_back(MS1);
 
    mstReader.setFilter(msLevel);
 }
@@ -588,10 +590,9 @@ static bool ValidateSequenceDatabaseFile()
 }
 
 
-static bool ValidateSpecLibFile()
+static bool ValidateSpecLibFile()  // just check if file is readable for now
 {
    FILE *fpcheck;
-   char szErrorMsg[SIZE_ERROR];
 
    // open speclib file
    string sTmpDB = g_staticParams.speclibInfo.strSpecLibFile;
@@ -3306,6 +3307,61 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 }
 
 
+bool CometSearchManager::InitializeSingleSpectrumMS1Search()
+{
+   // Skip doing if already completed successfully.
+   if (singleSearchMS1InitializationComplete)
+      return true;
+
+   if (!InitializeStaticParams())
+      return false;
+
+   if (!ValidateSpecLibFile())
+      return false;
+
+
+   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
+   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
+   bool bSucceeded;
+   //MH: Allocate memory shared by threads during spectral processing.
+   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   // Allocate memory shared by threads during search
+   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   ThreadPool* tp = _tp;
+   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+
+   // Load all MS1 scans
+   MSReader mstReader;
+   g_staticParams.options.iMSLevel = 1;
+   SetMSLevelFilter(mstReader);
+
+   singleSearchMS1InitializationComplete = true;
+
+   return true;
+}
+
+
+void CometSearchManager::FinalizeSingleSpectrumMS1Search()
+{
+   if (singleSearchMS1InitializationComplete)
+   {
+      // Deallocate search memory
+      CometSearch::DeallocateMemory(singleSearchThreadCount);
+
+      fclose(fpfasta);
+
+      singleSearchMS1InitializationComplete = false;
+   }
+}
+
+
 bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             int iPrecursorCharge,
                                                             double dMZ,
@@ -3742,6 +3798,22 @@ cleanup_results:
    g_staticParams.precursorNLIons.clear();
 
    delete[] pdTmpSpectrum;
+
+   return bSucceeded;
+}
+
+
+bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
+                                                 const double dRT,
+                                                 double* pdMass,
+                                                 double* pdInten,
+                                                 int iNumPeaks,
+                                                 vector<Scores>& scores)
+{
+   if (iNumPeaks == 0)
+      return false;
+
+   bool bSucceeded = true;
 
    return bSucceeded;
 }

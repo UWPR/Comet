@@ -34,6 +34,8 @@ public:
       virtual bool DoSearch() = 0;
       virtual bool InitializeSingleSpectrumSearch() = 0;
       virtual void FinalizeSingleSpectrumSearch() = 0;
+      virtual bool InitializeSingleSpectrumMS1Search() = 0;
+      virtual void FinalizeSingleSpectrumMS1Search() = 0;
       virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
                                                       const int iPrecursorCharge,
                                                       const double dMZ,
@@ -44,6 +46,12 @@ public:
                                                       vector<string>& strReturnProtein,
                                                       vector<vector<Fragment>>& matchedFragments,
                                                       vector<Scores>& scores) = 0;
+      virtual bool DoMS1SearchMultiResults(const int topN,
+                                          const double dRT,
+                                          double* dMass,
+                                          double* dInten,
+                                          const int iNumPeaks,
+                                          vector<Scores>& scores) = 0;
       virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
       virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
       virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;

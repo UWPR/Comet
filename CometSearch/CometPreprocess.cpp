@@ -108,7 +108,6 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
          }
       }
 
-
       if (iScanNumber != 0)
       {
          if (iLastScan > 0 && iScanNumber > iLastScan)

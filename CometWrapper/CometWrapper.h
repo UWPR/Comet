@@ -40,17 +40,25 @@ namespace CometWrapper {
         bool DoSearch();
         bool InitializeSingleSpectrumSearch();
         void FinalizeSingleSpectrumSearch();
+        bool InitializeSingleSpectrumMS1Search();
+        void FinalizeSingleSpectrumMS1Search();
         bool DoSingleSpectrumSearchMultiResults(int intValue1,
-            int intValue2,
-            double value,
-            cli::array<double>^ dVal1,
-            cli::array<double>^ dVal2,
-            const int iVal1,
-            [Out] List<String^>^% szPeptide,
-            [Out] List<String^>^% szProtein,
-            [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-            [Out] List<ScoreWrapper^>^% score);
+                                                int intValue2,
+                                                double value,
+                                                cli::array<double>^ dVal1,
+                                                cli::array<double>^ dVal2,
+                                                const int iVal1,
+                                                [Out] List<String^>^% szPeptide,
+                                                [Out] List<String^>^% szProtein,
+                                                [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                                [Out] List<ScoreWrapper^>^% score);
         // Need to convert vector to List and back
+        bool DoMS1SearchMultiResults(int intValue1,
+                                     double value,
+                                     cli::array<double>^ dVal1,
+                                     cli::array<double>^ dVal2,
+                                     const int iVal1,
+                                     [Out] List<ScoreWrapper^>^% score);
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);
         bool SetOutputFileBaseName(String^ baseName);
         bool SetParam(String^ name, String^ strValue, String^ value);
