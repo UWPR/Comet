@@ -22,7 +22,7 @@
 
 ### Comet integration
 
-<img src="/Comet/images/cometlogo_2.png" alt="Comet logo" style="float:right" height="120">
+<img src="/Comet/images/cometlogo_1.png" alt="Comet logo" style="float:right" height="120">
 Comet is currently supported within the following software projects:
 
 - [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
