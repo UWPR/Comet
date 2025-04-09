@@ -37,6 +37,7 @@
 #undef PERF_DEBUG
 
 std::vector<Query*>           g_pvQuery;
+std::vector<QueryMS1*>        g_pvQueryMS1;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
@@ -342,6 +343,38 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].sPeffOrigResidues.clear();
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
+      }
+   }
+
+   return true;
+}
+
+// Allocate memory for the _pSpecLibResults struct for each g_pvQueryMS1 entry.
+static bool AllocateResultsMemMS1()
+{
+   for (std::vector<QueryMS1*>::iterator it = g_pvQueryMS1.begin(); it != g_pvQueryMS1.end(); ++it)
+   {
+      QueryMS1* pQueryMS1 = *it;
+
+      try
+      {
+         pQueryMS1->_pSpecLibResultsMS1 = new SpecLibResultsMS1[g_staticParams.options.iNumStored];
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[SIZE_ERROR];
+         sprintf(szErrorMsg, " Error - new(_pSpecLibResults[]). bad_alloc: %s.\n", ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+         return false;
+      }
+
+      for (int j=0; j<g_staticParams.options.iNumStored; ++j)
+      {
+         pQueryMS1->_pSpecLibResultsMS1[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pQueryMS1->_pSpecLibResultsMS1[j].fCn = 0;
+         pQueryMS1->_pSpecLibResultsMS1[j].fRTdiff = 0;
       }
    }
 
@@ -3319,7 +3352,6 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
    if (!ValidateSpecLibFile())
       return false;
 
-
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
@@ -3460,7 +3492,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
 
-   //FIX ... is there a way to not have to do this just once and not have to fopen/flcose this db
+   //FIX ... is there a way to not have to do this just once and not have to fopen/fclose this db
    // file pointer for each query?
    FILE* fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
    sTmpDB = g_staticParams.databaseInfo.szDatabase;
@@ -3803,17 +3835,101 @@ cleanup_results:
 }
 
 
+// Load all MS1 from raw file. Then search each MS1 query.
 bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
                                                  const double dRT,
                                                  double* pdMass,
                                                  double* pdInten,
                                                  int iNumPeaks,
-                                                 vector<Scores>& scores)
+                                                 vector<ScoresMS1>& scoresMS1)
 {
+   bool bSucceeded = false;
+
    if (iNumPeaks == 0)
       return false;
 
-   bool bSucceeded = true;
+   bSucceeded = InitializeSingleSpectrumMS1Search();
+   if (bSucceeded == false)
+      return bSucceeded;
+
+   // For file access using MSToolkit.
+   MSReader mstReader;
+
+   // We want to read only M1 scans.
+   g_staticParams.options.iMSLevel = 1;
+   SetMSLevelFilter(mstReader);
+
+   ThreadPool *tp = _tp;  // filled in InitializeSingleSpectrumSearch
+
+   //Load all MS1 spectrum from file
+   if (g_bSpecLibRead == false)
+      CometPreprocess::LoadAndPreprocessMS1Spectra(mstReader, tp);
+
+   // Process current MS1
+   //bool bSucceeded = CometPreprocess::PreprocessSingleMS1Spectrum(pdMass, pdInten, iNumPeaks);
+
+   unsigned int uiSize;
+   int takeSearchResultsN;
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   if (g_pvQueryMS1.empty())
+      return false; // no search to run
+
+   bSucceeded = AllocateResultsMemMS1();
+
+   int iWhichMS1Query;
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   iWhichMS1Query = 0; // dealing with one query
+
+   QueryMS1* pQueryMS1;
+   pQueryMS1 = g_pvQueryMS1.at(iWhichMS1Query);
+
+// bSucceeded = CometSearch::RunMS1Search(tp, dRT);
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   uiSize = pQueryMS1->uiMatchMS1Count;
+   if (uiSize > g_staticParams.options.iNumStored)
+      uiSize = g_staticParams.options.iNumStored;
+
+   if (uiSize > 1)
+   {
+      std::sort(pQueryMS1->_pSpecLibResultsMS1, pQueryMS1->_pSpecLibResultsMS1 + uiSize, CometPostAnalysis::SortSpecLibFnXcorrMS1);
+   }
+
+   takeSearchResultsN = topN; // return up to the top N results, or iSize
+
+   if (takeSearchResultsN > uiSize)
+      takeSearchResultsN = uiSize;
+
+   for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
+   {
+      ScoresMS1 scoreMS1;
+
+      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fXcorr;
+      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fCn;
+      scoreMS1.fRTdiff  = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fRTdiff;
+
+      scoresMS1.push_back(scoreMS1);
+   }
+
+cleanup_results:
+
+// close raw file here?
+// fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
+
+   // Deleting each Query object in the vector calls its destructor, which
+   // frees the spectral memory (see definition for Query in CometDataInternal.h).
+   for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+      delete (*it);
+
+   g_pvQuery.clear();
 
    return bSucceeded;
 }

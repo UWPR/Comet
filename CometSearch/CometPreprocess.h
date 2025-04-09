@@ -71,6 +71,8 @@ public:
                                         int iLastScan,
                                         int iAnalysisType,
                                         ThreadPool* tp);
+   static bool LoadAndPreprocessMS1Spectra(MSReader &mstReader,
+                                           ThreadPool* tp);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                     ThreadPool* tp);
    static bool DoneProcessingAllSpectra();

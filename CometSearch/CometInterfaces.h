@@ -51,7 +51,7 @@ public:
                                           double* dMass,
                                           double* dInten,
                                           const int iNumPeaks,
-                                          vector<Scores>& scores) = 0;
+                                          vector<ScoresMS1>& scores) = 0;
       virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles) = 0;
       virtual void SetOutputFileBaseName(const char *pszBaseName) = 0;
       virtual void SetParam(const string &name, const string &strValue, const string &value) = 0;

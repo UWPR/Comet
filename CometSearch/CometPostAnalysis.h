@@ -50,6 +50,9 @@ public:
                                bool bTopHitOnly);
    static bool SortFnXcorr(const Results &a,
                            const Results &b);
+   static bool SortSpecLibFnXcorrMS1(const SpecLibResultsMS1 &a,
+                                     const SpecLibResultsMS1 &b);
+
 private:
 
    static bool SortFnSp(const Results &a,

@@ -716,6 +716,16 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
 }
 
 
+bool CometPostAnalysis::SortSpecLibFnXcorrMS1(const SpecLibResultsMS1 &a,
+                                              const SpecLibResultsMS1 &b)
+{
+   if (a.fXcorr > b.fXcorr)
+      return true;
+   else
+      return false;
+}
+
+
 bool CometPostAnalysis::SortFnMod(const Results &a,
                                   const Results &b)
 {

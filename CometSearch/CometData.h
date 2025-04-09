@@ -151,6 +151,39 @@ struct Scores
     }
 };
 
+struct ScoresMS1
+{
+    float fXcorr;
+    float fCn;
+    float fRTdiff;  // in milliseconds
+
+    ScoresMS1() :
+        fXcorr(0),
+        fCn(0),
+        fRTdiff(0)
+    { }
+
+    ScoresMS1(float fXcorr, float fCn, float fRTdiff) :
+        fXcorr(fXcorr),
+        fCn(fCn),
+        fRTdiff(fRTdiff)
+    { }
+
+    ScoresMS1(const ScoresMS1& a) :
+        fXcorr(a.fXcorr),
+        fCn(a.fCn),
+        fRTdiff(a.fRTdiff)
+    { }
+
+    ScoresMS1& operator=(ScoresMS1& a)
+    {
+        fXcorr = a.fXcorr;
+        fCn = a.fCn;
+        fRTdiff = a.fRTdiff;
+        return *this;
+    }
+};
+
 struct Fragment
 {
     double mass;

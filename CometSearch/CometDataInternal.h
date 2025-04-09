@@ -259,11 +259,23 @@ struct Results
    vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
-struct SpecLibResults
+struct SpecLibResults // MS2 spec lib
 {
    unsigned int iWhichSpecLib;                // the matched spectral library entry
-   float fSpecLibScore;                       // speclib score
+   float fSpecLibScore;
+   float fXcorr;                              // use xcorr for now
+   float fCn;                                 // speclib score
+   float fRTdiff;                             // in milliseconds
 };
+
+struct SpecLibResultsMS1  // MS1 spec lib
+{
+   unsigned int iWhichSpecLib;                // the matched spectral library entry
+   float fXcorr;                              // use xcorr for now
+   float fCn;                                 // speclib score
+   float fRTdiff;                             // in milliseconds
+};
+
 
 struct PepMassInfo
 {
@@ -1165,6 +1177,51 @@ struct Query
          delete[] _pDecoys;
          _pDecoys = NULL;
       }
+
+      Threading::DestroyMutex(accessMutex);
+   }
+};
+
+struct QueryMS1
+{
+   short siLowestSpecLibIndex;
+   float fLowestXcorr;
+   unsigned int uiMatchMS1Count;        // # of peptides that get stored (i.e. are greater than lowest score)
+
+   // Sparse matrix representation of data
+   int iFastXcorrDataSize;
+   float **ppfSparseFastXcorrData;
+
+   // Standard array representation of data
+   float *pfFastXcorrData;
+
+   SpecLibResultsMS1 *_pSpecLibResultsMS1;
+
+   Mutex accessMutex;
+
+   QueryMS1()
+   {
+      siLowestSpecLibIndex = 0;
+      fLowestXcorr = SPECLIB_CUTOFF;
+      uiMatchMS1Count = 0;
+      ppfSparseFastXcorrData = NULL;
+      pfFastXcorrData = NULL;
+      _pSpecLibResultsMS1 = NULL;
+
+      Threading::CreateMutex(&accessMutex);
+   }
+
+   ~QueryMS1()
+   {
+      for (int i = 0; i < iFastXcorrDataSize; ++i)
+      {
+         if (ppfSparseFastXcorrData[i] != NULL)
+            delete[] ppfSparseFastXcorrData[i];
+      }
+      delete[] ppfSparseFastXcorrData;
+      ppfSparseFastXcorrData = NULL;
+
+      //FIX delete _pSepcLibResults
 
       Threading::DestroyMutex(accessMutex);
    }

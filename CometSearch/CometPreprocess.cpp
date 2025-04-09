@@ -659,6 +659,176 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 }
 
 
+// Loads all MS1 spectra from input file
+bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
+                                                  ThreadPool* tp)
+{
+   int iFileLastScan = mstReader.getLastScan();
+   int iFirstScan = 1;
+   int iScanNumber = 0;
+   int iTotalScans = 0;
+   int iNumSpectraLoaded = 0;
+   int iTmpCount = 0;
+   Spectrum mstSpectrum;           // For holding spectrum.
+
+   int iAnalysisType = AnalysisType_EntireFile;
+
+   if (iFileLastScan <= 0)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg,  " Error - read iFileLastScan as %d.\n", iFileLastScan);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
+   // Create the mutex we will use to protect g_massRange.iMaxFragmentCharge.
+   Threading::CreateMutex(&_maxChargeMutex);
+
+   // Get the thread pool of threads that will preprocess the data.
+
+   ThreadPool *pPreprocessThreadPool = tp;
+
+   // Load all input spectra.
+   while (true)
+   {
+      // Loads in MS1 spectrum data.
+      if (_bFirstScan)
+      {
+         PreloadIons(mstReader, mstSpectrum, false, 0);  // Use 0 as scan num here in last argument instead of iFirstScan; must
+         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0.
+      }                                                  // Not ideal as could be reading non-relevant scans but it's fast enough.
+      else
+      {
+         PreloadIons(mstReader, mstSpectrum, true);
+      }
+
+      if (iFileLastScan == -1)
+         iFileLastScan = mstReader.getLastScan();
+
+      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+
+      iScanNumber = mstSpectrum.getScanNumber();
+
+      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      {
+         g_staticParams.bSkipToStartScan = false;
+
+         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         // iScanNumber will equal 0 if iFirstScan is not the right scan level
+         // So need to keep reading the next scan until we get a non-zero scan number
+         while (iScanNumber == 0 && iFirstScan < iFileLastScan)
+         {
+            iFirstScan++;
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+         }
+      }
+
+      if (iScanNumber != 0)
+      {
+         iTmpCount = iScanNumber;
+
+         if (iScanNumber > iFileLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+
+         if (mstSpectrum.size() >= g_staticParams.options.iMinPeaks)
+         {
+            if (iScanNumber > iFileLastScan)
+            {
+               _bDoneProcessingAllSpectra = true;
+               break;
+            }
+
+            // add this hack when 1 thread is specified otherwise g_pvQuery.size() returns 0
+            if (g_staticParams.options.iNumThreads == 1)
+               pPreprocessThreadPool->wait_on_threads();
+
+            Threading::LockMutex(g_pvQueryMutex);
+            // this needed because processing can add multiple spectra at a time
+            iNumSpectraLoaded = (int)g_pvQuery.size();
+            iNumSpectraLoaded++;
+            Threading::UnlockMutex(g_pvQueryMutex);
+
+            pPreprocessThreadPool->wait_for_available_thread();
+
+            PreprocessThreadData *pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
+
+            printf("OK mstSpectrum size %d\n", pPreprocessThreadDataMS1->mstSpectrum.size());
+            for (int i=0 ; i < pPreprocessThreadDataMS1->mstSpectrum.size() ; ++i)
+            {
+               printf("OK %lf, %lf\n",  pPreprocessThreadDataMS1->mstSpectrum.at(i).mz,
+                     pPreprocessThreadDataMS1->mstSpectrum.at(i).intensity);
+               if (i==5)
+                  break;
+            }
+
+//          pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pPreprocessThreadPool));
+         }
+
+         iTotalScans++;
+      }
+      else if (IsValidInputType(g_staticParams.inputFile.iInputType))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+      else
+      {
+         // What happens here when iScanNumber == 0 and it is an mzXML file?
+         // Best way to deal with this is to keep trying to read but track each
+         // attempt and break when the count goes past the mzXML's last scan.
+         iTmpCount++;
+
+         if (iTmpCount > iFileLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+      }
+
+      Threading::LockMutex(g_pvQueryMutex);
+
+      if (CheckExit(iAnalysisType,
+                    iScanNumber,
+                    iTotalScans,
+                    iFileLastScan,
+                    mstReader.getLastScan(),
+                    iNumSpectraLoaded))
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
+         break;
+      }
+      else
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
+      }
+
+   }
+
+   // Wait for active preprocess threads to complete processing.
+   pPreprocessThreadPool->wait_on_threads();
+
+   Threading::DestroyMutex(_maxChargeMutex);
+
+   bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+
+   g_bSpecLibRead = true;
+
+   return bSucceeded;
+}
+
+
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                            ThreadPool* tp)
 {

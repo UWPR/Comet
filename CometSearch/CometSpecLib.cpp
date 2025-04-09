@@ -461,7 +461,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
             }
          }
 
-         if (pTmp.dSpecLibMW == 0.0 | pTmp.iSpecLibCharge == 0 | pTmp.iNumPeaks == 0)
+         if (pTmp.dSpecLibMW == 0.0 || pTmp.iSpecLibCharge == 0 || pTmp.iNumPeaks == 0)
          {
             printf(" Error with MSP entry parsed mass of %lf, charge of %d, and #peaks of %d\n", pTmp.dSpecLibMW, pTmp.iSpecLibCharge, pTmp.iNumPeaks);
             exit(1);
@@ -756,6 +756,44 @@ void CometSpecLib::StoreSpecLib(Query *it,
          pQuery->fLowestSpecLibScore = pQuery->_pSpecLibResults[i].fSpecLibScore;
 
       if (pQuery->_pSpecLibResults[i].fSpecLibScore == SPECLIB_CUTOFF)
+         break;
+   }
+}
+
+
+void CometSpecLib::StoreSpecLibMS1(QueryMS1 *it,
+                                   unsigned int iWhichSpecLib,
+                                   double dSpecLibScore)
+{
+   QueryMS1 *pQueryMS1 = it;
+
+   pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[0].fXcorr;
+
+   short int siLowestXcorrIndex = 0;
+
+   // Get new lowest score
+   for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
+   {
+      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr < pQueryMS1->fLowestXcorr)
+      {
+         pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[i].fXcorr;
+         siLowestXcorrIndex = i;
+      }
+
+      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr == SPECLIB_CUTOFF)
+         break;
+   }
+
+   pQueryMS1->_pSpecLibResultsMS1[siLowestXcorrIndex].iWhichSpecLib = iWhichSpecLib;
+   pQueryMS1->_pSpecLibResultsMS1[siLowestXcorrIndex].fXcorr = (float)dSpecLibScore;
+
+   pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[0].fXcorr;
+   for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
+   {
+      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr < pQueryMS1->fLowestXcorr)
+         pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[i].fXcorr;
+
+      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr == SPECLIB_CUTOFF)
          break;
    }
 }

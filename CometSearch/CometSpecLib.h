@@ -36,6 +36,10 @@ public:
    static void StoreSpecLib(Query *it,
                             unsigned int iWhichSpecLib,
                             double dSpecLibScore);
+   static void StoreSpecLibMS1(QueryMS1 *it,
+                               unsigned int iWhichSpecLib,
+                               double dSpecLibScore);
+
 
 
 private:

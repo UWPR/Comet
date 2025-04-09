@@ -47,6 +47,7 @@ CometSearch::CometSearch()
    _iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
 }
 
+
 CometSearch::~CometSearch()
 {
 }
@@ -879,6 +880,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 
    return bSucceeded;
 }
+
 
 bool CometSearch::RunSpecLibSearch(ThreadPool *tp)
 {
