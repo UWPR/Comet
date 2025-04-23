@@ -78,7 +78,7 @@ extern string g_sCometVersion;   // version string including git hash
 // now between 0.0 and 1.0 and scales to the binWidth.
 #define BIN(dMass) (int)((dMass)*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
 
-#define BINPREC(dMass) (int)(dMass / g_staticParams.tolerances.dBinSizePrecursor) 
+#define BINPREC(dMass) (int)(dMass / g_staticParams.tolerances.dMS1BinSize) 
 
 #define isEqual(x, y) (std::abs(x-y) <= ( (std::abs(x) > std::abs(y) ? std::abs(y) : std::abs(x)) * FLT_EPSILON))
 

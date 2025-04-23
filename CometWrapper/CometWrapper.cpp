@@ -180,7 +180,7 @@ bool CometSearchManagerWrapper::DoMS1SearchMultiResults(int topN,
                                                         cli::array<double>^ pdMass,
                                                         cli::array<double>^ pdInten,
                                                         int iNumPeaks,
-                                                        [Out] List<ScoreWrapper^>^% score)
+                                                        [Out] List<ScoreWrapperMS1^>^% scoreMS1)
 {
    if (!_pSearchMgr)
    {
@@ -191,16 +191,16 @@ bool CometSearchManagerWrapper::DoMS1SearchMultiResults(int topN,
    vector<std::string> stdStringszPeptide;
    vector<std::string> stdStringszProtein;
 
-   vector<Scores> scores;
+   vector<ScoresMS1> scoresMS1;
    vector<vector<Fragment>> matchedFragments;
 
    // perform the search
-   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(topN, dRT, ptrMasses, ptrInten, iNumPeaks, scores);
+   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(topN, dRT, ptrMasses, ptrInten, iNumPeaks, scoresMS1);
 
-   score = gcnew List<ScoreWrapper^>();
-   for (auto eachScore : scores)
+   scoreMS1 = gcnew List<ScoreWrapperMS1^>();
+   for (auto eachScore : scoresMS1)
    {
-      score->Add(gcnew ScoreWrapper(eachScore));
+      scoreMS1->Add(gcnew ScoreWrapperMS1(eachScore));
    }
 
    return isSuccess;

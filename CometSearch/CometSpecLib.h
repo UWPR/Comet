@@ -39,13 +39,10 @@ public:
    static void StoreSpecLibMS1(QueryMS1 *it,
                                unsigned int iWhichSpecLib,
                                double dSpecLibScore);
-
+   static bool LoadSpecLibMS1Raw(ThreadPool* tp);
 
 
 private:
-
-   static Mutex _vSpecLibsMutex;
-
    static bool ReadSpecLibRaw(string strSpecLib);
    static bool ReadSpecLibSqlite(string strSpecLib);
    static bool ReadSpecLibMSP(string strSpecLib);

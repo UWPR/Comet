@@ -71,10 +71,12 @@ public:
                                         int iLastScan,
                                         int iAnalysisType,
                                         ThreadPool* tp);
-   static bool LoadAndPreprocessMS1Spectra(MSReader &mstReader,
-                                           ThreadPool* tp);
+//   static bool LoadAndPreprocessMS1Spectra(MSReader &mstReader,
+//                                           ThreadPool* tp);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                     ThreadPool* tp);
+   static void PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
+                                       ThreadPool* tp);
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
@@ -84,7 +86,21 @@ public:
                                         double *pdInten,
                                         int iNumPeaks,
                                         double *pdTmpSpectrum);
+   static bool PreprocessMS1SingleSpectrum(double* pdMass,
+                                          double* pdInten,
+                                          int iNumPeaks);
    static double GetMassCushion(double dMass);
+   static void PreloadIons(MSReader &mstReader,
+                           Spectrum &spec,
+                           bool bNext=false,
+                           int scNum=0);
+   static bool CheckExit(int iAnalysisType,
+                         int iScanNum,
+                         int iTotalScans,
+                         int iLastScan,
+                         int iReaderLastScan,
+                         int iNumSpectraLoaded);
+   static bool IsValidInputType(int inputType);
 
 private:
 
@@ -96,17 +112,9 @@ private:
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
-   static void PreloadIons(MSReader &mstReader,
-                           Spectrum &spec,
-                           bool bNext=false,
-                           int scNum=0);
+
    static bool CheckActivationMethodFilter(MSActivation act);
-   static bool CheckExit(int iAnalysisType,
-                         int iScanNum,
-                         int iTotalScans,
-                         int iLastScan,
-                         int iReaderLastScan,
-                         int iNumSpectraLoaded);
+
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
@@ -116,11 +124,10 @@ private:
                         double *pdTmpRawData,
                         Spectrum mstSpectrum,
                         struct PreprocessStruct *pPre);
-   static void MakeCorrData(double *pdTmpRawData,
-                            double *pdTmpCorrelationData,
-                            struct Query *pScoring,
-                            struct PreprocessStruct *pPre);
-   static bool IsValidInputType(int inputType);
+   static void MakeCorrData(double* pdTmpRawData,
+                            double* pdTmpCorrelationData,
+                            int iHighestIon,
+                            double dHighestIntensity);
 
    // Private member variables
    static Mutex _maxChargeMutex;

@@ -16,14 +16,12 @@
 #include "Common.h"
 #include "CometSpecLib.h"
 #include "CometSearch.h"
+#include "CometPreprocess.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
 #include <string>
 #include <string.h>
-
-
-Mutex g_vSpecLibMutex;
 
 
 CometSpecLib::CometSpecLib()
@@ -454,7 +452,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
                   sscanf(szBuf, "%lf %lf %*s", &dMass, &dInten);
 
                   if (dMass > 0.0 && dMass < 1e6 && dInten > 0.0)  // some sanity check on parsed mass
-                     pTmp.vSpecLibPeaks.push_back(make_pair(dMass, dInten));
+                     pTmp.vSpecLibPeaks.push_back(make_pair(dMass, (float)dInten));
                }
 
                break;
@@ -483,6 +481,168 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
    fclose(fp);
 
    return true;
+}
+
+// Loads all MS1 spectra from input file
+bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
+{
+   int iFirstScan = 1;
+   int iScanNumber = 0;
+   int iTotalScans = 0;
+   int iNumSpectraLoaded = 0;
+   int iTmpCount = 0;
+
+   // For file access using MSToolkit.
+   MSReader mstReader;
+   Spectrum mstSpectrum;           // For holding spectrum.
+
+   // We want to read only M1 scans.
+   vector<MSSpectrumType> msLevel;
+   msLevel.push_back(MS1);
+   mstReader.setFilter(msLevel);
+
+   int iAnalysisType = AnalysisType_EntireFile;
+
+   printf(" OK input file %s\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
+   mstReader.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 1);
+
+   int iFileLastScan = mstReader.getLastScan();
+
+   printf("OK iFileLastScan %d\n", iFileLastScan);
+
+   if (iFileLastScan <= 0)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, " Error - read iFileLastScan as %d.\n", iFileLastScan);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
+   // Get the thread pool of threads that will preprocess the data.
+
+   ThreadPool* pLoadSpecThreadPool = tp;
+
+   bool bFirstScan = true;
+   bool bDoneProcessingAllSpectra = false;
+
+   // Load all input spectra.
+   while (true)
+   {
+      printf("OK at head of while loop\n");
+      // Loads in MS1 spectrum data.
+      if (bFirstScan)
+      {
+         mstReader.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 0);
+         bFirstScan = false;
+      }
+      else
+      {
+         mstReader.readFile(NULL, mstSpectrum);
+      }
+
+      if (iFileLastScan == -1)
+         iFileLastScan = mstReader.getLastScan();
+
+      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         bDoneProcessingAllSpectra = true;
+         break;
+      }
+
+      iScanNumber = mstSpectrum.getScanNumber();
+      printf("OK1 at head of while loop, scan number %d\n", iScanNumber);
+
+      if (iScanNumber != 0)
+      {
+         iTmpCount = iScanNumber;
+
+         if (iScanNumber > iFileLastScan)
+         {
+            bDoneProcessingAllSpectra = true;
+            break;
+         }
+
+         if (mstSpectrum.size() >= g_staticParams.options.iMinPeaks)
+         {
+            if (iScanNumber > iFileLastScan)
+            {
+               bDoneProcessingAllSpectra = true;
+               break;
+            }
+
+            // add this hack when 1 thread is specified otherwise g_pvQuery.size() returns 0
+            if (g_staticParams.options.iNumThreads == 1)
+               pLoadSpecThreadPool->wait_on_threads();
+
+            Threading::LockMutex(g_pvQueryMutex);
+            // this needed because processing can add multiple spectra at a time
+            iNumSpectraLoaded = (int)g_pvQuery.size();
+            iNumSpectraLoaded++;
+            Threading::UnlockMutex(g_pvQueryMutex);
+
+            pLoadSpecThreadPool->wait_for_available_thread();
+
+            PreprocessThreadData* pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
+
+//            printf("OK mstSpectrum size %d\n", pPreprocessThreadDataMS1->mstSpectrum.size());
+//            for (int i=0 ; i < pPreprocessThreadDataMS1->mstSpectrum.size() ; ++i)
+//            {
+//               printf("   OK %lf, %lf\n",  pPreprocessThreadDataMS1->mstSpectrum.at(i).mz,
+//                     pPreprocessThreadDataMS1->mstSpectrum.at(i).intensity);
+//               if (i==2)
+//                  break;
+//            }
+
+            pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool));
+         }
+
+         iTotalScans++;
+      }
+      else if (CometPreprocess::IsValidInputType(g_staticParams.inputFile.iInputType))
+      {
+         bDoneProcessingAllSpectra = true;
+         break;
+      }
+      else
+      {
+         iTmpCount++;
+
+         if (iTmpCount > iFileLastScan)
+         {
+            bDoneProcessingAllSpectra = true;
+            break;
+         }
+      }
+
+      Threading::LockMutex(g_pvQueryMutex);
+
+      if (CometPreprocess::CheckExit(iAnalysisType,
+                                     iScanNumber,
+                                     iTotalScans,
+                                     iFileLastScan,
+                                     mstReader.getLastScan(),
+                                     iNumSpectraLoaded))
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
+         break;
+      }
+      else
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
+      }
+
+   }
+
+   // Wait for active preprocess threads to complete processing.
+   pLoadSpecThreadPool->wait_on_threads();
+
+   bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+
+   g_bSpecLibRead = true;
+
+   return bSucceeded;
 }
 
 

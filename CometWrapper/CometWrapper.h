@@ -58,7 +58,7 @@ namespace CometWrapper {
                                      cli::array<double>^ dVal1,
                                      cli::array<double>^ dVal2,
                                      const int iVal1,
-                                     [Out] List<ScoreWrapper^>^% score);
+                                     [Out] List<ScoreWrapperMS1^>^% score);
         bool AddInputFiles(List<InputFileInfoWrapper^> ^inputFilesList);
         bool SetOutputFileBaseName(String^ baseName);
         bool SetParam(String^ name, String^ strValue, String^ value);

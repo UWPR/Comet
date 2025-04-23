@@ -17,6 +17,7 @@
 #include "CometDataInternal.h"
 #include "CometPreprocess.h"
 #include "CometStatus.h"
+#include <string.h>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -658,12 +659,11 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    return bSucceeded;
 }
 
-
+/*
 // Loads all MS1 spectra from input file
 bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
                                                   ThreadPool* tp)
 {
-   int iFileLastScan = mstReader.getLastScan();
    int iFirstScan = 1;
    int iScanNumber = 0;
    int iTotalScans = 0;
@@ -672,6 +672,11 @@ bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
    Spectrum mstSpectrum;           // For holding spectrum.
 
    int iAnalysisType = AnalysisType_EntireFile;
+
+   printf(" OK input file %s\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
+   mstReader.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 1);
+
+   int iFileLastScan = mstReader.getLastScan();
 
    if (iFileLastScan <= 0)
    {
@@ -764,16 +769,18 @@ bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
 
             PreprocessThreadData *pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
+
             printf("OK mstSpectrum size %d\n", pPreprocessThreadDataMS1->mstSpectrum.size());
             for (int i=0 ; i < pPreprocessThreadDataMS1->mstSpectrum.size() ; ++i)
             {
-               printf("OK %lf, %lf\n",  pPreprocessThreadDataMS1->mstSpectrum.at(i).mz,
+               printf("   OK %lf, %lf\n",  pPreprocessThreadDataMS1->mstSpectrum.at(i).mz,
                      pPreprocessThreadDataMS1->mstSpectrum.at(i).intensity);
-               if (i==5)
+               if (i==2)
                   break;
             }
 
-//          pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pPreprocessThreadPool));
+
+            pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pPreprocessThreadPool));
          }
 
          iTotalScans++;
@@ -827,7 +834,7 @@ bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
 
    return bSucceeded;
 }
-
+*/
 
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                            ThreadPool* tp)
@@ -867,6 +874,167 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
+}
+
+
+void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
+                                              ThreadPool* tp)
+{
+   // This returns false if it fails, but the errors are already logged
+   // so no need to check the return value here.
+
+   int i;
+
+   Threading::LockMutex(g_preprocessMemoryPoolMutex);
+   for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
+   {
+      if (pbMemoryPool[i] == false)
+      {
+         pbMemoryPool[i] = true;
+         break;
+      }
+   }
+   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
+
+
+   //MH: Fail-safe to stop if memory isn't available for the next thread.
+   //Needs better capture and return?
+   if (i == g_staticParams.options.iNumThreads)
+   {
+      printf("Error with memory pool in preprocessing.\n");
+      exit(1);
+   }
+
+   //MH: Give memory manager access to the thread.
+   pPreprocessThreadDataMS1->SetMemory(&pbMemoryPool[i]);
+
+   double* pdTmpRawData = ppdTmpRawDataArr[i];
+   double* pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[i];
+   double* pdTmpCorrelationData = ppdTmpCorrelationDataArr[i];
+
+   // FIX remove unused arrays
+   size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
+   memset(pdTmpRawData, 0, iTmp);
+   memset(pdTmpFastXcorrData, 0, iTmp);
+   memset(pdTmpCorrelationData, 0, iTmp);
+
+   // take pPreprocessThreadData->mstSpectrum and store in g_vSpecLib
+
+   SpecLibStruct pTmp;
+
+/*
+   struct SpecLibStruct
+   {
+      string strName;                   // any string associated with speclib entry
+      unsigned int iLibEntry;           // a reference number associated with speclib entry
+      unsigned int iNumPeaks;
+      int iSpecLibCharge;               // precursor charge; not relevant for MS1 speclib
+      double dSpecLibMW;                // if a peptide, store neutral mass
+      double dRT;
+      vector<std::pair<double, float>> vSpecLibPeaks;
+      char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
+   };
+*/
+
+   pTmp.iLibEntry = pPreprocessThreadDataMS1->mstSpectrum.getScanNumber();
+   pTmp.iNumPeaks = pPreprocessThreadDataMS1->mstSpectrum.size();
+   pTmp.dRT = pPreprocessThreadDataMS1->mstSpectrum.getRTime();    // FIX: make sure in
+
+
+
+   double dHighestIntensity = 0.0;
+   double dLargestMass = pPreprocessThreadDataMS1->mstSpectrum.at(pTmp.iNumPeaks - 1).mz;
+   if (dLargestMass > g_staticParams.options.dMS1MaxMass)
+      dLargestMass = g_staticParams.options.dMS1MaxMass;
+   int iArraySizeMS1 = BINPREC(dLargestMass) + 1;
+
+   // allocate array to store spectrum as array
+
+   // modify array to fast xcorr after normalizing intensities to 100
+
+   int iBinMass;
+
+   for (int ii = 0; ii < pPreprocessThreadDataMS1->mstSpectrum.size(); ++ii)
+   {
+      // store original spectrum
+//    auto p1 = std::make_pair(pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz, pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity);
+//    pTmp.vSpecLibPeaks.push_back(p1);
+
+      if (pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity > dHighestIntensity)
+         dHighestIntensity = pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity;
+
+      iBinMass = BINPREC(pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz);
+      if (pdTmpRawData[iBinMass] < pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity)
+         pdTmpRawData[iBinMass] = pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity;
+   }
+
+   // Create data for correlation analysis.
+   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iArraySizeMS1, dHighestIntensity);
+
+   // Make fast xcorr spectrum.
+   double dSum = 0.0;
+   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
+   double dTmp = 1.0 / (iTmpRange - 1.0);
+   double dMinXcorrInten = 0.0;
+
+   dSum = 0.0;
+   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+      dSum += pdTmpCorrelationData[i];
+   for (i = g_staticParams.iXcorrProcessingOffset; i < iArraySizeMS1 + g_staticParams.iXcorrProcessingOffset; ++i)
+   {
+      if (dMinXcorrInten < pdTmpCorrelationData[i])
+         dMinXcorrInten = pdTmpCorrelationData[i];
+
+      if (i < iArraySizeMS1)
+         dSum += pdTmpCorrelationData[i];
+      if (i >= iTmpRange)
+         dSum -= pdTmpCorrelationData[i - iTmpRange];
+      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
+   }
+
+   //MH: Fill sparse matrix
+   pTmp.ppcSparseFastXcorrData = new char* [(iArraySizeMS1 / SPARSE_MATRIX_SIZE) + 1]();
+
+   int x;
+   int y;
+   for (i = 1; i < iArraySizeMS1; ++i)
+   {
+      if (pdTmpFastXcorrData[i] > FLOAT_ZERO || pdTmpFastXcorrData[i] < -FLOAT_ZERO)
+      {
+         x = i / SPARSE_MATRIX_SIZE;
+         if (pTmp.ppcSparseFastXcorrData[x] == NULL)
+         {
+            pTmp.ppcSparseFastXcorrData[x] = new char[SPARSE_MATRIX_SIZE]();
+
+            for (y = 0; y < SPARSE_MATRIX_SIZE; ++y)
+               pTmp.ppcSparseFastXcorrData[x][y] = 0;
+         }
+         y = i - (x * SPARSE_MATRIX_SIZE);
+
+         if ((int)pdTmpFastXcorrData[i] > 128)
+            pTmp.ppcSparseFastXcorrData[x][y] = 128;
+         else if ((int)pdTmpFastXcorrData[i] < -127)
+            pTmp.ppcSparseFastXcorrData[x][y] = -127;
+         else
+            pTmp.ppcSparseFastXcorrData[x][y] = (char)pdTmpFastXcorrData[i];
+
+      }
+   }
+
+   for (i = 1; i < iArraySizeMS1; ++i)
+   {
+      if (pdTmpFastXcorrData[i] > 128.0 || pdTmpFastXcorrData[i] < -127.0)
+         printf(" OK error, pdTmpFastXcorrData[i] %lf\n", pdTmpFastXcorrData[i]);
+   }
+
+
+   Threading::LockMutex(g_pvQueryMutex);  // use g_pvQueryMutex to protext g_vSpecLib
+   g_vSpecLib.push_back(pTmp);
+   Threading::UnlockMutex(g_pvQueryMutex);
+
+   delete pPreprocessThreadDataMS1;
+   pPreprocessThreadDataMS1 = NULL;
 }
 
 
@@ -949,7 +1117,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    // Create data for correlation analysis.
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
 
    // Make fast xcorr spectrum.
    double dSum = 0.0;
@@ -1918,10 +2086,11 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
 
 // pdTmpRawData now holds raw data, pdTmpCorrelationData is windowed data after this function
-void CometPreprocess::MakeCorrData(double *pdTmpRawData,
-                                   double *pdTmpCorrelationData,
-                                   struct Query *pScoring,
-                                   struct PreprocessStruct *pPre)
+// FIX: need to check why both iArraySize and iHighestIons are used
+void CometPreprocess::MakeCorrData(double* pdTmpRawData,
+                                   double* pdTmpCorrelationData,
+                                   int iHighestIon,
+                                   double dHighestIntensity)
 {
    int  i,
         ii,
@@ -1932,7 +2101,7 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
           dTmp1,
           dTmp2;
 
-   iWindowSize = (int)((pPre->iHighestIon)/iNumWindows) + 1;
+   iWindowSize = (int)((iHighestIon)/iNumWindows) + 1;
 
    for (i=0; i<iNumWindows; ++i)
    {
@@ -1941,7 +2110,7 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
       for (ii=0; ii<iWindowSize; ++ii)    // Find max inten. in window.
       {
          iBin = i*iWindowSize+ii;
-         if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
+         if (iBin <= iHighestIon)
          {
             if (pdTmpRawData[iBin] > dMaxWindowInten)
                dMaxWindowInten = pdTmpRawData[iBin];
@@ -1951,12 +2120,12 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
       if (dMaxWindowInten > 0.0)
       {
          dTmp1 = 50.0 / dMaxWindowInten;
-         dTmp2 = 0.05 * pPre->dHighestIntensity;
+         dTmp2 = 0.05 * dHighestIntensity;
 
          for (ii=0; ii<iWindowSize; ++ii)    // Normalize to max inten. in window.
          {
             iBin = i*iWindowSize+ii;
-            if (iBin < pScoring->_spectrumInfoInternal.iArraySize)
+            if (iBin <= iHighestIon)
             {
                if (pdTmpRawData[iBin] > dTmp2)
                   pdTmpCorrelationData[iBin] = pdTmpRawData[iBin]*dTmp1;
@@ -2221,7 +2390,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    // Create data for correlation analysis.
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
 
    // Make fast xcorr spectrum.
    double dSum = 0.0;
@@ -2405,6 +2574,127 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    pScoring->pfSpScoreData = NULL;
 
    g_pvQuery.push_back(pScoring);
+
+   return true;
+}
+
+
+bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
+                                                  double* pdInten,
+                                                  int iNumPeaks)
+{
+   QueryMS1* pScoringMS1 = new QueryMS1();
+
+/*
+   short siLowestSpecLibIndex;
+   float fLowestXcorr;
+   unsigned int uiMatchMS1Count;        // # of peptides that get stored (i.e. are greater than lowest score)
+
+   // Standard array representation of data
+   char* pcFastXcorrData;               // use MH char representation of spectrum with intensity values that range -127 to +128
+
+   SpecLibResultsMS1* _pSpecLibResultsMS1;
+*/
+
+   //preprocess here
+   int i;
+   int x;
+   int y;
+   struct PreprocessStruct pPre;
+
+   pPre.iHighestIon = 0;
+   pPre.dHighestIntensity = 0;
+
+   double dLargestMass = pdMass[iNumPeaks - 1];  // expect pdMass array to be in ascending order
+   if (dLargestMass > g_staticParams.options.dMS1MaxMass)
+      dLargestMass = g_staticParams.options.dMS1MaxMass;
+   int iArraySizeMS1 = BINPREC(dLargestMass) + 1;
+
+   // initialize these temporary arrays before re-using
+   double* pdTmpRawData = ppdTmpRawDataArr[0];
+   double* pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
+   double* pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
+
+   size_t iTmp = (size_t)(iArraySizeMS1 * sizeof(double));
+   memset(pdTmpRawData, 0, iTmp);
+   memset(pdTmpFastXcorrData, 0, iTmp);
+   memset(pdTmpCorrelationData, 0, iTmp);
+
+   // Loop through single spectrum and store in pdTmpRawData array
+   double dIon;
+   double dIntensity;
+
+   // set dIntensityCutoff based on either minimum intensity or % of base peak
+   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
+
+   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && g_staticParams.options.dMinPercentageIntensity <= 1.0)
+   {
+      double dBasePeakIntensity = 0.0;
+
+      for (i = 0; i < iNumPeaks; ++i)
+      {
+         if (pdInten[i] > dBasePeakIntensity)
+            dBasePeakIntensity = pdInten[i];
+      }
+
+      dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
+
+      if (dIntensityCutoff < g_staticParams.options.dMinIntensity)
+         dIntensityCutoff = g_staticParams.options.dMinIntensity;
+   }
+
+   int iHighestIon = 0;
+   double dHighestIntensity = 0.0;
+   for (i = 0; i < iNumPeaks; ++i)
+   {
+      dIon = pdMass[i];
+      dIntensity = pdInten[i];
+
+      bool bPass = false;
+      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
+         bPass = true;
+
+      if (bPass)
+      {
+         if (dIon < g_staticParams.options.dMS1MaxMass)
+         {
+            int iBinIon = BINPREC(dIon);
+
+            dIntensity = sqrt(dIntensity);
+
+            if (iBinIon > iHighestIon)
+               iHighestIon = iBinIon;
+
+            if (iBinIon < iArraySizeMS1 && dIntensity > pdTmpRawData[iBinIon])
+            {
+               if (dIntensity > pdTmpRawData[iBinIon])
+                  pdTmpRawData[iBinIon] = dIntensity;
+
+               if (pdTmpRawData[iBinIon] > dHighestIntensity)
+                  dHighestIntensity = pdTmpRawData[iBinIon];
+            }
+         }
+      }
+   }
+
+   pScoringMS1->pcFastXcorrData = new char[iArraySizeMS1]();
+
+   // Create data for correlation analysis.
+   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iHighestIon, dHighestIntensity);
+
+   for (i = 0; i < iArraySizeMS1; ++i)
+   {
+      if ((int)pdTmpCorrelationData[i] > 128)
+         pScoringMS1->pcFastXcorrData[i] = 128;
+      else if ((int)pdTmpCorrelationData[i] < -127)
+         pScoringMS1->pcFastXcorrData[i] = -127;
+      else
+         pScoringMS1->pcFastXcorrData[i] = (char)pdTmpCorrelationData[i];
+
+   }
+
+   g_pvQueryMS1.push_back(pScoringMS1);
 
    return true;
 }

@@ -628,7 +628,6 @@ static bool ValidateSpecLibFile()  // just check if file is readable for now
    FILE *fpcheck;
 
    // open speclib file
-   string sTmpDB = g_staticParams.speclibInfo.strSpecLibFile;
    if ((fpcheck = fopen(g_staticParams.speclibInfo.strSpecLibFile.c_str(), "r")) == NULL)
    {
       char szErrorMsg[SIZE_ERROR];
@@ -687,6 +686,7 @@ static bool ValidatePeptideLengthRange()
 
 CometSearchManager::CometSearchManager() :
     singleSearchInitializationComplete(false),
+    singleSearchMS1InitializationComplete(false),
     singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
@@ -750,6 +750,12 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("spectral_library_name", strData))
       g_staticParams.speclibInfo.strSpecLibFile = strData;
+
+   if (GetParamValue("spectraL_library_ms_level", iIntData))
+   {
+      // FIX add check that input value is some same range
+      g_staticParams.options.iSpecLibMSLevel = iIntData;
+   }
 
    if (GetParamValue("output_suffix", strData))
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
@@ -869,6 +875,12 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
+
+   GetParamValue("ms1_bin_tol", g_staticParams.tolerances.dMS1BinSize);
+
+   GetParamValue("ms1_bin_offset", g_staticParams.tolerances.dMS1BinStartOffset);
+
+   GetParamValue("ms1_max_mass", g_staticParams.options.dMS1MaxMass);
 
    // this parameter superseded by _upper/_lower; will still apply if the other params are missing
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
@@ -3352,8 +3364,12 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
    if (!ValidateSpecLibFile())
       return false;
 
+   // these two mean nothing for MS1
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
+   // Set in InitializeStaticParams for peptide search; must set after for MS1
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dMS1MaxMass + 2.0) / g_staticParams.tolerances.dMS1BinSize);
 
    bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.
@@ -3852,21 +3868,15 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
    if (bSucceeded == false)
       return bSucceeded;
 
-   // For file access using MSToolkit.
-   MSReader mstReader;
-
-   // We want to read only M1 scans.
-   g_staticParams.options.iMSLevel = 1;
-   SetMSLevelFilter(mstReader);
 
    ThreadPool *tp = _tp;  // filled in InitializeSingleSpectrumSearch
 
    //Load all MS1 spectrum from file
    if (g_bSpecLibRead == false)
-      CometPreprocess::LoadAndPreprocessMS1Spectra(mstReader, tp);
+      CometSpecLib::LoadSpecLibMS1Raw(tp);
 
    // Process current MS1
-   //bool bSucceeded = CometPreprocess::PreprocessSingleMS1Spectrum(pdMass, pdInten, iNumPeaks);
+   bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);
 
    unsigned int uiSize;
    int takeSearchResultsN;
@@ -3889,7 +3899,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
    QueryMS1* pQueryMS1;
    pQueryMS1 = g_pvQueryMS1.at(iWhichMS1Query);
 
-// bSucceeded = CometSearch::RunMS1Search(tp, dRT);
+//   bSucceeded = CometSearch::RunMS1Search(tp, dRT);
 
    if (!bSucceeded)
       goto cleanup_results;

@@ -157,6 +157,7 @@ struct Options
    double dMinimumXcorr;         // set the minimum xcorr to report (default is 1e-8)
    double dFragIndexMaxMass;     // fragment index maximum fragment mass
    double dFragIndexMinMass;     // fragment index minimum fragment mass
+   double dMS1MaxMass;           // largest mass cutoff in MS1 query spectrum
    IntRange scanRange;
    IntRange peptideLengthRange;
    DoubleRange clearMzRange;
@@ -224,6 +225,8 @@ struct Options
       iFragIndexMinIonsReport = a.iFragIndexMinIonsReport ;  
       iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;
       iFragIndexSkipReadPrecursors = a.iFragIndexSkipReadPrecursors;
+
+      dMS1MaxMass = a.dMS1MaxMass;
 
       return *this;
    }
@@ -513,13 +516,14 @@ struct SpecLibInfo      // why a struct for just a string???
 
 struct SpecLibStruct
 {
-   string strName;
-   unsigned int iLibEntry;
+   string strName;                   // any string associated with speclib entry
+   unsigned int iLibEntry;           // a reference number associated with speclib entry
    unsigned int iNumPeaks;
-   int iSpecLibCharge;
+   int iSpecLibCharge;               // precursor charge; not relevant for MS1 speclib
    double dSpecLibMW;                // if a peptide, store neutral mass
    double dRT;
-   vector<std::pair<double, double>> vSpecLibPeaks;
+   vector<std::pair<double, float>> vSpecLibPeaks;
+   char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
 };
 
 extern unsigned int **g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
@@ -676,7 +680,8 @@ struct ToleranceParams
    double dInputTolerancePlus;    // raw tolerance value from param file, upper bound; gets converted to dPeptideMassTolerancePlus
    double dFragmentBinSize;
    double dFragmentBinStartOffset;
-   double dBinSizePrecursor;
+   double dMS1BinSize;
+   double dMS1BinStartOffset;
 
    ToleranceParams& operator=(ToleranceParams& a)
    {
@@ -687,7 +692,8 @@ struct ToleranceParams
       dInputTolerancePlus = a.dInputTolerancePlus;
       dFragmentBinSize = a.dFragmentBinSize;
       dFragmentBinStartOffset = a.dFragmentBinStartOffset;
-      dBinSizePrecursor = a.dBinSizePrecursor;
+      dMS1BinSize = a.dMS1BinSize;
+      dMS1BinStartOffset = a.dMS1BinStartOffset;
 
       return *this;
    }
@@ -745,6 +751,7 @@ struct StaticParams
    MassUtil        massUtility;
    double          dInverseBinWidth;    // this is used in BIN() many times so use inverse binWidth to do multiply vs. divide
    int             iArraySizeGlobal;    // (int)((g_staticParams.options.dPeptideMassHigh + plus_tol_in_daltons + buffer) * g_staticParams.dInverseBinWidth)
+                                        // for MS1 library search, use dMS1MaxMass instead of dPeptideMassHigh
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
@@ -963,6 +970,8 @@ struct StaticParams
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 0;
 
+      options.dMS1MaxMass = 3000.0;
+
       options.clearMzRange.dStart = 0.0;
       options.clearMzRange.dEnd = 0.0;
 
@@ -981,7 +990,7 @@ struct StaticParams
       tolerances.dInputTolerancePlus = 3.0;                 // peptide_mass_tolerance plus
       tolerances.dFragmentBinSize = 1.0005;
       tolerances.dFragmentBinStartOffset = 0.4;
-      tolerances.dBinSizePrecursor = 0.1;                   // FIX
+      tolerances.dMS1BinSize = 1.0005;                // FIX
 
       bSkipToStartScan = true;
    }
@@ -1188,12 +1197,9 @@ struct QueryMS1
    float fLowestXcorr;
    unsigned int uiMatchMS1Count;        // # of peptides that get stored (i.e. are greater than lowest score)
 
-   // Sparse matrix representation of data
-   int iFastXcorrDataSize;
-   float **ppfSparseFastXcorrData;
-
    // Standard array representation of data
-   float *pfFastXcorrData;
+   // Library spectra are fast xcorr manipulated so non need to do so with query MS1
+   char *pcFastXcorrData;               // use MH char representation of spectrum with intensity values that range -127 to +128
 
    SpecLibResultsMS1 *_pSpecLibResultsMS1;
 
@@ -1204,8 +1210,7 @@ struct QueryMS1
       siLowestSpecLibIndex = 0;
       fLowestXcorr = SPECLIB_CUTOFF;
       uiMatchMS1Count = 0;
-      ppfSparseFastXcorrData = NULL;
-      pfFastXcorrData = NULL;
+      pcFastXcorrData = NULL;
       _pSpecLibResultsMS1 = NULL;
 
       Threading::CreateMutex(&accessMutex);
@@ -1213,14 +1218,6 @@ struct QueryMS1
 
    ~QueryMS1()
    {
-      for (int i = 0; i < iFastXcorrDataSize; ++i)
-      {
-         if (ppfSparseFastXcorrData[i] != NULL)
-            delete[] ppfSparseFastXcorrData[i];
-      }
-      delete[] ppfSparseFastXcorrData;
-      ppfSparseFastXcorrData = NULL;
-
       //FIX delete _pSepcLibResults
 
       Threading::DestroyMutex(accessMutex);
@@ -1228,6 +1225,7 @@ struct QueryMS1
 };
 
 extern vector<Query*>          g_pvQuery;
+extern vector<QueryMS1*>       g_pvQueryMS1;
 extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_pvDBIndexMutex;

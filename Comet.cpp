@@ -1751,8 +1751,8 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
    if (iPrintParams == 2)
    {
       fprintf(fp,
-"\nspeclib_name = /some/path/speclib.file\n\
-speclib_ms_level = 1\n\n");
+"\nspectral_library_name = /some/path/speclib.file\n\
+spectral_library_ms_level = 1\n\n");
    }
 
    if (iPrintParams == 2)

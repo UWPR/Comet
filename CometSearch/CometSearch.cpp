@@ -894,7 +894,7 @@ bool CometSearch::RunSpecLibSearch(int iPercentStart,
                                    int iPercentEnd,
                                    ThreadPool *tp)
 {
-   printf("\nOKa in RunSpecLib, g_staticParams.tolerances.dBinSizePrecursor %lf\n", g_staticParams.tolerances.dBinSizePrecursor);
+   printf("\nOKa in RunSpecLib, g_staticParams.tolerances.dMS1BinSize %lf\n", g_staticParams.tolerances.dMS1BinSize);
 
    // to fill g_vulSpecLibPrecursorIndex, set
    // binmin = BINPREC(expmass - tol)
