@@ -41,6 +41,8 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   m_bChromatogramIndex = false;
   m_bInmzArrayBinary = false;
   m_bInintenArrayBinary = false;
+  m_bInionMobilityArrayBinary = false;
+  m_bionMobility = false;
   m_bInRefGroup = false;
   m_bNetworkData = false; //always little-endian for mzML
   m_bNumpressLinear = false;
@@ -61,6 +63,18 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   spec=bs;
   indexOffset=-1;
   m_scanIDXCount = 0;
+
+#ifdef MZP_HDF
+  m_hdfFile=-1;
+  m_hdfmzml = -1;
+  m_hdfintData = -1;
+  m_hdfmzData = -1;
+  m_hdfmzSpace = -1;
+  m_hdfintSpace = -1;
+  m_hdfOffset=0;
+  m_hdfArraySz=0;
+#endif
+
   chromat=NULL;
 }
 
@@ -68,6 +82,8 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
   m_bChromatogramIndex = false;
   m_bInmzArrayBinary = false;
   m_bInintenArrayBinary = false;
+  m_bInionMobilityArrayBinary = false;
+  m_bionMobility = false;
   m_bInRefGroup = false;
   m_bNetworkData = false; //always little-endian for mzML
   m_bNumpressLinear = false;
@@ -89,6 +105,17 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
   chromat=cs;
   indexOffset=-1;
   m_scanIDXCount = 0;
+
+#ifdef MZP_HDF
+  m_hdfFile = -1;
+  m_hdfmzml = -1;
+  m_hdfintData = -1;
+  m_hdfmzData = -1;
+  m_hdfmzSpace = -1;
+  m_hdfintSpace = -1;
+  m_hdfOffset = 0;
+  m_hdfArraySz = 0;
+#endif
 }
 
 mzpSAXMzmlHandler::~mzpSAXMzmlHandler(){
@@ -104,7 +131,12 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     m_encodedLen=atoi(&s[0]);
 
   } else if (isElement("binaryDataArrayList",el)) {
+#ifdef MZP_HDF
     if(m_bHeaderOnly) stopParser();
+#else
+    if (m_bHeaderOnly) stopParser();
+#endif
+    m_bionMobility = false;
 
   } else if (isElement("chromatogram",el)) {
     string s=getAttrValue("id", attr);
@@ -130,8 +162,6 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     curChromatIndex.idRef=string(getAttrValue("idRef", attr));
 
   } else if(isElement("offset",el) && m_bSpectrumIndex){
-    //MH: try to extract a scan number from each offset. Failing that, the scan number is simply
-    //the next iteration (1-based).
     m_strData.clear();
     curIndex.idRef=string(getAttrValue("idRef", attr));
     if(strstr(&curIndex.idRef[0],"scan=")!=NULL)  {
@@ -142,6 +172,8 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
       curIndex.scanNum = ++m_scanIDXCount;
     } else if(strstr(&curIndex.idRef[0],"S")!=NULL) {
       curIndex.scanNum=atoi(strstr(&curIndex.idRef[0],"S")+1);
+    } else if (strstr(&curIndex.idRef[0], "index=") != NULL) {
+      curIndex.scanNum = atoi(strstr(&curIndex.idRef[0], "index=") + 6);
     } else {
       curIndex.scanNum=++m_scanIDXCount;
       //Suppressing warning.
@@ -149,17 +181,25 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     }
 
   } else if(isElement("precursor",el)) {
+    m_vState.push_back(esPrecursor);
     string s=getAttrValue("spectrumRef", attr);
 
+    //clear all precursor info, EXCEPT for the parent ion monoMz, which is captured in thermo trailer in the <scan> element.
+    double parentMonoMz=m_precursorIon.monoMZ;
+    m_precursorIon.clear();
+    m_precursorIon.monoMZ=parentMonoMz;
+
     //if spectrumRef is not provided
-    if(s.length()<1){
-      spec->setPrecursorScanNum(0);
+    if (s.length() < 1) {
+      m_precursorIon.scanNumber=0;
     } else {
       map<string, size_t>::iterator it = m_mIndex.find(s);
       if (it != m_mIndex.end()) {
-        spec->setPrecursorScanNum((int)it->second);
+        m_precursorIon.scanNumber=(int)it->second;
       } else {
-        cout << "ERROR: precursor:spectrumRef " << s << " is not indexed." << endl;
+        //silence error. A non-indexed precursor (e.g., if MS1 scans have been excised) leads to a scanNumber of 0.
+        //cout << "ERROR: precursor:spectrumRef " << s << " is not indexed." << endl;
+        m_precursorIon.scanNumber = 0;
       }
     }
 
@@ -179,11 +219,19 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     const char* accession = getAttrValue("accession", attr);
     const char* version = getAttrValue("version", attr);
 
+  } else if(isElement("selectedIonList", el)){
+    int count=atoi(getAttrValue("count",attr));
+    if(count>1){
+      cout << "WARNING: selectedIonList count >1. Please report." << endl;
+    }
+
   }  else if (isElement("spectrum", el)) {
+    m_precursorIon.clear(); //clear all precursor information here
+    m_vState.push_back(esSpectrum);
     string s=getAttrValue("id", attr);
     spec->setIDString(&s[0]);
-    map<string,size_t>::iterator it=m_mIndex.find(s);
-    if(it!=m_mIndex.end()){
+    map<string, size_t>::iterator it = m_mIndex.find(s);
+    if (it != m_mIndex.end()) {
       spec->setScanNum((int)it->second);
     } else {
       cout << "ERROR: " << s << " is not indexed." << endl;
@@ -226,7 +274,12 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     const char* value = getAttrValue("value", attr);
     if(strcmp(name,"[Thermo Trailer Extra]Monoisotopic M/Z:")==0){
       m_precursorIon.monoMZ=atof(value);
+    } else if (strcmp(name, "scan description") == 0) {
+      //m_precursorIon.monoMZ = atof(value);
+    } else if (strcmp(name, "ms level") == 0) {
+      m_precursorIon.msLevel = atoi(value);
     }
+    spec->setUserParam(name,value,dtype);
   }
 
   if(isElement("binary", el))  {
@@ -270,27 +323,33 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
     m_bInIndexList=false;
     stopParser();
     if (!m_bIndexSorted) {
-      qsort(&m_vIndex[0],m_vIndex.size(),sizeof(cindex),cindex::compare);
+      sort(m_vIndex.begin(),m_vIndex.end(),cindex::compare);
       m_bIndexSorted=true;
     }
 
   } else if (isElement("isolationWindow",el)){
     if (chromat != NULL && m_bInProduct) chromat->setProduct(m_precursorIon.isoMZ, m_precursorIon.isoLowerMZ, m_precursorIon.isoUpperMZ);
 
-  } else if(isElement("offset",el) && m_bChromatogramIndex){
-    curChromatIndex.offset=mzpatoi64(&m_strData[0]);
+  } else if (isElement("offset", el) && m_bChromatogramIndex) {
+    curChromatIndex.offset = mzpatoi64(&m_strData[0]);
     m_vChromatIndex.push_back(curChromatIndex);
-    m_mChromatIndex.insert(pair<string,size_t>(curChromatIndex.idRef,m_vChromatIndex.size()));
+    m_mChromatIndex.insert(pair<string, size_t>(curChromatIndex.idRef, m_vChromatIndex.size()));
 
-  } else if(isElement("offset",el) && m_bSpectrumIndex){
-    curIndex.offset=mzpatoi64(&m_strData[0]);
+  } else if (isElement("offset", el) && m_bSpectrumIndex) {
+    curIndex.offset = mzpatoi64(&m_strData[0]);
     m_vIndex.push_back(curIndex);
-    m_mIndex.insert(pair<string,size_t>(curIndex.idRef,curIndex.scanNum));
+    m_mIndex.insert(pair<string, size_t>(curIndex.idRef, curIndex.scanNum));
     if (m_bIndexSorted && m_vIndex.size() > 1) {
-      if (m_vIndex[m_vIndex.size()-1].scanNum < m_vIndex[m_vIndex.size()-2].scanNum) {
+      if (m_vIndex[m_vIndex.size() - 1].scanNum < m_vIndex[m_vIndex.size() - 2].scanNum) {
         m_bIndexSorted = false;
       }
     }
+
+  } else if(isElement("precursor",el)){
+    spec->setPrecursorIon(m_precursorIon);
+    if(m_vState.back()!=esPrecursor){
+      cout << "Error: expected state should be precursor." << endl;
+    } else m_vState.pop_back();
 
   } else if(isElement("precursorList",el)){
 
@@ -301,12 +360,13 @@ void mzpSAXMzmlHandler::endElement(const XML_Char *el) {
     m_bInRefGroup = false;
 
   } else if(isElement("selectedIon",el)) {
-    spec->setPrecursorIon(m_precursorIon);
-    m_precursorIon.clear();
 
   }  else if(isElement("spectrum", el)) {
     pushSpectrum();
     stopParser();
+    if (m_vState.back() != esSpectrum) {
+      cout << "Error: expected state should be spectrum." << endl;
+    } else m_vState.pop_back();
     
   } else if(isElement("spectrumList",el)) {
     m_bInSpectrumList = false;
@@ -334,6 +394,10 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name, "base peak m/z") || !strcmp(accession,"MS:1000504"))  {
     spec->setBasePeakMZ(atof(value));
     
+  } else if (!strcmp(name, "beam-type collision-induced dissociation") || !strcmp(accession, "MS:1000422")) {
+    if(m_vState.back()==esPrecursor) m_precursorIon.activation=HCD;
+    spec->setActivation(HCD);
+
   } else if(!strcmp(name, "centroid spectrum") || !strcmp(accession,"MS:1000127")) {
     spec->setCentroid(true);
 
@@ -341,8 +405,13 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
     m_precursorIon.charge = atoi(value);
 
   } else if(!strcmp(name, "collision-induced dissociation") || !strcmp(accession,"MS:1000133"))  {
-    if(spec->getActivation()==ETD) spec->setActivation(ETDSA);
-    else spec->setActivation(CID);
+    if(spec->getActivation()==ETD) {
+      if (m_vState.back() == esPrecursor) m_precursorIon.activation = ETDSA;
+      spec->setActivation(ETDSA);
+    } else {
+      if (m_vState.back() == esPrecursor) m_precursorIon.activation = CID;
+      spec->setActivation(CID);
+    }
 
   } else if(!strcmp(name, "collision energy") || !strcmp(accession,"MS:1000045"))  {
     spec->setCollisionEnergy(atof(value));
@@ -351,8 +420,28 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
     m_instrument.detector=name;
 
   } else if(!strcmp(name, "electron transfer dissociation") || !strcmp(accession,"MS:1000598"))  {
-    if(spec->getActivation()==CID) spec->setActivation(ETDSA);
-    else spec->setActivation(ETD);
+    if(spec->getActivation()==CID) {
+      if (m_vState.back() == esPrecursor) m_precursorIon.activation = ETDSA;
+      spec->setActivation(ETDSA);
+    } else {
+      if (m_vState.back() == esPrecursor) m_precursorIon.activation = ETD;
+      spec->setActivation(ETD);
+    }
+
+#ifdef MZP_HDF
+  } else if (!strcmp(name, "external HDF5 dataset") || !strcmp(accession, "MS:1002841")) {
+    m_strHDFDatasetID = value;
+
+  } else if (!strcmp(name, "external array length") || !strcmp(accession, "MS:1002843")) {
+    m_hdfArraySz = (hsize_t)atoll(value);
+    if (m_hdfFile > -1) {
+      spec->setPeaksCount((int)m_hdfArraySz);
+      if (m_bHeaderOnly) stopParser();
+    }
+
+  } else if (!strcmp(name, "external offset") || !strcmp(accession, "MS:1002842")) {
+    m_hdfOffset = (hsize_t)atoll(value);
+#endif
 
   } else if(!strcmp(name, "FAIMS compensation voltage") || !strcmp(accession,"MS:1001581"))  {
     spec->setCompensationVoltage(atof(value));
@@ -372,18 +461,22 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name, "intensity array") || !strcmp(accession,"MS:1000515"))  {
     m_bInintenArrayBinary = true;
     m_bInmzArrayBinary = false;
+    m_bInionMobilityArrayBinary = false;
 
   } else if (!strcmp(name, "ion injection time") || !strcmp(accession, "MS:1000927"))  {
     spec->setIonInjectionTime(atof(value));
+
+  } else if (!strcmp(name, "ion mobility drift time") || !strcmp(accession, "MS:1002476")) {
+    spec->setIonMobilityDriftTime(atof(value));
 
   } else if(!strcmp(name,"isolation window target m/z") || !strcmp(accession,"MS:1000827")) {
     m_precursorIon.isoMZ=atof(value);
 
   } else if (!strcmp(name, "isolation window lower offset") || !strcmp(accession, "MS:1000828")) {
-    m_precursorIon.isoLowerMZ = atof(value);
+    m_precursorIon.isoLowerOffset= atof(value);
 
   } else if (!strcmp(name, "isolation window upper offset") || !strcmp(accession, "MS:1000829")) {
-    m_precursorIon.isoUpperMZ = atof(value);
+    m_precursorIon.isoUpperOffset = atof(value);
 
   } else if(!strcmp(name,"LTQ Velos") || !strcmp(accession,"MS:1000855")) {
     m_instrument.model=name;
@@ -421,13 +514,20 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name, "m/z array") || !strcmp(accession,"MS:1000514"))  {
     m_bInmzArrayBinary = true;
     m_bInintenArrayBinary = false;
+    m_bInionMobilityArrayBinary = false;
 
   } else if(!strcmp(name,"nanoelectrospray") || !strcmp(accession,"MS:1000398")) {
     m_instrument.ionization=name;
 
-  } else if (!strcmp(name, "non-standard data array") || !strcmp(accession, "MS:1000786"))  {
+    //this looks like a mess. Fix it properly.
+  } else if ((!strcmp(name, "non-standard data array") && !strcmp(value, "Ion Mobility") && !strcmp(accession, "MS:1000786")) ||
+    (!strcmp(name, "mean inverse reduced ion mobility array") && !strcmp(accession, "MS:1003006")) ||
+    (!strcmp(name, "raw ion mobility array") && !strcmp(accession, "MS:1003007"))) {
     m_bInmzArrayBinary = false;
     m_bInintenArrayBinary = false;
+    m_bInionMobilityArrayBinary = true;
+    m_bionMobility = true;
+    spec->setIonMobilityScan(true);
 
   } else if(!strcmp(name,"orbitrap") || !strcmp(accession,"MS:1000484")) {
     m_instrument.analyzer=name;
@@ -439,13 +539,18 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
     spec->setPositiveScan(true);
 
   } else if(!strcmp(name,"possible charge state") || !strcmp(accession,"MS:1000633")) {
-    m_precursorIon.possibleCharges->push_back(atoi(value));
+    m_precursorIon.possibleCharges.push_back(atoi(value));
 
   } else if(!strcmp(name,"profile spectrum") || !strcmp(accession,"MS:1000128")) {
     spec->setCentroid(false);
 
   } else if(!strcmp(name,"radial ejection linear ion trap") || !strcmp(accession,"MS:1000083")) {
     m_instrument.analyzer=name;
+
+  } else if (!strcmp(name, "inverse reduced ion mobility") || !strcmp(accession, "MS:1002815")) {
+    spec->setInverseReducedIonMobility(atof(value));
+    //spec->setIonMobilityScan(true);
+    //m_bionMobility = true;
 
   } else if(!strcmp(name, "scan start time") || !strcmp(accession,"MS:1000016"))  {
     if(!strcmp(unitName, "minute") || !strcmp(unitAccession,"UO:0000031"))  {
@@ -463,9 +568,16 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
     spec->setHighMZ(atof(value));
     
   } else if(!strcmp(name, "selected ion m/z") || !strcmp(accession,"MS:1000744"))  {
+    //MH: Note the change here. From now on, selected ion m/z always goes in the m_precursorIon.mz variable.
+    //Isolation mz (different cvParam) always goes in m_precursionIon.isoMZ, and the thermo trailer (userParam) goes in m_precursorIon.monoMZ.
+    //However, the meaning of selected ion m/z can mean different things in ProteoWizard converted mzML files. If no thermo trailer is
+    //provided, the selected ion m/z == isolated m/z. But if thermo trailer, then it selected ion m/z == monoisotopic m/z.
+    //But if there are multiple precursors and thermo trailer, the same monoisotopic m/z will be applied to all instances of
+    //m_precursorIon.monoMZ, regardless of whether or not it matches the selected ion m/z of that instance.
     m_precursorIon.mz=atof(value); //in Thermo instruments this is the monoisotopic peak (if known) or the selected ion peak.
-    if(m_precursorIon.monoMZ!=0) m_precursorIon.monoMZ=atof(value); //if the monoisotopic peak was specified earlier, this is a better value to use.
-    else if (m_precursorIon.mz<m_precursorIon.isoMZ) m_precursorIon.monoMZ = atof(value); //failsafe? for when thermo trailer info is missing.
+    //if(m_precursorIon.monoMZ!=0) m_precursorIon.monoMZ=atof(value); //if the monoisotopic peak was specified in the thermo trailer, this is a better value to use.
+    //else if (m_precursorIon.mz<m_precursorIon.isoMZ) m_precursorIon.monoMZ = atof(value); //failsafe? for when thermo trailer info is missing.
+    //This still gets complicated when there are multiple precursors, but only one thermo trailer value...
 
   } else if(!strcmp(name, "time array") || !strcmp(accession,"MS:1000595"))  {
     m_bInmzArrayBinary = true; //note that this uses the m/z designation, although it is a time series
@@ -482,22 +594,76 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   }
 }
 
-void mzpSAXMzmlHandler::processData()
-{
-  if(m_bInmzArrayBinary) {
-    decode(vdM);
-    //if(m_bLowPrecision && !m_bCompressedData) decode32(vdM);
-    //else if(m_bLowPrecision && m_bCompressedData) decompress32(vdM);
-    //else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdM);
-    //else decompress64(vdM);
-  } else if(m_bInintenArrayBinary) {
-    decode(vdI);
-    //if(m_bLowPrecision && !m_bCompressedData) decode32(vdI);
-    //else if(m_bLowPrecision && m_bCompressedData) decompress32(vdI);
-    //else if(!m_bLowPrecision && !m_bCompressedData) decode64(vdI);
-    //else decompress64(vdI);
+void mzpSAXMzmlHandler::processData(){
+#ifdef MZP_HDF
+  if(m_hdfFile>-1){
+
+    if (m_bInintenArrayBinary) {
+      if(m_hdfintData<0) {
+        m_hdfintData = H5Dopen(m_hdfFile, m_strHDFDatasetID.c_str(), H5P_DEFAULT);
+        m_hdfintSpace = H5Dget_space(m_hdfintData);
+      }
+    } else if (m_bInmzArrayBinary) {
+      if(m_hdfmzData < 0) {
+        m_hdfmzData = H5Dopen(m_hdfFile, m_strHDFDatasetID.c_str(), H5P_DEFAULT);
+        m_hdfmzSpace = H5Dget_space(m_hdfmzData);
+      }
+    } else if (m_bInionMobilityArrayBinary) {
+      cout << "Need to write code for IonMobilityArray in mzMLb" << endl;
+      return;
+    }
+
+    m_peaksCount = (int)m_hdfArraySz;
+    
+    if(m_bLowPrecision) {
+      float* tmp = new float[m_hdfArraySz];
+      if(m_bInintenArrayBinary) {
+        H5Sselect_hyperslab(m_hdfintSpace, H5S_SELECT_SET, &m_hdfOffset, NULL, &m_hdfArraySz, NULL);
+        hid_t mspace = H5Screate_simple(1, &m_hdfArraySz, &m_hdfArraySz);
+        herr_t status = H5Dread(m_hdfintData, H5T_NATIVE_FLOAT, mspace, m_hdfintSpace, H5P_DEFAULT, tmp);
+        vdI.clear();
+        for(hsize_t a=0;a<m_hdfArraySz;a++) vdI.push_back((double)tmp[a]);
+        H5Sclose(mspace);
+      } else if(m_bInmzArrayBinary){
+        H5Sselect_hyperslab(m_hdfmzSpace, H5S_SELECT_SET, &m_hdfOffset, NULL, &m_hdfArraySz, NULL);
+        hid_t mspace = H5Screate_simple(1, &m_hdfArraySz, &m_hdfArraySz);
+        herr_t status = H5Dread(m_hdfmzData, H5T_NATIVE_FLOAT, mspace, m_hdfmzSpace, H5P_DEFAULT, tmp);
+        vdM.clear();
+        for (hsize_t a = 0; a < m_hdfArraySz; a++) vdM.push_back((double)tmp[a]);
+        H5Sclose(mspace);
+      }
+      delete [] tmp;
+    } else {
+      double* tmp = new double[m_hdfArraySz];
+      if (m_bInintenArrayBinary) {
+        H5Sselect_hyperslab(m_hdfintSpace, H5S_SELECT_SET, &m_hdfOffset, NULL, &m_hdfArraySz, NULL);
+        hid_t mspace = H5Screate_simple(1, &m_hdfArraySz, &m_hdfArraySz);
+        herr_t status = H5Dread(m_hdfintData, H5T_NATIVE_DOUBLE, mspace, m_hdfintSpace, H5P_DEFAULT, tmp);
+        vdI.clear();
+        for (hsize_t a = 0; a < m_hdfArraySz; a++) vdI.push_back(tmp[a]);
+        H5Sclose(mspace);
+      } else if (m_bInmzArrayBinary) {
+        H5Sselect_hyperslab(m_hdfmzSpace, H5S_SELECT_SET, &m_hdfOffset, NULL, &m_hdfArraySz, NULL);
+        hid_t mspace = H5Screate_simple(1, &m_hdfArraySz, &m_hdfArraySz);
+        herr_t status = H5Dread(m_hdfmzData, H5T_NATIVE_DOUBLE, mspace, m_hdfmzSpace, H5P_DEFAULT, tmp);
+        vdM.clear();
+        for (hsize_t a = 0; a < m_hdfArraySz; a++) vdM.push_back(tmp[a]);
+        H5Sclose(mspace);
+      }
+      delete[] tmp;
+    }
+#else
+  if(false){
+#endif
+  } else {
+    if(m_bInmzArrayBinary) {
+      decode(vdM);
+    } else if(m_bInintenArrayBinary) {
+      decode(vdI);
+    } else if (m_bInionMobilityArrayBinary) {
+      decode(vdIM);
+    }
   }
-  //m_bCompressedData=false;
 }
 
 bool mzpSAXMzmlHandler::readChromatogram(int num){
@@ -555,7 +721,7 @@ bool mzpSAXMzmlHandler::readHeader(int num){
     m_bHeaderOnly=true;
     parseOffset(m_vIndex[mid].offset);
     //force scan number; this was done for files where scan events are not numbered
-    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
+    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum((int)m_vIndex[mid].scanNum);
     spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
     m_bHeaderOnly=false;
     posIndex=(int)mid;
@@ -568,16 +734,21 @@ bool mzpSAXMzmlHandler::readHeader(int num){
 bool mzpSAXMzmlHandler::readHeaderFromOffset(f_off offset, int scNm){
   spec->clear();
   m_scanNumOverride=scNm;
-
+  
   //index must be positive.
   if (offset<0) return false;
 
   //note that scan number will not be set if file doesn't use them.
   //also, no knowlege of current position in index is known or retained. Reading from
   //scan index will revert back to next scan from its current position.
-  m_bHeaderOnly = true;
+  //m_bHeaderOnly = true;  //MH: Changed behavior to always process entire scan whether just the header information was needed or not.
+#ifdef MZP_HDF
+  if(m_hdfFile>-1) parseHDFOffset((int)offset);
+  else parseOffset(offset);
+#else
   parseOffset(offset);
-  m_bHeaderOnly = false;
+#endif
+  //m_bHeaderOnly = false;
   return true;
 
 }
@@ -618,7 +789,7 @@ bool mzpSAXMzmlHandler::readSpectrum(int num){
     if(m_vIndex[mid].scanNum==num) {
       parseOffset(m_vIndex[mid].offset);
       //force scan number; this was done for files where scan events are not numbered
-      if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
+      if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum((int)m_vIndex[mid].scanNum);
       spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
       posIndex=(int)mid;
       return true;
@@ -638,14 +809,23 @@ bool mzpSAXMzmlHandler::readSpectrumFromOffset(f_off offset, int scNm){
   //note that scan number will not be set if file doesn't use them.
   //also, no knowlege of current position in index is known or retained. Reading from
   //scan index will revert back to next scan from its current position.
+#ifdef MZP_HDF
+  if(m_hdfFile>-1) parseHDFOffset((int)offset);
+  else parseOffset(offset);
+#else 
   parseOffset(offset);
+#endif
   return true;
 
 }
 
+void mzpSAXMzmlHandler::setMZMLB(bool b){
+  m_bMZMLB=b;
+}
+
 void mzpSAXMzmlHandler::pushChromatogram(){
   TimeIntensityPair tip;
-  for(unsigned int i=0;i<vdM.size();i++)  {
+  for(size_t i=0;i<vdM.size();i++)  {
     tip.time = vdM[i];
     tip.intensity = vdI[i];
     chromat->addTIP(tip);
@@ -653,14 +833,22 @@ void mzpSAXMzmlHandler::pushChromatogram(){
 }
 
 void mzpSAXMzmlHandler::pushSpectrum(){
-
   specDP dp;
-  for(unsigned int i=0;i<vdM.size();i++)  {
+  specIonMobDP dp_im;
+  if(vdIM.size()>0) spec->setIonMobilityScan(true);
+  for(size_t i=0;i<vdM.size();i++)  {
     dp.mz = vdM[i];
     dp.intensity = vdI[i];
-    spec->addDP(dp);
+
+    if (i < vdIM.size()) {
+      dp_im.mz = vdM[i];
+      dp_im.intensity = vdI[i];
+      dp_im.ionMobility = vdIM[i];
+      spec->addDP(dp_im);
+    } else {
+      spec->addDP(dp);
+    }
   }
-  
 }
 
 void mzpSAXMzmlHandler::decode(vector<double>& d){
@@ -853,28 +1041,182 @@ f_off mzpSAXMzmlHandler::readIndexOffset() {
 }
 
 bool mzpSAXMzmlHandler::load(const char* fileName){
-  if(!open(fileName)) return false;
+#ifdef MZP_HDF
+  //open mzMLb files differently
+  if(m_bMZMLB){
+    if (fptr != NULL) fclose(fptr);
+    if(!openHDF(fileName)) return false;
+  } else{
+    if (m_hdfFile > -1) closeHDF();
+    if(!open(fileName)) return false;
+  }
+#else
+  if (!open(fileName)) return false;
+#endif
+
   m_vInstrument.clear();
   m_vIndex.clear();
   m_vChromatIndex.clear();
   m_mIndex.clear();
   m_mChromatIndex.clear();
   m_scanIDXCount = 0;
-  parseOffset(0);
+
+#ifdef MZP_HDF
+  if(m_bMZMLB){
+    readHDFIndex();
+    readHDFHead();
+    return true;
+  }
+#endif
+
+  //parseOffset(0);
   indexOffset = readIndexOffset();
   if(indexOffset==0){
     m_bNoIndex=false;
-    generateIndexOffset();
+    if (!generateIndexOffset()) {
+       m_bNoIndex=true;
+       return false;
+    }
+
   } else {
     m_bNoIndex=false;
     if(!parseOffset(indexOffset)){ //Note: after reading index, should we check for order? assumes it is in file offset order.
-      generateIndexOffset();
+       if (!generateIndexOffset()) {
+          m_bNoIndex=true;
+          cerr << "Cannot parse index. Make sure index offset is correct or rebuild index." << endl;
+          return false;
+       }
     }
     posIndex=-1;
     posChromatIndex=-1;
   }
   return true;
 }
+
+#ifdef MZP_HDF
+void mzpSAXMzmlHandler::closeHDF(){
+  if(m_hdfmzml>-1) H5Dclose(m_hdfmzml);
+  if (m_hdfintData > -1) H5Dclose(m_hdfintData);
+  if (m_hdfmzData > -1) H5Dclose(m_hdfmzData);
+  if(m_hdfmzSpace>-1) H5Sclose(m_hdfmzSpace);
+  if (m_hdfintSpace > -1) H5Sclose(m_hdfintSpace);
+  H5Fclose(m_hdfFile);
+  m_hdfFile=-1;
+  m_hdfmzml=-1;
+  m_hdfintData=-1;
+  m_hdfmzData=-1;
+  m_hdfmzSpace=-1;
+  m_hdfintSpace=-1;
+}
+
+bool mzpSAXMzmlHandler::openHDF(const char* fileName) {
+  if (m_hdfFile>-1) closeHDF();
+
+  m_hdfFile=H5Fopen(fileName, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (m_hdfFile<0) {
+    //cerr << "Failed to open input file '" << fileName << "'.\n";
+    return false;
+  }
+  setFileName(fileName);
+  return true;
+}
+
+bool mzpSAXMzmlHandler::parseHDFOffset(int index) {
+  if (m_hdfFile<0) {
+    cerr << "Error parseHDFOffset(): No open file." << endl;
+    return false;
+  }
+
+  parserReset();
+  m_bStopParse = false;
+
+  hid_t mzml = H5Dopen(m_hdfFile, "mzML", H5P_DEFAULT);
+  hsize_t pos = m_vIndex[index].offset;
+  hsize_t len = m_vIndex[index].size;
+  hid_t space = H5Dget_space(mzml);
+  H5Sselect_hyperslab(space, H5S_SELECT_SET, &pos, NULL, &len, NULL);
+  hid_t mspace = H5Screate_simple(1, &len, &len);
+  char* tmp = new char[len];
+  hid_t status = H5Dread(mzml, H5T_NATIVE_CHAR, mspace, space, H5P_DEFAULT, tmp);
+  H5Sclose(mspace);
+  H5Sclose(space);
+  H5Dclose(mzml);
+  bool success = (XML_Parse(m_parser, tmp, (int)len, false) != 0);
+  if (!success && !m_bStopParse) {
+    cout << "parseHDFOffset() failed." << endl;
+    return false;
+  };
+
+  return true;
+}
+
+void mzpSAXMzmlHandler::readHDFHead() {
+  if(m_hdfmzml<0) m_hdfmzml = H5Dopen(m_hdfFile, "mzML", H5P_DEFAULT);
+  hsize_t pos = 0;
+  hsize_t len = m_vIndex[0].offset;
+  hid_t space = H5Dget_space(m_hdfmzml);
+  H5Sselect_hyperslab(space, H5S_SELECT_SET, &pos, NULL, &len, NULL);
+  hid_t mspace = H5Screate_simple(1, &len, &len);
+  char* tmp = new char[len];
+  hid_t status = H5Dread(m_hdfmzml, H5T_NATIVE_CHAR, mspace, space, H5P_DEFAULT, tmp);
+  H5Sclose(mspace);
+  H5Sclose(space);
+  bool success = (XML_Parse(m_parser, tmp, (int)len, false) != 0);
+  if(!success && !m_bStopParse){
+    cout << "readHDFHead() failed." << endl;
+  }
+}
+
+void mzpSAXMzmlHandler::readHDFIndex(){
+  hid_t data = H5Dopen(m_hdfFile, "mzML_spectrumIndex", H5P_DEFAULT);
+  hid_t space = H5Dget_space(data);
+
+  hsize_t offCount,size,maxdims;
+  H5Sget_simple_extent_dims(space, &offCount, &maxdims);
+ 
+  int64_t* offset = new int64_t[offCount];
+  hid_t status = H5Dread(data, H5T_NATIVE_INT64, H5S_ALL, H5S_ALL, H5P_DEFAULT, offset);
+  H5Sclose(space);
+
+  hid_t index = H5Dopen(m_hdfFile, "mzML_spectrumIndex_idRef", H5P_DEFAULT);
+  space = H5Dget_space(index);
+  H5Sget_simple_extent_dims(space, &size, &maxdims);
+  char* tmp = new char[size];
+  status = H5Dread(index, H5T_NATIVE_CHAR, H5S_ALL, H5S_ALL, H5P_DEFAULT, tmp);
+  H5Sclose(space);
+
+  hsize_t idPos = 0;
+  for (hsize_t a = 0; a < offCount - 1; a++) {
+    cindex i;
+    i.offset = offset[a];
+    i.size = offset[a + 1] - offset[a];
+    i.idRef = &tmp[idPos];
+    if (strstr(i.idRef.c_str(), "scan=") != NULL) {  //this code is now redundant in a few places. maybe give it a function soon.
+      i.scanNum = atoi(strstr(i.idRef.c_str(), "scan=") + 5);
+    } else if (strstr(i.idRef.c_str(), "scanId=") != NULL) {
+      i.scanNum = atoi(strstr(i.idRef.c_str(), "scanId=") + 7);
+    } else if (strstr(i.idRef.c_str(), "frame") != NULL) { //TIMSTOF is indexed
+      i.scanNum = ++m_scanIDXCount;
+    } else if (strstr(i.idRef.c_str(), "S") != NULL) {
+      i.scanNum = atoi(strstr(i.idRef.c_str(), "S") + 1);
+    } else if (strstr(i.idRef.c_str(), "index=") != NULL) {
+      i.scanNum = atoi(strstr(i.idRef.c_str(), "index=") + 6);
+    } else {
+      i.scanNum = ++m_scanIDXCount;
+      //Suppressing warning.
+      //cout << "WARNING: Cannot extract scan number in index offset line: " << i.idRef << "\tDefaulting to " << m_scanIDXCount << endl;
+    }
+    m_vIndex.push_back(i);
+    m_mIndex.insert(pair<string, size_t>(i.idRef, i.scanNum));
+    idPos += strlen(&tmp[idPos]) + 1;
+  }
+
+  delete[] tmp;
+  delete[] offset;
+  H5Dclose(index);
+  H5Dclose(data);
+}
+#endif
 
 //Parse file from top to bottom to generate index offset if not present.
 //If scan is present in native ID string, use it. Otherwise report spectrum index as scan number.
@@ -907,7 +1249,7 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
         bool bSuccessfullyReadScan = false;
         do{
           // now need to look for "index="
-          if (!bSuccessfullyReadScan && (pStr = strstr(chunk, "index=\"")) != NULL){
+          if ((pStr = strstr(chunk, "index=\"")) != NULL){
             sscanf(pStr+7, "%ld", &scanNum);
             bSuccessfullyReadScan = true;
           }
@@ -962,12 +1304,12 @@ int mzpSAXMzmlHandler::highChromat() {
 
 int mzpSAXMzmlHandler::highScan() {
   if(m_vIndex.size()==0) return 0;
-  return m_vIndex[m_vIndex.size()-1].scanNum;
+  return (int)m_vIndex[m_vIndex.size()-1].scanNum;
 }
 
 int mzpSAXMzmlHandler::lowScan() {
   if(m_vIndex.size()==0) return 0;
-  return m_vIndex[0].scanNum;
+  return (int)m_vIndex[0].scanNum;
 }
 
 vector<cindex>* mzpSAXMzmlHandler::getChromatIndex(){

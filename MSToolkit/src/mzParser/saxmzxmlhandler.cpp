@@ -107,11 +107,12 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
     if(s.length()>0) m_compressLen = (uLong)atoi(&s[0]);
     else m_compressLen=0;
 
-    if(m_bHeaderOnly) stopParser();
+    //if(m_bHeaderOnly) stopParser();
 
   }  
   else if (isElement("precursorMz", el)) {
     m_strData.clear();
+    m_precursorIon.clear();
     s=getAttrValue("precursorCharge", attr);
     if(s.length()>0) m_precursorIon.charge=atoi(&s[0]);
     else  m_precursorIon.charge=0;
@@ -119,8 +120,8 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
     if(s.length()>0) m_precursorIon.intensity=atof(&s[0]);
     else  m_precursorIon.intensity=0.0;
     s=getAttrValue("precursorScanNum", attr);
-    if(s.length()>0) spec->setPrecursorScanNum(atoi(&s[0]));
-    else spec->setPrecursorScanNum(0);
+    if(s.length()>0) m_precursorIon.scanNumber=atoi(&s[0]);
+    else m_precursorIon.scanNumber=0;
     m_bInPrecursorMz = true;
     
     s=getAttrValue("activationMethod", attr);
@@ -132,6 +133,15 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
       else if(!strcmp("ETD+SA",&s[0])) spec->setActivation(ETDSA);
     } else {
       spec->setActivation(none);
+    }
+
+    s = getAttrValue("windowWideness", attr);
+    if (s.length() > 0) {
+      m_precursorIon.isoLowerOffset = atof(&s[0])/2;
+      m_precursorIon.isoUpperOffset = m_precursorIon.isoLowerOffset;
+    } else  {
+      m_precursorIon.isoLowerOffset = 0.0;
+      m_precursorIon.isoUpperOffset = 0.0;
     }
 
   }  
@@ -182,7 +192,7 @@ void mzpSAXMzxmlHandler::endElement(const XML_Char *el) {
     posIndex=-1;
     stopParser();
     if (!m_bIndexSorted) {
-      qsort(&m_vIndex[0],m_vIndex.size(),sizeof(cindex),cindex::compare);
+      sort(m_vIndex.begin(),m_vIndex.end(),cindex::compare);
       m_bIndexSorted=true;
     }
 
@@ -270,7 +280,7 @@ bool mzpSAXMzxmlHandler::readHeader(int num){
     m_bHeaderOnly=true;
     parseOffset(m_vIndex[mid].offset);
     //force scan number; this was done for files where scan events are not numbered
-    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
+    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum((int)m_vIndex[mid].scanNum);
     spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
     m_bHeaderOnly=false;
     posIndex=(int)mid;
@@ -330,7 +340,7 @@ bool mzpSAXMzxmlHandler::readSpectrum(int num){
   if(m_vIndex[mid].scanNum==num) {
     parseOffset(m_vIndex[mid].offset);
     //force scan number; this was done for files where scan events are not numbered
-    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum(m_vIndex[mid].scanNum);
+    if(spec->getScanNum()!=m_vIndex[mid].scanNum) spec->setScanNum((int)m_vIndex[mid].scanNum);
     spec->setScanIndex((int)mid+1); //set the index, which starts from 1, so offset by 1
     posIndex=(int)mid;
     return true;
@@ -614,11 +624,18 @@ bool mzpSAXMzxmlHandler::load(const char* fileName){
   indexOffset = readIndexOffset();
   if(indexOffset==0){
     m_bNoIndex=false;
-    generateIndexOffset();
+    if (!generateIndexOffset()) {
+      m_bNoIndex=true;
+      return false;
+    }
   } else {
     m_bNoIndex=false;
     if(!parseOffset(indexOffset)){
-      generateIndexOffset();
+      if (!generateIndexOffset()) {
+        m_bNoIndex=true;
+        cerr << "Cannot parse index. Make sure index offset is correct or rebuild index." << endl;
+        return false;
+      }
     }
     posIndex=-1;
   }
@@ -690,12 +707,12 @@ void mzpSAXMzxmlHandler::stopParser(){
 
 int mzpSAXMzxmlHandler::highScan() {
   if(m_vIndex.size()==0) return 0;
-  return m_vIndex[m_vIndex.size()-1].scanNum;
+  return (int)m_vIndex[m_vIndex.size()-1].scanNum;
 }
 
 int mzpSAXMzxmlHandler::lowScan() {
   if(m_vIndex.size()==0) return 0;
-  return m_vIndex[0].scanNum;
+  return (int)m_vIndex[0].scanNum;
 }
 
 vector<cindex>* mzpSAXMzxmlHandler::getIndex(){

@@ -36,10 +36,6 @@ limitations under the License.
 #endif
 #endif
 
-#ifndef _NOSQLITE
-#include <sqlite3.h>
-#endif
-
 //Macros for 64-bit file support
 #ifdef _MSC_VER
 #ifndef _NO_THERMORAW
@@ -79,9 +75,11 @@ class MSReader {
   std::string          getCurrentFile();
   MSSpectrumType  getFileType();
   MSHeader&       getHeader();
-  void            getInstrument(char* str);
+  //void            getInstrument(char* str);
+  void            getInstrument(std::string& str);
   int             getLastScan();
-  void            getManufacturer(char* str);
+  //void            getManufacturer(char* str);
+  void            getManufacturer(std::string& str);
   int             getPercent();
   
 
@@ -120,8 +118,6 @@ class MSReader {
 
   //for Sqlite
   void createIndex(); 
-
-  void closeFile();
 
  protected:
 
@@ -168,7 +164,7 @@ class MSReader {
   std::vector<std::string> mgfFiles;
 
   //Functions
-// void closeFile();
+  void closeFile();
   int openFile(const char* c, bool text=false);
   bool findSpectrum(int i);
   void readCompressSpec(FILE* fileIn, MSScanInfo& ms, Spectrum& s);
@@ -185,22 +181,6 @@ class MSReader {
 	RAWReader cRAW;
   #endif
   #endif
-
-  //support for sqlite
-  #ifndef _NOSQLITE
-  bool readSqlite(const char* c, Spectrum& s, int scNum);
-  void getUncompressedPeaks(Spectrum& s, int& numPeaks, int& mzLen, unsigned char* comprM, int& intensityLen, unsigned char* comprI);
-  int curIndex;  //remember where we are
-  int lastScanNumber;
-  int lastIndex;
-  sqlite3* db;
-  void sql_stmt(const char* stmt);
-  bool executeSqlStmt(Spectrum& s, char* zSql);
-  void appendFile(Spectrum& s);
-  void writeSqlite(const char* c, MSObject& m, const char* sha1Report);
-  void readChargeTable(int scanID, Spectrum& s);
-  std::vector<int> estimateCharge(Spectrum& s);
-  #endif 
 
 };
 

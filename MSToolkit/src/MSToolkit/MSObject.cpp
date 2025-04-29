@@ -23,7 +23,7 @@ MSObject::MSObject(){
   vSpectrum = new vector<Spectrum>;
   fileName="";
   fileType=Unspecified;
-	for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
+	for(int i=0;i<16;i++)	header.header[i][0]='\0';
 }
 
 MSObject::~MSObject(){
@@ -97,7 +97,7 @@ Peak_T& MSObject::at(unsigned int i, unsigned int j){
 void MSObject::clear(){
   delete vSpectrum;
   vSpectrum = new vector<Spectrum>;
-	for(int i=0;i<16;i++) strcpy(header.header[i],"\0");
+	for(int i=0;i<16;i++) header.header[i][0]='\0';
 };
 
 MSHeader& MSObject::getHeader(){

@@ -17,6 +17,22 @@ limitations under the License.
 #define _MSTOOLKITTYPES_H
 
 #include <stddef.h>
+#include <string>
+
+//Version information stored here, can be recalled at any point
+#define MST_VER "2.0.0"
+#define MST_DATE "2024 SEPTEMBER 13"
+
+#ifdef _MSC_VER
+#  define strtok_r strtok_s
+#  ifdef MSTOOLKIT_DLL
+#    ifdef MSTOOLKIT_EXPORTS
+#      define MSTOOLKIT_API extern __declspec(dllexport)
+#    else
+#      define MSTOOLKIT_API extern __declspec(dllimport)
+#    endif
+#  endif
+#endif
 
 namespace MSToolkit {
 
@@ -45,6 +61,7 @@ enum MSFileFormat {
   mzXML,
   mz5,
 	mzML,
+  mzMLb,
   raw,
   sqlite,
   psm,
@@ -79,6 +96,18 @@ enum MSActivation {
 struct MSHeader {
 	char header[16][128];
 };
+
+struct MSPrecursorInfo {
+  double mz=0;
+  double monoMz=0;
+  double isoMz=0;
+  int charge=0;
+  MSActivation activation=mstNA;
+  int precursorScanNumber=0;
+  double isoOffsetLower=0;
+  double isoOffsetUpper=0;
+};
+
 
 struct MSScanInfo {
 	int scanNumber[2];
@@ -132,6 +161,23 @@ struct EZState {
   double mh;      //M+H
   float pRTime;   //precursor area
   float pArea;    //precursor retention time
+};
+
+//To accommodate user params from mzML files, which could be anything...
+enum eDataType{
+  dtInt =0,
+  dtFloat,
+  dtDouble,
+  dtString
+};
+  
+struct MSUserParam {
+  std::string name;
+  std::string value;
+  eDataType type=dtString;
+  int toInt(){return atoi(value.c_str());}
+  float toFloat(){return (float)atof(value.c_str());}
+  double toDouble(){return atof(value.c_str());}
 };
 
 }

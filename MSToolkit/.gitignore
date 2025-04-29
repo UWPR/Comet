@@ -1,1 +1,5 @@
 include/expat_config.h
+build/
+.vs/
+lib/
+*.json

@@ -130,6 +130,9 @@ private:
    static double **ppdTmpRawDataArr;          //MH: Number of arrays equals threads
    static double **ppdTmpFastXcorrDataArr;    //MH: Ditto
    static double **ppdTmpCorrelationDataArr;  //MH: Ditto
+
+   //MH: Profiling!! To be removed
+   //static Profiler profiler;
 };
 
 #endif // _COMETPREPROCESS_H_

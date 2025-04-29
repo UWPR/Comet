@@ -9,7 +9,11 @@ Version 1.1, March 14, 2012.
 */
 
 #include "mzParser.h"
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
+
+using namespace mzParser;
+using namespace H5;
+using namespace std;
 
 mzpMz5Handler::mzpMz5Handler(mzpMz5Config* c, BasicSpectrum* s){
 	config_=c;
@@ -92,17 +96,17 @@ vector<cMz5Index>* mzpMz5Handler::getSpecIndex(){
 }
 
 int mzpMz5Handler::highChromat() {
-	return m_vChromatIndex.size();
+	return (int)m_vChromatIndex.size();
 }
 
 int mzpMz5Handler::highScan() {
 	if(m_vIndex.size()==0) return 0;
-	return m_vIndex[m_vIndex.size()-1].scanNum;
+	return (int)m_vIndex[m_vIndex.size()-1].scanNum;
 }
 
 int mzpMz5Handler::lowScan() {
 	if(m_vIndex.size()==0) return 0;
-	return m_vIndex[0].scanNum;
+	return (int)m_vIndex[0].scanNum;
 }
 
 void mzpMz5Handler::processCVParams(unsigned long index){
@@ -186,7 +190,7 @@ bool mzpMz5Handler::readChromatogram(int num){
 	//Read the metadata
 	unsigned long start=m_vChromatIndex[posChromatIndex].cvStart;
 	unsigned long stop=start+m_vChromatIndex[posChromatIndex].cvLen;
-	for(size_t i=start;i<stop;i++) processCVParams(i);
+	for(unsigned long i=start;i<stop;i++) processCVParams(i);
 	chromat->setIDString(&m_vChromatIndex[posChromatIndex].idRef[0]);
 
 	return true;
@@ -402,8 +406,8 @@ bool mzpMz5Handler::readHeader(int num){
 		if(posIndex>=(int)m_vIndex.size()) return false;
 	} else { //otherwise do binary search for scan number
 		//Assumes scan numbers are in order
-		int mid=m_vIndex.size()/2;
-		int upper=m_vIndex.size();
+		int mid=(int)m_vIndex.size()/2;
+		int upper=(int)m_vIndex.size();
 		int lower=0;
 		while(m_vIndex[mid].scanNum!=num){
 			if(lower==upper) break;
@@ -421,7 +425,7 @@ bool mzpMz5Handler::readHeader(int num){
 	//Read the metadata
 	unsigned long start=m_vIndex[posIndex].cvStart;
 	unsigned long stop=start+m_vIndex[posIndex].cvLen;
-	for(size_t i=start;i<stop;i++) processCVParams(i);
+	for(unsigned long i=start;i<stop;i++) processCVParams(i);
 
 	//Get the peak count - this wastes time, though
 	vector<double> mz;
@@ -429,8 +433,9 @@ bool mzpMz5Handler::readHeader(int num){
 	else getData(mz, SpectrumMZ, (hsize_t)m_vIndex[posIndex-1].offset, (hsize_t)m_vIndex[posIndex].offset);
 	spec->setPeaksCount((int)mz.size());
 
-	if(spec->getScanNum()!=m_vIndex[posIndex].scanNum) spec->setScanNum(m_vIndex[posIndex].scanNum);
+	if(spec->getScanNum()!=(int)m_vIndex[posIndex].scanNum) spec->setScanNum((int)m_vIndex[posIndex].scanNum);
 	spec->setScanIndex(posIndex+1); //set the index, which starts from 1, so offset by 1
+	spec->setIDString(m_vIndex[posIndex].idRef.c_str());
 
 	return true;
 
@@ -445,8 +450,8 @@ bool mzpMz5Handler::readSpectrum(int num){
 		if(posIndex>=(int)m_vIndex.size()) return false;
 	} else { //otherwise do binary search for scan number
 		//Assumes scan numbers are in order
-		int mid=m_vIndex.size()/2;
-		int upper=m_vIndex.size();
+		int mid=(int)m_vIndex.size()/2;
+		int upper=(int)m_vIndex.size();
 		int lower=0;
 		while(m_vIndex[mid].scanNum!=num){
 			if(lower==upper) break;
@@ -460,6 +465,12 @@ bool mzpMz5Handler::readSpectrum(int num){
 		}
 		if(m_vIndex[mid].scanNum==num) posIndex=mid;
 	}
+
+	//TODO: record precursor information not stored in CVParams, i.e. precursor scan number
+	//After a lot of digging, I don't think this information is stored in the mz5 files.
+	//The Precursor elements have a string for externalID, but it is always empty; i.e., ProteoWizard neglects to fill it in.
+	//This value cannot be extracted without assuming that the preceding ms1 scan (which might not have been read yet in random-access)
+	//is in fact the precursor scan event.
 
 	//Read the peaks
 	vector<double> mz, inten;
@@ -481,10 +492,11 @@ bool mzpMz5Handler::readSpectrum(int num){
 	//Read the metadata
 	unsigned long start=m_vIndex[posIndex].cvStart;
 	unsigned long stop=start+m_vIndex[posIndex].cvLen;
-	for(size_t i=start;i<stop;i++) processCVParams(i);
+	for(unsigned long i=start;i<stop;i++) processCVParams(i);
 
-	if(spec->getScanNum()!=m_vIndex[posIndex].scanNum) spec->setScanNum(m_vIndex[posIndex].scanNum);
+	if(spec->getScanNum()!=(int)m_vIndex[posIndex].scanNum) spec->setScanNum((int)m_vIndex[posIndex].scanNum);
 	spec->setScanIndex(posIndex+1); //set the index, which starts from 1, so offset by 1
+	spec->setIDString(m_vIndex[posIndex].idRef.c_str());
 
 	return true;
 

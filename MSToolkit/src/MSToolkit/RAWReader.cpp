@@ -159,7 +159,8 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 	strcpy(cStr,chFilter);
 	MSSpectrumType mst=Unspecified;
 	char* tok;
-	tok=strtok(cStr," \n");
+  char* nextTok;
+	tok=strtok_r(cStr," \n",&nextTok);
 	while(tok!=NULL){
 
 		if(strcmp(tok,"c")==0){
@@ -221,7 +222,7 @@ MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<doubl
 			cout << "Unknown token: " << tok << endl;
 		}
 
-		tok=strtok(NULL," \n");
+		tok=strtok_r(NULL," \n",&nextTok);
 	}
 
 	return mst;
@@ -274,16 +275,49 @@ int RAWReader::evaluateTrailerInt(const char* str){
   return ret;
 }
 
-void RAWReader::getInstrument(char* str){
-  strcpy(str,rawInstrument);
+string RAWReader::evaluateTrailerString(const char* str) {
+  VARIANT v;
+  BSTR bs;
+  int sl;
+  string ret;
+  long lRet;
+
+  VariantInit(&v);
+  sl = lstrlenA(str);
+  bs = SysAllocStringLen(NULL, sl);
+  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
+  lRet=m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
+  if(v.vt==VT_BSTR) {
+    int wslen = SysStringLen(v.bstrVal);
+    int len = WideCharToMultiByte(CP_ACP, 0, v.bstrVal, wslen, NULL, 0, NULL, NULL);
+    ret.resize(len,'\0');
+    WideCharToMultiByte(CP_ACP, 0, v.bstrVal, wslen,&ret[0], len, NULL, NULL);
+  }
+  SysFreeString(bs);
+  VariantClear(&v);
+  return ret;
+}
+
+//REMOVED 2024.09.06
+//void RAWReader::getInstrument(char* str){
+//  strcpy(str,rawInstrument);
+//}
+
+void RAWReader::getInstrument(string& str) {
+  str=rawInstrument;
 }
 
 long RAWReader::getLastScanNumber(){
 	return rawCurSpec;
 }
 
-void RAWReader::getManufacturer(char* str){
-  strcpy(str,rawManufacturer);
+//REMOVED 2024.09.06
+//void RAWReader::getManufacturer(char* str){
+//  strcpy(str,rawManufacturer);
+//}
+
+void RAWReader::getManufacturer(string& str) {
+  str=rawManufacturer;
 }
 
 long RAWReader::getScanCount(){
@@ -394,6 +428,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
 	long tl;      //temp long value
   MSActivation act;
+  string SPS;
+  string ScanDescription;
 
 
   if(!bRaw) return false;
@@ -504,11 +540,37 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
   //Get basic spectrum metadata. It will be replaced/supplemented later, if available
   preInfo.clear();
-  m_Raw->GetScanHeaderInfoForScanNum(rawCurSpec, &tl, &td, &td, &td, &TIC, &BPM, &BPI, &tl, &tl, &td);
+  long nChannels=0;
+  long nPackets=0;
+  m_Raw->GetScanHeaderInfoForScanNum(rawCurSpec, &nPackets, &td, &td, &td, &TIC, &BPM, &BPI, &nChannels, &tl, &td);
+  //cout << "Channels: " << nChannels << endl;
+  //cout << "Packets: " << nPackets << endl;
   m_Raw->RTFromScanNum(rawCurSpec, &dRTime);
+  preInfo.parScanNum = evaluateTrailerInt("Master Scan Number:");
   preInfo.charge = evaluateTrailerInt("Charge State:");
   preInfo.dMonoMZ = evaluateTrailerDouble("Monoisotopic M/Z:");
   IIT = (float)evaluateTrailerDouble("Ion Injection Time (ms):");
+  SPS = evaluateTrailerString("SPS Masses:");
+  ScanDescription = evaluateTrailerString("Scan Description:");
+
+  size_t a=0;
+  string tStr;
+  while(a<SPS.size()){
+    if(SPS[a]==','){
+      if(!tStr.empty()) {
+        double spsd=atof(tStr.c_str());
+        if(spsd>0) s.addSPS(spsd);  
+        tStr.clear();
+      }
+      a++;
+      continue;
+    }
+    tStr+=SPS[a++];
+  }
+  if (!tStr.empty()) {
+    double spsd = atof(tStr.c_str());
+    if (spsd > 0) s.addSPS(spsd);
+  }
 
   //Get more sig digits for isolation mass
   if (raw > 3 && (MSn==MS2 || MSn==MS3)){
@@ -568,7 +630,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 
 		//Get regular spectrum data
 		sl=lstrlenA("");
-		testStr = SysAllocStringLen(NULL,sl);
+    testStr = SysAllocStringLen(NULL,sl);
 		MultiByteToWideChar(CP_ACP,0,"",sl,testStr,sl);
 		j=m_Raw->GetMassListFromScanNum(&rawCurSpec,testStr,0,0,0,FALSE,&pw,&varMassList,&varPeakFlags,&lArraySize);
 		SysFreeString(testStr);
@@ -577,21 +639,29 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	//Handle MS2 and MS3 files differently to create Z-lines
 	if(MSn==MS2 || MSn==MS3){
 
+    MSPrecursorInfo pi;
+    pi.charge = preInfo.charge;
+    pi.monoMz = preInfo.dMonoMZ;
+    pi.mz = preInfo.dIsoMZ;
+    pi.isoMz = preInfo.dIsoMZ;
+    pi.precursorScanNumber = preInfo.parScanNum;
+    s.addPrecursor(pi);
+
 		//if charge state is assigned to spectrum, add Z-lines.
     if (preInfo.dIsoMZ>0.01) MZs[0]=preInfo.dIsoMZ;  //overwrite isolation mass if we have more sig figs.
 		if(preInfo.charge>0){ //if(Charge.iVal>0){
 			if(preInfo.dMonoMZ>0.01) { //if(MonoMZ.dblVal>0.01) {
 				//pm1 = MonoMZ.dblVal * Charge.iVal - ((Charge.iVal-1)*1.007276466);
         pm1 = preInfo.dMonoMZ * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
-        s.setMZ(MZs[0], preInfo.dMonoMZ);
+        s.addMZ(MZs[0], preInfo.dMonoMZ);
 			}	else {
         pm1 = MZs[0] * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
-        s.setMZ(MZs[0]);
+        s.addMZ(MZs[0]);
 			}
       s.addZState(preInfo.charge, pm1);
       s.setCharge(preInfo.charge);
     } else {
-      s.setMZ(preInfo.dIsoMZ); s.setMZ(MZs[0]);
+      s.addMZ(preInfo.dIsoMZ); //s.setMZ(MZs[0]);
       charge = calcChargeState(MZs[0], highmass, &varMassList, lArraySize);
 
       //Charge greater than 0 means the charge state is known
@@ -631,6 +701,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   s.setBPI((float)BPI);
   s.setBPM(BPM);
   s.setCompensationVoltage(cv);
+  s.setScanDescription(ScanDescription);
 //  s.setConversionA(ConversionA.dblVal);  //Deprecating Conversion values
 //  s.setConversionB(ConversionB.dblVal);
 //	s.setConversionC(ConversionC.dblVal);
@@ -639,6 +710,9 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 //  s.setConversionI(ConversionI.dblVal);
   s.setTIC(TIC);
   s.setIonInjectionTime(IIT);
+  string ts="scan=";
+  ts+=to_string(rawCurSpec);
+  s.setNativeID(ts.c_str());
 	if(MSn==SRM) s.setMZ(MZs[0]);
   switch(MSn){
     case MS1: s.setMsLevel(1); break;

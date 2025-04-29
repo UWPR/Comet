@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\MSToolkit">
+      <UniqueIdentifier>{e7726785-da2c-4721-bc97-68bcdc0cddc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mzParser">
+      <UniqueIdentifier>{365f9dc6-1684-43a7-81fa-02740d5883da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\MSToolkit">
+      <UniqueIdentifier>{3a49dcba-a45c-4375-99d0-ea6789621cd3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\mzParser">
+      <UniqueIdentifier>{3ed017b9-29d2-4c01-88e7-cf40f675bc60}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\MSToolkit\MSObject.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MSToolkit\MSReader.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MSToolkit\RAWReader.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MSToolkit\Spectrum.cpp">
+      <Filter>Source Files\MSToolkit</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\BasicChromatogram.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\BasicSpectrum.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\Czran.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\MSNumpress.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mz5handler.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzMLReader.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzp_base64.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzParser.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzpMz5Config.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzpMz5Structs.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\PWIZface.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\RAMPface.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxhandler.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxmzmlhandler.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxmzxmlhandler.cpp">
+      <Filter>Source Files\mzParser</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\MSObject.h">
+      <Filter>Header Files\MSToolkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\MSReader.h">
+      <Filter>Header Files\MSToolkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\MSToolkitTypes.h">
+      <Filter>Header Files\MSToolkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\RAWReader.h">
+      <Filter>Header Files\MSToolkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Spectrum.h">
+      <Filter>Header Files\MSToolkit</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\MSNumpress.hpp">
+      <Filter>Header Files\mzParser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\mzParser.h">
+      <Filter>Header Files\mzParser</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

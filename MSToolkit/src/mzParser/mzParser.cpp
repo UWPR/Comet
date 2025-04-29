@@ -16,7 +16,7 @@ MzParser::MzParser(BasicSpectrum* s){
   fileType=0;
   mzML=NULL;
   mzXML=NULL;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mz5=NULL;
   mz5Config=NULL;
 #endif
@@ -28,7 +28,7 @@ MzParser::MzParser(BasicSpectrum* s, BasicChromatogram* c){
   fileType=0;
   mzML=NULL;
   mzXML=NULL;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mz5=NULL;
   mz5Config=NULL;
 #endif
@@ -39,7 +39,7 @@ MzParser::~MzParser(){
   chromat=NULL;
   if(mzML!=NULL) delete mzML;
   if(mzXML!=NULL) delete mzXML;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   if(mz5!=NULL) delete mz5;
   if(mz5Config!=NULL) delete mz5Config;
 #endif
@@ -49,13 +49,35 @@ vector<cindex>*  MzParser::getChromatIndex(){
   switch (fileType){
   case 1:
   case 3:
+  case 6:
     return mzML->getChromatIndex();
     break;
   case 2:
   case 4:
     return NULL;
     break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
+  case 5:
+    return NULL;
+    break;
+#endif
+  default:
+    break;
+  }
+  return NULL;
+}
+
+vector<cindex>* MzParser::getSpectrumIndex() {
+  switch (fileType) {
+  case 1:
+  case 3:
+    return mzML->getSpecIndex();
+    break;
+  case 2:
+  case 4:
+    return NULL;
+    break;
+#ifdef MZP_HDF
   case 5:
     return NULL;
     break;
@@ -70,13 +92,14 @@ int MzParser::highChromat(){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->highChromat();
       break;
     case 2:
     case 4:
       return 0;
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->highChromat();
       break;
@@ -91,13 +114,14 @@ int MzParser::highScan(){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->highScan();
       break;
     case 2:
     case 4:
       return mzXML->highScan();
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->highScan();
       break;
@@ -117,7 +141,7 @@ bool MzParser::load(const char* fname){
     delete mzXML;
     mzXML=NULL;
   }
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   if(mz5!=NULL) {
     delete mz5;
     delete mz5Config;
@@ -129,9 +153,12 @@ bool MzParser::load(const char* fname){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       mzML = new mzpSAXMzmlHandler(spec,chromat);
       if(fileType==3) mzML->setGZCompression(true);
       else mzML->setGZCompression(false);
+      if (fileType == 6) mzML->setMZMLB(true);
+      else mzML->setMZMLB(false);
       return mzML->load(fname);
       break;
     case 2:
@@ -141,7 +168,7 @@ bool MzParser::load(const char* fname){
       else mzXML->setGZCompression(false);
       return mzXML->load(fname);
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       mz5Config = new mzpMz5Config();
       mz5 = new mzpMz5Handler(mz5Config,spec,chromat);
@@ -158,13 +185,14 @@ int MzParser::lowScan(){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->lowScan();
       break;
     case 2:
     case 4:
       return mzXML->lowScan();
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->lowScan();
       break;
@@ -179,9 +207,10 @@ bool MzParser::readChromatogram(int num){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->readChromatogram(num);
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->readChromatogram(num);
       break;
@@ -196,13 +225,14 @@ bool MzParser::readSpectrum(int num){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->readSpectrum(num);
       break;
     case 2:
     case 4:
       return mzXML->readSpectrum(num);
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->readSpectrum(num);
       break;
@@ -217,13 +247,14 @@ bool MzParser::readSpectrumHeader(int num){
   switch(fileType){
     case 1:
     case 3:
+    case 6:
       return mzML->readHeader(num);
       break;
     case 2:
     case 4:
       return mzXML->readHeader(num);
       break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     case 5:
       return mz5->readHeader(num);
       break;
@@ -238,17 +269,18 @@ int MzParser::checkFileType(const char* fname){
   char file[256];
   char ext[256];
   char *tok;
+  char *nextTok;
   char preExt[256];
   unsigned int i;
 
-  strcpy(ext,"");
+  ext[0]='\0';
 
   strcpy(file,fname);
-  tok=strtok(file,".\n");
+  tok=strtok_r(file,".\n",&nextTok);
   while(tok!=NULL){
     strcpy(preExt,ext);
     strcpy(ext,tok);
-    tok=strtok(NULL,".\n");
+    tok=strtok_r(NULL,".\n",&nextTok);
   }
 
   for(i=0;i<strlen(ext);i++) ext[i]=toupper(ext[i]);
@@ -256,8 +288,9 @@ int MzParser::checkFileType(const char* fname){
 
   if(!strcmp(ext,"MZML")) return 1;
   if(!strcmp(ext,"MZXML")) return 2;
+  if(!strcmp(ext,"MZMLB")) return 6;
   if(!strcmp(ext,"MZ5")) {
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
     return 5;
 #else
     cerr << "MZ5 support disabled at compilation. To enable, re-compile source with appropriate flag." << endl;
