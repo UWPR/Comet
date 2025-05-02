@@ -50,11 +50,11 @@ $(BUILD_DIR)/ :
 #
 
 .PHONY: all mst extern clean realclean
-all       : expat zlib mstoolkit mzparser lib libextern MSSingleScan
-mst       : mstoolkit mzparser lib MSSingleScan
+all       : expat zlib mstoolkit mzparser lib libextern 
+mst       : mstoolkit mzparser lib 
 extern	  : expat zlib libextern
-clean     : expat-clean zlib-clean mstoolkit-clean mzparser-clean lib-clean libextern-clean MSSingleScan-clean
-realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclean lib-realclean libextern-realclean MSSingleScan-realclean rc
+clean     : expat-clean zlib-clean mstoolkit-clean mzparser-clean lib-clean libextern-clean 
+realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclean lib-realclean libextern-realclean rc
 
 # -- Expat XML Parser ---------------------------------------------------------
 #
@@ -254,28 +254,7 @@ libextern-clean :
 libextern-realclean : libextern-clean
 	rm -rf libmstoolkitextern.a libmstoolkitextern.so*
 	
-# -- MSSingleScan  ----------------------------------------------------------
-#
-# Simple example program that utilizes the MSToolkit
-#
-#
-.PHONY : MSSingleScan
 
-MSSingleScan : lib
-ifdef HDF5
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(SRC_DIR)/MSSingleScanSrc/MSSingleScan.cpp -L. -l:libmstoolkit.a -l:libmstoolkitextern.a -ldl -o MSSingleScan
-else
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(INCLUDE_EXT) $(DFLAGS) $(SRC_DIR)/MSSingleScanSrc/MSSingleScan.cpp -L. -lmstoolkit -lmstoolkitextern -o MSSingleScan
-	$(CC) $(CFLAGS) $(INCLUDE) $(INCLUDE_EXT) $(DFLAGS) $(SRC_DIR)/MSSingleScanSrc/MSSingleScan.cpp -L. -lmstoolkit -lmstoolkitextern -o MSSingleScanSL
-endif
-
-MSSingleScan-clean :
-	rm -rf MSSingleScan MSSingleScanSL
-
-MSSingleScan-realclean : MSSingleScan-clean
-	rm -rf MSSingleScan MSSingleScanSL
-
-	
 # -- cleanup  ----------------------------------------------------------
 #
 #

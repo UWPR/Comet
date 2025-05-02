@@ -4,9 +4,9 @@ COMETSEARCH =  CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3         -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
+   override CXXFLAGS += -O3         -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.2.11 -I$(COMETSEARCH)
 else
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/src/expat-2.2.9/lib -I$(MSTOOLKIT)/src/zlib-1.2.11 -I$(COMETSEARCH)
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.2.11 -I$(COMETSEARCH)
 endif
 
 EXECNAME = comet.exe
@@ -24,7 +24,7 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h
 
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH)
-LIBS = -lcometsearch -lmstoolkitlite -lm -lpthread 
+LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lm -lpthread 
 ifdef MSYSTEM
    LIBS += -lws2_32
 endif
@@ -51,5 +51,5 @@ cclean:
 	cd CometSearch ; make clean
 
 mstclean:
-	cd $(MSTOOLKIT)/src ; rm -rf expat-2.2.9 zlib-1.2.11/ ; tar xzf expat-2.2.9.tar.gz  ; unzip zlib1211.zip
+	cd $(MSTOOLKIT)/extern ; rm -rf expat-2.2.9 zlib-1.2.11 ; tar xzf expat-2.2.9.tar.gz  ; unzip zlib1211.zip
 	cd $(MSTOOLKIT)/include ; rm -f expat.h expat_external.h zconf.h zlib.h
