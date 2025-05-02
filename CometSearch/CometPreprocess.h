@@ -90,7 +90,10 @@ private:
    static bool PreprocessSpectrum(Spectrum &spec,
                                   double *pdTmpRawData,
                                   double *pdTmpFastXcorrData,
-                                  double *pdTmpCorrelationData);
+                                  double *pdTmpCorrelationData,
+                                  float *pfFastXcorrData,
+                                  float *pfFastXcorrDataNL,
+                                  float *pfSpScoreData);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -109,7 +112,10 @@ private:
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
                           double *pdTmpFastXcorrData,
-                          double *pdTmpCorrelationData);
+                          double *pdTmpCorrelationData,
+                          float *pfFastXcorrData,
+                          float *pfFastXcorrDataNL,
+                          float *pfSpScoreData);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
                         Spectrum mstSpectrum,
@@ -130,6 +136,10 @@ private:
    static double **ppdTmpRawDataArr;          //MH: Number of arrays equals threads
    static double **ppdTmpFastXcorrDataArr;    //MH: Ditto
    static double **ppdTmpCorrelationDataArr;  //MH: Ditto
+   static float** ppfFastXcorrData;           //MH: Replacing temporary arrays using by Query
+   static float** ppfFastXcorrDataNL;         //MH: Ditto
+   static float** ppfSpScoreData;             //MH: Ditto
+
 };
 
 #endif // _COMETPREPROCESS_H_
