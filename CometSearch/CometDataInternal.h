@@ -1005,12 +1005,7 @@ struct Query
    int iFastXcorrDataSize;
    float **ppfSparseSpScoreData;
    float **ppfSparseFastXcorrData;
-   float **ppfSparseFastXcorrDataNL;
-
-   // Standard array representation of data
-   float *pfSpScoreData;
-   float *pfFastXcorrData;
-   float *pfFastXcorrDataNL;  // pfFastXcorrData with NH3, H2O contributions
+   float **ppfSparseFastXcorrDataNL;  // ppfSparseFastXcorrData with NH3, H2O contributions
 
    // List of ms/ms masses for fragment index search; intensity not important at this stage
    vector<double> vdRawFragmentPeakMass;
@@ -1050,10 +1045,6 @@ struct Query
       ppfSparseSpScoreData = NULL;
       ppfSparseFastXcorrData = NULL;
       ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
-
-      pfSpScoreData = NULL;
-      pfFastXcorrData = NULL;
-      pfFastXcorrDataNL = NULL;                 // pfFastXcorrData with NH3, H2O contributions
 
       vdRawFragmentPeakMass.clear();
 

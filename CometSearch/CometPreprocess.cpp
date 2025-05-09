@@ -25,6 +25,9 @@ bool *CometPreprocess::pbMemoryPool;
 double **CometPreprocess::ppdTmpRawDataArr;
 double **CometPreprocess::ppdTmpFastXcorrDataArr;
 double **CometPreprocess::ppdTmpCorrelationDataArr;
+float **CometPreprocess::ppfFastXcorrData;
+float **CometPreprocess::ppfFastXcorrDataNL;
+float **CometPreprocess::ppfSpScoreData;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (FastXcorr).
 CometPreprocess::CometPreprocess()
@@ -694,7 +697,10 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    PreprocessSpectrum(pPreprocessThreadData->mstSpectrum,
          ppdTmpRawDataArr[i],
          ppdTmpFastXcorrDataArr[i],
-         ppdTmpCorrelationDataArr[i]);
+         ppdTmpCorrelationDataArr[i],
+         ppfFastXcorrData[i],
+         ppfFastXcorrDataNL[i],
+         ppfSpScoreData[i]);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -711,7 +717,10 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  Spectrum mstSpectrum,
                                  double *pdTmpRawData,
                                  double *pdTmpFastXcorrData,
-                                 double *pdTmpCorrelationData)
+                                 double *pdTmpCorrelationData,
+                                 float *pfFastXcorrData,
+                                 float *pfFastXcorrDataNL,
+                                 float *pfSpScoreData)
 {
    int i;
    int x;
@@ -740,44 +749,6 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    else
       pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
 
-   try
-   {
-      pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   }
-   catch (std::bad_alloc& ba)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pfFastXcorrData[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
-      sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-      sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
-   }
-
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
-      try
-      {
-         pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         char szErrorMsg[256];
-         sprintf(szErrorMsg,  " Error - new(pfFastXcorrDataNL[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
-         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         return false;
-      }
-   }
-
    // Create data for correlation analysis.
    // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
    MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pScoring, &pPre);
@@ -805,12 +776,12 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
 
-   pScoring->pfFastXcorrData[0] = 0.0;
+   pfFastXcorrData[0] = 0.0;
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
 
-      pScoring->pfFastXcorrData[i] = (float)dTmp;
+      pfFastXcorrData[i] = (float)dTmp;
 
       // Add flanking peaks if used
       if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -818,11 +789,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          int iTmp;
 
          iTmp = i-1;
-         pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+         pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+            pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
       }
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
@@ -833,18 +804,18 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       {
          int iTmp;
 
-         pScoring->pfFastXcorrDataNL[i] = pScoring->pfFastXcorrData[i];
+         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
 
          iTmp = i-g_staticParams.precalcMasses.iMinus17;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
 
          iTmp = i-g_staticParams.precalcMasses.iMinus18;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
       }
    }
@@ -877,7 +848,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
       {
-         if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
+         if (pfFastXcorrDataNL[i]>FLOAT_ZERO || pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
             x=i/SPARSE_MATRIX_SIZE;
             if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
@@ -901,13 +872,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
             y=i-(x*SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = pScoring->pfFastXcorrDataNL[i];
+            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
          }
       }
-
-      delete[] pScoring->pfFastXcorrDataNL;
-      pScoring->pfFastXcorrDataNL = NULL;
-
    }
 
    //MH: Fill sparse matrix
@@ -929,7 +896,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
+      if (pfFastXcorrData[i]>FLOAT_ZERO || pfFastXcorrData[i]<-FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
          if (pScoring->ppfSparseFastXcorrData[x]==NULL)
@@ -953,33 +920,14 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = pScoring->pfFastXcorrData[i];
+         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
       }
-   }
-
-   delete[] pScoring->pfFastXcorrData;
-   pScoring->pfFastXcorrData = NULL;
-
-   try
-   {
-      pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   }
-   catch (std::bad_alloc& ba)
-   {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - new(pfSpScoreData[%d]). bad_alloc: %s.\n", pScoring->_spectrumInfoInternal.iArraySize, ba.what());
-      sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-      sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
-      string strErrorMsg(szErrorMsg);
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-      return false;
    }
 
    // Create data for sp scoring which is just the binned peaks normalized to max inten 100
    for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      pScoring->pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
+      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
 
    // MH: Fill sparse matrix for SpScore
@@ -1003,7 +951,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
+      if (pfSpScoreData[i] > FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
          if (pScoring->ppfSparseSpScoreData[x]==NULL)
@@ -1027,12 +975,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                pScoring->ppfSparseSpScoreData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = pScoring->pfSpScoreData[i];
+         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
       }
    }
-
-   delete[] pScoring->pfSpScoreData;
-   pScoring->pfSpScoreData = NULL;
 
    return true;
 }
@@ -1167,7 +1112,10 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpRawData,
                                          double *pdTmpFastXcorrData,
-                                         double *pdTmpCorrelationData)
+                                         double *pdTmpCorrelationData,
+                                         float *pfFastXcorrData,
+                                         float *pfFastXcorrDataNL,
+                                         float *pfSpScoreData)
 {
    int z;
 
@@ -1372,7 +1320,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             // Populate pdCorrelation data.
             // NOTE: there must be a good way of doing this just once per spectrum instead
             //       of repeating for each charge state.
-            if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData))
+            if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData, pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData))
             {
                return false;
             }
@@ -1872,6 +1820,66 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
    }
 
+   //MH: Allocate arrays
+   ppfFastXcorrData = new float* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
+   {
+     try
+     {
+       ppfFastXcorrData[i] = new float[g_staticParams.iArraySizeGlobal]();
+     } catch (std::bad_alloc& ba)
+     {
+       char szErrorMsg[256];
+       sprintf(szErrorMsg, " Error - new(ppfFastXcorrDataMH[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
+       sprintf(szErrorMsg + strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+       sprintf(szErrorMsg + strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+       string strErrorMsg(szErrorMsg);
+       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+       logerr(szErrorMsg);
+       return false;
+     }
+   }
+
+   //MH: Allocate arrays
+   ppfFastXcorrDataNL = new float* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
+   {
+     try
+     {
+       ppfFastXcorrDataNL[i] = new float[g_staticParams.iArraySizeGlobal]();
+     } catch (std::bad_alloc& ba)
+     {
+       char szErrorMsg[256];
+       sprintf(szErrorMsg, " Error - new(ppfFastXcorrDataNLMH[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
+       sprintf(szErrorMsg + strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+       sprintf(szErrorMsg + strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+       string strErrorMsg(szErrorMsg);
+       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+       logerr(szErrorMsg);
+       return false;
+     }
+   }
+
+   //MH: Allocate arrays
+   ppfSpScoreData = new float* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
+   {
+     try
+     {
+       ppfSpScoreData[i] = new float[g_staticParams.iArraySizeGlobal]();
+     } catch (std::bad_alloc& ba)
+     {
+       char szErrorMsg[256];
+       sprintf(szErrorMsg, " Error - new(ppfSpScoreDataMH[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
+       sprintf(szErrorMsg + strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+       sprintf(szErrorMsg + strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+       string strErrorMsg(szErrorMsg);
+       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+       logerr(szErrorMsg);
+       return false;
+     }
+   }
+
    return true;
 }
 
@@ -1888,11 +1896,17 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
       delete [] ppdTmpRawDataArr[i];
       delete [] ppdTmpFastXcorrDataArr[i];
       delete [] ppdTmpCorrelationDataArr[i];
+      delete [] ppfFastXcorrData[i];
+      delete [] ppfFastXcorrDataNL[i];
+      delete [] ppfSpScoreData[i];
    }
 
    delete [] ppdTmpRawDataArr;
    delete [] ppdTmpFastXcorrDataArr;
    delete [] ppdTmpCorrelationDataArr;
+   delete [] ppfFastXcorrData;
+   delete [] ppfFastXcorrDataNL;
+   delete [] ppfSpScoreData;
    return true;
 }
 
@@ -1909,6 +1923,9 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                                                int iNumPeaks,
                                                double *pdTmpSpectrum)
 {
+   float* pfFastXcorrData;
+   float* pfFastXcorrDataNL;
+   float* pfSpScoreData;
    Query *pScoring = new Query();
 
    pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge * dMZ) - (iPrecursorCharge - 1.0) * PROTON_MASS;
@@ -2025,7 +2042,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       }
    }
 
-   pScoring->pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
 
    if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
@@ -2034,7 +2051,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
    {
       try
       {
-         pScoring->pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+         pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -2076,12 +2093,12 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
 
-   pScoring->pfFastXcorrData[0] = 0.0;
+   pfFastXcorrData[0] = 0.0;
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
       double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
 
-      pScoring->pfFastXcorrData[i] = (float)dTmp;
+      pfFastXcorrData[i] = (float)dTmp;
 
       // Add flanking peaks if used
       if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
@@ -2089,11 +2106,11 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          int iTmp;
 
          iTmp = i-1;
-         pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+         pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
 
          iTmp = i+1;
          if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pScoring->pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+            pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
       }
 
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
@@ -2104,18 +2121,18 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       {
          int iTmp;
 
-         pScoring->pfFastXcorrDataNL[i] = pScoring->pfFastXcorrData[i];
+         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
 
          iTmp = i-g_staticParams.precalcMasses.iMinus17;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
 
          iTmp = i-g_staticParams.precalcMasses.iMinus18;
          if (iTmp>= 0)
          {
-            pScoring->pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
          }
       }
    }
@@ -2147,7 +2164,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
       {
-         if (pScoring->pfFastXcorrDataNL[i]>FLOAT_ZERO || pScoring->pfFastXcorrDataNL[i]<-FLOAT_ZERO)
+         if (pfFastXcorrDataNL[i]>FLOAT_ZERO || pfFastXcorrDataNL[i]<-FLOAT_ZERO)
          {
             x=i/SPARSE_MATRIX_SIZE;
             if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
@@ -2171,12 +2188,12 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                   pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
             }
             y=i-(x*SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = pScoring->pfFastXcorrDataNL[i];
+            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
          }
       }
 
-      delete[] pScoring->pfFastXcorrDataNL;
-      pScoring->pfFastXcorrDataNL = NULL;
+      delete[] pfFastXcorrDataNL;
+      pfFastXcorrDataNL = NULL;
    }
 
    //MH: Fill sparse matrix
@@ -2184,7 +2201,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      if (pScoring->pfFastXcorrData[i]>FLOAT_ZERO || pScoring->pfFastXcorrData[i]<-FLOAT_ZERO)
+      if (pfFastXcorrData[i]>FLOAT_ZERO || pfFastXcorrData[i]<-FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
          if (pScoring->ppfSparseFastXcorrData[x]==NULL)
@@ -2195,20 +2212,20 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                pScoring->ppfSparseFastXcorrData[x][y]=0;
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = pScoring->pfFastXcorrData[i];
+         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
       }
    }
 
-   delete[] pScoring->pfFastXcorrData;
-   pScoring->pfFastXcorrData = NULL;
+   delete[] pfFastXcorrData;
+   pfFastXcorrData = NULL;
 
    // Create data for sp scoring which is just the binned peaks normalized to max inten 100
-   pScoring->pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   memset(pScoring->pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
+   pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
+   memset(pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
 
    for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      pScoring->pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
+      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
 
    // MH: Fill sparse matrix for SpScore
@@ -2218,7 +2235,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
    for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
    {
-      if (pScoring->pfSpScoreData[i] > FLOAT_ZERO)
+      if (pfSpScoreData[i] > FLOAT_ZERO)
       {
          x=i/SPARSE_MATRIX_SIZE;
          if (pScoring->ppfSparseSpScoreData[x]==NULL)
@@ -2227,12 +2244,12 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
             memset(pScoring->ppfSparseSpScoreData[x], 0, sizeof(float) * SPARSE_MATRIX_SIZE);
          }
          y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = pScoring->pfSpScoreData[i];
+         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
       }
    }
 
-   delete[] pScoring->pfSpScoreData;
-   pScoring->pfSpScoreData = NULL;
+   delete[] pfSpScoreData;
+   pfSpScoreData = NULL;
 
    g_pvQuery.push_back(pScoring);
 
