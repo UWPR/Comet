@@ -15,8 +15,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: |
-        aclocal --version
+      run: aclocal --version
         
     - name: Build Comet
       run: make
