@@ -16,7 +16,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        which aclocal && \
         aclocal --version
         
     - name: Build Comet
