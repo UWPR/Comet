@@ -16,7 +16,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install autoconf automake m4 perl
+        brew install autoconf && \
+        which aclocal && \
+        aclocal --version
         
     - name: Build Comet
       run: make
