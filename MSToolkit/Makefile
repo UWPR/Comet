@@ -68,11 +68,10 @@ EXPAT_VER := expat-2.2.9
 EXPAT_SRC := $(BUILD_EXT)/$(EXPAT_VER)
 EXPAT_DST := include/extern/expat_config.h $(BUILD_DIR)/libexpat.a
 EXPAT_DSO := $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmltok.o
-EXPAT_LIC := $(BUILD_LIC)/$(EXPAT_VER)/COPYING
 
 .PHONY : expat expat-clean expat-realclean
 
-expat : $(EXPAT_DST) $(EXPAT_LIC)
+expat : $(EXPAT_DST)
 
 $(EXPAT_DST) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
 	cd $(BUILD_EXT); tar -xzf $(EXPAT_VER).tar.gz
@@ -83,17 +82,13 @@ $(EXPAT_DST) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
 	   --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
 	make -C $(EXPAT_SRC) install
 
-$(EXPAT_LIC) : $(EXPAT_SRC)/$(notdir $(EXPAT_LIC))| $(MKDIR)
-	mkdir -p $(BUILD_LIC)/$(EXPAT_VER)
-	cp $^ $@
-
 expat-clean :
 ifneq (,$(wildcard $(EXPAT_SRC)/Makefile))
 	make -C $(EXPAT_SRC) clean
 endif
 
 expat-realclean : expat-clean
-	rm -rf $(EXPAT_LIC) $(EXPAT_DST) $(BUILD_DIR)/libexpat.la $(BUILD_DIR)/libexpat.so* $(BUILD_DIR)/bin $(BUILD_DIR)/man
+	rm -rf $(EXPAT_DST) $(BUILD_DIR)/libexpat.la $(BUILD_DIR)/libexpat.so* $(BUILD_DIR)/bin $(BUILD_DIR)/man $(SRC_DIR)/include/expat*.h
 
 
 
@@ -109,29 +104,25 @@ ZLIB_VER := zlib-1.2.11
 ZLIB_SRC := $(BUILD_EXT)/$(ZLIB_VER)
 ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
 ZLIB_DST := $(BUILD_DIR)/libz.a
-ZLIB_LIC := $(BUILD_LIC)/$(ZLIB_VER)/README
 ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
 
 .PHONY : zlib zlib-clean zlib-realclean
 
-zlib : $(ZLIB_DST) $(ZLIB_LIC)
+zlib : $(ZLIB_DST)
 
-$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+#$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+$(ZLIB_DST) :
 	cd $(BUILD_EXT); unzip -o zlib1211.zip
 	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
 	make -C $(ZLIB_SRC) install
 
-$(ZLIB_LIC) : $(ZLIB_SRC)/$(notdir $(ZLIB_LIC))| $(MKDIR)
-	mkdir -p $(BUILD_LIC)/$(ZLIB_VER)
-	cp $^ $@
-
 zlib-clean :
 ifneq (,$(wildcard $(ZLIB_SRC)/Makefile))
-	make -C $(ZLIB_SRC) clean
+	make -C $(ZLIB_SRC) distclean
 endif
 
 zlib-realclean : zlib-clean
-	rm -rf $(ZLIB_LIC) $(ZLIB_DST) $(BUILD_DIR)/libz.so*
+	rm -rf $(ZLIB_DST) $(BUILD_DIR)/libz.so* $(SRC_DIR)/include/zlib.h $(SRC_DIR)/include/zconf.h
 	
 
 # -- MSToolkit  ---------------------------------------------------------------
