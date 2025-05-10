@@ -81,12 +81,13 @@ int main(int argc, char *argv[])
 void Usage(char *pszCmd)
 {
    char szTmp[1024];
+   int iSize = sizeof(szTmp);
 
    logout("\n");
-   sprintf(szTmp, " Comet version \"%s\"\n %s\n", g_sCometVersion.c_str(), copyright);
+   snprintf(szTmp, iSize, " Comet version \"%s\"\n %s\n", g_sCometVersion.c_str(), copyright);
    logout(szTmp);
    logout("\n");
-   sprintf(szTmp, " Comet usage:  %s [options] <input_files>\n", pszCmd);
+   snprintf(szTmp, iSize, " Comet usage:  %s [options] <input_files>\n", pszCmd);
    logout(szTmp);
    logout("\n");
    logout(" Supported input formats include mzXML, mzML, Thermo raw, mgf, and ms2 variants (cms2, bms2, ms2)\n");
@@ -103,11 +104,11 @@ void Usage(char *pszCmd)
    logout("                 -i         create .idx file for fragment ion indexing\n");
    logout("                 -j         create .idx file for peptide indexing\n");
    logout("\n");
-   sprintf(szTmp, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
+   snprintf(szTmp, iSize, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
    logout(szTmp);
-   sprintf(szTmp, "            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
+   snprintf(szTmp, iSize, "            or   %s -F1000 -L1500 file1.mzXML    <- to search scans 1000 through 1500\n", pszCmd);
    logout(szTmp);
-   sprintf(szTmp, "            or   %s -PParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
+   snprintf(szTmp, iSize, "            or   %s -PParams.txt *.mzXML         <- use parameters in the file 'Params.txt'\n", pszCmd);
    logout(szTmp);
 
    logout("\n");
@@ -123,6 +124,7 @@ void SetOptions(char *arg,
 {
    char szTmp[512];
    char szParamStringVal[512];
+   int iSize = sizeof(szParamStringVal);
 
    switch (arg[1])
    {
@@ -162,7 +164,7 @@ void SetOptions(char *arg,
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iStart = atoi(szTmp);
             szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+            snprintf(szParamStringVal, iSize, "%d %d", iScanRange.iStart, iScanRange.iEnd);
             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
@@ -175,7 +177,7 @@ void SetOptions(char *arg,
             pSearchMgr->GetParamValue("scan_range", iScanRange);
             iScanRange.iEnd = atoi(szTmp);
             szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d %d", iScanRange.iStart, iScanRange.iEnd);
+            snprintf(szParamStringVal, iSize, "%d %d", iScanRange.iStart, iScanRange.iEnd);
             pSearchMgr->SetParam("scan_range", szParamStringVal, iScanRange);
          }
          break;
@@ -186,7 +188,7 @@ void SetOptions(char *arg,
          {
             int iSpectrumBatchSize = atoi(szTmp);
             szParamStringVal[0] = '\0';
-            sprintf(szParamStringVal, "%d", iSpectrumBatchSize);
+            snprintf(szParamStringVal, iSize, "%d", iSpectrumBatchSize);
             pSearchMgr->SetParam("spectrum_batch_size", szParamStringVal, iSpectrumBatchSize);
          }
          break;
@@ -197,15 +199,15 @@ void SetOptions(char *arg,
          *iPrintParams = 2;  // include additional parameters such as PEFF, fragment ion index
          break;
       case 'i':
-         sprintf(szParamStringVal, "1");
+         snprintf(szParamStringVal, iSize, "1");
          pSearchMgr->SetParam("create_fragment_index", szParamStringVal, 1);
-         sprintf(szParamStringVal, "0");
+         snprintf(szParamStringVal, iSize, "0");
          pSearchMgr->SetParam("create_peptide_index", szParamStringVal, 0);
          break;
       case 'j':
-         sprintf(szParamStringVal, "0");
+         snprintf(szParamStringVal, iSize, "0");
          pSearchMgr->SetParam("create_fragment_index", szParamStringVal, 0);
-         sprintf(szParamStringVal, "1");
+         snprintf(szParamStringVal, iSize, "1");
          pSearchMgr->SetParam("create_peptide_index", szParamStringVal, 1);
          break;
       default:
@@ -241,6 +243,8 @@ void LoadParameters(char *pszParamsFile,
    VarMods varModsParam;
    IntRange intRangeParam;
    DoubleRange doubleRangeParam;
+
+   int iSize = sizeof(szParamStringVal);
 
    if ((fp=fopen(pszParamsFile, "r")) == NULL)
    {
@@ -386,7 +390,7 @@ void LoadParameters(char *pszParamsFile,
             {
                sscanf(szParamVal, "%d", &iIntParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("explicit_deltacn", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "mass_offsets"))
@@ -470,109 +474,109 @@ void LoadParameters(char *pszParamsFile,
             else if (!strcmp(szParamName, "old_mods_encoding"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("old_mods_encoding", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "nucleotide_reading_frame"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("nucleotide_reading_frame", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "mass_type_parent"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("mass_type_parent", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "mass_type_fragment"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("mass_type_fragment", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "show_fragment_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("show_fragment_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "num_threads"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("num_threads", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "clip_nterm_methionine"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("clip_nterm_methionine", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "clip_nterm_aa"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("clip_nterm_aa", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "minimum_xcorr"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("minimum_xcorr", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "theoretical_fragment_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("theoretical_fragment_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_A_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_A_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_B_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_B_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_C_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_C_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_X_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_X_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_Y_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_Y_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_Z_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_Z_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_Z1_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_Z1_ions", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "use_NL_ions"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("use_NL_ions", szParamStringVal, iIntParam);
             }
             else if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName)==14)
@@ -617,14 +621,14 @@ void LoadParameters(char *pszParamsFile,
                szParamVal[strlen(szParamVal)-1] = '\0';  // remove LF
 #endif
 
-               sprintf(szParamStringVal, "%s", szParamVal);  // FIX: confirm that this is OK
+               snprintf(szParamStringVal, iSize, "%s", szParamVal);  // FIX: confirm that this is OK
 
                pSearchMgr->SetParam(szParamName, szParamStringVal, varModsParam);
             }
             else if (!strcmp(szParamName, "max_variable_mods_in_peptide"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("max_variable_mods_in_peptide", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "require_variable_mod"))
@@ -637,79 +641,79 @@ void LoadParameters(char *pszParamsFile,
             else if (!strcmp(szParamName, "fragment_bin_tol"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("fragment_bin_tol", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "fragment_bin_offset"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("fragment_bin_offset", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("peptide_mass_tolerance", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance_upper"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("peptide_mass_tolerance_upper", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "peptide_mass_tolerance_lower"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("peptide_mass_tolerance_lower", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "precursor_tolerance_type"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("precursor_tolerance_type", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "peptide_mass_units"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("peptide_mass_units", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "isotope_error"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("isotope_error", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "num_output_lines"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("num_output_lines", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "num_results"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("num_results", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "max_duplicate_proteins"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("max_duplicate_proteins", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "remove_precursor_peak"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("remove_precursor_peak", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "remove_precursor_tolerance"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("remove_precursor_tolerance", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "clear_mz_range"))
@@ -717,67 +721,67 @@ void LoadParameters(char *pszParamsFile,
                doubleRangeParam.dStart = 0.0;
                doubleRangeParam.dEnd = 0.0;
                sscanf(szParamVal, "%lf %lf", &doubleRangeParam.dStart, &doubleRangeParam.dEnd);
-               sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
+               snprintf(szParamStringVal, iSize, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
                pSearchMgr->SetParam("clear_mz_range", szParamStringVal, doubleRangeParam);
             }
             else if (!strcmp(szParamName, "percentage_base_peak"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("percentage_base_peak", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "export_additional_pepxml_scores"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("export_additional_pepxml_scores", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "print_expect_score"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("print_expect_score", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "resolve_fullpaths"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("resolve_fullpaths", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_sqtstream"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_sqtstream", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_sqtfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_sqtfile", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_txtfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_txtfile", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_pepxmlfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_pepxmlfile", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_mzidentmlfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_mzidentmlfile", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "output_percolatorfile"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_percolatorfile", szParamStringVal, iIntParam);
 
                bCurrentParamsFile = 1;  // this is the new parameter; if this is missing then complain & exit
@@ -785,393 +789,393 @@ void LoadParameters(char *pszParamsFile,
             else if (!strcmp(szParamName, "output_outfiles"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("output_outfiles", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "skip_researching"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("skip_researching", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "skip_updatecheck"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("skip_updatecheck", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "peff_verbose_output"))
             {
                sscanf(szParamVal, "%d", &iIntParam);
-               sprintf(szParamStringVal, "%d", iIntParam);
+               snprintf(szParamStringVal, iSize, "%d", iIntParam);
                pSearchMgr->SetParam("peff_verbose_output", szParamStringVal, iIntParam);
             }
             else if (!strcmp(szParamName, "add_Cterm_peptide"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Cterm_peptide", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Nterm_peptide"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Nterm_peptide", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Cterm_protein"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Cterm_protein", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Nterm_protein"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Nterm_protein", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_G_glycine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_G_glycine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_A_alanine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_A_alanine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_S_serine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_S_serine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_P_proline"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_P_proline", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_V_valine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_V_valine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_T_threonine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_T_threonine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_C_cysteine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_C_cysteine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_U_selenocysteine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_U_selenocysteine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_L_leucine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_L_leucine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_I_isoleucine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_I_isoleucine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_N_asparagine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_N_asparagine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_O_pyrrolysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_O_pyrrolysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_D_aspartic_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_D_aspartic_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_Q_glutamine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_Q_glutamine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_K_lysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_K_lysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_E_glutamic_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_E_glutamic_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_M_methionine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_M_methionine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_H_histidine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_H_histidine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_F_phenylalanine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_F_phenylalanine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_R_arginine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_R_arginine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_Y_tyrosine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_Y_tyrosine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_W_tryptophan"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_W_tryptophan", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_B_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_B_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_J_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_J_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_X_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_X_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "set_Z_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("set_Z_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_G_glycine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_G_glycine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_A_alanine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_A_alanine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_S_serine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_S_serine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_P_proline"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_P_proline", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_V_valine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_V_valine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_T_threonine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_T_threonine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_C_cysteine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_C_cysteine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_U_selenocysteine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_U_selenocysteine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_L_leucine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_L_leucine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_I_isoleucine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_I_isoleucine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_N_asparagine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_N_asparagine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_O_pyrrolysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_O_pyrrolysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_D_aspartic_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_D_aspartic_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Q_glutamine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Q_glutamine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_K_lysine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_K_lysine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_E_glutamic_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_E_glutamic_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_M_methionine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_M_methionine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_H_histidine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_H_histidine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_F_phenylalanine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_F_phenylalanine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_R_arginine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_R_arginine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Y_tyrosine"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Y_tyrosine", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_W_tryptophan"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_W_tryptophan", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_B_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_B_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_J_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_J_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_X_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_X_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "add_Z_user_amino_acid"))
             {
                sscanf(szParamVal, "%lf", &dDoubleParam);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%lf", dDoubleParam);
+               snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                pSearchMgr->SetParam("add_Z_user_amino_acid", szParamStringVal, dDoubleParam);
             }
             else if (!strcmp(szParamName, "search_enzyme_number"))
             {
                sscanf(szParamVal, "%d", &iSearchEnzymeNumber);
                szParamStringVal[0] = '\0';
-               sprintf(szParamStringVal, "%d", iSearchEnzymeNumber);
+               snprintf(szParamStringVal, iSize, "%d", iSearchEnzymeNumber);
                pSearchMgr->SetParam("search_enzyme_number", szParamStringVal, iSearchEnzymeNumber);
             }
             else
@@ -1185,28 +1189,28 @@ void LoadParameters(char *pszParamsFile,
                {
                   sscanf(szParamVal, "%d", &iSearchEnzyme2Number);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iSearchEnzyme2Number);
+                  snprintf(szParamStringVal, iSize, "%d", iSearchEnzyme2Number);
                   pSearchMgr->SetParam("search_enzyme2_number", szParamStringVal, iSearchEnzyme2Number);
                }
                else if (!strcmp(szParamName, "sample_enzyme_number"))
                {
                   sscanf(szParamVal, "%d", &iSampleEnzymeNumber);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iSampleEnzymeNumber);
+                  snprintf(szParamStringVal, iSize, "%d", iSampleEnzymeNumber);
                   pSearchMgr->SetParam("sample_enzyme_number", szParamStringVal, iSampleEnzymeNumber);
                }
                else if (!strcmp(szParamName, "num_enzyme_termini"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("num_enzyme_termini", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "allowed_missed_cleavage"))
                {
                   sscanf(szParamVal, "%d", &iAllowedMissedCleavages);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iAllowedMissedCleavages);
+                  snprintf(szParamStringVal, iSize, "%d", iAllowedMissedCleavages);
                   pSearchMgr->SetParam("allowed_missed_cleavage", szParamStringVal, iAllowedMissedCleavages);
                }
                else if (!strcmp(szParamName, "peptide_length_range"))
@@ -1215,7 +1219,7 @@ void LoadParameters(char *pszParamsFile,
                   intRangeParam.iEnd = 0;
                   sscanf(szParamVal, "%d %d", &intRangeParam.iStart, &intRangeParam.iEnd);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
+                  snprintf(szParamStringVal, iSize, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
                   pSearchMgr->SetParam("peptide_length_range", szParamStringVal, intRangeParam);
                }
                else if (!strcmp(szParamName, "scan_range"))
@@ -1224,14 +1228,14 @@ void LoadParameters(char *pszParamsFile,
                   intRangeParam.iEnd = 0;
                   sscanf(szParamVal, "%d %d", &intRangeParam.iStart, &intRangeParam.iEnd);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
+                  snprintf(szParamStringVal, iSize, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
                   pSearchMgr->SetParam("scan_range", szParamStringVal, intRangeParam);
                }
                else if (!strcmp(szParamName, "spectrum_batch_size"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("spectrum_batch_size", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "minimum_peaks"))
@@ -1239,7 +1243,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("minimum_peaks", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "precursor_charge"))
@@ -1248,7 +1252,7 @@ void LoadParameters(char *pszParamsFile,
                   intRangeParam.iEnd = 0;
                   sscanf(szParamVal, "%d %d", &intRangeParam.iStart, &intRangeParam.iEnd);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
+                  snprintf(szParamStringVal, iSize, "%d %d", intRangeParam.iStart, intRangeParam.iEnd);
                   pSearchMgr->SetParam("precursor_charge", szParamStringVal, intRangeParam);
                }
                else if (!strcmp(szParamName, "override_charge"))
@@ -1256,7 +1260,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("override_charge", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "correct_mass"))  // hidden param
@@ -1264,7 +1268,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("correct_mass", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "equal_I_and_L"))
@@ -1272,7 +1276,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("equal_I_and_L", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "max_fragment_charge"))
@@ -1280,7 +1284,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("max_fragment_charge", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "max_precursor_charge"))
@@ -1288,7 +1292,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("max_precursor_charge", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "digest_mass_range"))
@@ -1297,7 +1301,7 @@ void LoadParameters(char *pszParamsFile,
                   doubleRangeParam.dEnd = 0.0;
                   sscanf(szParamVal, "%lf %lf", &doubleRangeParam.dStart, &doubleRangeParam.dEnd);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
+                  snprintf(szParamStringVal, iSize, "%lf %lf", doubleRangeParam.dStart, doubleRangeParam.dEnd);
                   pSearchMgr->SetParam("digest_mass_range", szParamStringVal, doubleRangeParam);
                }
                else if (!strcmp(szParamName, "ms_level"))
@@ -1305,7 +1309,7 @@ void LoadParameters(char *pszParamsFile,
                   iIntParam = 0;
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("ms_level", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "activation_method"))
@@ -1320,42 +1324,42 @@ void LoadParameters(char *pszParamsFile,
                {
                   sscanf(szParamVal, "%lf", &dDoubleParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%lf", dDoubleParam);
+                  snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                   pSearchMgr->SetParam("minimum_intensity", szParamStringVal, dDoubleParam);
                }
                else if (!strcmp(szParamName, "decoy_search"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("decoy_search", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "peff_format"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("peff_format", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "xcorr_processing_offset"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("xcorr_processing_offset", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "mango_search"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("mango_search", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "scale_fragmentNL"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("scale_fragmentNL", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "pinfile_protein_delimiter"))
@@ -1369,43 +1373,43 @@ void LoadParameters(char *pszParamsFile,
                {
                   sscanf(szParamVal, "%ld", &lLongParam);
                   szParamStringVal[0] = '\0';
-                  sprintf(szParamStringVal, "%ld", lLongParam);
+                  snprintf(szParamStringVal, iSize, "%ld", lLongParam);
                   pSearchMgr->SetParam("max_iterations", szParamStringVal, lLongParam);
                }
                else if (!strcmp(szParamName, "fragindex_min_fragmentmass"))
                {
                   sscanf(szParamVal, "%lf", &dDoubleParam);
-                  sprintf(szParamStringVal, "%lf", dDoubleParam);
+                  snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                   pSearchMgr->SetParam("fragindex_min_fragmentmass", szParamStringVal, dDoubleParam);
                }
                else if (!strcmp(szParamName, "fragindex_max_fragmentmass"))
                {
                   sscanf(szParamVal, "%lf", &dDoubleParam);
-                  sprintf(szParamStringVal, "%lf", dDoubleParam);
+                  snprintf(szParamStringVal, iSize, "%lf", dDoubleParam);
                   pSearchMgr->SetParam("fragindex_max_fragmentmass", szParamStringVal, dDoubleParam);
                }
                else if (!strcmp(szParamName, "fragindex_num_spectrumpeaks"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_num_spectrumpeaks", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "fragindex_min_ions_score"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_min_ions_score", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "fragindex_min_ions_report"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_min_ions_report", szParamStringVal, iIntParam);
                }
                else if (!strcmp(szParamName, "fragindex_skipreadprecursors"))
                {
                   sscanf(szParamVal, "%d", &iIntParam);
-                  sprintf(szParamStringVal, "%d", iIntParam);
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("fragindex_skipreadprecursors", szParamStringVal, iIntParam);
                }
                else
