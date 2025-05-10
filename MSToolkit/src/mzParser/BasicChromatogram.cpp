@@ -9,6 +9,7 @@ Version 1.1, March 14, 2012.
 */
 
 #include "mzParser.h"
+using namespace std;
 using namespace mzParser;
 
 BasicChromatogram::BasicChromatogram(){}
@@ -49,7 +50,7 @@ TimeIntensityPair& BasicChromatogram::operator[ ](const unsigned int index){ ret
 void BasicChromatogram::addTIP(TimeIntensityPair tip){ vData.push_back(tip); }
 void BasicChromatogram::clear(){
   vData.clear();
-  strcpy(idString,"");
+  idString[0]='\0';
   charge=0;
   precursorMZ=0;
   precursorOffsetLower=0;
@@ -60,10 +61,7 @@ void BasicChromatogram::clear(){
 }
 int BasicChromatogram::getCharge(){return charge;}
 std::vector<TimeIntensityPair>&  BasicChromatogram::getData() { return vData; }
-int BasicChromatogram::getIDString(char* str){
-  strcpy(str,idString);
-  return (int)strlen(str);
-}
+void BasicChromatogram::getIDString(string& str) { str=idString; }
 double BasicChromatogram::getPreMZ(){ return precursorMZ;}
 double BasicChromatogram::getPreOffsetLower(){ return precursorOffsetLower; }
 double BasicChromatogram::getPreOffsetUpper(){ return precursorOffsetUpper; }

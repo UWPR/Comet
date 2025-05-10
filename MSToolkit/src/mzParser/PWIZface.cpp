@@ -29,7 +29,7 @@ ChromatogramList::ChromatogramList(){
 
 ChromatogramList::ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* bc){
   mzML=ml;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
     mz5=(mzpMz5Handler*)m5;
   #endif
   chromat=new Chromatogram();
@@ -39,7 +39,7 @@ ChromatogramList::ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromat
 ChromatogramList::~ChromatogramList(){
   mzML=NULL;
   vChromatIndex=NULL;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   mz5=NULL;
   vMz5Index=NULL;
   #endif
@@ -47,13 +47,13 @@ ChromatogramList::~ChromatogramList(){
 }
 
 ChromatogramPtr ChromatogramList::chromatogram(int index, bool binaryData) {
-  char str[128];
+  string str;
   if(mzML!=NULL) {
     mzML->readChromatogram(index);
     chromat->bc->getIDString(str);
     chromat->id=str;
     return chromat;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   }  else if(mz5!=NULL) {
     mz5->readChromatogram(index);
     chromat->bc->getIDString(str);
@@ -66,7 +66,7 @@ ChromatogramPtr ChromatogramList::chromatogram(int index, bool binaryData) {
 
 bool ChromatogramList::get() {
   if(mzML!=NULL) vChromatIndex = mzML->getChromatIndex();
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   else if(mz5!=NULL) vMz5Index = mz5->getChromatIndex();
   #endif
   else return false;
@@ -79,7 +79,7 @@ size_t ChromatogramList::size() {
     return 0;
   }
   if(mzML!=NULL) return vChromatIndex->size();
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   else if(mz5!=NULL) return vMz5Index->size();
   #endif
   else return 0;
@@ -87,42 +87,50 @@ size_t ChromatogramList::size() {
 
 PwizRun::PwizRun(){
   chromatogramListPtr = new ChromatogramList();
+  spectrumListPtr = new SpectrumList();
 }
 
 PwizRun::PwizRun(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
   mzML=ml;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mz5=(mzpMz5Handler*)m5;
 #endif
-  bc=b;
-  chromatogramListPtr = new ChromatogramList(ml, m5, b);
+  bc = NULL;
+  bs = NULL;
+  delete chromatogramListPtr;
+  delete spectrumListPtr;
 }
 
 PwizRun::~PwizRun(){
   mzML=NULL;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mz5=NULL;
 #endif
   bc=NULL;
+  bs=NULL;
   delete chromatogramListPtr;
+  delete spectrumListPtr;
 }
 
 bool PwizRun::get(){
   if (mzML != NULL) return chromatogramListPtr->get();
-#ifdef MZP_MZ5
-  else if (mz5 != NULL) vMz5Index = mz5->getChromatIndex();
+#ifdef MZP_HDF
+  else if (mz5 != NULL) chromatogramListPtr->vMz5Index = mz5->getChromatIndex();
 #endif
   else return false;
 }
 
-void PwizRun::set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b){
+void PwizRun::set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b, BasicSpectrum* s){
   mzML=ml;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mz5=(mzpMz5Handler*)m5;
 #endif
   bc=b;
+  bs=s;
   delete chromatogramListPtr;
   chromatogramListPtr = new ChromatogramList(ml, m5, b);
+  delete spectrumListPtr;
+  spectrumListPtr = new SpectrumList(ml, m5, s);
 }
 
 MSDataFile::MSDataFile(string s){
@@ -145,6 +153,7 @@ MSDataFile::MSDataFile(string s){
           delete bc;
         }
         run.chromatogramListPtr->vChromatIndex=mzML->getChromatIndex();
+        run.spectrumListPtr->vSpecIndex = mzML->getSpecIndex();
         break;
       case 2: //mzXML
       case 4:
@@ -152,7 +161,7 @@ MSDataFile::MSDataFile(string s){
         delete bs;
         delete bc;
         break;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
       case 5: //mz5
         mz5Config = new mzpMz5Config();
         mz5=new mzpMz5Handler(mz5Config, bs, bc);
@@ -168,17 +177,17 @@ MSDataFile::MSDataFile(string s){
       default:
         break;
     }
-#ifdef MZP_MZ5
-    run.set(mzML,mz5,bc);
+#ifdef MZP_HDF
+    run.set(mzML,mz5,bc,bs);
 #else
-    run.set(mzML,NULL,bc);
+    run.set(mzML,NULL,bc,bs);
 #endif
   }
 }
 
 MSDataFile::~MSDataFile(){
   if(mzML!=NULL) delete mzML;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   if(mz5!=NULL){
     delete mz5;
     delete mz5Config;
@@ -193,8 +202,17 @@ SpectrumInfo::SpectrumInfo(){
 
 void SpectrumInfo::update(const Spectrum& spectrum, bool getBinaryData){
 
+  scanNumber = spectrum.bs->getScanNum();
   msLevel = spectrum.bs->getMSLevel();
   retentionTime = spectrum.bs->getRTime(false); // seconds
+
+  mzLow = spectrum.bs->getLowMZ();
+  mzHigh = spectrum.bs->getHighMZ();
+  basePeakMZ = spectrum.bs->getBasePeakMZ();
+  basePeakIntensity = spectrum.bs->getBasePeakIntensity();
+  totalIonCurrent = spectrum.bs->getTotalIonCurrent();
+  //thermoMonoisotopicMZ=spectrum.bs->getPrecursorMonoMZ();
+  ionInjectionTime = spectrum.bs->getIonInjectionTime();
 
   //slow and always data
   MZIntensityPair p;
@@ -206,9 +224,39 @@ void SpectrumInfo::update(const Spectrum& spectrum, bool getBinaryData){
   }
 }
 
+Spectrum::Spectrum() {
+  bs = NULL;
+}
+
+Spectrum::~Spectrum() {
+  bs = NULL;
+}
+
+SpectrumList::SpectrumList() {
+}
+
+SpectrumList::SpectrumList(mzpSAXMzmlHandler * ml, void* m5, BasicSpectrum * bs) {
+  mzML = ml;
+#ifdef MZP_HDF
+  mz5 = (mzpMz5Handler*)m5;
+#endif
+  spec = new Spectrum();
+  spec->bs = bs;
+}
+
+SpectrumList::~SpectrumList() {
+  mzML = NULL;
+  vSpecIndex = NULL;
+#ifdef MZP_MZ5
+  mz5 = NULL;
+  vMz5Index = NULL;
+#endif
+  delete spec;
+}
+
 bool SpectrumList::get() {
   if (mzML != NULL) vSpecIndex = mzML->getSpecIndex();
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   else if (mz5 != NULL) vMz5Index = mz5->getSpecIndex();
 #endif
   else return false;
@@ -221,23 +269,23 @@ size_t SpectrumList::size() {
     return 0;
   }
   if (mzML != NULL) return vSpecIndex->size();
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   else if (mz5 != NULL) return vMz5Index->size();
 #endif
   else return 0;
 }
 
 SpectrumPtr SpectrumList::spectrum(int index, bool binaryData) {
-  char str[128];
+  string str;
   if (mzML != NULL) {
     mzML->readSpectrum(index);
     spec->bs->getIDString(str);
     spec->id = str;
     return spec;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   } else if (mz5 != NULL) {
     mz5->readSpectrum(index);
-    spec->bc->getIDString(str);
+    spec->bs->getIDString(str);
     spec->id = str;
     return spec;
 #endif

@@ -31,18 +31,12 @@ MSReader::MSReader(){
   mgfOnePlus=false;
   iFType=0;
   iVersion=0;
-  for(int i=0;i<16;i++)	strcpy(header.header[i],"\0");
+  for(int i=0;i<16;i++)	header.header[i][0]='\0';
   headerIndex=0;
   sCurrentFile.clear();
   sInstrument="unknown";
   sManufacturer="unknown";
   lastReadScanNum=0;
-
-  #ifndef _NOSQLITE
-  db = NULL;
-  lastIndex=-1;
-  lastScanNumber=-1;
-  #endif
 }
 
 MSReader::~MSReader(){
@@ -51,10 +45,6 @@ MSReader::~MSReader(){
     rampCloseFile(rampFileIn);
     free(pScanIndex);
   }
-
-  #ifndef _NOSQLITE
-  if(db != NULL)  sqlite3_close(db);
-  #endif
 }
 
 void MSReader::addFilter(MSSpectrumType m){
@@ -124,9 +114,7 @@ void MSReader::appendFile(char* c, Spectrum& s){
     fclose(fileOut);
     break;
   case psm:
-#ifndef _NOSQLITE
-    appendFile(s);
-#endif
+    cout << "File format no longer supported." << endl;
     break;
   default:
     cout << "Cannot append file: unknown or unsupported file type." << endl;
@@ -259,14 +247,21 @@ MSHeader& MSReader::getHeader(){
   return header;
 }
 
-void MSReader::getInstrument(char* str){
-  strcpy(str,&sInstrument[0]);
+//REMOVED 2024.09.06
+//void MSReader::getInstrument(char* str){
+//  strcpy(str,&sInstrument[0]);
+//}
+
+void MSReader::getInstrument(string& str) {
+  str=sInstrument;
 }
 
 int MSReader::getLastScan(){
   switch (lastFileFormat){
   case mzXML:
   case mzML:
+  case mzMLb:
+  case mz5:
   case mzXMLgz:
   case mzMLgz:
     if (rampFileIn != NULL) return (rampLastScan);
@@ -279,16 +274,18 @@ int MSReader::getLastScan(){
 #endif
     break;
   default:
-#ifndef _NOSQLITE
-    if (db != 0)return lastScanNumber;
-#endif
     break;
   }
   return -1;
 }
 
-void MSReader::getManufacturer(char* str){
-  strcpy(str,&sManufacturer[0]);
+//REMOVED 2024.09.06
+//void MSReader::getManufacturer(char* str){
+//  strcpy(str,&sManufacturer[0]);
+//}
+
+void MSReader::getManufacturer(string& str) {
+  str=sManufacturer;
 }
 
 int MSReader::getPercent(){
@@ -309,6 +306,7 @@ int MSReader::getPercent(){
   case mzXML:
   case mz5:
   case mzML:
+  case mzMLb:
   case mzXMLgz:
   case mzMLgz:
     if (rampFileIn != NULL){
@@ -341,7 +339,7 @@ int MSReader::openFile(const char *c,bool text){
 	else fileIn=fopen(c,"rb");
 
   if(fileIn==NULL) {
-		for(i=0;i<16;i++) strcpy(header.header[i],"\0");
+		for(i=0;i<16;i++) header.header[i][0]='\0';
     headerIndex=0;
     fileType=Unspecified;
     return 1;
@@ -358,7 +356,7 @@ int MSReader::openFile(const char *c,bool text){
 		fseek(fileIn,0,0);
 
 		if(text){
-			for(i=0;i<16;i++) strcpy(header.header[i],"\0");
+			for(i=0;i<16;i++) header.header[i][0]='\0';
 			headerIndex=0;
 		} else {
       ret=fread(&iFType,4,1,fileIn);
@@ -381,6 +379,7 @@ bool MSReader::prevSpectrum(Spectrum& s){
 bool MSReader::readMGFFile(const char* c, Spectrum& s){
 
   char* tok;
+  char* nextTok;
   char str[1024];
   char num[6];
   unsigned int i;
@@ -416,8 +415,8 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
 
       if(!strncmp(strMGF,"CHARGE",7)) {
         mgfGlobalCharge.clear();
-        strcpy(str, strMGF+7);
-        tok=strtok(str," \t\n\r");
+        strcpy(str,strMGF+7);
+        tok=strtok_r(str," \t\n\r",&nextTok);
         while(tok!=NULL){
           for(i=0;i<strlen(tok);i++){
             if(isdigit(tok[i])) {
@@ -434,7 +433,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
             }
             break;
           }
-          tok=strtok(NULL," \t\n\r");
+          tok=strtok_r(NULL," \t\n\r",&nextTok);
         }
       } else if (!strncmp(strMGF, "MASS", 5)){
 
@@ -512,8 +511,8 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   if(s.getScanNumber()==0){
     //attempt to obtain scan number from title using ISB/ProteoWizard format
     if (s.getNativeID(str, 1024)){
-      tok = strtok(str, ".");
-      tok = strtok(NULL, ".");
+      tok = strtok_r(str, ".",&nextTok);
+      tok = strtok_r(NULL, ".", &nextTok);
       if (tok!=NULL) {
         s.setScanNumber(atoi(tok));
         s.setScanNumber(atoi(tok),true);
@@ -529,20 +528,20 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
   //Read peak data
   while(!isalpha(strMGF[0])){
 
-    tok=strtok(strMGF," \t\n\r");
+    tok=strtok_r(strMGF," \t\n\r", &nextTok);
     if(tok==NULL){
       cout << "Error in MGF file: bad m/z or intensity value." << endl;
       exit(-13);
     }
     mz=atof(tok);
-    tok=strtok(NULL," \t\n\r");
+    tok=strtok_r(NULL," \t\n\r", &nextTok);
     if(tok==NULL){
       cout << "Error in MGF file: bad m/z or intensity value." << endl;
       exit(-13);
     }
     intensity=(float)atof(tok);
     if(!mgfOnePlus){
-      tok=strtok(NULL," \t\n\r");
+      tok=strtok_r(NULL," \t\n\r", &nextTok);
       if(tok!=NULL) {
         ch=atoi(tok);
         mz *= ch;                  // if fragment charge specified, convert m/z to 1+
@@ -568,6 +567,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
 bool MSReader::readMGFFile2(const char* c, Spectrum& s){
 
   char* tok;
+  char* nextTok;
   char str[1024];
   char num[6];
   unsigned int i;
@@ -603,10 +603,10 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
     if(strlen(strMGF)<2) continue; //skip blank lines
     if (strMGF[0] == '#' || strMGF[0] == ';' || strMGF[0] == '!' || strMGF[0] == '/') continue; //skip comment lines
     tokens.clear();
-    tok=strtok(strMGF,"=\n\r");
+    tok=strtok_r(strMGF,"=\n\r", &nextTok);
     while(tok!=NULL){
       tokens.push_back(string(tok));
-      tok=strtok(NULL,"=\n\r");
+      tok=strtok_r(NULL,"=\n\r", &nextTok);
     }
     if(tokens[0].compare("BEGIN IONS")==0) break;
     else if(tokens[0].compare("MASS")==0){
@@ -615,7 +615,7 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
     } else if (tokens[0].compare("CHARGE") == 0){
       mgfGlobalCharge.clear();
       strcpy(str,tokens[1].c_str());
-      tok = strtok(str, " \t\n\r");
+      tok = strtok_r(str, " \t\n\r", &nextTok);
       while (tok != NULL){
         for (i = 0; i<strlen(tok); i++){
           if (isdigit(tok[i])) {
@@ -632,7 +632,7 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
           }
           break;
         }
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &nextTok);
       }
     } else if(tokens[0][0]=='_') { //user and reserved parameters
       if(tokens[0].find("_DISTILLER_RAWFILE")==0){
@@ -646,27 +646,16 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
   }
   if (feof(fileIn)) return false;
 
-  char strTitle[1024];
-  strTitle[0]='\0';
-
   //read spectrum block
   while (!feof(fileIn)){
     if (!fgets(strMGF, 1024, fileIn)) return false;
     if (strlen(strMGF)<2) continue; //skip blank lines
     if (strMGF[0] == '#' || strMGF[0] == ';' || strMGF[0] == '!' || strMGF[0] == '/') continue; //skip comment lines
     tokens.clear();
-    if (strstr(strMGF, "TITLE=")) {
-       strcpy(strTitle, strMGF+6);  // grab full TITLE string for nativeID
-       strTitle[256]='\0';          // setNativeID requires the string to be <= 256
-       if (strTitle[strlen(strTitle)-1]=='\n')
-          strTitle[strlen(strTitle)-1]='\0';
-       if (strTitle[strlen(strTitle)-1]=='\r')
-          strTitle[strlen(strTitle)-1]='\0';
-    }
-    tok = strtok(strMGF, "=\n\r");
+    tok = strtok_r(strMGF, "=\n\r", &nextTok);
     while (tok != NULL){
       tokens.push_back(string(tok));
-      tok = strtok(NULL, "=\n\r");
+      tok = strtok_r(NULL, "=\n\r", &nextTok);
     }
     if (tokens[0].find("END IONS") != string::npos) {
       //convert any header information to MST spectrum information
@@ -684,8 +673,8 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
       if (s.getScanNumber() == 0){
         //attempt to obtain scan number from title using ISB/ProteoWizard format
         if (s.getNativeID(str, 1024)){
-          tok = strtok(str, ".");
-          tok = strtok(NULL, ".");
+          tok = strtok_r(str, ".", &nextTok);
+          tok = strtok_r(NULL, ".", &nextTok);
           if (tok != NULL) {
             s.setScanNumber(atoi(tok));
             s.setScanNumber(atoi(tok), true);
@@ -714,16 +703,16 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
     } else if (tokens[0].find("RTINSECONDS")==0) {
       s.setRTime((float)(atof(tokens[1].c_str()) / 60.0));
     } else if (tokens[0].compare("TITLE")==0) {
-      const char* cc = strTitle;
-      s.setNativeID(cc);
+      for(size_t a=2;a<tokens.size();a++) tokens[1]+='='+tokens[a];
+      s.setNativeID(tokens[1].c_str());
     } else if(isdigit(tokens[0][0])){
       strcpy(str, tokens[0].c_str());
-      tok = strtok(str, " \t\n\r");
+      tok = strtok_r(str, " \t\n\r", &nextTok);
       mz = atof(tok);
-      tok = strtok(NULL, " \t\n\r");
+      tok = strtok_r(NULL, " \t\n\r", &nextTok);
       intensity = (float)atof(tok);
       if (!mgfOnePlus){
-        tok = strtok(NULL, " \t\n\r");
+        tok = strtok_r(NULL, " \t\n\r", &nextTok);
         if (tok != NULL) {
           ch = atoi(tok);
           mz *= ch;                  // if fragment charge specified, convert m/z to 1+
@@ -753,6 +742,7 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
   char tstr[256];
   char ch;
   char *tok;
+  char *nextTok;
   char *retC;
 
   //variables for compressed files
@@ -925,10 +915,13 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
 	      //Header lines are recorded as strings up to 16 lines at 256 characters each
         retC = fgets(tstr, 256, fileIn);
 	      if(!bDoneHeader) {
-	        tok=strtok(tstr," \t\n\r");
-	        tok=strtok(NULL,"\n\r");
-	        strcat(tok,"\n");
-	        if(headerIndex<16) strcpy(header.header[headerIndex++],tok);
+	        tok=strtok_r(tstr," \t\n\r", &nextTok);
+	        tok=strtok_r(NULL,"\n\r", &nextTok);
+	        if(headerIndex<16) {
+            strcpy(header.header[headerIndex],tok);
+            strcat(header.header[headerIndex],"\n");
+            headerIndex++;
+          }
 	        else cout << "Header too big!!" << endl;
 	      }
 	      break;
@@ -936,49 +929,49 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
       case 'I':
 	      //I lines are recorded only if they contain retention times
         retC = fgets(tstr, 256, fileIn);
-        tok=strtok(tstr," \t\n\r");
-        tok=strtok(NULL," \t\n\r");
+        tok=strtok_r(tstr," \t\n\r", &nextTok);
+        tok=strtok_r(NULL," \t\n\r", &nextTok);
         if(strcmp(tok,"RTime")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setRTime((float)atof(tok));
         }	else if(strcmp(tok,"TIC")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setTIC((float)atof(tok));
         }	else if(strcmp(tok,"IIT")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setIonInjectionTime((float)atof(tok));
         }	else if(strcmp(tok,"BPI")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setBPI((float)atof(tok));
         }	else if(strcmp(tok,"BPM")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setBPM((float)atof(tok));
         }	else if(strcmp(tok,"ConvA")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionA(atof(tok));
         }	else if(strcmp(tok,"ConvB")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionB(atof(tok));
         }	else if(strcmp(tok,"ConvC")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionC(atof(tok));
         }	else if(strcmp(tok,"ConvD")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionD(atof(tok));
         }	else if(strcmp(tok,"ConvE")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionE(atof(tok));
         }	else if(strcmp(tok,"ConvI")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           s.setConversionI(atof(tok));
         } else if(strcmp(tok,"EZ")==0) {
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           ez.z=atoi(tok);
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           ez.mh=atof(tok);
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           ez.pRTime=(float)atof(tok);
-          tok=strtok(NULL," \t\n\r,");
+          tok=strtok_r(NULL," \t\n\r,", &nextTok);
           ez.pArea=(float)atof(tok);
           s.addEZState(ez);
         }
@@ -998,18 +991,18 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
 
 	      } else {
           retC = fgets(tstr, 256, fileIn);
-	        tok=strtok(tstr," \t\n\r");
-	        tok=strtok(NULL," \t\n\r");
+	        tok=strtok_r(tstr," \t\n\r", &nextTok);
+	        tok=strtok_r(NULL," \t\n\r", &nextTok);
           s.setScanNumber(atoi(tok));
-	        tok=strtok(NULL," \t\n\r");
+	        tok=strtok_r(NULL," \t\n\r", &nextTok);
 	        s.setScanNumber(atoi(tok),true);
-	        tok=strtok(NULL," \t\n\r");
+	        tok=strtok_r(NULL," \t\n\r", &nextTok);
 	        if(tok!=NULL)	s.setMZ(atof(tok));
 					else s.setMZ(0);
-					tok=strtok(NULL," \t\n\r");
+					tok=strtok_r(NULL," \t\n\r", &nextTok);
 					while(tok!=NULL) {
 						s.addMZ(atof(tok));
-						tok=strtok(NULL," \t\n\r");
+						tok=strtok_r(NULL," \t\n\r", &nextTok);
 					}
 	        if(scNum != 0){
 	          if(s.getScanNumber() != scNum) {
@@ -1033,10 +1026,10 @@ bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
  	        break;
 	      }
         retC = fgets(tstr, 256, fileIn);
-	      tok=strtok(tstr," \t\n\r");
-	      tok=strtok(NULL," \t\n\r");
+	      tok=strtok_r(tstr," \t\n\r", &nextTok);
+	      tok=strtok_r(NULL," \t\n\r", &nextTok);
 	      z.z=atoi(tok);
-	      tok=strtok(NULL," \t\n\r");
+	      tok=strtok_r(NULL," \t\n\r", &nextTok);
 	      z.mh=atof(tok);
 	      s.addZState(z);
 	      break;
@@ -1088,8 +1081,8 @@ void MSReader::writeFile(const char* c, bool text, MSObject& m){
   if(c == NULL) {
     return;
   } else {
-    if(text) fileOut=fopen(c,"wt");
-    else fileOut=fopen(c,"wb");
+    if(text) fileOut =fopen(c,"wt");
+    else fileOut =fopen(c,"wb");
   }
 
   //output file header lines;
@@ -1157,9 +1150,7 @@ void MSReader::writeFile(const char* c, MSFileFormat ff, MSObject& m, const char
     writeFile(c,true,m);
     break;
   case psm:
-    #ifndef _NOSQLITE
-    writeSqlite(c,m, sha1Report);
-    #endif
+    cout << "File format no longer supported." << endl;
     break;
   case mzXML:
   case mz5:
@@ -1199,311 +1190,6 @@ void MSReader::writeFile(const char* c, MSFileFormat ff, MSObject& m, const char
 
 }
 
-#ifndef _NOSQLITE
-void MSReader::writeSqlite(const char* c, MSObject& m, const char* sha1Report)
-{
-
-  //open the database for write
-  sqlite3_open(c, &db);
-  if(db == 0)
-    {
-      cout<<"Error open database "<<c<<endl;
-      return;
-    }
-
-  sql_stmt("PRAGMA synchronous=OFF");
-  sql_stmt("PRAGMA cache_size=750000");
-  sql_stmt("PRAGMA temp_store=MEMORY");
-
-  //create two tables (msRun and msScan)
-  char zSql[8192];
-
-  strcpy(zSql, "create table msRun(id INTEGER primary key autoincrement not null,"
-	 "filename VARCHAR(150), sha1Sum VARCHAR(100), creationTime VARCHAR(255), extractor VARCHAR(255),"
-	 "extractorVersion VARCHAR(100), instrumentType VARCHAR(100), instrumentVendor TEXT, instrumentSN TEXT,"
-	 "acquisitionMethod TEXT, originalFileType TEXT, separateDigestion CHAR(1), uploadDate TEXT, comment TEXT)");
-  sql_stmt(zSql);
-  zSql[0]='\0';
-
-  strcpy(zSql,"create table msScan(id INTEGER primary key autoincrement not null,"
-	 "runID INTEGER, startScanNumber INTEGER, endScanNumber INTEGER, level INTEGER, precursorMZ REAL, precursorCharge INTEGER,"
-	 "preScanID INTEGER, preScanNumber INTEGER, retentionTime REAL, fragmentationType VARCHAR(100),isCentroid CHAR(1), peakCount INTEGER)");
-  sql_stmt(zSql);
-  zSql[0]='\0';
-
-  strcpy(zSql, "create table msScanData(scanID INTEGER, peakMZ BLOB, peakIntensity BLOB)");
-  sql_stmt(zSql);
-  zSql[0]='\0';
-
-  strcpy(zSql,"create table MS2FileScanCharge(id INTEGER primary key autoincrement not null,"
-	 "scanID INTEGER, charge INTEGER, mass REAL)");
-  sql_stmt(zSql);
-  zSql[0]='\0';
-
-  //get the creationTime, sha1Sum etc.
-  string fileCreateTime="=";
-  string instrumentType="=";
-  for(int i=0; i<16; i++)
-    {
-      if(*m.getHeader().header[i] != '\0')
-	{
-	  string headerLine = m.getHeader().header[i];
-	  if(headerLine.find("CreationDate") != string::npos)
-	    {
-	      size_t pos = headerLine.find('\t');
-	      fileCreateTime = headerLine.substr(pos+1);
-	    }
-	  if(headerLine.find("InstrumentType") != string::npos)
-	    {
-	      size_t pos = headerLine.find('\t');
-	      instrumentType = headerLine.substr(pos+1);
-	    }
-	}
-    }
-
-
-  //insert into table msRun
-  sprintf(zSql,"insert into msRun(filename, sha1Sum, creationTime, extractor,extractorVersion, instrumentType) values('%s','%s','%s','%s','%s','%s')",
-	  c,
-	  sha1Report,
-	  fileCreateTime.c_str(),
-	  "MakeMS2",
-	  "1.0",
-	  instrumentType.c_str());
-
-  sql_stmt(zSql);
-
-}
-#endif
-
-//private function for insert a scan into msScan table
-#ifndef _NOSQLITE
-void MSReader::appendFile(Spectrum& s)
-{
-
-  if(db == 0)
-    return;
-
-  int j;
-
-  //file compression
-  int err;
-  uLong len;
-  unsigned char *comprM, *comprI;
-  uLong comprLenM, comprLenI;
-  double *pD;
-  float *pF;
-  uLong sizeM;
-  uLong sizeI;
-
-  //Build arrays to hold scan prior to compression
-
-  pD = new double[s.size()];
-  pF = new float[s.size()];
-  for(j=0;j<s.size();j++){
-    pD[j]=s.at(j).mz;
-    pF[j]=s.at(j).intensity;
-  }
-
-  //compress mz
-  len = (uLong)s.size()*sizeof(double);
-  sizeM = len;
-  comprLenM = compressBound(len);
-  comprM = (unsigned char*)calloc((uInt)comprLenM, 1);
-  err = compress(comprM, &comprLenM, (const Bytef*)pD, len);
-
-  //compress intensity
-  len = (uLong)s.size()*sizeof(float);
-  sizeI = len;
-  comprLenI = compressBound(len);
-  comprI = (unsigned char*)calloc((uInt)comprLenI, 1);
-  err = compress(comprI, &comprLenI, (const Bytef*)pF, len);
-
-   //insert into table
-  char zSql[8192];
-  int charge;
-
-  vector<int> chgs;
-  if(s.getMsLevel() >1)
-    {
-      chgs = estimateCharge(s);
-    }
-
-  if(s.sizeZ() == 1)
-    charge = s.atZ(0).z;
-  else if(s.sizeZ() > 1)
-    charge = 0;
-  else
-    {
-      if(chgs.size() == 1)
-	charge = chgs.at(0);
-      else
-	charge = 0;
-    }
-
-
-  MSActivation act = s.getActivationMethod();
-  string actMethod;
-  switch(act){
-  case mstETD:
-    actMethod="ETD";
-    break;
-  case mstETDSA:
-    actMethod="ETDSA";
-    break;
-  case mstCID:
-    actMethod="CID";
-    break;
-  case mstECD:
-    actMethod="ECD";
-    break;
-  case mstPQD:
-    actMethod = "PQD";
-    break;
-  case mstHCD:
-    actMethod = "HCD";
-    break;
-  case mstNA:
-  default:
-    actMethod="UNKNOWN";
-    break;
-  }
-
-
-  sprintf(zSql, "insert into msScan(runID,startScanNumber,endScanNumber,level,precursorMZ, precursorCharge,retentionTime,fragmentationType,peakCount) "
-	  "values (1,%d, %d,%d, %f, %d, %f,'%s', %d)",
-          s.getScanNumber(),
-	  s.getScanNumber(true),
-	  s.getMsLevel(),
-          s.getMZ(),
-          charge,
-          s.getRTime(),
-	  actMethod.c_str(),
-          s.size());
-
-  sql_stmt(zSql);
-  zSql[0]='\0';
-
-  //get scanID
-  strcpy(zSql, "select MAX(id) from msScan");
-  int rc,iRow, iCol;
-  char** result;
-
-  int lastScanID;
-   rc = sqlite3_get_table(db, zSql, &result, &iRow, &iCol, 0);
-
-   if(rc == SQLITE_OK)
-     {
-       lastScanID=atoi(result[1]);
-
-     }
-   else
-     {
-       cout<<"Can't execute the SQL statement"<<zSql<<endl;
-     }
-
-   zSql[0]='\0';
-
-   //insert into msScanData
-   sprintf(zSql, "insert into msScanData values(%d, ?, ?)",
-	   lastScanID);
-
-  sqlite3_stmt *pStmt;
-
-
-  rc = sqlite3_prepare(db, zSql, -1, &pStmt, 0);
-  if( rc!=SQLITE_OK ){
-    cout<<"can't prepare SQL statement!"<<rc<<endl;
-    exit(1);
-  }
-
-
-  sqlite3_bind_blob(pStmt, 1, comprM, (int)comprLenM, SQLITE_STATIC);
-  sqlite3_bind_blob(pStmt, 2, comprI, (int)comprLenI, SQLITE_STATIC);
-
-  rc = sqlite3_step(pStmt);
-  rc = sqlite3_finalize(pStmt);
-
-  free(comprM);
-  free(comprI);
-  delete [] pD;
-  delete [] pF;
-
-  zSql[0]='\0';
-  //insert into MS2FileScanCharge
-  int chg;
-  double MH;
-  if(s.getMsLevel() > 1)
-    {
-      if(s.sizeZ() > 0)
-	{
-	  for(int i=0; i<s.sizeZ(); i++)
-	    {
-	      chg = s.atZ(i).z;
-	      MH = s.getMZ()*chg-(chg-1)*1.008;
-	      sprintf(zSql, "insert into MS2FileScanCharge(scanID, charge, mass) values(%d, %d, %f)",
-		     lastScanID,
-		     chg,
-		     MH);
-	      sql_stmt(zSql);
-	    }
-
-	}
-      else
-	{
-
-	  for(unsigned int i=0; i<chgs.size(); i++)
-	    {
-	      chg=chgs.at(i);
-	      MH = s.getMZ()*chg -(chg-1)*1.008;
-	      sprintf(zSql, "insert into MS2FileScanCharge(scanID, charge, mass) values (%d, %d, %f)",
-		     lastScanID,
-		     chg,
-		     MH);
-	      sql_stmt(zSql);
-	    }
-	}
-    }
-}
-
-vector<int> MSReader::estimateCharge(Spectrum& s)
-{
-  vector<int> chgs;
-  float totalIntensity = s.getTotalIntensity();
-  float beforeMZIntensity=0;
-
-  double preMZ = s.getMZ();
-
-  for(int i=0; i<s.size(); i++)
-    {
-      if(s.at(i).mz <= preMZ)
-	beforeMZIntensity += s.at(i).intensity;
-      else
-	break;
-    }
-
-  if(beforeMZIntensity/totalIntensity >= 0.95)
-    {
-      chgs.push_back(1);
-    }
-  else
-    {
-      chgs.push_back(2);
-      chgs.push_back(3);
-    }
-  return chgs;
-}
-
-
-void MSReader::createIndex()
-{
-  //create index for msScan table
-  const char* stmt1 = "create index idxScanNumber on msScan(startScanNumber)";
-  sql_stmt(stmt1);
-
-}
-#endif
-
 void MSReader::setPrecision(int i, int j){
   iIntensityPrecision=i;
   iMZPrecision=j;
@@ -1519,41 +1205,56 @@ void MSReader::setPrecisionMZ(int i){
 
 bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 
+  bool bNewRead=false;
   if(c!=NULL) {
-    lastFileFormat = checkFileFormat(c);
-    sCurrentFile = c;
-    sInstrument.clear();
-    sManufacturer.clear();
-    sInstrument="unknown";
-    sManufacturer="unknown";
+    if(sCurrentFile.compare(c)!=0){
+      lastFileFormat = checkFileFormat(c);
+      sCurrentFile = c;
+      sInstrument.clear();
+      sManufacturer.clear();
+      sInstrument="unknown";
+      sManufacturer="unknown";
+      bNewRead=true;
+    } 
+  } else {
+    if(sCurrentFile.empty()){
+      cout << "MSReader::readFile must specify file for first read." << endl;
+      return false;
+    }
   }
   switch(lastFileFormat){
 	case ms1:
 	case ms2:
 	case  zs:
 	case uzs:
-		return readMSTFile(c,true,s,scNum);
+    if(bNewRead) return readMSTFile(c,true,s,scNum);
+    else return readMSTFile(NULL, true, s, scNum);
 		break;
 	case bms1:
 	case bms2:
 		setCompression(false);
-		return readMSTFile(c,false,s,scNum);
+		if(bNewRead) return readMSTFile(c,false,s,scNum);
+    else return readMSTFile(NULL, false, s, scNum);
 		break;
 	case cms1:
 	case cms2:
 		setCompression(true);
-    return readMSTFile(c,false,s,scNum);
+    if(bNewRead) return readMSTFile(c,false,s,scNum);
+    else readMSTFile(NULL, false, s, scNum);
 		break;
 	case mz5:
   case mzXML:
 	case mzML:
+  case mzMLb:
 	case mzXMLgz:
 	case mzMLgz:
-		return readMZPFile(c,s,scNum);
+		if(bNewRead) return readMZPFile(c,s,scNum);
+    else return readMZPFile(NULL, s, scNum);
 		break;
   case mgf:
     if(scNum!=0) cout << "Warning: random-access or previous spectrum reads not allowed with MGF format." << endl;
-    return readMGFFile2(c,s);
+    if(bNewRead) return readMGFFile2(c,s);
+    else return readMGFFile2(NULL, s);
     break;
 	case raw:
 		#ifdef _MSC_VER
@@ -1561,10 +1262,12 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 		//only read the raw file if the dll was present and loaded.
 		if(cRAW.getStatus()) {
 			cRAW.setMSLevelFilter(&filter);
-      bool b=cRAW.readRawFile(c,s,scNum);
-      if(b && c!=NULL) {
-        cRAW.getInstrument(&sInstrument[0]);
-        cRAW.getManufacturer(&sManufacturer[0]);
+      bool b;
+      if(bNewRead) b=cRAW.readRawFile(c,s,scNum);
+      else b=cRAW.readRawFile(NULL, s, scNum);
+      if(b && bNewRead) {
+        cRAW.getInstrument(sInstrument);
+        cRAW.getManufacturer(sManufacturer);
       }
 			return b;
 		} else {
@@ -1582,13 +1285,6 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 		break;
 	case sqlite:
 	case psm:
-		#ifndef _NOSQLITE
-		return readSqlite(c,s,scNum);
-		#else
-		//sqlite support disabled
-		cerr << "SQLite support disabled." << endl;
-		return false;
-		#endif
 		break;
 	case dunno:
 	default:
@@ -1600,264 +1296,13 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 
 }
 
-#ifndef _NOSQLITE
-bool MSReader::readSqlite(const char* c, Spectrum& s, int scNum)
-{
-
-  if(c != NULL)
-    {
-      sqlite3_open(c, &db);
-      if(db == 0)
-	{
-	  cout<<"Error open database "<<c<<endl;
-	  return false;
-	}
-
-      sql_stmt("PRAGMA synchronous=OFF");
-      sql_stmt("PRAGMA cache_size=750000");
-      sql_stmt("PRAGMA temp_store=MEMORY");
-
-      char zSql[1024];
-      strcpy(zSql, "select MAX(id),MAX(startScanNumber) from msScan");
-      int iRow, iCol, rc;
-      char** result;
-
-
-      rc = sqlite3_get_table(db, zSql, &result, &iRow, &iCol, 0);
-
-      if(rc == SQLITE_OK)
-        {
-	  lastIndex = atoi(result[2]);
-          lastScanNumber=atoi(result[3]);
-	}
-
-      curIndex = 0;
-    }
-
-  s.clear();
-
-  char zSql[2048];
-  int rc;
-
-
-  if(scNum != 0)
-    {
-      //first get the curIndex
-
-      if(scNum > lastScanNumber)
-	{
-	  cout<<"Specified scan number doesn't exist!"<<endl;
-	  return false;
-	}
-
-      sprintf(zSql, "select id from msScan where startScanNumber=%d", scNum);
-      int iRow, iCol;
-      char** result;
-
-
-      rc = sqlite3_get_table(db, zSql, &result, &iRow, &iCol, 0);
-
-      if(rc == SQLITE_OK)
-	{
-	  curIndex = atoi(result[1]);
-	  // curIndex++;
-	}
-      else
-	{
-	  cout<<"Can't execute the SQL statement"<<zSql<<endl;
-
-	}
-
-      sprintf(zSql, "select * from msScan, msScanData where startScanNumber=%d "
-	      "AND id=scanID", scNum);
-      if(!executeSqlStmt(s,zSql))
-	cout<<scNum<<" can't be found in the database!"<<endl;
-
-    }
-  else
-    {
-      while(true)
-	{
-	  curIndex++;
-	  if(curIndex > lastIndex)
-	    return false;
-
-	  sprintf(zSql, "select * from msScan, msScanData where id=%d "
-		  "AND id=scanID",curIndex);
-	  if(executeSqlStmt(s,zSql))
-	    break;
-	}
-
-
-    }
-
-  return true;
-
-}
-
-bool MSReader::executeSqlStmt(Spectrum& s, char* zSql)
-{
-  bool isSameLevel=false;
-  sqlite3_stmt *pStmt;
-  int rc;
-
-  rc = sqlite3_prepare(db, zSql, -1, &pStmt, 0);
-
-  if( rc!=SQLITE_OK ){
-    cout<<"can't prepare SQL statement!"<<rc<<endl;
-    exit(1);
-  }
-
-  rc = sqlite3_step(pStmt);
-
-  char actMethod[1024];
-  int charge=-1;
-  int msLevel=-1;
-  int scanID;
-  MSSpectrumType msType;
-
-  if( rc==SQLITE_ROW ){
-
-    //add filter if filter set
-    msLevel = sqlite3_column_int(pStmt,4);
-    switch(msLevel){
-    case 1:
-      msType = MS1;
-      break;
-    case 2:
-      msType = MS2;
-      break;
-    case 3:
-      msType = MS3;
-      break;
-    default:
-      break;
-    }
-
-    if(find(filter.begin(),filter.end(),msType) != filter.end())
-      {
-	scanID=sqlite3_column_int(pStmt,0);
-	s.setScanID(sqlite3_column_int(pStmt,0));
-
-	s.setScanNumber(sqlite3_column_int(pStmt,2));
-	s.setScanNumber(sqlite3_column_int(pStmt,3),true);
-	s.setMsLevel(msLevel);
-	s.setMZ(sqlite3_column_double(pStmt,5));
-	s.setCharge(sqlite3_column_int(pStmt,6));
-	readChargeTable(scanID,s);
-	s.setRTime((float)sqlite3_column_double(pStmt,9));
-
-	strcpy(actMethod,reinterpret_cast<const char*>(sqlite3_column_text(pStmt,10)));
-	if(strcmp(actMethod,"CID") == 0)
-	  s.setActivationMethod(mstCID);
-	if(strcmp(actMethod, "ETD") == 0)
-	  s.setActivationMethod(mstETD);
-	if(strcmp(actMethod, "ECD") == 0)
-	  s.setActivationMethod(mstECD);
-	if(strcmp(actMethod, "PQD") == 0)
-	  s.setActivationMethod(mstPQD);
-	if(strcmp(actMethod, "HCD") == 0)
-	  s.setActivationMethod(mstHCD);
-	if(strcmp(actMethod, "UNKNOWN") == 0)
-	  s.setActivationMethod(mstNA);
-
-	int numPeaks = sqlite3_column_int(pStmt,12);
-
-	int numBytes1=sqlite3_column_bytes(pStmt,14);
-	unsigned char* comprM = (unsigned char*)sqlite3_column_blob(pStmt,14);
-	int numBytes2=sqlite3_column_bytes(pStmt,15);
-	unsigned char* comprI = (unsigned char*)sqlite3_column_blob(pStmt,15);
-
-
-	getUncompressedPeaks(s,numPeaks, numBytes1,comprM, numBytes2,comprI);
-	isSameLevel = true;
-      }
-
-  }
-  rc = sqlite3_finalize(pStmt);
-  return isSameLevel;
-
-}
-
-void MSReader::readChargeTable(int scanID, Spectrum& s)
-{
-  char zSql[8192];
-  sprintf(zSql, "select charge, mass from MS2FileScanCharge where scanID=%d", scanID);
-  sqlite3_stmt *pStmt;
-  int rc;
-
-  rc = sqlite3_prepare(db, zSql, -1, &pStmt, 0);
-
-  if( rc!=SQLITE_OK ){
-    cout<<"can't prepare SQL statement!"<<rc<<endl;
-    exit(1);
-  }
-
-  rc = sqlite3_step(pStmt);
-  int charge;
-  double MH;
-  while(rc == SQLITE_ROW)
-    {
-      charge = sqlite3_column_int(pStmt,0);
-      MH = sqlite3_column_double(pStmt,1);
-
-      s.addZState(charge, MH);
-      rc=sqlite3_step(pStmt);
-    }
-  rc = sqlite3_finalize(pStmt);
-}
-
-
-
-void MSReader::getUncompressedPeaks(Spectrum& s, int& numPeaks, int& mzLen, unsigned char* comprM, int& intensityLen, unsigned char* comprI)
-{
-  int i;
-
-
-  //variables for compressed files
-  uLong uncomprLen;
-  double *mz;
-  float *intensity;
-
-  mz = new double[numPeaks];
-  uncomprLen=numPeaks*sizeof(double);
-  uncompress((Bytef*)mz, &uncomprLen, comprM, mzLen);
-
-  intensity = new float[numPeaks];
-  uncomprLen=numPeaks*sizeof(float);
-  uncompress((Bytef*)intensity, &uncomprLen, comprI, intensityLen);
-
-  for(i=0;i<numPeaks;i++){
-    s.add(mz[i],intensity[i]);
-
-  }
-  delete [] mz;
-  delete [] intensity;
-}
-
-void MSReader::sql_stmt(const char* stmt)
-{
-
-  char *errmsg;
-  int   ret;
-
-  ret = sqlite3_exec(db, stmt, 0, 0, &errmsg);
-
-  if (ret != SQLITE_OK)
-    {
-      printf("Error in statement: %s [%s].\n", stmt, errmsg);
-    }
-}
-
-#endif
-
 bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	mzParser::ramp_fileoffset_t indexOffset;
   mzParser::ScanHeaderStruct scanHeader;
   mzParser::RAMPREAL *pPeaks;
-	int i,j,k;
-  double d,d2,d3;
-  int *charges=NULL;
+  mzParser::sPrecursorIon rPI;
+  mzParser::BasicSpectrum *bs=NULL;
+	int i,j;
   bool bFoundSpec=false;
 
 	if(c!=NULL) {
@@ -1865,7 +1310,8 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		if(rampFileOpen) closeFile();
 		rampFileIn = mzParser::rampOpenFile(c);
 		if (rampFileIn == NULL) {
-      cerr << "ERROR: Failure reading input file " << c << endl;
+      //silence errors. TODO: put in error code for user to lookup
+      //cerr << "ERROR: Failure reading input file " << c << endl;
       return false;
 		}
 		rampFileOpen=true;
@@ -1897,7 +1343,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       return false; //don't grab previous scan when we're out of bounds
     }
     while(true){
-      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex);
+      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex,&bs);
       if (scNum>0 && scanHeader.acquisitionNum != scNum && scanHeader.acquisitionNum != -1) {
         cerr << "ERROR: Failure reading scan, index corrupted.  Line endings may have changed during transfer.\n" << flush;
         return false;
@@ -1933,7 +1379,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
       if (rampIndex>rampLastScan) return false;
       if (pScanIndex[rampIndex]<0) continue;
 
-      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex);
+      readHeader(rampFileIn, pScanIndex[rampIndex], &scanHeader,rampIndex,&bs);
       switch (scanHeader.msLevel){
       case 1: mslevel = MS1; break;
       case 2: mslevel = MS2; break;
@@ -1958,7 +1404,9 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	s.setScanNumber(scanHeader.acquisitionNum,true);
 	s.setRTime((float)scanHeader.retentionTime/60.0f);
   s.setCompensationVoltage(scanHeader.compensationVoltage);
+  s.setInverseReducedIonMobility(scanHeader.inverseReducedIonMobility);
   s.setIonInjectionTime((float)scanHeader.ionInjectionTime);
+  s.setIonMobilityDriftTime(scanHeader.ionMobilityDriftTime);
   s.setTIC(scanHeader.totIonCurrent);
   s.setScanWindow(scanHeader.lowMZ,scanHeader.highMZ);
   s.setBPI((float)scanHeader.basePeakIntensity);
@@ -1977,6 +1425,18 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 		s.setMZ(scanHeader.precursorMZ,scanHeader.precursorMonoMZ);
 		s.setCharge(scanHeader.precursorCharge);
     s.setSelWindow(scanHeader.selectionWindowLower,scanHeader.selectionWindowUpper);
+    MSPrecursorInfo pi;
+    pi.isoMz=scanHeader.isolationMZ;
+    pi.mz=scanHeader.precursorMZ;
+    pi.monoMz=scanHeader.precursorMonoMZ;
+    pi.charge=scanHeader.precursorCharge;
+    pi.isoOffsetLower=scanHeader.isolationWindowLower;
+    pi.isoOffsetUpper=scanHeader.isolationWindowUpper;
+    pi.precursorScanNumber=scanHeader.precursorScanNum;
+    if (strcmp(scanHeader.activationMethod, "HCD") == 0) pi.activation = mstHCD;
+    else if (strcmp(scanHeader.activationMethod, "CID") == 0) pi.activation = mstCID;
+    else if (strcmp(scanHeader.activationMethod, "ETD") == 0) pi.activation = mstETD;
+    s.addPrecursor(pi);
 	} else {
 		s.setMZ(0);
     s.setSelWindow(0,0);
@@ -1990,24 +1450,51 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
     s.addZState(j,scanHeader.precursorMZ*j-(j-1)*1.007276466);
   }
   for(i=1;i<scanHeader.precursorCount;i++){
-    getPrecursor(&scanHeader,i,d,d2,d3,j,k,charges);
-    s.addMZ(d);
-    s.addZState(j, d*j-(j-1)*1.007276466);
-    if(charges!=NULL){
-      delete[] charges;
-      charges=NULL;
+    getPrecursor(&scanHeader,i,rPI);
+    s.addMZ(rPI.mz);
+    s.addZState(rPI.charge, rPI.mz* rPI.charge -(rPI.charge -1)*1.007276466);
+    MSPrecursorInfo pi;
+    pi.isoMz=rPI.mz; //MH: Fix this by expanding the extra precursor information.
+    pi.mz = rPI.mz;
+    pi.charge = rPI.charge;
+    pi.isoOffsetLower = rPI.isoLowerOffset;
+    pi.isoOffsetUpper = rPI.isoUpperOffset;
+    pi.precursorScanNumber=scanHeader.precursorScanNum;
+    if(strcmp(scanHeader.activationMethod,"HCD")==0) pi.activation=mstHCD;
+    else if (strcmp(scanHeader.activationMethod, "CID") == 0) pi.activation=mstCID;
+    else if (strcmp(scanHeader.activationMethod, "ETD") == 0) pi.activation = mstETD;
+    s.addPrecursor(pi);
+  }
+  if(strlen(scanHeader.scanDescription)>0){
+    string st=scanHeader.scanDescription;
+    s.setScanDescription(st);
+  }
+
+  //copy the user params, if any
+  if(bs!=NULL){
+    size_t index = 0;
+    mzParser::sUParam up = bs->getUserParam(index++);
+    while (!up.name.empty()) {
+      s.addUserParam(up.name,up.value,up.type);
+      up = bs->getUserParam(index++);
     }
   }
+
   //store the spectrum
 	pPeaks = readPeaks(rampFileIn, pScanIndex[rampIndex],rampIndex);
 	j=0;
 	for(i=0;i<scanHeader.peaksCount;i++){
-		s.add((double)pPeaks[j],(float)pPeaks[j+1]);
-		j+=2;
+    if(scanHeader.ionMobility){
+      s.add((double)pPeaks[j], (float)pPeaks[j + 1],(double)pPeaks[j+2]);
+      j+=3;
+    } else {
+      s.add((double)pPeaks[j],(float)pPeaks[j+1]);
+      j+=2;
+    }
 	}
   lastReadScanNum = scanHeader.acquisitionNum;
 
-	free(pPeaks);
+	//free(pPeaks);  //don't clean this up anymore. will get cleaned up in the RAMPFILE struct
 	return true;
 
 }
@@ -2385,7 +1872,6 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
 
   size_t i;
 	char ext[32];
-	char tmp[1024];
 	char* c;
 
 	//extract extension & capitalize
@@ -2406,11 +1892,17 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
   if(strcmp(ext,".MSMAT")==0 ) return msmat_ff;
   if(strcmp(ext,".RAW")==0 ) return raw;
   if(strcmp(ext,".MZXML")==0 ) return mzXML;
-  if(strcmp(ext,".MZ5")==0 ) {
-    cerr << "MZ5 format is no longer supported." << endl;
+#ifdef MZP_HDF
+  if(strcmp(ext,".MZ5")==0 ) return mz5;
+  if (strcmp(ext, ".MZMLB") == 0) return mzMLb;
+#else
+  if (strcmp(ext, ".MZ5") == 0 || strcmp(ext, ".MZMLB") == 0) {
+    cerr << "mz5 and mzMLb formats require MSToolkit to be compiled with 'MZP_HDF'. Please recompile with correct flag." << endl;
     return dunno;
   }
+#endif
 	if(strcmp(ext,".MZML")==0 ) return mzML;
+  if(strcmp(ext,".MZMLB")==0 ) return mzMLb;
   if(strcmp(ext,".MGF")==0 ) return mgf;
 	//add the sqlite3 format
   if(strcmp(ext,".SQLITE3")==0 ) return sqlite;
@@ -2418,6 +1910,7 @@ MSFileFormat MSReader::checkFileFormat(const char *fn){
 	
 	if(strcmp(ext,".GZ")==0 ) {
 		i=c-fn;
+    char tmp[1024];
 		strncpy(tmp,fn,i);
 		tmp[i]='\0';
 		c=strrchr(tmp,'.');

@@ -46,6 +46,7 @@ int main(int argc, char* argv[]){
 	bool bLastWasSpectrum=true;
 	char c='a';
 	char str[256];
+	string tStr;
 	int num;
 	while(c!='x'){
 
@@ -56,9 +57,9 @@ int main(int argc, char* argv[]){
 			cout << "\tMS Level: " << s.getMSLevel() << endl;
 			cout << "\tNumber of Peaks: " << s.size() << endl;
 		} else {
-			chromat.getIDString(str);
+			chromat.getIDString(tStr);
 			cout << "\nCurrent chromatogram:" << endl;
-			cout << "\tID: " << str << endl;
+			cout << "\tID: " << tStr << endl;
 			cout << "\tNumber of Peaks: " << chromat.size() << endl;
 		}
 		cout << "\nMenu:\n\t'c' to grab a new chromatogram\n\t's' to grab a new spectrum\n\t'p' to show peaks\n\t'x' to exit" << endl;

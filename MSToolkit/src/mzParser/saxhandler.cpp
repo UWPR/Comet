@@ -152,6 +152,7 @@ mzpSAXHandler::mzpSAXHandler()
 {
 	fptr = NULL;
 	m_bGZCompression = false;
+	m_bionMobility = false;
 	fptr = NULL;
 	m_parser = XML_ParserCreate(NULL);
 	XML_SetUserData(m_parser, this);
@@ -287,13 +288,10 @@ bool mzpSAXHandler::parseOffset(f_off offset){
 	bool success = true;
 	int chunk=0;
 	
-	XML_ParserReset(m_parser,"ISO-8859-1");
-	XML_SetUserData(m_parser, this);
-	XML_SetElementHandler(m_parser, mzp_startElementCallback, mzp_endElementCallback);
-	XML_SetCharacterDataHandler(m_parser, mzp_charactersCallback);
-
-	mzpfseek(fptr,offset,SEEK_SET);
+	parserReset();
 	m_bStopParse=false;
+	
+	mzpfseek(fptr,offset,SEEK_SET);
 
 	if(m_bGZCompression){
 		while (success && (readBytes = gzObj.extract(fptr, offset+chunk*CHUNK, (unsigned char*)buffer, CHUNK))>0) {
@@ -335,6 +333,13 @@ bool mzpSAXHandler::parseOffset(f_off offset){
 		return false;
 	}
 	return true;
+}
+
+void mzpSAXHandler::parserReset(){
+	XML_ParserReset(m_parser, "ISO-8859-1");
+	XML_SetUserData(m_parser, this);
+	XML_SetElementHandler(m_parser, mzp_startElementCallback, mzp_endElementCallback);
+	XML_SetCharacterDataHandler(m_parser, mzp_charactersCallback);
 }
 
 void mzpSAXHandler::setGZCompression(bool b){

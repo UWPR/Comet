@@ -9,7 +9,12 @@ Version 1.1, March 14, 2012.
 */
 
 #include "mzParser.h"
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
+
+using namespace mzParser;
+using namespace H5;
+using namespace std;
+
 StrType getStringType() {
 	StrType stringtype(PredType::C_S1, H5T_VARIABLE);
 	return stringtype;
@@ -143,8 +148,14 @@ CVRefMZ5& CVRefMZ5::operator=(const CVRefMZ5& cvp) {
 }
 
 void CVRefMZ5::init(const char* name, const char* prefix,	const unsigned long accession){
-	if(name) strcpy(this->name,name);
-	strcpy(this->prefix,prefix);
+	if(name) {
+		this->name = new char[strlen(name)+1];
+		strcpy(this->name,name);
+	}
+	if(prefix){
+		this->prefix = new char[strlen(prefix) + 1];
+		strcpy(this->prefix,prefix);
+	}
 	this->accession=accession;
 }
 
@@ -241,6 +252,21 @@ CompType ParamGroupMZ5::getType() {
 	return ret;
 }
 
+ParamListMZ5::ParamListMZ5(){
+	init(0,0,0,0,0,0);
+}
+
+ParamListMZ5::ParamListMZ5(const ParamListMZ5& pl){
+	init(pl.cvParamStartID,pl.cvParamEndID,pl.userParamStartID,pl.userParamEndID,pl.refParamGroupStartID,pl.refParamGroupEndID);
+}
+
+ParamListMZ5& ParamListMZ5::operator=(const ParamListMZ5& pl){
+	if(this != &pl) init(pl.cvParamStartID, pl.cvParamEndID, pl.userParamStartID, pl.userParamEndID, pl.refParamGroupStartID, pl.refParamGroupEndID);
+	return *this;
+}
+
+ParamListMZ5::~ParamListMZ5() {}
+
 CompType ParamListMZ5::getType() {
 	CompType ret(sizeof(ParamListMZ5Data));
 	ret.insertMember("cvstart", HOFFSET(ParamListMZ5Data, cvParamStartID), PredType::NATIVE_ULONG);
@@ -252,16 +278,103 @@ CompType ParamListMZ5::getType() {
 	return ret;
 }
 
+void ParamListMZ5::init(const unsigned long cvstart, const unsigned long cvend, const unsigned long usrstart, const unsigned long usrend, const unsigned long refstart, const unsigned long refend) {
+	cvParamStartID=cvstart;
+	cvParamEndID=cvend;
+	userParamStartID=usrstart;
+	userParamEndID=usrend;
+	refParamGroupStartID=refstart;
+	refParamGroupEndID=refend;
+}
+
+ParamListsMZ5::ParamListsMZ5(){
+	init(NULL,0);
+}
+
+ParamListsMZ5::ParamListsMZ5(const ParamListsMZ5& pl){
+	init(pl.lists,pl.len);
+}
+
+ParamListsMZ5& ParamListsMZ5::operator=(const ParamListsMZ5& pl){
+	if(this!=&pl) {
+		if(lists!=NULL) delete [] lists;
+		init(pl.lists, pl.len);
+	}
+	return *this;
+}
+
+ParamListsMZ5::~ParamListsMZ5() {
+	if(lists!=NULL) delete [] lists;
+}
+
 VarLenType ParamListsMZ5::getType() {
 	CompType c(ParamListMZ5::getType());
 	VarLenType ret(&c);
 	return ret;
 }
 
+void ParamListsMZ5::init(const ParamListMZ5* list, const size_t len){
+	this->len=len;
+	if(len>0){
+		lists=new ParamListMZ5[len];
+		for(size_t a=0;a<len;a++) lists[a]=list[a];
+	} else lists=NULL;
+}
+
+
+PrecursorListMZ5::PrecursorListMZ5(){
+	init(NULL,0);
+}
+
+PrecursorListMZ5::PrecursorListMZ5(const PrecursorListMZ5& p){
+	init(p.list,p.len);
+}
+
+PrecursorListMZ5& PrecursorListMZ5::operator=(const PrecursorListMZ5& p){
+	if(this!=&p){
+		if(list!=NULL) delete [] list;
+		list=NULL;
+		init(p.list,p.len);
+	} 
+	return *this;
+}
+
+PrecursorListMZ5::~PrecursorListMZ5(){
+	if(list!=NULL) delete [] list;
+}
+
 VarLenType PrecursorListMZ5::getType() {
 	CompType c(PrecursorMZ5::getType());
 	VarLenType ret(&c);
 	return ret;
+}
+
+void PrecursorListMZ5::init(const PrecursorMZ5* list, const size_t len){
+	this->len=len;
+	if(len>0){
+		this->list=new PrecursorMZ5[len];
+		for(size_t a=0;a<len;a++) this->list[a]=list[a];
+	} else this->list=NULL;
+}
+
+PrecursorMZ5::PrecursorMZ5() {
+	init(ParamListMZ5(), ParamListMZ5(), ParamListsMZ5(),RefMZ5(),RefMZ5(),"");
+}
+
+PrecursorMZ5::PrecursorMZ5(const PrecursorMZ5& precursor) {
+	init(precursor.activation,precursor.isolationWindow,precursor.selectedIonList,precursor.spectrumRefID,precursor.sourceFileRefID,precursor.externalSpectrumId);
+}
+
+PrecursorMZ5& PrecursorMZ5::operator=(const PrecursorMZ5& pre) {
+	if (this != &pre) {
+		delete [] externalSpectrumId;
+		init(pre.activation, pre.isolationWindow, pre.selectedIonList, pre.spectrumRefID, pre.sourceFileRefID, pre.externalSpectrumId);
+	}
+	return *this;
+}
+
+PrecursorMZ5::~PrecursorMZ5() {
+	delete [] externalSpectrumId;
 }
 
 CompType PrecursorMZ5::getType() {
@@ -281,6 +394,16 @@ CompType PrecursorMZ5::getType() {
 	ret.insertMember("refSourceFile", offset, RefMZ5::getType());
 	offset += RefMZ5::getType().getSize();
 	return ret;
+}
+
+void PrecursorMZ5::init(const ParamListMZ5& activation, const ParamListMZ5& isolationWindow, const ParamListsMZ5 selectedIonList, const RefMZ5& refSpectrum, const RefMZ5& refSourceFile, const char* externalSpectrumId){
+	this->externalSpectrumId=new char[strlen(externalSpectrumId)+1];
+	strcpy(this->externalSpectrumId,externalSpectrumId);
+	this->activation=activation;
+	this->isolationWindow=isolationWindow;
+	this->selectedIonList=selectedIonList;
+	this->spectrumRefID=refSpectrum;
+	this->sourceFileRefID=refSourceFile;
 }
 
 VarLenType ProcessingMethodListMZ5::getType() {
@@ -305,6 +428,21 @@ VarLenType RefListMZ5::getType() {
 	VarLenType ret(&c);
 	return ret;
 }
+
+RefMZ5::RefMZ5(){
+	refID = ULONG_MAX;
+}
+
+RefMZ5::RefMZ5(const RefMZ5& ref) {
+	refID=ref.refID;
+}
+
+RefMZ5& RefMZ5::operator=(const RefMZ5& ref) {
+	if (this != &ref) refID = ref.refID;
+	return *this;
+}
+
+RefMZ5::~RefMZ5(){}
 
 CompType RefMZ5::getType() {
 	CompType ret(sizeof(RefMZ5Data));
@@ -351,10 +489,69 @@ CompType SampleMZ5::getType() {
 	return ret;
 }
 
+ScanListMZ5::ScanListMZ5(){
+	init(NULL,0);
+}
+
+ScanListMZ5::ScanListMZ5(const ScanListMZ5& s){
+	init(s.list,s.len);
+}
+
+//ScanListMZ5::ScanListMZ5(const std::vector<ScanMZ5>& s){
+//	len=s.size();
+//	if(len>0){
+//		list=new ScanMZ5[len];
+//		for(size_t a=0;a<s.size();a++) list[a]=s[a];
+//	} else list=NULL;
+//}
+
+ScanListMZ5& ScanListMZ5::operator=(const ScanListMZ5& s){
+	if(this!=&s){
+		if(list!=NULL){
+			delete [] list;
+			list=NULL;
+		}
+		init(s.list,s.len);
+	}
+	return *this;
+}
+
+ScanListMZ5::~ScanListMZ5(){
+	if(list!=NULL) delete [] list;
+}
+
 VarLenType ScanListMZ5::getType() {
 	CompType c = ScanMZ5::getType();
 	VarLenType ret(&c);
 	return ret;
+}
+
+void ScanListMZ5::init(const ScanMZ5* list, const size_t len){
+	this->len=len;
+	if(len>0){
+		this->list = new ScanMZ5[len];
+		for(size_t a=0;a<len;a++) this->list[a]=list[a];
+	} else this->list=NULL;
+}
+
+ScanMZ5::ScanMZ5(){
+	init(ParamListMZ5(),ParamListsMZ5(),RefMZ5(),RefMZ5(),RefMZ5(),"");
+}
+
+ScanMZ5::ScanMZ5(const ScanMZ5& s){
+	init(s.paramList,s.scanWindowList,s.instrumentConfigurationRefID,s.sourceFileRefID,s.spectrumRefID,s.externalSpectrumID);
+}
+
+ScanMZ5& ScanMZ5::operator=(const ScanMZ5& s){
+	if(this!=&s){
+		delete [] externalSpectrumID;
+		init(s.paramList, s.scanWindowList, s.instrumentConfigurationRefID, s.sourceFileRefID, s.spectrumRefID, s.externalSpectrumID);
+	} 
+	return *this;
+}
+
+ScanMZ5::~ScanMZ5(){
+	delete[] externalSpectrumID;
 }
 
 CompType ScanMZ5::getType() {
@@ -376,6 +573,33 @@ CompType ScanMZ5::getType() {
 	return ret;
 }
 
+void ScanMZ5::init(const ParamListMZ5& params, const ParamListsMZ5& scanWindowList, const RefMZ5& refInstrument, const RefMZ5& refSourceFile, const RefMZ5& refSpectrum, const char* externalSpectrumID){
+	this->externalSpectrumID=new char[strlen(externalSpectrumID)+1];
+	strcpy(this->externalSpectrumID, externalSpectrumID);
+	this->paramList=params;
+	this->scanWindowList=scanWindowList;
+	this->instrumentConfigurationRefID=refInstrument;
+	this->sourceFileRefID=refSourceFile;
+	this->spectrumRefID=refSpectrum;
+}
+
+ScansMZ5::ScansMZ5(){
+	init(ParamListMZ5(),ScanListMZ5());
+}
+
+ScansMZ5::ScansMZ5(const ScansMZ5& s){
+	init(s.paramList,s.scanList);
+}
+
+ScansMZ5& ScansMZ5::operator=(const ScansMZ5&s) {
+	if(this!=&s){
+		init(s.paramList,s.scanList);
+	}
+	return *this;
+}
+
+ScansMZ5::~ScansMZ5(){}
+
 CompType ScansMZ5::getType() {
 	CompType ret(sizeof(ScansMZ5));
 	size_t offset = 0;
@@ -383,6 +607,11 @@ CompType ScansMZ5::getType() {
 	offset += sizeof(ParamListMZ5);
 	ret.insertMember("scanList", offset, ScanListMZ5::getType());
 	return ret;
+}
+
+void ScansMZ5::init(const ParamListMZ5& params, const ScanListMZ5& scanList){
+	this->paramList=params;
+	this->scanList=scanList;
 }
 
 CompType ScanSettingMZ5::getType() {
@@ -425,6 +654,28 @@ CompType SourceFileMZ5::getType() {
 	return ret;
 }
 
+SpectrumMZ5::SpectrumMZ5(){
+	init(ParamListMZ5(),ScansMZ5(),PrecursorListMZ5(),ParamListsMZ5(),RefMZ5(),RefMZ5(),ULONG_MAX,"","");
+}
+
+SpectrumMZ5::SpectrumMZ5(const SpectrumMZ5& s){
+	init(s.paramList,s.scanList, s.precursorList, s.productList, s.dataProcessingRefID, s.sourceFileRefID, s.index, s.id, s.spotID);
+}
+
+SpectrumMZ5& SpectrumMZ5::operator=(const SpectrumMZ5& s){
+	if(this!=&s){
+		if (id != NULL) delete[] id;
+		if (spotID != NULL) delete[] spotID;
+		init(s.paramList, s.scanList, s.precursorList, s.productList, s.dataProcessingRefID, s.sourceFileRefID, s.index, s.id, s.spotID);
+	}
+	return *this;
+}
+
+SpectrumMZ5::~SpectrumMZ5(){
+	if(id!=NULL) delete [] id;
+	if(spotID!=NULL) delete [] spotID;
+}
+
 CompType SpectrumMZ5::getType() {
 	CompType ret(sizeof(SpectrumMZ5));
 	StrType stringtype = getStringType();
@@ -449,6 +700,21 @@ CompType SpectrumMZ5::getType() {
 	offset += PredType::NATIVE_ULONG.getSize();
 	return ret;
 }
+
+void SpectrumMZ5::init(const ParamListMZ5& params, const ScansMZ5& scanList, const PrecursorListMZ5& precursors, const ParamListsMZ5& productIonIsolationWindows, const RefMZ5& refDataProcessing, const RefMZ5& refSourceFile, const unsigned long index, const char* id, const char* spotID){
+	this->id=new char[strlen(id)+1];
+	strcpy(this->id,id);
+	this->spotID=new char[strlen(spotID)+1];
+	strcpy(this->spotID,spotID);
+	this->index=index;
+	this->paramList=params;
+	this->scanList=scanList;
+	this->precursorList=precursors;
+	this->productList=productIonIsolationWindows;
+	this->dataProcessingRefID=refDataProcessing;
+	this->sourceFileRefID=refSourceFile;
+}
+
 
 CompType UserParamMZ5::getType() {
 	CompType ret(sizeof(UserParamMZ5Data));

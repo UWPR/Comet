@@ -23,6 +23,7 @@
 //------------------------------------------------
 // Standard libraries
 //------------------------------------------------
+#include <algorithm>
 #include <vector>
 #include <map>
 #include <stdio.h>
@@ -33,13 +34,9 @@
 #include "zlib.h"
 #include "MSNumpress.hpp"
 
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
 #include "hdf5.h"
 #include "H5Cpp.h"
-#endif
-
-#ifdef MZP_MZ5
-using namespace H5;
 #endif
 
 //------------------------------------------------
@@ -69,6 +66,7 @@ typedef __int64 f_off;
 #define mzpfseek(h,p,o) _fseeki64(h,p,o)
 #define mzpftell(h) _ftelli64(h)
 #define mzpatoi64(h) _atoi64(h)
+#define strtok_r strtok_s
 #endif
 
 //For MinGW toolset, which lacks the ftello, fseeko, etc functions
@@ -122,10 +120,11 @@ typedef struct specDP{
   double intensity;
 } specDP;
 
-typedef struct TimeIntensityPair{
-  double time;
+typedef struct specIonMobDP {
+  double mz;
   double intensity;
-} TimeIntensityPair;
+  double ionMobility;
+} specIonMobDP;
 
 typedef struct MZIntensityPair {
   double mz;
@@ -134,6 +133,17 @@ typedef struct MZIntensityPair {
   MZIntensityPair(double mz, double intensity) : mz(mz), intensity(intensity) {}
   bool operator==(const MZIntensityPair& that) const;
 } MZIntensityPair;
+
+typedef struct TimeIntensityPair{
+  double time;
+  double intensity;
+} TimeIntensityPair;
+
+typedef struct TimeIntensityIonMob {
+  double time;
+  double intensity;
+  double ionMobility;
+} TimeIntensityIonMob;
 
 enum enumActivation {
   none=0,
@@ -153,16 +163,22 @@ enum enumActivation {
 class cindex  { 
 public:
 
-  //MH: Fix this!!!
-  static int compare (const void* a, const void* b) {
-    if (*(size_t*)a < *(size_t*)b) return -1;
-    if (*(size_t*)a > *(size_t*)b) return 1;
-    return 0;
+  ////MH: Fix this!!!
+  //static int compare (const void* a, const void* b) {
+  //  if (*(size_t*)a < *(size_t*)b) return -1;
+  //  if (*(size_t*)a > *(size_t*)b) return 1;
+  //  return 0;
+  //}
+  static bool compare(cindex& a, cindex& b) {
+    if (a.scanNum > b.scanNum) return false;
+    if (a.scanNum < b.scanNum) return true;
+    return true;
   }
 
   size_t scanNum;
   std::string idRef;
   f_off offset;
+  uint64_t size;  //for mzMLB support
 };
 
 
@@ -176,6 +192,7 @@ public:
   std::string ionization;
   std::string manufacturer;
   std::string model;
+  std::string serial;
   instrumentInfo(){
     analyzer="";
     detector="";
@@ -183,6 +200,7 @@ public:
     ionization="";
     manufacturer="";
     model="";
+    serial="";
   }
   void clear(){
     analyzer="";
@@ -191,68 +209,47 @@ public:
     ionization="";
     manufacturer="";
     model="";
+    serial="";
   }
 };
 
 typedef struct sPrecursorIon{
-  double intensity;
-  double isoLowerMZ; //lower offset of the isolation window
-  double isoMZ;      //the mz of the isolation window
-  double isoUpperMZ;  //upper offset of the isolation window
-  double mz;         //is this always redundant with isoMZ?
-  double monoMZ;
-  std::vector<int>* possibleCharges;
-  int charge;
-  sPrecursorIon(){
-    intensity=0;
-    isoLowerMZ=0;
-    isoMZ=0;
-    isoUpperMZ=0;
-    mz=0;
-    monoMZ=0;
-    possibleCharges = new std::vector<int>;
-    charge=0;
-  }
-  sPrecursorIon(const sPrecursorIon& p){
-    intensity=p.intensity;
-    isoLowerMZ = p.isoLowerMZ;
-    isoMZ = p.isoMZ;
-    isoUpperMZ = p.isoUpperMZ;
-    mz=p.mz;
-    monoMZ=p.monoMZ;
-    possibleCharges=new std::vector<int>;
-    for(size_t i=0;i<p.possibleCharges->size();i++) possibleCharges->push_back(p.possibleCharges->at(i));
-    charge=p.charge;
-  }
-  ~sPrecursorIon(){
-    delete possibleCharges;
-  }
-  sPrecursorIon& operator=(const sPrecursorIon& p){
-    if(this!=&p){
-      intensity=p.intensity;
-      isoLowerMZ = p.isoLowerMZ;
-      isoMZ = p.isoMZ;
-      isoUpperMZ = p.isoUpperMZ;
-      mz=p.mz;
-      monoMZ=p.monoMZ;
-      delete possibleCharges;
-      possibleCharges=new std::vector<int>;
-      for(size_t i=0;i<p.possibleCharges->size();i++) possibleCharges->push_back(p.possibleCharges->at(i));
-      charge=p.charge;
-    }
-    return *this;
-  }
+  enumActivation activation=none;
+  double intensity=0;
+  double isoLowerMZ=0;      //lower offset of the isolation window
+  double isoLowerOffset=0;
+  double isoMZ=0;           //the mz of the isolation window. Often this is the mz of the ion to be isolated
+  double isoUpperMZ=0;      //upper offset of the isolation window
+  double isoUpperOffset=0;
+  double mz=0;              //selected ion mz; is this always redundant with isoMZ? probably on thermo instruments
+  double monoMZ=0;          //the true monoisotopic mz as determined by Thermo.
+  std::vector<int> possibleCharges;
+  int charge=0;
+  int msLevel=0;
+  int scanNumber=-1;
+
   void clear(){
+    activation=none;
     intensity=0;
     isoLowerMZ = 0;
+    isoLowerOffset=0;
     isoMZ = 0;
     isoUpperMZ = 0;
+    isoUpperOffset=0;
     mz=0;
     monoMZ=0;
-    possibleCharges->clear();
+    possibleCharges.clear();
     charge=0;
+    msLevel=0;
+    scanNumber=0;
   }
 } sPrecursorIon;
+
+typedef struct sUParam{
+  std::string name;
+  std::string value;
+  std::string type;
+} sUParam;
 
 class BasicSpectrum  {
 public:
@@ -264,11 +261,13 @@ public:
 
   //Operator overloads
   BasicSpectrum& operator=(const BasicSpectrum& s);
-  specDP& operator[ ](const size_t index);
+  specDP& operator[ ](const size_t& index);
 
   //Modifiers
   void addDP(specDP dp);
+  void addDP(specIonMobDP dp);
   void clear();
+  void clearPrecursor();
   void setActivation(int a);
   void setBasePeakIntensity(double d);
   void setBasePeakMZ(double d);
@@ -277,19 +276,26 @@ public:
   void setCompensationVoltage(double d);
   void setFilterLine(char* str);
   void setHighMZ(double d);
-  void setIDString(char* str);
+  void setIDString(const char* str);
+  void setInverseReducedIonMobility(double d);
   void setIonInjectionTime(double d);
+  void setIonMobilityDriftTime(double d);
+  void setIonMobilityScan(bool b);
   void setLowMZ(double d);
   void setMSLevel(int level);
   void setPeaksCount(int i);
   void setPositiveScan(bool b);
+  void setPrecursorCharge(int charge);
+  void setPrecursorIntensity(double intensity);
   void setPrecursorIon(sPrecursorIon& pi);
   void setPrecursorIon(double mz, double monoMZ, double intensity, int charge, int possibleChargeCount, int* possibleCharges);
+  void setPrecursorMZ(double mz);
   void setPrecursorScanNum(int i);
   void setRTime(float t);
   void setScanIndex(int num);
   void setScanNum(int num);
   void setTotalIonCurrent(double d);
+  void setUserParam(std::string name, std::string value, std::string type="");
 
   //Accessors
   int           getActivation();
@@ -298,10 +304,14 @@ public:
   bool          getCentroid();
   double        getCollisionEnergy();
   double        getCompensationVoltage();
-  int           getFilterLine(char* str);
+  double        getInverseReducedIonMobility();
+  void          getFilterLine(std::string& str);
   double        getHighMZ();
-  int           getIDString(char* str);
+  void          getIDString(std::string& str);
   double        getIonInjectionTime();
+  double        getIonMobilityDriftTime();
+  specIonMobDP& getIonMobDP(const size_t& index);
+  bool          getIonMobilityScan();
   double        getLowMZ();
   int           getMSLevel();
   int           getPeaksCount();
@@ -318,7 +328,9 @@ public:
   int           getScanIndex();
   int           getScanNum();
   double        getTotalIonCurrent();
+  sUParam       getUserParam(const size_t& index);
   size_t        size();
+  
 
 protected:
 
@@ -329,10 +341,13 @@ protected:
   bool            centroid;
   double          collisionEnergy;
   double          compensationVoltage;  //FAIMS compensation voltage
+  double          inverseReducedIonMobility;
+  bool            ionMobilityScan;
   char            filterLine[128];
   double          highMZ;
   char            idString[128];
   double          ionInjectionTime;
+  double          ionMobilityDriftTime;
   double          lowMZ;
   int             msLevel;
   int             peaksCount;
@@ -343,7 +358,9 @@ protected:
   int             scanNum;              //identifying scan number
   double          totalIonCurrent;
   std::vector<specDP>* vData;                //Spectrum data points
+  std::vector<specIonMobDP>* vDataIonMob;    //Ion Mobility Spectrum data points
   std::vector<sPrecursorIon>* vPrecursor;
+  std::vector<sUParam>* vUserParam;
      
 };
 
@@ -369,7 +386,7 @@ public:
   //Accessors
   int                         getCharge();
   std::vector<TimeIntensityPair>&  getData();
-  int                         getIDString(char* str);
+  void                        getIDString(std::string& str);
   double                      getPreMZ();
   double                      getPreOffsetLower();
   double                      getPreOffsetUpper();
@@ -452,6 +469,13 @@ private:
 // X!Tandem borrowed headers
 //------------------------------------------------
 
+enum eElementState {
+  esChromatogram,
+  esIndex,
+  esPrecursor,
+  esSpectrum
+};
+
 int b64_decode_mio (char *dest, const char *src, size_t size);
 int b64_encode (char *dest, const char *src, int len);
 
@@ -471,6 +495,7 @@ public:
   bool open(const char* fileName);
   bool parse();
   bool parseOffset(f_off offset);
+  void parserReset();
   void setGZCompression(bool b);
 
   inline void setFileName(const char* fileName) {
@@ -491,12 +516,17 @@ public:
     return "";
   }
 
+  bool getIonMobility() {
+    return m_bionMobility;
+  }
+
 protected:
 
   XML_Parser m_parser;
   std::string  m_strFileName;
   bool m_bStopParse;
   bool m_bGZCompression;
+  bool m_bionMobility;
 
   FILE* fptr;
   Czran gzObj;
@@ -529,6 +559,7 @@ public:
   bool                    readHeaderFromOffset(f_off offset, int scNm=-1);
   bool                    readSpectrum(int num=-1);
   bool                    readSpectrumFromOffset(f_off offset, int scNm=-1);
+  void                    setMZMLB(bool b);
   
 protected:
 
@@ -546,13 +577,14 @@ private:
   };
 
   //  mzpSAXMzmlHandler private functions
+  bool  parseHDFOffset(int index);
   void  processData();
   void  processCVParam(const char* name, const char* accession, const char* value, const char* unitName="0", const char* unitAccession="0");
   void  pushChromatogram();
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
-  bool  generateIndexOffset();
   void  stopParser();
+  bool  generateIndexOffset();
 
   //  mzpSAXMzmlHandler Base64 conversion functions
   void decode(std::vector<double>& d);
@@ -563,11 +595,29 @@ private:
   unsigned long dtohl(uint32_t l, bool bNet);
   uint64_t dtohl(uint64_t l, bool bNet);
 
+  //mzMLb support
+#ifdef MZP_HDF
+  void  closeHDF();
+  bool  openHDF(const char* filename);
+  void  readHDFHead();
+  void  readHDFIndex();
+  hid_t m_hdfFile;
+  std::string m_strHDFDatasetID;
+  hsize_t m_hdfOffset;
+  hsize_t m_hdfArraySz;
+  hid_t m_hdfmzml;
+  hid_t m_hdfmzData;
+  hid_t m_hdfintData;
+  hid_t m_hdfmzSpace;
+  hid_t m_hdfintSpace;
+#endif
+
   //  mzpSAXMzmlHandler Flags indicating parser is inside a particular tag.
   bool m_bInIndexedMzML;
   bool m_bInRefGroup;
   bool m_bInmzArrayBinary;
   bool m_bInintenArrayBinary;
+  bool m_bInionMobilityArrayBinary;
   bool m_bInSpectrumList;
   bool m_bInChromatogramList;
   bool m_bInIndexList;
@@ -577,6 +627,7 @@ private:
   bool m_bChromatogramIndex;
   bool m_bHeaderOnly;
   bool m_bLowPrecision;
+  bool m_bMZMLB;
   bool m_bNetworkData;  // i.e. big endian
   bool m_bNumpressLinear;
   bool m_bNumpressPic;
@@ -588,7 +639,7 @@ private:
   bool m_bIndexSorted;
   //  mzpSAXMzmlHandler index data members.
   std::vector<cindex>    m_vIndex;
-  std::map<std::string,size_t> m_mIndex; //Map of index for quick-lookup of indexed scan numbers
+  std::map<std::string, size_t> m_mIndex; //Map of index for quick-lookup of indexed scan numbers
   cindex            curIndex;
   int               posIndex;
   f_off             indexOffset;
@@ -597,6 +648,8 @@ private:
   std::map<std::string, size_t> m_mChromatIndex; //Map of index for quick-lookup of indexed chromatogram numbers
   cindex            curChromatIndex;
   int               posChromatIndex;
+
+  std::vector<eElementState> m_vState;
 
   //  mzpSAXMzmlHandler data members.
   BasicChromatogram*      chromat;
@@ -608,13 +661,14 @@ private:
   std::vector<cvParam>    m_refGroupCvParams;
   int                     m_scanIDXCount;
   int                     m_scanNumOverride;
-  double                  m_startTime;            //in minutes
+  double                  m_startTime;             //in minutes
   double                  m_stopTime;              //in minutes
-  std::string                  m_strData;              // For collecting character data.
+  std::string             m_strData;               // For collecting character data.
   std::vector<instrumentInfo>  m_vInstrument;
   BasicSpectrum*          spec;
   std::vector<double>     vdI;
-  std::vector<double>     vdM;                    // Peak list std::vectors (masses and charges)
+  std::vector<double>     vdM;                     // Peak list std::vectors (masses and charges)
+  std::vector<double>     vdIM;                    // Peak list std::vectors Ion Mobility
 
 };
 
@@ -650,8 +704,8 @@ private:
   //  mzpSAXMzxmlHandler private functions
   void  pushSpectrum();  // Load current data into pvSpec, may have to guess charge
   f_off readIndexOffset();
-  bool  generateIndexOffset();
   void  stopParser();
+  bool  generateIndexOffset();
 
   //  mzpSAXMzxmlHandler Base64 conversion functions
   void decode32();
@@ -701,7 +755,7 @@ private:
 // mz5 Support
 //------------------------------------------------
 
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
 
 //mz5 constants
 #define CVL 128
@@ -769,7 +823,7 @@ struct FileInformationMZ5: public FileInformationMZ5Data {
   ~FileInformationMZ5();
   FileInformationMZ5& operator=(const FileInformationMZ5&);
   void init(const unsigned short majorVersion, const unsigned short minorVersion, const unsigned didFiltering, const unsigned deltaMZ, const unsigned translateInten);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ContVocabMZ5Data  {
@@ -781,13 +835,13 @@ struct ContVocabMZ5Data  {
 
 struct ContVocabMZ5: public ContVocabMZ5Data {
   ContVocabMZ5();
-  ContVocabMZ5(const string& uri, const string& fullname, const string& id, const string& version);
+  ContVocabMZ5(const std::string& uri, const std::string& fullname, const std::string& id, const std::string& version);
   ContVocabMZ5(const char* uri, const char* fullname, const char* id, const char* version);
   ContVocabMZ5(const ContVocabMZ5&);
   ContVocabMZ5& operator=(const ContVocabMZ5&);
   ~ContVocabMZ5();
-  void init(const string&, const string&, const string&, const string&);
-  static CompType getType();
+  void init(const std::string&, const std::string&, const std::string&, const std::string&);
+  static H5::CompType getType();
 };
 
 struct CVRefMZ5Data {
@@ -802,7 +856,7 @@ struct CVRefMZ5: public CVRefMZ5Data {
   CVRefMZ5& operator=(const CVRefMZ5&);
   ~CVRefMZ5();
   void init(const char* name, const char* prefix,  const unsigned long accession);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct UserParamMZ5Data {
@@ -818,7 +872,7 @@ struct UserParamMZ5: public UserParamMZ5Data {
   UserParamMZ5& operator=(const UserParamMZ5&);
   ~UserParamMZ5();
   void init(const char* name, const char* value, const char* type, const unsigned long urefid);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct CVParamMZ5Data {
@@ -833,7 +887,7 @@ struct CVParamMZ5: public CVParamMZ5Data {
   CVParamMZ5& operator=(const CVParamMZ5&);
   ~CVParamMZ5();
   void init(const char* value, const unsigned long& cvrefid, const unsigned long& urefid);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct RefMZ5Data {
@@ -845,7 +899,7 @@ struct RefMZ5: public RefMZ5Data {
   RefMZ5(const RefMZ5&);
   RefMZ5& operator=(const RefMZ5&);
   ~RefMZ5();
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct RefListMZ5Data {
@@ -859,7 +913,7 @@ struct RefListMZ5: RefListMZ5Data {
   RefListMZ5& operator=(const RefListMZ5&);
   ~RefListMZ5();
   void init(const RefMZ5* list, const size_t len);
-  static VarLenType getType();
+  static H5::VarLenType getType();
 };
 
 struct ParamListMZ5Data {
@@ -877,7 +931,7 @@ struct ParamListMZ5: ParamListMZ5Data {
   ParamListMZ5& operator=(const ParamListMZ5&);
   ~ParamListMZ5();
   void init(const unsigned long cvstart, const unsigned long cvend, const unsigned long usrstart, const unsigned long usrend, const unsigned long refstart, const unsigned long refend);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ParamGroupMZ5 {
@@ -888,7 +942,7 @@ struct ParamGroupMZ5 {
   ParamGroupMZ5& operator=(const ParamGroupMZ5&);
   ~ParamGroupMZ5();
   void init(const ParamListMZ5& params, const char* id);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct SourceFileMZ5 {
@@ -901,7 +955,7 @@ struct SourceFileMZ5 {
   SourceFileMZ5& operator=(const SourceFileMZ5&);
   ~SourceFileMZ5();
   void init(const ParamListMZ5& params, const char* id, const char* location, const char* name);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct SampleMZ5 {
@@ -913,7 +967,7 @@ struct SampleMZ5 {
   SampleMZ5& operator=(const SampleMZ5&);
   ~SampleMZ5();
   void init(const ParamListMZ5& params, const char* id, const char* name);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct SoftwareMZ5 {
@@ -925,7 +979,7 @@ struct SoftwareMZ5 {
   SoftwareMZ5& operator=(const SoftwareMZ5&);
   ~SoftwareMZ5();
   void init(const ParamListMZ5& params, const char* id, const char* version);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ParamListsMZ5 {
@@ -936,7 +990,7 @@ struct ParamListsMZ5 {
   ParamListsMZ5& operator=(const ParamListsMZ5&);
   ~ParamListsMZ5();
   void init(const ParamListMZ5* list, const size_t len);
-  static VarLenType getType();
+  static H5::VarLenType getType();
 };
 
 struct ScanSettingMZ5 {
@@ -949,7 +1003,7 @@ struct ScanSettingMZ5 {
   ScanSettingMZ5& operator=(const ScanSettingMZ5&);
   ~ScanSettingMZ5();
   void init(const ParamListMZ5& params, const RefListMZ5& refSourceFiles, const ParamListsMZ5 targets, const char* id);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ComponentMZ5 {
@@ -960,7 +1014,7 @@ struct ComponentMZ5 {
   ComponentMZ5& operator=(const ComponentMZ5&);
   ~ComponentMZ5();
   void init(const ParamListMZ5&, const unsigned long order);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ComponentListMZ5 {
@@ -968,11 +1022,11 @@ struct ComponentListMZ5 {
   ComponentMZ5* list;
   ComponentListMZ5();
   ComponentListMZ5(const ComponentListMZ5&);
-  ComponentListMZ5(const vector<ComponentMZ5>&);
+  ComponentListMZ5(const std::vector<ComponentMZ5>&);
   ComponentListMZ5& operator=(const ComponentListMZ5&);
   ~ComponentListMZ5();
   void init(const ComponentMZ5*, const size_t&);
-  static VarLenType getType();
+  static H5::VarLenType getType();
 };
 
 struct ComponentsMZ5 {
@@ -984,7 +1038,7 @@ struct ComponentsMZ5 {
   ComponentsMZ5& operator=(const ComponentsMZ5&);
   ~ComponentsMZ5();
   void init(const ComponentListMZ5& sources, const ComponentListMZ5& analyzers,  const ComponentListMZ5& detectors);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct InstrumentConfigurationMZ5 {
@@ -998,7 +1052,7 @@ struct InstrumentConfigurationMZ5 {
   InstrumentConfigurationMZ5& operator=(const InstrumentConfigurationMZ5&);
   ~InstrumentConfigurationMZ5();
   void init(const ParamListMZ5& params, const ComponentsMZ5& components, const RefMZ5& refScanSetting, const RefMZ5& refSoftware, const char* id);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ProcessingMethodMZ5 {
@@ -1010,7 +1064,7 @@ struct ProcessingMethodMZ5 {
   ProcessingMethodMZ5& operator=(const ProcessingMethodMZ5&);
   ~ProcessingMethodMZ5();
   void init(const ParamListMZ5& params, const RefMZ5& refSoftware, const unsigned long order);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ProcessingMethodListMZ5 {
@@ -1021,7 +1075,7 @@ struct ProcessingMethodListMZ5 {
   ProcessingMethodListMZ5& operator=(const ProcessingMethodListMZ5&);
   ~ProcessingMethodListMZ5();
   void init(const ProcessingMethodMZ5* list, const size_t len);
-  static VarLenType getType();
+  static H5::VarLenType getType();
 };
 
 struct DataProcessingMZ5  {
@@ -1032,7 +1086,7 @@ struct DataProcessingMZ5  {
   DataProcessingMZ5& operator=(const DataProcessingMZ5&);
   ~DataProcessingMZ5();
   void init(const ProcessingMethodListMZ5&, const char* id);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct PrecursorMZ5  {
@@ -1047,7 +1101,7 @@ struct PrecursorMZ5  {
   PrecursorMZ5& operator=(const PrecursorMZ5&);
   ~PrecursorMZ5();
   void init(const ParamListMZ5& activation,  const ParamListMZ5& isolationWindow, const ParamListsMZ5 selectedIonList, const RefMZ5& refSpectrum, const RefMZ5& refSourceFile, const char* externalSpectrumId);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct PrecursorListMZ5 {
@@ -1057,8 +1111,8 @@ struct PrecursorListMZ5 {
   PrecursorListMZ5(const PrecursorListMZ5&);
   PrecursorListMZ5& operator=(const PrecursorListMZ5&);
   ~PrecursorListMZ5();
-  void init(const PrecursorMZ5*, const size_t len);
-  static VarLenType getType();
+  void init(const PrecursorMZ5* list, const size_t len);
+  static H5::VarLenType getType();
 };
 
 struct ChromatogramMZ5 {
@@ -1073,7 +1127,7 @@ struct ChromatogramMZ5 {
   ChromatogramMZ5& operator=(const ChromatogramMZ5&);
   ~ChromatogramMZ5();
   void init(const ParamListMZ5& params, const PrecursorMZ5& precursor, const ParamListMZ5& productIsolationWindow, const RefMZ5& refDataProcessing, const unsigned long index, const char* id);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ScanMZ5 {
@@ -1088,7 +1142,7 @@ struct ScanMZ5 {
   ScanMZ5& operator=(const ScanMZ5&);
   ~ScanMZ5();
   void init(const ParamListMZ5& params, const ParamListsMZ5& scanWindowList, const RefMZ5& refInstrument, const RefMZ5& refSourceFile, const RefMZ5& refSpectrum, const char* externalSpectrumID);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct ScanListMZ5 {
@@ -1096,11 +1150,11 @@ struct ScanListMZ5 {
   ScanMZ5* list;
   ScanListMZ5();
   ScanListMZ5(const ScanListMZ5&);
-  ScanListMZ5(const vector<ScanMZ5>&);
+  //ScanListMZ5(const std::vector<ScanMZ5>&);
   ScanListMZ5& operator=(const ScanListMZ5&);
   ~ScanListMZ5();
   void init(const ScanMZ5* list, const size_t len);
-  static VarLenType getType();
+  static H5::VarLenType getType();
 };
 
 struct ScansMZ5 {
@@ -1111,7 +1165,7 @@ struct ScansMZ5 {
   ScansMZ5& operator=(const ScansMZ5&);
   ~ScansMZ5();
   void init(const ParamListMZ5& params, const ScanListMZ5& scanList);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct SpectrumMZ5 {
@@ -1129,7 +1183,7 @@ struct SpectrumMZ5 {
   SpectrumMZ5& operator=(const SpectrumMZ5&);
   ~SpectrumMZ5();
   void init(const ParamListMZ5& params, const ScansMZ5& scanList, const PrecursorListMZ5& precursors, const ParamListsMZ5& productIonIsolationWindows, const RefMZ5& refDataProcessing, const RefMZ5& refSourceFile, const unsigned long index, const char* id, const char* spotID);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct RunMZ5 {
@@ -1148,7 +1202,7 @@ struct RunMZ5 {
   RunMZ5& operator=(const RunMZ5&);
   ~RunMZ5();
   void init(const ParamListMZ5& params, const RefMZ5& refSpectrumDP, const RefMZ5& refChromatogramDP, const RefMZ5& refDefaultInstrument, const RefMZ5& refSourceFile, const RefMZ5& refSample, const char* id, const char* startTimeStamp, const char* fid, const char* facc);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct BinaryDataMZ5 {
@@ -1161,7 +1215,7 @@ struct BinaryDataMZ5 {
   BinaryDataMZ5& operator=(const BinaryDataMZ5&);
   ~BinaryDataMZ5();
   void init(const ParamListMZ5& xParams, const ParamListMZ5& yParams, const RefMZ5& refDPx, const RefMZ5& refDPy);
-  static CompType getType();
+  static H5::CompType getType();
 };
 
 struct CVRefItem {
@@ -1179,10 +1233,10 @@ public:
   const bool      doFiltering() const;
   const bool      doTranslating() const;
   const size_t    getBufferInB();
-  const DataType& getDataTypeFor(const MZ5DataSets v);
-  const string&    getNameFor(const MZ5DataSets v);
+  const H5::DataType& getDataTypeFor(const MZ5DataSets v);
+  const std::string&    getNameFor(const MZ5DataSets v);
   const size_t&    getRdccSlots();
-  MZ5DataSets      getVariableFor(const string& name);
+  MZ5DataSets      getVariableFor(const std::string& name);
   void            setFiltering(const bool flag) const;
   void            setTranslating(const bool flag) const;
 
@@ -1197,11 +1251,11 @@ private:
   mutable bool                doTranslating_;
   size_t                      rdccSolts_;
   SpectrumLoadPolicy          spectrumLoadPolicy_;
-  map<MZ5DataSets, size_t>    variableBufferSizes_;
-  map<MZ5DataSets, hsize_t>    variableChunkSizes_;
-  map<MZ5DataSets, string>    variableNames_;
-  map<MZ5DataSets, DataType>  variableTypes_;
-  map<string, MZ5DataSets>    variableVariables_; //Really? variableVariables? Was this written by Donald Rumsfeld?
+  std::map<MZ5DataSets, size_t>        variableBufferSizes_;
+  std::map<MZ5DataSets, hsize_t>       variableChunkSizes_;
+  std::map<MZ5DataSets, std::string>   variableNames_;
+  std::map<MZ5DataSets, H5::DataType>  variableTypes_;
+  std::map<std::string, MZ5DataSets>   variableVariables_; //Really? variableVariables? Was this written by Donald Rumsfeld?
 
   void init(const bool filter, const bool deltamz, const bool translateinten);
 
@@ -1220,17 +1274,17 @@ public:
   ~mzpMz5Handler();
 
   void                            clean(const MZ5DataSets v, void* data, const size_t dsend);
-  vector<cMz5Index>*              getChromatIndex();
-  void                            getData(vector<double>& data, const MZ5DataSets v, const hsize_t start, const hsize_t end);
-  const map<MZ5DataSets, size_t>&  getFields();
-  vector<cMz5Index>*              getSpecIndex();
+  std::vector<cMz5Index>*              getChromatIndex();
+  void                            getData(std::vector<double>& data, const MZ5DataSets v, const hsize_t start, const hsize_t end);
+  const std::map<MZ5DataSets, size_t>&  getFields();
+  std::vector<cMz5Index>*              getSpecIndex();
   int                              highChromat();
   int                              highScan();
   int                              lowScan();
   void                            processCVParams(unsigned long index);
   bool                            readChromatogram(int num=-1);
   void*                            readDataSet(const MZ5DataSets v, size_t& dsend, void* ptr=0);
-  bool                            readFile(const string filename);
+  bool                            readFile(const std::string filename);
   bool                            readHeader(int num=-1);
   bool                            readSpectrum(int num=-1);
 
@@ -1242,22 +1296,23 @@ private:
   cMz5Index          curIndex;
   f_off              indexOffset;
   int                m_scanIDXCount;
-  vector<cMz5Index>  m_vIndex;
+  std::vector<cMz5Index>  m_vIndex;
   int                posIndex;
 
   cMz5Index          curChromatIndex;
-  vector<cMz5Index>  m_vChromatIndex;
+  std::vector<cMz5Index>  m_vChromatIndex;
   int                posChromatIndex;
 
-  map<MZ5DataSets, DataSet> bufferMap_;
-  BasicChromatogram*        chromat;
-  bool                      closed_;
-  mzpMz5Config*              config_;
-  vector<CVRefItem>          cvRef;
-  vector<CVParamMZ5>        cvParams_;
-  map<MZ5DataSets, size_t>  fields_;
-  H5File*                    file_;
-  BasicSpectrum*            spec;
+  std::map<MZ5DataSets, H5::DataSet> bufferMap_;
+  BasicChromatogram*                 chromat;
+  bool                               closed_;
+  mzpMz5Config*                      config_;
+  std::vector<CVRefItem>             cvRef;
+  std::vector<CVParamMZ5>            cvParams_;
+  std::vector<SpectrumMZ5>           specMetaData_;
+  std::map<MZ5DataSets, size_t>      fields_;
+  H5::H5File*                        file_;
+  BasicSpectrum*                     spec;
 };
 
 #endif
@@ -1268,7 +1323,7 @@ private:
 #define INSTRUMENT_LENGTH 2000
 #define SCANTYPE_LENGTH 32
 #define CHARGEARRAY_LENGTH 128
-#define PRECURSORARRAY_LENGTH 512
+#define PRECURSORARRAY_LENGTH 1024
 
 typedef double RAMPREAL; 
 typedef f_off ramp_fileoffset_t;
@@ -1277,32 +1332,40 @@ typedef struct RAMPFILE{
   BasicSpectrum* bs;
   mzpSAXMzmlHandler* mzML;
   mzpSAXMzxmlHandler* mzXML;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   mzpMz5Config* mz5Config;
   mzpMz5Handler* mz5;
   #endif
   int fileType;
   int bIsMzData;
   std::string fileName;
+
+  int peakCapacity;
+  RAMPREAL* pPeaks;
+  ramp_fileoffset_t lLastScanIndex;
   RAMPFILE(){
     bs=NULL;
     mzML=NULL;
     mzXML=NULL;
-    #ifdef MZP_MZ5
+    pPeaks=NULL;
+    peakCapacity=0;
+    #ifdef MZP_HDF
     mz5=NULL;
     mz5Config=NULL;
     #endif
     fileType=0;
     bIsMzData=0;
+    lLastScanIndex=0;
   }
   ~RAMPFILE(){
     if(bs!=NULL) delete bs;
     if(mzML!=NULL) delete mzML;
     if(mzXML!=NULL) delete mzXML;
+    if(pPeaks!=NULL) free(pPeaks);
     bs=NULL;
     mzML=NULL;
     mzXML=NULL;
-    #ifdef MZP_MZ5
+    #ifdef MZP_HDF
     if(mz5!=NULL) delete mz5;
     if(mz5Config!=NULL) delete mz5Config;
     mz5=NULL;
@@ -1333,14 +1396,20 @@ struct ScanHeaderStruct {
   double basePeakMZ;
   double collisionEnergy;
   double compensationVoltage;   // only if MS level > 1
+  double inverseReducedIonMobility;   // only if MS level > 1
   double highMZ;
   double ionInjectionTime;
+  double ionMobilityDriftTime;
   double ionisationEnergy;
+  double isolationMZ;           //conforms to MS:1000827 in mzML files
+  double isolationWindowLower;  //similar to selection window, but instead just defines the relative width
+  double isolationWindowUpper;  //of the isolation window in mz, rather than its absolute width.
   double lowMZ;
   double precursorIntensity;    // only if MS level > 1
   double precursorMonoMZ;
   double precursorMZ;           //only if MS level > 1 
   double retentionTime;         //in seconds
+  double selectedIonMZ;         //matches MS:1000744 in mzML files.
   double selectionWindowLower;  //the range of ions acquired
   double selectionWindowUpper;  //in DDA, for example, +/-1 Da around precursor
   double totIonCurrent;
@@ -1351,8 +1420,10 @@ struct ScanHeaderStruct {
   char   idString[CHARGEARRAY_LENGTH];
   char   possibleCharges[SCANTYPE_LENGTH];
   char   scanType[SCANTYPE_LENGTH];
+  char   scanDescription[SCANTYPE_LENGTH]; //specific to Thermo instruments. Currently parsed from userParams in mzML...
         
   bool   centroid; //true if spectrum is centroided
+  bool   ionMobility; //true if spectrum contains ion mobility data
   bool   possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
    
   ramp_fileoffset_t    filePosition; /* where in the file is this header? */
@@ -1375,6 +1446,7 @@ typedef struct InstrumentStruct {
    char ionisation[INSTRUMENT_LENGTH];
    char analyzer[INSTRUMENT_LENGTH];
    char detector[INSTRUMENT_LENGTH];
+   char serial[INSTRUMENT_LENGTH];
 } InstrumentStruct;
 
 struct ScanCacheStruct {
@@ -1388,6 +1460,7 @@ int                 checkFileType(const char* fname);
 ramp_fileoffset_t   getIndexOffset(RAMPFILE *pFI);
 InstrumentStruct*   getInstrumentStruct(RAMPFILE *pFI);
 void                getPrecursor(const struct ScanHeaderStruct *scanHeader, int index, double &mz, double &monoMZ, double &intensity, int &charge, int &possibleCharges, int *&possibleChargeArray);
+void                getPrecursor(const struct ScanHeaderStruct* scanHeader, int index, sPrecursorIon& pi);
 int                 getScanNumberFromOffset(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex);
 void                getScanSpanRange(const struct ScanHeaderStruct *scanHeader, int *startScanNum, int *endScanNum);
 void                rampCloseFile(RAMPFILE *pFI);
@@ -1397,11 +1470,11 @@ char*               rampConstructInputPath(char *buf, int inbuflen, const char *
 const char**        rampListSupportedFileTypes();
 RAMPFILE*           rampOpenFile(const char *filename);
 char*               rampValidFileType(const char *buf);
-void                readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex=-1);
+void                readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex=-1, BasicSpectrum **bs=NULL);
 ramp_fileoffset_t*  readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan);
 int                 readMsLevel(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex);
 void                readMSRun(RAMPFILE *pFI, struct RunHeaderStruct *runHeader);
-RAMPREAL*           readPeaks(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, int iIndex=-1);
+RAMPREAL*           readPeaks(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, int iIndex=-1, bool ionMobility = false);
 int                 readPeaksCount(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex);
 void                readRunHeader(RAMPFILE *pFI, ramp_fileoffset_t *pScanIndex, struct RunHeaderStruct *runHeader, int iLastScan);
 
@@ -1435,7 +1508,7 @@ public:
   ~Chromatogram();
 
   BasicChromatogram*  bc;
-  std::string              id;
+  std::string         id;
 
   void getTimeIntensityPairs(std::vector<TimeIntensityPair>& v);
 };
@@ -1447,21 +1520,21 @@ public:
   ChromatogramList(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* bc);
   ~ChromatogramList();
 
-  ChromatogramPtr    chromatogram(int index, bool binaryData = false);
+  ChromatogramPtr   chromatogram(int index, bool binaryData = false);
   bool              get();
   size_t            size();
 
-  std::vector<cindex>*      vChromatIndex;
-  #ifdef MZP_MZ5
+  std::vector<cindex>*     vChromatIndex;
+  #ifdef MZP_HDF
   std::vector<cMz5Index>*  vMz5Index;
   #endif
 
 private:
   mzpSAXMzmlHandler*  mzML;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   mzpMz5Handler*      mz5;
   #endif
-  ChromatogramPtr      chromat;
+  ChromatogramPtr     chromat;
 };
 typedef class ChromatogramList* ChromatogramListPtr;
 
@@ -1488,13 +1561,13 @@ public:
   size_t         size();
 
   std::vector<cindex>* vSpecIndex;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   std::vector<cMz5Index>* vMz5Index;
 #endif
 
 private:
   mzpSAXMzmlHandler* mzML;
-#ifdef MZP_MZ5
+#ifdef MZP_HDF
   mzpMz5Handler* mz5;
 #endif
   SpectrumPtr      spec;
@@ -1511,14 +1584,15 @@ public:
   SpectrumListPtr     spectrumListPtr;
 
   bool get();
-  void set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b);
+  void set(mzpSAXMzmlHandler* ml, void* m5, BasicChromatogram* b, BasicSpectrum* s);
 
 private:
   mzpSAXMzmlHandler*  mzML;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   mzpMz5Handler*      mz5;
   #endif
   BasicChromatogram*  bc;
+  BasicSpectrum*      bs;
 };
 
 class MSDataFile{
@@ -1532,8 +1606,8 @@ private:
   BasicSpectrum*      bs;
   BasicChromatogram*  bc;
   mzpSAXMzmlHandler*  mzML;
-  #ifdef MZP_MZ5
-  mzpMz5Config*        mz5Config;
+  #ifdef MZP_HDF
+  mzpMz5Config*       mz5Config;
   mzpMz5Handler*      mz5;
   #endif
 };
@@ -1585,6 +1659,7 @@ public:
 
   //User functions
   std::vector<cindex>*  getChromatIndex();
+  std::vector<cindex>*  getSpectrumIndex();
   int   highChromat();
   int   highScan();
   bool  load(const char* fname);
@@ -1596,7 +1671,7 @@ public:
 protected:
   mzpSAXMzmlHandler*    mzML;
   mzpSAXMzxmlHandler*   mzXML;
-  #ifdef MZP_MZ5
+  #ifdef MZP_HDF
   mzpMz5Handler*        mz5;
   mzpMz5Config*         mz5Config;
   #endif
