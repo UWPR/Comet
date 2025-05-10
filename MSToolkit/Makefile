@@ -19,6 +19,12 @@ INCLUDE_EXT = -I./include/extern
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 DFLAGS_EXT = -DHAVE_EXPAT_CONFIG_H
 
+UNAME_S := $(shell uname -s)
+ifneq ($(UNAME_S),Darwin)
+SFLAGS += -Wl,-z,norelro
+endif
+
+
 # -- Need to fix HDF5
 #ifdef HDF5
 #CFLAGS = -O3 -std=c++11 -I. -I./include -I$(HDF5_DIR)/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H $(HDF5)
@@ -202,10 +208,11 @@ ifdef HDF5
 endif
 	$(file >>mstoolkit.mri,save)
 	$(file >>mstoolkit.mri,end)
+	
 ifneq ($(UNAME_S),Darwin)
 	ar -M <mstoolkit.mri
 else
-   ar -qc libmstoolkit.a obj/*.o extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
+	ar -qc libmstoolkit.a obj/*.o extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
 endif
 
 
