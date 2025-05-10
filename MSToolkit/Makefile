@@ -212,7 +212,7 @@ endif
 ifneq ($(UNAME_S),Darwin)
 	ar -M <mstoolkit.mri
 else
-	ar -qc libmstoolkit.a obj/*.o extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
+	ar -qc libmstoolkit.a obj/*.o
 endif
 
 
@@ -240,7 +240,12 @@ ifdef HDF5
 endif
 	$(file >>mstoolkitextern.mri,save)
 	$(file >>mstoolkitextern.mri,end)
+	
+ifneq ($(UNAME_S),Darwin)
 	ar -M <mstoolkitextern.mri
+else
+	ar -qc libmstoolkitextern.a extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
+endif
 
 libextern-clean :
 	rm -rf libmstoolkitextern.a
