@@ -16,7 +16,6 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install autoconf && \
         which aclocal && \
         aclocal --version
         
