@@ -13,9 +13,6 @@ jobs:
     runs-on: macos-13
     steps:
     - uses: actions/checkout@v4
-
-    - name: Install dependencies
-      run: aclocal --version
         
     - name: Build Comet
       run: make
