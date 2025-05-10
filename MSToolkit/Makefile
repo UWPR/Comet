@@ -170,9 +170,6 @@ MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZP
 
 mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
 	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) -o $(BUILD_DIR)/libmzparser.so.$(RELVER) -Wl,-z,relro -Wl,-soname,libmzparser.so.$(SOVER) $(MZPARSER_DSO)
-	ln -sf $(BUILD_DIR)/libmzparser.so.$(RELVER) $(BUILD_DIR)/libmzparser.so.$(SOVER)
-	ln -sf $(BUILD_DIR)/libmzparser.so.$(SOVER) $(BUILD_DIR)/libmzparser.so
 	
 $(MZPARSER_DST) : | $(BUILD_DIR)/
 $(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
@@ -185,7 +182,7 @@ mzparser-clean :
 	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO)
 
 mzparser-realclean : mzparser-clean
-	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(BUILD_DIR)/libmzparser.a $(BUILD_DIR)/libmzparser.so*
+	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(BUILD_DIR)/libmzparser.a
 	
 
 # -- Libraries  ----------------------------------------------------------
@@ -205,16 +202,18 @@ ifdef HDF5
 endif
 	$(file >>mstoolkit.mri,save)
 	$(file >>mstoolkit.mri,end)
+ifneq ($(UNAME_S),Darwin)
 	ar -M <mstoolkit.mri
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) -o libmstoolkit.so.$(RELVER) -Wl,-z,relro -Wl,-soname,libmstoolkit.so.$(SOVER) $(MSTOOLKIT_DSO) $(MZPARSER_DSO)
-	ln -sf libmstoolkit.so.$(RELVER) libmstoolkit.so.$(SOVER)
-	ln -sf libmstoolkit.so.$(SOVER) libmstoolkit.so
+else
+   ar -qc libmstoolkit.a obj/*.o extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
+endif
+
 
 lib-clean :
-	rm -rf libmstoolkit.a libmstoolkit.so*
+	rm -rf libmstoolkit.a
 
 lib-realclean : lib-clean
-	rm -rf libmstoolkit.a libmstoolkit.so*
+	rm -rf libmstoolkit.a
 
 
 # -- External Libraries  ----------------------------------------------------------
@@ -235,15 +234,12 @@ endif
 	$(file >>mstoolkitextern.mri,save)
 	$(file >>mstoolkitextern.mri,end)
 	ar -M <mstoolkitextern.mri
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) -o libmstoolkitextern.so.$(RELVER) -Wl,-z,relro -Wl,-soname,libmstoolkitextern.so.$(SOVER) $(ZLIB_DSO) $(EXPAT_DSO) 
-	ln -sf libmstoolkitextern.so.$(RELVER) libmstoolkitextern.so.$(SOVER)
-	ln -sf libmstoolkitextern.so.$(SOVER) libmstoolkitextern.so
 
 libextern-clean :
-	rm -rf libmstoolkitextern.a libmstoolkitextern.so*
+	rm -rf libmstoolkitextern.a
 
 libextern-realclean : libextern-clean
-	rm -rf libmstoolkitextern.a libmstoolkitextern.so*
+	rm -rf libmstoolkitextern.a
 	
 
 # -- cleanup  ----------------------------------------------------------
