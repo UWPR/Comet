@@ -463,8 +463,8 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
    fprintf(fpout, " index=\"%d\"", iNumSpectraSearched + iWhichQuery + 1);
 
-   if (pQuery->_spectrumInfoInternal.dRTime > 0.0)
-      fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.dRTime);
+   if (pQuery->_spectrumInfoInternal.fRTime > 0.0)
+      fprintf(fpout, " retention_time_sec=\"%0.1f\">\n", pQuery->_spectrumInfoInternal.fRTime);
    else
       fprintf(fpout, ">\n");
 

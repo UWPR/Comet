@@ -442,7 +442,7 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 
 void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPeptides,
                                       int iWhichThread,
-                                      int iWhichPeptide,
+                                      size_t iWhichPeptide,
                                       int modNumIdx,
                                       short siNtermMod,
                                       short siCtermMod,
@@ -599,7 +599,7 @@ if (!(iWhichPeptide%5000))
          {
             int iBinBion = BIN(dBion);
 
-            if (iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
                exit(1);
@@ -620,7 +620,7 @@ if (!(iWhichPeptide%5000))
          {
             int iBinYion = BIN(dYion);
 
-            if (iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
                exit(1);

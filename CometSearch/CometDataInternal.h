@@ -268,7 +268,7 @@ struct SpecLibResults // MS2 spec lib
    float fSpecLibScore;
    float fXcorr;                              // use xcorr for now
    float fCn;                                 // speclib score
-   float fRTdiff;                             // in milliseconds
+   float fRTtime;                             // retention time in seconds of the matched entry
 };
 
 struct SpecLibResultsMS1  // MS1 spec lib
@@ -276,7 +276,7 @@ struct SpecLibResultsMS1  // MS1 spec lib
    unsigned int iWhichSpecLib;                // the matched spectral library entry
    float fXcorr;                              // use xcorr for now
    float fCn;                                 // speclib score
-   float fRTdiff;                             // in milliseconds
+   float fRTime;                              // retention time in seconds of the matched entry
 };
 
 
@@ -297,7 +297,7 @@ struct SpectrumInfoInternal
    int    iChargeState;
    int    iMaxFragCharge;
    double dTotalIntensity;
-   double dRTime;
+   float  fRTime;
    char   szMango[32];                // Mango encoding
    char   szNativeID[SIZE_NATIVEID];  // nativeID string from mzML
 };
@@ -497,7 +497,7 @@ struct PlainPeptideIndexStruct
 
 struct FragmentPeptidesStruct
 {
-   int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
+   size_t iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
    int modNumIdx;
    double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
    short siNtermMod;
@@ -521,9 +521,12 @@ struct SpecLibStruct
    unsigned int iNumPeaks;
    int iSpecLibCharge;               // precursor charge; not relevant for MS1 speclib
    double dSpecLibMW;                // if a peptide, store neutral mass
-   double dRT;
+   float fRTime;
+   float fScaleMinInten;             // min intensity of data prior to encoding to pccSparseFastXcorrData; 0.0 for unit vector
+   float fScaleMaxInten;             // max intensity of data prior to encoding to ppcSparseFastXcorrData
    vector<std::pair<double, float>> vSpecLibPeaks;
    char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
+   unsigned int uiArraySizeMS1;
 };
 
 extern unsigned int **g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
@@ -1193,25 +1196,27 @@ struct Query
 
 struct QueryMS1
 {
-   short siLowestSpecLibIndex;
-   float fLowestXcorr;
+//   short siLowestSpecLibIndex;
+//   float fLowestXcorr;
    unsigned int uiMatchMS1Count;        // # of peptides that get stored (i.e. are greater than lowest score)
+   unsigned int iArraySizeMS1;          // dimension of pcFastXcorrData
 
    // Standard array representation of data
    // Library spectra are fast xcorr manipulated so non need to do so with query MS1
-   char *pcFastXcorrData;               // use MH char representation of spectrum with intensity values that range -127 to +128
+   float *pfFastXcorrData;
 
-   SpecLibResultsMS1 *_pSpecLibResultsMS1;
+   SpecLibResultsMS1 _pSpecLibResultsMS1;
 
    Mutex accessMutex;
 
    QueryMS1()
    {
-      siLowestSpecLibIndex = 0;
-      fLowestXcorr = SPECLIB_CUTOFF;
+//      siLowestSpecLibIndex = 0;
+//      fLowestXcorr = SPECLIB_CUTOFF;
       uiMatchMS1Count = 0;
-      pcFastXcorrData = NULL;
-      _pSpecLibResultsMS1 = NULL;
+      pfFastXcorrData = NULL;
+      _pSpecLibResultsMS1.fXcorr = 0.0;
+      _pSpecLibResultsMS1.fRTime = 0.0;
 
       Threading::CreateMutex(&accessMutex);
    }

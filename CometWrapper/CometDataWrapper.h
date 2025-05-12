@@ -350,9 +350,14 @@ namespace CometWrapper {
           float get() { return pScoresMS1->fCn; }
        }
 
-       property float fRTdiff
+       property float fRTime
        {
-          float get() { return pScoresMS1->fRTdiff; }
+          float get() { return pScoresMS1->fRTime; }
+       }
+
+       property int iScanNumber
+       {
+          int get() { return pScoresMS1->iScanNumber; }
        }
 
     private:

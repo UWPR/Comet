@@ -38,8 +38,6 @@ CometSpecLib::~CometSpecLib()
 bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
 {
    FILE *fp;
-   size_t tTmp;
-   char szBuf[SIZE_BUF];
 
    if (g_bSpecLibRead)
       return true;
@@ -470,7 +468,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
          // FIX:  do something with the peak list depending on score/processing
          g_vSpecLib.push_back(pTmp);
-         int iWhichSpecLib = g_vSpecLib.size() - 1;
+         size_t iWhichSpecLib = g_vSpecLib.size() - 1;
          SetSpecLibPrecursorIndex(pTmp.dSpecLibMW, pTmp.iSpecLibCharge, iWhichSpecLib);
       }
       else
@@ -483,7 +481,8 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
    return true;
 }
 
-// Loads all MS1 spectra from input file
+// Loads all MS1 spectra from input file into g_vSpecLib.
+// Don't bother storing vSpecLibPeaks; only use ppcSparseFastXcorrData
 bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 {
    int iFirstScan = 1;
@@ -503,12 +502,9 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 
    int iAnalysisType = AnalysisType_EntireFile;
 
-   printf(" OK input file %s\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
    mstReader.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 1);
 
    int iFileLastScan = mstReader.getLastScan();
-
-   printf("OK iFileLastScan %d\n", iFileLastScan);
 
    if (iFileLastScan <= 0)
    {
@@ -527,10 +523,12 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
    bool bFirstScan = true;
    bool bDoneProcessingAllSpectra = false;
 
+   printf(" - loading MS1 scan (%d): ", iFileLastScan);
+   fflush(stdout);
+
    // Load all input spectra.
    while (true)
    {
-      printf("OK at head of while loop\n");
       // Loads in MS1 spectrum data.
       if (bFirstScan)
       {
@@ -552,7 +550,13 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
       }
 
       iScanNumber = mstSpectrum.getScanNumber();
-      printf("OK1 at head of while loop, scan number %d\n", iScanNumber);
+
+      if (iScanNumber % 100)
+      {
+         printf("%3d%%", (int)(100.0 * (double)iScanNumber / iFileLastScan));
+         fflush(stdout);
+         printf("\b\b\b\b");
+      }
 
       if (iScanNumber != 0)
       {
@@ -572,28 +576,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
                break;
             }
 
-            // add this hack when 1 thread is specified otherwise g_pvQuery.size() returns 0
-            if (g_staticParams.options.iNumThreads == 1)
-               pLoadSpecThreadPool->wait_on_threads();
-
-            Threading::LockMutex(g_pvQueryMutex);
-            // this needed because processing can add multiple spectra at a time
-            iNumSpectraLoaded = (int)g_pvQuery.size();
-            iNumSpectraLoaded++;
-            Threading::UnlockMutex(g_pvQueryMutex);
-
-            pLoadSpecThreadPool->wait_for_available_thread();
-
             PreprocessThreadData* pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
-
-//            printf("OK mstSpectrum size %d\n", pPreprocessThreadDataMS1->mstSpectrum.size());
-//            for (int i=0 ; i < pPreprocessThreadDataMS1->mstSpectrum.size() ; ++i)
-//            {
-//               printf("   OK %lf, %lf\n",  pPreprocessThreadDataMS1->mstSpectrum.at(i).mz,
-//                     pPreprocessThreadDataMS1->mstSpectrum.at(i).intensity);
-//               if (i==2)
-//                  break;
-//            }
 
             pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool));
          }
@@ -618,6 +601,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 
       Threading::LockMutex(g_pvQueryMutex);
 
+      iNumSpectraLoaded = (int)g_vSpecLib.size();
+
       if (CometPreprocess::CheckExit(iAnalysisType,
                                      iScanNumber,
                                      iTotalScans,
@@ -632,8 +617,9 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
       {
          Threading::UnlockMutex(g_pvQueryMutex);
       }
-
    }
+
+   printf("\n");
 
    // Wait for active preprocess threads to complete processing.
    pLoadSpecThreadPool->wait_on_threads();
@@ -641,6 +627,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 
    g_bSpecLibRead = true;
+   mstReader.closeFile();
 
    return bSucceeded;
 }
@@ -668,7 +655,7 @@ double CometSpecLib::ScoreSpecLib(Query *pQuery,
 
    dScore = std::round(dScore * 0.005 * 1000.0) / 1000.0;  // round to 3 decimal points
 
-printf("OK in ScoreSpecLib, query %d, iWhichSpecLib %d, dScore %lf\n", pQuery->_spectrumInfoInternal.iScanNumber, iWhichSpecLib, dScore);
+//printf("OK in ScoreSpecLib, query %d, iWhichSpecLib %d, dScore %lf\n", pQuery->_spectrumInfoInternal.iScanNumber, iWhichSpecLib, dScore);
 
    return dScore;
 }
@@ -743,7 +730,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
 
 //printf("*** OK iStart %d, iEnd %d, dMassLow %lf, dMassHigh %lf\n", iStart, iEnd, dMassLow, dMassHigh);
    for (int x = iStart ; x <= iEnd; ++x)
-      g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+      g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
    // now go through each isotope offset
    if (g_staticParams.tolerances.iIsotopeError > 0)
@@ -759,7 +746,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
          if (iEnd > iMaxBin)
             iEnd = iMaxBin;
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
          if (g_staticParams.tolerances.iIsotopeError >= 2
                && g_staticParams.tolerances.iIsotopeError <= 6
@@ -774,7 +761,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
                iEnd = iMaxBin;
 
             for (int x = iStart ; x <= iEnd; ++x)
-               g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+               g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
             if (g_staticParams.tolerances.iIsotopeError >= 3
                   && g_staticParams.tolerances.iIsotopeError <= 6
@@ -789,7 +776,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
                   iEnd = iMaxBin;
 
                for (int x = iStart ; x <= iEnd; ++x)
-                  g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+                  g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
             }
          }
       }
@@ -806,7 +793,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
             iEnd = iMaxBin;
 
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
          if (g_staticParams.tolerances.iIsotopeError == 6)     // do -2 and -3 offsets
          {
@@ -819,7 +806,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
                iEnd = iMaxBin;
 
             for (int x = iStart ; x <= iEnd; ++x)
-               g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+               g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
             iStart = BINPREC(dMassLow + 3.0 * C13_DIFF * PROTON_MASS);
             iEnd   = BINPREC(dMassHigh + 3.0 * C13_DIFF * PROTON_MASS);
@@ -830,7 +817,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
                iEnd = iMaxBin;
 
             for (int x = iStart ; x <= iEnd; ++x)
-               g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+               g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
          }
       }
       else if (g_staticParams.tolerances.iIsotopeError == 7)            // do -8, -4, +4, +8 offsets
@@ -844,7 +831,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
             iEnd = iMaxBin;
 
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
          iStart = BINPREC(dMassLow + 4.0 * C13_DIFF * PROTON_MASS);
          iEnd   = BINPREC(dMassHigh + 4.0 * C13_DIFF * PROTON_MASS);
@@ -855,7 +842,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
             iEnd = iMaxBin;
 
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
          iStart = BINPREC(dMassLow - 8.0 * C13_DIFF * PROTON_MASS);
          iEnd   = BINPREC(dMassHigh - 8.0 * C13_DIFF * PROTON_MASS);
@@ -866,7 +853,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
             iEnd = iMaxBin;
 
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 
          iStart = BINPREC(dMassLow - 4.0 * C13_DIFF * PROTON_MASS);
          iEnd   = BINPREC(dMassHigh - 4.0 * C13_DIFF * PROTON_MASS);
@@ -877,7 +864,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
             iEnd = iMaxBin;
 
          for (int x = iStart ; x <= iEnd; ++x)
-            g_vulSpecLibPrecursorIndex.at(x).push_back(iWhichSpecLib);
+            g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
       }
    }
 }
@@ -920,43 +907,6 @@ void CometSpecLib::StoreSpecLib(Query *it,
    }
 }
 
-
-void CometSpecLib::StoreSpecLibMS1(QueryMS1 *it,
-                                   unsigned int iWhichSpecLib,
-                                   double dSpecLibScore)
-{
-   QueryMS1 *pQueryMS1 = it;
-
-   pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[0].fXcorr;
-
-   short int siLowestXcorrIndex = 0;
-
-   // Get new lowest score
-   for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
-   {
-      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr < pQueryMS1->fLowestXcorr)
-      {
-         pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[i].fXcorr;
-         siLowestXcorrIndex = i;
-      }
-
-      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr == SPECLIB_CUTOFF)
-         break;
-   }
-
-   pQueryMS1->_pSpecLibResultsMS1[siLowestXcorrIndex].iWhichSpecLib = iWhichSpecLib;
-   pQueryMS1->_pSpecLibResultsMS1[siLowestXcorrIndex].fXcorr = (float)dSpecLibScore;
-
-   pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[0].fXcorr;
-   for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
-   {
-      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr < pQueryMS1->fLowestXcorr)
-         pQueryMS1->fLowestXcorr = pQueryMS1->_pSpecLibResultsMS1[i].fXcorr;
-
-      if (pQueryMS1->_pSpecLibResultsMS1[i].fXcorr == SPECLIB_CUTOFF)
-         break;
-   }
-}
 
 
 // Function to decode BLOB data as an array of 8-byte floats

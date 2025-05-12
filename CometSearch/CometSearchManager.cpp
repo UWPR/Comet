@@ -356,6 +356,7 @@ static bool AllocateResultsMemMS1()
    {
       QueryMS1* pQueryMS1 = *it;
 
+/*
       try
       {
          pQueryMS1->_pSpecLibResultsMS1 = new SpecLibResultsMS1[g_staticParams.options.iNumStored];
@@ -374,8 +375,9 @@ static bool AllocateResultsMemMS1()
       {
          pQueryMS1->_pSpecLibResultsMS1[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
          pQueryMS1->_pSpecLibResultsMS1[j].fCn = 0;
-         pQueryMS1->_pSpecLibResultsMS1[j].fRTdiff = 0;
+         pQueryMS1->_pSpecLibResultsMS1[j].fRTime = 0;
       }
+*/
    }
 
    return true;
@@ -2209,6 +2211,8 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
+   tp->fillPool(g_staticParams.options.iNumThreads);// g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+
    if (g_staticParams.options.bCreatePeptideIndex)
    {
       bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
@@ -2247,8 +2251,6 @@ bool CometSearchManager::DoSearch()
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
-
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);
 
    if (g_bPerformDatabaseSearch && g_staticParams.options.bCreateFragmentIndex) //index
    {
@@ -3319,7 +3321,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       return bSucceeded;
 
    ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    // Load databases
    CometFragmentIndex sqSearch;
@@ -3383,12 +3385,7 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
       return bSucceeded;
 
    ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
-
-   // Load all MS1 scans
-   MSReader mstReader;
-   g_staticParams.options.iMSLevel = 1;
-   SetMSLevelFilter(mstReader);
+   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    singleSearchMS1InitializationComplete = true;
 
@@ -3868,8 +3865,9 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
    if (bSucceeded == false)
       return bSucceeded;
 
+   g_pvQueryMS1.clear();
 
-   ThreadPool *tp = _tp;  // filled in InitializeSingleSpectrumSearch
+   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
 
    //Load all MS1 spectrum from file
    if (g_bSpecLibRead == false)
@@ -3877,9 +3875,6 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
 
    // Process current MS1
    bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);
-
-   unsigned int uiSize;
-   int takeSearchResultsN;
 
    if (!bSucceeded)
       goto cleanup_results;
@@ -3889,45 +3884,26 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
 
    bSucceeded = AllocateResultsMemMS1();
 
-   int iWhichMS1Query;
-
    if (!bSucceeded)
       goto cleanup_results;
-
-   iWhichMS1Query = 0; // dealing with one query
 
    QueryMS1* pQueryMS1;
-   pQueryMS1 = g_pvQueryMS1.at(iWhichMS1Query);
+   pQueryMS1 = g_pvQueryMS1.at(0);
+   pQueryMS1->_pSpecLibResultsMS1.fXcorr = 0.0;
 
-//   bSucceeded = CometSearch::RunMS1Search(tp, dRT);
+   bSucceeded = CometSearch::RunMS1Search(tp, dRT);
 
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   uiSize = pQueryMS1->uiMatchMS1Count;
-   if (uiSize > g_staticParams.options.iNumStored)
-      uiSize = g_staticParams.options.iNumStored;
-
-   if (uiSize > 1)
-   {
-      std::sort(pQueryMS1->_pSpecLibResultsMS1, pQueryMS1->_pSpecLibResultsMS1 + uiSize, CometPostAnalysis::SortSpecLibFnXcorrMS1);
-   }
-
-   takeSearchResultsN = topN; // return up to the top N results, or iSize
-
-   if (takeSearchResultsN > uiSize)
-      takeSearchResultsN = uiSize;
-
-   for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
+   if (bSucceeded)
    {
       ScoresMS1 scoreMS1;
-
-      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fXcorr;
-      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fCn;
-      scoreMS1.fRTdiff  = pQueryMS1->_pSpecLibResultsMS1[iWhichResult].fRTdiff;
-
+      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1.fXcorr;
+      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1.fCn;
+      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
+      scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
       scoresMS1.push_back(scoreMS1);
    }
+   else
+      goto cleanup_results;
 
 cleanup_results:
 

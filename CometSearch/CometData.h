@@ -155,31 +155,36 @@ struct ScoresMS1
 {
     float fXcorr;
     float fCn;
-    float fRTdiff;  // in milliseconds
+    float fRTime;  // in seconds
+    int iScanNumber;
 
     ScoresMS1() :
         fXcorr(0),
         fCn(0),
-        fRTdiff(0)
+        fRTime(0),
+        iScanNumber(0)
     { }
 
-    ScoresMS1(float fXcorr, float fCn, float fRTdiff) :
+    ScoresMS1(float fXcorr, float fCn, float fRTime, int iScanNumber) :
         fXcorr(fXcorr),
         fCn(fCn),
-        fRTdiff(fRTdiff)
+        fRTime(fRTime),
+        iScanNumber(iScanNumber)
     { }
 
     ScoresMS1(const ScoresMS1& a) :
         fXcorr(a.fXcorr),
         fCn(a.fCn),
-        fRTdiff(a.fRTdiff)
+        fRTime(a.fRTime),
+        iScanNumber(a.iScanNumber)
     { }
 
     ScoresMS1& operator=(ScoresMS1& a)
     {
         fXcorr = a.fXcorr;
         fCn = a.fCn;
-        fRTdiff = a.fRTdiff;
+        fRTime = a.fRTime;
+        iScanNumber = a.iScanNumber;
         return *this;
     }
 };

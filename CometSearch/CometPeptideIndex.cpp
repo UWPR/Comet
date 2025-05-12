@@ -52,7 +52,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
+//   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else

@@ -73,6 +73,15 @@ public:
                           char cDelimeter);
 
    static void EscapeString(std::string& data);
+
+   static char NormalizeDoubleToChar(double dVal,
+                                     double dMin,
+                                     double dMax);
+
+   static double DenormalizeCharToDouble(char dChar,
+                                         double dMin,
+                                         double dMax);
+
 };
 
 #endif // _COMETMASSSPECUTILS_H_
