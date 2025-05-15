@@ -1,0 +1,8 @@
+This project incorporates code from:
+
+MSToolkit (https://github.com/mhoopmann/mstoolkit/)
+Copyright Michael Hoopmann, licensed under the Apache License, Version 2.0.  
+For a copy of the license, see http://www.apache.org/licenses/LICENSE-2.0 
+
+twiddle.c (https://www.netlib.org/toms-2014-06-10/382)
+Copyright 1996 by Matthew Belmonte.
