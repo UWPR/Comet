@@ -67,7 +67,8 @@ public:
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
                                                    vector<Scores>& scores);
-   virtual bool DoMS1SearchMultiResults(const int topN,
+   virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                        const int topN,
                                         const double dRT,
                                         double* pdMass,
                                         double* pdInten,

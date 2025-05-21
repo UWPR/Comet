@@ -925,18 +925,22 @@ bool CometSearch::RunSpecLibSearch(int iPercentStart,
 }
 
 bool CometSearch::RunMS1Search(ThreadPool* tp,
-                               double dRT)
+                               double dRT,
+                               double dMaxMS1RTDiff)
 {
-   ThreadPool* pRunMS1SearchThredPool = tp;
+   ThreadPool* pRunMS1SearchThreadPool = tp;
 
    for (size_t iWhichMS1Query = 0; iWhichMS1Query < g_pvQueryMS1.size(); ++iWhichMS1Query)
    {
-      // for each MS1 query scan, search against all MS1 spectra in the library
-      for (size_t iWhichMS1LibEntry = 0; iWhichMS1LibEntry < g_vSpecLib.size(); ++iWhichMS1LibEntry)
+      SpecLibResultsMS1 pTmpMS1Scores[MAX_THREADS];
+
+      // for each query, thread the search by segmenting the library
+      for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumThreads; ++iWhichThread)
       {
-//         pRunMS1SearchThredPool->doJob(std::bind(SearchMS1Library, iWhichMS1Query, iWhichMS1LibEntry, pRunMS1SearchThredPool));
-         SearchMS1Library(iWhichMS1Query, iWhichMS1LibEntry, pRunMS1SearchThredPool);
+         pRunMS1SearchThreadPool->doJob(std::bind(SearchMS1Library, iWhichMS1Query, iWhichThread, dRT, dMaxMS1RTDiff, pRunMS1SearchThreadPool));
       }
+
+      pRunMS1SearchThreadPool->wait_on_threads();
    }
 
    return true;
@@ -2487,51 +2491,62 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 }
 
 void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
-                                   size_t iWhichMS1LibEntry,
+                                   int iWhichThread,
+                                   double dRT,
+                                   double dMaxMS1RTDiff,
                                    ThreadPool* tp)
 {
-   double dScore = 0.0;
-   double dInten, dInten2;
-   int bin, x, y;
 
-   int iNumMatchedPeaks = 0;
-   for (unsigned int i = 0; i < g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1; ++i)
+   // Given iWhichMS1Query, this search will run through a subset of the library entries
+   for (size_t iWhichMS1LibEntry = 0; iWhichMS1LibEntry < g_vSpecLib.size(); iWhichMS1LibEntry += g_staticParams.options.iNumThreads)
    {
-      dInten2 = g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i];
+      double dScore = 0.0;
+      double dInten, dInten2;
+      int bin, x, y;
 
-      if (dInten2 > 0 && i < g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
+      if (dMaxMS1RTDiff == 0.0 || fabs(dRT - g_vSpecLib.at(iWhichMS1LibEntry).fRTime) <= dMaxMS1RTDiff)
       {
-         bin = i;
-
-         x = bin / SPARSE_MATRIX_SIZE;
-
-         if (g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x] != NULL) // x should never be > iMax so this is just a safety check
+         for (unsigned int i = 0; i < g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1; ++i)
          {
-            y = bin - (x * SPARSE_MATRIX_SIZE);
+            dInten2 = g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i];
 
-            dInten = CometMassSpecUtils::DenormalizeCharToDouble(g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x][y],
-               g_vSpecLib.at(iWhichMS1LibEntry).fScaleMinInten, g_vSpecLib.at(iWhichMS1LibEntry).fScaleMaxInten);
-
-            if (dInten > 0.0 && dInten2 > 0.0)
+            if (dInten2 > 0 && i < g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
             {
-               dScore += dInten * dInten2;
+               bin = i;
 
-               iNumMatchedPeaks++;
+               x = bin / SPARSE_MATRIX_SIZE;
+
+               if (g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x] != NULL) // x should never be > iMax so this is just a safety check
+               {
+                  y = bin - (x * SPARSE_MATRIX_SIZE);
+
+                  dInten = CometMassSpecUtils::DenormalizeCharToDouble(g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x][y],
+                     g_vSpecLib.at(iWhichMS1LibEntry).fScaleMinInten, g_vSpecLib.at(iWhichMS1LibEntry).fScaleMaxInten);
+
+                  if (dInten > 0.0 && dInten2 > 0.0)
+                  {
+                     dScore += dInten * dInten2;
+                  }
+               }
             }
          }
+
+         Threading::LockMutex(g_pvQueryMutex);
+         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+         {
+            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
+            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
+            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime;
+            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
+         }
+         Threading::UnlockMutex(g_pvQueryMutex);
+      }
+      else if (g_vSpecLib.at(iWhichMS1LibEntry).fRTime > dRT + dMaxMS1RTDiff)
+      {
+         // library RT is beyond the RT range so skip analyzing the rest against this query
+         break;
       }
    }
-
-   Threading::UnlockMutex(g_pvQueryMS1.at(iWhichMS1Query)->accessMutex);
-
-   if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
-   {
-      g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
-      g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = (float)iNumMatchedPeaks;
-      g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime;
-      g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
-   }
-   Threading::UnlockMutex(g_pvQueryMS1.at(iWhichMS1Query)->accessMutex);
 
 }
 

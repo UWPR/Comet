@@ -75,7 +75,8 @@ public:
                                 ThreadPool *tp);
    static bool RunSpecLibSearch(ThreadPool *tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
    static bool RunMS1Search(ThreadPool* tp,
-                            double dRT);
+                            double dRT,
+                            double dMaxMS1RTDiff);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData,
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
@@ -261,7 +262,9 @@ private:
                        int iDirection,
                        char *sDNASequence);
    static void SearchMS1Library(size_t iWhichMS1Query,
-                                size_t iWhichMS1LibEntry,
+                                int iWhichThread,
+                                double dRT,
+                                double dMaxMS1RTDiff,
                                 ThreadPool* tp);
    char GetAA(int i,
               int iDirection,

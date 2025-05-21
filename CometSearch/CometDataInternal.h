@@ -99,7 +99,6 @@ class CometSearchManager;
 
 #define SPECLIB_CUTOFF              -999.9
 
-
 struct Options
 {
    int iNumPeptideOutputLines;

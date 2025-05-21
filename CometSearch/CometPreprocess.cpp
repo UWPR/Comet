@@ -953,6 +953,7 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    // modify array to fast xcorr after normalizing intensities to 100
 
    int iBinMass;
+   double dInten;
 
    for (int ii = 0; ii < pPreprocessThreadDataMS1->mstSpectrum.size(); ++ii)
    {
@@ -960,41 +961,14 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
 //    auto p1 = std::make_pair(pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz, pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity);
 //    pTmp.vSpecLibPeaks.push_back(p1);
 
-      if (pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity > dHighestIntensity)
-         dHighestIntensity = pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity;
-
+      dInten = sqrt(pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity);
       iBinMass = BINPREC(pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz);
-      if (pdTmpRawData[iBinMass] < pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity)
-         pdTmpRawData[iBinMass] = pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity;
+
+      if (dInten > dHighestIntensity)
+         dHighestIntensity = dInten;
+      if (pdTmpRawData[iBinMass] < dInten)
+         pdTmpRawData[iBinMass] = dInten;
    }
-
-/*
-   // Create data for correlation analysis.
-   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iArraySizeMS1, dHighestIntensity);
-
-   // Make fast xcorr spectrum.
-   double dSum = 0.0;
-   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (iTmpRange - 1.0);
-   double dMinXcorrInten = 0.0;
-
-   dSum = 0.0;
-   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
-      dSum += pdTmpCorrelationData[i];
-   for (i = g_staticParams.iXcorrProcessingOffset; i < iArraySizeMS1 + g_staticParams.iXcorrProcessingOffset; ++i)
-   {
-      if (dMinXcorrInten < pdTmpCorrelationData[i])
-         dMinXcorrInten = pdTmpCorrelationData[i];
-
-      if (i < iArraySizeMS1)
-         dSum += pdTmpCorrelationData[i];
-      if (i >= iTmpRange)
-         dSum -= pdTmpCorrelationData[i - iTmpRange];
-      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
-   }
-*/
-
 
    // For spectral processing, make the spectrum a unit vector
    double dMagnitude = 0.0;
@@ -2639,8 +2613,9 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
 
       for (i = 0; i < iNumPeaks; ++i)
       {
-         if (pdInten[i] > dBasePeakIntensity)
-            dBasePeakIntensity = pdInten[i];
+         dIntensity = sqrt(pdInten[i]);
+         if (dIntensity > dBasePeakIntensity)
+            dBasePeakIntensity = dIntensity;
       }
 
       dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
@@ -2649,16 +2624,13 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
          dIntensityCutoff = g_staticParams.options.dMinIntensity;
    }
 
+   int iNewArraySizeMS1 = 0;
    for (i = 0; i < iNumPeaks; ++i)
    {
       dIon = pdMass[i];
-      dIntensity = pdInten[i];
+      dIntensity = sqrt(pdInten[i]);
 
-      bool bPass = false;
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
-         bPass = true;
-
-      if (bPass)
       {
          if (dIon < g_staticParams.options.dMS1MaxMass)
          {
@@ -2670,10 +2642,13 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
             {
                if (dIntensity > pdTmpRawData[iBinIon])
                   pdTmpRawData[iBinIon] = dIntensity;
+               iNewArraySizeMS1 = iBinIon;
             }
          }
       }
    }
+
+   iArraySizeMS1 = iNewArraySizeMS1;
 
   // make the spectrum a unit vector
    double dMagnitude = 0.0;

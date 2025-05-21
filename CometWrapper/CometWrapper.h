@@ -53,7 +53,8 @@ namespace CometWrapper {
                                                 [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
                                                 [Out] List<ScoreWrapper^>^% score);
         // Need to convert vector to List and back
-        bool DoMS1SearchMultiResults(int intValue1,
+        bool DoMS1SearchMultiResults(double dVal3,
+                                     int intValue1,
                                      double value,
                                      cli::array<double>^ dVal1,
                                      cli::array<double>^ dVal2,

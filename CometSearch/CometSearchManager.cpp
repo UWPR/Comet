@@ -3849,7 +3849,8 @@ cleanup_results:
 
 
 // Load all MS1 from raw file. Then search each MS1 query.
-bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
+bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                                 const int topN,
                                                  const double dRT,
                                                  double* pdMass,
                                                  double* pdInten,
@@ -3890,8 +3891,11 @@ bool CometSearchManager::DoMS1SearchMultiResults(const int topN,
    QueryMS1* pQueryMS1;
    pQueryMS1 = g_pvQueryMS1.at(0);
    pQueryMS1->_pSpecLibResultsMS1.fXcorr = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fCn = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
 
-   bSucceeded = CometSearch::RunMS1Search(tp, dRT);
+   bSucceeded = CometSearch::RunMS1Search(tp, dRT, dMaxMS1RTDiff);
 
    if (bSucceeded)
    {

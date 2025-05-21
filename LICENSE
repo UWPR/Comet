@@ -194,3 +194,6 @@
    - Original Source:  https://github.com/mhoopmann/mstoolkit/
    - Original License: Apache 2.0
 
+   - Component:        twiddle.c
+   - Original Author:  Matthew Belmonte
+   - Original Source:  https://www.netlib.org/toms-2014-06-10/382
