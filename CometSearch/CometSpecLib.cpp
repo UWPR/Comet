@@ -482,7 +482,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 }
 
 // Loads all MS1 spectra from input file into g_vSpecLib.
-// Don't bother storing vSpecLibPeaks; only use ppcSparseFastXcorrData
+// Don't bother storing vSpecLibPeaks
 bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 {
    int iFirstScan = 1;

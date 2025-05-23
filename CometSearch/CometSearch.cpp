@@ -2504,32 +2504,14 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
       double dInten, dInten2;
       int bin, x, y;
 
+      unsigned int uiArrayLimit = g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1;
+      if (uiArrayLimit > g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
+         uiArrayLimit = g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1;
+
       if (dMaxMS1RTDiff == 0.0 || fabs(dRT - g_vSpecLib.at(iWhichMS1LibEntry).fRTime) <= dMaxMS1RTDiff)
       {
-         for (unsigned int i = 0; i < g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1; ++i)
-         {
-            dInten2 = g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i];
-
-            if (dInten2 > 0 && i < g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
-            {
-               bin = i;
-
-               x = bin / SPARSE_MATRIX_SIZE;
-
-               if (g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x] != NULL) // x should never be > iMax so this is just a safety check
-               {
-                  y = bin - (x * SPARSE_MATRIX_SIZE);
-
-                  dInten = CometMassSpecUtils::DenormalizeCharToDouble(g_vSpecLib.at(iWhichMS1LibEntry).ppcSparseFastXcorrData[x][y],
-                     g_vSpecLib.at(iWhichMS1LibEntry).fScaleMinInten, g_vSpecLib.at(iWhichMS1LibEntry).fScaleMaxInten);
-
-                  if (dInten > 0.0 && dInten2 > 0.0)
-                  {
-                     dScore += dInten * dInten2;
-                  }
-               }
-            }
-         }
+         for (unsigned int i = 0; i < uiArrayLimit; ++i)
+            dScore += g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
 
          Threading::LockMutex(g_pvQueryMutex);
          if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)

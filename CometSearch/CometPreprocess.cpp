@@ -921,21 +921,6 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    // take pPreprocessThreadData->mstSpectrum and store in g_vSpecLib
 
    SpecLibStruct pTmp;
-
-/*
-   struct SpecLibStruct
-   {
-      string strName;                   // any string associated with speclib entry
-      unsigned int iLibEntry;           // a reference number associated with speclib entry
-      unsigned int iNumPeaks;
-      int iSpecLibCharge;               // precursor charge; not relevant for MS1 speclib
-      double dSpecLibMW;                // if a peptide, store neutral mass
-      double fRTime;
-      vector<std::pair<double, float>> vSpecLibPeaks;
-      char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
-   };
-*/
-
    pTmp.iLibEntry = pPreprocessThreadDataMS1->mstSpectrum.getScanNumber();
    pTmp.iNumPeaks = pPreprocessThreadDataMS1->mstSpectrum.size();
    pTmp.fRTime = (float)(pPreprocessThreadDataMS1->mstSpectrum.getRTime() * 60.0);  // convert from minutes to seconds
@@ -975,7 +960,7 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    double dMaxInten = -1e9;
    for (int i = 0; i < iArraySizeMS1; ++i)
       dMagnitude += pdTmpRawData[i] * pdTmpRawData[i];
-   dMagnitude = std::sqrt(dMagnitude);
+   dMagnitude = sqrt(dMagnitude);
    for (int i = 0; i < iArraySizeMS1; ++i)
    {
       pdTmpFastXcorrData[i] = pdTmpRawData[i] / dMagnitude;
@@ -987,29 +972,9 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    pTmp.fScaleMaxInten = (float)dMaxInten;
    pTmp.fScaleMinInten = 0.0;
 
-   //MH: Fill sparse matrix
-   pTmp.ppcSparseFastXcorrData = new char* [(iArraySizeMS1 / SPARSE_MATRIX_SIZE) + 1]();
-
-   int x;
-   int y;
-   int iEncodedZero = CometMassSpecUtils::NormalizeDoubleToChar(0, pTmp.fScaleMinInten, pTmp.fScaleMaxInten);
-   for (i = 1; i < iArraySizeMS1; ++i)
-   {
-      if (pdTmpFastXcorrData[i] > FLOAT_ZERO || pdTmpFastXcorrData[i] < -FLOAT_ZERO)
-      {
-         x = i / SPARSE_MATRIX_SIZE;
-         if (pTmp.ppcSparseFastXcorrData[x] == NULL)
-         {
-            pTmp.ppcSparseFastXcorrData[x] = new char[SPARSE_MATRIX_SIZE]();
-
-            for (y = 0; y < SPARSE_MATRIX_SIZE; ++y)
-               pTmp.ppcSparseFastXcorrData[x][y] = iEncodedZero;
-         }
-         y = i - (x * SPARSE_MATRIX_SIZE);
-
-         pTmp.ppcSparseFastXcorrData[x][y] = CometMassSpecUtils::NormalizeDoubleToChar(pdTmpFastXcorrData[i], pTmp.fScaleMinInten, pTmp.fScaleMaxInten);
-      }
-   }
+   pTmp.pfUnitVector = new float[iArraySizeMS1];
+   for (int i = 0; i < iArraySizeMS1; ++i)
+      pTmp.pfUnitVector[i] = (float)(pdTmpFastXcorrData[i]);
 
    Threading::LockMutex(g_pvQueryMutex);  // use g_pvQueryMutex to protext g_vSpecLib
    g_vSpecLib.push_back(pTmp);
@@ -2613,7 +2578,7 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
 
       for (i = 0; i < iNumPeaks; ++i)
       {
-         dIntensity = sqrt(pdInten[i]);
+         dIntensity = pdInten[i];
          if (dIntensity > dBasePeakIntensity)
             dBasePeakIntensity = dIntensity;
       }
@@ -2630,13 +2595,12 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
       dIon = pdMass[i];
       dIntensity = sqrt(pdInten[i]);
 
-      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
+      // check if raw intensity passes cutoff before using sqrt inten for analysis
+      if (pdInten[i] >= dIntensityCutoff && dIntensity > 0.0)
       {
          if (dIon < g_staticParams.options.dMS1MaxMass)
          {
             int iBinIon = BINPREC(dIon);
-
-            dIntensity = sqrt(dIntensity);
 
             if (iBinIon < iArraySizeMS1 && dIntensity > pdTmpRawData[iBinIon])
             {

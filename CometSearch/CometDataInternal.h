@@ -524,7 +524,8 @@ struct SpecLibStruct
    float fScaleMinInten;             // min intensity of data prior to encoding to pccSparseFastXcorrData; 0.0 for unit vector
    float fScaleMaxInten;             // max intensity of data prior to encoding to ppcSparseFastXcorrData
    vector<std::pair<double, float>> vSpecLibPeaks;
-   char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
+//   char** ppcSparseFastXcorrData;    // use MH's char representation of spectrum with intensity values that range -127 to +128
+   float* pfUnitVector;
    unsigned int uiArraySizeMS1;
 };
 
