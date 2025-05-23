@@ -932,8 +932,6 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
 
    for (size_t iWhichMS1Query = 0; iWhichMS1Query < g_pvQueryMS1.size(); ++iWhichMS1Query)
    {
-      SpecLibResultsMS1 pTmpMS1Scores[MAX_THREADS];
-
       // for each query, thread the search by segmenting the library
       for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumThreads; ++iWhichThread)
       {
@@ -2501,8 +2499,6 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
    for (size_t iWhichMS1LibEntry = 0; iWhichMS1LibEntry < g_vSpecLib.size(); iWhichMS1LibEntry += g_staticParams.options.iNumThreads)
    {
       double dScore = 0.0;
-      double dInten, dInten2;
-      int bin, x, y;
 
       unsigned int uiArrayLimit = g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1;
       if (uiArrayLimit > g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
@@ -2513,15 +2509,18 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
          for (unsigned int i = 0; i < uiArrayLimit; ++i)
             dScore += g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
 
-         Threading::LockMutex(g_pvQueryMutex);
          if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
          {
-            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
-            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
-            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime;
-            g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
+            Threading::LockMutex(g_pvQueryMutex);
+            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+            {
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
+            }
+            Threading::UnlockMutex(g_pvQueryMutex);
          }
-         Threading::UnlockMutex(g_pvQueryMutex);
       }
       else if (g_vSpecLib.at(iWhichMS1LibEntry).fRTime > dRT + dMaxMS1RTDiff)
       {
