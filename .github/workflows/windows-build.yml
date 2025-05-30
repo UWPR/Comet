@@ -20,9 +20,9 @@ jobs:
         unzip -P iacceptthelicense extern/msfreader.zip -d dlls
 
     - name: Register Thermo MSFileReader
-      shell: cmd
+      shell: powershell
       run: |
-        FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
+        FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G -Verb RunAs -Wait
 
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
