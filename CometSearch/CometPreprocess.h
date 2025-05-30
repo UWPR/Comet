@@ -23,7 +23,7 @@ struct PreprocessThreadData
    Spectrum mstSpectrum;
    int iAnalysisType;
    int iFileLastScan;
-   bool *pbMemoryPool;  //MH: Manages active memory pool
+   bool *pbMemoryPool;    //MH: Manages active memory pool
 
    PreprocessThreadData()
    {
@@ -74,7 +74,7 @@ public:
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                     ThreadPool* tp);
    static bool DoneProcessingAllSpectra();
-   static bool AllocateMemory(int maxNumThreads);
+   static bool AllocateMemory(int maxNumThreads, long long memSz);
    static bool DeallocateMemory(int maxNumThreads);
    static bool PreprocessSingleSpectrum(int iPrecursorCharge,
                                         double dMZ,
@@ -93,7 +93,8 @@ private:
                                   double *pdTmpCorrelationData,
                                   float *pfFastXcorrData,
                                   float *pfFastXcorrDataNL,
-                                  float *pfSpScoreData);
+                                  float *pfSpScoreData,
+                                  int iThreadIndex);
    static bool CheckExistOutFile(int iCharge,
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
@@ -115,7 +116,8 @@ private:
                           double *pdTmpCorrelationData,
                           float *pfFastXcorrData,
                           float *pfFastXcorrDataNL,
-                          float *pfSpScoreData);
+                          float *pfSpScoreData,
+                          int iThreadIndex);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
                         Spectrum mstSpectrum,
@@ -139,6 +141,12 @@ private:
    static float** ppfFastXcorrData;           //MH: Replacing temporary arrays using by Query
    static float** ppfFastXcorrDataNL;         //MH: Ditto
    static float** ppfSpScoreData;             //MH: Ditto
+
+   static float*** pppfSparseMemoryPool;  //MH: oh man, triple pointers...
+   static long long maxMemSz;
+   static int* piSparseMemIndex; //MH: indicates position in sparse matrix memory pool
+   static bool _bPauseProcessing;
+   static int _iNextThread;
 
 };
 

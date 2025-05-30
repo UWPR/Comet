@@ -2242,6 +2242,11 @@ bool CometSearchManager::DoSearch()
                                                                         // 3=specific scan + charge,
                                                                         // 4=scan range,
                                                                         // 5=entire file
+      //MH: Determine the memory pool size for each thread
+      long long memSz = 1073741824;
+      memSz *= 5;
+      memSz = memSz / g_staticParams.options.iNumThreads / (SPARSE_MATRIX_SIZE * sizeof(float));
+      printf("memSz = %lld\n", memSz);
 
       // For SQT & pepXML output file, check if they can be written to before doing anything else.
       FILE *fpout_sqt=NULL;
@@ -2604,7 +2609,7 @@ bool CometSearchManager::DoSearch()
       if (bSucceeded)
       {
          //MH: Allocate memory shared by threads during spectral processing.
-         bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+         bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads,memSz);
          if (!bSucceeded)
             break;
 
@@ -3201,7 +3206,11 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
    bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.
-   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   long long memSz = 1073741824;
+   memSz *= 20;
+   memSz = memSz / g_staticParams.options.iNumThreads / (SPARSE_MATRIX_SIZE * sizeof(float));
+   printf("memSz:Single = %lld\n", memSz);
+   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads,memSz);
    if (!bSucceeded)
       return bSucceeded;
 

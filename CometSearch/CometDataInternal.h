@@ -1072,8 +1072,10 @@ struct Query
       int i;
       for (i = 0; i < iSpScoreData; ++i)
       {
-         if (ppfSparseSpScoreData[i] != NULL)
-            delete[] ppfSparseSpScoreData[i];
+         //MH: just release this memory back to the pool, it will get deallocated later
+         ppfSparseSpScoreData[i] = NULL;
+         //if (ppfSparseSpScoreData[i] != NULL)
+         //   delete[] ppfSparseSpScoreData[i];
       }
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
@@ -1085,10 +1087,13 @@ struct Query
       {
          for (i = 0; i < iFastXcorrDataSize; ++i)
          {
-            if (ppfSparseFastXcorrData[i] != NULL)
-               delete[] ppfSparseFastXcorrData[i];
-            if (ppfSparseFastXcorrDataNL[i]!=NULL)
-               delete[] ppfSparseFastXcorrDataNL[i];
+           //MH: just release this memory back to the pool, it will get deallocated later
+           ppfSparseFastXcorrData[i] = NULL;
+           ppfSparseFastXcorrDataNL[i] = NULL;
+           // if (ppfSparseFastXcorrData[i] != NULL)
+           //    delete[] ppfSparseFastXcorrData[i];
+           // if (ppfSparseFastXcorrDataNL[i]!=NULL)
+           //    delete[] ppfSparseFastXcorrDataNL[i];
          }
          delete[] ppfSparseFastXcorrDataNL;
          ppfSparseFastXcorrDataNL = NULL;
@@ -1097,8 +1102,10 @@ struct Query
       {
          for (i = 0; i < iFastXcorrDataSize; ++i)
          {
-            if (ppfSparseFastXcorrData[i] != NULL)
-               delete[] ppfSparseFastXcorrData[i];
+            //MH: just release this memory back to the pool, it will get deallocated later
+            ppfSparseFastXcorrData[i] = NULL;
+            //if (ppfSparseFastXcorrData[i] != NULL)
+            //   delete[] ppfSparseFastXcorrData[i];
          }
       }
       delete[] ppfSparseFastXcorrData;

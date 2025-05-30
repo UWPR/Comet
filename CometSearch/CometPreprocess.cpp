@@ -28,6 +28,11 @@ double **CometPreprocess::ppdTmpCorrelationDataArr;
 float **CometPreprocess::ppfFastXcorrData;
 float **CometPreprocess::ppfFastXcorrDataNL;
 float **CometPreprocess::ppfSpScoreData;
+float ***CometPreprocess::pppfSparseMemoryPool;
+long long CometPreprocess::maxMemSz;
+int *CometPreprocess::piSparseMemIndex;
+bool CometPreprocess::_bPauseProcessing;
+int CometPreprocess::_iNextThread;
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (FastXcorr).
 CometPreprocess::CometPreprocess()
@@ -495,6 +500,13 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
    ThreadPool *pPreprocessThreadPool = tp;
 
+   //MH: Reset our pooled memory variables. It will flip to true once any thread reaches its memory limit
+   _iNextThread = 0;
+   _bPauseProcessing = false;
+   for (int i = 0;i < g_staticParams.options.iNumThreads;i++) {
+     piSparseMemIndex[i] = 0;
+   }
+
    // Load all input spectra.
    while (true)
    {
@@ -605,7 +617,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
                //run filter here.
-
                PreprocessThreadData *pPreprocessThreadData = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
                pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
@@ -671,16 +682,25 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
    //MH: Grab available array from shared memory pool.
    int i;
+   int iThisThread = 0;
 
+   //MH: Added that checking for the next available thread starts after the last
+   //thread was grabbed. This distributes the load across threads more evenly, which
+   //plays better with the pooled memory.
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
    for (i=0; i<g_staticParams.options.iNumThreads; ++i)
    {
-      if (pbMemoryPool[i]==false)
+      if (pbMemoryPool[_iNextThread]==false)
       {
-         pbMemoryPool[i]=true;
+         pbMemoryPool[_iNextThread]=true;
+         iThisThread = _iNextThread;
          break;
       }
+      _iNextThread++;
+      if (_iNextThread == g_staticParams.options.iNumThreads) _iNextThread = 0;
    }
+   _iNextThread = iThisThread + 1;
+   if (_iNextThread == g_staticParams.options.iNumThreads) _iNextThread = 0;
    Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
    //MH: Fail-safe to stop if memory isn't available for the next thread.
@@ -692,18 +712,27 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    }
 
    //MH: Give memory manager access to the thread.
-   pPreprocessThreadData->SetMemory(&pbMemoryPool[i]);
+   pPreprocessThreadData->SetMemory(&pbMemoryPool[iThisThread]);
 
    PreprocessSpectrum(pPreprocessThreadData->mstSpectrum,
-         ppdTmpRawDataArr[i],
-         ppdTmpFastXcorrDataArr[i],
-         ppdTmpCorrelationDataArr[i],
-         ppfFastXcorrData[i],
-         ppfFastXcorrDataNL[i],
-         ppfSpScoreData[i]);
+         ppdTmpRawDataArr[iThisThread],
+         ppdTmpFastXcorrDataArr[iThisThread],
+         ppdTmpCorrelationDataArr[iThisThread],
+         ppfFastXcorrData[iThisThread],
+         ppfFastXcorrDataNL[iThisThread],
+         ppfSpScoreData[iThisThread],
+         iThisThread);
+
+   //MH: Throw up a flag to pause file loading and process spectra once any thread exhausts its memory pool
+   //The *3 multiplier accounts for each possible sparse array type, including the neutral loss array
+   if (maxMemSz - piSparseMemIndex[iThisThread] < g_staticParams.iArraySizeGlobal/SPARSE_MATRIX_SIZE*3) {
+     _bPauseProcessing = true;
+   }
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
+
+
 }
 
 
@@ -720,7 +749,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  double *pdTmpCorrelationData,
                                  float *pfFastXcorrData,
                                  float *pfFastXcorrDataNL,
-                                 float *pfSpScoreData)
+                                 float *pfSpScoreData,
+                                 int iThreadIndex)
 {
    int i;
    int x;
@@ -855,7 +885,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             {
                try
                {
-                  pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
+                 pScoring->ppfSparseFastXcorrDataNL[x] = pppfSparseMemoryPool[iThreadIndex][piSparseMemIndex[iThreadIndex]++]; // new float[SPARSE_MATRIX_SIZE]();
                }
                catch (std::bad_alloc& ba)
                {
@@ -903,7 +933,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          {
             try
             {
-               pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
+               pScoring->ppfSparseFastXcorrData[x] = pppfSparseMemoryPool[iThreadIndex][piSparseMemIndex[iThreadIndex]++]; //new float[SPARSE_MATRIX_SIZE]();
             }
             catch (std::bad_alloc& ba)
             {
@@ -958,7 +988,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          {
             try
             {
-               pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
+               pScoring->ppfSparseSpScoreData[x] = pppfSparseMemoryPool[iThreadIndex][piSparseMemIndex[iThreadIndex]++]; // new float[SPARSE_MATRIX_SIZE]();
             }
             catch (std::bad_alloc& ba)
             {
@@ -1105,6 +1135,11 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
       return true;
    }
 
+   //MH: occurs when using pooled memory management, and it is full.
+   if (_bPauseProcessing) {
+     return true;
+   }
+
    return false;
 }
 
@@ -1115,7 +1150,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpCorrelationData,
                                          float *pfFastXcorrData,
                                          float *pfFastXcorrDataNL,
-                                         float *pfSpScoreData)
+                                         float *pfSpScoreData,
+                                         int iThreadIndex)
 {
    int z;
 
@@ -1320,7 +1356,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             // Populate pdCorrelation data.
             // NOTE: there must be a good way of doing this just once per spectrum instead
             //       of repeating for each charge state.
-            if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData, pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData))
+            if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData, pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData,iThreadIndex))
             {
                return false;
             }
@@ -1746,9 +1782,10 @@ void CometPreprocess::MakeCorrData(double *pdTmpRawData,
 
 
 //MH: This function allocates memory to be shared by threads for spectral processing
-bool CometPreprocess::AllocateMemory(int maxNumThreads)
+bool CometPreprocess::AllocateMemory(int maxNumThreads, long long memSz)
 {
-   int i;
+   int i,ii;
+   maxMemSz = memSz;
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
@@ -1756,6 +1793,9 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       pbMemoryPool[i] = false;
    }
+
+   //MH: Also track the amount of memory each thread has access to.
+   piSparseMemIndex = new int[maxNumThreads]();
 
    //MH: Allocate arrays
    ppdTmpRawDataArr = new double*[maxNumThreads]();
@@ -1880,6 +1920,29 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
      }
    }
 
+   //MH: Allocate sparse spectral data pools
+   pppfSparseMemoryPool = new float** [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
+   {
+     try
+     {
+       pppfSparseMemoryPool[i] = new float*[maxMemSz]();
+       for (ii = 0;ii < maxMemSz;++ii) {
+         pppfSparseMemoryPool[i][ii] = new float[SPARSE_MATRIX_SIZE]();
+       }
+     } catch (std::bad_alloc& ba)
+     {
+       char szErrorMsg[256];
+       sprintf(szErrorMsg, " Error - new(pppfSparseMemoryPool[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
+       sprintf(szErrorMsg + strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
+       sprintf(szErrorMsg + strlen(szErrorMsg), "parameters to address mitigate memory use.\n");
+       string strErrorMsg(szErrorMsg);
+       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+       logerr(szErrorMsg);
+       return false;
+     }
+   }
+
    return true;
 }
 
@@ -1887,9 +1950,10 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 //MH: Deallocates memory shared by threads during spectral processing.
 bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 {
-   int i;
+   int i,ii;
 
    delete [] pbMemoryPool;
+   delete [] piSparseMemIndex;
 
    for (i=0; i<maxNumThreads; ++i)
    {
@@ -1899,6 +1963,10 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
       delete [] ppfFastXcorrData[i];
       delete [] ppfFastXcorrDataNL[i];
       delete [] ppfSpScoreData[i];
+      for (ii = 0;ii < maxMemSz;++ii) {
+        delete [] pppfSparseMemoryPool[i][ii];
+      }
+      delete [] pppfSparseMemoryPool[i];
    }
 
    delete [] ppdTmpRawDataArr;
@@ -1907,6 +1975,7 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
    delete [] ppfFastXcorrData;
    delete [] ppfFastXcorrDataNL;
    delete [] ppfSpScoreData;
+   delete [] pppfSparseMemoryPool;
    return true;
 }
 
