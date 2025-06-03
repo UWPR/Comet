@@ -465,7 +465,6 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
          pTmp.dSpecLibMW -= pTmp.iSpecLibCharge * PROTON_MASS;  // make neutral mass
 
-
          // FIX:  do something with the peak list depending on score/processing
          g_vSpecLib.push_back(pTmp);
          size_t iWhichSpecLib = g_vSpecLib.size() - 1;
@@ -540,8 +539,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
          mstReader.readFile(NULL, mstSpectrum);
       }
 
-      if (iFileLastScan == -1)
-         iFileLastScan = mstReader.getLastScan();
+//      if (iFileLastScan == -1)
+//         iFileLastScan = mstReader.getLastScan();
 
       if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
       {
@@ -608,7 +607,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
                                      iTotalScans,
                                      iFileLastScan,
                                      mstReader.getLastScan(),
-                                     iNumSpectraLoaded))
+                                     iNumSpectraLoaded, 1))
       {
          Threading::UnlockMutex(g_pvQueryMutex);
          break;

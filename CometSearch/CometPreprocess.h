@@ -99,7 +99,8 @@ public:
                          int iTotalScans,
                          int iLastScan,
                          int iReaderLastScan,
-                         int iNumSpectraLoaded);
+                         int iNumSpectraLoaded,
+                         bool bIgnoreSpectrumBatchSize);
    static bool IsValidInputType(int inputType);
 
 private:

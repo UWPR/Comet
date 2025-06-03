@@ -113,7 +113,7 @@ bool CometSearch::RunSearch(ThreadPool *tp)
    CometSearch sqSearch;
    size_t iWhichQuery = 0;
 
-   if (g_staticParams.iIndexDb == 1)       // fragment index
+   if (g_staticParams.iIndexDb == 1)       // fragment ion index
    {
       if (!g_bPlainPeptideIndexRead)
       {
@@ -894,8 +894,6 @@ bool CometSearch::RunSpecLibSearch(int iPercentStart,
                                    int iPercentEnd,
                                    ThreadPool *tp)
 {
-   printf("\nOKa in RunSpecLib, g_staticParams.tolerances.dMS1BinSize %lf\n", g_staticParams.tolerances.dMS1BinSize);
-
    // to fill g_vulSpecLibPrecursorIndex, set
    // binmin = BINPREC(expmass - tol)
    // binmax = BINPREC(expmass + tol)

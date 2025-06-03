@@ -638,7 +638,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                     iTotalScans,
                     iLastScan,
                     mstReader.getLastScan(),
-                    iNumSpectraLoaded))
+                    iNumSpectraLoaded, 0))
       {
          Threading::UnlockMutex(g_pvQueryMutex);
          break;
@@ -812,7 +812,7 @@ bool CometPreprocess::LoadAndPreprocessMS1Spectra(MSReader &mstReader,
                     iTotalScans,
                     iFileLastScan,
                     mstReader.getLastScan(),
-                    iNumSpectraLoaded))
+                    iNumSpectraLoaded, 1))
       {
          Threading::UnlockMutex(g_pvQueryMutex);
          break;
@@ -1390,7 +1390,8 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
                                 int iTotalScans,
                                 int iLastScan,
                                 int iReaderLastScan,
-                                int iNumSpectraLoaded)
+                                int iNumSpectraLoaded,
+                                bool bIgnoreSpectrumBatchSize)
 {
    if (g_cometStatus.IsError())
    {
@@ -1399,7 +1400,7 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 
    if (g_cometStatus.IsCancel())
    {
-       return true;
+      return true;
    }
 
    if (iAnalysisType == AnalysisType_SpecificScan)
@@ -1438,7 +1439,10 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
       return true;
    }
 
-   if ((g_staticParams.options.iSpectrumBatchSize != 0)
+   // had to add bIgnoreSpectrumBatchSize for mixed MS1, MS/MS queries
+   // in order to load all MS1 spectra in to memory
+   if (!bIgnoreSpectrumBatchSize
+         && (g_staticParams.options.iSpectrumBatchSize != 0)
          && (iNumSpectraLoaded >= g_staticParams.options.iSpectrumBatchSize))
    {
       return true;
