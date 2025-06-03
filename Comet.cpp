@@ -1287,6 +1287,14 @@ void LoadParameters(char *pszParamsFile,
                   snprintf(szParamStringVal, iSize, "%d", iIntParam);
                   pSearchMgr->SetParam("max_fragment_charge", szParamStringVal, iIntParam);
                }
+               else if (!strcmp(szParamName, "min_precursor_charge"))
+               {
+                  iIntParam = 0;
+                  sscanf(szParamVal, "%d", &iIntParam);
+                  szParamStringVal[0] = '\0';
+                  snprintf(szParamStringVal, iSize, "%d", iIntParam);
+                  pSearchMgr->SetParam("min_precursor_charge", szParamStringVal, iIntParam);
+               }
                else if (!strcmp(szParamName, "max_precursor_charge"))
                {
                   iIntParam = 0;
@@ -1867,6 +1875,7 @@ peptide_length_range = 5 50            # minimum and maximum peptide length to a
 fprintf(fp,
 "max_duplicate_proteins = 10            # maximum number of additional duplicate protein names to report for each peptide ID; -1 reports all duplicates\n\
 max_fragment_charge = 3                # set maximum fragment charge state to analyze (allowed max %d)\n\
+min_precursor_charge = 1               # set minimum precursor charge state to analyze (1 if missing)\n\
 max_precursor_charge = 6               # set maximum precursor charge state to analyze (allowed max %d)\n",
       MAX_FRAGMENT_CHARGE,
       MAX_PRECURSOR_CHARGE);

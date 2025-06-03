@@ -1277,7 +1277,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                && (isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || ((dMass >= g_staticParams.options.dPeptideMassLow)
                      && (dMass <= g_staticParams.options.dPeptideMassHigh)))
-               && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge)
+               && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge
+               && iPrecursorCharge >= g_staticParams.options.iMinPrecursorCharge)
          {
             Query *pScoring = new Query();
 

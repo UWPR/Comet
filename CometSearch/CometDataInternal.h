@@ -109,6 +109,7 @@ struct Options
    int iStartCharge;
    int iEndCharge;
    int iMaxFragmentCharge;
+   int iMinPrecursorCharge;
    int iMaxPrecursorCharge;
    int iMSLevel;                 // mzXML only
    int iMinPeaks;
@@ -171,6 +172,7 @@ struct Options
       iStartCharge = a.iStartCharge;
       iEndCharge = a.iEndCharge;
       iMaxFragmentCharge = a.iMaxFragmentCharge;
+      iMinPrecursorCharge = a.iMinPrecursorCharge;
       iMaxPrecursorCharge = a.iMaxPrecursorCharge ;
       iMSLevel = a.iMSLevel;
       iMinPeaks = a.iMinPeaks;
@@ -899,6 +901,7 @@ struct StaticParams
       options.iStartCharge = 0;
       options.iEndCharge = 0;
       options.iMaxFragmentCharge = 3;
+      options.iMinPrecursorCharge = 1;
       options.iMaxPrecursorCharge = 6;
       options.iMSLevel = 2;
       options.dMinIntensity = 0.0;

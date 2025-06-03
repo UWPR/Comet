@@ -1181,7 +1181,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.iSpectrumBatchSize = iIntData;
    }
 
-   iIntData = 0;
    if (GetParamValue("minimum_peaks", iIntData))
    {
       if (iIntData >= 0)
@@ -1219,7 +1218,6 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   iIntData = 0;
    if (GetParamValue("max_fragment_charge", iIntData))
    {
       if (iIntData > MAX_FRAGMENT_CHARGE)
@@ -1231,7 +1229,16 @@ bool CometSearchManager::InitializeStaticParams()
       // else will go to default value (3)
    }
 
-   iIntData = 0;
+   if (GetParamValue("min_precursor_charge", iIntData))
+   {
+      if (iIntData < 1)
+         iIntData = 1;
+      else if (iIntData > MAX_PRECURSOR_CHARGE)
+         iIntData = MAX_PRECURSOR_CHARGE;
+
+      g_staticParams.options.iMinPrecursorCharge = iIntData;
+   }
+
    if (GetParamValue("max_precursor_charge", iIntData))
    {
       if (iIntData > MAX_PRECURSOR_CHARGE)
@@ -2016,6 +2023,7 @@ bool CometSearchManager::IsValidCometVersion(const string &version)
 {
     // Major version number must match to current binary
     if (strstr(comet_version, version.c_str())
+          || strstr(version.c_str(), "2025.0")
           || strstr(version.c_str(), "2024.0"))
     {
        return true;
