@@ -49,7 +49,3 @@ clean:
 cclean:
 	rm -f *.o ${EXECNAME}
 	cd CometSearch ; make clean
-
-mstclean:
-	cd $(MSTOOLKIT)/extern ; rm -rf expat-2.2.9 zlib-1.2.11 ; tar xzf expat-2.2.9.tar.gz  ; unzip zlib1211.zip
-	cd $(MSTOOLKIT)/include ; rm -f expat*.h zconf.h zlib.h

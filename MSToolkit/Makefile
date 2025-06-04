@@ -95,6 +95,7 @@ endif
 
 expat-realclean : expat-clean
 	rm -rf $(EXPAT_DST) $(BUILD_DIR)/libexpat.la $(BUILD_DIR)/libexpat.so* $(BUILD_DIR)/bin $(BUILD_DIR)/man $(SRC_DIR)/include/expat*.h
+	rm -rf $(EXPAT_SRC) ; cd $(BUILD_EXT); tar -xzf $(EXPAT_VER).tar.gz
 
 
 
@@ -118,7 +119,7 @@ zlib : $(ZLIB_DST)
 
 #$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
 $(ZLIB_DST) :
-	cd $(BUILD_EXT); unzip -o zlib1211.zip
+	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
 	make -C $(ZLIB_SRC) install
 
@@ -129,6 +130,7 @@ endif
 
 zlib-realclean : zlib-clean
 	rm -rf $(ZLIB_DST) $(BUILD_DIR)/libz.so* $(SRC_DIR)/include/zlib.h $(SRC_DIR)/include/zconf.h
+	rm -rf $(ZLIB_SRC) ; cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 	
 
 # -- MSToolkit  ---------------------------------------------------------------
