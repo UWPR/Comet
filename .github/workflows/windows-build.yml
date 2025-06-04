@@ -1,4 +1,4 @@
-name: Build on Windows with windows-2025
+name: Build on Windows with windows-2019
 
 on:
   push:
@@ -10,9 +10,9 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2025
+    runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v2
 
     - name: Unpack Thermo MSFileReader
       shell: bash
@@ -20,11 +20,9 @@ jobs:
         unzip -P iacceptthelicense extern/msfreader.zip -d dlls
 
     - name: Register Thermo MSFileReader
-      shell: pwsh
+      shell: cmd
       run: |
-        Get-ChildItem "dlls\*.dll" | ForEach-Object {
-          Start-Process -FilePath "regsvr32.exe" -ArgumentList "/S", "`"$($_.FullName)`"" -Verb RunAs -Wait
-        }
+        FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
 
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
