@@ -13,3 +13,7 @@ parameter, allows for searching a restricted precursor charge state range.  Feat
 - Changed allocations of temporary memory during threaded preprocessing… by @mhoopmann in https://github.com/UWPR/Comet/pull/78
 - Update MSTookit in https://github.com/UWPR/Comet/pull/80
 - Deprecated win32 support in Visual Studio.
+- NOTE: there is performance/speed issues with the Windows versions of Comet after release 2023.01 rev. 2.
+  The performance issue affects release 2024.01 rev.0 through this 2025.02 rev. 0 release.  These
+  versions run much slower than they should in Windows. Linux binaries do not appear affected and
+  it will be a priority to address the issue.
