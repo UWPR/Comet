@@ -10,7 +10,8 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: [self-hosted, WIN64-UWPR]
+
     steps:
     - uses: actions/checkout@v2
 
