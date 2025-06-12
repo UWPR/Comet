@@ -18,8 +18,9 @@ jobs:
     - name: Unpack Thermo MSFileReader
       shell: powershell
       run: |
+        Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
         Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory("extern/msfreader.zip", "dlls")
+        [System.IO.Compression.ZipFile]::ExtractToDirectory("extern/msfreader.zip", "dlls")ls")
 
     - name: Register Thermo MSFileReader
       shell: cmd
