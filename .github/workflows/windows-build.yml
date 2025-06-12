@@ -15,6 +15,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Mark git working directory as safe
+      shell: powershell
+      run: |
+        git config --system --add safe.directory "C:/actions-runner/_work/Comet/Comet"
+
     - name: Unpack Thermo MSFileReader (7-Zip)
       shell: cmd
       run: |
