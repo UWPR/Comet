@@ -18,7 +18,7 @@ jobs:
     - name: Unpack Thermo MSFileReader
       shell: powershell
       run: |
-        Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
+        Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory("extern/msfreader.zip", "dlls")ls")
 
