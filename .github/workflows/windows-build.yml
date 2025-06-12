@@ -1,4 +1,4 @@
-name: Build on Windows with windows-2019
+name: Build on Windows with self-hosted
 
 on:
   push:
