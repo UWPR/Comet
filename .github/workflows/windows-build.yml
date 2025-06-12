@@ -18,7 +18,7 @@ jobs:
     - name: Mark git working directory as safe
       shell: powershell
       run: |
-        git config --system --add safe.directory "C:/actions-runner-UWPR/_work/Comet/Comet"
+        git config --global --add safe.directory "C:/actions-runner-UWPR/_work/Comet/Comet"
 
     - name: Unpack Thermo MSFileReader (7-Zip)
       shell: cmd
