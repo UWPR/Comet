@@ -41,14 +41,14 @@ jobs:
       shell: cmd
       run: "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe -p"
 
-    - name: Prepare release
-      shell: bash
+    - name: Prepare release directory (Windows native)
+      shell: cmd
       run: |
-        mkdir release && \
-        cp x64/Release/comet.exe release/comet.win64.exe && \
-        cp x64/Release/CometWrapper.dll release/ && \
-        cp README.md release/README.md
-
+        if not exist release mkdir release
+        copy x64\Release\comet.exe release\comet.win64.exe
+        copy x64\Release\CometWrapper.dll release\
+        copy README.md release\README.md
+    
     - name: Upload build artificats
       uses: actions/upload-artifact@v4
       with:
