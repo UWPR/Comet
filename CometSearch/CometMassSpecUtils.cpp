@@ -410,7 +410,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
 
                // remove all terminating chars
                while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))
-                  szProteinName[strlen(szProteinName) - 1] == '\0';
+                  szProteinName[strlen(szProteinName) - 1] = '\0';
 
                if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)
                   szProteinName[strlen(szProteinName) - iLenDecoyPrefix] = '\0';
