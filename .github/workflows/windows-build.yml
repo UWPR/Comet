@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Unpack Thermo MSFileReader
-      shell: pwsh
+      shell: powershell
       run: |
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         [System.IO.Compression.ZipFile]::ExtractToDirectory("extern/msfreader.zip", "dlls")
