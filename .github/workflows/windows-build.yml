@@ -15,11 +15,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Unpack Thermo MSFileReader
-      shell: powershell
+    - name: Unpack Thermo MSFileReader (7-Zip)
+      shell: cmd
       run: |
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        [System.IO.Compression.ZipFile]::ExtractToDirectory("extern/msfreader.zip", "dlls")
+        "C:\Program Files\7-Zip\7z.exe" x -piacceptthelicense extern\msfreader.zip -odlls -y
 
     - name: Register Thermo MSFileReader
       shell: cmd
