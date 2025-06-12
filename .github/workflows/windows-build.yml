@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Unpack Thermo MSFileReader
+    - name: Unpack Thermo MSFileReader 
       shell: bash
       run: |
         unzip -P iacceptthelicense extern/msfreader.zip -d dlls
