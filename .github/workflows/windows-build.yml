@@ -10,14 +10,20 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: self-hosted
+
     steps:
     - uses: actions/checkout@v2
 
-    - name: Unpack Thermo MSFileReader
-      shell: bash
+    - name: Mark git working directory as safe
+      shell: powershell
       run: |
-        unzip -P iacceptthelicense extern/msfreader.zip -d dlls
+        git config --global --add safe.directory "C:/actions-runner/_work/Comet/Comet"
+
+    - name: Unpack Thermo MSFileReader (7-Zip)
+      shell: cmd
+      run: |
+        "C:\Program Files\7-Zip\7z.exe" x -piacceptthelicense extern\msfreader.zip -odlls -y
 
     - name: Register Thermo MSFileReader
       shell: cmd
@@ -35,14 +41,14 @@ jobs:
       shell: cmd
       run: "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe -p"
 
-    - name: Prepare release
-      shell: bash
+    - name: Prepare release directory (Windows native)
+      shell: cmd
       run: |
-        mkdir release && \
-        cp x64/Release/comet.exe release/comet.win64.exe && \
-        cp x64/Release/CometWrapper.dll release/ && \
-        cp README.md release/README.md
-
+        if not exist release mkdir release
+        copy x64\Release\comet.exe release\comet.win64.exe
+        copy x64\Release\CometWrapper.dll release\
+        copy README.md release\README.md
+    
     - name: Upload build artificats
       uses: actions/upload-artifact@v4
       with:
