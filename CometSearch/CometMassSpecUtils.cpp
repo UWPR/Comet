@@ -22,6 +22,7 @@
 #include "CometSearchManager.h"
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
+#include <inttypes.h>
 
 
 double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
@@ -516,7 +517,7 @@ bool CometMassSpecUtils::SeekPrevNextAA(struct Results *pOutput,
 
    if (strSeq.size() < 1)
    {
-      printf(" Error: parsed sequence in GetPrevNextAA() is empty.  File pointer %ld, query %d, result %d.\n", tFilePos, iWhichQuery, iWhichResult);
+      printf(" Error: parsed sequence in GetPrevNextAA() is empty.  File pointer %" PRIu64 ", query %d, result %d.\n", tFilePos, iWhichQuery, iWhichResult);
       pOutput[iWhichResult].cPrevAA = pOutput[iWhichResult].cNextAA = '-';
       return false;
    }
@@ -524,7 +525,7 @@ bool CometMassSpecUtils::SeekPrevNextAA(struct Results *pOutput,
 
    if (szSequence == NULL)
    {
-      printf(" Error: cannot allocate memory for szSequence[%d]\n", strSeq.size() + 1);
+      printf(" Error: cannot allocate memory for szSequence[%zd]\n", strSeq.size() + 1);
       exit(1);
    }
    strcpy(szSequence, strSeq.c_str());
@@ -691,4 +692,44 @@ void CometMassSpecUtils::EscapeString(std::string& data)
       }
       data.swap(buffer);
    }
+}
+
+
+// input dVal should range from dMin to dMax
+char CometMassSpecUtils::NormalizeDoubleToChar(double dVal, double dMin, double dMax)
+{
+   if (dMax <= dMin)
+      return static_cast<char>(-127); // Handle invalid range
+
+   // Normalize dVal to the range [0.0, 1.0] based on dMin and dMax
+   double normalizedValue = (dVal - dMin) / (dMax - dMin);
+
+   // Scale to the range [0.0, 255.0]
+   double scaledValue = normalizedValue * 255.0;
+
+   // Offset to the char range [-127, 128]
+   int charIntValue = static_cast<int>(scaledValue - 127.0);
+
+   // Clamp the value to the valid char range
+   if (charIntValue < -127)
+      return static_cast<char>(-127);
+   else if (charIntValue > 128)
+      return static_cast<char>(128);
+   else
+      return static_cast<char>(charIntValue);
+}
+
+
+double CometMassSpecUtils::DenormalizeCharToDouble(char dChar, double dMin, double dMax)
+{
+   // Convert the char back to its scaled integer representation [0, 255]
+   int scaledIntValue = static_cast<int>(dChar) + 127;
+
+   // Normalize the scaled value to the range [0.0, 1.0]
+   double normalizedValue = static_cast<double>(scaledIntValue) / 255.0;
+
+   // Scale back to the original range using dMin and dMax
+   double unnormalizedValue = normalizedValue * (dMax - dMin) + dMin;
+
+   return unnormalizedValue;
 }

@@ -21,10 +21,11 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 		 CometSearch/CometPreprocess.cpp CometSearch/CometWriteOut.cpp CometSearch/CometWriteSqt.cpp CometSearch/CombinatoricsUtils.cpp\
 		 CometSearch/ModificationsPermuter.cpp CometSearch/CometInterfaces.h CometSearch/CometInterfaces.cpp\
 		 CometSearch/CometFragmentIndex.cpp CometSearch/CometFragmentIndex.h\
-		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h
+		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h\
+		 CometSearch/CometSpecLib.cpp CometSearch/CometSpecLib.h
 
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH)
-LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lm -lpthread 
+LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lm -lpthread
 ifdef MSYSTEM
    LIBS += -lws2_32
 endif

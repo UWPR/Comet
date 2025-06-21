@@ -337,6 +337,7 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
       // String with whitespace trim
       {"database_name",                { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("database_name", szFile, szFile); }}},
       {"peff_obo",                     { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("peff_obo", szFile, szFile); }}},
+      {"spectral_library_name",        { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("spectral_library_name", szFile, szFile); }}},
       // Simple strings
       {"activation_method",            { [&]() { parse_string("activation_method", 23); }}},
       {"decoy_prefix",                 { [&]() { parse_string("decoy_prefix", 255); }}},
@@ -397,6 +398,7 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
       {"show_fragment_ions",           { [&]() { parse_int("show_fragment_ions"); }}},
       {"skip_researching",             { [&]() { parse_int("skip_researching"); }}},
       {"skip_updatecheck",             { [&]() { parse_int("skip_updatecheck"); }}},
+      {"speclib_ms_level",             { [&]() { parse_int("speclib_ms_level"); }}},
       {"spectrum_batch_size",          { [&]() { parse_int("spectrum_batch_size"); }}},
       {"theoretical_fragment_ions",    { [&]() { parse_int("theoretical_fragment_ions"); }}},
       {"use_A_ions",                   { [&]() { parse_int("use_A_ions"); }}},
@@ -481,6 +483,7 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
       // Ranges
       {"clear_mz_range",               { [&]() { parse_double_range("clear_mz_range"); }}},
       {"digest_mass_range",            { [&]() { parse_double_range("digest_mass_range"); }}},
+      {"ms1_mass_range",               { [&]() { parse_double_range("ms1_mass_range"); }} },
       {"peptide_length_range",         { [&]() { parse_int_range("peptide_length_range"); }}},
       {"precursor_charge",             { [&]() { parse_int_range("precursor_charge"); }}},
       {"scan_range",                   { [&]() { parse_int_range("scan_range"); }}},
@@ -892,6 +895,9 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 
    if (iPrintParams == 2)
    {
+      fprintf(fp, "\nspectral_library_name = /some/path/speclib.file\n");
+      fprintf(fp, "spectral_library_ms_level = 1\n\n");
+
       fprintf(fp,
 "#\n\
 # PEFF - PSI Extended FASTA Format\n\

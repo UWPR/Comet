@@ -38,11 +38,11 @@ public:
 
 private:
 
-   static void PermuteIndexPeptideMods(vector<PlainPeptideIndex>& vRawPeptides);
+   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
    static void GenerateFragmentIndex(ThreadPool *tp);
-   static void AddFragments(vector<PlainPeptideIndex>& vRawPeptides,
+   static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
                             int iWhichThread,
-                            int iWhichPeptide,
+                            size_t iWhichPeptide,
                             int modNumIdx,
                             short siNtermMod,
                             short siCtermMod,

@@ -268,7 +268,7 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 }
 
 
-vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndex>& vRawPeptides,
+vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
                                                              int* PEPTIDE_MOD_SEQ_IDXS,
                                                              vector<string>& ALL_MODS)
 {

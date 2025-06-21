@@ -84,7 +84,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 }
 
 
-void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndex>& g_vRawPeptides)
+void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& g_vRawPeptides)
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
@@ -440,9 +440,9 @@ bool CometFragmentIndex::SortFragmentsByPepMass(unsigned int x, unsigned int y)
 }
 
 
-void CometFragmentIndex::AddFragments(vector<PlainPeptideIndex>& g_vRawPeptides,
+void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPeptides,
                                       int iWhichThread,
-                                      int iWhichPeptide,
+                                      size_t iWhichPeptide,
                                       int modNumIdx,
                                       short siNtermMod,
                                       short siCtermMod,
@@ -599,7 +599,7 @@ if (!(iWhichPeptide%5000))
          {
             int iBinBion = BIN(dBion);
 
-            if (iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
                exit(1);
@@ -620,7 +620,7 @@ if (!(iWhichPeptide%5000))
          {
             int iBinYion = BIN(dYion);
 
-            if (iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
                exit(1);
@@ -826,7 +826,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
       int iLen = (int)strlen((*it).szPeptide);
-      struct PlainPeptideIndex sTmp;
+      struct PlainPeptideIndexStruct sTmp;
 
       fwrite(&iLen, sizeof(int), 1, fp);
       fwrite((*it).szPeptide, sizeof(char), iLen, fp);
@@ -891,7 +891,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done. " + strIndexFile + " (" + to_string(tNumPeptides) + " peptides)\n\n";
+   strOut = " - done. " + strIndexFile + " (" + to_string(tNumPeptides) + " plain peptides)\n\n";
    logout(strOut.c_str());
    fflush(stdout);
 
@@ -1097,7 +1097,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    size_t tNumPeptides;
    tTmp = fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
 
-   struct PlainPeptideIndex sTmp;
+   struct PlainPeptideIndexStruct sTmp;
    int iLen;
    char szPeptide[MAX_PEPTIDE_LEN];
 
