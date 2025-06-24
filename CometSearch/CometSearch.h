@@ -69,7 +69,14 @@ public:
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
                          ThreadPool *tp);
-   static bool RunSearch(ThreadPool *tp);    // for DoSingleSpectrumSearchMultiResults() to call IndexSearch()
+   static bool RunSearch(ThreadPool* tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
+   static bool RunSpecLibSearch(int iPercentStart,
+                                int iPercentEnd,
+                                ThreadPool* tp);
+   static bool RunSpecLibSearch(ThreadPool* tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
+   static bool RunMS1Search(ThreadPool* tp,
+                            double dRT,
+                            double dMaxMS1RTDiff);
    static void SearchThreadProc(SearchThreadData *pSearchThreadData,
                                 ThreadPool *tp);
    bool DoSearch(sDBEntry dbe,
@@ -84,7 +91,7 @@ public:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass);
-   static bool CheckMassMatch(int iWhichQuery,
+   static bool CheckMassMatch(size_t iWhichQuery,
                               double dCalcPepMass);
 
    struct ProteinInfo
@@ -117,12 +124,12 @@ private:
                               int end,
                               string strMod,
                               vector<OBOStruct>& vectorPeffOBO);
-   static int BinarySearchIndexMass(int iWhichThread,
-                                    int iPrecursorBin,
-                                    int start,
-                                    int end,
-                                    double dQueryMass,
-                                    unsigned int *uiFragmentMass);
+   static size_t BinarySearchIndexMass(int iWhichThread,
+                                       int iPrecursorBin,
+                                       size_t start,
+                                       size_t end,
+                                       double dQueryMass,
+                                       unsigned int *uiFragmentMass);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
@@ -154,18 +161,18 @@ private:
                    int *piVarModSites,
                    struct sDBEntry *dbe);
    static void XcorrScoreI(char *szProteinSeq,
-                   int iStartPos,
-                   int iEndPos,
-                   int iFoundVariableMod,
-                   double dCalcPepMass,
-                   bool bDecoyPep,
-                   int iWhichQuery,
-                   int iLenPeptide,
-                   int *piVarModSites,
-                   struct sDBEntry *dbe,
-                   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS+2],
-                   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
-                   int iNumMatchedFragmentIons);
+                           int iStartPos,
+                           int iEndPos,
+                           int iFoundVariableMod,
+                           double dCalcPepMass,
+                           bool bDecoyPep,
+                           size_t iWhichQuery,
+                           int iLenPeptide,
+                           int *piVarModSites,
+                           struct sDBEntry *dbe,
+                           unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS+2],
+                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                           int iNumMatchedFragmentIons);
 /*
    static double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
@@ -184,7 +191,7 @@ private:
                       bool bDecoyResults,
                       int *piVarModSites,
                       struct sDBEntry *dbe);
-   void StorePeptide(int iWhichQuery,
+   void StorePeptide(size_t iWhichQuery,
                      int iStartResidue,
                      int iStartPos,
                      int iEndPos,
@@ -195,16 +202,16 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
-   static void StorePeptideI(int iWhichQuery,
-                     int iStartPos,
-                     int iEndPos,
-                     int iFoundVariableMod,
-                     char *szProteinSeq,
-                     double dCalcPepMass,
-                     double dXcorr,
-                     bool bStoreSeparateDecoy,
-                     int *piVarModSites,
-                     struct sDBEntry *dbe);
+   static void StorePeptideI(size_t iWhichQuery,
+                             int iStartPos,
+                             int iEndPos,
+                             int iFoundVariableMod,
+                             char *szProteinSeq,
+                             double dCalcPepMass,
+                             double dXcorr,
+                             bool bStoreSeparateDecoy,
+                             int *piVarModSites,
+                             struct sDBEntry *dbe);
    void VariableModSearch(char *szProteinSeq,
                           int piVarModCounts[],
                           int iStartPos,
@@ -254,7 +261,11 @@ private:
    bool TranslateNA2AA(int *frame,
                        int iDirection,
                        char *sDNASequence);
-
+   static void SearchMS1Library(size_t iWhichMS1Query,
+                                int iWhichThread,
+                                double dRT,
+                                double dMaxMS1RTDiff,
+                                ThreadPool* tp);
    char GetAA(int i,
               int iDirection,
               char *sDNASequence);

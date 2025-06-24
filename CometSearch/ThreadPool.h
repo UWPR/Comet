@@ -86,7 +86,6 @@ public:
    void fillPool(int threads)
    {
 
-
 #ifdef _WIN32
       lock_ = CreateMutex(NULL, FALSE, NULL);
 

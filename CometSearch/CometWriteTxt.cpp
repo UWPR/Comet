@@ -368,7 +368,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          PrintModifications(fpout, pOutput, iWhichResult);
 
          // retention time seconds
-         fprintf(fpout, "%0.1f\t", pQuery->_spectrumInfoInternal.dRTime);
+         fprintf(fpout, "%0.1f\t", pQuery->_spectrumInfoInternal.fRTime);
 
          // Sp rank
          fprintf(fpout, "%d", pOutput[iWhichResult].iRankSp);
@@ -400,8 +400,6 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
    CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    bool bPrintComma = false;
-
-   *uiNumTotProteins = vProteinTargets.size() + vProteinDecoys.size();
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {

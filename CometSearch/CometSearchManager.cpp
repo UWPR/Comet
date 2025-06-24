@@ -29,13 +29,14 @@
 #include "CometStatus.h"
 #include "CometFragmentIndex.h"
 #include "CometPeptideIndex.h"
-
+#include "CometSpecLib.h"
 
 #include <sstream>
 
 #undef PERF_DEBUG
 
 std::vector<Query*>           g_pvQuery;
+std::vector<QueryMS1*>        g_pvQueryMS1;
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
@@ -52,9 +53,15 @@ unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];
 unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];      // stores counts of fragment index; [thread][pepmass][BIN(mass)]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
-vector<PlainPeptideIndex> g_vRawPeptides;                   // list of unmodified peptides and their proteins as file pointers
+vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
+vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
+vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
+
 bool g_bPlainPeptideIndexRead = false;
 bool g_bPeptideIndexRead = false;
+bool g_bSpecLibRead = false;
+bool g_bPerformSpecLibSearch = false;
+bool g_bPerformDatabaseSearch = false;
 FILE* fpfasta;      // file pointer to FASTA; would be same as fpdb if input db was already FASTA but otherwise needed if input is .idx file
 
 
@@ -253,8 +260,10 @@ static void SetMSLevelFilter(MSReader &mstReader)
 
    if (g_staticParams.options.iMSLevel == 3)
       msLevel.push_back(MS3);
-   else
+   else if (g_staticParams.options.iMSLevel == 2)
       msLevel.push_back(MS2);
+   else if (g_staticParams.options.iMSLevel == 1)
+      msLevel.push_back(MS1);
 
    mstReader.setFilter(msLevel);
 }
@@ -334,6 +343,39 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
       }
+   }
+
+   return true;
+}
+
+// Allocate memory for the _pSpecLibResults struct for each g_pvQueryMS1 entry.
+static bool AllocateResultsMemMS1()
+{
+   for (std::vector<QueryMS1*>::iterator it = g_pvQueryMS1.begin(); it != g_pvQueryMS1.end(); ++it)
+   {
+      QueryMS1* pQueryMS1 = *it;
+
+/*
+      try
+      {
+         pQueryMS1->_pSpecLibResultsMS1 = new SpecLibResultsMS1[g_staticParams.options.iNumStored];
+      }
+      catch (std::bad_alloc& ba)
+      {
+         char szErrorMsg[SIZE_ERROR];
+         sprintf(szErrorMsg, " Error - new(_pSpecLibResults[]). bad_alloc: %s.\n", ba.what());
+         string strErrorMsg(szErrorMsg);
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(szErrorMsg);
+         return false;
+      }
+      for (int j=0; j<g_staticParams.options.iNumStored; ++j)
+      {
+         pQueryMS1->_pSpecLibResultsMS1[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pQueryMS1->_pSpecLibResultsMS1[j].fCn = 0;
+         pQueryMS1->_pSpecLibResultsMS1[j].fRTime = 0;
+      }
+*/
    }
 
    return true;
@@ -482,7 +524,7 @@ static bool ValidateSequenceDatabaseFile()
    if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
    {
       char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error (3) - cannot read FASTA file \"%s\".\n", sTmpDB.c_str());
+      sprintf(szErrorMsg, " Error (4) - cannot read FASTA sequence database file \"%s\".\n", sTmpDB.c_str());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -565,10 +607,30 @@ static bool ValidateSequenceDatabaseFile()
 
    // Quick sanity check to make sure sequence db file is present before spending
    // time reading & processing spectra and then reporting this error.
-   if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
+   if ((fpcheck = fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      sprintf(szErrorMsg, " Error (2) - cannot read database file \"%s\".\n Check that the file exists and is readable.\n",
+      sprintf(szErrorMsg, " Error (2) - cannot read FASTA sequence database file \"%s\".\n Check that the file exists and is readable.\n",
             g_staticParams.databaseInfo.szDatabase);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
+
+   fclose(fpcheck);
+
+   return true;
+}
+
+static bool ValidateSpecLibFile()  // just check if file is readable for now
+{
+   FILE* fpcheck;
+
+   // open speclib file
+   if ((fpcheck = fopen(g_staticParams.speclibInfo.strSpecLibFile.c_str(), "r")) == NULL)
+   {
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error (5) - cannot read spectral library file \"%s\".\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -622,6 +684,7 @@ static bool ValidatePeptideLengthRange()
 
 CometSearchManager::CometSearchManager() :
     singleSearchInitializationComplete(false),
+    singleSearchMS1InitializationComplete(false),
     singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
@@ -677,9 +740,20 @@ bool CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
 
    if (GetParamValue("decoy_prefix", strData))
+   {
       strcpy(g_staticParams.szDecoyPrefix, strData.c_str());
-   g_staticParams.sDecoyPrefix = g_staticParams.szDecoyPrefix;
-   CometMassSpecUtils::EscapeString(g_staticParams.sDecoyPrefix);
+      g_staticParams.sDecoyPrefix = g_staticParams.szDecoyPrefix;
+      CometMassSpecUtils::EscapeString(g_staticParams.sDecoyPrefix);
+   }
+
+   if (GetParamValue("spectral_library_name", strData))
+      g_staticParams.speclibInfo.strSpecLibFile = strData;
+
+   if (GetParamValue("spectraL_library_ms_level", iIntData))
+   {
+      // FIX add check that input value is some sane range
+      g_staticParams.options.iSpecLibMSLevel = iIntData;
+   }
 
    if (GetParamValue("output_suffix", strData))
       strcpy(g_staticParams.szOutputSuffix, strData.c_str());
@@ -770,38 +844,32 @@ bool CometSearchManager::InitializeStaticParams()
    }
 
    // Note that g_staticParams.variableModParameters.iRequireVarMod could also
-   // be set by each mod's iRequireThisMod later on in this function
-   if (GetParamValue("require_variable_mod", strData) && strData.length() > 0)
+   // be set by each mod's iRequireThisMod later on in this function.  The 0th bit
+   // is used to require any varmod; each ith bit will require that ith varmod.
+   if (GetParamValue("require_variable_mod", iIntData))
    {
-      if (strData != "0")
-      {
-         // parse out comma separated list, set iRequireVarMod to integer value
-         // where set bits are the varmod that is required
-         string delimiter = ",";
-
-         int iModNum;
-         size_t pos = 0;
-         std::string token;
-         while ((pos = strData.find(delimiter)) != std::string::npos)
-         {
-            token = strData.substr(0, pos);
-            iModNum = stoi(token);
-            if (iModNum > 0 && iModNum < 10)
-               g_staticParams.variableModParameters.iRequireVarMod |= 1UL << iModNum;
-            strData.erase(0, pos + delimiter.length());
-         }
-         iModNum = stoi(strData);
-         if (iModNum > 0 && iModNum < 10)
-            g_staticParams.variableModParameters.iRequireVarMod |= 1UL << iModNum;
-      }
+      if (iIntData > 0)
+         g_staticParams.variableModParameters.iRequireVarMod |= 1UL << 0;
+      else
+         g_staticParams.variableModParameters.iRequireVarMod = 0;
    }
-
-   if (GetParamValue("database_name", strData))
-      strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
 
    GetParamValue("fragment_bin_tol", g_staticParams.tolerances.dFragmentBinSize);
 
    GetParamValue("fragment_bin_offset", g_staticParams.tolerances.dFragmentBinStartOffset);
+
+   GetParamValue("ms1_bin_tol", g_staticParams.tolerances.dMS1BinSize);
+
+   GetParamValue("ms1_bin_offset", g_staticParams.tolerances.dMS1BinStartOffset);
+
+   if (GetParamValue("ms1_mass_range", doubleRangeData))
+   {
+      if ((doubleRangeData.dEnd >= doubleRangeData.dStart) && (doubleRangeData.dStart >= 0.0))
+      {
+         g_staticParams.options.dMS1MinMass = doubleRangeData.dStart;
+         g_staticParams.options.dMS1MaxMass = doubleRangeData.dEnd;
+      }
+   }
 
    // this parameter superseded by _upper/_lower; will still apply if the other params are missing
    GetParamValue("peptide_mass_tolerance", g_staticParams.tolerances.dInputTolerancePlus);
@@ -1733,7 +1801,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.iIndexDb == 1)
    {
-      g_bIndexPrecursors = (bool*) malloc(BIN(g_staticParams.options.dPeptideMassHigh));
+      g_bIndexPrecursors = (bool*)malloc(BIN(g_staticParams.options.dPeptideMassHigh) * sizeof(bool));
       if (g_bIndexPrecursors == NULL)
       {
          printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh));
@@ -1746,6 +1814,13 @@ bool CometSearchManager::InitializeStaticParams()
          else
             g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
       }
+   }
+
+   if (g_staticParams.speclibInfo.strSpecLibFile.length() > 0)
+   {
+      // set this such that can access all SpecLib entries at specific precursor mass bin
+      // by accessing g_vulSpecLibPrecursorIndex.at(massbin)
+      g_vulSpecLibPrecursorIndex.resize(BINPREC(g_staticParams.options.dPeptideMassHigh));
    }
 
    if (g_staticParams.tolerances.dInputToleranceMinus > g_staticParams.tolerances.dInputTolerancePlus)
@@ -2081,7 +2156,17 @@ bool CometSearchManager::DoSearch()
    if (!ValidateOutputFormat())
       return false;
 
-   if (!ValidateSequenceDatabaseFile())
+   if (strlen(g_staticParams.databaseInfo.szDatabase) == 0 || !ValidateSequenceDatabaseFile())
+      g_bPerformDatabaseSearch = false;
+   else
+      g_bPerformDatabaseSearch = true;
+
+   if (g_staticParams.speclibInfo.strSpecLibFile.size() == 0 || !ValidateSpecLibFile())
+      g_bPerformSpecLibSearch = false;
+   else
+      g_bPerformSpecLibSearch = true;
+
+   if (g_bPerformDatabaseSearch == false && g_bPerformSpecLibSearch == false)
       return false;
 
    if (!ValidateScanRange())
@@ -2124,6 +2209,11 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
+   if (g_staticParams.iIndexDb == 1)
+      tp->fillPool(g_staticParams.options.iFragIndexNumThreads);
+   else
+      tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+
    if (g_staticParams.options.bCreatePeptideIndex)
    {
       bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
@@ -2163,9 +2253,7 @@ bool CometSearchManager::DoSearch()
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);
-
-   if (g_staticParams.options.bCreateFragmentIndex) //index
+   if (g_bPerformDatabaseSearch && g_staticParams.options.bCreateFragmentIndex) //index
    {
        // write out .idx file containing unmodified peptides and protein refs;
        // this calls RunSearch just to query fasta and generate uniq peptide list
@@ -2184,7 +2272,7 @@ bool CometSearchManager::DoSearch()
 
    bool bBlankSearchFile = false;
 
-   if (g_staticParams.iIndexDb == 1)
+   if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb == 1)
    {
       if (!g_staticParams.options.iFragIndexSkipReadPrecursors)
       {
@@ -2221,6 +2309,11 @@ bool CometSearchManager::DoSearch()
          cout << " - read precursors ... skipping" << endl;
          fflush(stdout);
       }
+   }
+
+   if (g_bPerformSpecLibSearch)
+   {
+      CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
    }
 
    for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
@@ -2631,17 +2724,21 @@ bool CometSearchManager::DoSearch()
          CometPreprocess::Reset();
 
          FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
-         string sTmpDB = g_staticParams.databaseInfo.szDatabase;
-         if (g_staticParams.iIndexDb > 0)
-            sTmpDB = sTmpDB.erase(sTmpDB.size()-4); // need plain fasta if indexdb input
-         if ((fpdb=fopen(sTmpDB.c_str(), "r")) == NULL)
+
+         if (g_bPerformDatabaseSearch)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error (3) - cannot read database file \"%s\".\n", sTmpDB.c_str());
-            string strErrorMsg(szErrorMsg);
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
-            return false;
+            string sTmpDB = g_staticParams.databaseInfo.szDatabase;
+            if (g_staticParams.iIndexDb > 0)
+               sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
+            if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
+            {
+               char szErrorMsg[SIZE_ERROR];
+               sprintf(szErrorMsg, " Error (1) - cannot read FASTA sequence database file \"%s\".\n", sTmpDB.c_str());
+               string strErrorMsg(szErrorMsg);
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(szErrorMsg);
+               return false;
+            }
          }
 
          if (g_staticParams.options.iSpectrumBatchSize == 0 && !g_staticParams.iIndexDb)
@@ -2652,7 +2749,7 @@ bool CometSearchManager::DoSearch()
 
          CometFragmentIndex sqSearch;
 
-         if (g_staticParams.iIndexDb == 1)
+         if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb == 1)
          {
             if (!g_bPlainPeptideIndexRead)
             {
@@ -2812,7 +2909,10 @@ bool CometSearchManager::DoSearch()
             g_cometStatus.SetStatusMsg(string("Running search..."));
 
             // Now that spectra are loaded to memory and sorted, do search.
-            bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+            if (g_bPerformDatabaseSearch)
+               bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+            if (g_bPerformSpecLibSearch)
+               bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
 
             if (!bSucceeded)
                goto cleanup_results;
@@ -2848,16 +2948,19 @@ bool CometSearchManager::DoSearch()
                fflush(stdout);
             }
 
-            g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
+            if (g_bPerformDatabaseSearch)
+            {
+               g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
-            // Sort each entry by xcorr, calculate E-values, etc.
-            bSucceeded = CometPostAnalysis::PostAnalysis(tp);
+               // Sort each entry by xcorr, calculate E-values, etc.
+               bSucceeded = CometPostAnalysis::PostAnalysis(tp);
+            }
 
             if (!bSucceeded)
                goto cleanup_results;
 
 #ifdef PERF_DEBUG
-            if (!g_staticParams.options.bOutputSqtStream)
+            if (g_bPerformDatabaseSearch && !g_staticParams.options.bOutputSqtStream)
             {
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
@@ -2874,7 +2977,7 @@ bool CometSearchManager::DoSearch()
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             // Get flanking amino acid residues
-            if (g_staticParams.iIndexDb)
+            if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb)
             {
                for (int iWhichQuery = 0; iWhichQuery < (int)g_pvQuery.size(); ++iWhichQuery)
                {
@@ -2971,7 +3074,7 @@ cleanup_results:
                break;
          }
 
-         if (g_staticParams.iIndexDb)
+         if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb)
             cout << CometFragmentIndex::ElapsedTime(tBeginTime) << endl;
 
          if (bSucceeded)
@@ -3219,7 +3322,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       return bSucceeded;
 
    ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);  JKE FIX
 
    // Load databases
    CometFragmentIndex sqSearch;
@@ -3248,6 +3351,59 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
       fclose(fpfasta);
 
       singleSearchInitializationComplete = false;
+   }
+}
+
+
+bool CometSearchManager::InitializeSingleSpectrumMS1Search()
+{
+   // Skip doing if already completed successfully.
+   if (singleSearchMS1InitializationComplete)
+      return true;
+
+   if (!InitializeStaticParams())
+      return false;
+
+   if (!ValidateSpecLibFile())
+      return false;
+
+   // these two mean nothing for MS1
+   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
+   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
+   // Set in InitializeStaticParams for peptide search; must set after for MS1
+   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dMS1MaxMass + 2.0) / g_staticParams.tolerances.dMS1BinSize);
+
+   bool bSucceeded;
+   //MH: Allocate memory shared by threads during spectral processing.
+   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   // Allocate memory shared by threads during search
+   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+   if (!bSucceeded)
+      return bSucceeded;
+
+   ThreadPool* tp = _tp;
+   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+
+   singleSearchMS1InitializationComplete = true;
+
+   return true;
+}
+
+
+void CometSearchManager::FinalizeSingleSpectrumMS1Search()
+{
+   if (singleSearchMS1InitializationComplete)
+   {
+      // Deallocate search memory
+      CometSearch::DeallocateMemory(singleSearchThreadCount);
+
+      fclose(fpfasta);
+
+      singleSearchMS1InitializationComplete = false;
    }
 }
 
@@ -3350,7 +3506,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
 
-   //FIX ... is there a way to not have to do this just once and not have to fopen/flcose this db
+   //FIX ... is there a way to not have to do this just once and not have to fopen/fclose this db
    // file pointer for each query?
    FILE* fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
    sTmpDB = g_staticParams.databaseInfo.szDatabase;
@@ -3688,6 +3844,83 @@ cleanup_results:
    g_staticParams.precursorNLIons.clear();
 
    delete[] pdTmpSpectrum;
+
+   return bSucceeded;
+}
+
+
+// Load all MS1 from raw file. Then search each MS1 query.
+bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                                 const int topN,
+                                                 const double dRT,
+                                                 double* pdMass,
+                                                 double* pdInten,
+                                                 int iNumPeaks,
+                                                 vector<ScoresMS1>& scoresMS1)
+{
+   bool bSucceeded = false;
+
+   if (iNumPeaks == 0)
+      return false;
+
+   bSucceeded = InitializeSingleSpectrumMS1Search();
+   if (bSucceeded == false)
+      return bSucceeded;
+
+   g_pvQueryMS1.clear();
+
+   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
+
+   //Load all MS1 spectrum from file
+   if (g_bSpecLibRead == false)
+      CometSpecLib::LoadSpecLibMS1Raw(tp);
+
+   // Process current MS1
+   bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   if (g_pvQueryMS1.empty())
+      return false; // no search to run
+
+   bSucceeded = AllocateResultsMemMS1();
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
+   QueryMS1* pQueryMS1;
+   pQueryMS1 = g_pvQueryMS1.at(0);
+   pQueryMS1->_pSpecLibResultsMS1.fXcorr = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fCn = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
+
+   bSucceeded = CometSearch::RunMS1Search(tp, dRT, dMaxMS1RTDiff);
+
+   if (bSucceeded)
+   {
+      ScoresMS1 scoreMS1;
+      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1.fXcorr;
+      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1.fCn;
+      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
+      scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
+      scoresMS1.push_back(scoreMS1);
+   }
+   else
+      goto cleanup_results;
+
+cleanup_results:
+
+   // close raw file here?
+   // fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
+
+      // Deleting each Query object in the vector calls its destructor, which
+      // frees the spectral memory (see definition for Query in CometDataInternal.h).
+   for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+      delete (*it);
+
+   g_pvQuery.clear();
 
    return bSucceeded;
 }

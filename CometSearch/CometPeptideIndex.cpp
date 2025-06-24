@@ -30,7 +30,6 @@ CometPeptideIndex::~CometPeptideIndex()
 bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 {
    bool bSucceeded;
-   char szOut[256];
    FILE *fptr;
 
    const int iIndex_SIZE_FILE=SIZE_FILE+4;
@@ -43,8 +42,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
       exit(1);
    }
 
-   sprintf(szOut, " Creating peptide index file: ");
-   logout(szOut);
+   logout(" Creating peptide index file: ");
    fflush(stdout);
 
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
@@ -52,7 +50,6 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   tp->fillPool( g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads-1);  
    if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
       g_massRange.bNarrowMassRange = true;
    else
@@ -83,8 +80,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    }
 
    // remove duplicates
-   sprintf(szOut, " - removing duplicates\n");
-   logout(szOut);
+   logout(" - removing duplicates\n");
    fflush(stdout);
 
    // keep unique entries only; sort by peptide/modification state and protein
@@ -170,8 +166,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    printf("\n");
 */
 
-   sprintf(szOut, " - writing file\n");
-   logout(szOut);
+   logout(" - writing file\n");
    fflush(stdout);
 
    // write out index header
@@ -290,8 +285,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    fclose(fptr);
 
-   sprintf(szOut, " - done\n");
-   logout(" - done\n");
+   char szOut[SIZE_BUF];
+   sprintf(szOut, " - done. %s (%lld peptides)\n\n", szIndexFile, tNumPeptides);
+   logout(szOut);
    fflush(stdout);
 
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);

@@ -36,7 +36,7 @@ public:
    static vector<string> readPeptides(string file);
    static string getModifiableAas(std::string peptide,
                                   vector<string>& ALL_MODS);
-   static vector<string> getModifiableSequences(vector<PlainPeptideIndex>& vRawPeptides,
+   static vector<string> getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
                                                 int* PEPTIDE_MOD_SEQ_IDXS,
                                                 vector<string>& ALL_MODS);
    static unsigned long long getModBitmask(string* modSeq,

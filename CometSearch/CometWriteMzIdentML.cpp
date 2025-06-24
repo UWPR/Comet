@@ -212,7 +212,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                Stmp.iWhichResult = std::stoi(field);
                break;
             case 20:
-               Stmp.dRTime = std::stod(field);
+               Stmp.fRTime = std::stof(field);
                break;
             default:
                char szErrorMsg[SIZE_ERROR];
@@ -1347,7 +1347,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
 
 
-      dPrevRT = (*itMzid).dRTime; // grab retention time of scan to use in next iteration of for loop
+      dPrevRT = (*itMzid).fRTime; // grab retention time of scan to use in next iteration of for loop
 
       lCount++;
    }
@@ -1492,8 +1492,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
 
          fprintf(fpout, "%d\t%d\t", iWhichQuery, iWhichResult);
 
-         fprintf(fpout, "%0.4f", pQuery->_spectrumInfoInternal.dRTime);
- 
+         fprintf(fpout, "%0.4f", pQuery->_spectrumInfoInternal.fRTime);
+
          fprintf(fpout, "\n");
       }
    }

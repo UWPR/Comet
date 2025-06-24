@@ -70,13 +70,16 @@ using namespace std;
    #define GITHUBSHA ""
 #endif
 
-#define comet_version   "2025.02 rev. 0"
+#define comet_version   "2025.02 rev. 1"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.
 #define BIN(dMass) (int)((dMass)*g_staticParams.dInverseBinWidth + g_staticParams.dOneMinusBinOffset)
+
+// BINPREC is for MS1 binning
+#define BINPREC(dMass) (int)(dMass / g_staticParams.tolerances.dMS1BinSize) 
 
 #define isEqual(x, y) (std::abs(x-y) <= ( (std::abs(x) > std::abs(y) ? std::abs(y) : std::abs(x)) * FLT_EPSILON))
 

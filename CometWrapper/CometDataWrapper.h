@@ -322,6 +322,48 @@ namespace CometWrapper {
         Scores * pScores;
     };
 
+    public ref class ScoreWrapperMS1
+    {
+    public:
+       ScoreWrapperMS1(ScoresMS1& score)
+       {
+          pScoresMS1 = new ScoresMS1(score);
+       }
+
+       ~ScoreWrapperMS1()
+       {
+          this->!ScoreWrapperMS1();
+       }
+
+       !ScoreWrapperMS1()
+       {
+          delete pScoresMS1;
+       }
+
+       property float fXcorr
+       {
+          float get() { return pScoresMS1->fXcorr; }
+       }
+
+       property float fCn
+       {
+          float get() { return pScoresMS1->fCn; }
+       }
+
+       property float fRTime
+       {
+          float get() { return pScoresMS1->fRTime; }
+       }
+
+       property int iScanNumber
+       {
+          int get() { return pScoresMS1->iScanNumber; }
+       }
+
+    private:
+       ScoresMS1* pScoresMS1;
+    };
+
     public enum class IonSeries : int { a, b, c, x, y, z };
 
     public ref class FragmentWrapper

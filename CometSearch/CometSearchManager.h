@@ -55,6 +55,8 @@ public:
    virtual bool DoSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
+   virtual bool InitializeSingleSpectrumMS1Search();
+   virtual void FinalizeSingleSpectrumMS1Search();
    virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
                                                    int iPrecursorCharge,
                                                    double dMZ,
@@ -65,7 +67,13 @@ public:
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
                                                    vector<Scores>& scores);
-
+   virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                        const int topN,
+                                        const double dRT,
+                                        double* pdMass,
+                                        double* pdInten,
+                                        int iNumPeaks,
+                                        vector<ScoresMS1>& scores);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);
@@ -100,6 +108,7 @@ private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
    bool singleSearchInitializationComplete;
+   bool singleSearchMS1InitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;
 };
