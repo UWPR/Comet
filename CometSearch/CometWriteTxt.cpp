@@ -401,8 +401,6 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
    bool bPrintComma = false;
 
-   *uiNumTotProteins = (unsigned int)(vProteinTargets.size() + vProteinDecoys.size());
-
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)

@@ -105,7 +105,7 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 50;
+               int iMaxElapsedTime = 25;
                int[] piTimeSearchMS1 = new int[iMaxElapsedTime];  // histogram of search times
                int[] piTimeSearchMS2 = new int[iMaxElapsedTime];  // histogram of search times
 

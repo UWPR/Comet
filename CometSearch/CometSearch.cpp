@@ -30,6 +30,7 @@
 #include <bitset>
 #include <functional>
 
+#define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
 bool *CometSearch::_pbSearchMemoryPool;
 bool **CometSearch::_ppbDuplFragmentArr;
@@ -165,6 +166,7 @@ bool CometSearch::RunSearch(int iPercentStart,
       ThreadPool *pSearchThreadPool = tp;
 
       size_t iEnd = g_pvQuery.size();
+
       for (size_t iWhichQuery = 0; iWhichQuery < iEnd; ++iWhichQuery)
       {
          pSearchThreadPool->doJob(std::bind(sqSearch.SearchFragmentIndex, iWhichQuery, pSearchThreadPool));
@@ -1326,7 +1328,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                for (int iPrecursorBin = iPrecursorBinStart; iPrecursorBin <= iPrecursorBinEnd; ++iPrecursorBin)
                {
                   // number of peptides that contain this fragment mass
-                  lNumPeps = g_iCountFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass];
+                  lNumPeps = (size_t)g_iCountFragmentIndex[iWhichThread][iPrecursorBin][uiFragmentMass];
 
                   if (lNumPeps > 0)
                   {
@@ -1335,8 +1337,13 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
                      // Each fragment index entry has lNumPeps peptides sort in increasing order by mass;
                      // find first entry that matches low tolerance of current query
 
-                     size_t iFirst = BinarySearchIndexMass(iWhichThread, iPrecursorBin, 0,
-                           lNumPeps, g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
+                     size_t iFirst;
+
+                     if (lNumPeps <= BINARYSEARCHCUTOFF)
+                        iFirst = 0;
+                     else
+                        iFirst = BinarySearchIndexMass(iWhichThread, iPrecursorBin, 0, lNumPeps,
+                           g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
 
                      for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                      {
@@ -3763,7 +3770,7 @@ size_t CometSearch::BinarySearchIndexMass(int iWhichThread,
    // dQueryMass is the lower bound tolerance mass of input spectrum.
  
    // Termination condition: start index greater than end index.
-   if (start >= end)
+   if (start >= end || end <= BINARYSEARCHCUTOFF)
    {
       return start;
    }
@@ -3791,6 +3798,7 @@ size_t CometSearch::BinarySearchIndexMass(int iWhichThread,
       {
          middle--;
       }
+
       return middle;
    }
 }

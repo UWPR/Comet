@@ -2209,7 +2209,10 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
-   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+   if (g_staticParams.iIndexDb == 1)
+      tp->fillPool(g_staticParams.options.iFragIndexNumThreads);
+   else
+      tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    if (g_staticParams.options.bCreatePeptideIndex)
    {
