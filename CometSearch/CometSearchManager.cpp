@@ -2910,7 +2910,10 @@ bool CometSearchManager::DoSearch()
 
             // Now that spectra are loaded to memory and sorted, do search.
             if (g_bPerformDatabaseSearch)
+            {
+               printf("OK perform database search.  iPercentStart %d, iPercentEnd %d\n", iPercentStart, iPercentEnd);
                bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+            }
             if (g_bPerformSpecLibSearch)
                bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
 
