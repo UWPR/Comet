@@ -32,8 +32,6 @@ jobs:
 
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
-      with:
-        vs-version: '2022'
 
     - name: Build Comet
       run: |
