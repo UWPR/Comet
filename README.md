@@ -12,7 +12,7 @@ To compile on linux and macOS:
 
 To compile with Microsoft Visual Studio:
 
-- Use build tools v142 with Microsoft Visual Studio 2019.
+- Use build tools v143 with Microsoft Visual Studio 2022.
 
 - First install [MSFileReader from Thermo Fischer Scientific](https://uwpr.github.io/Comet/notes/20220228_rawfile.html).
 
