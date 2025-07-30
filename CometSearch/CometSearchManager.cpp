@@ -30,6 +30,7 @@
 #include "CometFragmentIndex.h"
 #include "CometPeptideIndex.h"
 #include "CometSpecLib.h"
+#include "CometAlignment.h"
 
 #include <sstream>
 
@@ -64,6 +65,10 @@ bool g_bPerformSpecLibSearch = false;
 bool g_bPerformDatabaseSearch = false;
 FILE* fpfasta;      // file pointer to FASTA; would be same as fpdb if input db was already FASTA but otherwise needed if input is .idx file
 
+// Reset the MS1 run alignment for new run
+// Keep past MS1_RT_HISTORY_SIZE RTs and set outlier threshold to MS1_RT_OUTLIER_THRESHOLD stdevs
+CometMassSpecAligner pMS1Aligner(MS1_RT_HISTORY_SIZE, MS1_RT_OUTLIER_THRESHOLD);
+std::deque<RetentionMatch> RetentionMatchHistory;
 
 /******************************************************************************
 *
@@ -351,11 +356,11 @@ static bool AllocateResultsMem()
 // Allocate memory for the _pSpecLibResults struct for each g_pvQueryMS1 entry.
 static bool AllocateResultsMemMS1()
 {
+/*
    for (std::vector<QueryMS1*>::iterator it = g_pvQueryMS1.begin(); it != g_pvQueryMS1.end(); ++it)
    {
       QueryMS1* pQueryMS1 = *it;
 
-/*
       try
       {
          pQueryMS1->_pSpecLibResultsMS1 = new SpecLibResultsMS1[g_staticParams.options.iNumStored];
@@ -375,9 +380,9 @@ static bool AllocateResultsMemMS1()
          pQueryMS1->_pSpecLibResultsMS1[j].fCn = 0;
          pQueryMS1->_pSpecLibResultsMS1[j].fRTime = 0;
       }
-*/
-   }
 
+   }
+*/
    return true;
 }
 
@@ -2910,10 +2915,7 @@ bool CometSearchManager::DoSearch()
 
             // Now that spectra are loaded to memory and sorted, do search.
             if (g_bPerformDatabaseSearch)
-            {
-               printf("OK perform database search.  iPercentStart %d, iPercentEnd %d\n", iPercentStart, iPercentEnd);
                bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
-            }
             if (g_bPerformSpecLibSearch)
                bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
 
@@ -3388,6 +3390,8 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
    if (!bSucceeded)
       return bSucceeded;
 
+   pMS1Aligner.reset();
+
    ThreadPool* tp = _tp;
    tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
@@ -3854,14 +3858,16 @@ cleanup_results:
 
 // Load all MS1 from raw file. Then search each MS1 query.
 bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
-                                                 const int topN,
-                                                 const double dRT,
+                                                 const int /*topN*/,
+                                                 const double dQueryRT,
                                                  double* pdMass,
                                                  double* pdInten,
                                                  int iNumPeaks,
                                                  vector<ScoresMS1>& scoresMS1)
 {
    bool bSucceeded = false;
+   double dMatchedSpecLibRT = 0.0;
+   double dLinearRegressionRT = 0.0;
 
    if (iNumPeaks == 0)
       return false;
@@ -3899,14 +3905,19 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
    pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
 
-   bSucceeded = CometSearch::RunMS1Search(tp, dRT, dMaxMS1RTDiff);
+   bSucceeded = CometSearch::RunMS1Search(tp, dQueryRT, dMaxMS1RTDiff);
+
+   // pass best RT match to regression
+   dMatchedSpecLibRT = pQueryMS1->_pSpecLibResultsMS1.fRTime;
+   dLinearRegressionRT = pMS1Aligner.processRetentionMatch(dQueryRT, dMatchedSpecLibRT);
 
    if (bSucceeded)
    {
       ScoresMS1 scoreMS1;
       scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1.fXcorr;
       scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1.fCn;
-      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
+//      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
+      scoreMS1.fRTime = (float)dLinearRegressionRT;
       scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
       scoresMS1.push_back(scoreMS1);
    }
@@ -3918,8 +3929,8 @@ cleanup_results:
    // close raw file here?
    // fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
 
-      // Deleting each Query object in the vector calls its destructor, which
-      // frees the spectral memory (see definition for Query in CometDataInternal.h).
+   // Deleting each Query object in the vector calls its destructor, which
+   // frees the spectral memory (see definition for Query in CometDataInternal.h).
    for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
       delete (*it);
 

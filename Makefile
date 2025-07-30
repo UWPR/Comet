@@ -22,7 +22,8 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 		 CometSearch/ModificationsPermuter.cpp CometSearch/CometInterfaces.h CometSearch/CometInterfaces.cpp\
 		 CometSearch/CometFragmentIndex.cpp CometSearch/CometFragmentIndex.h\
 		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h\
-		 CometSearch/CometSpecLib.cpp CometSearch/CometSpecLib.h
+		 CometSearch/CometSpecLib.cpp CometSearch/CometSpecLib.h\
+		 CometSearch/CometAlignment.cpp CometSearch/CometAlignment.h
 
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH)
 LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lm -lpthread

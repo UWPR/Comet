@@ -22,13 +22,13 @@
 
 #include <errno.h>
 #include <string.h>
-#include <stdio.h>
+#include <cstdio>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <stdarg.h>
 #ifdef _WIN32
 #include <io.h>
-#include <stdio.h>
+#include <cstdio>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else

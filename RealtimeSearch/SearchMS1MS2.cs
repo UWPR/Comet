@@ -126,7 +126,7 @@
                   SearchMgr.InitializeSingleSpectrumSearch();
                }
 
-               double dMaxMS1RTDiff = 0.0   ;   // maximum allowed retention time difference between query and reference, in seconds
+               double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
                                                 // set to 0.0 to not apply aka do not apply any RT restrictions
 
                int iPrintEveryScan = 1;

@@ -12,48 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
 #include "CometDataInternal.h"
+#include <vector>
+#include <memory>
+#include <algorithm>
 
 struct SearchThreadData
 {
    sDBEntry dbEntry;
-   bool *pbSearchMemoryPool;
-   ThreadPool *tp;
-  
-   SearchThreadData()
-   {
-   }
+   bool* pbSearchMemoryPool;
+   ThreadPool* tp;
 
-   SearchThreadData(sDBEntry &dbEntry_in)
-   {
-      dbEntry.strName = dbEntry_in.strName;
-      dbEntry.strSeq = dbEntry_in.strSeq;
-      dbEntry.lProteinFilePosition = dbEntry_in.lProteinFilePosition;
-      dbEntry.vectorPeffMod = dbEntry_in.vectorPeffMod;
-      dbEntry.vectorPeffVariantSimple = dbEntry_in.vectorPeffVariantSimple;
-      dbEntry.vectorPeffVariantComplex = dbEntry_in.vectorPeffVariantComplex;
+   SearchThreadData() = default;
+   SearchThreadData(const sDBEntry& dbEntry_in)
+      : dbEntry(dbEntry_in), pbSearchMemoryPool(nullptr), tp(nullptr) {
    }
 
    ~SearchThreadData()
    {
-      // Mark that the memory is no longer in use.
-      // DO NOT FREE MEMORY HERE. Just release pointer.
-     //      Threading::LockMutex(g_searchMemoryPoolMutex);
-
-      if (pbSearchMemoryPool!=NULL)
+      if (pbSearchMemoryPool)
       {
-         *pbSearchMemoryPool=false;
-         pbSearchMemoryPool=NULL;
+         *pbSearchMemoryPool = false;
+         pbSearchMemoryPool = nullptr;
       }
-
       dbEntry.vectorPeffMod.clear();
       dbEntry.vectorPeffVariantSimple.clear();
-
-      //Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
 };
 
@@ -63,34 +49,38 @@ public:
    CometSearch();
    ~CometSearch();
 
-   // Manages memory in the search memory pool
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
+
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
-                         ThreadPool *tp);
-   static bool RunSearch(ThreadPool* tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
+                         ThreadPool* tp);
+   static bool RunSearch(ThreadPool* tp);
    static bool RunSpecLibSearch(int iPercentStart,
                                 int iPercentEnd,
                                 ThreadPool* tp);
-   static bool RunSpecLibSearch(ThreadPool* tp);    // for DoSingleSpectrumSearch() to call IndexSearch()
+   static bool RunSpecLibSearch(ThreadPool* tp);
    static bool RunMS1Search(ThreadPool* tp,
                             double dRT,
                             double dMaxMS1RTDiff);
-   static void SearchThreadProc(SearchThreadData *pSearchThreadData,
-                                ThreadPool *tp);
-   bool DoSearch(sDBEntry dbe,
-                 bool *pbDuplFragment);
-   bool CheckEnzymeTermini(char *szProteinSeq,
+
+   static void SearchThreadProc(SearchThreadData* pSearchThreadData,
+                                ThreadPool* tp);
+
+   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment);
+
+   // Performance: Mark as const where possible
+   bool CheckEnzymeTermini(const char* szProteinSeq,
                            int iStartPos,
-                           int iEndPos);
-   bool CheckEnzymeStartTermini(char *szProteinSeq,
-                                int iStartPos);
-   bool CheckEnzymeEndTermini(char *szProteinSeq,
-                              int iEndPos);
+                           int iEndPos) const;
+   bool CheckEnzymeStartTermini(const char* szProteinSeq,
+                                int iStartPos) const;
+   bool CheckEnzymeEndTermini(const char* szProteinSeq,
+                              int iEndPos) const;
+
    int BinarySearchMass(int start,
                         int end,
-                        double dCalcPepMass);
+                        double dCalcPepMass) const;
    static bool CheckMassMatch(size_t iWhichQuery,
                               double dCalcPepMass);
 

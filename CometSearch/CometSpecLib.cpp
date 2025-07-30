@@ -619,8 +619,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
       }
    }
 
-   printf("\n");
-
    // Wait for active preprocess threads to complete processing.
    pLoadSpecThreadPool->wait_on_threads();
 
@@ -629,7 +627,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
    g_bSpecLibRead = true;
 //   mstReader.closeFile();   //FIX when does this get closed?
 
-   printf("OK done loading MS1\n");
+   printf("\n"); fflush(stdout);
+
    return bSucceeded;
 }
 

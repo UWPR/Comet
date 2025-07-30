@@ -24,7 +24,7 @@
 #include "CometPeptideIndex.h"
 #include "ModificationsPermuter.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include <cstring>
 #include <sstream>
 #include <bitset>
@@ -32,8 +32,8 @@
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
-bool *CometSearch::_pbSearchMemoryPool;
-bool **CometSearch::_ppbDuplFragmentArr;
+bool* CometSearch::_pbSearchMemoryPool = nullptr;
+bool** CometSearch::_ppbDuplFragmentArr = nullptr;
 
 extern comet_fileoffset_t clSizeCometFileOffset;
 
@@ -56,47 +56,34 @@ CometSearch::~CometSearch()
 
 bool CometSearch::AllocateMemory(int maxNumThreads)
 {
-   int i;
-
-   // Initally mark all arrays as available (i.e. false == not in use)
-   _pbSearchMemoryPool = new bool[maxNumThreads];
-   for (i=0; i < maxNumThreads; ++i)
+   try
    {
-      _pbSearchMemoryPool[i] = false;
-   }
+      _pbSearchMemoryPool = new bool[maxNumThreads]();
+      _ppbDuplFragmentArr = new bool* [maxNumThreads];
 
-   // Allocate array
-   _ppbDuplFragmentArr = new bool*[maxNumThreads];
-   for (i=0; i < maxNumThreads; ++i)
+      for (int i = 0; i < maxNumThreads; ++i)
+         _ppbDuplFragmentArr[i] = new bool[g_staticParams.iArraySizeGlobal]();
+
+      return true;
+   }
+   catch (const std::bad_alloc& ba)
    {
-      try
-      {
-         _ppbDuplFragmentArr[i] = new bool[g_staticParams.iArraySizeGlobal];
-      }
-      catch (std::bad_alloc& ba)
-      {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - new(_ppbDuplFragmentArr[%d]). bad_alloc: %s.\n", g_staticParams.iArraySizeGlobal, ba.what());
-         sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-         sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
-         string strErrorMsg(szErrorMsg);
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
-         return false;
-      }
-   }
+      char szErrorMsg[SIZE_ERROR];
+      sprintf(szErrorMsg, " Error - memory allocation failed. bad_alloc: %s.\n", ba.what());
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
 
-   return true;
+      return false;
+   }
 }
 
 
 bool CometSearch::DeallocateMemory(int maxNumThreads)
 {
-   int i;
-
    delete [] _pbSearchMemoryPool;
 
-   for (i=0; i<maxNumThreads; ++i)
+   for (int i = 0; i < maxNumThreads; ++i)
    {
       delete [] _ppbDuplFragmentArr[i];
    }
@@ -807,13 +794,6 @@ bool CometSearch::RunSearch(int iPercentStart,
             // a memory issue for extremely large fasta files
             while (pSearchThreadPool->jobs_.size() >= 500)
             {
-/*
-#ifdef _WIN32
-               Sleep(10);
-#else
-               usleep(10);
-#endif
-*/
                pSearchThreadPool->wait_on_threads();
             }
 
@@ -3530,9 +3510,9 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
 
 
 // Check enzyme termini.
-bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
+bool CometSearch::CheckEnzymeTermini(const char* szProteinSeq,
                                      int iStartPos,
-                                     int iEndPos)
+                                     int iEndPos) const
 {
    if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
@@ -3636,8 +3616,8 @@ bool CometSearch::CheckEnzymeTermini(char *szProteinSeq,
 }
 
 
-bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
-                                          int iStartPos)
+bool CometSearch::CheckEnzymeStartTermini(const char *szProteinSeq,
+                                          int iStartPos) const
 {
    if (g_staticParams.options.bClipNtermAA)
       iStartPos -= 1;
@@ -3666,8 +3646,8 @@ bool CometSearch::CheckEnzymeStartTermini(char *szProteinSeq,
 }
 
 
-bool CometSearch::CheckEnzymeEndTermini(char *szProteinSeq,
-                                        int iEndPos)
+bool CometSearch::CheckEnzymeEndTermini(const char *szProteinSeq,
+                                        int iEndPos) const
 {
    if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
@@ -3716,47 +3696,27 @@ int CometSearch::BinarySearchPeffStrMod(int start,
 }
 
 
+// Performance: Use std::lower_bound for binary search
 int CometSearch::BinarySearchMass(int start,
                                   int end,
-                                  double dCalcPepMass)
+                                  double dCalcPepMass) const
 {
-   // Termination condition: start index greater than end index.
-   if (start > end)
-      return -1;
+   auto it = std::lower_bound(
+      g_pvQuery.begin() + start,
+      g_pvQuery.begin() + end,
+      dCalcPepMass,
+      [](const Query* query, double mass) {
+         return query->_pepMassInfo.dPeptideMassTolerancePlus < mass;
+      });
 
-   // Find the middle element of the vector and use that for splitting
-   // the array into two pieces.
-   unsigned middle = start + ((end - start) / 2);
-
-   if (g_pvQuery.at(middle)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
-         && dCalcPepMass <= g_pvQuery.at(middle)->_pepMassInfo.dPeptideMassTolerancePlus)
+   if (it != g_pvQuery.begin() + end
+      && (*it)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
+      && dCalcPepMass <= (*it)->_pepMassInfo.dPeptideMassTolerancePlus)
    {
-      return middle;
+      return static_cast<int>(std::distance(g_pvQuery.begin(), it));
    }
-   else if (g_pvQuery.at(middle)->_pepMassInfo.dPeptideMassToleranceMinus > dCalcPepMass)
-      return BinarySearchMass(start, middle - 1, dCalcPepMass);
 
-   if ((int)middle+1 < end)
-      return BinarySearchMass(middle + 1, end, dCalcPepMass);
-   else
-   {
-      if ((int)(middle+1) == end
-            && end < (int)g_pvQuery.size()
-            && g_pvQuery.at(end)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
-            && dCalcPepMass <= g_pvQuery.at(end)->_pepMassInfo.dPeptideMassTolerancePlus)
-      {
-         return end;
-      }
-      else if ((int)middle == start
-            && start < (int)g_pvQuery.size()
-            && g_pvQuery.at(start)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
-            && dCalcPepMass <= g_pvQuery.at(start)->_pepMassInfo.dPeptideMassTolerancePlus)
-      {
-         return start;
-      }
-      else
-         return -1;
-   }
+   return -1;
 }
 
 

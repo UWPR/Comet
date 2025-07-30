@@ -286,7 +286,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    fclose(fptr);
 
    char szOut[SIZE_BUF];
-   sprintf(szOut, " - done. %s (%lld peptides)\n\n", szIndexFile, tNumPeptides);
+   sprintf(szOut, " - done. %s (%llu peptides)\n\n", szIndexFile, static_cast<unsigned long long>(tNumPeptides));
    logout(szOut);
    fflush(stdout);
 

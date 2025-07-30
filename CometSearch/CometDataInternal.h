@@ -16,9 +16,10 @@
 #ifndef _COMETDATAINTERNAL_H_
 #define _COMETDATAINTERNAL_H_
 
+#include <chrono>
+#include <string>
 #include "CometData.h"
 #include "Threading.h"
-#include <chrono>
 
 class CometSearchManager;
 
@@ -46,6 +47,8 @@ class CometSearchManager;
 
 #define MS1_MIN_MASS                0.0      // only parse up to this mass in MS1 scans for MS1 library searches
 #define MS1_MAX_MASS                3000.0   // only parse up to this mass in MS1 scans for MS1 library searches
+#define MS1_RT_HISTORY_SIZE         40       // size of MS1 RT history kept for recent history linear regression
+#define MS1_RT_OUTLIER_THRESHOLD    2.0      // # stdev outlier threshold for MS1 RT history
 
 #define MAX_PEFFMOD_LEN             16
 #define SIZE_MASS                   128      // ascii value size
@@ -503,7 +506,7 @@ struct PlainPeptideIndexStruct
 
 struct FragmentPeptidesStruct
 {
-   int iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
+   size_t iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
    int modNumIdx;
    double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
    short siNtermMod;
@@ -534,6 +537,17 @@ struct SpecLibStruct
    float* pfUnitVector;
    unsigned int uiArraySizeMS1;
 };
+
+// for MS1 alignment
+struct RetentionMatch
+{
+   double dQueryTime;
+   double dReferenceTime;
+   int iSpectrumIndex;
+
+   RetentionMatch(double dQueryTime, double dReferenceTime, int iSpectrumIndex);
+};
+extern std::deque<RetentionMatch> RetentionMatchHistory;
 
 extern unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
 extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];       // array of ints: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]

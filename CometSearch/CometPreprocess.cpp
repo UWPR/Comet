@@ -773,7 +773,6 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    int iBinMass;
    double dInten;
 
-   int yy = 0;
    for (int ii = 0; ii < pPreprocessThreadDataMS1->mstSpectrum.size(); ++ii)
    {
       // store original spectrum
@@ -812,7 +811,6 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    pTmp.pfUnitVector = new float[iArraySizeMS1];
    memset(pTmp.pfUnitVector, 0, sizeof(float) * iArraySizeMS1);
 
-   int x = 0;
    for (int i = 0; i < iArraySizeMS1; ++i)
    {
       pTmp.pfUnitVector[i] = (float)(pdTmpFastXcorrData[i]);
@@ -2134,7 +2132,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          dIntensityCutoff = g_staticParams.options.dMinIntensity;
    }
 
-   for (i=0; i<iNumPeaks; ++i)
+   for (i = 0; i < iNumPeaks; ++i)
    {
       dIon = pdMass[i];
       dIntensity = pdInten[i];
@@ -2389,8 +2387,8 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
 
 bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
-   double* pdInten,
-   int iNumPeaks)
+                                                  double* pdInten,
+                                                  int iNumPeaks)
 {
    QueryMS1* pScoringMS1 = new QueryMS1();
 

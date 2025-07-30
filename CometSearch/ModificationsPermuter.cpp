@@ -16,7 +16,7 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
-#include <stdio.h>
+#include <cstdio>
 #include <vector>
 #include <unordered_map>
 #include <bitset>

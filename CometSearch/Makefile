@@ -22,7 +22,7 @@ endif
 
 COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
 				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
-				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o CometPeptideIndex.o CometSpecLib.o
+				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o CometPeptideIndex.o CometSpecLib.o CometAlignment.o
 
 
 all:  $(COMETSEARCH)
@@ -69,3 +69,5 @@ CometPeptideIndex.o: CometPeptideIndex.cpp Common.h CometData.h CometDataInterna
 	${CXX} ${CXXFLAGS} CometPeptideIndex.cpp -c
 CometSpecLib.o: CometSpecLib.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
 	${CXX} ${CXXFLAGS} CometSpecLib.cpp -c
+CometAlignment.o: CometAlignment.cpp Common.h CometData.h CometDataInternal.h CometInterfaces.h
+	${CXX} ${CXXFLAGS} CometAlignment.cpp -c

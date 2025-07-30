@@ -20,7 +20,7 @@
 #include "CometMassSpecUtils.h"
 #include "ModificationsPermuter.h"
 
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -903,7 +903,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 {
    FILE *fp;
-   size_t tTmp;
+   size_t tTmp;  // used to reduce compiler warnings only
+   int iRet;     // used to reduce compiler warnings only
    char szBuf[SIZE_BUF];
    string strIndexFile;
 
@@ -928,7 +929,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    {
       if (!strncmp(szBuf, "MassType:", 9))
       {
-         int iRet = sscanf(szBuf + 9, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
+         iRet = sscanf(szBuf + 9, "%d %d", &g_staticParams.massUtility.bMonoMassesParent, &g_staticParams.massUtility.bMonoMassesFragment);
          
          if (iRet != 2)
          {
@@ -941,7 +942,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "LengthRange:", 12))
       {
-         int iRet = sscanf(szBuf + 12, "%d %d", &g_staticParams.options.peptideLengthRange.iStart, &g_staticParams.options.peptideLengthRange.iEnd);
+         iRet = sscanf(szBuf + 12, "%d %d", &g_staticParams.options.peptideLengthRange.iStart, &g_staticParams.options.peptideLengthRange.iEnd);
 
          if (iRet != 2)
          {
@@ -954,7 +955,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "Enzyme:", 7))
       {
-         int iRet = sscanf(szBuf + 7, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
+         iRet = sscanf(szBuf + 7, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
             g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
             g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
 
@@ -969,7 +970,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "Enzyme2:", 8))
       {
-         int iRet = sscanf(szBuf + 8, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
+         iRet = sscanf(szBuf + 8, "%*s [%d %s %s]", &g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
             g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
             g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
 
@@ -997,7 +998,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          tok=strtok(szBuf+11, delims);
          while (tok != NULL)
          {
-            int iRet = sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            iRet = sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
             g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
             tok = strtok(NULL, delims);
             x++;
@@ -1039,7 +1040,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
             iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
             std::replace(subStr.begin(), subStr.end(), ':', ' ');
-            int iRet = sscanf(subStr.c_str(), "%s %lf %lf %lf",
+            iRet = sscanf(subStr.c_str(), "%s %lf %lf %lf",
                g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
                &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
                &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
@@ -1064,7 +1065,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       {
          int iTmp;
 
-         int iRet = sscanf(szBuf + 16, "%d", &iTmp);
+         iRet = sscanf(szBuf + 16, "%d", &iTmp);
 
          if (iTmp)
             g_staticParams.variableModParameters.bVarModProteinFilter = true;
