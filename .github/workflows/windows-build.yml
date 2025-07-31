@@ -35,7 +35,8 @@ jobs:
 
     - name: Write commit hash to header file
       shell: cmd
-      run: echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
+      run: |
+        echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
         dir CometSearch
         type CometSearch/githubsha.h
 
