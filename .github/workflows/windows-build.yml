@@ -16,7 +16,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Mark git working directory as safe
-      shell: powershell
+      shell: cmd
       run: |
         git config --global --add safe.directory "C:/actions-runner-UWPR/_work/Comet/Comet"
 
@@ -34,7 +34,11 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
 
     - name: Write commit hash to header file
-      run: echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
+      shell: cmd
+      run: |
+        echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
+        dir CometSearch
+        type CometSearch\\githubsha.h
 
     - name: Build Comet
       run: |
