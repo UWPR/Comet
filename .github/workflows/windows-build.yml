@@ -34,6 +34,7 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1
 
     - name: Write commit hash to header file
+      shell: cmd
       run: echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
 
     - name: Build Comet
