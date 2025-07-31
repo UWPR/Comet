@@ -38,7 +38,7 @@ jobs:
       run: |
         echo #define GITHUBSHA "%GITHUB_SHA%" > CometSearch/githubsha.h
         dir CometSearch
-        type CometSearch/githubsha.h
+        type CometSearch\\githubsha.h
 
     - name: Build Comet
       run: |
