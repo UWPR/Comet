@@ -14,9 +14,9 @@ endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
 else
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -DGITHUBSHA='"$(GITHUB_SHA)"' -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
 
 endif
 
@@ -55,7 +55,7 @@ CometWriteTxt.o:      CometWriteTxt.cpp Common.h CometData.h CometDataInternal.h
 	${CXX} ${CXXFLAGS} CometWriteTxt.cpp -c
 CometCheckForUpdates.o:   CometCheckForUpdates.cpp Common.h CometCheckForUpdates.h
 	${CXX} ${CXXFLAGS} CometCheckForUpdates.cpp -c
-CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWriteMzIdentML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
+CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWriteMzIdentML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h githubsha.h
 	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c
 CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
 	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c

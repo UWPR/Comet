@@ -107,6 +107,7 @@
     <ClInclude Include="CometWriteSqt.h" />
     <ClInclude Include="CometWriteTxt.h" />
     <ClInclude Include="Common.h" />
+    <ClInclude Include="githubsha.h" />
     <ClInclude Include="ModificationsPermuter.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="Threading.h" />

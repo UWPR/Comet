@@ -17,6 +17,7 @@
 #include "CometData.h"
 #include "CometDataInternal.h"
 #include "CometInterfaces.h"
+#include "githubsha.h"
 #include <unordered_map>
 
 using namespace CometInterfaces;

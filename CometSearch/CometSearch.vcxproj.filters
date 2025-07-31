@@ -93,6 +93,9 @@
     <ClInclude Include="CometAlignment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="githubsha.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CometMassSpecUtils.cpp">

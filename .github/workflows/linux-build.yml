@@ -18,6 +18,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Write commit hash to header file
+      run: echo "#define GITHUBSHA \"${GITHUB_SHA}\"" > CometSearch/githubsha.h
+
     - name: Build Comet
       run: make
 

@@ -19,6 +19,7 @@
 #include "CometData.h"
 #include "CometDataInternal.h"
 #include "CometInterfaces.h"
+#include "githubsha.h"           // blank hash that github workflows should populate
 
 #include <errno.h>
 #include <string.h>
