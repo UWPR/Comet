@@ -1158,7 +1158,8 @@ fprintf(fp,
 11. No_cut                 1      @           @\n\
 \n");
 
-   logout("\n Created:  comet.params.new\n\n");
+   std::string sTmp = " Comet version \"" + g_sCometVersion + "\"\n " + copyright + "\n\n Created:  comet.params.new\n\n";
+   logout(sTmp.c_str());
    fclose(fp);
 
 } // PrintParams
