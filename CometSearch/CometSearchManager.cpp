@@ -3080,7 +3080,11 @@ cleanup_results:
          }
 
          if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb)
-            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << endl;
+         {
+            const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
+            double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
+            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << " (" << std::setprecision(3) << dTimePerSpectra << " ms per spectra)" << endl;
+         }
 
          if (bSucceeded)
          {

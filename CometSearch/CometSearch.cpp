@@ -1375,6 +1375,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int iCountNLY[FRAGINDEX_VMODS][MAX_PEPTIDE_LEN];  // sum/count of # of varmods counting from c-term at each position
    int iStartPos = 0;
    int iEndPos = 0;
+   unsigned int uiNumScored = 0;
 
    for (auto ix = vPeptides.begin(); ix != vPeptides.end(); ++ix)
    {
@@ -1619,6 +1620,10 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, iWhichQuery,
                iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
+
+         uiNumScored++;
+         if (uiNumScored >= FRAGINDEX_MAX_NUMSCORED)
+            break;
       }
    }
 
