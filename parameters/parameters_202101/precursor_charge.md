@@ -8,7 +8,9 @@ states are searched
 in the specified charge range be searched.
 - If the first input value is not 0 then all charge states between (and inclusive of)
 the first and second input values are searched.  Again, only for those spectra with no
-specified precursor charge state.
+specified precursor charge state. NOTE: one exception is that if there are no peaks
+above the acquisition precursor m/z then the charge state will return 1+.
+Set "[override_charge](override_charge.html) = 1" to ignore this exception.
 - If a precursor charge is present for a particular spectrum, this parameter will
 not override that charge state and that spectrum will always be searched.
 - With the default "0 0" values and a spectrum with no precursor charge, Comet will
