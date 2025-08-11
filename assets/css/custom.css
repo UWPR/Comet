@@ -1,0 +1,88 @@
+/* === Modern Cayman Overrides for Comet === */
+
+/* Import modern font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+/* CSS Variables for theme colors */
+:root {
+  --color-bg: #fafafa;
+  --color-text: #1f2937;
+  --color-accent: #3b82f6;
+  --color-card: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f172a;
+    --color-text: #f1f5f9;
+    --color-accent: #60a5fa;
+    --color-card: #1e293b;
+  }
+}
+
+/* Global reset tweaks */
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: clamp(1rem, 2vw, 1.1rem);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+  margin: 0;
+  animation: fadeIn 0.3s ease-in;
+}
+
+h1, h2, h3 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+
+h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); }
+h2 { font-size: clamp(1.4rem, 3vw, 1.8rem); }
+h3 { font-size: clamp(1.2rem, 2.5vw, 1.4rem); }
+
+a {
+  color: var(--color-accent);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+a:hover {
+  color: darken(var(--color-accent), 10%);
+}
+
+/* Header / nav bar improvements */
+.site-header {
+  padding: 1rem 0;
+}
+.site-header .project-name {
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+}
+
+/* Card styling for sections */
+.section-card {
+  background: var(--color-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin: 1.5rem auto;
+  max-width: 900px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Footer tweaks */
+.site-footer {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive content tweaks */
+@media (max-width: 768px) {
+  body {
+    padding: 0 1rem;
+  }
+}
+
