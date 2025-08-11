@@ -9,7 +9,6 @@
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
 </div>
 
-<div class="section-card">
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database
 search tool released under the [Apache 2.0
 license](https://www.apache.org/licenses/LICENSE-2.0).
@@ -34,9 +33,7 @@ actually make use of Comet results. Unless you specifically know that you want
 to use the standalone Comet command line binary available from this repository,
 you should start with [one of the many proteomics software suites](/Comet/releases/)
 that Comet is integrated into.
-</div>
 
-<div class="section-card">
 ### Publications
 - [Comet: an open source tandem mass spectrometry sequence database search tool](http://onlinelibrary.wiley.com/doi/10.1002/pmic.201200439/abstract).
 Eng JK, Jahan TA, Hoopmann MR. Proteomics. 2012 Nov 12.  doi: 10.1002/pmic.201200439
@@ -50,10 +47,8 @@ doi: 10.1021/acs.jproteome.9b00860
 - [Extending Comet for Global Amino Acid Variant and Post-Translational Modification Analysis Using the PSI Extended FASTA Format](https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/pmic.201900362).
 Eng JK and Deutsch EW. Proteomics. Proteomics. 2020 Nov;20(21-22):e1900362. 
 doi: 10.1002/pmic.201900362.
-</div>
 
-<div class="section-card">
 *I know you're smart. But everyone here is smart. Smart isn't enough. The kind
 of people I want on my research team are those who will help everyone feel
 happy to be here.*  [Randy Pausch, The Last Lecture](http://www.youtube.com/watch?v=ji5_MqicxSo)
-</div>
+
