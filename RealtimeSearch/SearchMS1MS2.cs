@@ -54,7 +54,6 @@
          // Will also read the index database and return dPeptideMassLow/dPeptideMassHigh mass range
          searchParams.ConfigureInputSettings(SearchMgr, ref sRawFileReference, ref sDB, ref dPeptideMassLow, ref dPeptideMassHigh, bDatabaseSearch);
 
-
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
             Console.Write(" input: {0}  \n", rawFileName);
@@ -129,6 +128,12 @@
                double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
                                                 // set to 0.0 to not apply aka do not apply any RT restrictions
 
+
+               double dMaxQueryRT;  // this is the maximum RT in seconds for the query run, used to
+                                    // scale the query RTs against the reference run RTs which may
+                                    // have a different maximum RT value. Assumes a linear gradient.
+               dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
+
                int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
 
@@ -174,7 +179,7 @@
                         if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
                            watch.Start();
-                           SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
+                           SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
                            watch.Stop();
 
                            if (vScores.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
@@ -453,22 +458,22 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
-            /* unused for the search as these are applied during the plain peptide .idx index creation
-                        VarModsWrapper varMods = new VarModsWrapper();
-                        sTmp = "15.9949 M 0 2 -1 0 0";
-                        varMods.set_VarModMass(15.9949);
-                        varMods.set_VarModChar("M");
-                        SearchMgr.SetParam("variable_mod01", sTmp, varMods);
+/* unused for the search as these are applied during the plain peptide .idx index creation
+            VarModsWrapper varMods = new VarModsWrapper();
+            sTmp = "15.9949 M 0 2 -1 0 0";
+            varMods.set_VarModMass(15.9949);
+            varMods.set_VarModChar("M");
+            SearchMgr.SetParam("variable_mod01", sTmp, varMods);
 
-                        sTmp = "79.9663 STY 0 2 -1 0 0";
-                        varMods.set_VarModMass(79.9663);
-                        varMods.set_VarModChar("STY");
-                        SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+            sTmp = "79.9663 STY 0 2 -1 0 0";
+            varMods.set_VarModMass(79.9663);
+            varMods.set_VarModChar("STY");
+            SearchMgr.SetParam("variable_mod02", sTmp, varMods);
 
-                        iTmp = 4;
-                        sTmp = iTmp.ToString();
-                        SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
-            */
+            iTmp = 4;
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
+*/
 
             if (bDatabaseSearch)
             {

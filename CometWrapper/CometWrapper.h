@@ -54,6 +54,7 @@ namespace CometWrapper {
                                                 [Out] List<ScoreWrapper^>^% score);
         // Need to convert vector to List and back
         bool DoMS1SearchMultiResults(double dVal3,
+                                     double dVal4,
                                      int intValue1,
                                      double value,
                                      cli::array<double>^ dVal1,

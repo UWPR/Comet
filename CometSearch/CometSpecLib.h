@@ -36,7 +36,8 @@ public:
    static void StoreSpecLib(Query *it,
                             unsigned int iWhichSpecLib,
                             double dSpecLibScore);
-   static bool LoadSpecLibMS1Raw(ThreadPool* tp);
+   static bool LoadSpecLibMS1Raw(ThreadPool* tp,
+                                 double dMaxQueryRT);
 
 
 private:

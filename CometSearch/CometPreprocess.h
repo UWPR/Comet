@@ -74,7 +74,9 @@ public:
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                     ThreadPool* tp);
    static void PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
-                                       ThreadPool* tp);
+                                       ThreadPool* tp,
+                                       const double dMaxQueryRT,
+                                       const double dMaxSpecLibRT);
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);

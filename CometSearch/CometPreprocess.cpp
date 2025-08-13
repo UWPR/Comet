@@ -713,7 +713,9 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
 
 void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
-                                              ThreadPool* tp)
+                                              ThreadPool* tp,
+                                              const double dMaxQueryRT,
+                                              const double dMaxSpecLibRT)
 {
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
@@ -758,6 +760,8 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    pTmp.iLibEntry = pPreprocessThreadDataMS1->mstSpectrum.getScanNumber();
    pTmp.iNumPeaks = pPreprocessThreadDataMS1->mstSpectrum.size();
    pTmp.fRTime = (float)(pPreprocessThreadDataMS1->mstSpectrum.getRTime() * 60.0);  // convert from minutes to seconds
+   // scale the RT to query gradient length
+   pTmp.fRTime = (float)(pTmp.fRTime * dMaxQueryRT / dMaxSpecLibRT);
 
    double dLargestMass = pPreprocessThreadDataMS1->mstSpectrum.at(pTmp.iNumPeaks - 1).mz;
    if (dLargestMass > g_staticParams.options.dMS1MaxMass)

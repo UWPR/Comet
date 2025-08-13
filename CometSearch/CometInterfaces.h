@@ -47,6 +47,7 @@ public:
                                                       vector<vector<Fragment>>& matchedFragments,
                                                       vector<Scores>& scores) = 0;
       virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                           const double dMaxQueryRT,
                                            const int topN,
                                            const double dRT,
                                            double* dMass,

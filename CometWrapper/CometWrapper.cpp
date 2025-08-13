@@ -176,6 +176,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(int topN,
 }
 
 bool CometSearchManagerWrapper::DoMS1SearchMultiResults(double dMaxMS1RTDiff,
+   double dMaxQueryRT,
    int topN,
    double dRT,
    cli::array<double>^ pdMass,
@@ -196,7 +197,7 @@ bool CometSearchManagerWrapper::DoMS1SearchMultiResults(double dMaxMS1RTDiff,
    vector<vector<Fragment>> matchedFragments;
 
    // perform the search
-   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(dMaxMS1RTDiff, topN, dRT, ptrMasses, ptrInten, iNumPeaks, scoresMS1);
+   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, ptrMasses, ptrInten, iNumPeaks, scoresMS1);
 
    scoreMS1 = gcnew List<ScoreWrapperMS1^>();
    for (auto eachScore : scoresMS1)

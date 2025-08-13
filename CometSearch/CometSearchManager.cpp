@@ -3862,6 +3862,7 @@ cleanup_results:
 
 // Load all MS1 from raw file. Then search each MS1 query.
 bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
+                                                 const double dMaxQueryRT,
                                                  const int /*topN*/,
                                                  const double dQueryRT,
                                                  double* pdMass,
@@ -3886,7 +3887,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    //Load all MS1 spectrum from file
    if (g_bSpecLibRead == false)
-      CometSpecLib::LoadSpecLibMS1Raw(tp);
+      CometSpecLib::LoadSpecLibMS1Raw(tp, dMaxQueryRT);
 
    // Process current MS1
    bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);

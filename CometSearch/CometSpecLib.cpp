@@ -482,7 +482,8 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
 // Loads all MS1 spectra from input file into g_vSpecLib.
 // Don't bother storing vSpecLibPeaks
-bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
+bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
+                                     double dMaxQueryRT)
 {
    int iFirstScan = 1;
    int iScanNumber = 0;
@@ -492,18 +493,34 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 
    // For file access using MSToolkit.
    MSReader mstReader;
+   MSReader mstReader2;
    Spectrum mstSpectrum;           // For holding spectrum.
 
    // We want to read only M1 scans.
    vector<MSSpectrumType> msLevel;
    msLevel.push_back(MS1);
-   mstReader.setFilter(msLevel);
+   msLevel.push_back(MS2);
+   msLevel.push_back(MS3);  // need all levels to get last scan RT
+   mstReader2.setFilter(msLevel);
 
    int iAnalysisType = AnalysisType_EntireFile;
 
-   mstReader.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 1);
+   mstReader2.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, 1);
 
-   int iFileLastScan = mstReader.getLastScan();
+   int iFileLastScan = mstReader2.getLastScan();
+
+   mstReader2.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, iFileLastScan);
+   double dMaxSpecLibRT = mstSpectrum.getRTime() * 60.0;  // convert from minutes to seconds; max RT for query run
+
+   if (dMaxSpecLibRT == 0.0)
+   {
+      char szErrorMsg[256];
+      sprintf(szErrorMsg, " Error - read dMaxSpecLibRT as %lf.\n", dMaxSpecLibRT);
+      string strErrorMsg(szErrorMsg);
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(szErrorMsg);
+      return false;
+   }
 
    if (iFileLastScan <= 0)
    {
@@ -525,6 +542,10 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
    printf(" - loading MS1 scan (%d, mass range %0.1lf - %0.1lf): ",
       iFileLastScan, g_staticParams.options.dMS1MinMass, g_staticParams.options.dMS1MaxMass);
    fflush(stdout);
+
+   msLevel.clear();
+   msLevel.push_back(MS1);  // we want to read only MS1 scans
+   mstReader.setFilter(msLevel);
 
    // Load all input spectra.
    while (true)
@@ -578,7 +599,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp)
 
             PreprocessThreadData* pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
-            pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool));
+            pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool, dMaxQueryRT, dMaxSpecLibRT));
          }
 
          iTotalScans++;
@@ -655,8 +676,6 @@ double CometSpecLib::ScoreSpecLib(Query *pQuery,
 
    dScore = std::round(dScore * 0.005 * 1000.0) / 1000.0;  // round to 3 decimal points
 
-//printf("OK in ScoreSpecLib, query %d, iWhichSpecLib %d, dScore %lf\n", pQuery->_spectrumInfoInternal.iScanNumber, iWhichSpecLib, dScore);
-
    return dScore;
 }
 
@@ -728,7 +747,6 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
    if (iEnd > iMaxBin)
       iEnd = iMaxBin;
 
-//printf("*** OK iStart %d, iEnd %d, dMassLow %lf, dMassHigh %lf\n", iStart, iEnd, dMassLow, dMassHigh);
    for (int x = iStart ; x <= iEnd; ++x)
       g_vulSpecLibPrecursorIndex.at(x).push_back((unsigned int)iWhichSpecLib);
 

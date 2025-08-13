@@ -47,7 +47,7 @@ class CometSearchManager;
 
 #define MS1_MIN_MASS                0.0      // only parse up to this mass in MS1 scans for MS1 library searches
 #define MS1_MAX_MASS                3000.0   // only parse up to this mass in MS1 scans for MS1 library searches
-#define MS1_RT_HISTORY_SIZE         40       // size of MS1 RT history kept for recent history linear regression
+#define MS1_RT_HISTORY_SIZE         250      // size of MS1 RT history kept for recent history linear regression
 #define MS1_RT_OUTLIER_THRESHOLD    2.0      // # stdev outlier threshold for MS1 RT history
 
 #define MAX_PEFFMOD_LEN             16
