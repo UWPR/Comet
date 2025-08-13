@@ -483,7 +483,8 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 // Loads all MS1 spectra from input file into g_vSpecLib.
 // Don't bother storing vSpecLibPeaks
 bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
-                                     double dMaxQueryRT)
+                                     const double dMaxQueryRT,
+                                     double* dMaxSpecLibRT)
 {
    int iFirstScan = 1;
    int iScanNumber = 0;
@@ -510,12 +511,12 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    int iFileLastScan = mstReader2.getLastScan();
 
    mstReader2.readFile(g_staticParams.speclibInfo.strSpecLibFile.c_str(), mstSpectrum, iFileLastScan);
-   double dMaxSpecLibRT = mstSpectrum.getRTime() * 60.0;  // convert from minutes to seconds; max RT for query run
+   *dMaxSpecLibRT = mstSpectrum.getRTime() * 60.0;  // convert from minutes to seconds; max RT for query run
 
-   if (dMaxSpecLibRT == 0.0)
+   if (*dMaxSpecLibRT == 0.0)
    {
       char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - read dMaxSpecLibRT as %lf.\n", dMaxSpecLibRT);
+      sprintf(szErrorMsg, " Error - read dMaxSpecLibRT as %lf.\n", *dMaxSpecLibRT);
       string strErrorMsg(szErrorMsg);
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(szErrorMsg);
@@ -599,7 +600,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
             PreprocessThreadData* pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
-            pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool, dMaxQueryRT, dMaxSpecLibRT));
+            pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool, dMaxQueryRT, *dMaxSpecLibRT));
          }
 
          iTotalScans++;

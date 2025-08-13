@@ -62,7 +62,9 @@ public:
    static bool RunSpecLibSearch(ThreadPool* tp);
    static bool RunMS1Search(ThreadPool* tp,
                             double dRT,
-                            double dMaxMS1RTDiff);
+                            double dMaxMS1RTDiff,
+                            const double dMaxSpecLibRT,
+                            const double dMaxQueryRT);
 
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
@@ -252,9 +254,11 @@ private:
                        int iDirection,
                        char *sDNASequence);
    static void SearchMS1Library(size_t iWhichMS1Query,
-                                int iWhichThread,
-                                double dRT,
-                                double dMaxMS1RTDiff,
+                                const int iWhichThread,
+                                const double dRT,
+                                const double dMaxMS1RTDiff,
+                                const double dMaxSpecLibRT,
+                                const double dMaxQueryRT,
                                 ThreadPool* tp);
    char GetAA(int i,
               int iDirection,

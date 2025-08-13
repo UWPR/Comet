@@ -37,7 +37,8 @@ public:
                             unsigned int iWhichSpecLib,
                             double dSpecLibScore);
    static bool LoadSpecLibMS1Raw(ThreadPool* tp,
-                                 double dMaxQueryRT);
+                                 const double dMaxQueryRT,
+                                 double* dMaxSpecLibRT);
 
 
 private:

@@ -65,6 +65,8 @@ bool g_bPerformSpecLibSearch = false;
 bool g_bPerformDatabaseSearch = false;
 FILE* fpfasta;      // file pointer to FASTA; would be same as fpdb if input db was already FASTA but otherwise needed if input is .idx file
 
+double dMaxSpecLibRT = 0.0;
+
 // Reset the MS1 run alignment for new run
 // Keep past MS1_RT_HISTORY_SIZE RTs and set outlier threshold to MS1_RT_OUTLIER_THRESHOLD stdevs
 CometMassSpecAligner pMS1Aligner(MS1_RT_HISTORY_SIZE, MS1_RT_OUTLIER_THRESHOLD);
@@ -3887,7 +3889,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    //Load all MS1 spectrum from file
    if (g_bSpecLibRead == false)
-      CometSpecLib::LoadSpecLibMS1Raw(tp, dMaxQueryRT);
+      CometSpecLib::LoadSpecLibMS1Raw(tp, dMaxQueryRT, &dMaxSpecLibRT);
 
    // Process current MS1
    bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);
@@ -3910,7 +3912,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
    pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
 
-   bSucceeded = CometSearch::RunMS1Search(tp, dQueryRT, dMaxMS1RTDiff);
+   bSucceeded = CometSearch::RunMS1Search(tp, dQueryRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT);
 
    // pass best RT match to regression
    dMatchedSpecLibRT = pQueryMS1->_pSpecLibResultsMS1.fRTime;

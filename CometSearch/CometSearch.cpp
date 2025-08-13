@@ -905,8 +905,10 @@ bool CometSearch::RunSpecLibSearch(int iPercentStart,
 }
 
 bool CometSearch::RunMS1Search(ThreadPool* tp,
-   double dRT,
-   double dMaxMS1RTDiff)
+                               double dRT,
+                               double dMaxMS1RTDiff,
+                               const double dMaxSpecLibRT,
+                               const double dMaxQueryRT)
 {
    ThreadPool* pRunMS1SearchThreadPool = tp;
 
@@ -915,7 +917,8 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
       // for each query, thread the search by segmenting the library
       for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumThreads; ++iWhichThread)
       {
-         pRunMS1SearchThreadPool->doJob(std::bind(SearchMS1Library, iWhichMS1Query, iWhichThread, dRT, dMaxMS1RTDiff, pRunMS1SearchThreadPool));
+         pRunMS1SearchThreadPool->doJob(std::bind(SearchMS1Library, iWhichMS1Query, iWhichThread, dRT,
+            dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, pRunMS1SearchThreadPool));
       }
    }
    pRunMS1SearchThreadPool->wait_on_threads();
@@ -2479,9 +2482,11 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
 
 void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
-                                   int iWhichThread,
-                                   double dRT,
-                                   double dMaxMS1RTDiff,
+                                   const int iWhichThread,
+                                   const double dRT,
+                                   const double dMaxMS1RTDiff,
+                                   const double dMaxSpecLibRT,
+                                   const double dMaxQueryRT,
                                    ThreadPool* tp)
 {
    unsigned int iStart = BINPREC(g_staticParams.options.dMS1MinMass);
@@ -2509,7 +2514,8 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
             {
                g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
                g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime;
+               // scale back to reference RT
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT;
                g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
             }
             Threading::UnlockMutex(g_pvQueryMutex);
