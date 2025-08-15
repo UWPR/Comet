@@ -750,7 +750,7 @@ struct IonInfo
 struct StaticParams
 {
    char            szHostName[SIZE_FILE];
-   char            szOutFileTimeString[256];
+   string          strOutFileTimeString;
    char            szIonSeries[256];   // used for .out files
    char            szDisplayLine[256]; // used for .out files
    char            szMod[512];         // used for .out files
@@ -794,7 +794,7 @@ struct StaticParams
    StaticParams& operator=(StaticParams& a)
    {
        strcpy(szHostName, a.szHostName);
-       strcpy(szOutFileTimeString, a.szOutFileTimeString);
+       strOutFileTimeString = a.strOutFileTimeString;
        strcpy(szIonSeries, a.szIonSeries);
        strcpy(szDisplayLine, a.szDisplayLine);
        strcpy(szMod, a.szMod);

@@ -68,12 +68,9 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    }
    catch (const std::bad_alloc& ba)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - memory allocation failed. bad_alloc: %s.\n", ba.what());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - memory allocation failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
-
+      logerr(strErrorMsg);
       return false;
    }
 }
@@ -117,11 +114,9 @@ bool CometSearch::RunSearch(ThreadPool *tp)
    }
    else
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - index search but iIndexDb=%d\n", g_staticParams.iIndexDb);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - index search but iIndexDb = " + std::to_string(g_staticParams.iIndexDb) + "\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -202,9 +197,9 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if ((fp=fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
       {
-         string  strErrorMsg = " Error (1) - cannot read database file \"" +  string(g_staticParams.databaseInfo.szDatabase) + "\n";
+         string strErrorMsg = " Error (1) - cannot read database file \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg.c_str());
+         logerr(strErrorMsg);
          return false;
       }
 
@@ -224,7 +219,7 @@ bool CometSearch::RunSearch(int iPercentStart,
          {
             string strErrorMsg = " Error - malloc szPeffLine\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg.c_str());
+            logerr(strErrorMsg);
             return false;
          }
 
@@ -235,7 +230,7 @@ bool CometSearch::RunSearch(int iPercentStart,
          {
             string strErrorMsg = " Error - malloc szMods\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg.c_str());
+            logerr(strErrorMsg);
             return false;
          }
 
@@ -244,7 +239,7 @@ bool CometSearch::RunSearch(int iPercentStart,
          {
             string strErrorMsg = " Error: \"peff_format\" is specified but \"peff_obo\" is not set\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg.c_str());
+            logerr(strErrorMsg);
             return false;
          }
 
@@ -347,7 +342,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                      iNumBadChars++;
                      if (iNumBadChars > 20)
                      {
-                        logerr(" Too many non-printing characters in database header lines; wrong file type/format?\n");
+                        string strErrorMsg = " Too many non-printing characters in database header lines; wrong file type/format?\n";
+                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                        logerr(strErrorMsg);
                         std::fclose(fp);
                         return false;
                      }
@@ -365,7 +362,10 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                      // grab rest of description line here
                      szPeffLine[0]='\0';
-                     fgets(szPeffLine, iLenSzLine, fp);
+                     if (fgets(szPeffLine, iLenSzLine, fp) == NULL)
+                     {
+                        // throw error
+                     }
                      while (!feof(fp) && szPeffLine[strlen(szPeffLine)-1]!='\n')
                      {
                         char *pTmp;
@@ -373,14 +373,17 @@ bool CometSearch::RunSearch(int iPercentStart,
                         pTmp = (char *)realloc(szPeffLine, iLenSzLine);
                         if (pTmp == NULL)
                         {
-                           string strErrorMsg = " Error realloc(szPeffLine[" + to_string(iLenSzLine) + "])\n";
+                           string strErrorMsg = " Error realloc(szPeffLine[" + std::to_string(iLenSzLine) + "])\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(strErrorMsg.c_str());
+                           logerr(strErrorMsg);
                            std::fclose(fp);
                            return false;
                         }
                         szPeffLine = pTmp;
-                        fgets(szPeffLine+(int)strlen(szPeffLine), iLenSzLine - (int)strlen(szPeffLine), fp);
+                        if (fgets(szPeffLine+(int)strlen(szPeffLine), iLenSzLine - (int)strlen(szPeffLine), fp) == NULL)
+                        {
+                           // throw error
+                        }
                      }
 
                      // grab from \ModResPsi or \ModResUnimod and \VariantSimple to end of line
@@ -416,9 +419,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
+                              string strErrorMsg = " Error realloc(szMods[" + std::to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(strErrorMsg.c_str());
+                              logerr(strErrorMsg);
                               std::fclose(fp);
                               return false;
                            }
@@ -437,7 +440,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                         {
                            string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing mod closing parenthesis\n"; 
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(strErrorMsg.c_str());
+                           logerr(strErrorMsg);
                            std::fclose(fp);
                            return false;
                         }
@@ -486,12 +489,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                                  {
                                     if (g_staticParams.options.bVerboseOutput)
                                     {
-                                       char szErrorMsg[SIZE_ERROR];
-                                       sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n",
-                                             dbe.strName.c_str(), szPeffAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
-                                       string strErrorMsg(szErrorMsg);
-                                       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                       logerr(szErrorMsg);
+                                       string strErrorMsg = " Warning: " + dbe.strName + ", " + std::string(szPeffAttributeMod)
+                                          + "=(" + std::to_string(iPos) + "|" + strModID + ") ignored; modentry: " + strModEntry + "\n";
+                                       logout(strErrorMsg);
                                     }
                                  }
                                  else
@@ -513,12 +513,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                            {
                               if (g_staticParams.options.bVerboseOutput)
                               {
-                                 char szErrorMsg[SIZE_ERROR];
-                                 sprintf(szErrorMsg,  "Warning:  %s, %s=(%d|%s) ignored; modentry: %s\n",
-                                       dbe.strName.c_str(), szPeffAttributeMod, iPos, strModID.c_str(), strModEntry.c_str());
-                                 string strErrorMsg(szErrorMsg);
-                                 g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                 logerr(szErrorMsg);
+                                 string strErrorMsg = " Warning: " + dbe.strName + ", " + std::string(szPeffAttributeMod)
+                                    + "=(" + std::to_string(iPos) + "|" + strModID + ") ignored; modentry: " + strModEntry + "\n";
+                                 logout(strErrorMsg);
                               }
                            }
                         }
@@ -554,9 +551,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                            pTmp=(char *)realloc(szMods, iLenAllocMods);
                            if (pTmp == NULL)
                            {
-                              string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
+                              string strErrorMsg = " Error realloc(szMods[" + std::to_string(iLenAllocMods) + "])\n";
                               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                              logerr(strErrorMsg.c_str());
+                              logerr(strErrorMsg);
                               std::fclose(fp);
                               return false;
                            }
@@ -575,7 +572,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                         {
                            string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
                            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                           logerr(strErrorMsg.c_str());
+                           logerr(strErrorMsg);
                            std::fclose(fp);
                            return false;
                         }
@@ -618,11 +615,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                               {
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
-                                    char szErrorMsg[SIZE_ERROR];
-                                    sprintf(szErrorMsg,  "Warning:  %s, VariantSimple=(%d|%c) ignored\n", dbe.strName.c_str(), iPos, cVariant);
-                                    string strErrorMsg(szErrorMsg);
-                                    g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                    logerr(szErrorMsg);
+                                    string strErrorMsg = " Warning:  " + dbe.strName + ", VariantSimple=("
+                                       + std::to_string(iPos) + "|" + std::to_string(cVariant) + ") ignored.\n" ;
+                                    logout(strErrorMsg);
                                  }
                               }
                               else
@@ -639,121 +634,119 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                      if (iLenAttributeVariantComplex > 0 && (pStr = strstr(szPeffLine, szPeffAttributeVariantComplex)) != NULL)
                      {
-                       char* pStr2;
-                       pStr += iLenAttributeVariantComplex;
+                        char* pStr2;
+                        pStr += iLenAttributeVariantComplex;
 
-                       pStr2 = pStr;
+                        pStr2 = pStr;
 
-                       // need to find closing parenthesis
-                       int iTmp = 0;  // count of number of open parenthesis
-                       while (1)
-                       {
-                          if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n')
-                             break;
-                          else if (*pStr2 == '(')
-                             iTmp++;
-                          else if (*pStr2 == ')')
-                             iTmp--;
+                        // need to find closing parenthesis
+                        int iTmp = 0;  // count of number of open parenthesis
+                        while (1)
+                        {
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n')
+                              break;
+                           else if (*pStr2 == '(')
+                              iTmp++;
+                           else if (*pStr2 == ')')
+                              iTmp--;
 
+                           pStr2++;
+                        }
+
+                        iLen = pStr2 - pStr;
+ 
+                        if (iLen > iLenAllocMods)
+                        {
+                           char* pTmp;
+                           iLenAllocMods = iLen + 1000;
+                           pTmp = (char*)realloc(szMods, iLenAllocMods);
+                           if (pTmp == NULL)
+                           {
+                              string strErrorMsg = " Error realloc(szMods[" + std::to_string(iLenAllocMods) + "])\n";
+                              g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                              logerr(strErrorMsg);
+                              std::fclose(fp);
+                              return false;
+                           }
+                           szMods = pTmp;
+                        }
+ 
+                        strncpy(szMods, pStr, iLen);
+                        szMods[iLen] = '\0';
+ 
+                        if ((pStr2 = strrchr(szMods, ')')) != NULL)
+                        {
                           pStr2++;
-                       }
-
-                       iLen = pStr2 - pStr;
-
-                       if (iLen > iLenAllocMods)
-                       {
-                          char* pTmp;
-                          iLenAllocMods = iLen + 1000;
-                          pTmp = (char*)realloc(szMods, iLenAllocMods);
-                          if (pTmp == NULL)
-                          {
-                             string strErrorMsg = " Error realloc(szMods[" + to_string(iLenAllocMods) + "])\n";
-                             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                             logerr(strErrorMsg.c_str());
-                             std::fclose(fp);
-                             return false;
-                          }
-                          szMods = pTmp;
-                       }
-
-                       strncpy(szMods, pStr, iLen);
-                       szMods[iLen] = '\0';
-
-                       if ((pStr2 = strrchr(szMods, ')')) != NULL)
-                       {
-                         pStr2++;
-                         *pStr2 = '\0';
-                       }
-                       else
-                       {
-                         string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
-                         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                         logerr(strErrorMsg.c_str());
-                         std::fclose(fp);
-                         return false;
-                       }
-
-                       // parse VariantComplex entries
-                       string strMods(szMods);
-                       istringstream ssVariants(strMods);
-                       string strVariant;
-                       string strTag;
-                       int iPosA;
-                       int iPosB;
-
-                       while (!ssVariants.eof())
-                       {
-                          string strVariantEntry;
-                          getline(ssVariants, strVariantEntry, ')');
-
-                          //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
-                          if (strVariantEntry[0] == '(' && isdigit(strVariantEntry[1]))
-                          {
-                             // turn '|' to space
-                             std::string::iterator it;
-                             for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
-                             {
-                                if (*it == '|' || *it == '(')
-                                   *it = ' ';
-                             }
-
-                             // split "8 10 C" into "8" and "10" and "C"
-                             strVariant.clear();
-                             iPosA = -1;
-                             std::stringstream converter(strVariantEntry);
-                             converter >> iPosA >> iPosB >> strVariant >> strTag;
-
-                             // presence of a double space "  " indicates deletion with Tag (special case format)
-                             if (strVariantEntry.find("  ") != string::npos)
-                             {
-                                strTag = strVariant;
-                                strVariant.clear();
-                             }
-
-                             // sanity check: make sure position is correct.
-                             // TODO: add sanity check to make sure replacement AAs are A-Z or *
-                             if (iPosA < 0 || iPosB < 0 || iPosB < iPosA)
-                             {
-                                if (g_staticParams.options.bVerboseOutput)
-                                {
-                                   char szErrorMsg[SIZE_ERROR];
-                                   sprintf(szErrorMsg, "Warning:  %s, VariantComplex=(%d|%d|%s) ignored\n", dbe.strName.c_str(), iPosA, iPosB, strVariant.c_str());
-                                   string strErrorMsg(szErrorMsg);
-                                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                                   logerr(szErrorMsg);
-                                }
-                             }
-                             else
-                             {
-                                struct PeffVariantComplexStruct pData;
-
-                                pData.iPositionA = iPosA - 1;   // represent PEFF variant position in 0 array index coordinates
-                                pData.iPositionB = iPosB - 1;
-                                pData.sResidues = strVariant;
-                                dbe.vectorPeffVariantComplex.push_back(pData);
-                             }
-                          }
-                       }
+                          *pStr2 = '\0';
+                        }
+                        else
+                        {
+                           string strErrorMsg = " Error: PEFF entry '" + dbe.strName + "' missing variant closing parenthesis\n";
+                           g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                           logerr(strErrorMsg);
+                           std::fclose(fp);
+                           return false;
+                        }
+ 
+                        // parse VariantComplex entries
+                        string strMods(szMods);
+                        istringstream ssVariants(strMods);
+                        string strVariant;
+                        string strTag;
+                        int iPosA;
+                        int iPosB;
+ 
+                        while (!ssVariants.eof())
+                        {
+                           string strVariantEntry;
+                           getline(ssVariants, strVariantEntry, ')');
+ 
+                           //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
+                           if (strVariantEntry[0] == '(' && isdigit(strVariantEntry[1]))
+                           {
+                              // turn '|' to space
+                              std::string::iterator it;
+                              for (it = strVariantEntry.begin(); it != strVariantEntry.end(); ++it)
+                              {
+                                 if (*it == '|' || *it == '(')
+                                    *it = ' ';
+                              }
+ 
+                              // split "8 10 C" into "8" and "10" and "C"
+                              strVariant.clear();
+                              iPosA = -1;
+                              std::stringstream converter(strVariantEntry);
+                              converter >> iPosA >> iPosB >> strVariant >> strTag;
+ 
+                              // presence of a double space "  " indicates deletion with Tag (special case format)
+                              if (strVariantEntry.find("  ") != string::npos)
+                              {
+                                 strTag = strVariant;
+                                 strVariant.clear();
+                              }
+ 
+                              // sanity check: make sure position is correct.
+                              // TODO: add sanity check to make sure replacement AAs are A-Z or *
+                              if (iPosA < 0 || iPosB < 0 || iPosB < iPosA)
+                              {
+                                 if (g_staticParams.options.bVerboseOutput)
+                                 {
+                                    string strErrorMsg = " Warning:  " + dbe.strName + ", VariantComplex=("
+                                        + std::to_string(iPosA) + "|" + std::to_string(iPosB) + "|" + strVariant + ") ignored.\n" ;
+                                    logout(strErrorMsg);
+                                 }
+                              }
+                              else
+                              {
+                                 struct PeffVariantComplexStruct pData;
+ 
+                                 pData.iPositionA = iPosA - 1;   // represent PEFF variant position in 0 array index coordinates
+                                 pData.iPositionB = iPosB - 1;
+                                 pData.sResidues = strVariant;
+                                 dbe.vectorPeffVariantComplex.push_back(pData);
+                              }
+                           }
+                        }
                      }
 
                      // exit out of this as end of line grabbed
@@ -766,7 +759,7 @@ bool CometSearch::RunSearch(int iPercentStart,
             {
                string strErrorMsg = " Error - zero length sequence description; wrong database file/format?\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg.c_str());
+               logerr(strErrorMsg);
                return false;
             }
 
@@ -824,7 +817,10 @@ bool CometSearch::RunSearch(int iPercentStart,
          }
          else
          {
-            fgets(szBuf, sizeof(szBuf), fp);
+            if (fgets(szBuf, sizeof(szBuf), fp) == NULL)
+            {
+               // throw error
+            }
             iTmpCh = getc(fp);
          }
       }
@@ -873,8 +869,8 @@ bool CometSearch::RunSpecLibSearch(ThreadPool* tp)
 
 
 bool CometSearch::RunSpecLibSearch(int iPercentStart,
-   int iPercentEnd,
-   ThreadPool* tp)
+                                   int iPercentEnd,
+                                   ThreadPool* tp)
 {
    // to fill g_vulSpecLibPrecursorIndex, set
    // binmin = BINPREC(expmass - tol)
@@ -891,7 +887,7 @@ bool CometSearch::RunSpecLibSearch(int iPercentStart,
       {
          // compare query spectrum (*it) against list of precursor
 
-         for (auto x = 0; x < g_vulSpecLibPrecursorIndex[iBinExpMass].size(); ++x)
+         for (size_t x = 0; x < g_vulSpecLibPrecursorIndex[iBinExpMass].size(); ++x)
          {
             double dSpecLibScore = CometSpecLib::ScoreSpecLib(*it, g_vulSpecLibPrecursorIndex[iBinExpMass].at(x));
 
@@ -937,7 +933,10 @@ void CometSearch::ReadOBO(char *szOBO,
       char szLineOBO[SIZE_BUF];
 
       // store UniMod mod string "UNIMOD:1" and mass diffs 'delta_mono_mass "42.010565"' 'delta_avge_mass "42.0367"'
-      fgets(szLineOBO, SIZE_BUF, fp);
+      if (fgets(szLineOBO, SIZE_BUF, fp) == NULL)
+      {
+         // throw error
+      }
       while (!feof(fp))
       {
          if (!strncmp(szLineOBO, "[Term]", 6))
@@ -989,7 +988,10 @@ void CometSearch::ReadOBO(char *szOBO,
          }
          else
          {
-            fgets(szLineOBO, SIZE_BUF, fp);
+            if (fgets(szLineOBO, SIZE_BUF, fp) == NULL)
+            {
+               // throw error
+            }
          }
       }
 
@@ -998,7 +1000,7 @@ void CometSearch::ReadOBO(char *szOBO,
    else
    {
       string strErrorMsg = " Warning: cannot read PEFF OBO file \"" + string(g_staticParams.peffInfo.szPeffOBO ) + "\"\n";
-      logout(strErrorMsg.c_str());
+      logout(strErrorMsg);
    }
 
 }
@@ -1035,7 +1037,7 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
       if (g_staticParams.options.bVerboseOutput)
       {
          string strErrorMsg =  " Warning: cannot find \"" + strMod + "\" in OBO\n";
-         logerr(strErrorMsg.c_str());
+         logout(strErrorMsg);
       }
 
       return false;
@@ -1171,13 +1173,11 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          }
          catch (std::bad_alloc& ba)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - new(szTemp[%d]). bad_alloc: %s.\n", seqSize, ba.what());
-            sprintf(szErrorMsg+strlen(szErrorMsg), "Comet ran out of memory. Look into \"spectrum_batch_size\"\n");
-            sprintf(szErrorMsg+strlen(szErrorMsg), "parameters to mitigate memory use.\n");
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg =  " Error - new(szTemp[" + std::to_string(seqSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to mitigate memory use.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
 
@@ -1645,11 +1645,10 @@ bool CometSearch::SearchPeptideIndex(void)
 
    if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - cannot read indexed database file \"%s\" %s.\n", g_staticParams.databaseInfo.szDatabase, strerror(errno));
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+         + "\" " + std::strerror(errno) + "\n.";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -1752,6 +1751,14 @@ bool CometSearch::SearchPeptideIndex(void)
                      &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
                      &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2));
 
+               if (iRet != 4)
+               {
+                  string strErrorMsg =  " Error parsing mod entry: " + subStr + ".\n";
+                  logerr(strErrorMsg);
+                  std::fclose(fp);
+                  return false;
+               }
+
                if (g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss != 0.0)
                   g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
@@ -1768,9 +1775,9 @@ bool CometSearch::SearchPeptideIndex(void)
 
       if (!(bFoundStatic && bFoundVariable))
       {
-         char szErr[256];
-         sprintf(szErr, " Error with index database format. Mods not parsed (%d %d).", bFoundStatic, bFoundVariable);
-         logerr(szErr);
+         string strErrorMsg = " Error with index database format. Mods not parsed ("
+            + std::to_string(bFoundStatic) + " " + std::to_string(bFoundVariable) + ".\n";
+         logerr(strErrorMsg);
          std::fclose(fp);
          return false;
       }
@@ -1828,9 +1835,9 @@ bool CometSearch::SearchPeptideIndex(void)
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
    {
-      char szErr[256];
-      sprintf(szErr, " Error reading .idx database:  min mass %d, max mass %d, num peptides %zu\n", iMinMass, iMaxMass, tNumPeptides);
-      logerr(szErr);
+      string strErrorMsg = " Error reading .idx database:  min mass " + std::to_string(iMinMass) + ", max mass "
+         + std::to_string(iMaxMass) + ", num peptides " + std::to_string(tNumPeptides) + "\n";
+      logerr(strErrorMsg);
       std::fclose(fp);
       return false;
    }
@@ -3297,9 +3304,9 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             if (g_staticParams.options.bVerboseOutput)
             {
                // Log a warning message here that the variant change didn't change the residue?
-               string strErrorMsg = " Warning: protein " + dbe.strName + " has variant '" + to_string(cResidue)
-                     + "' at position " + to_string(iPosition) + " with the same original AA residue.\n";
-               logout(strErrorMsg.c_str());
+               string strErrorMsg = " Warning: protein " + dbe.strName + " has variant '" + std::to_string(cResidue)
+                     + "' at position " + std::to_string(iPosition) + " with the same original AA residue.\n";
+               logout(strErrorMsg);
             }
          }
          else
@@ -3368,8 +3375,8 @@ void CometSearch::SearchForVariants(struct sDBEntry dbe,
             {
                // Log a warning message here that the variant change didn't change the residue?
                string strErrorMsg = " Warning: protein " + dbe.strName + " has variant '" + sResidues
-                     + "' between positions " + to_string(iPositionA) + "and " + to_string(iPositionB) + " with the same original AA residue(s).\n";
-               logout(strErrorMsg.c_str());
+                     + "' between positions " + std::to_string(iPositionA) + "and " + std::to_string(iPositionB) + " with the same original AA residue(s).\n";
+               logout(strErrorMsg);
             }
          }
          else
@@ -3864,9 +3871,9 @@ bool CometSearch::CheckMassMatch(size_t iWhichQuery,
          }
          else
          {
-            string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
+            string strErrorMsg = " Error - iIsotopeError=" + std::to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg.c_str());
+            logerr(strErrorMsg);
             return false;
          }
       }
@@ -3928,9 +3935,9 @@ bool CometSearch::CheckMassMatch(size_t iWhichQuery,
          // only deal with isotope offsets; no mass offsets
          else
          {
-            string strErrorMsg = " Error - iIsotopeError=" + to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
+            string strErrorMsg = " Error - iIsotopeError=" + std::to_string(g_staticParams.tolerances.iIsotopeError) + ", should not be here!\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg.c_str());
+            logerr(strErrorMsg);
             return false;
          }
       }
@@ -3960,12 +3967,12 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii + 100);
             if (pTmp == NULL)
             {
-               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + to_string(ii) + "\n\
+               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + std::to_string(ii) + "\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
  the sequence into multiple, overlapping, smaller entries.\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg.c_str());
+               logerr(strErrorMsg);
                return false;
             }
 
@@ -3992,12 +3999,12 @@ bool CometSearch::TranslateNA2AA(int *frame,
             pTmp=(char *)realloc(_proteinInfo.pszProteinSeq, ii + 100);
             if (pTmp == NULL)
             {
-               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + to_string(ii) + "\n\
+               string strErrorMsg = " Error realloc(szProteinSeq) ... size=" + std::to_string(ii) + "\n\
  A sequence entry is larger than your system can handle.\n\
  Either add more memory or edit the database and divide\n\
  the sequence into multiple, overlapping, smaller entries.\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg.c_str());
+               logerr(strErrorMsg);
                return false;
             }
 
@@ -6328,9 +6335,9 @@ bool CometSearch::PermuteMods(char *szProteinSeq,
          iModIndex = VMOD_15_INDEX;
          break;
       default:
-         string strErrorMsg = " Error - in CometSearch::PermuteMods, iWhichIndex=" + to_string(iWhichMod) + " (valid range 1 to 9)\n";
+         string strErrorMsg = " Error - in CometSearch::PermuteMods, iWhichIndex=" + std::to_string(iWhichMod) + " (valid range 1 to 9)\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg.c_str());
+         logerr(strErrorMsg);
          return false;
    }
 
@@ -6867,9 +6874,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          if (piVarModSites[x] < 0)
          {
             string sErrorMsg;
-            sErrorMsg = " Error, piVarModSites[" + to_string(x) + "] = " + to_string(piVarModSites[x]) + " should not be less than zeros since no PEFF.\n";
+            sErrorMsg = " Error, piVarModSites[" + std::to_string(x) + "] = " + std::to_string(piVarModSites[x])
+               + " should not be less than zeros since no PEFF.\n";
             g_cometStatus.SetStatus(CometResult_Failed, sErrorMsg);
-            logerr(sErrorMsg.c_str());
+            logerr(sErrorMsg);
             return true;
          }
 

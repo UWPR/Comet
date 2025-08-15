@@ -133,7 +133,7 @@ void SetOptions(char *arg,
          szTmp[511]='\0';
 
          if (strlen(szTmp) == 0 )
-            logerr("Missing text for parameter option -D<database>.  Ignored.\n");
+            logout("Missing text for parameter option -D<database>.  Ignored.\n");
          else
             pSearchMgr->SetParam("database_name", szTmp, szTmp);
          break;
@@ -142,7 +142,7 @@ void SetOptions(char *arg,
          szTmp[511]='\0';
 
          if (strlen(szTmp) == 0 )
-            logerr("Missing text for parameter option -P<params>.  Ignored.\n");
+            logout("Missing text for parameter option -P<params>.  Ignored.\n");
          else
             strcpy(szParamsFile, szTmp);
          break;
@@ -151,13 +151,13 @@ void SetOptions(char *arg,
          szTmp[511]='\0';
 
          if (strlen(szTmp) == 0 )
-            logerr("Missing text for parameter option -N<basename>.  Ignored.\n");
+            logout("Missing text for parameter option -N<basename>.  Ignored.\n");
          else
             pSearchMgr->SetOutputFileBaseName(szTmp);
          break;
       case 'F':   // first scan
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
-            logerr("Missing text for parameter option -F<num>.  Ignored.\n");
+            logout("Missing text for parameter option -F<num>.  Ignored.\n");
          else
          {
             IntRange iScanRange;
@@ -170,7 +170,7 @@ void SetOptions(char *arg,
          break;
       case 'L':  // last scan
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
-            logerr("Missing text for parameter option -L<num>.  Ignored.\n");
+            logout("Missing text for parameter option -L<num>.  Ignored.\n");
          else
          {
             IntRange iScanRange;
@@ -183,7 +183,7 @@ void SetOptions(char *arg,
          break;
       case 'B':  // batch size
          if (sscanf(arg+2, "%511s", szTmp) == 0 )
-            logerr("Missing text for parameter option -B<num>.  Ignored.\n");
+            logout("Missing text for parameter option -B<num>.  Ignored.\n");
          else
          {
             int iSpectrumBatchSize = atoi(szTmp);
@@ -233,9 +233,9 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
 
    if ((fp = fopen(pszParamsFile, "r")) == NULL)
    {
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Error - cannot open parameter file \"%s\".\n", pszParamsFile);
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " +  g_sCometVersion + "\n\n"
+         + " Error - cannot open parameter file \"" + std::string(pszParamsFile) + "\".\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
@@ -266,11 +266,11 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
 
    if (!bValidParamsFile)
    {
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " The comet.params file is from version %s\n", szVersion);
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Please update your comet.params file.  You can generate\n");
-      sprintf(szErrorMsg + strlen(szErrorMsg), " a new parameters file using \"comet -p\"\n\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " The comet.params file is from version " + std::string(szVersion) + "\n"
+         + " Please update your comet.params file.  You can generate\n"
+         + " a new parameters file using \"comet -p\"\n\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
@@ -660,37 +660,33 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
 
    if (!bCurrentParamsFile)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Error - outdated params file; generate an update params file using '-p' option.\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - outdated params file; generate an update params file using '-p' option.\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
    if (!strcmp(enzymeInformation.szSearchEnzymeName, "-"))
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Error - search_enzyme_number %d is missing definition in params file.\n", iSearchEnzymeNumber);
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - search_enzyme_number " + std::to_string(iSearchEnzymeNumber) + " is missing definition in params file.\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
    if (!strcmp(enzymeInformation.szSearchEnzyme2Name, "-"))
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Error - search_enzyme2_number %d is missing definition in params file.\n", iSearchEnzyme2Number);
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - search_enzyme2_number " + std::to_string(iSearchEnzyme2Number) + " is missing definition in params file.\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
    if (!strcmp(enzymeInformation.szSampleEnzymeName, "-"))
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg + strlen(szErrorMsg), " Error - sample_enzyme_number %d is missing definition in params file.\n", iSampleEnzymeNumber);
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - sample_enzyme_number " + std::to_string(iSampleEnzymeNumber) + " is missing definition in params file.\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
@@ -805,10 +801,9 @@ void ProcessCmdLine(int argc,
 
    if (iStartInputFile == argc)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - no input files specified so nothing to do.\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - no input files specified so nothing to do.\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 
@@ -851,10 +846,9 @@ void ProcessCmdLine(int argc,
          InputFileInfo *pInputFileInfo = new InputFileInfo();
          if (!ParseCmdLine(arg, pInputFileInfo, pSearchMgr))
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-            sprintf(szErrorMsg+strlen(szErrorMsg), " Error - input file \"%s\" not found.\n", pInputFileInfo->szFileName);
-            logerr(szErrorMsg);
+            string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+               + " Error - input file \"" + std::string(pInputFileInfo->szFileName) + "\" not found.\n";
+            logerr(strErrorMsg);
             pvInputFiles.clear();
             exit(1);
          }
@@ -876,10 +870,9 @@ void PrintParams(int iPrintParams)
 
    if ( (fp=fopen("comet.params.new", "w"))==NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "\n Comet version %s\n\n", g_sCometVersion.c_str());
-      sprintf(szErrorMsg+strlen(szErrorMsg), " Error - cannot write file comet.params.new\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+         + " Error - cannot write file comet.params.new\n";
+      logerr(strErrorMsg);
       exit(1);
    }
 

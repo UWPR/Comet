@@ -535,8 +535,8 @@ void ModificationsPermuter::generateModifications(string* sequence,
       {
          // If we are ignoring peptides with > FRAGINDEX_MAX_COMBINATIONS or reducing FRAGINDEX_MAX_MODS_PER_MOD to get the number of
          // modified peptides withing the threshold, then the calculated combinations should not exceed FRAGINDEX_MAX_COMBINATIONS
-         cout << "ERROR: calculated combination count exceeds FRAGINDEX_MAX_COMBINATIONS (" << to_string(FRAGINDEX_MAX_COMBINATIONS) +
-            ") but FRAGINDEX_KEEP_ALL_PEPTIDES is set to " << to_string(FRAGINDEX_KEEP_ALL_PEPTIDES);
+         cout << "ERROR: calculated combination count exceeds FRAGINDEX_MAX_COMBINATIONS (" << std::to_string(FRAGINDEX_MAX_COMBINATIONS) +
+            ") but FRAGINDEX_KEEP_ALL_PEPTIDES is set to " << std::to_string(FRAGINDEX_KEEP_ALL_PEPTIDES);
          // TODO: exit here?
       }
 
@@ -578,8 +578,8 @@ void ModificationsPermuter::generateModifications(string* sequence,
       }
       if (combinationsFound != combinationsForModArrLen) // Number of combinations found should be the same as the expected number.
       {
-         cout << "ERROR: Unexpected combination count; Found combination count " << to_string(combinationsFound) 
-              << "; Expected calculated count is " << to_string(combinationsForModArrLen) << "; sequence " << *sequence << endl;
+         cout << "ERROR: Unexpected combination count; Found combination count " << std::to_string(combinationsFound) 
+              << "; Expected calculated count is " << std::to_string(combinationsForModArrLen) << "; sequence " << *sequence << endl;
       }
       combinationsForAllMods[idx++] = combinationsForMod;
    }

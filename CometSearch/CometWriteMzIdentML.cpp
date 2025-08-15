@@ -215,11 +215,9 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                Stmp.fRTime = std::stof(field);
                break;
             default:
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error parsing mzid temp file (%d): %s\n", iWhichField, strLine.c_str());
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error parsing mzid temp file (" + std::to_string(iWhichField) + "): " + strLine + "\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                ifsTmpFile.close();
                return false;
          }

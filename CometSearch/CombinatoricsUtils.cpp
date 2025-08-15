@@ -60,7 +60,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
    //    int* arr = BINOM_COEF[i];
    //    for (int j = 0; j <= i && j <= k; ++j)
    //    {
-   //       cout << to_string(arr[j]) << " ";
+   //       cout << std::to_string(arr[j]) << " ";
    //    }
    //    cout << endl;
    // }

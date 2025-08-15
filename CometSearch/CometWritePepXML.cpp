@@ -144,12 +144,10 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    // Grab file extension from file name
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - in WriteXMLHeader missing last period in file name: %s\n",
-            g_staticParams.inputFile.szFileName);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - in WriteXMLHeader missing last period in file name: "
+         + std::string(g_staticParams.inputFile.szFileName) + "\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
    // MH: Check if the extension is gz, and if so, extend it back to the full file type.

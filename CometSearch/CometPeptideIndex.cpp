@@ -62,9 +62,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    if (!bSucceeded)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error in RunSearch() for peptide index creation.\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = " Error in RunSearch() for peptide index creation.\n";
+      logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
@@ -72,9 +71,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    // sanity check
    if (g_pvDBIndex.size() == 0)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error: no peptides in index; check the input database file or search parameters.\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = " Error: no peptides in index; check the input database file or search parameters.\n";
+      logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
@@ -285,9 +283,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    fclose(fptr);
 
-   char szOut[SIZE_BUF];
-   sprintf(szOut, " - done. %s (%llu peptides)\n\n", szIndexFile, static_cast<unsigned long long>(tNumPeptides));
-   logout(szOut);
+   string strOut = " - done. " + std::string(szIndexFile) + " (" + std::to_string(tNumPeptides) + " peptides)\n\n";
+   logout(strOut);
    fflush(stdout);
 
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);

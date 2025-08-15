@@ -161,13 +161,6 @@ bool CometMassSpecAligner::isOutlier(const RetentionMatch& candidate, const std:
 
 double CometMassSpecAligner::processRetentionMatch(double dQueryRetentionTime, double dCandidateReferenceTime)
 {
-   bool bDebug = false;  // Set to true for debugging output
-
-   if ( fabs(dQueryRetentionTime - 1906.24) < 0.4)
-   {
-      bDebug = true;
-   }
-
    CurrentSpectrumIndex++;
 
    RetentionMatch candidate(dQueryRetentionTime, dCandidateReferenceTime, CurrentSpectrumIndex);

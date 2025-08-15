@@ -153,12 +153,9 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    FILE *fp;
    if ( (fp=fopen(g_staticParams.inputFile.szFileName, "r"))==NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - cannot read input file \"%s\".\n",
-            g_staticParams.inputFile.szFileName);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - cannot read input file \"" + string(g_staticParams.inputFile.szFileName) + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
    else
@@ -200,12 +197,9 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
          if (err != EEXIST)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",
-                  g_staticParams.inputFile.szBaseName);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - could not create directory\"" + string(g_staticParams.inputFile.szBaseName) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
       }
@@ -221,11 +215,9 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
             if (err != EEXIST)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - could not create directory \"" + string(szDecoyDir) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                return false;
             }
          }
@@ -233,11 +225,9 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 #else
       if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n", g_staticParams.inputFile.szBaseName);
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - could not create directory \"" + string(g_staticParams.inputFile.szBaseName) + "\".\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg);
          return false;
       }
       if (g_staticParams.options.iDecoySearch == 2)
@@ -247,11 +237,9 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
 
          if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - could not create directory \"%s\".\n",  szDecoyDir);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - could not create directory \"" + string(szDecoyDir) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
       }
@@ -288,11 +276,9 @@ static bool AllocateResultsMem()
       }
       catch (std::bad_alloc& ba)
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - new(_pResults[]). bad_alloc: %s.\n", ba.what());
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - new(_pResults[]). bad_alloc: \"" + std::string(ba.what()) + "\".\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg);
          return false;
       }
 
@@ -304,11 +290,9 @@ static bool AllocateResultsMem()
          }
          catch (std::bad_alloc& ba)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg, " Error - new(_pDecoys[]). bad_alloc: %s.\n", ba.what());
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - new(_pDecoys[]). bad_alloc: " + std::string(ba.what()) + "\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
       }
@@ -369,11 +353,9 @@ static bool AllocateResultsMemMS1()
       }
       catch (std::bad_alloc& ba)
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - new(_pSpecLibResults[]). bad_alloc: %s.\n", ba.what());
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - new(_pSpecLibResults[]). bad_alloc: " + std::string(ba.what()) + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg);
          return false;
       }
       for (int j=0; j<g_staticParams.options.iNumStored; ++j)
@@ -408,29 +390,28 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 
 static void CalcRunTime(time_t tStartTime)
 {
-   char szOutFileTimeString[600];
    time_t tEndTime;
    int iTmp;
 
    time(&tEndTime);
 
-   int iElapseTime=(int)difftime(tEndTime, tStartTime);
+   int iElapseTime = static_cast<int>(difftime(tEndTime, tStartTime));
 
-   // Print out header/search info.
-   sprintf(szOutFileTimeString, "%s,", g_staticParams.szDate);
-   if ( (iTmp = (int)(iElapseTime/3600) )>0)
-      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d hr.", iTmp);
-   if ( (iTmp = (int)((iElapseTime-(int)(iElapseTime/3600)*3600)/60) )>0)
-      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d min.", iTmp);
-   if ( (iTmp = (int)((iElapseTime-((int)(iElapseTime/3600))*3600)%60) )>0)
-      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " %d sec.", iTmp);
+   // Use a C++ string for output instead of C char array
+   std::string outFileTimeString = std::string(g_staticParams.szDate) + ",";
+
+   if ((iTmp = static_cast<int>(iElapseTime / 3600)) > 0)
+      outFileTimeString += " " + std::to_string(iTmp) + " hr.";
+   if ((iTmp = static_cast<int>((iElapseTime - static_cast<int>(iElapseTime / 3600) * 3600) / 60)) > 0)
+      outFileTimeString += " " + std::to_string(iTmp) + " min.";
+   if ((iTmp = static_cast<int>((iElapseTime - (static_cast<int>(iElapseTime / 3600)) * 3600) % 60)) > 0)
+      outFileTimeString += " " + std::to_string(iTmp) + " sec.";
    if (iElapseTime == 0)
-      sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " 0 sec.");
-   sprintf(szOutFileTimeString+strlen(szOutFileTimeString), " on %s", g_staticParams.szHostName);
+      outFileTimeString += " 0 sec.";
+   outFileTimeString += " on " + std::string(g_staticParams.szHostName);
 
    g_staticParams.iElapseTime = iElapseTime;
-   strncpy(g_staticParams.szOutFileTimeString, szOutFileTimeString, 255);
-   g_staticParams.szOutFileTimeString[255]='\0';
+   g_staticParams.strOutFileTimeString = outFileTimeString;
 }
 
 // for .out files
@@ -507,11 +488,9 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputPercolatorFile
          && !g_staticParams.options.bOutputOutFiles)
    {
-      string strError = " Please specify at least one output format.";
-
-      g_cometStatus.SetStatus(CometResult_Failed, strError);
-      string strErrorFormat = strError + "\n";
-      logerr(strErrorFormat.c_str());
+      string strErrorMsg = " Please specify at least one output format.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -522,7 +501,6 @@ static bool ValidateOutputFormat()
 static bool ValidateSequenceDatabaseFile()
 {
    FILE *fpcheck;
-   char szErrorMsg[SIZE_ERROR];
 
    // open FASTA for retrieving protein names
    string sTmpDB = g_staticParams.databaseInfo.szDatabase;
@@ -530,11 +508,9 @@ static bool ValidateSequenceDatabaseFile()
       sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
    if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error (4) - cannot read FASTA sequence database file \"%s\".\n", sTmpDB.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error (4) - cannot read FASTA sequence database file \"" + sTmpDB + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -549,11 +525,10 @@ static bool ValidateSequenceDatabaseFile()
 
          if ((fpcheck=fopen(strFasta.c_str(), "r")) == NULL)
          {
-            sprintf(szErrorMsg, " Error - peptide index file \"%s\" and corresponding FASTA file\n         are both missing.\n",
-                  g_staticParams.databaseInfo.szDatabase);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - peptide index file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+               + "\" and corresponding FASTA file are both missing.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
          else
@@ -570,12 +545,10 @@ static bool ValidateSequenceDatabaseFile()
 
          if ((fpcheck=fopen(strFasta.c_str(), "r")) == NULL)
          {
-            sprintf(szErrorMsg, " Error - peptide index file \"%s\" specified is present\n         but corresponding FASTA file \"%s\" file is missing.\n",
-                  g_staticParams.databaseInfo.szDatabase,
-                  strFasta.c_str());
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - peptide index file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+               + "\" is present but corresponding FASTA file \"" + strFasta + "\" file is missing.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             return false;
          }
          else
@@ -594,20 +567,18 @@ static bool ValidateSequenceDatabaseFile()
 
    if (S_ISDIR( st.st_mode )) 
    {
-      sprintf(szErrorMsg, " Error - specified database file is a directory: \"%s\".\n",
-            g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - specified database file is a directory: \""
+         + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
    if (!(S_ISREG( st.st_mode ) || S_ISLNK( st.st_mode )))
    {
-      sprintf(szErrorMsg, " Error - specified database file is not a regular file or symlink: \"%s\".\n",
-            g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - specified database file is not a regular file or symlink: \""
+         + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 #endif
@@ -616,11 +587,10 @@ static bool ValidateSequenceDatabaseFile()
    // time reading & processing spectra and then reporting this error.
    if ((fpcheck = fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
    {
-      sprintf(szErrorMsg, " Error (2) - cannot read FASTA sequence database file \"%s\".\n Check that the file exists and is readable.\n",
-            g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error (2) - cannot read FASTA sequence database file \""
+         + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n Check that the file exists and is readable.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -636,11 +606,10 @@ static bool ValidateSpecLibFile()  // just check if file is readable for now
    // open speclib file
    if ((fpcheck = fopen(g_staticParams.speclibInfo.strSpecLibFile.c_str(), "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error (5) - cannot read spectral library file \"%s\".\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error (5) - cannot read spectral library file \""
+         + g_staticParams.speclibInfo.strSpecLibFile + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -651,15 +620,15 @@ static bool ValidateSpecLibFile()  // just check if file is readable for now
 
 static bool ValidateScanRange()
 {
-   if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart && g_staticParams.options.scanRange.iEnd != 0)
+   if (g_staticParams.options.scanRange.iEnd < g_staticParams.options.scanRange.iStart
+         && g_staticParams.options.scanRange.iEnd != 0)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - start scan is %d but end scan is %d.\n The end scan must be >= to the start scan.\n",
-            g_staticParams.options.scanRange.iStart,
-            g_staticParams.options.scanRange.iEnd);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - start scan is "
+         + std::to_string(g_staticParams.options.scanRange.iStart)
+         + "but end scan is " + std::to_string(g_staticParams.options.scanRange.iEnd)
+         + ".\n The end scan must be >= to the start scan.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -668,15 +637,15 @@ static bool ValidateScanRange()
 
 static bool ValidatePeptideLengthRange()
 {
-   if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart && g_staticParams.options.peptideLengthRange.iEnd != 0)
+   if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart
+         && g_staticParams.options.peptideLengthRange.iEnd != 0)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - peptide length range set as %d to %d.\n The maximum length must be >= to the minimum length.\n",
-            g_staticParams.options.peptideLengthRange.iStart,
-            g_staticParams.options.peptideLengthRange.iEnd);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - peptide length range set as "
+         + std::to_string(g_staticParams.options.scanRange.iStart) + " to "
+         + std::to_string(g_staticParams.options.scanRange.iEnd)
+         + ".\n The maximum length must be >= to the minimum length.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -1438,10 +1407,9 @@ bool CometSearchManager::InitializeStaticParams()
 
       if (g_staticParams.options.iNumThreads > MAX_THREADS)
       {
-         string strOut;
          g_staticParams.options.iNumThreads = MAX_THREADS;
-         strOut = " Setting number of threads to " + to_string(MAX_THREADS);
-         logout(strOut.c_str());
+         string strOut = " Setting number of threads to " + std::to_string(MAX_THREADS);
+         logout(strOut);
       }
    }
 
@@ -1712,12 +1680,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.tolerances.dFragmentBinStartOffset < 0.0
          || g_staticParams.tolerances.dFragmentBinStartOffset >1.0)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - bin offset %f must between 0.0 and 1.0\n",
-            g_staticParams.tolerances.dFragmentBinStartOffset);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - bin offset " + std::to_string(g_staticParams.tolerances.dFragmentBinStartOffset) + " must between 0.0 and 1.0\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -1760,15 +1725,16 @@ bool CometSearchManager::InitializeStaticParams()
 
       if ( (fp=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - cannot open database index file \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - cannot open database index file \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg);
          return false;
       }
 
-      fgets(szTmp, 512, fp);
+      if (fgets(szTmp, 512, fp) == NULL) // grab first line of peptide index
+      {
+         // throw error
+      }
       fclose(fp);
 
       if (!strncmp(szTmp, "Comet peptide index", 19))
@@ -1786,23 +1752,19 @@ bool CometSearchManager::InitializeStaticParams()
       }
       else
       {
-         char szErrorMsg[SIZE_ERROR];
-         sprintf(szErrorMsg, " Error - first line of database index file \"%s\" contains:\n", g_staticParams.databaseInfo.szDatabase);
-         sprintf(szErrorMsg+strlen(szErrorMsg), "%s\n", szTmp);
-         string strErrorMsg(szErrorMsg);
+         string strErrorMsg = " Error - first line of database index file \""
+            + std::string(g_staticParams.databaseInfo.szDatabase) + "\" contains:\n" + std::string(szTmp) + "\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(szErrorMsg);
+         logerr(strErrorMsg);
          return false;
       }
    }
 
    if (g_staticParams.options.bCreateFragmentIndex && g_staticParams.iIndexDb)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - input database already indexed: \"%s\".\n", g_staticParams.databaseInfo.szDatabase);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - input database already indexed: \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -2211,8 +2173,7 @@ bool CometSearchManager::DoSearch()
    if (!g_staticParams.options.bOutputSqtStream) // && !g_staticParams.iIndexDb)
    {
       strOut = "\n Comet version \"" + g_sCometVersion + "\"\n\n";
-
-      logout(strOut.c_str());
+      logout(strOut);
       fflush(stdout);
    }
 
@@ -2337,7 +2298,7 @@ bool CometSearchManager::DoSearch()
       {
          strOut = " Search start:  " + string(g_staticParams.szDate) + "\n";
          strOut += " - Input file: " + string(g_staticParams.inputFile.szFileName) + "\n";
-         logout(strOut.c_str());
+         logout(strOut);
          fflush(stdout);
       }
 
@@ -2405,11 +2366,9 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputSQT);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputSQT) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
@@ -2430,11 +2389,9 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoySQT);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoySQT) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                bSucceeded = false;
             }
 
@@ -2472,11 +2429,9 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputTxt);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputTxt) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
@@ -2498,11 +2453,9 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyTxt);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyTxt) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                bSucceeded = false;
             }
 
@@ -2539,11 +2492,9 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPepXML);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputPepXML) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
@@ -2565,11 +2516,9 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyPepXML);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyPepXML) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                bSucceeded = false;
             }
 
@@ -2607,29 +2556,39 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_mzidentml = fopen(szOutputMzIdentML, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputMzIdentML);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputMzIdentML) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
          sprintf(szOutputMzIdentMLtmp, "%s.XXXXXX", szOutputMzIdentML);
-#ifdef _WIN32
-         _mktemp_s(szOutputMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
 
+#ifdef _WIN32
+         errno_t err = _mktemp_s(szOutputMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
+         if (err != 0)
+         {
+            string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            bSucceeded = false;
+         }
 #else
-         mkstemp(szOutputMzIdentMLtmp);
+         int iRet = mkstemp(szOutputMzIdentMLtmp);
+         if (iRet == -1)
+         {
+            string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            bSucceeded = false;
+         }
 #endif
 
          if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputMzIdentMLtmp);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
@@ -2648,28 +2607,37 @@ bool CometSearchManager::DoSearch()
 
             if ((fpoutd_mzidentml = fopen(szOutputDecoyMzIdentML, "w")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyMzIdentML);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyMzIdentML) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                bSucceeded = false;
             }
 
             sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
 #ifdef _WIN32
-            _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputDecoyMzIdentMLtmp) + 1);
-
+            errno_t err = _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputDecoyMzIdentMLtmp) + 1);
+            if (err != 0)
+            {
+               string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               bSucceeded = false;
+            }
 #else
-            mkstemp(szOutputDecoyMzIdentMLtmp);
+            int iRet = mkstemp(szOutputDecoyMzIdentMLtmp);
+            if (iRet == -1)
+            {
+               string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               bSucceeded = false;
+            }
 #endif
             if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "w")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg,  " Error - cannot write to decoy file \"%s\".\n",  szOutputDecoyMzIdentMLtmp);
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error - cannot write to decoy file \"" + string(szOutputDecoyMzIdentMLtmp) + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                bSucceeded = false;
             }
 
@@ -2691,11 +2659,9 @@ bool CometSearchManager::DoSearch()
 
          if ((fpout_percolator = fopen(szOutputPercolator, "w")) == NULL)
          {
-            char szErrorMsg[SIZE_ERROR];
-            sprintf(szErrorMsg,  " Error - cannot write to file \"%s\".\n",  szOutputPercolator);
-            string strErrorMsg(szErrorMsg);
+            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputPercolator) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(szErrorMsg);
+            logerr(strErrorMsg);
             bSucceeded = false;
          }
 
@@ -2739,11 +2705,9 @@ bool CometSearchManager::DoSearch()
                sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
             if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
             {
-               char szErrorMsg[SIZE_ERROR];
-               sprintf(szErrorMsg, " Error (1) - cannot read FASTA sequence database file \"%s\".\n", sTmpDB.c_str());
-               string strErrorMsg(szErrorMsg);
+               string strErrorMsg = " Error (1) - cannot read FASTA sequence database file \"" + sTmpDB + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(szErrorMsg);
+               logerr(strErrorMsg);
                return false;
             }
          }
@@ -2811,7 +2775,7 @@ bool CometSearchManager::DoSearch()
                time(&tLoadAndPreprocessSpectraStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
                strOut = "\n >> Start LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + "\n";
-               logout(strOut.c_str());
+               logout(strOut);
 #endif
 
                fflush(stdout);
@@ -2837,10 +2801,10 @@ bool CometSearchManager::DoSearch()
                time(&tLoadAndPreprocessSpectraEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
                strOut = "\n >> End LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut.c_str());
+               logout(strOut);
                int iElapsedTime = (int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
                strOut = "\n >> Time spent in LoadAndPreprocessSpectra:  " + iElapsedTime + string(" seconds\n");
-               logout(strOut.c_str());
+               logout(strOut);
                fflush(stdout);
             }
 #endif
@@ -2856,10 +2820,10 @@ bool CometSearchManager::DoSearch()
                goto cleanup_results;
 
             { // need strStatusMsg in it's own scope due to goto statement above
-               string strStatusMsg = " " + to_string(g_pvQuery.size()) + string("\n");
+               string strStatusMsg = " " + std::to_string(g_pvQuery.size()) + string("\n");
                if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
                {
-                  logout(strStatusMsg.c_str());
+                  logout(strStatusMsg);
                }
                g_cometStatus.SetStatusMsg(strStatusMsg);
             }
@@ -2904,7 +2868,7 @@ bool CometSearchManager::DoSearch()
                time(&tRunSearchStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
                strOut = "\n >> Start RunSearch:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut.c_str());
+               logout(strOut);
                fflush(stdout);
             }
 #endif
@@ -2930,16 +2894,16 @@ bool CometSearchManager::DoSearch()
                time(&tRunSearchEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
                strOut = "\n >> End RunSearch:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut.c_str());
+               logout(strOut);
 
                int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               strOut = "\n >> Time spent in RunSearch:  " + to_string(iElapsedTime) + string("seconds \n");
-               logout(strOut.c_str());
+               strOut = "\n >> Time spent in RunSearch:  " + std::to_string(iElapsedTime) + string("seconds \n");
+               logout(strOut);
 
                time(&tPostAnalysisStartTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
                strOut = "\n >> Start PostAnalysis:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut.c_str());
+               logout(strOut);
 
                fflush(stdout);
             }
@@ -2972,11 +2936,11 @@ bool CometSearchManager::DoSearch()
                time(&tPostAnalysisEndTime);
                strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
                strOut = "\n >> End PostAnalysis:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut.c_str());
+               logout(strOut);
 
                int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               strOut = "\n >> Time spent in PostAnalysis:  " + to_string(iElapsedTime) + string("seconds \n");
-               logout(strOut.c_str());
+               strOut = "\n >> Time spent in PostAnalysis:  " + std::to_string(iElapsedTime) + string("seconds \n");
+               logout(strOut);
                fflush(stdout);
             }
 #endif
@@ -3105,11 +3069,9 @@ cleanup_results:
 
                if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "r")) == NULL)
                {
-                  char szErrorMsg[SIZE_ERROR];
-                  sprintf(szErrorMsg,  " Error - cannot read temporary file \"%s\".\n",  szOutputMzIdentMLtmp);
-                  string strErrorMsg(szErrorMsg);
+                  string strErrorMsg = " Error - cannot read temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(szErrorMsg);
+                  logerr(strErrorMsg);
                   bSucceeded = false;
                }
 
@@ -3126,11 +3088,9 @@ cleanup_results:
 
                if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "r")) == NULL)
                {
-                  char szErrorMsg[SIZE_ERROR];
-                  sprintf(szErrorMsg,  " Error - cannot read temporary file \"%s\".\n",  szOutputDecoyMzIdentMLtmp);
-                  string strErrorMsg(szErrorMsg);
+                  string strErrorMsg = " Error - cannot read temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(szErrorMsg);
+                  logerr(strErrorMsg);
                   bSucceeded = false;
                }
 
@@ -3158,11 +3118,11 @@ cleanup_results:
                secs = (int)(iElapsedTime%60);
 
                if (hours)
-                  strOut += ", " + to_string(hours) + "h:" + to_string(mins) + "m:" + to_string(secs) + "s\n\n";
+                  strOut += ", " + std::to_string(hours) + "h:" + std::to_string(mins) + "m:" + std::to_string(secs) + "s\n\n";
                else
-                  strOut += ", " + to_string(mins) + "m:" + to_string(secs) + "s\n\n";
+                  strOut += ", " + std::to_string(mins) + "m:" + std::to_string(secs) + "s\n\n";
 
-               logout(strOut.c_str());
+               logout(strOut);
             }
          }
 
@@ -3526,11 +3486,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
    if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error (5) - cannot read database file \"%s\".\n", sTmpDB.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error (5) - cannot read database file \"" + sTmpDB + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -4019,12 +3977,10 @@ bool CometSearchManager::ReadProteinVarModFilterFile()
    }
    else
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - cannot read protein variable mod filter file \"%s\".\n",
-         g_staticParams.variableModParameters.sProteinLModsListFile.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - cannot read protein variable mod filter file \""
+         + g_staticParams.variableModParameters.sProteinLModsListFile + "\".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 }

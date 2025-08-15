@@ -24,6 +24,7 @@
 #include "CometSearch.h"
 #include <inttypes.h>
 
+int iRet;
 
 double CometMassSpecUtils::GetFragmentIonMass(int iWhichIonSeries,
                                               int i,
@@ -133,15 +134,13 @@ void CometMassSpecUtils::GetProteinName(FILE *fpfasta,
                                         comet_fileoffset_t lFilePosition,
                                         char *szProteinName)
 {
-   size_t tTmp;
-
    comet_fseek(fpfasta, lFilePosition, SEEK_SET);
 
    if (g_staticParams.iIndexDb)  //fragment ion or peptide index
    {
       long lSize;
 
-      tTmp = fread(&lSize, sizeof(long), 1, fpfasta);
+      size_t tTmp = fread(&lSize, sizeof(long), 1, fpfasta);
       vector<comet_fileoffset_t> vOffsets;
       for (long x = 0; x < lSize; ++x) // read file offsets
       {
@@ -160,7 +159,7 @@ void CometMassSpecUtils::GetProteinName(FILE *fpfasta,
    }
    else  //regular fasta database
    {
-      fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+      iRet = fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
       szProteinName[511] = '\0';
    }
 }
@@ -245,9 +244,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
             comet_fseek(fpfasta, lEntry, SEEK_SET);
 
             if (bReturnFullProteinString)
-               fgets(szProteinName, 511, fpfasta);
+            {
+               if (fgets(szProteinName, 511, fpfasta) == NULL)
+               {
+                  // throw error
+               }
+            }
             else
-               fscanf(fpfasta, "%500s", szProteinName);
+               iRet = fscanf(fpfasta, "%500s", szProteinName);
 
             szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
@@ -280,9 +284,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
             comet_fseek(fpfasta, lEntry, SEEK_SET);
 
             if (bReturnFullProteinString)
-               fgets(szProteinName, 511, fpfasta);
+            {
+               if (fgets(szProteinName, 511, fpfasta) == NULL)
+               {
+                  // throw error
+               }
+            }
             else
-               fscanf(fpfasta, "%500s", szProteinName);
+               iRet = fscanf(fpfasta, "%500s", szProteinName);
 
             szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
@@ -328,9 +337,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
          {
             comet_fseek(fpfasta, *it, SEEK_SET);
             if (bReturnFullProteinString)
-               fgets(szProteinName, 511, fpfasta);
+            {
+               if (fgets(szProteinName, 511, fpfasta) == NULL)
+               {
+                  // throw error
+               }
+            }
             else
-               fscanf(fpfasta, "%500s", szProteinName);
+               iRet = fscanf(fpfasta, "%500s", szProteinName);
 
             szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
@@ -374,9 +388,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
             {
                comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
-                  fgets(szProteinName, 511, fpfasta);
+               {
+                  if (fgets(szProteinName, 511, fpfasta) == NULL)
+                  {
+                     // throw error
+                  }
+               }
                else
-                  fscanf(fpfasta, "%500s", szProteinName);
+                  iRet = fscanf(fpfasta, "%500s", szProteinName);
                szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
                // remove all terminating chars
@@ -404,9 +423,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
 
                comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
-                  fgets(szProteinName, 511, fpfasta);
+               {
+                  if (fgets(szProteinName, 511, fpfasta) == NULL)
+                  {
+                     // throw error
+                  }
+               }
                else
-                  fscanf(fpfasta, "%500s", szProteinName);
+                  iRet = fscanf(fpfasta, "%500s", szProteinName);
                szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
                // remove all terminating chars

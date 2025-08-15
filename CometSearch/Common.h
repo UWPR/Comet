@@ -86,12 +86,7 @@ extern string g_sCometVersion;   // version string including git hash
 
 
 using namespace MSToolkit;
-#ifdef CRUX
 #define logout(szString) cerr << szString
 #define logerr(szString) cerr << szString
-#else
-#define logout(szString) fputs(szString, stdout)
-#define logerr(szString) fputs(szString, stderr)
-#endif
 
 #endif // _COMMON_H_

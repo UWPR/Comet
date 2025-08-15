@@ -44,11 +44,9 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
 
    if ((fp = fopen(g_staticParams.speclibInfo.strSpecLibFile.c_str(), "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error, spectral library file cannot be read: '%s'.\n", g_staticParams.speclibInfo.strSpecLibFile.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error, spectral library file cannot be read: '" + g_staticParams.speclibInfo.strSpecLibFile + "'.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
    else
@@ -86,11 +84,9 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
    }
    else
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error, expecting sqlite .db or Thermo .raw file for the spectral library.\n");
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error, expecting sqlite .db or Thermo .raw file for the spectral library.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -128,11 +124,9 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
    if (sqlite3_open(strSpecLibFile.c_str(), &db) != SQLITE_OK)
    {
 //    std::cerr << "Cannot open sqlite database: " << sqlite3_errmsg(db) << std::endl;
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error - cannot open sqlite database file '%s': %s.\n", strSpecLibFile.c_str(), sqlite3_errmsg(db));
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error - cannot open sqlite database file ' " + strSpecLibFile + "': " + string(sqlite3_errmsg(db) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -140,11 +134,9 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
    {
 //    std::cerr << "Failed to prepare statement: " << sqlite3_errmsg(db) << std::endl;
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error - sqlite failed to prepare statment: %s.\n", sqlite3_errmsg(db));
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error - sqlite failed to prepare statment: " + string(sqlite3_errmsg(db) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       sqlite3_close(db);
       return false;
    }
@@ -219,11 +211,9 @@ bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
       msLevel.push_back(MS3);
    else
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error, MS level not set for the spectral library input.\n");
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error, MS level not set for the spectral library input.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -370,11 +360,9 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
    if ( (fp=fopen(strSpecLibFile.c_str(), "r")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, "Error, MSP spectral library file cannot be read: '%s'.\n", strSpecLibFile.c_str());
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = "Error, MSP spectral library file cannot be read: '" + strSpecLibFile + "'\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -382,7 +370,10 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
    char szTmp[SIZE_BUF];
    int iWhichLibEntry = 0;
 
-   fgets(szBuf, SIZE_BUF, fp);
+   if (fgets(szBuf, SIZE_BUF, fp) == NULL)
+   {
+      // throw error
+   }
    while (!feof(fp))
    {
       szBuf[SIZE_BUF - 1] = '\0'; // terminate string in case line was longer than SIZE_BUF
@@ -446,7 +437,10 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
                   double dMass;
                   double dInten;
 
-                  fgets(szBuf, SIZE_BUF, fp);
+                  if (fgets(szBuf, SIZE_BUF, fp) == NULL)
+                  {
+                     // throw error
+                  }
                   sscanf(szBuf, "%lf %lf %*s", &dMass, &dInten);
 
                   if (dMass > 0.0 && dMass < 1e6 && dInten > 0.0)  // some sanity check on parsed mass
@@ -471,7 +465,12 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
          SetSpecLibPrecursorIndex(pTmp.dSpecLibMW, pTmp.iSpecLibCharge, iWhichSpecLib);
       }
       else
-         fgets(szBuf, SIZE_BUF, fp);
+      {
+         if (fgets(szBuf, SIZE_BUF, fp) == NULL)
+         {
+            // throw error
+         }
+      }
 
    }
 
@@ -515,21 +514,17 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    if (*dMaxSpecLibRT == 0.0)
    {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - read dMaxSpecLibRT as %lf.\n", *dMaxSpecLibRT);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - read dMaxSpecLibRT as " + std::to_string(*dMaxSpecLibRT) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
    if (iFileLastScan <= 0)
    {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg, " Error - read iFileLastScan as %d.\n", iFileLastScan);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - read iFileLastScan as " + std::to_string (iFileLastScan) + "%d.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -727,11 +722,10 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
    }
    else
    {
-      char szErrorMsg[256];
-      sprintf(szErrorMsg,  " Error - peptide_mass_units must be 0, 1 or 2. Value set is %d.\n", g_staticParams.tolerances.iMassToleranceUnits);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - peptide_mass_units must be 0, 1 or 2. Value set is "
+         + std::to_string(g_staticParams.tolerances.iMassToleranceUnits) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       exit(1);
 //    return;
    }

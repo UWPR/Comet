@@ -32,6 +32,7 @@ int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modif
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
 int MOD_NUM = 0;
+size_t tTmp;
 
 Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 
@@ -554,7 +555,7 @@ if (!(iWhichPeptide%5000))
       {
          if (modNumIdx != -1 && mods[j] != -1)
          {
-            printf("%s", to_string(mods[j]).c_str());
+            printf("%s", std::to_string(mods[j]).c_str());
          }
          j++;
       }
@@ -666,10 +667,10 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    }
 
    strOut = " Creating plain peptide/protein index file for fragment ion indexing:\n";
-   logout(strOut.c_str());
+   logout(strOut);
    fflush(stdout);
    strOut = " - parse peptides from database ... ";
-   logout(strOut.c_str());
+   logout(strOut);
    fflush(stdout);
 
    // Allocate memory shared by threads during search
@@ -700,9 +701,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    if (!bSucceeded)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error performing RunSearch() to create indexed database. \n");
-      logerr(szErrorMsg);
+      string strErrorMsg =  " Error performing RunSearch() to create indexed database.\n";
+      logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
@@ -710,16 +710,15 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // sanity check
    if (g_pvDBIndex.size() == 0)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg, " Error - no peptides in index; check the input database file.\n");
-      logerr(szErrorMsg);
+      string strErrorMsg = " Error - no peptides in index; check the input database file.\n";
+      logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
 
    // remove duplicates
    strOut = " - remove duplicate peptides\n";
-   logout(strOut.c_str());
+   logout(strOut);
    fflush(stdout);
 
    // first sort by peptide then protein file position
@@ -843,7 +842,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    // Now write out: vector<vector<comet_fileoffset_t>> g_pvProteinsList
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fp);
-   size_t tTmp = g_pvProteinsList.size();
+   tTmp = g_pvProteinsList.size();
    fwrite(&tTmp, clSizeCometFileOffset, 1, fp);
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
@@ -891,8 +890,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done. " + strIndexFile + " (" + to_string(tNumPeptides) + " plain peptides)\n\n";
-   logout(strOut.c_str());
+   strOut = " - done. " + strIndexFile + " (" + std::to_string(tNumPeptides) + " plain peptides)\n\n";
+   logout(strOut);
    fflush(stdout);
 
    return bSucceeded;
@@ -903,7 +902,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 {
    FILE *fp;
-   size_t tTmp;  // used to reduce compiler warnings only
    int iRet;     // used to reduce compiler warnings only
    char szBuf[SIZE_BUF];
    string strIndexFile;
@@ -933,9 +931,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          
          if (iRet != 2)
          {
-            char szErr[256];
-            sprintf(szErr, " Error with raw peptide index database format. MassType: did not parse 2 values.");
-            logerr(szErr);
+            string strErrorMsg = " Error with raw peptide index database format. MassType: did not parse 2 values.\n";
+            logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
@@ -946,9 +943,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 2)
          {
-            char szErr[256];
-            sprintf(szErr, " Error with raw peptide index database format. LengthRange: did not parse 2 values.");
-            logerr(szErr);
+            string strErrorMsg = " Error with raw peptide index database format. LengthRange: did not parse 2 values.\n";
+            logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
@@ -961,9 +957,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 3)
          {
-            char szErr[256];
-            sprintf(szErr, " Error with raw peptide index database format. Enzyme: did not parse 3 values.");
-            logerr(szErr);
+            string strErrorMsg = " Error with raw peptide index database format. Enzyme: did not parse 3 values.\n";
+            logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
@@ -976,9 +971,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 3)
          {
-            char szErr[256];
-            sprintf(szErr, " Error with raw peptide index database format. Enzyme2: did not parse 3 values.");
-            logerr(szErr);
+            string strErrorMsg = " Error with raw peptide index database format. Enzyme2: did not parse 3 values.\n";
+            logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
@@ -1076,9 +1070,9 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    if (!bFoundStatic || !bFoundVariable)
    {
-      char szErr[256];
-      sprintf(szErr, " Error with raw peptide index database format. Modifications (%d/%d) not parsed.", bFoundStatic, bFoundVariable);
-      logerr(szErr);
+      string strErrorMsg = " Error with raw peptide index database format. Modifications ("
+         + std::to_string(bFoundStatic) + "/" + std::to_string(bFoundVariable) + ") not parsed.\n";
+      logerr(strErrorMsg);
       fclose(fp);
       return false;
    }

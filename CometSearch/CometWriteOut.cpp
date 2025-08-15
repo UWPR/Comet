@@ -71,11 +71,12 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
         szBuf[SIZE_BUF],
         szStatsBuf[512],
         szMassLine[200],
-        szOutput[SIZE_FILE2],
         scan1[32],
         scan2[32];
    FILE *fpout;
    char *pStr;
+   std::ostringstream oss;
+   std::string strOutput;
 
    strcpy(scan1, "0");
    strcpy(scan2, "0");
@@ -111,21 +112,21 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    if (bDecoySearch)
    {
-      sprintf(szOutput, "%s_decoy/%s.%.5d.%.5d.%d.out",
-            g_staticParams.inputFile.szBaseName,
-            pStr,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
+      oss << g_staticParams.inputFile.szBaseName << "_decoy/"
+          << pStr << "."
+          << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
+          << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
+          << pQuery->_spectrumInfoInternal.iChargeState << ".out";
+      std::string strOutput = oss.str();
    }
    else
    {
-      sprintf(szOutput, "%s/%s.%.5d.%.5d.%d.out",
-            g_staticParams.inputFile.szBaseName,
-            pStr,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
+      oss << g_staticParams.inputFile.szBaseName << "/"
+          << pStr << "."
+          << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
+          << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
+          << pQuery->_spectrumInfoInternal.iChargeState << ".out";
+      std::string strOutput = oss.str();
    }
 
    if (g_staticParams.options.iWhichReadingFrame)
@@ -144,13 +145,11 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
             g_staticParams.databaseInfo.szDatabase);
    }
 
-   if ((fpout = fopen(szOutput, "w")) == NULL)
+   if ((fpout = fopen(strOutput.c_str(), "w")) == NULL)
    {
-      char szErrorMsg[SIZE_ERROR];
-      sprintf(szErrorMsg,  " Error - cannot write to file %s.\n", szOutput);
-      string strErrorMsg(szErrorMsg);
+      string strErrorMsg = " Error - cannot write to file " + strOutput + "\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(szErrorMsg);
+      logerr(strErrorMsg);
       return false;
    }
 
@@ -175,7 +174,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
          pQuery->_spectrumInfoInternal.iChargeState);
    sprintf(szBuf+strlen(szBuf), " Comet version %s\n", g_sCometVersion.c_str());
    sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szOutFileTimeString);
+   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.strOutFileTimeString.c_str());
    sprintf(szBuf+strlen(szBuf), " %s\n", szMassLine);
    sprintf(szBuf+strlen(szBuf), " %s\n", szStatsBuf);
    sprintf(szBuf+strlen(szBuf), " %s\n", szDbLine);
