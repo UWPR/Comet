@@ -74,7 +74,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
       for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
       {
          g_iFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int*[g_massRange.g_uiMaxFragmentArrayIndex];
-         g_iCountFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex];
+         g_iCountFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex]();
       }
    }
 
@@ -173,16 +173,6 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    cout <<  "   - count fragment index vector sizes ... "; fflush(stdout);
    // stupid workaround for Windows/Visual Studio performance ... first calculate all
    // fragments to find size of each fragment on index vector
-   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-   {
-      for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
-      {
-         for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
-         {
-            g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iMass] = 0;
-         }
-      }
-   }
 
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, 1, pFragmentIndexPool));
