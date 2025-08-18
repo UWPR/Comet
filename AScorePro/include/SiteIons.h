@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _SITEIONS_H_
+#define _SITEIONS_H_
+
 #include "Centroid.h"
 #include <vector>
 
@@ -23,3 +26,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _SITEIONS_H_

@@ -1,4 +1,8 @@
 #pragma once
+
+#ifndef _CENTROID_H_
+#define _CENTROID_H_
+
 #include "API.h"
 
 namespace AScoreProCpp {
@@ -65,3 +69,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _CENTROID_H_

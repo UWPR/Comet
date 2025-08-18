@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEPTIDE_H_
+#define _PEPTIDE_H_
+
 #include <string>
 #include <vector>
 #include "API.h"
@@ -141,3 +144,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEPTIDE_H_

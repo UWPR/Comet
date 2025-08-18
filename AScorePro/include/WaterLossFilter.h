@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _WATERLOSSFILTER_H_
+#define _WATERLOSSFILTER_H_
+
 #include "PeakMatcher.h"
 #include "Mass.h"
 #include "Scan.h"
@@ -58,3 +61,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _WATERLOSSFILTER_H_

@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _ASCOREOUTPUT_H_
+#define _ASCOREOUTPUT_H_
+
 #include <vector>
 #include <memory>
 #include "API.h"
@@ -56,3 +59,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _ASCOREOUTPUT_H_

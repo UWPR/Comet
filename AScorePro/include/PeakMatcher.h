@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEAKMATCHER_H_
+#define _PEAKMATCHER_H_
+
 #include <vector>
 #include "Mass.h"
 #include "Centroid.h"
@@ -91,3 +94,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEAKMATCHER_H_

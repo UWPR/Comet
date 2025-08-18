@@ -65,85 +65,85 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AminoAcidMasses.h">
+    <ClInclude Include="include\AminoAcidMasses.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="API.h">
+    <ClInclude Include="include\API.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AScoreCalculator.h">
+    <ClInclude Include="include\AScoreCalculator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AScoreOptions.h">
+    <ClInclude Include="include\AScoreOptions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AScoreOutput.h">
+    <ClInclude Include="include\AScoreOutput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Binomial.h">
+    <ClInclude Include="include\Binomial.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Centroid.h">
+    <ClInclude Include="include\Centroid.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Deisotoping.h">
+    <ClInclude Include="include\CombinationIterator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="IntensityFilter.h">
+    <ClInclude Include="include\Deisotoping.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Mass.h">
+    <ClInclude Include="include\IntensityFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MOBScore.h">
+    <ClInclude Include="include\Mass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NeutralLoss.h">
+    <ClInclude Include="include\MOBScore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NeutralLossFilter.h">
+    <ClInclude Include="include\NeutralLoss.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeakMatch.h">
+    <ClInclude Include="include\NeutralLossFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeakMatcher.h">
+    <ClInclude Include="include\PeakMatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Peptide.h">
+    <ClInclude Include="include\PeakMatcher.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeptideBuilder.h">
+    <ClInclude Include="include\Peptide.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeptideGenerator.h">
+    <ClInclude Include="include\PeptideBuilder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeptideMod.h">
+    <ClInclude Include="include\PeptideGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PeptideMods.h">
+    <ClInclude Include="include\PeptideMod.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Precursor.h">
+    <ClInclude Include="include\PeptideMods.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scan.h">
+    <ClInclude Include="include\Precursor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SiteIons.h">
+    <ClInclude Include="include\Scan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SiteScore.h">
+    <ClInclude Include="include\SiteIons.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TopIonsFilter.h">
+    <ClInclude Include="include\SiteScore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="WaterLossFilter.h">
+    <ClInclude Include="include\TopIonsFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CombinationIterator.h">
+    <ClInclude Include="include\WaterLossFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

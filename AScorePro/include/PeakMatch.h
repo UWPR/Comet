@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEAKMATCH_H_
+#define _PEAKMATCH_H_
+
 namespace AScoreProCpp {
 
     /**
@@ -13,3 +16,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEAKMATCH_H_

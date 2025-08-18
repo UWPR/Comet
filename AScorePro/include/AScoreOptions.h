@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _ASCOREOPTIONS_H_
+#define _ASCOREOPTIONS_H_
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -195,3 +198,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _ASCOREOPTIONS_H_

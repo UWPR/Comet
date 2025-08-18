@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PRECURSOR_H_
+#define _PRECURSOR_H_
+
 // Include all necessary dependencies
 #include <string>
 #include "Mass.h"
@@ -91,3 +94,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PRECURSOR_H_

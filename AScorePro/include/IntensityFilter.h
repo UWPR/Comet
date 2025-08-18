@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _INTENSITYFILTER_H_
+#define _INTENSITYFILTER_H_
+
 #include "Scan.h"
 
 namespace AScoreProCpp {
@@ -32,3 +35,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _INTENSITYFILTER_H_

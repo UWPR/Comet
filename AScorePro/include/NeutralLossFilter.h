@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _NEUTRALLOSSFITLER_H_
+#define _NEUTRALLOSSFILTER_H_
+
 #include "PeakMatcher.h"
 #include "Mass.h"
 #include "Scan.h"
@@ -61,3 +64,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _NEUTRALLOSSFILTER_H_

@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _SITESCORE_H_
+#define _SITESCORE_H_
+
 #include "Peptide.h"
 #include "Centroid.h"
 #include <vector>
@@ -58,3 +61,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _SITESCORE_H_

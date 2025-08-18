@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEPTIDEGENERATOR_H_
+#define _PEPTIDEGENERATOR_H_
+
 #include <vector>
 #include <list>
 #include "Peptide.h"
@@ -137,3 +140,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEPTIDEGENERATOR_H_

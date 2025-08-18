@@ -1,5 +1,7 @@
-#ifndef COMBINATION_ITERATOR_HPP
-#define COMBINATION_ITERATOR_HPP
+#pragma once
+
+#ifndef _COMBINATIONITERATOR_H_
+#define _COMBINATIONTERATOR_H_
 
 #include <vector>
 #include <functional>
@@ -64,4 +66,4 @@ namespace AScoreProCpp {
     };
 } // namespace MPToolkit
 
-#endif // COMBINATION_ITERATOR_HPP
+#endif // _COMBINATIONITERATOR_H_

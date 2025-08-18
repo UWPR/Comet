@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _MOBSCORE_H_
+#define _MOBSCORE_H_
+
 #include <unordered_map>
 #include <vector>
 #include "AScoreOptions.h"
@@ -37,3 +40,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _MOBSCORE_H_

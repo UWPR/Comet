@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _NEUTRALLOSS_H_
+#define _NEUTRALLOSS_H_
+
 #include <string>
 
 namespace AScoreProCpp {
@@ -37,3 +40,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _NEUTRALLOSS_H_

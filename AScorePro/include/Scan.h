@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _SCAN_H_
+#define _SCAN_H_
+
 #include <string>
 #include <vector>
 #include <memory>
@@ -181,3 +184,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _SCAN_H_

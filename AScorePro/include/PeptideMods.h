@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEPTIDEMODS_H_
+#define _PEPTIDEMODS_H_
+
 #include <unordered_map>
 #include <vector>
 #include <iterator>
@@ -111,3 +114,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEPTIDEMODS_H_

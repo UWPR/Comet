@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _ASCORECACULATOR_H_
+#define _ASCORECACULATOR_H_
+
 #include "AScoreOptions.h"
 #include "AScoreOutput.h"
 #include "Peptide.h"
@@ -39,3 +42,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _ASCORECACULATOR_H_

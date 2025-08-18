@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _MASS_H_
+#define _MASS_H_
+
 namespace AScoreProCpp {
 
     class Mass {
@@ -74,3 +77,5 @@ namespace AScoreProCpp {
     }
 
 } // namespace AScoreProCpp
+
+#endif // _MASS_H_

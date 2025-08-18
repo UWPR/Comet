@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _BINOMIAL_H_
+#define _BINOMIAL_H_
+
 namespace AScoreProCpp {
 
     /**
@@ -51,3 +54,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _BINOMIAL_H_

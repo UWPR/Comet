@@ -1,5 +1,8 @@
 #pragma once
 
+#ifndef _PEPTIDEBUILDER_H_
+#define _PEPTIDEBUILDER_H_
+
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -41,3 +44,5 @@ namespace AScoreProCpp {
     };
 
 } // namespace AScoreProCpp
+
+#endif // _PEPTIDEBUILDER_H_
