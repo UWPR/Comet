@@ -17,6 +17,7 @@
 #define _COMETPOSTANALYSIS_H_
 
 #include "CometDataInternal.h"
+#pragma comment(lib, "AScorePro.lib")
 
 struct PostAnalysisThreadData
 {

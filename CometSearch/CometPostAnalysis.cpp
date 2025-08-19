@@ -19,6 +19,14 @@
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
 
+#include "AScoreFactory.h"
+#include "AScoreOptions.h"
+#include "AScoreOutput.h"
+#include "AScoreDllInterface.h"
+#include "Centroid.h"
+#include "PeptideBuilder.h"
+
+
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 
@@ -96,6 +104,52 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // this has to happen after AnalyzeSP as results are sorted in that fn
    CalculateDeltaCn(iQueryIndex);
+
+   if (1) //phospho
+   {
+      AScoreProCpp::AScoreOptions options;
+      std::string sequence = "K.M*LAES#DDS#GDEESVSQTDK.T";
+      double precursorMz = 1109.8771463738433;
+      int precursorCharge = 1;
+
+      std::vector<AScoreProCpp::Centroid> peaks = {
+ {147.112804, 100},
+ {148.042676, 100},
+ {261.126740, 100},
+ {262.139747, 100},
+ {332.163854, 100},
+ {363.187426, 100} };
+
+      using namespace AScoreProCpp;
+
+      // Create the AScoreDllInterface using the factory function
+      AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
+
+      // Calculate AScore using the DLL interface
+      AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
+         peaks, precursorMz, precursorCharge, options);
+
+      // Print results
+      std::cout << "Original sequence: " << sequence << "\n";
+      std::cout << "Peptides scored: " << result.peptides.size() << "\n";
+      std::cout << "Sites scored: " << result.sites.size() << "\n";
+      std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
+      std::cout << "Score: " << result.peptides[0].getScore() << "\n";
+
+      // Output site positions and scores (up to 6 sites)
+      std::cout << "Site scores: ";
+      for (size_t i = 0; i < 6; ++i)
+      {
+         if (i < result.sites.size())
+            std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
+         else
+            break;
+      }
+      std::cout << "\n";
+
+      // Clean up
+      DeleteAScoreDllInterface(ascoreInterface);
+   }
 
    delete pThreadData;
    pThreadData = NULL;

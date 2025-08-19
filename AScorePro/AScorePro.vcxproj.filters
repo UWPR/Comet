@@ -63,6 +63,12 @@
     <ClCompile Include="AminoAcidMasses.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AScoreDllInterface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AScoreFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\AminoAcidMasses.h">
@@ -144,6 +150,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\WaterLossFilter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AScoreDllInterface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AScoreFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

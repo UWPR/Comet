@@ -47,7 +47,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_MBCS;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -63,7 +63,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>

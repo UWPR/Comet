@@ -58,7 +58,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_DEBUG;_NOSQLITE;_CRT_SECURE_NO_WARNINGS%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\CometSearch</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\CometSearch;..\AScorePro\include</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
@@ -72,7 +72,7 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;NDEBUG;_NOSQLITE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\CometSearch</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\CometSearch;..\AScorePro\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>

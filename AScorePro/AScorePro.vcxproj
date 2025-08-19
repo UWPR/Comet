@@ -127,6 +127,8 @@
   <ItemGroup>
     <ClCompile Include="AminoAcidMasses.cpp" />
     <ClCompile Include="AScoreCalculator.cpp" />
+    <ClCompile Include="AScoreDllInterface.cpp" />
+    <ClCompile Include="AScoreFactory.cpp" />
     <ClCompile Include="AScoreOptions.cpp" />
     <ClCompile Include="Binomial.cpp" />
     <ClCompile Include="IntensityFilter.cpp" />
@@ -146,6 +148,8 @@
     <ClInclude Include="include\AminoAcidMasses.h" />
     <ClInclude Include="include\API.h" />
     <ClInclude Include="include\AScoreCalculator.h" />
+    <ClInclude Include="include\AScoreDllInterface.h" />
+    <ClInclude Include="include\AScoreFactory.h" />
     <ClInclude Include="include\AScoreOptions.h" />
     <ClInclude Include="include\AScoreOutput.h" />
     <ClInclude Include="include\Binomial.h" />
