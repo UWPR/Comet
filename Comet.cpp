@@ -389,6 +389,7 @@ void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
       {"peptide_mass_units",           { [&]() { parse_int("peptide_mass_units"); }}},
       {"precursor_tolerance_type",     { [&]() { parse_int("precursor_tolerance_type"); }}},
       {"print_expect_score",           { [&]() { parse_int("print_expect_score"); }}},
+      {"print_ascorepro_score",        { [&]() { parse_int("print_ascorepro_score"); }}},
       {"remove_precursor_peak",        { [&]() { parse_int("remove_precursor_peak"); }}},
       {"require_variable_mod",         { [&]() { parse_int("require_variable_mod"); }}},
       {"resolve_fullpaths",            { [&]() { parse_int("resolve_fullpaths"); }}},
@@ -1004,7 +1005,8 @@ output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\
    if (iPrintParams == 2)
    {
       fprintf(fp,
-"print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n");
+"print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
+print_ascorepro_score = 1              # 0=no, 1=yes to report AScorePro scores in txt, pepxml, and mzid outputs\n");
    }
  
    fprintf(fp,

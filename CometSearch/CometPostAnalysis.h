@@ -17,6 +17,7 @@
 #define _COMETPOSTANALYSIS_H_
 
 #include "CometDataInternal.h"
+#include "AScoreOptions.h"
 #pragma comment(lib, "AScorePro.lib")
 
 struct PostAnalysisThreadData
@@ -41,7 +42,8 @@ public:
    ~CometPostAnalysis();
    static bool PostAnalysis(ThreadPool* tp);
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
-                                      ThreadPool* tp);
+                                      ThreadPool* tp,
+                                      AScoreProCpp::AScoreOptions& options);
    static void CalculateDeltaCn(int i);
    static void AnalyzeSP(int i);
    static void CalculateSP(Results *pOutput,
@@ -49,6 +51,9 @@ public:
                            int iSize);
    static bool CalculateEValue(int iWhichQuery,
                                bool bTopHitOnly);
+   static void SetAScoreOptions(AScoreProCpp::AScoreOptions& options);
+   static void CalculateAScorePro(int iWhichQuery,
+                                  AScoreProCpp::AScoreOptions& options);
    static bool SortFnXcorr(const Results &a,
                            const Results &b);
    static bool SortSpecLibFnXcorrMS1(const SpecLibResultsMS1& a,

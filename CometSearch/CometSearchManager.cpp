@@ -896,6 +896,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
 
+   GetParamValue("print_ascorepro_score", g_staticParams.options.bPrintAScoreProScore);
+
    GetParamValue("export_additional_pepxml_scores", g_staticParams.options.bExportAdditionalScoresPepXML);
 
    GetParamValue("resolve_fullpaths", g_staticParams.options.bResolveFullPaths);

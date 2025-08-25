@@ -3,13 +3,15 @@
 #ifndef _DEISOTOPING_H_
 #define _DEISOTOPING_H_
 
-namespace AScoreProCpp {
+namespace AScoreProCpp
+{
 
-    enum class Deisotoping {
-        None,
-        Top1Per1,
-        MatchOffset
-    };
+enum class Deisotoping
+{
+   None,
+   Top1Per1,
+   MatchOffset
+};
 
 } // namespace AScoreProCpp
 

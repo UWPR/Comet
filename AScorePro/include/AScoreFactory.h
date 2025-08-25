@@ -7,11 +7,11 @@
 extern "C" {
 #endif
 
-	// Factory function to create an AScoreDllInterface instance
-	ASCORE_API AScoreProCpp::AScoreDllInterface* CreateAScoreDllInterface();
+// Factory function to create an AScoreDllInterface instance
+ASCORE_API AScoreProCpp::AScoreDllInterface* CreateAScoreDllInterface();
 
-	// Function to delete an AScoreDllInterface instance
-	ASCORE_API void DeleteAScoreDllInterface(AScoreProCpp::AScoreDllInterface* instance);
+// Function to delete an AScoreDllInterface instance
+ASCORE_API void DeleteAScoreDllInterface(AScoreProCpp::AScoreDllInterface* instance);
 
 #ifdef __cplusplus
 }

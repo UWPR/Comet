@@ -614,20 +614,26 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    // check if peptide is modified
-   bool bModified = 0;
+   bool bModified = false;
 
-   if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
+   if (pOutput[iWhichResult].bHasVariableMod)
+      bModified = true;
+
+   if (!bModified)
+   {
+      if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
          || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
-      bModified = 1;
+         bModified = 1;
 
-   if (pOutput[iWhichResult].cPrevAA=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
-      bModified = 1;
-   if (pOutput[iWhichResult].cNextAA=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
-      bModified = 1;
+      if (pOutput[iWhichResult].cPrevAA == '-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+         bModified = 1;
+      if (pOutput[iWhichResult].cNextAA == '-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+         bModified = 1;
 
-   //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
-   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
-      bModified = 1;
+      //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+      if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
+         bModified = 1;
+   }
 
    if (!bModified)
    {
@@ -805,7 +811,6 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                  
          }
       }
-
 
       fprintf(fpout, "    </modification_info>\n");
    }

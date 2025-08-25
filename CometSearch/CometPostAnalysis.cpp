@@ -25,6 +25,7 @@
 #include "AScoreDllInterface.h"
 #include "Centroid.h"
 #include "PeptideBuilder.h"
+#include "Mass.h"
 
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
@@ -47,13 +48,22 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
 
+   using namespace AScoreProCpp;
+
+   AScoreOptions options;
+
+   if (g_staticParams.options.bPrintAScoreProScore)
+   {
+      SetAScoreOptions(options);
+   }
+
    for (int i=0; i<(int)g_pvQuery.size(); ++i)
    {
       if (g_pvQuery.at(i)->iMatchPeptideCount > 0 || g_pvQuery.at(i)->iDecoyMatchPeptideCount > 0)
       {
          PostAnalysisThreadData* pThreadData = new PostAnalysisThreadData(i);
 
-         pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
+         pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool, options));
 
          pThreadData = NULL;
          bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
@@ -81,7 +91,9 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 }
 
 
-void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData, ThreadPool* tp)
+void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
+                                               ThreadPool* tp,
+                                               AScoreProCpp::AScoreOptions& options)
 {
    int iQueryIndex = pThreadData->iQueryIndex;
 
@@ -105,51 +117,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    // this has to happen after AnalyzeSP as results are sorted in that fn
    CalculateDeltaCn(iQueryIndex);
 
-   if (1) //phospho
-   {
-      AScoreProCpp::AScoreOptions options;
-      std::string sequence = "K.M*LAES#DDS#GDEESVSQTDK.T";
-      double precursorMz = 1109.8771463738433;
-      int precursorCharge = 1;
-
-      std::vector<AScoreProCpp::Centroid> peaks = {
- {147.112804, 100},
- {148.042676, 100},
- {261.126740, 100},
- {262.139747, 100},
- {332.163854, 100},
- {363.187426, 100} };
-
-      using namespace AScoreProCpp;
-
-      // Create the AScoreDllInterface using the factory function
-      AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
-
-      // Calculate AScore using the DLL interface
-      AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
-         peaks, precursorMz, precursorCharge, options);
-
-      // Print results
-      std::cout << "Original sequence: " << sequence << "\n";
-      std::cout << "Peptides scored: " << result.peptides.size() << "\n";
-      std::cout << "Sites scored: " << result.sites.size() << "\n";
-      std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
-      std::cout << "Score: " << result.peptides[0].getScore() << "\n";
-
-      // Output site positions and scores (up to 6 sites)
-      std::cout << "Site scores: ";
-      for (size_t i = 0; i < 6; ++i)
-      {
-         if (i < result.sites.size())
-            std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
-         else
-            break;
-      }
-      std::cout << "\n";
-
-      // Clean up
-      DeleteAScoreDllInterface(ascoreInterface);
-   }
+   if (1 || g_staticParams.options.bPrintAScoreProScore)
+      CalculateAScorePro(iQueryIndex, options);
 
    delete pThreadData;
    pThreadData = NULL;
@@ -699,6 +668,207 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
       }
    }
+}
+
+
+void CometPostAnalysis::SetAScoreOptions(AScoreProCpp::AScoreOptions &options)
+{
+   using namespace AScoreProCpp;
+
+//    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
+//    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
+
+   std::vector<std::string> ionSeriesList;
+   unsigned int uiIonSeriesMask = 0;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_A])
+   {
+      uiIonSeriesMask += 8;
+      ionSeriesList.push_back("a");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 1; // add ammonia loss to A series
+         ionSeriesList.push_back("nA");
+      }
+
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_B])
+   {
+      uiIonSeriesMask += 16;
+      ionSeriesList.push_back("b");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 2; // add ammonia loss to B series
+         ionSeriesList.push_back("nB");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_C])
+      uiIonSeriesMask += 32;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_X])
+      uiIonSeriesMask += 512;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Y])
+   {
+      uiIonSeriesMask += 1024;
+      ionSeriesList.push_back("y");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 4; // add ammonia loss to Y series
+         ionSeriesList.push_back("nY");
+      }
+   }
+   // FIX: need to check if AScorePro uses Z or Z' series
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
+      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
+   {
+      uiIonSeriesMask += 2048;
+      ionSeriesList.push_back("z");
+   }
+
+   options.setIonSeries(uiIonSeriesMask);
+
+   // Peak depth settings
+   options.setPeakDepth(0);
+   options.setMaxPeakDepth(50);
+
+   // Fragment matching tolerance
+   options.setTolerance(0.3);
+   options.setUnits(Mass::Units::DALTON);
+   options.setUnitText("Da");
+
+   // Window size for filtering peaks
+   options.setWindow(70);
+
+   // Enable low mass cutoff
+   options.setLowMassCutoff(true);
+
+   // Filter low intensity peaks
+   options.setFilterLowIntensity(0);
+
+   // C-terminal settings
+   options.setNoCterm(true);
+}
+
+
+void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
+                                           AScoreProCpp::AScoreOptions& options)
+{
+   std::string sequence = "K.M*LAES#DDSGDEES#VSQTDK.T";
+   double precursorMz = 1109.8771463738433;
+   int precursorCharge = 1;
+
+   precursorCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState;
+   precursorMz = (g_pvQuery.at(iWhichQuery)->_pResults[0].dPepMass + (precursorCharge -1) * PROTON_MASS) / precursorCharge;
+
+
+   // Generate peptide sequence of format "K.M0LAES1DDSGDEES1VSQTDK.T" where the mod char is the mod #
+   sequence = g_pvQuery.at(iWhichQuery)->_pResults[0].cPrevAA + std::string(".");
+   for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].iLenPeptide; ++i)
+   {
+      sequence += g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i];
+
+      if (g_staticParams.variableModParameters.bVarModSearch && g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] != 0)
+      {
+         if (g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] > 0
+            && !isEqual(g_staticParams.variableModParameters.varModList[g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] - 1].dVarModMass, 0.0))
+         {
+            sequence += std::to_string((int)g_staticParams.variableModParameters.cModCode[g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] - 1]);
+         }
+         else
+         {
+            sequence += "?";    // PEFF:  no clue how to specify mod encoding
+         }
+      }
+   }
+   sequence += std::string(".") + g_pvQuery.at(iWhichQuery)->_pResults[0].cNextAA;
+
+
+
+   // construct sequence with preceeding/following residues and old mod chars
+//  sequence = g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide;
+
+   std::vector<AScoreProCpp::Centroid> peaks = {
+     {147.112804, 100},
+     {148.042676, 100},
+     {261.126740, 100},
+     {262.139747, 100},
+     {332.163854, 100},
+     {363.187426, 100},
+     {461.206447, 100},
+     {491.246003, 100},
+     {578.278032, 100},
+     {628.204806, 100},
+     {677.346446, 100},
+     {743.231749, 100},
+     {764.378474, 100},
+     {858.258692, 100},
+     {893.421067, 100},
+     {1022.463660, 100},
+     {1025.257050, 100},
+     {1082.278514, 100},
+     {1137.490603, 100},
+     {1194.512067, 100},
+     {1197.305457, 100},
+     {1326.348050, 100},
+     {1361.510426, 100},
+     {1455.390643, 100},
+     {1476.537369, 100},
+     {1542.422672, 100},
+     {1591.564312, 100},
+     {1641.491086, 100},
+     {1728.523114, 100},
+     {1758.562670, 100},
+     {1856.581692, 100},
+     {1887.605263, 100},
+     {1957.629370, 100},
+     {1958.642377, 100},
+     {2071.726441, 100},
+     {2072.656313, 100} };
+
+   using namespace AScoreProCpp;
+
+   // Create the AScoreDllInterface using the factory function
+   AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
+   if (!ascoreInterface) {
+      std::cerr << "Failed to create AScore interface." << std::endl;
+      exit(1);
+   }
+
+   // Set up AScore options
+   options = ascoreInterface->GetDefaultOptions();
+
+   // Calculate AScore using the DLL interface
+   AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
+      peaks, precursorMz, precursorCharge, options);
+
+   // CalculateScoreWithOptions:
+   //   Scan scan =  CreateScanFromCentroids(peaks, precursorMz, precursorCharge);
+   //   Peptide peptide = ParsePeptideString(peptideSequence, options);
+   //   peptide.setPrecursorMz(precursorMz);
+   //   return CalculateScore(peptide, scan, options);
+   //             AScoreCalculator calculator(options);
+   //             return calculator.calculateScore(peptide, scan);
+
+   // Print results
+   std::cout << "Original sequence: " << sequence << "\n";
+   std::cout << "Peptides scored: " << result.peptides.size() << "\n";
+   std::cout << "Sites scored: " << result.sites.size() << "\n";
+   std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
+   std::cout << "Score: " << result.peptides[0].getScore() << "\n";
+
+   // Output site positions and scores (up to 6 sites)
+   std::cout << "Site scores: ";
+   for (size_t i = 0; i < 6; ++i)
+   {
+      if (i < result.sites.size())
+         std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
+      else
+         break;
+   }
+   std::cout << "\n";
+
+   // Clean up
+   DeleteAScoreDllInterface(ascoreInterface);
+
+   exit(0);
 }
 
 

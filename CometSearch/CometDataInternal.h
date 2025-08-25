@@ -144,6 +144,7 @@ struct Options
    int bShowFragmentIons;
    int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic
    int bPrintExpectScore;
+   int bPrintAScoreProScore;
    int bExportAdditionalScoresPepXML;  // if 1, also report lnrSp, lnExpect, IonFrac, lnNumSP to pepXML output
    int bOverrideCharge;
    int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
@@ -208,6 +209,7 @@ struct Options
       bShowFragmentIons = a.bShowFragmentIons;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
+      bPrintAScoreProScore = a.bPrintAScoreProScore;
       bExportAdditionalScoresPepXML = a.bExportAdditionalScoresPepXML;
       bOverrideCharge = a.bOverrideCharge;
       bCorrectMass = a.bCorrectMass;
@@ -263,6 +265,7 @@ struct Results
    char   cPrevAA;                            // stores prev flanking AA
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
+   bool   bHasVariableMod;                    // true if peptide has a variable modification
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
@@ -931,6 +934,7 @@ struct StaticParams
       options.bShowFragmentIons = 0;
       options.bExplicitDeltaCn = 0;
       options.bPrintExpectScore = 1;
+      options.bPrintAScoreProScore = 0;
       options.bExportAdditionalScoresPepXML = 0;
       options.bOverrideCharge = 0;
       options.bCorrectMass = 0;

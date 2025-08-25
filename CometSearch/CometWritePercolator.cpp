@@ -257,21 +257,25 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
    }
 
-   fprintf(fpout, "%c.", pOutput[iWhichResult].cPrevAA);
-   // generate modified_peptide string
-   if (bNterm)
-      fprintf(fpout, "n[%0.4f]", dNterm);
-   // Print peptide sequence.
-   for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+   if (pOutput[iWhichResult].bHasVariableMod)
    {
-      fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
+      // generate modified_peptide string
+      fprintf(fpout, "%c.", pOutput[iWhichResult].cPrevAA);
+      if (bNterm)
+         fprintf(fpout, "n[%0.4f]", dNterm);
+      for (int i = 0; i < pOutput[iWhichResult].iLenPeptide; ++i)
+      {
+         fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
-      if (pOutput[iWhichResult].piVarModSites[i] != 0)
-         fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+         if (pOutput[iWhichResult].piVarModSites[i] != 0)
+            fprintf(fpout, "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+      }
+      if (bCterm)
+         fprintf(fpout, "c[%0.4f]", dCterm);
+      fprintf(fpout, ".%c\t", pOutput[iWhichResult].cNextAA);
    }
-   if (bCterm)
-      fprintf(fpout, "c[%0.4f]", dCterm);
-   fprintf(fpout, ".%c\t", pOutput[iWhichResult].cNextAA);
+   else
+      fprintf(fpout, "%c.%s.%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
 
    std::vector<string>::iterator it;
 

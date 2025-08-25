@@ -1430,25 +1430,26 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
 
          // modifications:  zero-position:mass; semi-colon delimited; length=nterm, length+1=c-term
-
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         if (pOutput[iWhichResult].bHasVariableMod)
          {
-            fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide, 
-                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass);
-         }
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+            {
+               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide,
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] - 1].dVarModMass);
+            }
 
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
-         {
-            fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide + 1, 
-                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass);
-         }
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide + 1] > 0)
+            {
+               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide + 1,
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide + 1] - 1].dVarModMass);
+            }
 
-         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
-         {
-            if (pOutput[iWhichResult].piVarModSites[i] != 0)
-               fprintf(fpout, "%d:%0.6f;", i, pOutput[iWhichResult].pdVarModSites[i]);
+            for (int i = 0; i < pOutput[iWhichResult].iLenPeptide; ++i)
+            {
+               if (pOutput[iWhichResult].piVarModSites[i] != 0)
+                  fprintf(fpout, "%d:%0.6f;", i, pOutput[iWhichResult].pdVarModSites[i]);
+            }
          }
-
          fprintf(fpout, "\t");
 
          // semicolon separated list of fpdb pointers for target proteins
