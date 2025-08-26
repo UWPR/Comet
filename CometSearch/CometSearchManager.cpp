@@ -31,6 +31,8 @@
 #include "CometPeptideIndex.h"
 #include "CometSpecLib.h"
 #include "CometAlignment.h"
+#include "AScoreOptions.h"
+
 
 #include <sstream>
 
@@ -48,6 +50,8 @@ Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
+
+AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];        // stores fragment index; [thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
@@ -1570,7 +1574,7 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   for (int i=0; i<VMODS; ++i)
+   for (int i = 0; i < VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
@@ -1802,6 +1806,9 @@ bool CometSearchManager::InitializeStaticParams()
 
    double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
    g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion) * g_staticParams.dInverseBinWidth);
+
+   if (g_staticParams.options.bPrintAScoreProScore)
+      SetAScoreOptions();
 
    return true;
 }
@@ -3984,5 +3991,183 @@ bool CometSearchManager::ReadProteinVarModFilterFile()
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
+   }
+}
+
+
+//SetAScoreOptions(g_AScoreOptions);
+void CometSearchManager::SetAScoreOptions(void)
+{
+   using namespace AScoreProCpp;
+
+   //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
+   //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
+
+   std::vector<std::string> ionSeriesList;
+   unsigned int uiIonSeriesMask = 0;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_A])
+   {
+      uiIonSeriesMask += 8;
+      ionSeriesList.push_back("a");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 1; // add ammonia loss to A series
+         ionSeriesList.push_back("nA");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_B])
+   {
+      uiIonSeriesMask += 16;
+      ionSeriesList.push_back("b");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 2; // add ammonia loss to B series
+         ionSeriesList.push_back("nB");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_C])
+      uiIonSeriesMask += 32;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_X])
+      uiIonSeriesMask += 512;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Y])
+   {
+      uiIonSeriesMask += 1024;
+      ionSeriesList.push_back("y");
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
+      {
+         uiIonSeriesMask += 4; // add ammonia loss to Y series
+         ionSeriesList.push_back("nY");
+      }
+   }
+   // FIX: need to check if AScorePro uses Z or Z' series
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
+      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
+   {
+      uiIonSeriesMask += 2048;
+      ionSeriesList.push_back("z");
+   }
+
+   g_AScoreOptions.setIonSeries(uiIonSeriesMask);
+   g_AScoreOptions.setIonSeriesList(ionSeriesList);
+
+   // Peak depth settings
+   g_AScoreOptions.setPeakDepth(0);
+   g_AScoreOptions.setMaxPeakDepth(50);
+
+   // Fragment matching tolerance
+   if (g_staticParams.tolerances.dFragmentBinSize <= 0.05)
+      g_AScoreOptions.setTolerance(0.05);
+   else
+      g_AScoreOptions.setTolerance(0.3);
+
+   g_AScoreOptions.setUnits(Mass::Units::DALTON);
+   g_AScoreOptions.setUnitText("Da");
+
+   // Window size for filtering peaks
+   g_AScoreOptions.setWindow(70);
+
+   // Enable low mass cutoff
+   g_AScoreOptions.setLowMassCutoff(true);
+
+   // Filter low intensity peaks
+   g_AScoreOptions.setFilterLowIntensity(0);
+
+   // C-terminal settings
+   g_AScoreOptions.setNoCterm(true);
+
+   // Scoring options
+   g_AScoreOptions.setUseMobScore(true);
+   g_AScoreOptions.setUseDeltaAscore(true);
+
+   // Max peptides and other limits
+   g_AScoreOptions.setMaxPeptides(1000);
+   // g_AScoreOptions.setMaxDiff(5); // From max_diff in JSON
+
+   // Initialize other fields to default values from JSON
+   g_AScoreOptions.setMz(0);
+   g_AScoreOptions.setPeptide("");
+   g_AScoreOptions.setScan(0);
+
+   // AScorePro set up differential modifications
+   std::vector<AScoreProCpp::PeptideMod> diffMods;
+
+   for (int i = 0; i < VMODS; ++i)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
+      {
+         AScoreProCpp::PeptideMod pepMod;
+
+         pepMod.setSymbol(i + '0');
+         pepMod.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         pepMod.setMass(g_staticParams.variableModParameters.varModList[i].dVarModMass);
+         pepMod.setIsNTerm(false);
+         pepMod.setIsCTerm(false);
+
+         diffMods.push_back(pepMod);
+
+         if (fabs(g_staticParams.variableModParameters.varModList[i].dVarModMass - 79.966) < 0.1
+            && (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'S') != NULL
+               || strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'T') != NULL
+               || strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'Y') != NULL))
+         {
+            // Target modification settings
+            g_AScoreOptions.setSymbol(i + '0');
+            g_AScoreOptions.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+
+            // Set up neutral loss
+            AScoreProCpp::NeutralLoss neutralLoss;
+            neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
+            neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+            g_AScoreOptions.setNeutralLoss(neutralLoss);
+         }
+      }
+   }
+   g_AScoreOptions.setDiffMods(diffMods);
+
+   // Deisotoping type (empty string means no deisotoping)
+   //g_AScoreOptions.setDeisotopingType("");
+
+   // Set up static modifications
+   // FIX:  deal with static N-term and C-term mods
+   std::vector<PeptideMod> staticMods;
+   for (int i = 'A' ; i <= 'Z'; ++i)
+   {
+      if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0)
+         && (char(i) != 'B' && char(i) != 'J' && char(i) != 'O' && char(i) != 'U' && char(i) != 'X' && char(i) != 'Z'))
+      {
+         PeptideMod pepMod;
+         pepMod.setSymbol(char(i + 32));  // use lowercase letter for static mods symbol
+         pepMod.setResidues(std::string(1, char(i)));
+         pepMod.setMass(g_staticParams.staticModifications.pdStaticMods[i]);
+         pepMod.setIsNTerm(false);
+         pepMod.setIsCTerm(false);
+         staticMods.push_back(pepMod);
+      }
+   }
+   g_AScoreOptions.setStaticMods(staticMods);
+
+   // Apply static mods to AminoAcidMasses
+   AminoAcidMasses& masses = g_AScoreOptions.getMasses();
+   for (const auto& mod : staticMods)
+   {
+      const std::string& residues = mod.getResidues();
+      if (!residues.empty())
+      {
+         for (char c : residues)
+         {
+            masses.modifyAminoAcidMass(c, mod.getMass());
+         }
+      }
+
+      if (mod.getIsNTerm())
+      {
+         masses.modifyNTermMass(mod.getMass());
+      }
+
+      if (mod.getIsCTerm())
+      {
+         masses.modifyCTermMass(mod.getMass());
+      }
    }
 }

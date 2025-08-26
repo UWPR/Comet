@@ -4,7 +4,8 @@
 #include "AScoreDllInterface.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 // Factory function to create an AScoreDllInterface instance

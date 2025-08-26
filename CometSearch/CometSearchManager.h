@@ -109,6 +109,7 @@ public:
 private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
+   static void SetAScoreOptions();
    bool singleSearchInitializationComplete;
    bool singleSearchMS1InitializationComplete;
    int singleSearchThreadCount;

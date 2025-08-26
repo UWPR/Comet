@@ -20,6 +20,7 @@
 #include <string>
 #include "CometData.h"
 #include "Threading.h"
+#include "AScoreOptions.h"
 
 class CometSearchManager;
 
@@ -1027,11 +1028,11 @@ struct StaticParams
 
 extern StaticParams    g_staticParams;
 
-extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
-
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+
+extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 
 struct ModificationNumber
 {

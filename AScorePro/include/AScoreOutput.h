@@ -15,50 +15,50 @@
 namespace AScoreProCpp
 {
 
-/**
- * Class to store the output results from AScore algorithm
- */
-class ASCORE_API AScoreOutput
-{
-public:
-   AScoreOutput() : modCount_(0), bestPeakDepth_(0), bestPeptideScore_(0.0) {}
-
    /**
-    * The input options to AScore
+    * Class to store the output results from AScore algorithm
     */
-   AScoreOptions options;
+   class ASCORE_API AScoreOutput
+   {
+   public:
+      AScoreOutput() : modCount_(0), bestPeakDepth_(0), bestPeptideScore_(0.0) {}
 
-   /**
-    * The number of mods on the original peptide.
-    */
-   int modCount_;
+      /**
+       * The input options to AScore
+       */
+      AScoreOptions options;
 
-   /**
-    * The peak depth that was used for site scoring
-    */
-   int bestPeakDepth_;
+      /**
+       * The number of mods on the original peptide.
+       */
+      int modCount_;
 
-   /**
-    * From the peptide that produces the best score.
-    * Used with bestPeakDepth_
-    */
-   double bestPeptideScore_;
+      /**
+       * The peak depth that was used for site scoring
+       */
+      int bestPeakDepth_;
 
-   /**
-    * The spectrum that the peptide was scored against.
-    */
-   Scan scan;
+      /**
+       * From the peptide that produces the best score.
+       * Used with bestPeakDepth_
+       */
+      double bestPeptideScore_;
 
-   /**
-    * Scored peptides with different arrangement of modifications.
-    */
-   std::vector<Peptide> peptides;
+      /**
+       * The spectrum that the peptide was scored against.
+       */
+      Scan scan;
 
-   /**
-    * Site scores for the top peptide.
-    */
-   std::vector<SiteScore> sites;
-};
+      /**
+       * Scored peptides with different arrangement of modifications.
+       */
+      std::vector<Peptide> peptides;
+
+      /**
+       * Site scores for the top peptide.
+       */
+      std::vector<SiteScore> sites;
+   };
 
 } // namespace AScoreProCpp
 

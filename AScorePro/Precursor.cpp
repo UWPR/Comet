@@ -3,125 +3,125 @@
 namespace AScoreProCpp
 {
 
-Precursor::Precursor() :
-   mz_(0.0),
-   intensity_(0.0),
-   charge_(0),
-   originalMz_(0.0),
-   originalCharge_(0),
-   isolationMz_(0.0),
-   isolationWidth_(0.0),
-   isolationSpecificity_(0.0)
-{
-}
+   Precursor::Precursor() :
+      mz_(0.0),
+      intensity_(0.0),
+      charge_(0),
+      originalMz_(0.0),
+      originalCharge_(0),
+      isolationMz_(0.0),
+      isolationWidth_(0.0),
+      isolationSpecificity_(0.0)
+   {
+   }
 
-Precursor::Precursor(double mz, double intensity, int charge) :
-   mz_(mz),
-   intensity_(intensity),
-   charge_(charge),
-   originalMz_(mz),
-   originalCharge_(charge),
-   isolationMz_(0.0),
-   isolationWidth_(0.0),
-   isolationSpecificity_(0.0)
-{
-}
+   Precursor::Precursor(double mz, double intensity, int charge) :
+      mz_(mz),
+      intensity_(intensity),
+      charge_(charge),
+      originalMz_(mz),
+      originalCharge_(charge),
+      isolationMz_(0.0),
+      isolationWidth_(0.0),
+      isolationSpecificity_(0.0)
+   {
+   }
 
-Precursor::Precursor(const Precursor& precursor) :
-   mz_(precursor.mz_),
-   intensity_(precursor.intensity_),
-   charge_(precursor.charge_),
-   originalMz_(precursor.originalMz_),
-   originalCharge_(precursor.originalCharge_),
-   isolationMz_(precursor.isolationMz_),
-   isolationWidth_(precursor.isolationWidth_),
-   isolationSpecificity_(precursor.isolationSpecificity_)
-{
-}
+   Precursor::Precursor(const Precursor& precursor) :
+      mz_(precursor.mz_),
+      intensity_(precursor.intensity_),
+      charge_(precursor.charge_),
+      originalMz_(precursor.originalMz_),
+      originalCharge_(precursor.originalCharge_),
+      isolationMz_(precursor.isolationMz_),
+      isolationWidth_(precursor.isolationWidth_),
+      isolationSpecificity_(precursor.isolationSpecificity_)
+   {
+   }
 
-double Precursor::getMz() const
-{
-   return mz_;
-}
+   double Precursor::getMz() const
+   {
+      return mz_;
+   }
 
-void Precursor::setMz(double mz)
-{
-   mz_ = mz;
-}
+   void Precursor::setMz(double mz)
+   {
+      mz_ = mz;
+   }
 
-double Precursor::getIntensity() const
-{
-   return intensity_;
-}
+   double Precursor::getIntensity() const
+   {
+      return intensity_;
+   }
 
-void Precursor::setIntensity(double intensity)
-{
-   intensity_ = intensity;
-}
+   void Precursor::setIntensity(double intensity)
+   {
+      intensity_ = intensity;
+   }
 
-int Precursor::getCharge() const
-{
-   return charge_;
-}
+   int Precursor::getCharge() const
+   {
+      return charge_;
+   }
 
-void Precursor::setCharge(int charge)
-{
-   charge_ = charge;
-}
+   void Precursor::setCharge(int charge)
+   {
+      charge_ = charge;
+   }
 
-double Precursor::getMh() const
-{
-   return (mz_ * charge_) - (Mass::Proton * (charge_ - 1));
-}
+   double Precursor::getMh() const
+   {
+      return (mz_ * charge_) - (Mass::Proton * (charge_ - 1));
+   }
 
-double Precursor::getOriginalMz() const
-{
-   return originalMz_;
-}
+   double Precursor::getOriginalMz() const
+   {
+      return originalMz_;
+   }
 
-void Precursor::setOriginalMz(double originalMz)
-{
-   originalMz_ = originalMz;
-}
+   void Precursor::setOriginalMz(double originalMz)
+   {
+      originalMz_ = originalMz;
+   }
 
-int Precursor::getOriginalCharge() const
-{
-   return originalCharge_;
-}
+   int Precursor::getOriginalCharge() const
+   {
+      return originalCharge_;
+   }
 
-void Precursor::setOriginalCharge(int originalCharge)
-{
-   originalCharge_ = originalCharge;
-}
+   void Precursor::setOriginalCharge(int originalCharge)
+   {
+      originalCharge_ = originalCharge;
+   }
 
-double Precursor::getIsolationMz() const
-{
-   return isolationMz_;
-}
+   double Precursor::getIsolationMz() const
+   {
+      return isolationMz_;
+   }
 
-void Precursor::setIsolationMz(double isolationMz)
-{
-   isolationMz_ = isolationMz;
-}
+   void Precursor::setIsolationMz(double isolationMz)
+   {
+      isolationMz_ = isolationMz;
+   }
 
-double Precursor::getIsolationWidth() const
-{
-   return isolationWidth_;
-}
+   double Precursor::getIsolationWidth() const
+   {
+      return isolationWidth_;
+   }
 
-void Precursor::setIsolationWidth(double isolationWidth)
-{
-   isolationWidth_ = isolationWidth;
-}
+   void Precursor::setIsolationWidth(double isolationWidth)
+   {
+      isolationWidth_ = isolationWidth;
+   }
 
-double Precursor::getIsolationSpecificity() const
-{
-   return isolationSpecificity_;
-}
+   double Precursor::getIsolationSpecificity() const
+   {
+      return isolationSpecificity_;
+   }
 
-void Precursor::setIsolationSpecificity(double isolationSpecificity)
-{
-   isolationSpecificity_ = isolationSpecificity;
-}
+   void Precursor::setIsolationSpecificity(double isolationSpecificity)
+   {
+      isolationSpecificity_ = isolationSpecificity;
+   }
 
 } // namespace AScoreProCpp
