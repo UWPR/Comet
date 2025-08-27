@@ -31,8 +31,8 @@ namespace AScoreProCpp
 
       // Setup target modification
       PeptideMod targetMod;
-      targetMod.setSymbol('2');  // options_.getSymbol());
-      targetMod.setResidues("STY");  // options_.getResidues());
+      targetMod.setSymbol(options_.getSymbol());
+      targetMod.setResidues(options_.getResidues());
 
       // Find the mass for the target modification from the diff mods list
       for (const auto& mod : options_.getDiffMods())

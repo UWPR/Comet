@@ -4000,93 +4000,9 @@ void CometSearchManager::SetAScoreOptions(void)
 {
    using namespace AScoreProCpp;
 
-   //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
-   //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
-
    std::vector<std::string> ionSeriesList;
    unsigned int uiIonSeriesMask = 0;
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_A])
-   {
-      uiIonSeriesMask += 8;
-      ionSeriesList.push_back("a");
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
-      {
-         uiIonSeriesMask += 1; // add ammonia loss to A series
-         ionSeriesList.push_back("nA");
-      }
-   }
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_B])
-   {
-      uiIonSeriesMask += 16;
-      ionSeriesList.push_back("b");
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
-      {
-         uiIonSeriesMask += 2; // add ammonia loss to B series
-         ionSeriesList.push_back("nB");
-      }
-   }
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_C])
-      uiIonSeriesMask += 32;
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_X])
-      uiIonSeriesMask += 512;
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Y])
-   {
-      uiIonSeriesMask += 1024;
-      ionSeriesList.push_back("y");
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss)
-      {
-         uiIonSeriesMask += 4; // add ammonia loss to Y series
-         ionSeriesList.push_back("nY");
-      }
-   }
-   // FIX: need to check if AScorePro uses Z or Z' series
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
-      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
-   {
-      uiIonSeriesMask += 2048;
-      ionSeriesList.push_back("z");
-   }
-
-   g_AScoreOptions.setIonSeries(uiIonSeriesMask);
-   g_AScoreOptions.setIonSeriesList(ionSeriesList);
-
-   // Peak depth settings
-   g_AScoreOptions.setPeakDepth(0);
-   g_AScoreOptions.setMaxPeakDepth(50);
-
-   // Fragment matching tolerance
-   if (g_staticParams.tolerances.dFragmentBinSize <= 0.05)
-      g_AScoreOptions.setTolerance(0.05);
-   else
-      g_AScoreOptions.setTolerance(0.3);
-
-   g_AScoreOptions.setUnits(Mass::Units::DALTON);
-   g_AScoreOptions.setUnitText("Da");
-
-   // Window size for filtering peaks
-   g_AScoreOptions.setWindow(70);
-
-   // Enable low mass cutoff
-   g_AScoreOptions.setLowMassCutoff(true);
-
-   // Filter low intensity peaks
-   g_AScoreOptions.setFilterLowIntensity(0);
-
-   // C-terminal settings
-   g_AScoreOptions.setNoCterm(true);
-
-   // Scoring options
-   g_AScoreOptions.setUseMobScore(true);
-   g_AScoreOptions.setUseDeltaAscore(true);
-
-   // Max peptides and other limits
-   g_AScoreOptions.setMaxPeptides(1000);
-   // g_AScoreOptions.setMaxDiff(5); // From max_diff in JSON
-
-   // Initialize other fields to default values from JSON
-   g_AScoreOptions.setMz(0);
-   g_AScoreOptions.setPeptide("");
-   g_AScoreOptions.setScan(0);
+   bool bSetNeutralLossMask = false;
 
    // AScorePro set up differential modifications
    std::vector<AScoreProCpp::PeptideMod> diffMods;
@@ -4120,10 +4036,102 @@ void CometSearchManager::SetAScoreOptions(void)
             neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
             neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
             g_AScoreOptions.setNeutralLoss(neutralLoss);
+
+            if (!isEqual(g_staticParams.variableModParameters.varModList[i].dNeutralLoss, 0.0))
+               bSetNeutralLossMask = true;
+
          }
       }
    }
    g_AScoreOptions.setDiffMods(diffMods);
+
+   //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
+   //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
+
+
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_A])
+   {
+      uiIonSeriesMask += 8;
+      ionSeriesList.push_back("a");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 1; // add ammonia loss to A series
+         ionSeriesList.push_back("nA");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_B])
+   {
+      uiIonSeriesMask += 16;
+      ionSeriesList.push_back("b");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 2; // add ammonia loss to B series
+         ionSeriesList.push_back("nB");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_C])
+      uiIonSeriesMask += 32;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_X])
+      uiIonSeriesMask += 512;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Y])
+   {
+      uiIonSeriesMask += 1024;
+      ionSeriesList.push_back("y");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 4; // add ammonia loss to Y series
+         ionSeriesList.push_back("nY");
+      }
+   }
+   // FIX: need to check if AScorePro uses Z or Z' series
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
+      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
+   {
+      uiIonSeriesMask += 2048;
+      ionSeriesList.push_back("z");
+   }
+
+   g_AScoreOptions.setIonSeries(uiIonSeriesMask);
+   g_AScoreOptions.setIonSeriesList(ionSeriesList);
+
+   // Peak depth settings
+   g_AScoreOptions.setPeakDepth(0);
+   g_AScoreOptions.setMaxPeakDepth(50);
+
+   // Fragment matching tolerance
+
+   if (g_staticParams.tolerances.dFragmentBinSize <= 0.05)
+      g_AScoreOptions.setTolerance(0.05);
+   else
+      g_AScoreOptions.setTolerance(0.3);
+
+   g_AScoreOptions.setUnits(Mass::Units::DALTON);
+   g_AScoreOptions.setUnitText("Da");
+
+   // Window size for filtering peaks
+   g_AScoreOptions.setWindow(70);
+
+   // Enable low mass cutoff
+   g_AScoreOptions.setLowMassCutoff(true);
+
+   // Filter low intensity peaks
+   g_AScoreOptions.setFilterLowIntensity(0);
+
+   // C-terminal settings
+   g_AScoreOptions.setNoCterm(true);
+
+   // Scoring options
+   g_AScoreOptions.setUseMobScore(true);
+   g_AScoreOptions.setUseDeltaAscore(true);
+
+   // Max peptides and other limits
+   g_AScoreOptions.setMaxPeptides(1000);
+   // g_AScoreOptions.setMaxDiff(5); // From max_diff in JSON
+
+   // Initialize other fields to default values from JSON
+   g_AScoreOptions.setMz(0);
+   g_AScoreOptions.setPeptide("");
+   g_AScoreOptions.setScan(0);
 
    // Deisotoping type (empty string means no deisotoping)
    //g_AScoreOptions.setDeisotopingType("");
@@ -4170,4 +4178,34 @@ void CometSearchManager::SetAScoreOptions(void)
          masses.modifyCTermMass(mod.getMass());
       }
    }
+
+   // Print all AScoreOptions values
+/*
+   std::cout << "AScoreOptions values:" << std::endl;
+   std::cout << "ionSeriesList: ";
+   for (const auto& s : g_AScoreOptions.getIonSeriesList()) std::cout << s << " ";
+   std::cout << std::endl;
+   std::cout << "ionSeries: " << g_AScoreOptions.getIonSeries() << std::endl;
+   std::cout << "diffMods: ";
+   for (const auto& mod : g_AScoreOptions.getDiffMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   std::cout << std::endl;
+   std::cout << "staticMods: ";
+   for (const auto& mod : g_AScoreOptions.getStaticMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   std::cout << std::endl;
+   std::cout << "neutralLoss: " << g_AScoreOptions.getNeutralLoss().getMass() << " " << g_AScoreOptions.getNeutralLoss().getResidues() << std::endl;
+   std::cout << "peakDepth: " << g_AScoreOptions.getPeakDepth() << std::endl;
+   std::cout << "maxPeakDepth: " << g_AScoreOptions.getMaxPeakDepth() << std::endl;
+   std::cout << "tolerance: " << g_AScoreOptions.getTolerance() << std::endl;
+   std::cout << "unitText: " << g_AScoreOptions.getUnitText() << std::endl;
+   std::cout << "units: " << static_cast<int>(g_AScoreOptions.getUnits()) << std::endl;
+   std::cout << "window: " << g_AScoreOptions.getWindow() << std::endl;
+   std::cout << "lowMassCutoff: " << g_AScoreOptions.getLowMassCutoff() << std::endl;
+   std::cout << "filterLowIntensity: " << g_AScoreOptions.getFilterLowIntensity() << std::endl;
+   std::cout << "noCterm: " << g_AScoreOptions.getNoCterm() << std::endl;
+   std::cout << "useMobScore: " << g_AScoreOptions.getUseMobScore() << std::endl;
+   std::cout << "useDeltaAscore: " << g_AScoreOptions.getUseDeltaAscore() << std::endl;
+   std::cout << "symbol: " << g_AScoreOptions.getSymbol() << std::endl;
+   std::cout << "residues: " << g_AScoreOptions.getResidues() << std::endl;
+   std::cout << "maxPeptides: " << g_AScoreOptions.getMaxPeptides() << std::endl;
+*/
 }

@@ -15,6 +15,7 @@ namespace AScoreProCpp
       // Destructor implementation
    }
 
+
    AScoreOptions AScoreDllInterface::CreateDefaultOptions() const
    {
       AScoreOptions options;
@@ -138,6 +139,7 @@ namespace AScoreProCpp
       return options;
    }
 
+
    Scan AScoreDllInterface::CreateScanFromCentroids(const std::vector<Centroid>& centroids, double precursorMz, int precursorCharge) const
    {
       // Set m/z range
@@ -215,7 +217,7 @@ namespace AScoreProCpp
       return peptide;
    }
 
-/*
+
    AScoreOutput AScoreDllInterface::CalculateScore(
       const std::string& peptideSequence,
       const std::vector<Centroid>& peaks,
@@ -228,7 +230,6 @@ namespace AScoreProCpp
 
       return CalculateScoreWithOptions(peptideSequence, peaks, precursorMz, precursorCharge, options);
    }
-*/
 
 
    AScoreOutput AScoreDllInterface::CalculateScoreWithOptions(
@@ -277,7 +278,6 @@ namespace AScoreProCpp
       Peptide& peptide,
       const AScoreOptions& options) const
    {
-
       // Create AScoreCalculator with the provided options
       AScoreCalculator calculator(options);
 
