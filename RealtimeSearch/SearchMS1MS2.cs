@@ -134,7 +134,7 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 1000;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
@@ -186,8 +186,8 @@
                            {
                               for (int x = 0; x < 1; ++x)
                               {
-                                 Console.WriteLine("MS1 output query scan {0}\tlibscan {5}\tquery RT {1:F2}\tlib RT {4:F2}\tdotp {2:F3}\tdCn {3:F3}",
-                                    iScanNumber, dRT, vScores[x].fXcorr, vScores[x].fCn, vScores[x].fRTime, vScores[x].iScanNumber);
+                                 Console.WriteLine("MS1 output query scan {0}\tlibscan {4}\tquery RT {1:F2}\tlib RT {3:F2}\tdotp {2:F3}",
+                                    iScanNumber, dRT, vScores[x].fDotProduct, vScores[x].fRTime, vScores[x].iScanNumber);
 
 //                                 Console.WriteLine("MS1    {0} >>> {1}, RT {2:F3}",
 //                                 iScanNumber, vScores[x].iScanNumber, dRT);
@@ -457,6 +457,10 @@
             iTmp = 1;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
+
+            iTmp = 1;  // 0=unused, otherwise which variable_modXX to localize e.g. 1 for variable_mod01
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 
 /* unused for the search as these are applied during the plain peptide .idx index creation
             VarModsWrapper varMods = new VarModsWrapper();

@@ -257,7 +257,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
       dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
    }
 
-   if (pOutput[iWhichResult].bHasVariableMod)
+   if (pOutput[iWhichResult].cHasVariableMod)
    {
       // generate modified_peptide string
       fprintf(fpout, "%c.", pOutput[iWhichResult].cPrevAA);

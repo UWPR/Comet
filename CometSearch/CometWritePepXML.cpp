@@ -616,7 +616,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    // check if peptide is modified
    bool bModified = false;
 
-   if (pOutput[iWhichResult].bHasVariableMod)
+   if (pOutput[iWhichResult].cHasVariableMod)
       bModified = true;
 
    if (!bModified)

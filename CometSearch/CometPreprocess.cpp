@@ -184,9 +184,9 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
             // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
-            if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.bOverrideCharge > 0)
+            if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
             {
-               if (g_staticParams.options.bOverrideCharge == 1)
+               if (g_staticParams.options.iOverrideCharge == 1)
                {
                   // ignore spectrum charge and use precursor_charge range
                   for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
@@ -194,7 +194,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                      vChargeStates.push_back(make_pair(z, dMZ));
                   }
                }
-               else if (g_staticParams.options.bOverrideCharge == 2)
+               else if (g_staticParams.options.iOverrideCharge == 2)
                {
                   // only use spectrum charge if it's within the charge range
                   for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
@@ -203,7 +203,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                         vChargeStates.push_back(make_pair(z, dMZ));
                   }
                }
-               else if (g_staticParams.options.bOverrideCharge == 3)
+               else if (g_staticParams.options.iOverrideCharge == 3)
                {
                   if (iSpectrumCharge > 0)
                   {
@@ -1299,9 +1299,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       // 1.  Have spectrum charge from file.  It may be 0.
       // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
       // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
-      if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.bOverrideCharge > 0)
+      if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
-         if (g_staticParams.options.bOverrideCharge == 1)
+         if (g_staticParams.options.iOverrideCharge == 1)
          {
             // ignore spectrum charge and use precursor_charge range
             for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
@@ -1309,7 +1309,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                vChargeStates.push_back(make_pair(z, dMZ));
             }
          }
-         else if (g_staticParams.options.bOverrideCharge == 2)
+         else if (g_staticParams.options.iOverrideCharge == 2)
          {
             // only use spectrum charge if it's within the charge range
             for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
@@ -1318,7 +1318,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                   vChargeStates.push_back(make_pair(z, dMZ));
             }
          }
-         else if (g_staticParams.options.bOverrideCharge == 3)
+         else if (g_staticParams.options.iOverrideCharge == 3)
          {
             if (iSpectrumCharge > 0)
             {
@@ -1696,13 +1696,18 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iIndexDb && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iIndexDb == 1 && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here
             pScoring->vdRawFragmentPeakMass.push_back(dIon);
 
             iNumFragmentPeaks++;
+         }
+         if (g_staticParams.options.iPrintAScoreProScore)
+         {
+            // Store list of fragment masses and intensities for AScore and ProScore
+            pScoring->vRawFragmentPeakMassIntensity.push_back({ dIon, dIntensity });
          }
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))

@@ -292,7 +292,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    string strProteinSeq;
 
    bool bPrintSequences = false;
-   if (g_staticParams.options.bOutputMzIdentMLFile == 2) // print sequences in DBSequence
+   if (g_staticParams.options.iOutputMzIdentMLFile == 2) // print sequences in DBSequence
    {
       if (g_staticParams.iIndexDb)
          bPrintSequences = false;
@@ -1430,7 +1430,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
 
          // modifications:  zero-position:mass; semi-colon delimited; length=nterm, length+1=c-term
-         if (pOutput[iWhichResult].bHasVariableMod)
+         if (pOutput[iWhichResult].cHasVariableMod)
          {
             if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
             {

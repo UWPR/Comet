@@ -488,7 +488,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputSqtFile
          && !g_staticParams.options.bOutputTxtFile
          && !g_staticParams.options.bOutputPepXMLFile
-         && !g_staticParams.options.bOutputMzIdentMLFile
+         && !g_staticParams.options.iOutputMzIdentMLFile
          && !g_staticParams.options.bOutputPercolatorFile
          && !g_staticParams.options.bOutputOutFiles)
    {
@@ -766,15 +766,39 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
 
-   GetParamValue("show_fragment_ions", g_staticParams.options.bShowFragmentIons);
+   if (GetParamValue("show_fragment_ions", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bShowFragmentIons = false;
+      else
+         g_staticParams.options.bShowFragmentIons = true;
+   }
 
-   GetParamValue("explicit_deltacn", g_staticParams.options.bExplicitDeltaCn);
+   if (GetParamValue("explicit_deltacn", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bExplicitDeltaCn = false;
+      else
+         g_staticParams.options.bExplicitDeltaCn = true;
+   }
 
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
-   GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
+   if (GetParamValue("clip_nterm_methionine", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bClipNtermMet = false;
+      else
+         g_staticParams.options.bClipNtermMet = true;
+   }
 
-   GetParamValue("clip_nterm_aa", g_staticParams.options.bClipNtermAA);
+   if (GetParamValue("clip_nterm_aa", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bClipNtermAA = false;
+      else
+         g_staticParams.options.bClipNtermAA = true;
+   }
 
    GetParamValue("minimum_xcorr", g_staticParams.options.dMinimumXcorr);
 
@@ -799,7 +823,13 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_Z1_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1]);
 
-   GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
+   if (GetParamValue("use_NL_ions", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.ionInformation.bUseWaterAmmoniaLoss = false;
+      else
+         g_staticParams.ionInformation.bUseWaterAmmoniaLoss = true;
+   }
 
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
    GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
@@ -898,43 +928,133 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
+   if (GetParamValue("print_expect_score", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bPrintExpectScore = false;
+      else
+         g_staticParams.options.bPrintExpectScore = true;
+   }
 
-   GetParamValue("print_ascorepro_score", g_staticParams.options.bPrintAScoreProScore);
+   GetParamValue("print_ascorepro_score", g_staticParams.options.iPrintAScoreProScore);
 
-   GetParamValue("export_additional_pepxml_scores", g_staticParams.options.bExportAdditionalScoresPepXML);
+   if (GetParamValue("export_additional_pepxml_scores", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bExportAdditionalScoresPepXML = false;
+      else
+         g_staticParams.options.bExportAdditionalScoresPepXML = true;
+   }
 
-   GetParamValue("resolve_fullpaths", g_staticParams.options.bResolveFullPaths);
+   if (GetParamValue("resolve_fullpaths", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bResolveFullPaths = false;
+      else
+         g_staticParams.options.bResolveFullPaths = true;
+   }
 
-   GetParamValue("output_sqtstream", g_staticParams.options.bOutputSqtStream);
+   if (GetParamValue("output_sqtstream", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputSqtStream = false;
+      else
+         g_staticParams.options.bOutputSqtStream = true;
+   }
 
-   GetParamValue("output_sqtfile", g_staticParams.options.bOutputSqtFile);
+   if (GetParamValue("output_sqtfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputSqtFile = false;
+      else
+         g_staticParams.options.bOutputSqtFile = true;
+   }
 
-   GetParamValue("output_txtfile", g_staticParams.options.bOutputTxtFile);
+   if (GetParamValue("output_txtfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputTxtFile = false;
+      else
+         g_staticParams.options.bOutputTxtFile = true;
+   }
 
-   GetParamValue("output_pepxmlfile", g_staticParams.options.bOutputPepXMLFile);
+   if (GetParamValue("output_pepxmlfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputPepXMLFile = false;
+      else
+         g_staticParams.options.bOutputPepXMLFile = true;
+   }
 
-   GetParamValue("output_mzidentmlfile", g_staticParams.options.bOutputMzIdentMLFile);
+   GetParamValue("output_mzidentmlfile", g_staticParams.options.iOutputMzIdentMLFile);
 
-   GetParamValue("output_percolatorfile", g_staticParams.options.bOutputPercolatorFile);
+   if (GetParamValue("output_percolatorfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputPercolatorFile = false;
+      else
+         g_staticParams.options.bOutputPercolatorFile = true;
+   }
 
-   GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
+   if (GetParamValue("output_outfiles", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputOutFiles = false;
+      else
+         g_staticParams.options.bOutputOutFiles = true;
+   }
 
-   GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+   if (GetParamValue("skip_researching", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bSkipAlreadyDone = false;
+      else
+         g_staticParams.options.bSkipAlreadyDone = true;
+   }
 
-   GetParamValue("mango_search", g_staticParams.options.bMango);
+   if (GetParamValue("mango_search", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bMango = false;
+      else
+         g_staticParams.options.bMango = true;
+   }
 
-   GetParamValue("scale_fragmentNL", g_staticParams.options.bScaleFragmentNL);
+   if (GetParamValue("scale_fragmentNL", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bScaleFragmentNL = false;
+      else
+         g_staticParams.options.bScaleFragmentNL = true;
+   }
 
-   GetParamValue("create_fragment_index", g_staticParams.options.bCreateFragmentIndex);
+   if (GetParamValue("create_fragment_index", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bCreateFragmentIndex = false;
+      else
+         g_staticParams.options.bCreateFragmentIndex = true;
+   }
 
-   GetParamValue("create_peptide_index", g_staticParams.options.bCreatePeptideIndex);
+   if (GetParamValue("create_peptide_index", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bCreatePeptideIndex = false;
+      else
+         g_staticParams.options.bCreatePeptideIndex = true;
+   }
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
    GetParamValue("max_index_runtime", g_staticParams.options.iMaxIndexRunTime);
 
-   GetParamValue("peff_verbose_output", g_staticParams.options.bVerboseOutput);
+   if (GetParamValue("peff_verbose_output", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bVerboseOutput = false;
+      else
+         g_staticParams.options.bVerboseOutput = true;
+   }
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 
@@ -1237,11 +1357,7 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.iMinPeaks = iIntData;
    }
 
-   if (GetParamValue("override_charge", iIntData))
-   {
-      if (iIntData > 0)
-         g_staticParams.options.bOverrideCharge = iIntData;
-   }
+   GetParamValue("override_charge", g_staticParams.options.iOverrideCharge);
 
    if (GetParamValue("correct_mass", iIntData))
    {
@@ -1296,8 +1412,6 @@ bool CometSearchManager::InitializeStaticParams()
 
       if (iIntData > 0)
          g_staticParams.options.iMaxPrecursorCharge = iIntData;
-
-      // else will go to default value (6)
    }
 
    if (GetParamValue("digest_mass_range", doubleRangeData))
@@ -1309,12 +1423,10 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   if (GetParamValue("ms_level", iIntData))
+   if (GetParamValue("ms_level", iIntData))  // default 2, only supports 2 or 3
    {
       if (iIntData == 3)
          g_staticParams.options.iMSLevel = 3;
-
-      // else will go to default value (2)
    }
 
    if (GetParamValue("activation_method", strData))
@@ -1807,7 +1919,7 @@ bool CometSearchManager::InitializeStaticParams()
    double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
    g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion) * g_staticParams.dInverseBinWidth);
 
-   if (g_staticParams.options.bPrintAScoreProScore)
+   if (g_staticParams.options.iPrintAScoreProScore)
       SetAScoreOptions();
 
    return true;
@@ -2536,7 +2648,7 @@ bool CometSearchManager::DoSearch()
          }
       }
 
-      if (bSucceeded && g_staticParams.options.bOutputMzIdentMLFile)
+      if (bSucceeded && g_staticParams.options.iOutputMzIdentMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
@@ -3022,7 +3134,7 @@ bool CometSearchManager::DoSearch()
 
             // For mzid output, dump psms as tab-delimited text first then collate results to
             // mzid file at very end due to requirements of this format.
-            if (g_staticParams.options.bOutputMzIdentMLFile)
+            if (g_staticParams.options.iOutputMzIdentMLFile)
                CometWriteMzIdentML::WriteMzIdentMLTmp(fpout_mzidentmltmp, fpoutd_mzidentmltmp, iBatchNum);
 
             if (g_staticParams.options.bOutputPercolatorFile)
@@ -3874,8 +3986,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    QueryMS1* pQueryMS1;
    pQueryMS1 = g_pvQueryMS1.at(0);
-   pQueryMS1->_pSpecLibResultsMS1.fXcorr = 0.0;
-   pQueryMS1->_pSpecLibResultsMS1.fCn = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fDotProduct = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
 
@@ -3888,8 +3999,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
    if (bSucceeded)
    {
       ScoresMS1 scoreMS1;
-      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1.fXcorr;
-      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1.fCn;
+      scoreMS1.fDotProduct = pQueryMS1->_pSpecLibResultsMS1.fDotProduct;
 //      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
       scoreMS1.fRTime = (float)dLinearRegressionRT;
       scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
@@ -4022,10 +4132,7 @@ void CometSearchManager::SetAScoreOptions(void)
 
          diffMods.push_back(pepMod);
 
-         if (fabs(g_staticParams.variableModParameters.varModList[i].dVarModMass - 79.966) < 0.1
-            && (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'S') != NULL
-               || strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'T') != NULL
-               || strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'Y') != NULL))
+         if (g_staticParams.options.iPrintAScoreProScore - 1 == i)
          {
             // Target modification settings
             g_AScoreOptions.setSymbol(i + '0');

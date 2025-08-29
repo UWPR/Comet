@@ -2514,15 +2514,14 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
             dScore += g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
          }
 
-         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
          {
             Threading::LockMutex(g_pvQueryMutex);
-            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
             {
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct = (float)dScore;
                // scale back to reference RT
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = (float)(g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT);
                g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
             }
             Threading::UnlockMutex(g_pvQueryMutex);
@@ -4631,7 +4630,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
-      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bHasVariableMod = false;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 0;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
@@ -4653,14 +4652,18 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                {
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i]
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
-                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bHasVariableMod = true;
+
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 2;
+                  else
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
-                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bHasVariableMod = true;
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
                }
                else
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4832,7 +4835,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
-      pQuery->_pResults[siLowestXcorrScoreIndex].bHasVariableMod = false;
+      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 0;
 
       if (bDecoyPep)
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
@@ -4859,14 +4862,17 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
-                  pQuery->_pResults[siLowestXcorrScoreIndex].bHasVariableMod = true;
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+                  else
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pResults[siLowestXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
-                  pQuery->_pResults[siLowestXcorrScoreIndex].bHasVariableMod = true;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
                }
                else
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4968,8 +4974,11 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
 
             if (iVal > 0)
             {
-               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i]
-                  = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
+               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
+               if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+               else
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
             }
             else
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;

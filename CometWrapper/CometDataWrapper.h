@@ -340,14 +340,9 @@ namespace CometWrapper {
           delete pScoresMS1;
        }
 
-       property float fXcorr
+       property float fDotProduct
        {
-          float get() { return pScoresMS1->fXcorr; }
-       }
-
-       property float fCn
-       {
-          float get() { return pScoresMS1->fCn; }
+          float get() { return pScoresMS1->fDotProduct; }
        }
 
        property float fRTime

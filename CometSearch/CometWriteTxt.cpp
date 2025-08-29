@@ -318,7 +318,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
 
          // generate modified_peptide string
-         if (pOutput[iWhichResult].bHasVariableMod)
+         if (pOutput[iWhichResult].cHasVariableMod)
          {
             fprintf(fpout, "%c.", pOutput[iWhichResult].cPrevAA);
             if (bNterm)

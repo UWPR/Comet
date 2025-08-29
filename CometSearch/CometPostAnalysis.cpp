@@ -107,26 +107,26 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    // this has to happen after AnalyzeSP as results are sorted in that fn
    CalculateDeltaCn(iQueryIndex);
 
-   if (g_staticParams.options.bPrintAScoreProScore)
+   // Calculate A-Score if specified and peptide has phospho mod
+   if (g_staticParams.options.iPrintAScoreProScore)
    {
       using namespace AScoreProCpp;
 
-      // Create the AScoreDllInterface using the factory function
-      AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
-      if (!ascoreInterface) {
-         std::cerr << "Failed to create AScore interface." << std::endl;
-         exit(1);
+      if (g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)
+      {
+         // Create the AScoreDllInterface using the factory function
+         AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
+         if (!ascoreInterface)
+         {
+            std::cerr << "Failed to create AScore interface." << std::endl;
+            exit(1);
+         }
+
+         CalculateAScorePro(iQueryIndex, ascoreInterface);
+
+         // Clean up
+         DeleteAScoreDllInterface(ascoreInterface);
       }
-
-      // Set up AScore options; move this to somewhere earlier at head of search
-//      g_AScoreOptions = ascoreInterface->GetDefaultOptions();
-//      g_AScoreOptions.setSymbol('#'); // Phosphorylation symbol
-//      g_AScoreOptions.setResidues("STY"); // Phosphorylation residues
-
-      CalculateAScorePro(iQueryIndex, ascoreInterface);
-
-      // Clean up
-      DeleteAScoreDllInterface(ascoreInterface);
    }
 
    delete pThreadData;
@@ -711,24 +711,36 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    }
    sequence += std::string(".") + g_pvQuery.at(iWhichQuery)->_pResults[0].cNextAA;
 
-   std::vector<AScoreProCpp::Centroid> peaks = something;
-
    using namespace AScoreProCpp;
 
-   double dMinMz = first peak - 1.0;
-   double dMaxMz = last peak + 1.0;
+   double dMinMz = 9999.9;
+   double dMaxMz = 0.0;
+
+   std::vector<Centroid> peaks;
+   for (const auto& p : g_pvQuery.at(iWhichQuery)->vRawFragmentPeakMassIntensity)
+   {
+      peaks.emplace_back(p.first, p.second);
+      if (p.first < dMinMz)
+         dMinMz = p.first;
+      if (p.first > dMaxMz)
+         dMaxMz = p.first;
+   }
+
+   dMinMz -= 1.0;
+   dMaxMz += 1.0;
 
    // Calculate AScore using the DLL interface
    AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
       peaks, dMinMz, dMaxMz, precursorMz, precursorCharge, g_AScoreOptions);
 
    // Print results
+
    std::cout << endl << "Original sequence: " << sequence << "\n";
    std::cout << "Peptides scored: " << result.peptides.size() << "\n";
    std::cout << "Sites scored: " << result.sites.size() << "\n";
    std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
    std::cout << "Score: " << result.peptides[0].getScore() << "\n";
-
+/*
    // Output site positions and scores (up to 6 sites)
    std::cout << "Site scores: ";
    for (size_t i = 0; i < 6; ++i)
@@ -739,6 +751,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
          break;
    }
    std::cout << "\n";
+*/
 }
 
 
@@ -813,7 +826,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
 bool CometPostAnalysis::SortSpecLibFnXcorrMS1(const SpecLibResultsMS1& a,
                                               const SpecLibResultsMS1& b)
 {
-   if (a.fXcorr > b.fXcorr)
+   if (a.fDotProduct > b.fDotProduct)
       return true;
    else
       return false;
