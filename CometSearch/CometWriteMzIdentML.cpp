@@ -1411,17 +1411,17 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
          fprintf(fpout, "%d\t", iBatchNum);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankXcorr);
-         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iChargeState);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiRankXcorr);
+         fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.usiChargeState);
          fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
          fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankSp);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiRankSp);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);
 
          // plain peptide
          fprintf(fpout, "%s\t", pOutput[iWhichResult].szPeptide);
@@ -1432,19 +1432,19 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          // modifications:  zero-position:mass; semi-colon delimited; length=nterm, length+1=c-term
          if (pOutput[iWhichResult].cHasVariableMod)
          {
-            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
             {
-               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide,
-                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] - 1].dVarModMass);
+               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].usiLenPeptide,
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] - 1].dVarModMass);
             }
 
-            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide + 1] > 0)
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] > 0)
             {
-               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].iLenPeptide + 1,
-                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide + 1] - 1].dVarModMass);
+               fprintf(fpout, "%d:%0.6f;", pOutput[iWhichResult].usiLenPeptide + 1,
+                  g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] - 1].dVarModMass);
             }
 
-            for (int i = 0; i < pOutput[iWhichResult].iLenPeptide; ++i)
+            for (int i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
             {
                if (pOutput[iWhichResult].piVarModSites[i] != 0)
                   fprintf(fpout, "%d:%0.6f;", i, pOutput[iWhichResult].pdVarModSites[i]);

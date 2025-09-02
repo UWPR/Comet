@@ -5,11 +5,11 @@
 
 #include <vector>
 #include <memory>
-#include "API.h"
+#include "AScoreAPI.h"
 #include "AScoreOptions.h"
-#include "Peptide.h"
-#include "Scan.h"
-#include "SiteScore.h"
+#include "AScorePeptide.h"
+#include "AScoreScan.h"
+#include "AScoreSiteScore.h"
 
 
 namespace AScoreProCpp

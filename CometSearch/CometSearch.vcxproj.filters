@@ -78,9 +78,6 @@
     <ClInclude Include="CombinatoricsUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ModificationsPermuter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CometFragmentIndex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -94,6 +91,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="githubsha.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CometModificationsPermuter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -137,9 +137,6 @@
     <ClCompile Include="CometWriteMzIdentML.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModificationsPermuter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="CombinatoricsUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -153,6 +150,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="CometAlignment.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CometModificationsPermuter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

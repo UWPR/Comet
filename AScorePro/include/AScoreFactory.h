@@ -1,6 +1,6 @@
 #pragma once
 
-#include "API.h"
+#include "AScoreAPI.h"
 #include "AScoreDllInterface.h"
 
 #ifdef __cplusplus

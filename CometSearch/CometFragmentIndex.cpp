@@ -18,7 +18,7 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
-#include "ModificationsPermuter.h"
+#include "CometModificationsPermuter.h"
 
 #include <cstdio>
 #include <iostream>

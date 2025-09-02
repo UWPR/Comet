@@ -2,12 +2,12 @@
 
 #include <string>
 #include <vector>
-#include "API.h"
+#include "AScoreAPI.h"
+#include "AScoreCentroid.h"
 #include "AScoreOptions.h"
 #include "AScoreOutput.h"
-#include "Centroid.h"
-#include "Scan.h"
-#include "Peptide.h"
+#include "AScorePeptide.h"
+#include "AScoreScan.h"
 
 namespace AScoreProCpp
 {

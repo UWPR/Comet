@@ -3,11 +3,11 @@
 #ifndef _ASCORECACULATOR_H_
 #define _ASCORECACULATOR_H_
 
+#include <vector>
 #include "AScoreOptions.h"
 #include "AScoreOutput.h"
-#include "Peptide.h"
-#include "Scan.h"
-#include <vector>
+#include "AScorePeptide.h"
+#include "AScoreScan.h"
 
 namespace AScoreProCpp
 {

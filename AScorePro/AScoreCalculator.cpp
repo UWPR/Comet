@@ -3,13 +3,13 @@
 #include <vector>
 #include <memory>
 #include "AScoreCalculator.h"
-#include "SiteIons.h"
-#include "IntensityFilter.h"
-#include "TopIonsFilter.h"
-#include "WaterLossFilter.h"
-#include "NeutralLossFilter.h"
-#include "MOBScore.h"
-#include "PeptideGenerator.h"
+#include "AScoreSiteIons.h"
+#include "AScoreIntensityFilter.h"
+#include "AScoreTopIonsFilter.h"
+#include "AScoreWaterLossFilter.h"
+#include "AScoreNeutralLossFilter.h"
+#include "AScoreMOBScore.h"
+#include "AScorePeptideGenerator.h"
 
 
 namespace AScoreProCpp

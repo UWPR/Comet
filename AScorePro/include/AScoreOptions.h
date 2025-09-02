@@ -7,12 +7,12 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include "API.h"
-#include "AminoAcidMasses.h"
-#include "Deisotoping.h"
-#include "Mass.h"
-#include "NeutralLoss.h"
-#include "PeptideMod.h"
+#include "AScoreAminoAcidMasses.h"
+#include "AScoreAPI.h"
+#include "AScoreDeisotoping.h"
+#include "AScoreMass.h"
+#include "AScoreNeutralLoss.h"
+#include "AScorePeptideMod.h"
 
 namespace AScoreProCpp
 {

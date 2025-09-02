@@ -487,7 +487,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    int iTmpCount = 0;
    Spectrum mstSpectrum;           // For holding spectrum.
 
-   g_massRange.iMaxFragmentCharge = 0;
+   g_massRange.usiMaxFragmentCharge = 0;
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
 
@@ -1408,19 +1408,19 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(),iter);  // for Mango; used to sort by this value to get original file order
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
-            pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
+            pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
             pScoring->_spectrumInfoInternal.fRTime = (float)(60.0 * spec.getRTime());  // convert from minutes to seconds
             pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
 
             if (iPrecursorCharge == 1)
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
+               pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
             else
             {
-               pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+               pScoring->_spectrumInfoInternal.usiMaxFragCharge = iPrecursorCharge - 1;
 
-               if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-                  pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+               if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+                  pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
             }
 
             //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
@@ -1430,9 +1430,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             Threading::LockMutex(_maxChargeMutex);
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
-            if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_massRange.iMaxFragmentCharge)
+            if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_massRange.usiMaxFragmentCharge)
             {
-               g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
+               g_massRange.usiMaxFragmentCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
             }
             Threading::UnlockMutex(_maxChargeMutex);
 
@@ -1513,8 +1513,8 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.iChargeState;
-         pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.iChargeState;
+         pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.usiChargeState;
+         pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.usiChargeState;
       }
    }
    else if (g_staticParams.tolerances.iMassToleranceUnits == 1) // mmu
@@ -1524,13 +1524,13 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
 
       if (g_staticParams.tolerances.iMassToleranceType == 1)  // precursor m/z tolerance
       {
-         pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.iChargeState;
-         pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.iChargeState;
+         pScoring->_pepMassInfo.dPeptideMassToleranceLow  *= pScoring->_spectrumInfoInternal.usiChargeState;
+         pScoring->_pepMassInfo.dPeptideMassToleranceHigh *= pScoring->_spectrumInfoInternal.usiChargeState;
       }
    }
    else // ppm
    {
-      int iCharge = pScoring->_spectrumInfoInternal.iChargeState;
+      int iCharge = pScoring->_spectrumInfoInternal.usiChargeState;
 
       double dMZ = (pScoring->_pepMassInfo.dExpPepMass + (iCharge - 1) * PROTON_MASS) / iCharge;
 
@@ -1707,7 +1707,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
          if (g_staticParams.options.iPrintAScoreProScore)
          {
             // Store list of fragment masses and intensities for AScore and ProScore
-            pScoring->vRawFragmentPeakMassIntensity.push_back({ dIon, dIntensity });
+            pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
          }
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
@@ -1725,8 +1725,8 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                if (g_staticParams.options.iRemovePrecursor == 1)
                {
                   double dMZ = (pScoring->_pepMassInfo.dExpPepMass
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
@@ -1742,7 +1742,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   int j;
                   int bNotPrec = 1;
 
-                  for (j=1; j <= pScoring->_spectrumInfoInternal.iChargeState; ++j)
+                  for (j=1; j <= pScoring->_spectrumInfoInternal.usiChargeState; ++j)
                   {
                      double dMZ;
 
@@ -1765,11 +1765,11 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                else if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
                {
                   double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
                   double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
@@ -1784,16 +1784,16 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                else if (g_staticParams.options.iRemovePrecursor == 4)  //undocumented TMT
                {
                   double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 18.010565    // water
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
 
                   double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 36.021129    // water x2
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
 
                   double dMZ3 = (pScoring->_pepMassInfo.dExpPepMass - 63.997737    // methanesulfenic acid 
-                        + (pScoring->_spectrumInfoInternal.iChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.iChargeState);
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol
@@ -2062,21 +2062,21 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       return false;
    }
 
-   pScoring->_spectrumInfoInternal.iChargeState = iPrecursorCharge;
+   pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
 
    if (iPrecursorCharge == 1)
-      pScoring->_spectrumInfoInternal.iMaxFragCharge = 1;
+      pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
    else
    {
-      pScoring->_spectrumInfoInternal.iMaxFragCharge = iPrecursorCharge - 1;
+      pScoring->_spectrumInfoInternal.usiMaxFragCharge = iPrecursorCharge - 1;
 
-      if (pScoring->_spectrumInfoInternal.iMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-         pScoring->_spectrumInfoInternal.iMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+      if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+         pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
    }
 
    g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
    g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
-   g_massRange.iMaxFragmentCharge = pScoring->_spectrumInfoInternal.iMaxFragCharge;
+   g_massRange.usiMaxFragmentCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
 
    //preprocess here
    int i;

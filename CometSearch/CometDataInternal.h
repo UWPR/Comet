@@ -21,6 +21,9 @@
 #include "CometData.h"
 #include "Threading.h"
 #include "AScoreOptions.h"
+#include "AScoreCentroid.h"
+#include "AScoreAPI.h"
+
 
 class CometSearchManager;
 
@@ -252,23 +255,25 @@ struct Results
    float  fXcorr;
    float  fDeltaCn;
    float  fLastDeltaCn;
-   int    iRankXcorr;
-   int    iLenPeptide;
-   int    iRankSp;
-   int    iMatchedIons;
-   int    iTotalIons;  
-   comet_fileoffset_t   lProteinFilePosition;  // for indexdb, this is the entry in g_pvProteinsList
+   float  fAScorePro;                         // AScorePro score
+   unsigned short    usiRankXcorr;
+   unsigned short    usiLenPeptide;
+   unsigned short    usiRankSp;
+   unsigned short    usiMatchedIons;
+   unsigned short    usiTotalIons;  
+   comet_fileoffset_t   lProteinFilePosition; // for indexdb, this is the entry in g_pvProteinsList
    long   lWhichProtein;
-   int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
-   double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
+   int    piVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods encoding, +2 to accomodate N/C-term
+   double pdVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   cPrevAA;                            // stores prev flanking AA
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
-   char   cHasVariableMod;                    // 0 = no variable mod, 1 = has varaible mod, 2 = has phospho var mod for AScorePro
+   char   cHasVariableMod;                    // 0 = no variable mod, 1 = has varaible mod, 2 = has AScorePro mod
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+   string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    int    iPeffNewResidueCount;               // more than 0 new residues is a substitution (if iPeffOrigResidueCount=1) or insertion (if iPeffOrigResidueCount>1)
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
@@ -306,8 +311,8 @@ struct SpectrumInfoInternal
    int    iArraySize;         // m/z versus intensity array
    int    iHighestIon;
    int    iScanNumber;
-   int    iChargeState;
-   int    iMaxFragCharge;
+   unsigned short    usiChargeState;
+   unsigned short    usiMaxFragCharge;
    double dTotalIntensity;
    float  fRTime;
    char   szMango[32];                // Mango encoding
@@ -320,7 +325,7 @@ struct MassRange
 {
    double dMinMass;
    double dMaxMass;
-   int    iMaxFragmentCharge;  // global maximum fragment charge
+   unsigned short    usiMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
    unsigned int g_uiMaxFragmentArrayIndex; // BIN(dFragIndexMaxMass); used as fragment array index
 };
@@ -1099,7 +1104,9 @@ struct Query
    vector<double> vdRawFragmentPeakMass;
    // Consider replacing vdRawFragmentPeakMass with a vector<pair<double, double>> to store
    // both mass and intensity if AScorePro is used
-   vector<pair<double, double>> vRawFragmentPeakMassIntensity;
+//  vector<pair<double, double>> vRawFragmentPeakMassIntensity;
+   vector<AScoreProCpp::Centroid> vRawFragmentPeakMassIntensity;
+
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;

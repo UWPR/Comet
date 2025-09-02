@@ -197,7 +197,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
          pQuery->_spectrumInfoInternal.iScanNumber,
          pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.iChargeState,
+         pQuery->_spectrumInfoInternal.usiChargeState,
          g_staticParams.iElapseTime,
          g_staticParams.szHostName,
          pQuery->_pepMassInfo.dExpPepMass,
@@ -233,8 +233,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    char szBuf[SIZE_BUF];
 
    sprintf(szBuf, "M\t%d\t%d\t%0.6f\t%0.4f\t%0.4f\t",
-         pOutput[iWhichResult].iRankXcorr,
-         pOutput[iWhichResult].iRankSp,
+         pOutput[iWhichResult].usiRankXcorr,
+         pOutput[iWhichResult].usiRankSp,
          pOutput[iWhichResult].dPepMass,
          pOutput[iWhichResult].fDeltaCn,
          pOutput[iWhichResult].fXcorr);
@@ -245,8 +245,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
 
    sprintf(szBuf + strlen(szBuf), "\t%d\t%d\t",
-         pOutput[iWhichResult].iMatchedIons,
-         pOutput[iWhichResult].iTotalIons);
+         pOutput[iWhichResult].usiMatchedIons,
+         pOutput[iWhichResult].usiTotalIons);
 
    bool bNterm = false;
    bool bCterm = false;
@@ -254,17 +254,17 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    double dCterm = 0.0;
 
    // See if n-term variable mod needs to be reported
-   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
    {
       bNterm = true;
-      dNterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+      dNterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].dVarModMass;
    }
 
    // See if c-term mod (static and/or variable) needs to be reported
-   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 0)
    {
       bCterm = true;
-      dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+      dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].dVarModMass;
    }
 
    // generate modified_peptide string
@@ -274,11 +274,11 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       if (bNterm)
       {
          sprintf(szBuf+strlen(szBuf), "n%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1]);
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1]);
       }
 
       // Print peptide sequence.
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
       {
          sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -293,7 +293,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       if (bCterm)
       {
          sprintf(szBuf+strlen(szBuf), "c%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1]);
+               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1]);
       }
    }
    else
@@ -302,7 +302,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
          sprintf(szBuf+strlen(szBuf), "n[%0.4f]", dNterm);
 
       // Print peptide sequence.
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
       {
          sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
 

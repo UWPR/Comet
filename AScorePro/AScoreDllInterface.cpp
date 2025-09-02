@@ -1,7 +1,7 @@
 #include "AScoreDllInterface.h"
 #include "AScoreCalculator.h"
-#include "PeptideBuilder.h"
-#include "Precursor.h"
+#include "AScorePeptideBuilder.h"
+#include "AScorePrecursor.h"
 
 namespace AScoreProCpp
 {
@@ -178,7 +178,7 @@ namespace AScoreProCpp
       scan.setEndMz(maxMz);
       scan.setLowestMz(minMz);
       scan.setHighestMz(maxMz);
-      scan.setPeakCount(centroids.size());
+      scan.setPeakCount((int)centroids.size());
 
       // Set the centroids
       scan.setCentroids(centroids);
