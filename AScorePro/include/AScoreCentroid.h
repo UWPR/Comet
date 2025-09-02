@@ -16,16 +16,16 @@ namespace AScoreProCpp
 public:
       Centroid() :
          mz_(0.0),
-         intensity_(0.0),
          baseline_(0.0),
+         intensity_(0.0),
          noise_(0.0),
          charge_(0),
          rank_(0) {}
 
       Centroid(double mz, double intensity, double baseline = 0, double noise = 0) :
          mz_(mz),
-         intensity_(intensity),
          baseline_(baseline),
+         intensity_(intensity),
          noise_(noise),
          charge_(0),
          rank_(0) {}
