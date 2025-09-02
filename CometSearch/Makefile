@@ -14,60 +14,36 @@ endif
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11 -I../$(ASCOREPRO)/include
 else
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11
-
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11 -I../$(ASCOREPRO)/include
 endif
 
-COMETSEARCH = Threading.o CometInterfaces.o CometSearch.o CometPreprocess.o CometPostAnalysis.o CometMassSpecUtils.o CometWriteOut.o\
-				  CometWriteSqt.o CometWritePepXML.o CometWriteMzIdentML.o CometWritePercolator.o CometWriteTxt.o CometSearchManager.o\
-				  CombinatoricsUtils.o ModificationsPermuter.o CometFragmentIndex.o CometPeptideIndex.o CometSpecLib.o CometAlignment.o
+OBJDIR = obj
+COMETSEARCH_SRC = Threading CometInterfaces CometSearch CometPreprocess CometPostAnalysis CometMassSpecUtils CometWriteOut \
+				  CometWriteSqt CometWritePepXML CometWriteMzIdentML CometWritePercolator CometWriteTxt CometSearchManager \
+				  CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometSpecLib CometAlignment
 
+COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC)))
 
-all:  $(COMETSEARCH)
-	ar rcs libcometsearch.a $(COMETSEARCH)
+all: $(OBJDIR) $(COMETSEARCH_OBJ)
+	ar rcs libcometsearch.a $(COMETSEARCH_OBJ)
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+$(OBJDIR)/%.o: %.cpp %.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} $< -c -o $@
+
+# Add specific dependency rules for object files that require multiple headers
+$(OBJDIR)/CometSearch.o: CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h CometFragmentIndex.h CometPeptideIndex.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} CometSearch.cpp -c -o $@
+
+$(OBJDIR)/CometPreprocess.o: CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTPATH) | $(OBJDIR)
+	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c -o $@
+
+$(OBJDIR)/CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c -o $@
 
 clean:
-	rm -f *.o libcometsearch.a
-
-Threading.o:          Threading.cpp Threading.h
-	${CXX} ${CXXFLAGS} Threading.cpp -c
-CometSearch.o:        CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h CometFragmentIndex.h CometPeptideIndex.h
-	${CXX} ${CXXFLAGS} CometSearch.cpp -c
-CometPreprocess.o:    CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTPATH)
-	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c
-CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c
-CometPostAnalysis.o:  CometPostAnalysis.cpp Common.h CometData.h CometDataInternal.h ThreadPool.h CometPostAnalysis.h CometMassSpecUtils.h CometInterfaces.h CometDecoys.h
-	${CXX} ${CXXFLAGS} CometPostAnalysis.cpp -c
-CometWriteOut.o:      CometWriteOut.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteOut.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWriteOut.cpp -c
-CometWriteSqt.o:      CometWriteSqt.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteSqt.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWriteSqt.cpp -c
-CometWritePepXML.o:   CometWritePepXML.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWritePepXML.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWritePepXML.cpp -c
-CometWriteMzIdentML.o:   CometWriteMzIdentML.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteMzIdentML.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWriteMzIdentML.cpp -c
-CometWritePercolator.o:   CometWritePercolator.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWritePercolator.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWritePercolator.cpp -c
-CometWriteTxt.o:      CometWriteTxt.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometWriteTxt.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometWriteTxt.cpp -c
-CometCheckForUpdates.o:   CometCheckForUpdates.cpp Common.h CometCheckForUpdates.h
-	${CXX} ${CXXFLAGS} CometCheckForUpdates.cpp -c
-CometSearchManager.o:     CometSearchManager.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWriteMzIdentML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h githubsha.h
-	${CXX} ${CXXFLAGS} CometSearchManager.cpp -c
-CometInterfaces.o:      CometInterfaces.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometWriteOut.h CometWriteSqt.h CometWriteTxt.h CometWritePepXML.h CometWritePercolator.h Threading.h ThreadPool.h CometSearchManager.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometInterfaces.cpp -c
-CombinatoricsUtils.o:   CombinatoricsUtils.cpp CombinatoricsUtils.h Common.h
-	${CXX} ${CXXFLAGS} CombinatoricsUtils.cpp -c
-ModificationsPermuter.o:   ModificationsPermuter.cpp ModificationsPermuter.h Common.h
-	${CXX} ${CXXFLAGS} ModificationsPermuter.cpp -c
-CometFragmentIndex.o: CometFragmentIndex.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
-	${CXX} ${CXXFLAGS} CometFragmentIndex.cpp -c
-CometPeptideIndex.o: CometPeptideIndex.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
-	${CXX} ${CXXFLAGS} CometPeptideIndex.cpp -c
-CometSpecLib.o: CometSpecLib.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h
-	${CXX} ${CXXFLAGS} CometSpecLib.cpp -c
-CometAlignment.o: CometAlignment.cpp Common.h CometData.h CometDataInternal.h CometInterfaces.h
-	${CXX} ${CXXFLAGS} CometAlignment.cpp -c
+	rm -rf $(OBJDIR) *.a

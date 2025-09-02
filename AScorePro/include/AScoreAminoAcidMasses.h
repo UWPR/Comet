@@ -8,7 +8,7 @@
 #define _ASCOREAMINOACIDMASSES_H_
 
 #include <array>
-#include "ASCOREAPI.h"
+#include "AScoreAPI.h"
 
 namespace AScoreProCpp
 {

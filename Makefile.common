@@ -1,2 +1,3 @@
 MSTOOLKIT = MSToolkit
+ASCOREPRO = AScorePro
 CXX = g++

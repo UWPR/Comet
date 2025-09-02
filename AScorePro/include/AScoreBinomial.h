@@ -3,6 +3,8 @@
 #ifndef _ASCOREBINOMIAL_H_
 #define _ASCOREBINOMIAL_H_
 
+#include <limits>
+
 namespace AScoreProCpp
 {
 

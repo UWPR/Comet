@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <limits>
 #include "AScoreAPI.h"
 #include "AScoreCentroid.h"
 #include "AScoreOptions.h"

@@ -3,7 +3,7 @@
 #ifndef _ASCORECENTROID_H_
 #define _ASCORECENTROID_H_
 
-#include "ASCOREAPI.h"
+#include "AScoreAPI.h"
 
 namespace AScoreProCpp
 {
