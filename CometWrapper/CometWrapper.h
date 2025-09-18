@@ -42,12 +42,12 @@ namespace CometWrapper {
         void FinalizeSingleSpectrumSearch();
         bool InitializeSingleSpectrumMS1Search();
         void FinalizeSingleSpectrumMS1Search();
-        bool DoSingleSpectrumSearchMultiResults(int intValue1,
-                                                int intValue2,
-                                                double value,
-                                                cli::array<double>^ dVal1,
-                                                cli::array<double>^ dVal2,
-                                                const int iVal1,
+        bool DoSingleSpectrumSearchMultiResults(int intValue1,                   // top N results
+                                                int intValue2,                   // precursor charge
+                                                double value,                    // dMZ
+                                                cli::array<double>^ dVal1,       // dMass
+                                                cli::array<double>^ dVal2,       // dInten
+                                                const int iVal1,                 // iNumPeaks
                                                 [Out] List<String^>^% szPeptide,
                                                 [Out] List<String^>^% szProtein,
                                                 [Out] List<List<FragmentWrapper^>^>^% matchingFragments,

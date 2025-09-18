@@ -134,8 +134,11 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1000;
+               int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
+
+iFirstScan = 13540;
+iLastScan  = 20000;
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
@@ -178,6 +181,7 @@
 
                         if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
+/*
                            watch.Start();
                            SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
                            watch.Stop();
@@ -204,7 +208,7 @@
                                  piTimeSearchMS1[iTime] += 1;
                            }
                            watch.Reset();
-
+*/
                         }
                         else if (scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
                         {
@@ -243,6 +247,8 @@
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                            watch.Stop();
 
+//Console.WriteLine("   MS2 {0}, mass {1}, {2} - {3}, pepcount {4}", iScanNumber, dExpPepMass, dPeptideMassLow, dPeptideMassHigh, vPeptide.Count);
+
                            int iProteinLengthCutoff = 30;
 
                            if (vPeptide.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
@@ -251,13 +257,16 @@
                               {
                                  for (int x = 0; x < 1; ++x)
                                  {
-                                    if (vPeptide[x].Length > 0)
+                                    if (vPeptide[x].Length > 0)// && vScores[x].dAScoreScore >= 1.0)
                                     {
                                        string protein = vProtein[x];
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F3}, E-value {3:0.##E+00}", iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect);
+                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F3}, E-value {3:0.##E+00}, AScore {4:F2}, Sites {5}", 
+                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores);
+
+                                       double dTmp = vScores[x].dAScoreScore;
 /*
                                        foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
                                        {

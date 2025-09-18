@@ -23,6 +23,8 @@
 #include "AScoreOptions.h"
 #include "AScoreCentroid.h"
 #include "AScoreAPI.h"
+#include "AScoreFactory.h"
+#include "AScoreDllInterface.h"
 
 
 class CometSearchManager;
@@ -756,7 +758,7 @@ struct IonInfo
 // static user params, won't change per thread - can make global!
 struct StaticParams
 {
-   char            szHostName[SIZE_FILE];
+   string          sHostName;
    string          strOutFileTimeString;
    char            szIonSeries[256];   // used for .out files
    char            szDisplayLine[256]; // used for .out files
@@ -800,7 +802,7 @@ struct StaticParams
 
    StaticParams& operator=(StaticParams& a)
    {
-       strcpy(szHostName, a.szHostName);
+       sHostName = a.sHostName;
        strOutFileTimeString = a.strOutFileTimeString;
        strcpy(szIonSeries, a.szIonSeries);
        strcpy(szDisplayLine, a.szDisplayLine);
@@ -1036,6 +1038,7 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
+extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
 struct ModificationNumber
 {

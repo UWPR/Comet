@@ -217,11 +217,20 @@ void SetOptions(char *arg,
 
 
 // Reads comet.params parameter file.
-void LoadParameters(char* pszParamsFile, ICometSearchManager* pSearchMgr)
+void LoadParameters(char* pszParamsFile,
+                    ICometSearchManager* pSearchMgr)
 {
    double dTempMass;
-   int iSearchEnzymeNumber = 1, iSearchEnzyme2Number = 0, iSampleEnzymeNumber = 1, iAllowedMissedCleavages = 2;
-   char szParamBuf[SIZE_BUF], szParamName[128], szParamVal[512], szParamStringVal[512], szVersion[128], szErrorMsg[512];
+   int iSearchEnzymeNumber = 1,
+       iSearchEnzyme2Number = 0,
+       iSampleEnzymeNumber = 1,
+       iAllowedMissedCleavages = 2;
+   char szParamBuf[SIZE_BUF],
+        szParamName[128],
+        szParamVal[512],
+        szParamStringVal[512],
+        szVersion[128],
+        szErrorMsg[512];
    FILE* fp;
    bool bCurrentParamsFile = 0, bValidParamsFile;
    char* pStr;

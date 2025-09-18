@@ -168,14 +168,9 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 {
    int  i,
         iNumPrintLines;
-   char szBuf[SIZE_BUF],
-        scan1[32],
-        scan2[32];
+   std::ostringstream oss;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   strcpy(scan1, "0");
-   strcpy(scan2, "0");
 
    Results *pOutput;
 
@@ -194,21 +189,21 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
       pOutput = pQuery->_pResults;
    }
 
-   sprintf(szBuf, "S\t%d\t%d\t%d\t%d\t%s\t%0.6f\t%0.2E\t%0.1f\t%lu\n",
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.usiChargeState,
-         g_staticParams.iElapseTime,
-         g_staticParams.szHostName,
-         pQuery->_pepMassInfo.dExpPepMass,
-         pQuery->_spectrumInfoInternal.dTotalIntensity,
-         0.0,  // meant to be lowest Sp score; no longer relevant with fast xcorr
-         uliNumMatched);
+   oss << "S\t"
+      << pQuery->_spectrumInfoInternal.iScanNumber << "\t"
+      << pQuery->_spectrumInfoInternal.iScanNumber << "\t"
+      << pQuery->_spectrumInfoInternal.usiChargeState << "\t"
+      << g_staticParams.iElapseTime << "\t"
+      << g_staticParams.sHostName << "\t"
+      << std::fixed << std::setprecision(6) << pQuery->_pepMassInfo.dExpPepMass << "\t"
+      << std::scientific << std::setprecision(2) << pQuery->_spectrumInfoInternal.dTotalIntensity << "\t"
+      << std::fixed << std::setprecision(1) << 0.0 << "\t"
+      << uliNumMatched << "\n";
 
    if (g_staticParams.options.bOutputSqtStream)
-      fprintf(stdout, "%s", szBuf);
+      fprintf(stdout, "%s", oss.str().c_str());
    if (g_staticParams.options.bOutputSqtFile)
-      fprintf(fpout, "%s", szBuf);
+      fprintf(fpout, "%s", oss.str().c_str());
 
    // Print out each sequence line.
    if (iNumPrintLines > (g_staticParams.options.iNumPeptideOutputLines))
@@ -229,24 +224,23 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
                                  FILE *fpdb,
                                  int iPrintTargetDecoy)
 {
-   int  i;
-   char szBuf[SIZE_BUF];
+   int i;
+   std::ostringstream oss;
 
-   sprintf(szBuf, "M\t%d\t%d\t%0.6f\t%0.4f\t%0.4f\t",
-         pOutput[iWhichResult].usiRankXcorr,
-         pOutput[iWhichResult].usiRankSp,
-         pOutput[iWhichResult].dPepMass,
-         pOutput[iWhichResult].fDeltaCn,
-         pOutput[iWhichResult].fXcorr);
+   oss << "M\t"
+      << pOutput[iWhichResult].usiRankXcorr << "\t"
+      << pOutput[iWhichResult].usiRankSp << "\t"
+      << std::fixed << std::setprecision(6) << pOutput[iWhichResult].dPepMass << "\t"
+      << std::setprecision(4) << pOutput[iWhichResult].fDeltaCn << "\t"
+      << std::setprecision(4) << pOutput[iWhichResult].fXcorr << "\t";
 
    if (g_staticParams.options.bPrintExpectScore)
-      sprintf(szBuf+strlen(szBuf), "%0.2E", pOutput[iWhichResult].dExpect);
+      oss << std::setprecision(2) << std::scientific << pOutput[iWhichResult].dExpect;
    else
-      sprintf(szBuf+strlen(szBuf), "%0.1f", pOutput[iWhichResult].fScoreSp);
+      oss << std::setprecision(1) << std::fixed << pOutput[iWhichResult].fScoreSp;
 
-   sprintf(szBuf + strlen(szBuf), "\t%d\t%d\t",
-         pOutput[iWhichResult].usiMatchedIons,
-         pOutput[iWhichResult].usiTotalIons);
+   oss << "\t" << pOutput[iWhichResult].usiMatchedIons
+      << "\t" << pOutput[iWhichResult].usiTotalIons << "\t";
 
    bool bNterm = false;
    bool bCterm = false;
@@ -261,64 +255,64 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    }
 
    // See if c-term mod (static and/or variable) needs to be reported
-   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 0)
+   if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] > 0)
    {
       bCterm = true;
       dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].dVarModMass;
    }
 
    // generate modified_peptide string
-   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].cPrevAA);
+   oss << pOutput[iWhichResult].cPrevAA << ".";
+
    if (g_staticParams.iOldModsEncoding)
    {
       if (bNterm)
       {
-         sprintf(szBuf+strlen(szBuf), "n%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1]);
+         oss << "n"
+            << g_staticParams.variableModParameters.cModCode[
+               pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] - 1];
       }
 
-      // Print peptide sequence.
-      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
+      for (i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
       {
-         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+         oss << pOutput[iWhichResult].szPeptide[i];
 
-         if (g_staticParams.variableModParameters.bVarModSearch
-               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+         if (g_staticParams.variableModParameters.bVarModSearch &&
+            !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i] - 1].dVarModMass, 0.0))
          {
-            sprintf(szBuf+strlen(szBuf), "%c",
-                  g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            oss << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i] - 1];
          }
       }
 
       if (bCterm)
       {
-         sprintf(szBuf+strlen(szBuf), "c%c",
-               g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1]);
+         oss << "c" << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] - 1];
       }
    }
    else
    {
       if (bNterm)
-         sprintf(szBuf+strlen(szBuf), "n[%0.4f]", dNterm);
+         oss << "n[" << std::setprecision(4) << std::fixed << dNterm << "]";
 
-      // Print peptide sequence.
-      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
+      for (i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
       {
-         sprintf(szBuf+strlen(szBuf), "%c", pOutput[iWhichResult].szPeptide[i]);
+         oss << pOutput[iWhichResult].szPeptide[i];
 
          if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
-            sprintf(szBuf+strlen(szBuf), "[%0.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+         {
+            oss << "[" << std::setprecision(4) << std::fixed << pOutput[iWhichResult].pdVarModSites[i] << "]";
+         }
       }
 
       if (bCterm)
-         sprintf(szBuf+strlen(szBuf), "c[%0.4f]", dCterm);
+         oss << "c[" << std::setprecision(4) << std::fixed << dCterm << "]";
    }
-   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].cNextAA);
+   oss << "." << pOutput[iWhichResult].cNextAA;
 
    if (g_staticParams.options.bOutputSqtStream)
-      fprintf(stdout, "%s\tU\n", szBuf);
+      fprintf(stdout, "%s\tU\n", oss.str().c_str());
    if (g_staticParams.options.bOutputSqtFile)
-      fprintf(fpout,  "%s\tU\n", szBuf);
+      fprintf(fpout, "%s\tU\n", oss.str().c_str());
 
    // print proteins
    std::vector<string> vProteinTargets;  // store vector of target protein names
@@ -327,17 +321,19 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
 
    unsigned int uiNumTotProteins = 0;  // unused in sqt
    bool bReturnFulProteinString = false;
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
+      bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {
       for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
       {
          if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s\n", (*it).c_str());
+            fprintf(stdout, "L\t%s\n", it->c_str());
    
          if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout, "L\t%s\n", (*it).c_str());
+            fprintf(fpout, "L\t%s\n", it->c_str());
       }
    }
 
@@ -346,10 +342,10 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
       for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
       {
          if (g_staticParams.options.bOutputSqtStream)
-            fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, (*it).c_str());
+            fprintf(stdout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, it->c_str());
 
          if (g_staticParams.options.bOutputSqtFile)
-            fprintf(fpout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, (*it).c_str());
+            fprintf(fpout, "L\t%s%s\n", g_staticParams.szDecoyPrefix, it->c_str());
       }
    }
 }

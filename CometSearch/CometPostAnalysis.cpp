@@ -108,26 +108,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    CalculateDeltaCn(iQueryIndex);
 
    // Calculate A-Score if specified and peptide has phospho mod
-   if (g_staticParams.options.iPrintAScoreProScore)
-   {
-      using namespace AScoreProCpp;
-
-      if (g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)
-      {
-         // Create the AScoreDllInterface using the factory function
-         AScoreDllInterface* ascoreInterface = CreateAScoreDllInterface();
-         if (!ascoreInterface)
-         {
-            std::cerr << "Failed to create AScore interface." << std::endl;
-            exit(1);
-         }
-
-         CalculateAScorePro(iQueryIndex, ascoreInterface);
-
-         // Clean up
-         DeleteAScoreDllInterface(ascoreInterface);
-      }
-   }
+   if (g_staticParams.options.iPrintAScoreProScore && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+      CalculateAScorePro(iQueryIndex, g_AScoreInterface);
 
    delete pThreadData;
    pThreadData = NULL;
@@ -701,7 +683,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
       {
          if (g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] > 0)
          {
-            sequence += std::to_string(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] - 1);
+            sequence += std::to_string(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
          }
          else
          {
@@ -711,48 +693,123 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    }
    sequence += std::string(".") + g_pvQuery.at(iWhichQuery)->_pResults[0].cNextAA;
 
-   using namespace AScoreProCpp;
-
    // Calculate AScore using the DLL interface
    AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
       g_pvQuery.at(iWhichQuery)->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
 
-   // The question is what to do with AScore results.  For now, I plan on using the AScore localaized
+   // The question is what to do with AScore results.  For now, I plan on using the AScore localized
    // peptide to replace the original peptide in the results structure and report both the score
    // and site scores.
    if (!result.peptides.empty())
    {
-      /*
-      // Replace peptide and mod state
-      strncpy(g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide, result.peptides[0].getSequence().c_str(), MAX_PEPTIDE_LEN_P2 - 1);
-      g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[MAX_PEPTIDE_LEN_P2 - 1] = '\0';
-      memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, _iSizepiVarModSites);
-      for (size_t i = 0; i < result.peptides[0].getPeptide().length() && i < MAX_PEPTIDE_LEN_P2 - 2; ++i)
-      {
-         char c = result.peptides[0].getSequence()[i];
-         if (c >= '0' && c <= '9')
-         {
-            int modIndex = c - '0' + 1;  // AScore uses 0-based mod index; Comet uses 1-based
-            g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] = modIndex;
-            if (modIndex > 0 && modIndex <= g_staticParams.variableModParameters.iNumVarMod)
-               g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[modIndex - 1].dVarModMass;
-         }
-      }
-      */
-
       g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = result.peptides[0].getScore();
+
+      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= 13.0)
+      {
+         // set piVarModSites and pdVarModSites based on AScore localized peptide
+         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
+         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites, 0, (unsigned short)(sizeof(double) * MAX_PEPTIDE_LEN_P2));
+
+         std::string sPeptide = result.peptides[0].toString();
+
+         // Extract the peptide portion (between the two dots)
+         size_t firstDot = sPeptide.find('.');
+         size_t lastDot = sPeptide.rfind('.');
+         std::string peptide = sPeptide.substr(firstDot + 1, lastDot - firstDot - 1);
+
+         int position = 0; // position within peptide
+         int iPosMinus1 = 0;
+         for (size_t i = 0; i < peptide.size();)
+         {
+            if (std::isalpha(peptide[i]))
+            {
+               // Amino acid -> increment residue counter
+               position++;
+               i++;
+            }
+            else if (std::isdigit(peptide[i]))
+            {
+               // Modification reference -> capture full number
+               size_t j = i;
+               while (j < peptide.size() && std::isdigit(peptide[j]))
+               {
+                  j++;
+               }
+
+               int modIndex = std::stoi(peptide.substr(i, j - i));
+
+               // sanity check
+               if (modIndex < 0 || modIndex > VMODS)
+               {
+                  std::cerr << "Error1: AScorePro returned invalid modification index " << modIndex << " in peptide " << sPeptide << std::endl;
+                  return;
+               }
+
+               iPosMinus1 = position - 1;
+               if (iPosMinus1 >= 0 && iPosMinus1 < MAX_PEPTIDE_LEN)
+               {
+                  g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[iPosMinus1] = modIndex;
+                  g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites[iPosMinus1] = g_staticParams.variableModParameters.varModList[modIndex - 1].dVarModMass;
+               }
+               else 
+               {
+                  // FIX: need to do something more here to address mod sites that might not be correct anymore
+                  std::cerr << "Error2: AScorePro returned invalid modification position " << (iPosMinus1) << " in peptide " << sPeptide << std::endl;
+                  return;
+               }
+
+               i = j;
+            }
+            else
+            {
+               // Unexpected character, skip it
+               i++;
+            }
+         }
+
+/*
+         printf("OK AScorePro localized peptide:\n");
+         for (int i= 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+            printf("%c", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]);
+         printf("\n");
+         for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+           printf("%d", g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
+         printf("\n");
+*/
+
+         // Report site score as a string composed of space separated “position:score” pairs
+         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores.clear();
+         int iPosition;
+         double dScore;
+         std::ostringstream oss;
+
+         for (size_t i = 0; i < result.sites.size(); ++i)
+         {
+            iPosition = result.sites[i].getPosition();
+            dScore = result.sites[i].getScore();
+
+            oss << std::fixed << std::setprecision(2) << dScore;  // ensure 2 decimal places
+
+            if (i>0)
+               g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += " ";
+            g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += std::to_string(iPosition) + ":" + oss.str();
+         }
+
+
+      }
+      else
+      {
+         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
+      }
    }
 
-
    // Print results
-
+/*
    std::cout << endl << "Original sequence: " << sequence << "\n";
    std::cout << "Peptides scored: " << result.peptides.size() << "\n";
    std::cout << "Sites scored: " << result.sites.size() << "\n";
    std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
    std::cout << "Score: " << result.peptides[0].getScore() << "\n";
-
-   // Output site positions and scores (up to 6 sites)
    std::cout << "Site scores: ";
    for (size_t i = 0; i < 6; ++i)
    {
@@ -762,7 +819,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
          break;
    }
    std::cout << "\n";
-
+*/
 }
 
 
@@ -1211,18 +1268,16 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   }
                   else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     char szErrorMsg[SIZE_ERROR];
-                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                           dFragmentIonMass,
-                           iFragmentIonMass,
-                           pQuery->_spectrumInfoInternal.iArraySize,
-                           pQuery->_pepMassInfo.dExpPepMass,
-                           pQuery->_spectrumInfoInternal.iScanNumber,
-                           ctCharge);
+                     std::string sErrorMsg = " Error - XCORR DECOY: dFragMass " + std::to_string(dFragmentIonMass)
+                        + ", iFragMass " + std::to_string(iFragmentIonMass)
+                        + ", ArraySize " + std::to_string(pQuery->_spectrumInfoInternal.iArraySize)
+                        + ", InputMass " + std::to_string(pQuery->_pepMassInfo.dExpPepMass)
+                        + ", scan " + std::to_string(pQuery->_spectrumInfoInternal.iScanNumber)
+                        + ", z " + std::to_string(ctCharge);
 
-                     string strErrorMsg(szErrorMsg);
+                     string strErrorMsg(sErrorMsg.c_str());
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr(szErrorMsg);
+                     logerr(sErrorMsg);
                      return false;
                   }
                }

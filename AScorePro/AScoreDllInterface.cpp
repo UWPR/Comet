@@ -239,7 +239,7 @@ namespace AScoreProCpp
       int precursorCharge,
       const AScoreOptions& options) const
    {
-         // Create scan from centroids
+      // Create scan from centroids
       Scan scan = CreateScanFromCentroids(peaks, precursorMz, precursorCharge);
 
       // Parse peptide string

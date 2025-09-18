@@ -55,7 +55,7 @@ public:
 
    static void WriteMzIdentML(FILE *fpout,
                               FILE *fpdb,
-                              char *szTmpFile,
+                              string sTmpFile,
                               CometSearchManager &searchMgr);
 
 private:
@@ -100,7 +100,7 @@ private:
 
    static bool ParseTmpFile(FILE *fpout,
                             FILE *fpdb,
-                            char *szTmpFile,
+                            string ssTmpFile,
                             CometSearchManager &searchMgr);
 };
 

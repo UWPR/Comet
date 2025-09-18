@@ -821,6 +821,12 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].usiRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);
 
+   if (g_staticParams.options.iPrintAScoreProScore && iWhichResult == 0 && pOutput[iWhichResult].cHasVariableMod == 2)
+   {
+      fprintf(fpout, "    <search_score name=\"ascorepro_score\" value=\"%0.2f\"/>\n", pOutput[iWhichResult].fAScorePro);
+      fprintf(fpout, "    <search_score name=\"ascorepro_sitescore\" value=\"%s\"/>\n", pOutput[iWhichResult].sAScoreProSiteScores.c_str());
+   }
+
    if (g_staticParams.options.bExportAdditionalScoresPepXML)
    {
       fprintf(fpout, "    <search_score name=\"lnrSp\" value=\"%0.4f\"/>\n", log((double)pOutput[iWhichResult].usiRankSp));
@@ -846,44 +852,62 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 void CometWritePepXML::ReadInstrument(char *szManufacturer,
                                       char *szModel)
 {
+   strcpy(szModel, "UNKNOWN");  // default if not mzXML input
    strcpy(szManufacturer, "UNKNOWN");
-   strcpy(szModel, "UNKNOWN");
 
    if (g_staticParams.inputFile.iInputType == InputType_MZXML)
    {
       FILE *fp;
-
       if ((fp = fopen(g_staticParams.inputFile.szFileName, "r")) != NULL)
       {
-         char szMsInstrumentElement[SIZE_BUF];
-         char szBuf[SIZE_BUF];
+         bool inMsInstrument = false;
+         std::string msModel, msManufacturer;
 
-         szMsInstrumentElement[0]='\0';
+         const char* modelAttr = "\"msModel\" value=\"";
+         const char* manufAttr = "\"msManufacturer\" value=\"";
+
+         char szBuf[SIZE_BUF];
          while (fgets(szBuf, SIZE_BUF, fp))
          {
             if (strstr(szBuf, "<scan") || strstr(szBuf, "mslevel"))
                break;
 
-            // Grab entire msInstrument element.
             if (strstr(szBuf, "<msInstrument"))
-            {
-               strcat(szMsInstrumentElement, szBuf);
+               inMsInstrument = true;
 
-               while (fgets(szBuf, SIZE_BUF, fp))
+            if (inMsInstrument)
+            {
+               // Parse msModel value
+               char* pModel = strstr(szBuf, modelAttr);
+               if (pModel)
                {
-                  if (strlen(szMsInstrumentElement)+strlen(szBuf)<8192)
-                     strcat(szMsInstrumentElement, szBuf);
-                  if (strstr(szBuf, "</msInstrument>"))
-                  {
-                     GetVal(szMsInstrumentElement, "\"msModel\" value", szModel);
-                     GetVal(szMsInstrumentElement, "\"msManufacturer\" value", szManufacturer);
-                     break;
-                  }
+                  pModel += strlen(modelAttr);
+                  char* pEnd = strchr(pModel, '"');
+                  if (pEnd)
+                     msModel.assign(pModel, pEnd - pModel);
                }
+
+               // Parse msManufacturer value
+               char* pManuf = strstr(szBuf, manufAttr);
+               if (pManuf)
+               {
+                  pManuf += strlen(manufAttr);
+                  char* pEnd = strchr(pManuf, '"');
+                  if (pEnd)
+                     msManufacturer.assign(pManuf, pEnd - pManuf);
+               }
+
+               if (strstr(szBuf, "</msInstrument>"))
+                  break;
             }
          }
-
          fclose(fp);
+
+         // Copy results to output
+         strncpy(szModel, msModel.empty() ? "UNKNOWN" : msModel.c_str(), SIZE_FILE - 1);
+         szModel[SIZE_FILE - 1] = '\0';
+         strncpy(szManufacturer, msManufacturer.empty() ? "UNKNOWN" : msManufacturer.c_str(), SIZE_FILE - 1);
+         szManufacturer[SIZE_FILE - 1] = '\0';
       }
    }
 }
@@ -895,12 +919,12 @@ void CometWritePepXML::GetVal(char *szElement,
 {
    char *pStr;
 
-   if ((pStr=strstr(szElement, szAttribute)))
+   if ((pStr = strstr(szElement, szAttribute)))
    {
-      strncpy(szAttributeVal, pStr+strlen(szAttribute)+2, SIZE_FILE);  // +2 to skip ="
-      szAttributeVal[SIZE_FILE-1] = '\0';
+      strncpy(szAttributeVal, pStr + strlen(szAttribute) + 2, SIZE_FILE);  // +2 to skip ="
+      szAttributeVal[SIZE_FILE - 1] = '\0';
 
-      if ((pStr=strchr(szAttributeVal, '"')))
+      if ((pStr = strchr(szAttributeVal, '"')))
       {
          *pStr='\0';
          return;

@@ -49,7 +49,8 @@ using namespace std;
 class  thpldata
 {
 public:
-   thpldata() {};
+//   thpldata() {};
+   thpldata() : thread_no(0), tp(nullptr) {};
    void setThreadNum(int i)
    {
       thread_no = i;
@@ -69,18 +70,50 @@ class ThreadPool
 {
 public:
 
-   ThreadPool () : shutdown_ (false)
+   ThreadPool() : shutdown_(false)
    {
       running_count_ = 0;
+#ifdef _WIN32
+      lock_ = CreateMutex(NULL, FALSE, NULL);
+      if (lock_ == NULL)
+      {
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
+      }
+      countlock_ = CreateMutex(NULL, FALSE, NULL);
+      if (countlock_ == NULL)
+      {
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
+      }
+#else
+      pthread_mutex_init(&lock_, NULL);
+      pthread_mutex_init(&countlock_, NULL);
+#endif
    }
 
-   ThreadPool (int threads) : shutdown_ (false)
+   ThreadPool(int threads) : shutdown_(false)
    {
-      // Create the specified number of threads
       running_count_ = 0;
-      threads_.reserve (threads);
+#ifdef _WIN32
+      lock_ = CreateMutex(NULL, FALSE, NULL);
+      if (lock_ == NULL)
+      {
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
+      }
+      countlock_ = CreateMutex(NULL, FALSE, NULL);
+      if (countlock_ == NULL)
+      {
+         printf("CreateMutex error: %d\n", (int)GetLastError());
+         exit(1);
+      }
+#else
+      pthread_mutex_init(&lock_, NULL);
+      pthread_mutex_init(&countlock_, NULL);
+#endif
+      threads_.reserve(threads);
       fillPool(threads);
-
    }
 
    void fillPool(int threads)
@@ -146,7 +179,7 @@ public:
             this->UNLOCK(&this->lock_);
             // When threads are still busy and no jobs to do wait ...
 #ifdef _WIN32
-            SwitchToThread();            
+            SwitchToThread();
 #else
             sched_yield();
 #endif    
@@ -186,7 +219,7 @@ public:
       {
          this->UNLOCK(&countlock_);
 #ifdef _WIN32
-         SwitchToThread();            
+         SwitchToThread();
 #else
          sched_yield();
 #endif    
@@ -215,8 +248,8 @@ public:
       CloseHandle(lock_);
       CloseHandle(countlock_);
 #else
-      pthread_mutex_destroy(&lock_);                                                                                               
-      pthread_mutex_destroy(&countlock_);        
+      pthread_mutex_destroy(&lock_);
+      pthread_mutex_destroy(&countlock_);
 #endif   
    }
 
@@ -342,7 +375,7 @@ inline void* threadStart(void* ptr)
          tp->UNLOCK(&tp->lock_);
 
 #ifdef _WIN32
-         SwitchToThread();            
+         SwitchToThread();
 #else
          sched_yield();
 #endif

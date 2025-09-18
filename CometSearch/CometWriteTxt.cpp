@@ -79,29 +79,32 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "%s\t", g_staticParams.szDate);
    fprintf(fpout, "%s\n", g_staticParams.databaseInfo.szDatabase);
 
-   fprintf(fpout, "scan\t");
-   fprintf(fpout, "num\t");
-   fprintf(fpout, "charge\t");
-   fprintf(fpout, "exp_neutral_mass\t");
-   fprintf(fpout, "calc_neutral_mass\t");
-   fprintf(fpout, "e-value\t");
-   fprintf(fpout, "xcorr\t");
-   fprintf(fpout, "delta_cn\t");
-   fprintf(fpout, "sp_score\t");
-   fprintf(fpout, "ions_matched\t");
-   fprintf(fpout, "ions_total\t");
-   fprintf(fpout, "plain_peptide\t");
-   fprintf(fpout, "modified_peptide\t");
+   fprintf(fpout, "scan");
+   fprintf(fpout, "\tnum");
+   fprintf(fpout, "\tcharge");
+   fprintf(fpout, "\texp_neutral_mass");
+   fprintf(fpout, "\tcalc_neutral_mass");
+   fprintf(fpout, "\te-value");
+   fprintf(fpout, "\txcorr");
+   fprintf(fpout, "\tdelta_cn");
+   fprintf(fpout, "\tsp_score");
+   if (g_staticParams.options.iPrintAScoreProScore)
+      fprintf(fpout, "\tascorepro");
+   fprintf(fpout, "\tions_matched");
+   fprintf(fpout, "\tions_total");
+   fprintf(fpout, "\tplain_peptide");
+   fprintf(fpout, "\tmodified_peptide");
    if (g_staticParams.peffInfo.iPeffSearch)
-      fprintf(fpout, "peff_modified_peptide\t");
-   fprintf(fpout, "prev_aa\t");
-   fprintf(fpout, "next_aa\t");
-   fprintf(fpout, "protein\t");
-   fprintf(fpout, "protein_count\t");
-   fprintf(fpout, "modifications\t");
-   fprintf(fpout, "retention_time_sec\t");
-   fprintf(fpout, "sp_rank\n");
-// fprintf(fpout, "num_matched_peptides\n");
+      fprintf(fpout, "\tpeff_modified_peptide");
+   fprintf(fpout, "\tprev_aa");
+   fprintf(fpout, "\tnext_aa");
+   fprintf(fpout, "\tprotein");
+   fprintf(fpout, "\tprotein_count");
+   fprintf(fpout, "\tmodifications");
+   fprintf(fpout, "\tretention_time_sec");
+   fprintf(fpout, "\tsp_rank");
+// fprintf(fpout, "\tnum_matched_peptides");
+   fprintf(fpout, "\n");
 #endif
 }
 
@@ -290,6 +293,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
+         if (g_staticParams.options.iPrintAScoreProScore)
+            fprintf(fpout, "%0.2f\t", pOutput[iWhichResult].fAScorePro);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);
 

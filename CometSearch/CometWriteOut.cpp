@@ -67,39 +67,13 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
         iNumPrintLines,
         iLenMaxDuplicates,
         iMaxWidthReference;
-   char szDbLine[SIZE_FILE2],
-        szBuf[SIZE_BUF],
-        szStatsBuf[512],
-        szMassLine[200],
-        scan1[32],
-        scan2[32];
+   string sDBLine;
    FILE *fpout;
    char *pStr;
    std::ostringstream oss;
    std::string strOutput;
 
-   strcpy(scan1, "0");
-   strcpy(scan2, "0");
-
    Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   sprintf(szMassLine, "(M+H)+ mass = %0.6f, tol %0.6f %0.6f, +%d, fragment tol = %0.4f, binoffset = %0.3f",
-         pQuery->_pepMassInfo.dExpPepMass,
-         pQuery->_pepMassInfo.dPeptideMassToleranceLow,
-         pQuery->_pepMassInfo.dPeptideMassToleranceHigh,
-         pQuery->_spectrumInfoInternal.usiChargeState,
-         g_staticParams.tolerances.dFragmentBinSize,
-         g_staticParams.tolerances.dFragmentBinStartOffset);
-
-   if (g_staticParams.massUtility.bMonoMassesParent)
-      sprintf(szMassLine + strlen(szMassLine), ", MONO");
-   else
-      sprintf(szMassLine + strlen(szMassLine), ", AVG");
-
-   if (g_staticParams.massUtility.bMonoMassesFragment)
-      sprintf(szMassLine + strlen(szMassLine), "/MONO");
-   else
-      sprintf(szMassLine + strlen(szMassLine), "/AVG");
 
 #ifdef _WIN32
     if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL)
@@ -117,7 +91,7 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
           << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
           << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
           << pQuery->_spectrumInfoInternal.usiChargeState << ".out";
-      std::string strOutput = oss.str();
+      strOutput = oss.str();
    }
    else
    {
@@ -126,23 +100,21 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
           << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
           << std::setfill('0') << std::setw(5) << pQuery->_spectrumInfoInternal.iScanNumber << "."
           << pQuery->_spectrumInfoInternal.usiChargeState << ".out";
-      std::string strOutput = oss.str();
+      strOutput = oss.str();
    }
 
    if (g_staticParams.options.iWhichReadingFrame)
    {
-      sprintf(szDbLine, "# bases = %lu (frame=%d), # proteins = %d, %s",
-            g_staticParams.databaseInfo.uliTotAACount,
-            g_staticParams.options.iWhichReadingFrame,
-            g_staticParams.databaseInfo.iTotalNumProteins,
-            g_staticParams.databaseInfo.szDatabase);
+      sDBLine = "# bases = " + std::to_string(g_staticParams.databaseInfo.uliTotAACount)
+         + " (frame=" + std::to_string(g_staticParams.options.iWhichReadingFrame) + "),"
+         + " # proteins = " + std::to_string(g_staticParams.databaseInfo.iTotalNumProteins) + ", "
+         + g_staticParams.databaseInfo.szDatabase;
    }
    else
    {
-      sprintf(szDbLine, "# amino acids = %lu, # proteins = %d, %s",
-            g_staticParams.databaseInfo.uliTotAACount,
-            g_staticParams.databaseInfo.iTotalNumProteins,
-            g_staticParams.databaseInfo.szDatabase);
+      sDBLine = "# amino acids = " + std::to_string(g_staticParams.databaseInfo.uliTotAACount)
+         + ", # proteins = " + std::to_string(g_staticParams.databaseInfo.iTotalNumProteins) + ", "
+         + g_staticParams.databaseInfo.szDatabase;
    }
 
    if ((fpout = fopen(strOutput.c_str(), "w")) == NULL)
@@ -153,45 +125,46 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       return false;
    }
 
+   fprintf(fpout, "\n");
+   fprintf(fpout, " %s.%.5d.%.5d.%d.out\n",
+      pStr,
+      pQuery->_spectrumInfoInternal.iScanNumber,
+      pQuery->_spectrumInfoInternal.iScanNumber,
+      pQuery->_spectrumInfoInternal.usiChargeState);
+   fprintf(fpout, " Comet version %s\n", g_sCometVersion.c_str());
+   fprintf(fpout, " %s\n", copyright);
+   fprintf(fpout, " %s\n", g_staticParams.strOutFileTimeString.c_str());
+
+   fprintf(fpout, " (M+H)+ mass = %0.6f, tol %0.6f %0.6f, +%d, fragment tol = %0.4f, binoffset = %0.3f, %s%s\n",
+      pQuery->_pepMassInfo.dExpPepMass,
+      pQuery->_pepMassInfo.dPeptideMassToleranceLow,
+      pQuery->_pepMassInfo.dPeptideMassToleranceHigh,
+      pQuery->_spectrumInfoInternal.usiChargeState,
+      g_staticParams.tolerances.dFragmentBinSize,
+      g_staticParams.tolerances.dFragmentBinStartOffset,
+      g_staticParams.massUtility.bMonoMassesParent   ? "MONO": "AVG",
+      g_staticParams.massUtility.bMonoMassesFragment ? "/MONO" : "/AVG");
+
    if (bDecoySearch)
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = 0 # matched peptides = %lu",
-            pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->_uliNumMatchedDecoyPeptides);
+      fprintf(fpout, " total inten = %0.2E, lowest Sp = 0 # matched peptides = %lu\n",
+         pQuery->_spectrumInfoInternal.dTotalIntensity,
+         pQuery->_uliNumMatchedDecoyPeptides);
    }
    else
    {
-      sprintf(szStatsBuf, "total inten = %0.2E, lowest Sp = 0, # matched peptides = %lu",
-            pQuery->_spectrumInfoInternal.dTotalIntensity,
-            pQuery->_uliNumMatchedPeptides);
-   }
+      fprintf(fpout, " total inten = %0.2E, lowest Sp = 0, # matched peptides = %lu\n",
+         pQuery->_spectrumInfoInternal.dTotalIntensity,
+         pQuery->_uliNumMatchedPeptides);
+   }   fprintf(fpout, " %s\n", sDBLine.c_str());
 
-   sprintf(szBuf, "\n");
-   sprintf(szBuf+strlen(szBuf), " %s.%.5d.%.5d.%d.out\n",
-         pStr,
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.iScanNumber,
-         pQuery->_spectrumInfoInternal.usiChargeState);
-   sprintf(szBuf+strlen(szBuf), " Comet version %s\n", g_sCometVersion.c_str());
-   sprintf(szBuf+strlen(szBuf), " %s\n", copyright);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.strOutFileTimeString.c_str());
-   sprintf(szBuf+strlen(szBuf), " %s\n", szMassLine);
-   sprintf(szBuf+strlen(szBuf), " %s\n", szStatsBuf);
-   sprintf(szBuf+strlen(szBuf), " %s\n", szDbLine);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szIonSeries);
-   sprintf(szBuf+strlen(szBuf), " %s\n", g_staticParams.szDisplayLine);
-
-   fprintf(fpout, "%s", szBuf);
-
-   szBuf[0] = '\0';
+   fprintf(fpout, " %s\n", g_staticParams.szIonSeries);
+   fprintf(fpout, " %s\n", g_staticParams.szDisplayLine);
 
    if (g_staticParams.szMod[0]!='\0')
-   {
-      sprintf(szBuf+strlen(szBuf), " %s", g_staticParams.szMod);
-      sprintf(szBuf+strlen(szBuf), "\n");
-   }
+      fprintf(fpout, " %s\n", g_staticParams.szMod);
 
-   fprintf(fpout, "%s\n", szBuf);
+   fprintf(fpout, "\n");
 
    if (bDecoySearch)
       iNumPrintLines = pQuery->iDecoyMatchPeptideCount;
@@ -216,37 +189,40 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
 
    for (i=0; i<iNumPrintLines; ++i)
    {
-      char szProteinName[WIDTH_REFERENCE];
-      vector<ProteinEntryStruct>::iterator it;
-
       unsigned int uiNumTotProteins = 0;
+      char szProteinName[WIDTH_REFERENCE];
 
-      // Now get max protein length of first protein; take target entry if available
-      // otherwise take decoy entry
-      if (bDecoySearch)
+      if (pOutput[i].usiLenPeptide > 0)
       {
-         if ((int)pOutput[i].pWhichDecoyProtein.size() > 0)
+         vector<ProteinEntryStruct>::iterator it;
+
+         // Now get max protein length of first protein; take target entry if available
+         // otherwise take decoy entry
+         if (bDecoySearch)
          {
-            it = pOutput[i].pWhichDecoyProtein.begin();
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-            bPrintDecoyPrefix = true;
-         }
-         uiNumTotProteins = (int)pOutput[i].pWhichDecoyProtein.size();
-      }
-      else
-      {
-         if ((int)pOutput[i].pWhichProtein.size() > 0)
-         {
-            it = pOutput[i].pWhichProtein.begin();
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
-            uiNumTotProteins = (int)(pOutput[i].pWhichProtein.size() + pOutput[i].pWhichDecoyProtein.size());
-         }
-         else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
-         {
-            it = pOutput[i].pWhichDecoyProtein.begin();
-            CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+            if ((int)pOutput[i].pWhichDecoyProtein.size() > 0)
+            {
+               it = pOutput[i].pWhichDecoyProtein.begin();
+               CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+               bPrintDecoyPrefix = true;
+            }
             uiNumTotProteins = (int)pOutput[i].pWhichDecoyProtein.size();
-            bPrintDecoyPrefix = true;
+         }
+         else
+         {
+            if ((int)pOutput[i].pWhichProtein.size() > 0)
+            {
+               it = pOutput[i].pWhichProtein.begin();
+               CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+               uiNumTotProteins = (int)(pOutput[i].pWhichProtein.size() + pOutput[i].pWhichDecoyProtein.size());
+            }
+            else //if ( (int)pOutput[i].pWhichDecoyProtein.size() > 0)
+            {
+               it = pOutput[i].pWhichDecoyProtein.begin();
+               CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
+               uiNumTotProteins = (int)pOutput[i].pWhichDecoyProtein.size();
+               bPrintDecoyPrefix = true;
+            }
          }
       }
 
@@ -275,39 +251,36 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
    }
 
    if (g_staticParams.options.bPrintExpectScore)
-      sprintf(szBuf, "  #   Rank/Sp    (M+H)+   deltCn   Xcorr   Expect   Ions  Reference");
+      fprintf(fpout, "  #   Rank/Sp    (M+H)+   deltCn   Xcorr   Expect   Ions  Reference");
    else
-      sprintf(szBuf, "  #   Rank/Sp    (M+H)+   deltCn   Xcorr    Sp    Ions  Reference");
+      fprintf(fpout, "  #   Rank/Sp    (M+H)+   deltCn   Xcorr    Sp    Ions  Reference");
 
    for (i=0; i<iMaxWidthReference-9; ++i)
-      sprintf(szBuf+strlen(szBuf), " ");
+      fprintf(fpout, " ");
 
    for (i=0; i<iLenMaxDuplicates; ++i)
-      sprintf(szBuf+strlen(szBuf), " ");
+      fprintf(fpout, " ");
 
-   sprintf(szBuf+strlen(szBuf), "  ");
-   sprintf(szBuf+strlen(szBuf), "Peptide\n");
+   fprintf(fpout, "  ");
+   fprintf(fpout, "Peptide\n");
 
    if (g_staticParams.options.bPrintExpectScore)
-      sprintf(szBuf+strlen(szBuf), " ---  -------  ---------  ------  ------   ------   ----  ---------");
+      fprintf(fpout, " ---  -------  ---------  ------  ------   ------   ----  ---------");
    else
-      sprintf(szBuf+strlen(szBuf), " ---  -------  ---------  ------  ------   ----   ----  ---------");
+      fprintf(fpout, " ---  -------  ---------  ------  ------   ----   ----  ---------");
 
    for (i=0; i<iMaxWidthReference-9; ++i)
-      sprintf(szBuf+strlen(szBuf), " ");
+      fprintf(fpout, " ");
 
    for (i=0; i<iLenMaxDuplicates; ++i)
-      sprintf(szBuf+strlen(szBuf), " ");
+      fprintf(fpout, " ");
 
-   sprintf(szBuf+strlen(szBuf), "  ");
-   sprintf(szBuf+strlen(szBuf), "-------\n");
-
-   fprintf(fpout, "%s", szBuf);
-   szBuf[0]='\0';
+   fprintf(fpout, "  ");
+   fprintf(fpout, "-------\n");
 
    for (i=0; i<iNumPrintLines; ++i)
    {
-      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (pOutput[i].usiLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
          PrintOutputLine(iLenMaxDuplicates, iMaxWidthReference, i, bDecoySearch, pOutput, fpout, fpdb);
    }
 
@@ -363,56 +336,46 @@ void CometWriteOut::PrintOutputLine(int iLenMaxDuplicates,
                                     int iMaxWidthReference,
                                     int iWhichResult,
                                     bool bDecoySearch,
-                                    Results *pOutput,
-                                    FILE *fpout,
-                                    FILE *fpdb)
+                                    Results* pOutput,
+                                    FILE* fpout,
+                                    FILE* fpdb)
 {
-   int  i,
-        iWidthSize,
-        iWidthPrintRef;
-   char szBuf[SIZE_BUF];
+   int i, iWidthSize, iWidthPrintRef;
+   std::ostringstream oss;
 
-   sprintf(szBuf, "%3d. %3d /%3d  %9.4f  %6.4f %7.4f ",
-         iWhichResult+1,
-         pOutput[iWhichResult].usiRankXcorr,
-         pOutput[iWhichResult].usiRankSp,
-         pOutput[iWhichResult].dPepMass,
-         pOutput[iWhichResult].fDeltaCn,
-         pOutput[iWhichResult].fXcorr);
+   oss << std::setw(3) << iWhichResult + 1 << ". "
+      << std::setw(3) << pOutput[iWhichResult].usiRankXcorr << " /"
+      << std::setw(3) << pOutput[iWhichResult].usiRankSp << "  "
+      << std::setw(9) << std::fixed << std::setprecision(4) << pOutput[iWhichResult].dPepMass << "  "
+      << std::setw(6) << std::setprecision(4) << pOutput[iWhichResult].fDeltaCn << " "
+      << std::setw(7) << std::setprecision(4) << pOutput[iWhichResult].fXcorr << " ";
 
    if (g_staticParams.options.bPrintExpectScore)
    {
       if (pOutput[iWhichResult].dExpect < 0.0001)
-         sprintf(szBuf+strlen(szBuf), "%8.2e ", pOutput[iWhichResult].dExpect);
+         oss << std::setw(8) << std::scientific << std::setprecision(2) << pOutput[iWhichResult].dExpect << " ";
       else
-         sprintf(szBuf+strlen(szBuf), "%8.4f ", pOutput[iWhichResult].dExpect);
+         oss << std::setw(8) << std::fixed << std::setprecision(4) << pOutput[iWhichResult].dExpect << " ";
    }
    else
    {
-      sprintf(szBuf+strlen(szBuf), "%6.1f ", pOutput[iWhichResult].fScoreSp);
+      oss << std::setw(6) << std::fixed << std::setprecision(1) << pOutput[iWhichResult].fScoreSp << " ";
    }
 
    if (pOutput[iWhichResult].usiTotalIons < 10)
-   {
-      sprintf(szBuf+strlen(szBuf), "%3d/%d   ", pOutput[iWhichResult].usiMatchedIons, pOutput[iWhichResult].usiTotalIons);
-   }
+      oss << std::setw(3) << pOutput[iWhichResult].usiMatchedIons << "/" << pOutput[iWhichResult].usiTotalIons << "   ";
    else if (pOutput[iWhichResult].usiTotalIons < 100)
-   {
-      sprintf(szBuf+strlen(szBuf), "%3d/%2d  ", pOutput[iWhichResult].usiMatchedIons, pOutput[iWhichResult].usiTotalIons);
-   }
+      oss << std::setw(3) << pOutput[iWhichResult].usiMatchedIons << "/" << std::setw(2) << pOutput[iWhichResult].usiTotalIons << "  ";
    else
-   {
-      sprintf(szBuf+strlen(szBuf), "%3d/%3d ", pOutput[iWhichResult].usiMatchedIons, pOutput[iWhichResult].usiTotalIons);
-   }
+      oss << std::setw(3) << pOutput[iWhichResult].usiMatchedIons << "/" << std::setw(3) << pOutput[iWhichResult].usiTotalIons << " ";
 
    // Print protein reference/accession.
-   iWidthSize=0;
-   iWidthPrintRef=0;
+   iWidthSize = 0;
+   iWidthPrintRef = 0;
 
    char szProteinName[WIDTH_REFERENCE];
    vector<ProteinEntryStruct>::iterator it;
    bool bPrintDecoyPrefix = false;
-
    int uiNumTotProteins = 0;
 
    if (bDecoySearch)
@@ -439,103 +402,90 @@ void CometWriteOut::PrintOutputLine(int iLenMaxDuplicates,
    CometMassSpecUtils::GetProteinName(fpdb, (*it).lWhichProtein, szProteinName);
 
    if (bPrintDecoyPrefix)
-      strcat(szBuf, g_staticParams.szDecoyPrefix);
+      oss << g_staticParams.szDecoyPrefix;
+
    while (iWidthSize < (int)strlen(szProteinName))
    {
-      if (33<=(szProteinName[iWidthSize]) && (szProteinName[iWidthSize])<=126) // Ascii physical character range.
+      if (33 <= (szProteinName[iWidthSize]) && (szProteinName[iWidthSize]) <= 126)
       {
-         sprintf(szBuf+strlen(szBuf), "%c", szProteinName[iWidthPrintRef]);
-
+         oss << szProteinName[iWidthPrintRef];
          iWidthPrintRef++;
-
          if (iWidthPrintRef == iMaxWidthReference)
             break;
       }
       else
          break;
-
       iWidthSize++;
    }
 
    if (iWidthSize < iMaxWidthReference)
    {
-      iWidthSize = iMaxWidthReference-iWidthPrintRef;
-
-      for (i=0; i<iWidthSize; ++i)
-         sprintf(szBuf+strlen(szBuf), " ");
+      iWidthSize = iMaxWidthReference - iWidthPrintRef;
+      for (i = 0; i < iWidthSize; ++i)
+         oss << " ";
    }
 
    // Print out the number of duplicate proteins.
    if (uiNumTotProteins)
    {
-      char szTemp[10];
-      int iEnd;
-
+      char szTemp[16];
       sprintf(szTemp, "+%u", uiNumTotProteins);
-      sprintf(szBuf+strlen(szBuf), " +%u", uiNumTotProteins);
-
-      iEnd = iLenMaxDuplicates - (int)strlen(szTemp) - 1;
-
-      for (i=0; i<iEnd; ++i)
-         sprintf(szBuf+strlen(szBuf), " ");
+      oss << " +" << uiNumTotProteins;
+      int iEnd = iLenMaxDuplicates - (int)strlen(szTemp) - 1;
+      for (i = 0; i < iEnd; ++i)
+         oss << " ";
    }
    else if (iLenMaxDuplicates > 0)
    {
-      for (i=0; i<iLenMaxDuplicates; ++i)
-         sprintf(szBuf+strlen(szBuf), " ");
+      for (i = 0; i < iLenMaxDuplicates; ++i)
+         oss << " ";
    }
-   sprintf(szBuf+strlen(szBuf), "  ");
+   oss << "  ";
 
-   sprintf(szBuf+strlen(szBuf), "%c.", pOutput[iWhichResult].cPrevAA);
+   oss << pOutput[iWhichResult].cPrevAA << ".";
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
+      && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
    {
-      sprintf(szBuf+strlen(szBuf),
-            "n%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1]);
+      oss << "n" << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] - 1];
    }
 
    // Print peptide sequence.
-   for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
+   for (i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
    {
-      sprintf(szBuf+strlen(szBuf), "%c", (int)pOutput[iWhichResult].szPeptide[i]);
+      oss << pOutput[iWhichResult].szPeptide[i];
 
       if (g_staticParams.variableModParameters.bVarModSearch && pOutput[iWhichResult].piVarModSites[i] != 0)
       {
          if (pOutput[iWhichResult].piVarModSites[i] > 0
-               && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i]-1].dVarModMass, 0.0))
+            && !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i] - 1].dVarModMass, 0.0))
          {
-            sprintf(szBuf+strlen(szBuf), "%c",
-                  (int)g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i]-1]);
+            oss << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i] - 1];
          }
          else
          {
-            sprintf(szBuf+strlen(szBuf), "?");  // PEFF:  no clue how to specify mod encoding
+            oss << "?";
          }
       }
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 1)
+      && pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] > 1)
    {
-      sprintf(szBuf+strlen(szBuf),
-            "c%c", g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1]);
+      oss << "c" << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] - 1];
    }
 
-   sprintf(szBuf+strlen(szBuf), ".%c", pOutput[iWhichResult].cNextAA);
+   oss << "." << pOutput[iWhichResult].cNextAA;
 
-   fprintf(fpout, "%s\n", szBuf);
+   fprintf(fpout, "%s\n", oss.str().c_str());
 }
 
 
 // Print out fragment ions at end of .out files.
 void CometWriteOut::PrintIons(int iWhichQuery,
-                              FILE *fpout)
+                              FILE* fpout)
 {
-   int  i,
-        ii,
-        ctCharge;
-   char szBuf[SIZE_BUF];
+   int i, ii, ctCharge;
    double dFragmentIonMass = 0.0;
    double _pdAAforward[MAX_PEPTIDE_LEN];
    double _pdAAreverse[MAX_PEPTIDE_LEN];
@@ -551,19 +501,18 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] == 1))
+      && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] == 1))
    {
-      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide]-1].dVarModMass;
+      dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] - 1].dVarModMass;
    }
 
    if (g_staticParams.variableModParameters.bVarModSearch
-         && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] == 1))
+      && (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] == 1))
    {
-      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide+1]-1].dVarModMass;
+      dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] - 1].dVarModMass;
    }
 
-   // Generate pdAAforward for pQuery->_pResults[0].szPeptide.
-   for (i=0; i<pQuery->_pResults[0].usiLenPeptide; ++i)
+   for (i = 0; i < pQuery->_pResults[0].usiLenPeptide; ++i)
    {
       int iPos = pQuery->_pResults[0].usiLenPeptide - i - 1;
 
@@ -573,80 +522,68 @@ void CometWriteOut::PrintIons(int iWhichQuery,
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (pQuery->_pResults[0].piVarModSites[i] != 0)
-            dBion += pQuery->_pResults[0].pdVarModSites[i];   // PEFF need to validate this change
-//          dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[i]-1].dVarModMass;
-
+            dBion += pQuery->_pResults[0].pdVarModSites[i];
 
          if (pQuery->_pResults[0].piVarModSites[iPos] != 0)
             dYion += pQuery->_pResults[0].pdVarModSites[iPos];
-//          dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[0].piVarModSites[iPos]-1].dVarModMass;
       }
 
       _pdAAforward[i] = dBion;
       _pdAAreverse[iPos] = dYion;
    }
 
-   for (ctCharge=1; ctCharge<=pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+   for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
    {
+      std::ostringstream oss;
       if (ctCharge > 1)
-         sprintf(szBuf, "\n");
+         oss << "\n";
 
-      sprintf(szBuf, "\n Seq  #  ");
-
-      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
+      oss << "\n Seq  #  ";
+      for (i = 0; i < g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
       {
          int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[i];
-
-              if (iWhichIonSeries == 0) sprintf(szBuf+strlen(szBuf), "    a      ");
-         else if (iWhichIonSeries == 1) sprintf(szBuf+strlen(szBuf), "    b      ");
-         else if (iWhichIonSeries == 2) sprintf(szBuf+strlen(szBuf), "    c      ");
-         else if (iWhichIonSeries == 3) sprintf(szBuf+strlen(szBuf), "    x      ");
-         else if (iWhichIonSeries == 4) sprintf(szBuf+strlen(szBuf), "    y      ");
-         else if (iWhichIonSeries == 5) sprintf(szBuf+strlen(szBuf), "    z      ");
-         else                           sprintf(szBuf+strlen(szBuf), "    z1     ");  /* iWhichIonSeries == 6 */
+         if (iWhichIonSeries == 0) oss << "    a      ";
+         else if (iWhichIonSeries == 1) oss << "    b      ";
+         else if (iWhichIonSeries == 2) oss << "    c      ";
+         else if (iWhichIonSeries == 3) oss << "    x      ";
+         else if (iWhichIonSeries == 4) oss << "    y      ";
+         else if (iWhichIonSeries == 5) oss << "    z      ";
+         else                           oss << "    z1     ";
       }
-      sprintf(szBuf+strlen(szBuf), "(%d+)\n --- --  ", ctCharge);
+      oss << "(" << ctCharge << "+)\n --- --  ";
+      for (i = 0; i < g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
+         oss << "---------  ";
 
-      for (i=0; i<g_staticParams.ionInformation.iNumIonSeriesUsed; ++i)
+      fprintf(fpout, "%s --", oss.str().c_str());
+
+      for (i = 0; i < pQuery->_pResults[0].usiLenPeptide; ++i)
       {
-         sprintf(szBuf+strlen(szBuf), "---------  ");
-      }
+         std::ostringstream line;
+         line << "\n  " << pQuery->_pResults[0].szPeptide[i] << "  " << std::setw(2) << i + 1 << "  ";
 
-      fprintf(fpout, "%s --", szBuf);
-
-      for (i=0; i<pQuery->_pResults[0].usiLenPeptide; ++i)
-      {
-         sprintf(szBuf, "\n  %c  %2d  ", pQuery->_pResults[0].szPeptide[i], i+1);
-
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
+         for (ii = 0; ii < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
-            int iWhichIonSeries;
-
-            iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
-
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
             dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, i, ctCharge, _pdAAforward, _pdAAreverse);
 
             if ((dFragmentIonMass <= FLOAT_ZERO)
-                  || ((i == pQuery->_pResults[0].usiLenPeptide - 1) && (iWhichIonSeries <= 3))
-                  || (i == 0 && (iWhichIonSeries >= 4)))
+               || ((i == pQuery->_pResults[0].usiLenPeptide - 1) && (iWhichIonSeries <= 3))
+               || (i == 0 && (iWhichIonSeries >= 4)))
             {
-               sprintf(szBuf+strlen(szBuf), "    -      ");
+               line << "    -      ";
             }
             else
             {
-               sprintf(szBuf+strlen(szBuf), "%9.4f", dFragmentIonMass);
-
+               line << std::setw(9) << std::fixed << std::setprecision(4) << dFragmentIonMass;
                if (FindSpScore(pQuery, BIN(dFragmentIonMass)) > FLOAT_ZERO)
-                  sprintf(szBuf+strlen(szBuf), "+ ");
+                  line << "+ ";
                else
-                  sprintf(szBuf+strlen(szBuf), "  ");
+                  line << "  ";
             }
          }
-         fprintf(fpout, "%s %2d", szBuf, pQuery->_pResults[0].usiLenPeptide-i);
-
+         fprintf(fpout, "%s %2d", line.str().c_str(), pQuery->_pResults[0].usiLenPeptide - i);
       }
       fprintf(fpout, "\n");
-
    }
    fprintf(fpout, "\n");
 }

@@ -2140,6 +2140,12 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
 
       if (bPass)
       {
+         if (g_staticParams.options.iPrintAScoreProScore)
+         {
+            // Store list of fragment masses and intensities for AScore and ProScore
+            pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
+         }
+
          if (g_staticParams.iIndexDb)
             pScoring->vdRawFragmentPeakMass.push_back(dIon);
 

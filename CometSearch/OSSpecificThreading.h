@@ -42,7 +42,8 @@ typedef void* (__cdecl *ThreadProc)(void*);
 typedef pthread_mutex_t Mutex;
 typedef pthread_t ThreadId;
 typedef void* (*ThreadProc)(void*);
-typedef struct PosixSemaphore {
+typedef struct PosixSemaphore
+{
    pthread_mutex_t mutex;
    pthread_cond_t condition;
    bool conditionSet;

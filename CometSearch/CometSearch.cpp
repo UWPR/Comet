@@ -44,8 +44,8 @@ CometSearch::CometSearch()
 
    // Allocate memory for protein sequence if necessary.
 
-   _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
-   _iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
+   _usiSizepiVarModSites = (unsigned short)(sizeof(int)*MAX_PEPTIDE_LEN_P2);
+   _usiSizepdVarModSites = (unsigned short)(sizeof(double)*MAX_PEPTIDE_LEN_P2);
 }
 
 
@@ -1662,7 +1662,7 @@ bool CometSearch::SearchPeptideIndex(void)
       bool bFoundVariable = false;
 
       // read in static and variable mods
-      while (fgets(szBuf, sizeof(szBuf), fp))
+      while (fgets(szBuf, SIZE_BUF, fp))
       {
          if (!strncmp(szBuf, "MassType:", 9))
          {
@@ -4636,8 +4636,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       {
          if (!iFoundVariableMod)   // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
          }
          else
          {
@@ -4653,7 +4653,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i]
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
 
-                  if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
                      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 2;
                   else
                      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
@@ -4672,8 +4672,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
       else
       {
-         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
       }
 
       // walk through stored entries and get new lowest xcorr score
@@ -4847,8 +4847,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       {
          if (!iFoundVariableMod)  // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
          }
          else
          {
@@ -4862,7 +4862,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
-                  if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
                      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
                   else
                      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
@@ -4881,8 +4881,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
       else
       {
-         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
       }
 
       // walk through stored entries and get new lowest xcorr score
@@ -4975,7 +4975,8 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
             if (iVal > 0)
             {
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
-               if (g_staticParams.options.iPrintAScoreProScore && iVal - 1 == g_AScoreOptions.getSymbol() - '0')
+
+               if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
                   pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
                else
                   pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
@@ -6231,7 +6232,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 {
                                                    if (g_staticParams.variableModParameters.varModList[i].dVarModMass > 0.0  && piTmpVarModCounts[i] > 0)
                                                    {
-                                                      memset(_varModInfo.varModStatList[i].iVarModSites, 0, _iSizepiVarModSites);
+                                                      memset(_varModInfo.varModStatList[i].iVarModSites, 0, _usiSizepiVarModSites);
                                                    }
 
                                                    _varModInfo.varModStatList[i].iMatchVarModCt = piTmpVarModCounts[i];
@@ -6594,7 +6595,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
    // contains positional coding of a variable mod at each index which equals an AA residue
-   memset(piVarModSites, 0, _iSizepiVarModSites);
+   memset(piVarModSites, 0, _usiSizepiVarModSites);
    memset(piVarModCharIdx, 0, sizeof(piVarModCharIdx));
 
    // deal with n-term mod
@@ -6803,7 +6804,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    if (*bDoPeffAnalysis && !g_staticParams.options.bCreatePeptideIndex)
    {
       int piTmpVarModSites[MAX_PEPTIDE_LEN_P2];
-      memcpy(piTmpVarModSites, piVarModSites, _iSizepiVarModSites);
+      memcpy(piTmpVarModSites, piVarModSites, _usiSizepiVarModSites);
 
       // permute through PEFF
 
@@ -6827,7 +6828,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                dMassAddition = (*vPeffArray).at(i).vectorMassDiffMono.at(ii);
 
                // For each iteration of PEFF mods, start with fresh state of variable mods
-               memcpy(piVarModSites, piTmpVarModSites, _iSizepiVarModSites);
+               memcpy(piVarModSites, piTmpVarModSites, _usiSizepiVarModSites);
 
                // if dCalcPepMass + dMassAddition is within mass tol, add these mods
 

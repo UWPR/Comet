@@ -24,6 +24,10 @@
 #include "limits.h"
 #include "stdlib.h"
 
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
+
 
 CometWriteMzIdentML::CometWriteMzIdentML()
 {
@@ -61,13 +65,13 @@ void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
 
 void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
                                          FILE *fpdb,
-                                         char *szTmpFile,
+                                         string sTmpFile,
                                          CometSearchManager &searchMgr)
 {
    WriteMzIdentMLHeader(fpout);
 
-   // now loop through szTmpFile file, wr
-   ParseTmpFile(fpout, fpdb, szTmpFile, searchMgr);
+   // now loop through sTmpFile file, wr
+   ParseTmpFile(fpout, fpdb, sTmpFile, searchMgr);
 
    fprintf(fpout, "</MzIdentML>\n");
 }
@@ -112,7 +116,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 
 bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                                        FILE *fpdb,
-                                       char *szTmpFile,
+                                       string sTmpFile,
                                        CometSearchManager &searchMgr)
 {
    std::vector<MzidTmpStruct> vMzidTmp; // vector to store entire tmp output
@@ -126,11 +130,11 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    // get all protein file positions by parsing through fpout_tmp
    // column 15 is target proteins, column 16 is decoy proteins
 
-   std::ifstream ifsTmpFile(szTmpFile);
+   std::ifstream ifsTmpFile(sTmpFile);
 
    if (!ifsTmpFile.is_open())
    {
-      printf(" Error cannot read tmp file \"%s\"\n", szTmpFile);
+      printf(" Error cannot read tmp file \"%s\"\n", sTmpFile.c_str());
       exit(1);
    }
 
@@ -1172,13 +1176,8 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    char szSpectrumAccession[24];
    char szSpectrumName[128];
    int iLen = (int)strlen(g_staticParams.inputFile.szFileName);
-   char szFileNameLower[SIZE_FILE];
 
-   for (int x = 0; x < iLen; ++x)
-      szFileNameLower[x] = tolower(g_staticParams.inputFile.szFileName[x]);
-   szFileNameLower[iLen] = '\0';
-
-   if (!strcmp(szFileNameLower + iLen - 4, ".raw"))
+   if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".raw"))
    {
       strcpy(szFormatAccession, "MS:1000563"); // Thermo RAW
       strcpy(szFormatName, "Thermo RAW file");
@@ -1186,8 +1185,8 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcmp(szFileNameLower + iLen - 6, ".mzxml")
-         || !strcmp(szFileNameLower + iLen - 9, ".mzxml.gz"))
+   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 6, ".mzxml")
+         || !strcasecmp(g_staticParams.inputFile.szFileName + iLen - 9, ".mzxml.gz"))
    {
       strcpy (szFormatAccession, "MS:1000566");  // mzXML
       strcpy(szFormatName, "ISB mzXML file");
@@ -1195,8 +1194,8 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcmp(szFileNameLower + iLen - 5, ".mzml")
-         || !strcmp(szFileNameLower + iLen - 8, ".mzml.gz"))
+   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 5, ".mzml")
+         || !strcasecmp(g_staticParams.inputFile.szFileName + iLen - 8, ".mzml.gz"))
    {
       strcpy (szFormatAccession, "MS:1000584");  // mzML
       strcpy(szFormatName, "mzML file");
@@ -1204,7 +1203,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1001530");
       strcpy(szSpectrumName, "mzML unique identifier");
    }
-   else if (!strcmp(szFileNameLower + iLen - 4, ".ms2"))
+   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".ms2"))
    {
       strcpy (szFormatAccession, "MS:1001466");  // ms2
       strcpy(szFormatName, "MS2 file");
@@ -1212,7 +1211,7 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
       strcpy(szSpectrumAccession, "MS:1000776");
       strcpy(szSpectrumName, "scan number only nativeID format");
    }
-   else if (!strcmp(szFileNameLower + iLen - 4, ".mgf"))
+   else if (!strcasecmp(g_staticParams.inputFile.szFileName + iLen - 4, ".mgf"))
    {
       strcpy (szFormatAccession, "MS:1001062");  // mgf
       strcpy(szFormatName, "Mascot MGF file");

@@ -18,8 +18,6 @@
 
 #define SIZE_BUF                    8192
 #define SIZE_FILE                   4096
-#define SIZE_FILE2                  SIZE_FILE + 600
-#define SIZE_ERROR                  SIZE_FILE2 + 400
 
 #define MAX_THREADS                 128
 
@@ -104,28 +102,34 @@ struct Scores
     double dSp;
     double dCn;
     double dExpect;
+    double dAScorePro;
     double mass;
     int matchedIons;
     int totalIons;
+    string sAScoreProSiteScores;  // AScore site scores as string
 
     Scores() :
         xCorr(0),
         dSp(0),
         dCn(0),
         dExpect(0),
+        dAScorePro(0),
         mass(0),
         matchedIons(0),
-        totalIons(0)
+        totalIons(0),
+        sAScoreProSiteScores("")
     { }
 
-    Scores(double xCorr, double dSp, double dCn, double dExpect, double mass, int matchedIons, int totalIons) :
+    Scores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
         xCorr(xCorr),
         dSp(dSp),
         dCn(dCn),
         dExpect(dExpect),
+        dAScorePro(dAScorePro),
         mass(mass),
         matchedIons(matchedIons),
-        totalIons(totalIons)
+        totalIons(totalIons),
+        sAScoreProSiteScores(sAScoreProSiteScores)
     { }
 
     Scores(const Scores& a) :
@@ -133,9 +137,11 @@ struct Scores
         dSp(a.dSp),
         dCn(a.dCn),
         dExpect(a.dExpect),
+        dAScorePro(a.dAScorePro),
         mass(a.mass),
         matchedIons(a.matchedIons),
-        totalIons(a.totalIons)
+        totalIons(a.totalIons),
+        sAScoreProSiteScores(a.sAScoreProSiteScores)
     { }
 
     Scores& operator=(Scores& a)
@@ -144,9 +150,11 @@ struct Scores
         dSp = a.dSp;
         dCn = a.dCn;
         dExpect = a.dExpect;
+        dAScorePro = a.dAScorePro;
         mass = a.mass;
         matchedIons = a.matchedIons;
         totalIons = a.totalIons;
+        sAScoreProSiteScores = a.sAScoreProSiteScores;
         return *this;
     }
 };
@@ -204,14 +212,6 @@ struct Fragment
         neutralLossMass(0)
     { }
 
-    Fragment(double mass, double intensity, int type, int number, int charge) :
-        mass(mass),
-        intensity(intensity),
-        type(type),
-        number(number),
-        charge(charge)
-    { }
-
     Fragment(double mass, double intensity, int type, int number, int charge, bool neutralLoss, double neutralLossMass) :
         mass(mass),
         intensity(intensity),
@@ -222,7 +222,6 @@ struct Fragment
         neutralLossMass(neutralLossMass)
      { }
 
-
     Fragment(const Fragment& a) :
         mass(a.mass),
         intensity(a.intensity),
@@ -231,7 +230,6 @@ struct Fragment
         charge(a.charge),
         neutralLoss(a.neutralLoss),
         neutralLossMass(a.neutralLossMass)
-
     { }
 
     Fragment& operator=(Fragment& a)

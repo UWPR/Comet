@@ -26,16 +26,15 @@ struct PreprocessThreadData
    bool *pbMemoryPool;  //MH: Manages active memory pool
 
    PreprocessThreadData()
+      : mstSpectrum(), iAnalysisType(0), iFileLastScan(0), pbMemoryPool(nullptr)
    {
    }
 
-   PreprocessThreadData(Spectrum &spec_in,
+   PreprocessThreadData(Spectrum& spec_in,
                         int iAnalysisType_in,
                         int iFileLastScan_in)
+      : mstSpectrum(spec_in), iAnalysisType(iAnalysisType_in), iFileLastScan(iFileLastScan_in), pbMemoryPool(nullptr)
    {
-      mstSpectrum = spec_in;
-      iAnalysisType = iAnalysisType_in;
-      iFileLastScan = iFileLastScan_in;
    }
 
    ~PreprocessThreadData()
@@ -117,12 +116,6 @@ private:
                                  int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
-   static bool CheckExit(int iAnalysisType,
-                         int iScanNum,
-                         int iTotalScans,
-                         int iLastScan,
-                         int iReaderLastScan,
-                         int iNumSpectraLoaded);
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,

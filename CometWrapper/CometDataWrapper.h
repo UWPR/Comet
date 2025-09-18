@@ -303,6 +303,16 @@ namespace CometWrapper {
             double get() { return pScores->dExpect; }
         }
 
+        property double dAScoreScore
+        {
+           double get() { return pScores->dAScorePro; }
+        }
+
+        property System::String^ sAScoreProSiteScores
+        {
+           String^ get() { return gcnew String(pScores->sAScoreProSiteScores.c_str()); }
+        }
+
         property double mass
         {
             double get() { return pScores->mass; }
@@ -316,7 +326,7 @@ namespace CometWrapper {
         property int TotalIons
         {
             int get() { return (int)pScores->totalIons; }
-        }       
+        }
 
     private:
         Scores * pScores;
