@@ -1079,6 +1079,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    // the global error variable before we get here, so no need to check
    // the return value here.
    sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
+
    delete pSearchThreadData;
    pSearchThreadData = NULL;
 }
@@ -4310,7 +4311,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    // do need this fudge factor in comparing dXcorr to dLowestXcorrScore as there must be some
    // rounding errors that where random duplicate, same score peptides doesn't make it past here
-   if (dXcorr + 0.00005 >= dLowestXcorrScore && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
+   if (dXcorr >= g_staticParams.options.dMinimumXcorr
+      && dXcorr + 0.00005 >= dLowestXcorrScore
+      && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
    {
       // no need to check duplicates if fragment ion indexed database search (internal decoys not supported yet)
       // and !g_staticParams.options.bTreatSameIL and no internal decoys
@@ -4487,6 +4490,9 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
    int iLenPeptide2;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
+   if (dXcorr < g_staticParams.options.dMinimumXcorr)
+      return;
+
    iLenPeptide = iEndPos - iStartPos + 1;
    iLenPeptide2 = iLenPeptide + 2;
 
@@ -4502,7 +4508,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          {
             siLowestDecoyXcorrScoreIndex = siA;
          }
-         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr ==  pQuery->_pDecoys[siA].fXcorr)
+         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr ==  pQuery->_pDecoys[siA].fXcorr
+            && pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr >= g_staticParams.options.dMinimumXcorr)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -4704,7 +4711,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
             siLowestXcorrScoreIndex = siA;
          }
          else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr
-               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > g_staticParams.options.dMinimumXcorr)
+               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr >= g_staticParams.options.dMinimumXcorr)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -5139,6 +5146,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, (pQuery->_pDecoys[i].usiLenPeptide * sizeof(char)));
                   pQuery->_pDecoys[i].szPeptide[pQuery->_pDecoys[i].usiLenPeptide]='\0';
                }
+
+               pQuery->iDecoyMatchPeptideCount++;
 
                break;
             }

@@ -137,9 +137,6 @@
                int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
 
-iFirstScan = 13540;
-iLastScan  = 20000;
-
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
                   var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
@@ -246,8 +243,6 @@ iLastScan  = 20000;
                            SearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                            watch.Stop();
-
-//Console.WriteLine("   MS2 {0}, mass {1}, {2} - {3}, pepcount {4}", iScanNumber, dExpPepMass, dPeptideMassLow, dPeptideMassHigh, vPeptide.Count);
 
                            int iProteinLengthCutoff = 30;
 

@@ -317,6 +317,9 @@ static bool AllocateResultsMem()
          }
       }
 
+      pQuery->iMatchPeptideCount = 0;
+      pQuery->iDecoyMatchPeptideCount = 0;
+
       for (int j=0; j<g_staticParams.options.iNumStored; ++j)
       {
          pQuery->_pResults[j].dPepMass = 0.0;
@@ -2418,7 +2421,7 @@ bool CometSearchManager::DoSearch()
       CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
    }
 
-   bool bAScoreInitializationNotDoneYet = true;
+   bool bPerformAScoreInitialization = true;
 
    for (int i = 0; i < (int)g_pvInputFiles.size(); ++i)
    {
@@ -2832,9 +2835,9 @@ bool CometSearchManager::DoSearch()
             }
          }
 
-         if (g_staticParams.options.iPrintAScoreProScore && bAScoreInitializationNotDoneYet)
+         if (g_staticParams.options.iPrintAScoreProScore && bPerformAScoreInitialization)
          {
-            //FIX make sure this is done only once~!!!
+            //FIX make sure this is done only once!!!
             SetAScoreOptions();
 
             // Create the AScoreDllInterface using the factory function
@@ -2845,7 +2848,7 @@ bool CometSearchManager::DoSearch()
                exit(1);
             }
 
-            bAScoreInitializationNotDoneYet = false;
+            bPerformAScoreInitialization = false;
          }
 
          auto tBeginTime = chrono::steady_clock::now();
@@ -3425,7 +3428,6 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          SetAScoreOptions();  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
 
          // Create the AScoreDllInterface using the factory function
-
          g_AScoreInterface = CreateAScoreDllInterface();
          if (!g_AScoreInterface)
          {

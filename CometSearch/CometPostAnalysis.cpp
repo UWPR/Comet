@@ -108,8 +108,11 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    CalculateDeltaCn(iQueryIndex);
 
    // Calculate A-Score if specified and peptide has phospho mod
-   if (g_staticParams.options.iPrintAScoreProScore && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+   if (g_staticParams.options.iPrintAScoreProScore
+      && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+   {
       CalculateAScorePro(iQueryIndex, g_AScoreInterface);
+   }
 
    delete pThreadData;
    pThreadData = NULL;
@@ -670,6 +673,13 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    double precursorMz;
    int precursorCharge;
 
+   // sanity check here; AScorePro will segfault if peptide length is 0
+   if (!(g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod == 2
+      && g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide > 0))
+   {
+      return;
+   }
+
    precursorCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState;
    precursorMz = (g_pvQuery.at(iWhichQuery)->_pResults[0].dPepMass + (precursorCharge -1) * PROTON_MASS) / precursorCharge;
 
@@ -697,9 +707,9 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
       g_pvQuery.at(iWhichQuery)->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
 
-   // The question is what to do with AScore results.  For now, I plan on using the AScore localized
-   // peptide to replace the original peptide in the results structure and report both the score
-   // and site scores.
+   // The question is what to do with AScore results.  For now, I plan on using the AScore
+   // localized peptide to replace the original peptide in the results structure and report
+   // both the score and site scores.
    if (!result.peptides.empty())
    {
       g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = result.peptides[0].getScore();
@@ -741,7 +751,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
                // sanity check
                if (modIndex < 0 || modIndex > VMODS)
                {
-                  std::cerr << "Error1: AScorePro returned invalid modification index " << modIndex << " in peptide " << sPeptide << std::endl;
+                  std::cerr << "Error: (1) AScorePro returned invalid modification index " << modIndex << " in peptide " << sPeptide << std::endl;
                   return;
                }
 
@@ -754,7 +764,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
                else 
                {
                   // FIX: need to do something more here to address mod sites that might not be correct anymore
-                  std::cerr << "Error2: AScorePro returned invalid modification position " << (iPosMinus1) << " in peptide " << sPeptide << std::endl;
+                  std::cerr << "Error: (2) AScorePro returned invalid modification position " << (iPosMinus1) << " in peptide " << sPeptide << std::endl;
                   return;
                }
 
@@ -767,59 +777,54 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
             }
          }
 
-/*
-         printf("OK AScorePro localized peptide:\n");
-         for (int i= 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
-            printf("%c", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]);
-         printf("\n");
-         for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
-           printf("%d", g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
-         printf("\n");
-*/
-
          // Report site score as a string composed of space separated “position:score” pairs
          g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores.clear();
          int iPosition;
          double dScore;
-         std::ostringstream oss;
+         char szBuffer[32];
 
          for (size_t i = 0; i < result.sites.size(); ++i)
          {
             iPosition = result.sites[i].getPosition();
             dScore = result.sites[i].getScore();
 
-            oss << std::fixed << std::setprecision(2) << dScore;  // ensure 2 decimal places
+            snprintf(szBuffer, sizeof(szBuffer), "%.2f", dScore);
 
-            if (i>0)
+            if (i > 0)
                g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += " ";
-            g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += std::to_string(iPosition) + ":" + oss.str();
+            g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += std::to_string(iPosition) + ":" + szBuffer;
          }
-
-
       }
       else
       {
          g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
       }
-   }
 
-   // Print results
 /*
-   std::cout << endl << "Original sequence: " << sequence << "\n";
-   std::cout << "Peptides scored: " << result.peptides.size() << "\n";
-   std::cout << "Sites scored: " << result.sites.size() << "\n";
-   std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
-   std::cout << "Score: " << result.peptides[0].getScore() << "\n";
-   std::cout << "Site scores: ";
-   for (size_t i = 0; i < 6; ++i)
-   {
-      if (i < result.sites.size())
-         std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
-      else
-         break;
-   }
-   std::cout << "\n";
+      // Print results
+      printf("OK AScorePro localized peptide:\n");
+      for (int i= 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+         printf("%c", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]);
+      printf("\n");
+      for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+         printf("%d", g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
+      printf("\n");      std::cout << endl << "Original sequence: " << sequence << "\n";
+
+      std::cout << "Peptides scored: " << result.peptides.size() << "\n";
+      std::cout << "Sites scored: " << result.sites.size() << "\n";
+      std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
+      std::cout << "Score: " << result.peptides[0].getScore() << "\n";
+      std::cout << "Site scores: ";
+      for (size_t i = 0; i < 6; ++i)
+      {
+         if (i < result.sites.size())
+            std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
+         else
+            break;
+      }
+      std::cout << "\n";
 */
+   }
 }
 
 
