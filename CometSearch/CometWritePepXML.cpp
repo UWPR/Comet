@@ -437,7 +437,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.szMango,
             pQuery->_spectrumInfoInternal.iScanNumber,
             pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
+            pQuery->_spectrumInfoInternal.usiChargeState);
    }
    else
    {
@@ -445,7 +445,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
             pStr,
             pQuery->_spectrumInfoInternal.iScanNumber,
             pQuery->_spectrumInfoInternal.iScanNumber,
-            pQuery->_spectrumInfoInternal.iChargeState);
+            pQuery->_spectrumInfoInternal.usiChargeState);
    }
 
    if (pQuery->_spectrumInfoInternal.szNativeID[0]!='\0')
@@ -458,7 +458,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    fprintf(fpout, " start_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " end_scan=\"%d\"", pQuery->_spectrumInfoInternal.iScanNumber);
    fprintf(fpout, " precursor_neutral_mass=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS);
-   fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.iChargeState);
+   fprintf(fpout, " assumed_charge=\"%d\"", pQuery->_spectrumInfoInternal.usiChargeState);
    fprintf(fpout, " index=\"%d\"", iNumSpectraSearched + iWhichQuery + 1);
 
    if (pQuery->_spectrumInfoInternal.fRTime > 0.0)
@@ -529,7 +529,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    bool bReturnFulProteinString = false;
    CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
-   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].iRankXcorr);
+   fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].usiRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);
    fprintf(fpout, " peptide_prev_aa=\"%c\"", pOutput[iWhichResult].cPrevAA);
    fprintf(fpout, " peptide_next_aa=\"%c\"", pOutput[iWhichResult].cNextAA);
@@ -575,8 +575,8 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    fprintf(fpout, " num_tot_proteins=\"%u\"", uiNumTotProteins);
-   fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].iMatchedIons);
-   fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].iTotalIons);
+   fprintf(fpout, " num_matched_ions=\"%d\"", pOutput[iWhichResult].usiMatchedIons);
+   fprintf(fpout, " tot_num_ions=\"%d\"", pOutput[iWhichResult].usiTotalIons);
    fprintf(fpout, " calc_neutral_pep_mass=\"%0.6f\"", pOutput[iWhichResult].dPepMass - PROTON_MASS);
    fprintf(fpout, " massdiff=\"%0.6f\"", pQuery->_pepMassInfo.dExpPepMass - pOutput[iWhichResult].dPepMass);
    fprintf(fpout, " num_tol_term=\"%d\"", iNTT);
@@ -614,24 +614,30 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    }
 
    // check if peptide is modified
-   bool bModified = 0;
+   bool bModified = false;
 
-   if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
-         || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
-      bModified = 1;
-
-   if (pOutput[iWhichResult].cPrevAA=='-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
-      bModified = 1;
-   if (pOutput[iWhichResult].cNextAA=='-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
-      bModified = 1;
-
-   //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
-   if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
-      bModified = 1;
+   if (pOutput[iWhichResult].cHasVariableMod)
+      bModified = true;
 
    if (!bModified)
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
+         || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
+         bModified = 1;
+
+      if (pOutput[iWhichResult].cPrevAA == '-' && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
+         bModified = 1;
+      if (pOutput[iWhichResult].cNextAA == '-' && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
+         bModified = 1;
+
+      //if (pOutput[iWhichResult].cPeffOrigResidue != '\0' && pOutput[iWhichResult].iPeffOrigResiduePosition != -9)
+      if (!pOutput[iWhichResult].sPeffOrigResidues.empty() && pOutput[iWhichResult].iPeffOrigResiduePosition != NO_PEFF_VARIANT)
+         bModified = 1;
+   }
+
+   if (!bModified)
+   {
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
 
       {
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
@@ -643,7 +649,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       }
 
       // check n- and c-terminal variable mods
-      i=pOutput[iWhichResult].iLenPeptide;
+      i=pOutput[iWhichResult].usiLenPeptide;
       if (pOutput[iWhichResult].piVarModSites[i] != 0  || pOutput[iWhichResult].piVarModSites[i+1] != 0)
          bModified = 1;
    }
@@ -663,7 +669,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       double dCterm = 0.0;
 
       // See if n-term mod (static and/or variable) needs to be reported
-      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0
+      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0
             || !isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0)
             || (pOutput[iWhichResult].cPrevAA=='-'
                && !isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0)) )
@@ -673,9 +679,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          // pepXML format reports modified term mass (vs. mass diff)
          dNterm = g_staticParams.precalcMasses.dNtermProton - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
          {
-            dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+            dNterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].dVarModMass;
             bNtermVariable = true;
          }
 
@@ -684,7 +690,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       }
 
       // See if c-term mod (static and/or variable) needs to be reported
-      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0
+      if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 0
             || !isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0)
             || (pOutput[iWhichResult].cNextAA=='-'
                && !isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0)) )
@@ -693,9 +699,9 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
          dCterm = g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 0)
          {
-            dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+            dCterm += g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].dVarModMass;
             bCtermVariable = true;
          }
 
@@ -706,7 +712,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       // generate modified_peptide string
       if (bNtermVariable)
          sprintf(szModPep+strlen(szModPep), "n[%0.0f]", dNterm);
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
       {
          sprintf(szModPep+strlen(szModPep), "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -726,7 +732,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          fprintf(fpout, " mod_cterm_mass=\"%0.6f\"", dCterm);
       fprintf(fpout, ">\n");
 
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
       {
          if (!isEqual(g_staticParams.staticModifications.pdStaticMods[(int)pOutput[iWhichResult].szPeptide[i]], 0.0)
                || pOutput[iWhichResult].piVarModSites[i] != 0)
@@ -784,7 +790,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                }
             }
          }
-         else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].iLenPeptide)
+         else if (pOutput[iWhichResult].iPeffOrigResiduePosition == pOutput[iWhichResult].usiLenPeptide)
          {
             // case where a single amino acid substitution one after the end of the peptide caused the peptide sequence (i.e. creation of an enzyme cut site)
             fprintf(fpout, "     <aminoacid_substitution peptide_next_aa=\"%c\" orig_aa=\"%c\"/>\n",
@@ -806,22 +812,27 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
          }
       }
 
-
       fprintf(fpout, "    </modification_info>\n");
    }
 
    fprintf(fpout, "    <search_score name=\"xcorr\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorr);
    fprintf(fpout, "    <search_score name=\"deltacn\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fDeltaCn);
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
-   fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].iRankSp);
+   fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].usiRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);
+
+   if (g_staticParams.options.iPrintAScoreProScore && iWhichResult == 0 && pOutput[iWhichResult].cHasVariableMod == 2)
+   {
+      fprintf(fpout, "    <search_score name=\"ascorepro_score\" value=\"%0.2f\"/>\n", pOutput[iWhichResult].fAScorePro);
+      fprintf(fpout, "    <search_score name=\"ascorepro_sitescore\" value=\"%s\"/>\n", pOutput[iWhichResult].sAScoreProSiteScores.c_str());
+   }
 
    if (g_staticParams.options.bExportAdditionalScoresPepXML)
    {
-      fprintf(fpout, "    <search_score name=\"lnrSp\" value=\"%0.4f\"/>\n", log((double)pOutput[iWhichResult].iRankSp));
+      fprintf(fpout, "    <search_score name=\"lnrSp\" value=\"%0.4f\"/>\n", log((double)pOutput[iWhichResult].usiRankSp));
       fprintf(fpout, "    <search_score name=\"deltLCn\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fLastDeltaCn);
       fprintf(fpout, "    <search_score name=\"lnExpect\" value=\"%0.4f\"/>\n", log(pOutput[iWhichResult].dExpect));
-      fprintf(fpout, "    <search_score name=\"IonFrac\" value=\"%0.4f\"/>\n", (double)pOutput[iWhichResult].iMatchedIons / pOutput[iWhichResult].iTotalIons);
+      fprintf(fpout, "    <search_score name=\"IonFrac\" value=\"%0.4f\"/>\n", (double)pOutput[iWhichResult].usiMatchedIons / pOutput[iWhichResult].usiTotalIons);
 
       unsigned long uliNumMatch;
       if (iPrintTargetDecoy == 2)
@@ -841,44 +852,62 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 void CometWritePepXML::ReadInstrument(char *szManufacturer,
                                       char *szModel)
 {
+   strcpy(szModel, "UNKNOWN");  // default if not mzXML input
    strcpy(szManufacturer, "UNKNOWN");
-   strcpy(szModel, "UNKNOWN");
 
    if (g_staticParams.inputFile.iInputType == InputType_MZXML)
    {
       FILE *fp;
-
       if ((fp = fopen(g_staticParams.inputFile.szFileName, "r")) != NULL)
       {
-         char szMsInstrumentElement[SIZE_BUF];
-         char szBuf[SIZE_BUF];
+         bool inMsInstrument = false;
+         std::string msModel, msManufacturer;
 
-         szMsInstrumentElement[0]='\0';
+         const char* modelAttr = "\"msModel\" value=\"";
+         const char* manufAttr = "\"msManufacturer\" value=\"";
+
+         char szBuf[SIZE_BUF];
          while (fgets(szBuf, SIZE_BUF, fp))
          {
             if (strstr(szBuf, "<scan") || strstr(szBuf, "mslevel"))
                break;
 
-            // Grab entire msInstrument element.
             if (strstr(szBuf, "<msInstrument"))
-            {
-               strcat(szMsInstrumentElement, szBuf);
+               inMsInstrument = true;
 
-               while (fgets(szBuf, SIZE_BUF, fp))
+            if (inMsInstrument)
+            {
+               // Parse msModel value
+               char* pModel = strstr(szBuf, modelAttr);
+               if (pModel)
                {
-                  if (strlen(szMsInstrumentElement)+strlen(szBuf)<8192)
-                     strcat(szMsInstrumentElement, szBuf);
-                  if (strstr(szBuf, "</msInstrument>"))
-                  {
-                     GetVal(szMsInstrumentElement, "\"msModel\" value", szModel);
-                     GetVal(szMsInstrumentElement, "\"msManufacturer\" value", szManufacturer);
-                     break;
-                  }
+                  pModel += strlen(modelAttr);
+                  char* pEnd = strchr(pModel, '"');
+                  if (pEnd)
+                     msModel.assign(pModel, pEnd - pModel);
                }
+
+               // Parse msManufacturer value
+               char* pManuf = strstr(szBuf, manufAttr);
+               if (pManuf)
+               {
+                  pManuf += strlen(manufAttr);
+                  char* pEnd = strchr(pManuf, '"');
+                  if (pEnd)
+                     msManufacturer.assign(pManuf, pEnd - pManuf);
+               }
+
+               if (strstr(szBuf, "</msInstrument>"))
+                  break;
             }
          }
-
          fclose(fp);
+
+         // Copy results to output
+         strncpy(szModel, msModel.empty() ? "UNKNOWN" : msModel.c_str(), SIZE_FILE - 1);
+         szModel[SIZE_FILE - 1] = '\0';
+         strncpy(szManufacturer, msManufacturer.empty() ? "UNKNOWN" : msManufacturer.c_str(), SIZE_FILE - 1);
+         szManufacturer[SIZE_FILE - 1] = '\0';
       }
    }
 }
@@ -890,12 +919,12 @@ void CometWritePepXML::GetVal(char *szElement,
 {
    char *pStr;
 
-   if ((pStr=strstr(szElement, szAttribute)))
+   if ((pStr = strstr(szElement, szAttribute)))
    {
-      strncpy(szAttributeVal, pStr+strlen(szAttribute)+2, SIZE_FILE);  // +2 to skip ="
-      szAttributeVal[SIZE_FILE-1] = '\0';
+      strncpy(szAttributeVal, pStr + strlen(szAttribute) + 2, SIZE_FILE);  // +2 to skip ="
+      szAttributeVal[SIZE_FILE - 1] = '\0';
 
-      if ((pStr=strchr(szAttributeVal, '"')))
+      if ((pStr = strchr(szAttributeVal, '"')))
       {
          *pStr='\0';
          return;
@@ -951,7 +980,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    }
    else if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1])
+      if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].usiLenPeptide -1])
             && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].cNextAA))
       {
          *iNTT += 1;
@@ -960,7 +989,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    else
    {
       if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].cNextAA)
-            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].iLenPeptide -1]))
+            && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[pOutput[iWhichResult].usiLenPeptide -1]))
       {
          *iNTT += 1;
       }
@@ -969,7 +998,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    // Calculate number of missed cleavage (NMC) sites based on sample_enzyme
    if (g_staticParams.enzymeInformation.iSampleEnzymeOffSet == 1)
    {
-      for (i=0; i<pOutput[iWhichResult].iLenPeptide-1; ++i)
+      for (i=0; i<pOutput[iWhichResult].usiLenPeptide-1; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i+1]))
@@ -980,7 +1009,7 @@ void CometWritePepXML::CalcNTTNMC(Results *pOutput,
    }
    else
    {
-      for (i=1; i<pOutput[iWhichResult].iLenPeptide; ++i)
+      for (i=1; i<pOutput[iWhichResult].usiLenPeptide; ++i)
       {
          if (strchr(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, pOutput[iWhichResult].szPeptide[i])
                && !strchr(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, pOutput[iWhichResult].szPeptide[i-1]))

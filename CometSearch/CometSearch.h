@@ -16,6 +16,8 @@
 #define _COMETSEARCH_H_
 
 #include "CometDataInternal.h"
+#include "ThreadPool.h"
+#include "Common.h"
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -227,7 +229,7 @@ private:
                      int iClipNtermMetOffset,
                      bool *pbDuplFragments,
                      bool *bDoPeffAnalysis,
-                     vector <PeffPositionStruct>* vPeffArray,
+                     std::vector <PeffPositionStruct>* vPeffArray,
                      struct sDBEntry *dbe);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
@@ -296,7 +298,7 @@ private:
 
    struct SpectrumInfoInternal
    {
-      Spectrum *pSpectrum;
+//      Spectrum *pSpectrum;
       int      iChargeState;
       int      iArraySize;     // m/z versus intensity array
       int      iHighestIon;
@@ -309,8 +311,8 @@ private:
    double             _pdAAreverse[MAX_PEPTIDE_LEN];      // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAforwardDecoy[MAX_PEPTIDE_LEN]; // Stores fragment ion fragment ladder calc.; sum AA masses including mods
    double             _pdAAreverseDecoy[MAX_PEPTIDE_LEN]; // Stores n-term fragment ion fragment ladder calc.; sum AA masses including mods
-   int                _iSizepiVarModSites;
-   int                _iSizepdVarModSites;
+   unsigned short     _usiSizepiVarModSites;
+   unsigned short     _usiSizepdVarModSites;
    VarModInfo         _varModInfo;
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];   // +2 for two fragment NL series

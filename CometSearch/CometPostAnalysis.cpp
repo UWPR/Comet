@@ -19,6 +19,15 @@
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
 
+#include "AScoreFactory.h"
+#include "AScoreOptions.h"
+#include "AScoreOutput.h"
+#include "AScoreDllInterface.h"
+#include "AScoreCentroid.h"
+#include "AScorePeptideBuilder.h"
+#include "AScoreMass.h"
+
+
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 
@@ -73,7 +82,8 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 }
 
 
-void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData, ThreadPool* tp)
+void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
+                                               ThreadPool* tp)
 {
    int iQueryIndex = pThreadData->iQueryIndex;
 
@@ -96,6 +106,13 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // this has to happen after AnalyzeSP as results are sorted in that fn
    CalculateDeltaCn(iQueryIndex);
+
+   // Calculate A-Score if specified and peptide has phospho mod
+   if (g_staticParams.options.iPrintAScoreProScore
+         && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+   {
+      CalculateAScorePro(iQueryIndex, g_AScoreInterface);
+   }
 
    delete pThreadData;
    pThreadData = NULL;
@@ -129,7 +146,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
          iMinLength = iLen;
    }
 
-   int iRankXcorr = 1;
+   unsigned int usiRankXcorr = 1;
 
    int iLastEntry = 0;
    for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
@@ -188,7 +205,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
          dDeltaCn = 0.0;
 
       if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult - 1].fXcorr))
-         iRankXcorr++;
+         usiRankXcorr++;
 
       double dLastDeltaCn = 1.0;  // this is deltaCn between first and last peptide in output list
 
@@ -204,7 +221,7 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 
       pOutput[iWhichResult].fDeltaCn = (float)dDeltaCn;
       pOutput[iWhichResult].fLastDeltaCn = (float)dLastDeltaCn;
-      pOutput[iWhichResult].iRankXcorr = iRankXcorr;
+      pOutput[iWhichResult].usiRankXcorr = usiRankXcorr;
    }
 }
 
@@ -227,15 +244,15 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
 
    std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnSp);
 
-   pQuery->_pResults[0].iRankSp = 1;
+   pQuery->_pResults[0].usiRankSp = 1;
 
    for (int ii=1; ii<iSize; ++ii)
    {
       // Determine score rankings
       if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
-         pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp;
+         pQuery->_pResults[ii].usiRankSp = pQuery->_pResults[ii-1].usiRankSp;
       else
-         pQuery->_pResults[ii].iRankSp = pQuery->_pResults[ii-1].iRankSp + 1;
+         pQuery->_pResults[ii].usiRankSp = pQuery->_pResults[ii-1].usiRankSp + 1;
    }
 
    // Then sort each entry in descending order by xcorr
@@ -279,15 +296,15 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
       CalculateSP(pQuery->_pDecoys, iWhichQuery, iSize);
 
       std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnSp);
-      pQuery->_pDecoys[0].iRankSp = 1;
+      pQuery->_pDecoys[0].usiRankSp = 1;
 
       for (int ii=1; ii<iSize; ++ii)
       {
          // Determine score rankings
          if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
-            pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp;
+            pQuery->_pDecoys[ii].usiRankSp = pQuery->_pDecoys[ii-1].usiRankSp;
          else
-            pQuery->_pDecoys[ii].iRankSp = pQuery->_pDecoys[ii-1].iRankSp + 1;
+            pQuery->_pDecoys[ii].usiRankSp = pQuery->_pDecoys[ii-1].usiRankSp + 1;
       }
 
       // Then sort each entry by xcorr
@@ -370,7 +387,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
       }
 
-      if (pOutput[i].iLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr) // take care of possible edge case
+      if (pOutput[i].usiLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr) // take care of possible edge case
       {
          int  ii;
          int  ctCharge;
@@ -381,14 +398,14 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          double dTmpIntenMatch = 0.0;
 
-         int iMatchedFragmentIonCt = 0;
-         int iMaxFragCharge;
+         unsigned short usiMatchedFragmentIonCt = 0;
+         unsigned short usiMaxFragCharge;
 
          // if no variable mods are used in search, clear piVarModSites here
          if (!g_staticParams.variableModParameters.bVarModSearch)
             memset(pOutput[i].piVarModSites, 0, _iSizepiVarModSites);
 
-         iMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
+         usiMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge;
 
          if (pOutput[i].cPrevAA == '-' || pOutput[i].bClippedM)
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -396,22 +413,22 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
          if (g_staticParams.variableModParameters.bVarModSearch
-               && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide] > 0))
+               && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] > 0))
          {
-            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide]-1].dVarModMass;
+            dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] - 1].dVarModMass;
          }
 
          if (g_staticParams.variableModParameters.bVarModSearch
-               && (pOutput[i].piVarModSites[pOutput[i].iLenPeptide + 1] > 0))
+               && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] > 0))
          {
-            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].iLenPeptide+1]-1].dVarModMass;
+            dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] - 1].dVarModMass;
          }
 
          for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
          {
             int iii;
 
-            for (iii=1; iii<=iMaxFragCharge; ++iii)
+            for (iii = 1; iii <= usiMaxFragCharge; ++iii)
                ionSeries[g_staticParams.ionInformation.piSelectedIonSeries[ii]].bPreviousMatch[iii] = 0;
          }
 
@@ -428,7 +445,7 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          }
 
          // Generate pdAAforward for _pResults[0].szPeptide.
-         int iLenMinus1 = pOutput[i].iLenPeptide - 1;
+         int iLenMinus1 = pOutput[i].usiLenPeptide - 1;
          for (ii=0; ii<iLenMinus1; ++ii)
          {
             int iPos = iLenMinus1 - ii;
@@ -487,15 +504,15 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
          int iMax = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
 
-         for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
+         for (ctCharge = 1; ctCharge <= usiMaxFragCharge; ++ctCharge)
          {
-            for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
+            for (ii = 0; ii < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
             {
                int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
 
                // As both _pdAAforward and _pdAAreverse are increasing, loop through
                // iLenPeptide-1 to complete set of internal fragment ions.
-               for (int iii=0; iii<pOutput[i].iLenPeptide-1; ++iii)
+               for (int iii=0; iii<pOutput[i].usiLenPeptide-1; ++iii)
                {
                   // Gets fragment ion mass.
                   dFragmentIonMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, iii, ctCharge, pdAAforward, pdAAreverse);
@@ -631,19 +648,182 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                      }
 
                      dConsec += dAddConsecutive;  // move this here after fragment neutral loss analysis
-                     iMatchedFragmentIonCt += iAddMatchedFragment;
+                     usiMatchedFragmentIonCt += iAddMatchedFragment;
                   }
                }
             }
          }
 
-         pOutput[i].fScoreSp = (float)((dTmpIntenMatch * iMatchedFragmentIonCt * (1.0 + dConsec)) /
-            ((pOutput[i].iLenPeptide - 1.0) * iMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
+         pOutput[i].fScoreSp = (float)((dTmpIntenMatch * usiMatchedFragmentIonCt * (1.0 + dConsec)) /
+            ((pOutput[i].usiLenPeptide - 1.0) * usiMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
          // round Sp to 3 significant digits
          pOutput[i].fScoreSp =  (float)(( ((int)pOutput[i].fScoreSp)  * 100)  / 100.0);
 
-         pOutput[i].iMatchedIons = iMatchedFragmentIonCt;
+         pOutput[i].usiMatchedIons = usiMatchedFragmentIonCt;
       }
+   }
+}
+
+using namespace AScoreProCpp;
+
+void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
+                                           AScoreDllInterface* ascoreInterface)
+{
+   std::string sequence;
+   double precursorMz;
+   int precursorCharge;
+
+   // sanity check here; AScorePro will segfault if peptide length is 0
+   if (!(g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod == 2
+      && g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide > 0))
+   {
+      return;
+   }
+
+   precursorCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState;
+   precursorMz = (g_pvQuery.at(iWhichQuery)->_pResults[0].dPepMass + (precursorCharge -1) * PROTON_MASS) / precursorCharge;
+
+   // Generate peptide sequence of format "K.M0LAES1DDSGDEES1VSQTDK.T" where the mod char is the mod #
+   sequence = g_pvQuery.at(iWhichQuery)->_pResults[0].cPrevAA + std::string(".");
+   for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+   {
+      sequence += g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i];
+
+      if (g_staticParams.variableModParameters.bVarModSearch && g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] != 0)
+      {
+         if (g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] > 0)
+         {
+            sequence += std::to_string(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
+         }
+         else
+         {
+            sequence += "?";    // PEFF:  no clue how to specify mod encoding
+         }
+      }
+   }
+   sequence += std::string(".") + g_pvQuery.at(iWhichQuery)->_pResults[0].cNextAA;
+
+   // Calculate AScore using the DLL interface
+   AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
+      g_pvQuery.at(iWhichQuery)->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+
+   // The question is what to do with AScore results.  For now, I plan on using the AScore
+   // localized peptide to replace the original peptide in the results structure and report
+   // both the score and site scores.
+   if (!result.peptides.empty())
+   {
+      g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = result.peptides[0].getScore();
+
+      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= 13.0)
+      {
+         // set piVarModSites and pdVarModSites based on AScore localized peptide
+         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
+         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites, 0, (unsigned short)(sizeof(double) * MAX_PEPTIDE_LEN_P2));
+
+         std::string sPeptide = result.peptides[0].toString();
+
+         // Extract the peptide portion (between the two dots)
+         size_t firstDot = sPeptide.find('.');
+         size_t lastDot = sPeptide.rfind('.');
+         std::string peptide = sPeptide.substr(firstDot + 1, lastDot - firstDot - 1);
+
+         int position = 0; // position within peptide
+         int iPosMinus1 = 0;
+         for (size_t i = 0; i < peptide.size();)
+         {
+            if (std::isalpha(peptide[i]))
+            {
+               // Amino acid -> increment residue counter
+               position++;
+               i++;
+            }
+            else if (std::isdigit(peptide[i]))
+            {
+               // Modification reference -> capture full number
+               size_t j = i;
+               while (j < peptide.size() && std::isdigit(peptide[j]))
+               {
+                  j++;
+               }
+
+               int modIndex = std::stoi(peptide.substr(i, j - i));
+
+               // sanity check
+               if (modIndex < 0 || modIndex > VMODS)
+               {
+                  std::cerr << "Error: (1) AScorePro returned invalid modification index " << modIndex << " in peptide " << sPeptide << std::endl;
+                  return;
+               }
+
+               iPosMinus1 = position - 1;
+               if (iPosMinus1 >= 0 && iPosMinus1 < MAX_PEPTIDE_LEN)
+               {
+                  g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[iPosMinus1] = modIndex;
+                  g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites[iPosMinus1] = g_staticParams.variableModParameters.varModList[modIndex - 1].dVarModMass;
+               }
+               else 
+               {
+                  // FIX: need to do something more here to address mod sites that might not be correct anymore
+                  std::cerr << "Error: (2) AScorePro returned invalid modification position " << (iPosMinus1) << " in peptide " << sPeptide << std::endl;
+                  return;
+               }
+
+               i = j;
+            }
+            else
+            {
+               // Unexpected character, skip it
+               i++;
+            }
+         }
+
+         // Report site score as a string composed of space separated “position:score” pairs
+         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores.clear();
+         int iPosition;
+         double dScore;
+         char szBuffer[32];
+
+         for (size_t i = 0; i < result.sites.size(); ++i)
+         {
+            iPosition = result.sites[i].getPosition();
+            dScore = result.sites[i].getScore();
+
+            snprintf(szBuffer, sizeof(szBuffer), "%.2f", dScore);
+
+            if (i > 0)
+               g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += " ";
+            g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += std::to_string(iPosition) + ":" + szBuffer;
+         }
+      }
+      else
+      {
+         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
+      }
+
+/*
+      // Print results
+      printf("OK AScorePro localized peptide:\n");
+      for (int i= 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+         printf("%c", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]);
+      printf("\n");
+      for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
+         printf("%d", g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
+      printf("\n");      std::cout << endl << "Original sequence: " << sequence << "\n";
+
+      std::cout << "Peptides scored: " << result.peptides.size() << "\n";
+      std::cout << "Sites scored: " << result.sites.size() << "\n";
+      std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
+      std::cout << "Score: " << result.peptides[0].getScore() << "\n";
+      std::cout << "Site scores: ";
+      for (size_t i = 0; i < 6; ++i)
+      {
+         if (i < result.sites.size())
+            std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
+         else
+            break;
+      }
+      std::cout << "\n";
+*/
    }
 }
 
@@ -702,7 +882,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
          return false;
       else  // same peptide, check mod state
       {
-         for (int i = 0; i < a.iLenPeptide + 2; ++i)
+         for (int i = 0; i < a.usiLenPeptide + 2; ++i)
          {
             if (a.piVarModSites[i] < b.piVarModSites[i])
                return true;
@@ -719,7 +899,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results &a,
 bool CometPostAnalysis::SortSpecLibFnXcorrMS1(const SpecLibResultsMS1& a,
                                               const SpecLibResultsMS1& b)
 {
-   if (a.fXcorr > b.fXcorr)
+   if (a.fDotProduct > b.fDotProduct)
       return true;
    else
       return false;
@@ -732,7 +912,7 @@ bool CometPostAnalysis::SortFnMod(const Results &a,
    // must compare character at a time
    // actually not sure why strcmp doesn't work
    // as piVarModSites is a char array
-   for (int i = 0; i < a.iLenPeptide + 2; ++i)
+   for (int i = 0; i < a.usiLenPeptide + 2; ++i)
    {
       if (a.piVarModSites[i] < b.piVarModSites[i])
          return true;
@@ -1011,7 +1191,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
 
    piHistogram = pQuery->iXcorrHistogram;
 
-   iMaxFragCharge = pQuery->_spectrumInfoInternal.iMaxFragCharge;
+   iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
 
    // EXPECT_DECOY_SIZE is the minimum # of decoys required or else this function isn't
    // called.  So need to generate iLoopMax more xcorr scores for the histogram.
@@ -1093,18 +1273,16 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                   }
                   else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
                   {
-                     char szErrorMsg[SIZE_ERROR];
-                     sprintf(szErrorMsg,  " Error - XCORR DECOY: dFragMass %f, iFragMass %d, ArraySize %d, InputMass %f, scan %d, z %d",
-                           dFragmentIonMass,
-                           iFragmentIonMass,
-                           pQuery->_spectrumInfoInternal.iArraySize,
-                           pQuery->_pepMassInfo.dExpPepMass,
-                           pQuery->_spectrumInfoInternal.iScanNumber,
-                           ctCharge);
+                     std::string sErrorMsg = " Error - XCORR DECOY: dFragMass " + std::to_string(dFragmentIonMass)
+                        + ", iFragMass " + std::to_string(iFragmentIonMass)
+                        + ", ArraySize " + std::to_string(pQuery->_spectrumInfoInternal.iArraySize)
+                        + ", InputMass " + std::to_string(pQuery->_pepMassInfo.dExpPepMass)
+                        + ", scan " + std::to_string(pQuery->_spectrumInfoInternal.iScanNumber)
+                        + ", z " + std::to_string(ctCharge);
 
-                     string strErrorMsg(szErrorMsg);
+                     string strErrorMsg(sErrorMsg.c_str());
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr(szErrorMsg);
+                     logerr(sErrorMsg);
                      return false;
                   }
                }

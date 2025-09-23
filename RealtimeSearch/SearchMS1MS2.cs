@@ -178,6 +178,7 @@
 
                         if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
+/*
                            watch.Start();
                            SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
                            watch.Stop();
@@ -186,8 +187,8 @@
                            {
                               for (int x = 0; x < 1; ++x)
                               {
-                                 Console.WriteLine("MS1 output query scan {0}\tlibscan {5}\tquery RT {1:F2}\tlib RT {4:F2}\tdotp {2:F3}\tdCn {3:F3}",
-                                    iScanNumber, dRT, vScores[x].fXcorr, vScores[x].fCn, vScores[x].fRTime, vScores[x].iScanNumber);
+                                 Console.WriteLine("MS1 output query scan {0}\tlibscan {4}\tquery RT {1:F2}\tlib RT {3:F2}\tdotp {2:F3}",
+                                    iScanNumber, dRT, vScores[x].fDotProduct, vScores[x].fRTime, vScores[x].iScanNumber);
 
 //                                 Console.WriteLine("MS1    {0} >>> {1}, RT {2:F3}",
 //                                 iScanNumber, vScores[x].iScanNumber, dRT);
@@ -204,7 +205,7 @@
                                  piTimeSearchMS1[iTime] += 1;
                            }
                            watch.Reset();
-
+*/
                         }
                         else if (scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
                         {
@@ -251,13 +252,16 @@
                               {
                                  for (int x = 0; x < 1; ++x)
                                  {
-                                    if (vPeptide[x].Length > 0)
+                                    if (vPeptide[x].Length > 0)// && vScores[x].dAScoreScore >= 1.0)
                                     {
                                        string protein = vProtein[x];
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F3}, E-value {3:0.##E+00}", iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect);
+                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F3}, E-value {3:0.##E+00}, AScore {4:F2}, Sites {5}", 
+                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores);
+
+                                       double dTmp = vScores[x].dAScoreScore;
 /*
                                        foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
                                        {
@@ -457,6 +461,10 @@
             iTmp = 1;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
+
+            iTmp = 1;  // 0=unused, otherwise which variable_modXX to localize e.g. 1 for variable_mod01
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 
 /* unused for the search as these are applied during the plain peptide .idx index creation
             VarModsWrapper varMods = new VarModsWrapper();

@@ -47,7 +47,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_MBCS;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -63,7 +63,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -93,6 +93,7 @@
     <ClInclude Include="CometFragmentIndex.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
+    <ClInclude Include="CometModificationsPermuter.h" />
     <ClInclude Include="CometPeptideIndex.h" />
     <ClInclude Include="CometPostAnalysis.h" />
     <ClInclude Include="CometPreprocess.h" />
@@ -108,7 +109,6 @@
     <ClInclude Include="CometWriteTxt.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="githubsha.h" />
-    <ClInclude Include="ModificationsPermuter.h" />
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
@@ -119,6 +119,7 @@
     <ClCompile Include="CometFragmentIndex.cpp" />
     <ClCompile Include="CometInterfaces.cpp" />
     <ClCompile Include="CometMassSpecUtils.cpp" />
+    <ClCompile Include="CometModificationsPermuter.cpp" />
     <ClCompile Include="CometPeptideIndex.cpp" />
     <ClCompile Include="CometPostAnalysis.cpp" />
     <ClCompile Include="CometPreprocess.cpp" />
@@ -131,7 +132,6 @@
     <ClCompile Include="CometWritePercolator.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />
     <ClCompile Include="CometWriteTxt.cpp" />
-    <ClCompile Include="ModificationsPermuter.cpp" />
     <ClCompile Include="Threading.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

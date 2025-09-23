@@ -20,6 +20,12 @@
 #include <string>
 #include "CometData.h"
 #include "Threading.h"
+#include "AScoreOptions.h"
+#include "AScoreCentroid.h"
+#include "AScoreAPI.h"
+#include "AScoreFactory.h"
+#include "AScoreDllInterface.h"
+
 
 class CometSearchManager;
 
@@ -125,35 +131,36 @@ struct Options
    int iDecoySearch;             // 0=no, 1=concatenated search, 2=separate decoy search
    int iNumThreads;              // 0=poll CPU else set # threads to spawn
    int iNumFragmentThreads;      // # threads used for fragment indexing
-   int bResolveFullPaths;        // 0=do not resolve full paths; 1=resolve paths (default)
-   int bOutputSqtStream;
-   int bOutputSqtFile;
-   int bOutputTxtFile;
-   int bOutputPepXMLFile;
-   int bOutputMzIdentMLFile;
-   int bOutputPercolatorFile;
-   int bOutputOutFiles;
-   int bClipNtermMet;            // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
-   int bClipNtermAA;             // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
-   int bSkipAlreadyDone;         // 0=search everything; 1=don't re-search if .out exists
-   int bMango;                   // 0=normal; 1=Mango x-link ms2 input
-   int bScaleFragmentNL;         // 0=no; 1=scale fragment NL for each modified residue contained in fragment
-   int bCreateFragmentIndex;     // 0=normal search; 1=create fragment ion index file
-   int bCreatePeptideIndex;      // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
-   int bVerboseOutput;
-   int bShowFragmentIons;
-   int bExplicitDeltaCn;         // if set to 1, do not use sequence similarity logic
-   int bPrintExpectScore;
-   int bExportAdditionalScoresPepXML;  // if 1, also report lnrSp, lnExpect, IonFrac, lnNumSP to pepXML output
-   int bOverrideCharge;
-   int bCorrectMass;             // use selectionMZ instead of monoMZ if monoMZ is outside selection window
-   int bTreatSameIL;
+   bool bResolveFullPaths;       // 0=do not resolve full paths; 1=resolve paths (default)
+   bool bOutputSqtStream;
+   bool bOutputSqtFile;
+   bool bOutputTxtFile;
+   bool bOutputPepXMLFile;
+   int iOutputMzIdentMLFile;
+   bool bOutputPercolatorFile;
+   bool bOutputOutFiles;
+   bool bClipNtermMet;           // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
+   bool bClipNtermAA;            // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
+   bool bSkipAlreadyDone;        // 0=search everything; 1=don't re-search if .out exists
+   bool bMango;                  // 0=normal; 1=Mango x-link ms2 input
+   bool bScaleFragmentNL;        // 0=no; 1=scale fragment NL for each modified residue contained in fragment
+   bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index file
+   bool bCreatePeptideIndex;     // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
+   bool bVerboseOutput;
+   bool bShowFragmentIons;
+   bool bExplicitDeltaCn;        // if set to 1, do not use sequence similarity logic
+   bool bPrintExpectScore;
+   bool bExportAdditionalScoresPepXML;  // if 1, also report lnrSp, lnExpect, IonFrac, lnNumSP to pepXML output
+   bool bCorrectMass;            // use selectionMZ instead of monoMZ if monoMZ is outside selection window
+   bool bTreatSameIL;
+   int iPrintAScoreProScore;    // 0=no, otherwise specify variable_modXX number e.g. 1 for variable_mod01
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    int iFragIndexNumThreads;     // # of threads to use for fragment index (as not sure humongous # makes sense)
    int iFragIndexMinIonsScore;   // minimum matched fragment index ions for scoring
    int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
+   int iOverrideCharge;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
    double dMinPercentageIntensity;   // intensity cutoff for each peak as % of base peak
@@ -194,7 +201,7 @@ struct Options
       bOutputSqtFile = a.bOutputSqtFile;
       bOutputTxtFile = a.bOutputTxtFile;
       bOutputPepXMLFile = a.bOutputPepXMLFile;
-      bOutputMzIdentMLFile = a.bOutputMzIdentMLFile;
+      iOutputMzIdentMLFile = a.iOutputMzIdentMLFile;
       bOutputPercolatorFile = a.bOutputPercolatorFile;
       bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
@@ -208,8 +215,9 @@ struct Options
       bShowFragmentIons = a.bShowFragmentIons;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
+      iPrintAScoreProScore = a.iPrintAScoreProScore;
       bExportAdditionalScoresPepXML = a.bExportAdditionalScoresPepXML;
-      bOverrideCharge = a.bOverrideCharge;
+      iOverrideCharge = a.iOverrideCharge;
       bCorrectMass = a.bCorrectMass;
       bTreatSameIL = a.bTreatSameIL;
       iMaxIndexRunTime = a.iMaxIndexRunTime;
@@ -249,22 +257,25 @@ struct Results
    float  fXcorr;
    float  fDeltaCn;
    float  fLastDeltaCn;
-   int    iRankXcorr;
-   int    iLenPeptide;
-   int    iRankSp;
-   int    iMatchedIons;
-   int    iTotalIons;  
-   comet_fileoffset_t   lProteinFilePosition;  // for indexdb, this is the entry in g_pvProteinsList
+   float  fAScorePro;                         // AScorePro score
+   unsigned short    usiRankXcorr;
+   unsigned short    usiLenPeptide;
+   unsigned short    usiRankSp;
+   unsigned short    usiMatchedIons;
+   unsigned short    usiTotalIons;  
+   comet_fileoffset_t   lProteinFilePosition; // for indexdb, this is the entry in g_pvProteinsList
    long   lWhichProtein;
-   int    piVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods encoding, +2 to accomodate N/C-term
-   double pdVarModSites[MAX_PEPTIDE_LEN_P2];   // store variable mods mass diffs, +2 to accomodate N/C-term
+   int    piVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods encoding, +2 to accomodate N/C-term
+   double pdVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
    char   szPeptide[MAX_PEPTIDE_LEN];
    char   cPrevAA;                            // stores prev flanking AA
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
+   char   cHasVariableMod;                    // 0 = no variable mod, 1 = has varaible mod, 2 = has AScorePro mod
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+   string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    int    iPeffNewResidueCount;               // more than 0 new residues is a substitution (if iPeffOrigResidueCount=1) or insertion (if iPeffOrigResidueCount>1)
    vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
@@ -283,8 +294,7 @@ struct SpecLibResults // MS2 spec lib
 struct SpecLibResultsMS1  // MS1 spec lib
 {
    unsigned int iWhichSpecLib;                // the matched spectral library entry
-   float fXcorr;                              // use xcorr for now
-   float fCn;                                 // speclib score
+   float fDotProduct;                         // unit vector dot product aka cosine similarity
    float fRTime;                              // retention time in seconds of the matched entry
 };
 
@@ -303,8 +313,8 @@ struct SpectrumInfoInternal
    int    iArraySize;         // m/z versus intensity array
    int    iHighestIon;
    int    iScanNumber;
-   int    iChargeState;
-   int    iMaxFragCharge;
+   unsigned short    usiChargeState;
+   unsigned short    usiMaxFragCharge;
    double dTotalIntensity;
    float  fRTime;
    char   szMango[32];                // Mango encoding
@@ -317,7 +327,7 @@ struct MassRange
 {
    double dMinMass;
    double dMaxMass;
-   int    iMaxFragmentCharge;  // global maximum fragment charge
+   unsigned short    usiMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
    unsigned int g_uiMaxFragmentArrayIndex; // BIN(dFragIndexMaxMass); used as fragment array index
 };
@@ -342,7 +352,6 @@ struct OBOStruct           // stores info read from OBO file
    {
       return (strMod < a.strMod);
    }
-
 };
 
 struct ProteinEntryStruct
@@ -450,11 +459,11 @@ struct DBInfo
 // this duplicates PlainPeptideIndexStruct but with modsites and fixed peptide char string for simplified binary write/read
 struct DBIndex
 {
-   char   szPeptide[MAX_PEPTIDE_LEN];
-   char   pcVarModSites[MAX_PEPTIDE_LEN_P2]; // encodes 0-9 indicating which var mod at which position
-   comet_fileoffset_t   lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
-   double dPepMass;                          // MH+ pep mass
-   unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
+   char szPeptide[MAX_PEPTIDE_LEN];
+   char pcVarModSites[MAX_PEPTIDE_LEN_P2];        // encodes 0 to VMODS-1 indicating which var mod at which position
+   comet_fileoffset_t lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
+   double dPepMass;                               // MH+ pep mass
+   unsigned short siVarModProteinFilter;          // bitwise representation of mmapProtein
 
    bool operator==(const DBIndex &rhs) const
    {
@@ -726,7 +735,7 @@ struct IonInfo
 {
    int iNumIonSeriesUsed;
    int piSelectedIonSeries[NUM_ION_SERIES];
-   int bUseWaterAmmoniaLoss;    // ammonia, water loss
+   bool bUseWaterAmmoniaLoss;    // ammonia, water loss
    int iTheoreticalFragmentIons;
    int iIonVal[NUM_ION_SERIES];
 
@@ -749,7 +758,7 @@ struct IonInfo
 // static user params, won't change per thread - can make global!
 struct StaticParams
 {
-   char            szHostName[SIZE_FILE];
+   string          sHostName;
    string          strOutFileTimeString;
    char            szIonSeries[256];   // used for .out files
    char            szDisplayLine[256]; // used for .out files
@@ -793,7 +802,7 @@ struct StaticParams
 
    StaticParams& operator=(StaticParams& a)
    {
-       strcpy(szHostName, a.szHostName);
+       sHostName = a.sHostName;
        strOutFileTimeString = a.strOutFileTimeString;
        strcpy(szIonSeries, a.szIonSeries);
        strcpy(szDisplayLine, a.szDisplayLine);
@@ -912,7 +921,7 @@ struct StaticParams
       variableModParameters.bUseFragmentNeutralLoss = false;
       variableModParameters.iRequireVarMod = 0;
 
-      ionInformation.bUseWaterAmmoniaLoss = 0;
+      ionInformation.bUseWaterAmmoniaLoss = false;
       ionInformation.iTheoreticalFragmentIons = 1;      // 0 = flanking peaks; 1 = no flanking peaks
       ionInformation.iIonVal[ION_SERIES_A] = 0;
       ionInformation.iIonVal[ION_SERIES_B] = 1;
@@ -928,38 +937,39 @@ struct StaticParams
       options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
       options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
-      options.bShowFragmentIons = 0;
-      options.bExplicitDeltaCn = 0;
-      options.bPrintExpectScore = 1;
-      options.bExportAdditionalScoresPepXML = 0;
-      options.bOverrideCharge = 0;
-      options.bCorrectMass = 0;
-      options.bTreatSameIL = 1;
+      options.bShowFragmentIons = false;
+      options.bExplicitDeltaCn = false;
+      options.bPrintExpectScore = true;
+      options.iPrintAScoreProScore = 0;
+      options.bExportAdditionalScoresPepXML = false;
+      options.bCorrectMass = false;
+      options.bTreatSameIL = true;
+      options.iOverrideCharge = 0;
       options.iMaxIndexRunTime = 0;                     // index run time limit in milliseconds; 0=no time limit
       options.iRemovePrecursor = 0;
       options.dRemovePrecursorTol = 1.5;
 
-      options.bOutputSqtStream = 0;
-      options.bOutputSqtFile = 0;
-      options.bOutputTxtFile = 0;
-      options.bOutputPepXMLFile = 1;
-      options.bOutputMzIdentMLFile = 0;
-      options.bOutputPercolatorFile = 0;
-      options.bOutputOutFiles = 0;
+      options.bOutputSqtStream = false;
+      options.bOutputSqtFile = false;
+      options.bOutputTxtFile = false;
+      options.bOutputPepXMLFile = true;
+      options.iOutputMzIdentMLFile = false;
+      options.bOutputPercolatorFile = false;
+      options.bOutputOutFiles = false;
 
-      options.bResolveFullPaths = 1;
+      options.bResolveFullPaths = true;
 
-      options.bSkipAlreadyDone = 1;
-      options.bMango = 0;
-      options.bScaleFragmentNL = 0;
-      options.bCreatePeptideIndex = 0;
-      options.bCreateFragmentIndex = 0;
-      options.bVerboseOutput = 0;
+      options.bSkipAlreadyDone = true;
+      options.bMango = false;
+      options.bScaleFragmentNL = false;
+      options.bCreatePeptideIndex = false;
+      options.bCreateFragmentIndex = false;
+      options.bVerboseOutput = false;
       options.iDecoySearch = 0;
       options.iNumThreads = 4;
       options.iNumFragmentThreads = 4;
-      options.bClipNtermMet = 0;
-      options.bClipNtermAA = 0;
+      options.bClipNtermMet = false;
+      options.bClipNtermAA = false;
 
       options.lMaxIterations = 0;
 
@@ -1023,11 +1033,12 @@ struct StaticParams
 
 extern StaticParams    g_staticParams;
 
-extern string g_psGITHUB_SHA;             // grab the GITHUB_SHA environment variable and trim to 7 chars; null if environment variable not present
-
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+
+extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
+extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
 struct ModificationNumber
 {
@@ -1090,8 +1101,15 @@ struct Query
    float **ppfSparseFastXcorrData;
    float **ppfSparseFastXcorrDataNL;  // ppfSparseFastXcorrData with NH3, H2O contributions
 
+   // Store raw peaks for AScorePro
+
    // List of ms/ms masses for fragment index search; intensity not important at this stage
    vector<double> vdRawFragmentPeakMass;
+   // Consider replacing vdRawFragmentPeakMass with a vector<pair<double, double>> to store
+   // both mass and intensity if AScorePro is used
+//  vector<pair<double, double>> vRawFragmentPeakMassIntensity;
+   vector<AScoreProCpp::Centroid> vRawFragmentPeakMassIntensity;
+
 
    PepMassInfo          _pepMassInfo;
    SpectrumInfoInternal _spectrumInfoInternal;
@@ -1133,6 +1151,7 @@ struct Query
       ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
 
       vdRawFragmentPeakMass.clear();
+      vRawFragmentPeakMassIntensity.clear();
 
       _pepMassInfo.dCalcPepMass = 0.0;
       _pepMassInfo.dExpPepMass = 0.0;
@@ -1229,7 +1248,7 @@ struct QueryMS1
       //      fLowestXcorr = SPECLIB_CUTOFF;
       uiMatchMS1Count = 0;
       pfFastXcorrData = NULL;
-      _pSpecLibResultsMS1.fXcorr = 0.0;
+      _pSpecLibResultsMS1.fDotProduct = 0.0;
       _pSpecLibResultsMS1.fRTime = 0.0;
 
       Threading::CreateMutex(&accessMutex);

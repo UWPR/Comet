@@ -625,7 +625,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
                                      iTotalScans,
                                      iFileLastScan,
                                      mstReader.getLastScan(),
-                                     iNumSpectraLoaded, 1))
+                                     iNumSpectraLoaded,
+                                     1))
       {
          Threading::UnlockMutex(g_pvQueryMutex);
          break;

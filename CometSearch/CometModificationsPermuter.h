@@ -13,8 +13,8 @@
 // limitations under the License.
 
 
-#ifndef _MODIFICATIONSPERMUTER_H_
-#define _MODIFICATIONSPERMUTER_H_
+#ifndef _COMETMODIFICATIONSPERMUTER_H_
+#define _COMETMODIFICATIONSPERMUTER_H_
 
 class ModificationsPermuter
 {
@@ -68,4 +68,4 @@ public:
    ~ModificationsPermuter();
 };
 
-#endif // _MODIFICATIONSPERMUTER_H_
+#endif // _COMETMODIFICATIONSPERMUTER_H_

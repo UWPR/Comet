@@ -31,6 +31,9 @@
 #include "CometPeptideIndex.h"
 #include "CometSpecLib.h"
 #include "CometAlignment.h"
+#include "AScoreOptions.h"
+#include "AScoreFactory.h"
+
 
 #include <sstream>
 
@@ -48,6 +51,9 @@ Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
+
+AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
+AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];        // stores fragment index; [thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
@@ -77,24 +83,38 @@ std::deque<RetentionMatch> RetentionMatchHistory;
 * Static helper functions
 *
 ******************************************************************************/
-static void GetHostName()
+static std::string GetHostName()
 {
+   char hostname[128] = { 0 };
+
 #ifdef _WIN32
-   WSADATA WSAData;
-   WSAStartup(MAKEWORD(1, 0), &WSAData);
-
-   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-      strcpy(g_staticParams.szHostName, "locahost");
-
-   WSACleanup();
+   WSADATA wsaData;
+   if (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0)
+   {
+      if (gethostname(hostname, sizeof(hostname)) == 0)
+      {
+         WSACleanup();
+         std::string fullHost(hostname);
+         size_t pos = fullHost.find('.');
+         if (pos != std::string::npos)
+            return fullHost.substr(0, pos);
+         else
+            return fullHost;
+      }
+      WSACleanup();
+   }
 #else
-   if (gethostname(g_staticParams.szHostName, SIZE_FILE) != 0)
-      strcpy(g_staticParams.szHostName, "locahost");
+   if (gethostname(hostname, sizeof(hostname)) == 0)
+   {
+      std::string fullHost(hostname);
+      size_t pos = fullHost.find('.');
+      if (pos != std::string::npos)
+         return fullHost.substr(0, pos);
+      else
+         return fullHost;
+   }
 #endif
-
-   char *pStr;
-   if ((pStr = strchr(g_staticParams.szHostName, '.'))!=NULL)
-      *pStr = '\0';
+   return {};
 }
 
 static InputType GetInputType(const char *pszFileName)
@@ -205,17 +225,17 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
-         char szDecoyDir[SIZE_FILE2];
-         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+         string sDecoyDir;
+         sDecoyDir = g_staticParams.inputFile.szBaseName + string("_decoy");
 
-         if (_mkdir(szDecoyDir) == -1)
+         if (_mkdir(sDecoyDir.c_str()) == -1)
          {
             errno_t err;
             _get_errno(&err);
 
             if (err != EEXIST)
             {
-               string strErrorMsg = " Error - could not create directory \"" + string(szDecoyDir) + "\".\n";
+               string strErrorMsg = " Error - could not create directory \"" + sDecoyDir + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                return false;
@@ -232,12 +252,12 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
       }
       if (g_staticParams.options.iDecoySearch == 2)
       {
-         char szDecoyDir[SIZE_FILE2];
-         sprintf(szDecoyDir, "%s_decoy", g_staticParams.inputFile.szBaseName);
+         string sDecoyDir;
+         sDecoyDir = g_staticParams.inputFile.szBaseName + string("_decoy");
 
-         if ((mkdir(szDecoyDir , 0775) == -1) && (errno != EEXIST))
+         if ((mkdir(sDecoyDir.c_str(), 0775) == -1) && (errno != EEXIST))
          {
-            string strErrorMsg = " Error - could not create directory \"" + string(szDecoyDir) + "\".\n";
+            string strErrorMsg = " Error - could not create directory \"" + sDecoyDir + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             return false;
@@ -297,18 +317,23 @@ static bool AllocateResultsMem()
          }
       }
 
+      pQuery->iMatchPeptideCount = 0;
+      pQuery->iDecoyMatchPeptideCount = 0;
+
       for (int j=0; j<g_staticParams.options.iNumStored; ++j)
       {
          pQuery->_pResults[j].dPepMass = 0.0;
          pQuery->_pResults[j].dExpect = 999;
          pQuery->_pResults[j].fScoreSp = 0.0;
          pQuery->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-         pQuery->_pResults[j].iLenPeptide = 0;
-         pQuery->_pResults[j].iRankSp = 0;
-         pQuery->_pResults[j].iMatchedIons = 0;
-         pQuery->_pResults[j].iTotalIons = 0;
+         pQuery->_pResults[j].fAScorePro = 0.0;
+         pQuery->_pResults[j].usiLenPeptide = 0;
+         pQuery->_pResults[j].usiRankSp = 0;
+         pQuery->_pResults[j].usiMatchedIons = 0;
+         pQuery->_pResults[j].usiTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
-         pQuery->_pResults[j].strSingleSearchProtein = "";
+         pQuery->_pResults[j].strSingleSearchProtein.clear();
+         pQuery->_pResults[j].sAScoreProSiteScores.clear();
          pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].sPeffOrigResidues.clear();
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
@@ -323,13 +348,15 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].dExpect = 999;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
             pQuery->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-            pQuery->_pDecoys[j].iLenPeptide = 0;
-            pQuery->_pDecoys[j].iRankSp = 0;
-            pQuery->_pDecoys[j].iMatchedIons = 0;
-            pQuery->_pDecoys[j].iTotalIons = 0;
+            pQuery->_pDecoys[j].fAScorePro = 0.0;
+            pQuery->_pDecoys[j].usiLenPeptide = 0;
+            pQuery->_pDecoys[j].usiRankSp = 0;
+            pQuery->_pDecoys[j].usiMatchedIons = 0;
+            pQuery->_pDecoys[j].usiTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
-            pQuery->_pDecoys[j].strSingleSearchProtein = "";
-            //pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
+            pQuery->_pDecoys[j].strSingleSearchProtein.clear();
+            pQuery->_pDecoys[j].sAScoreProSiteScores.clear();
+            pQuery->_pDecoys[j].pWhichProtein.clear();
             pQuery->_pDecoys[j].sPeffOrigResidues.clear();
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
@@ -384,7 +411,7 @@ static bool compareByScanNumber(Query const* a, Query const* b)
 {
    // sort by charge state if same scan number
    if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
-      return (a->_spectrumInfoInternal.iChargeState < b->_spectrumInfoInternal.iChargeState);
+      return (a->_spectrumInfoInternal.usiChargeState < b->_spectrumInfoInternal.usiChargeState);
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
@@ -408,7 +435,7 @@ static void CalcRunTime(time_t tStartTime)
       outFileTimeString += " " + std::to_string(iTmp) + " sec.";
    if (iElapseTime == 0)
       outFileTimeString += " 0 sec.";
-   outFileTimeString += " on " + std::string(g_staticParams.szHostName);
+   outFileTimeString += " on " + g_staticParams.sHostName;
 
    g_staticParams.iElapseTime = iElapseTime;
    g_staticParams.strOutFileTimeString = outFileTimeString;
@@ -419,8 +446,8 @@ static void PrintOutfileHeader()
 {
    // print parameters
 
-   char szIsotope[32];
-   char szPeak[16];
+   char szIsotope[32] = "";
+   char szPeak[16] = "";
 
    sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d%d %d",
          g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
@@ -460,13 +487,13 @@ static void PrintOutfileHeader()
       szReadingFrame[0]=0;
 
    if (g_staticParams.tolerances.iIsotopeError > 0)
-      sprintf(szIsotope, "ISOTOPE%d", g_staticParams.tolerances.iIsotopeError);
+      sprintf(szIsotope, " ISOTOPE%d", g_staticParams.tolerances.iIsotopeError);
 
    szPeak[0]='\0';
    if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 1)
-      strcpy(szPeak, "PEAK1");
+      strcpy(szPeak, " PEAK1");
 
-   sprintf(g_staticParams.szDisplayLine, "display top %d, %s%s%s%s%s%s%s%s",
+   sprintf(g_staticParams.szDisplayLine, "display top %d,%s%s%s%s%s%s%s%s",
          g_staticParams.options.iNumPeptideOutputLines,
          szRemovePrecursor,
          szReadingFrame,
@@ -484,7 +511,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputSqtFile
          && !g_staticParams.options.bOutputTxtFile
          && !g_staticParams.options.bOutputPepXMLFile
-         && !g_staticParams.options.bOutputMzIdentMLFile
+         && !g_staticParams.options.iOutputMzIdentMLFile
          && !g_staticParams.options.bOutputPercolatorFile
          && !g_staticParams.options.bOutputOutFiles)
    {
@@ -762,15 +789,39 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
 
-   GetParamValue("show_fragment_ions", g_staticParams.options.bShowFragmentIons);
+   if (GetParamValue("show_fragment_ions", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bShowFragmentIons = false;
+      else
+         g_staticParams.options.bShowFragmentIons = true;
+   }
 
-   GetParamValue("explicit_deltacn", g_staticParams.options.bExplicitDeltaCn);
+   if (GetParamValue("explicit_deltacn", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bExplicitDeltaCn = false;
+      else
+         g_staticParams.options.bExplicitDeltaCn = true;
+   }
 
    GetParamValue("num_threads", g_staticParams.options.iNumThreads);
 
-   GetParamValue("clip_nterm_methionine", g_staticParams.options.bClipNtermMet);
+   if (GetParamValue("clip_nterm_methionine", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bClipNtermMet = false;
+      else
+         g_staticParams.options.bClipNtermMet = true;
+   }
 
-   GetParamValue("clip_nterm_aa", g_staticParams.options.bClipNtermAA);
+   if (GetParamValue("clip_nterm_aa", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bClipNtermAA = false;
+      else
+         g_staticParams.options.bClipNtermAA = true;
+   }
 
    GetParamValue("minimum_xcorr", g_staticParams.options.dMinimumXcorr);
 
@@ -795,7 +846,13 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("use_Z1_ions", g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1]);
 
-   GetParamValue("use_NL_ions", g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
+   if (GetParamValue("use_NL_ions", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.ionInformation.bUseWaterAmmoniaLoss = false;
+      else
+         g_staticParams.ionInformation.bUseWaterAmmoniaLoss = true;
+   }
 
    GetParamValue("variable_mod01", g_staticParams.variableModParameters.varModList[VMOD_1_INDEX]);
    GetParamValue("variable_mod02", g_staticParams.variableModParameters.varModList[VMOD_2_INDEX]);
@@ -894,41 +951,133 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   GetParamValue("print_expect_score", g_staticParams.options.bPrintExpectScore);
+   if (GetParamValue("print_expect_score", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bPrintExpectScore = false;
+      else
+         g_staticParams.options.bPrintExpectScore = true;
+   }
 
-   GetParamValue("export_additional_pepxml_scores", g_staticParams.options.bExportAdditionalScoresPepXML);
+   GetParamValue("print_ascorepro_score", g_staticParams.options.iPrintAScoreProScore);
 
-   GetParamValue("resolve_fullpaths", g_staticParams.options.bResolveFullPaths);
+   if (GetParamValue("export_additional_pepxml_scores", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bExportAdditionalScoresPepXML = false;
+      else
+         g_staticParams.options.bExportAdditionalScoresPepXML = true;
+   }
 
-   GetParamValue("output_sqtstream", g_staticParams.options.bOutputSqtStream);
+   if (GetParamValue("resolve_fullpaths", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bResolveFullPaths = false;
+      else
+         g_staticParams.options.bResolveFullPaths = true;
+   }
 
-   GetParamValue("output_sqtfile", g_staticParams.options.bOutputSqtFile);
+   if (GetParamValue("output_sqtstream", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputSqtStream = false;
+      else
+         g_staticParams.options.bOutputSqtStream = true;
+   }
 
-   GetParamValue("output_txtfile", g_staticParams.options.bOutputTxtFile);
+   if (GetParamValue("output_sqtfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputSqtFile = false;
+      else
+         g_staticParams.options.bOutputSqtFile = true;
+   }
 
-   GetParamValue("output_pepxmlfile", g_staticParams.options.bOutputPepXMLFile);
+   if (GetParamValue("output_txtfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputTxtFile = false;
+      else
+         g_staticParams.options.bOutputTxtFile = true;
+   }
 
-   GetParamValue("output_mzidentmlfile", g_staticParams.options.bOutputMzIdentMLFile);
+   if (GetParamValue("output_pepxmlfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputPepXMLFile = false;
+      else
+         g_staticParams.options.bOutputPepXMLFile = true;
+   }
 
-   GetParamValue("output_percolatorfile", g_staticParams.options.bOutputPercolatorFile);
+   GetParamValue("output_mzidentmlfile", g_staticParams.options.iOutputMzIdentMLFile);
 
-   GetParamValue("output_outfiles", g_staticParams.options.bOutputOutFiles);
+   if (GetParamValue("output_percolatorfile", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputPercolatorFile = false;
+      else
+         g_staticParams.options.bOutputPercolatorFile = true;
+   }
 
-   GetParamValue("skip_researching", g_staticParams.options.bSkipAlreadyDone);
+   if (GetParamValue("output_outfiles", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bOutputOutFiles = false;
+      else
+         g_staticParams.options.bOutputOutFiles = true;
+   }
 
-   GetParamValue("mango_search", g_staticParams.options.bMango);
+   if (GetParamValue("skip_researching", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bSkipAlreadyDone = false;
+      else
+         g_staticParams.options.bSkipAlreadyDone = true;
+   }
 
-   GetParamValue("scale_fragmentNL", g_staticParams.options.bScaleFragmentNL);
+   if (GetParamValue("mango_search", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bMango = false;
+      else
+         g_staticParams.options.bMango = true;
+   }
 
-   GetParamValue("create_fragment_index", g_staticParams.options.bCreateFragmentIndex);
+   if (GetParamValue("scale_fragmentNL", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bScaleFragmentNL = false;
+      else
+         g_staticParams.options.bScaleFragmentNL = true;
+   }
 
-   GetParamValue("create_peptide_index", g_staticParams.options.bCreatePeptideIndex);
+   if (GetParamValue("create_fragment_index", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bCreateFragmentIndex = false;
+      else
+         g_staticParams.options.bCreateFragmentIndex = true;
+   }
+
+   if (GetParamValue("create_peptide_index", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bCreatePeptideIndex = false;
+      else
+         g_staticParams.options.bCreatePeptideIndex = true;
+   }
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
    GetParamValue("max_index_runtime", g_staticParams.options.iMaxIndexRunTime);
 
-   GetParamValue("peff_verbose_output", g_staticParams.options.bVerboseOutput);
+   if (GetParamValue("peff_verbose_output", iIntData))
+   {
+      if (iIntData == 0)
+         g_staticParams.options.bVerboseOutput = false;
+      else
+         g_staticParams.options.bVerboseOutput = true;
+   }
 
    GetParamValue("add_Cterm_peptide", g_staticParams.staticModifications.dAddCterminusPeptide);
 
@@ -1231,11 +1380,7 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.iMinPeaks = iIntData;
    }
 
-   if (GetParamValue("override_charge", iIntData))
-   {
-      if (iIntData > 0)
-         g_staticParams.options.bOverrideCharge = iIntData;
-   }
+   GetParamValue("override_charge", g_staticParams.options.iOverrideCharge);
 
    if (GetParamValue("correct_mass", iIntData))
    {
@@ -1290,8 +1435,6 @@ bool CometSearchManager::InitializeStaticParams()
 
       if (iIntData > 0)
          g_staticParams.options.iMaxPrecursorCharge = iIntData;
-
-      // else will go to default value (6)
    }
 
    if (GetParamValue("digest_mass_range", doubleRangeData))
@@ -1303,12 +1446,10 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   if (GetParamValue("ms_level", iIntData))
+   if (GetParamValue("ms_level", iIntData))  // default 2, only supports 2 or 3
    {
       if (iIntData == 3)
          g_staticParams.options.iMSLevel = 3;
-
-      // else will go to default value (2)
    }
 
    if (GetParamValue("activation_method", strData))
@@ -1366,7 +1507,7 @@ bool CometSearchManager::InitializeStaticParams()
             - g_staticParams.massUtility.pdAAMassFragment[(int)'h']
             - g_staticParams.massUtility.pdAAMassFragment[(int)'h'];
 
-   GetHostName();
+   g_staticParams.sHostName = GetHostName();
 
    // If # threads not specified, poll system to get # threads to launch.
    if (g_staticParams.options.iNumThreads <= 0)
@@ -1568,7 +1709,7 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   for (int i=0; i<VMODS; ++i)
+   for (int i = 0; i < VMODS; ++i)
    {
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
@@ -2284,7 +2425,9 @@ bool CometSearchManager::DoSearch()
       CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
    }
 
-   for (int i=0; i<(int)g_pvInputFiles.size(); ++i)
+   bool bPerformAScoreInitialization = true;
+
+   for (int i = 0; i < (int)g_pvInputFiles.size(); ++i)
    {
       bSucceeded = UpdateInputFile(g_pvInputFiles.at(i));
       if (!bSucceeded)
@@ -2325,48 +2468,45 @@ bool CometSearchManager::DoSearch()
       FILE *fpout_txt=NULL;
       FILE *fpoutd_txt=NULL;
 
-      char szOutputSQT[SIZE_FILE2];
-      char szOutputDecoySQT[SIZE_FILE2];
-      char szOutputPepXML[SIZE_FILE2];
-      char szOutputDecoyPepXML[SIZE_FILE2];
-      char szOutputMzIdentML[SIZE_FILE2];
-      char szOutputDecoyMzIdentML[SIZE_FILE2];
-      char szOutputMzIdentMLtmp[SIZE_FILE2+8];  // intermediate tmp file
-      char szOutputDecoyMzIdentMLtmp[SIZE_FILE2+8];  // intermediate tmp file
-      char szOutputPercolator[SIZE_FILE2];
-      char szOutputTxt[SIZE_FILE2];
-      char szOutputDecoyTxt[SIZE_FILE2];
+      std::string sOutputSQT;
+      std::string sOutputDecoySQT;
+      std::string sOutputPepXML;
+      std::string sOutputDecoyPepXML;
+      std::string sOutputMzIdentML;
+      std::string sOutputDecoyMzIdentML;
+      std::string sOutputMzIdentMLtmp;         // temporary file used to hold mzIdentML output before finalizing
+      std::string sOutputDecoyMzIdentMLtmp;    // temporary file used to hold decoy mzIdentML output before finalizing
+      std::string sOutputPercolator;
+      std::string sOutputTxt;
+      std::string sOutputDecoyTxt;
 
       if (g_staticParams.options.bOutputSqtFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-            sprintf(szOutputSQT, "%s%s.sqt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".sqt";
+
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
             {
-               sprintf(szOutputSQT, "%s%s.target.sqt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+               sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.sqt";
             }
 #endif
          }
          else
          {
-            sprintf(szOutputSQT, "%s%s.%d-%d.sqt",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".sqt";
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputSQT, "%s%s.%d-%d.target.sqt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.sqt";
 #endif
          }
 
-         if ((fpout_sqt = fopen(szOutputSQT, "w")) == NULL)
+         if ((fpout_sqt = fopen(sOutputSQT.c_str(), "w")) == NULL)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputSQT) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputSQT + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
@@ -2377,19 +2517,14 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-            {
-               sprintf(szOutputDecoySQT, "%s%s.decoy.sqt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-            }
+               sOutputDecoySQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.sqt";
             else
-            {
-               sprintf(szOutputDecoySQT, "%s%s.%d-%d.decoy.sqt",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputDecoySQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.sqt";
 
-            if ((fpoutd_sqt = fopen(szOutputDecoySQT, "w")) == NULL)
+            if ((fpoutd_sqt = fopen(sOutputDecoySQT.c_str(), "w")) == NULL)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoySQT) + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoySQT + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
@@ -2403,33 +2538,26 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-            sprintf(szOutputTxt, "%s%s.%s",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
+            sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + "." + g_staticParams.szTxtFileExt;
 #ifdef CRUX
-
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputTxt, "%s%s.target.%s",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
-            }
+               sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target." + g_staticParams.szTxtFileExt;
 #endif
          }
          else
          {
-            sprintf(szOutputTxt, "%s%s.%d-%d.%s",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
+            sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + "." + g_staticParams.szTxtFileExt;
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputTxt, "%s%s.%d-%d.target.%s",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
-            }
+               sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target." + g_staticParams.szTxtFileExt;
 #endif
          }
 
-         if ((fpout_txt = fopen(szOutputTxt, "w")) == NULL)
+         if ((fpout_txt = fopen(sOutputTxt.c_str(), "w")) == NULL)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputTxt) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputTxt + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
@@ -2441,19 +2569,15 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-            {
-               sprintf(szOutputDecoyTxt, "%s%s.decoy.%s",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, g_staticParams.szTxtFileExt);
-            }
+               sOutputDecoyTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy." + g_staticParams.szTxtFileExt;
             else
-            {
-               sprintf(szOutputDecoyTxt, "%s%s.%d-%d.decoy.%s",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan, g_staticParams.szTxtFileExt);
-            }
+               sOutputDecoyTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy." + g_staticParams.szTxtFileExt;
 
-            if ((fpoutd_txt= fopen(szOutputDecoyTxt, "w")) == NULL)
+            fpoutd_txt = fopen(sOutputDecoyTxt.c_str(), "w");
+            if (!fpoutd_txt)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyTxt) + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyTxt + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
@@ -2467,32 +2591,27 @@ bool CometSearchManager::DoSearch()
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-            sprintf(szOutputPepXML, "%s%s.pep.xml",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".pep.xml";
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputPepXML, "%s%s.target.pep.xml",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-            }
+               sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.pep.xml";
 #endif
          }
          else
          {
-            sprintf(szOutputPepXML, "%s%s.%d-%d.pep.xml",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".pep.xml";
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputPepXML, "%s%s.%d-%d.target.pep.xml",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.pep.xml";
 #endif
          }
 
-         if ((fpout_pepxml = fopen(szOutputPepXML, "w")) == NULL)
+         fpout_pepxml = fopen(sOutputPepXML.c_str(), "w");
+         if (!fpout_pepxml)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputPepXML) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputPepXML + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
@@ -2504,19 +2623,15 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-            {
-               sprintf(szOutputDecoyPepXML, "%s%s.decoy.pep.xml",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-            }
+               sOutputDecoyPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.pep.xml";
             else
-            {
-               sprintf(szOutputDecoyPepXML, "%s%s.%d-%d.decoy.pep.xml",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputDecoyPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.pep.xml";
 
-            if ((fpoutd_pepxml = fopen(szOutputDecoyPepXML, "w")) == NULL)
+            fpoutd_pepxml = fopen(sOutputDecoyPepXML.c_str(), "w");
+            if (!fpoutd_pepxml)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyPepXML) + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyPepXML + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
@@ -2527,66 +2642,61 @@ bool CometSearchManager::DoSearch()
          }
       }
 
-      if (bSucceeded && g_staticParams.options.bOutputMzIdentMLFile)
+      if (bSucceeded && g_staticParams.options.iOutputMzIdentMLFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
          {
-            sprintf(szOutputMzIdentML, "%s%s.mzid",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
+            sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".mzid";
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputMzIdentML, "%s%s.target.mzid",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-            }
+               sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.mzid";
 #endif
          }
          else
          {
-            sprintf(szOutputMzIdentML, "%s%s.%d-%d.mzid",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
+            sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".mzid";
 #ifdef CRUX
             if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sprintf(szOutputMzIdentML, "%s%s.%d-%d.target.mzid",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.mzid";
 #endif
          }
 
-         if ((fpout_mzidentml = fopen(szOutputMzIdentML, "w")) == NULL)
+         fpout_mzidentml = fopen(sOutputMzIdentML.c_str(), "w");
+         if (!fpout_mzidentml)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputMzIdentML) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputMzIdentML + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
          }
 
-         sprintf(szOutputMzIdentMLtmp, "%s.XXXXXX", szOutputMzIdentML);
-
+         sOutputMzIdentMLtmp = sOutputMzIdentML + ".XXXXXX";
 #ifdef _WIN32
-         errno_t err = _mktemp_s(szOutputMzIdentMLtmp, strlen(szOutputMzIdentMLtmp) + 1);
+         errno_t err = _mktemp_s(&sOutputMzIdentMLtmp[0], sOutputMzIdentMLtmp.size() + 1);
          if (err != 0)
          {
-            string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+            string strErrorMsg = " Error - cannot create temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
          }
 #else
-         int iRet = mkstemp(szOutputMzIdentMLtmp);
+         int iRet = mkstemp(&sOutputMzIdentMLtmp[0]);
          if (iRet == -1)
          {
-            string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+            string strErrorMsg = " Error - cannot create temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
          }
 #endif
 
-         if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "w")) == NULL)
+         fpout_mzidentmltmp = fopen(sOutputMzIdentMLtmp.c_str(), "w");
+         if (!fpout_mzidentmltmp)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputMzIdentMLtmp + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
@@ -2595,83 +2705,70 @@ bool CometSearchManager::DoSearch()
          if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
          {
             if (iAnalysisType == AnalysisType_EntireFile)
-            {
-               sprintf(szOutputDecoyMzIdentML, "%s%s.decoy.mzid",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-            }
+               sOutputDecoyMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.mzid";
             else
-            {
-               sprintf(szOutputDecoyMzIdentML, "%s%s.%d-%d.decoy.mzid",
-                     g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-            }
+               sOutputDecoyMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.mzid";
 
-            if ((fpoutd_mzidentml = fopen(szOutputDecoyMzIdentML, "w")) == NULL)
+            fpoutd_mzidentml = fopen(sOutputDecoyMzIdentML.c_str(), "w");
+            if (!fpoutd_mzidentml)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + std::string(szOutputDecoyMzIdentML) + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentML + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
             }
 
-            sprintf(szOutputDecoyMzIdentMLtmp, "%s.XXXXXX",szOutputDecoyMzIdentML);
+            sOutputDecoyMzIdentMLtmp = sOutputDecoyMzIdentML + ".XXXXXX";
 #ifdef _WIN32
-            errno_t err = _mktemp_s(szOutputDecoyMzIdentMLtmp, strlen(szOutputDecoyMzIdentMLtmp) + 1);
+            errno_t err = _mktemp_s(&sOutputDecoyMzIdentMLtmp[0], sOutputDecoyMzIdentMLtmp.size() + 1);
             if (err != 0)
             {
-               string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+               string strErrorMsg = " Error - cannot create temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
             }
 #else
-            int iRet = mkstemp(szOutputDecoyMzIdentMLtmp);
+            int iRet = mkstemp(&sOutputDecoyMzIdentMLtmp[0]);
             if (iRet == -1)
             {
-               string strErrorMsg = " Error - cannot create temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+               string strErrorMsg = " Error - cannot create temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
             }
 #endif
-            if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "w")) == NULL)
+            fpoutd_mzidentmltmp = fopen(sOutputDecoyMzIdentMLtmp.c_str(), "w");
+            if (!fpoutd_mzidentmltmp)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
             }
-
          }
       }
 
       if (bSucceeded && g_staticParams.options.bOutputPercolatorFile)
       {
          if (iAnalysisType == AnalysisType_EntireFile)
-         {
-            sprintf(szOutputPercolator, "%s%s.pin",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix);
-         }
+            sOutputPercolator = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".pin";
          else
-         {
-            sprintf(szOutputPercolator, "%s%s.%d-%d.pin",
-                  g_staticParams.inputFile.szBaseName, g_staticParams.szOutputSuffix, iFirstScan, iLastScan);
-         }
+            sOutputPercolator = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
+            "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".pin";
 
-         if ((fpout_percolator = fopen(szOutputPercolator, "w")) == NULL)
+         fpout_percolator = fopen(sOutputPercolator.c_str(), "w");
+         if (!fpout_percolator)
          {
-            string strErrorMsg = " Error - cannot write to file \"" + std::string(szOutputPercolator) + "\".\n";
+            string strErrorMsg = " Error - cannot write to file \"" + sOutputPercolator + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             bSucceeded = false;
          }
 
          if (bSucceeded)
-         {
-            // We need knowledge of max charge state in all searches
-            // here in order to write the featureDescription header
-
             CometWritePercolator::WritePercolatorHeader(fpout_percolator);
-         }
       }
 
       int iTotalSpectraSearched = 0;
@@ -2740,6 +2837,21 @@ bool CometSearchManager::DoSearch()
 
                sqSearch.CreateFragmentIndex(tp);
             }
+         }
+
+         if (g_staticParams.options.iPrintAScoreProScore && bPerformAScoreInitialization)
+         {
+            SetAScoreOptions();
+
+            // Create the AScoreDllInterface using the factory function
+            g_AScoreInterface = CreateAScoreDllInterface();
+            if (!g_AScoreInterface)
+            {
+               std::cerr << "Failed to create AScore interface." << std::endl;
+               exit(1);
+            }
+
+            bPerformAScoreInitialization = false;
          }
 
          auto tBeginTime = chrono::steady_clock::now();
@@ -2961,10 +3073,10 @@ bool CometSearchManager::DoSearch()
 
                   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
                   {
-                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
+                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
                      {
                         int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
-                        int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].iLenPeptide - 1];
+                        int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide - 1];
 
                         if (!(iNtermMod <0 || iNtermMod > FRAGINDEX_VMODS) && !(iCtermMod < 0 || iCtermMod > FRAGINDEX_VMODS))
                         {
@@ -3013,7 +3125,7 @@ bool CometSearchManager::DoSearch()
 
             // For mzid output, dump psms as tab-delimited text first then collate results to
             // mzid file at very end due to requirements of this format.
-            if (g_staticParams.options.bOutputMzIdentMLFile)
+            if (g_staticParams.options.iOutputMzIdentMLFile)
                CometWriteMzIdentML::WriteMzIdentMLTmp(fpout_mzidentmltmp, fpoutd_mzidentmltmp, iBatchNum);
 
             if (g_staticParams.options.bOutputPercolatorFile)
@@ -3067,38 +3179,38 @@ cleanup_results:
             {
                fclose(fpout_mzidentmltmp); // close for writing and re-open for reading
 
-               if ((fpout_mzidentmltmp = fopen(szOutputMzIdentMLtmp, "r")) == NULL)
+               if ((fpout_mzidentmltmp = fopen(sOutputMzIdentMLtmp.c_str(), "r")) == NULL)
                {
-                  string strErrorMsg = " Error - cannot read temporary file \"" + std::string(szOutputMzIdentMLtmp) + "\".\n";
+                  string strErrorMsg = " Error - cannot read temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                   logerr(strErrorMsg);
                   bSucceeded = false;
                }
 
                // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, szOutputMzIdentMLtmp, *this);
+               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, sOutputMzIdentMLtmp.c_str(), *this);
 
                fclose(fpout_mzidentmltmp);
-               remove(szOutputMzIdentMLtmp);
+               remove(sOutputMzIdentMLtmp.c_str());
             }
 
             if (NULL != fpoutd_mzidentml)
             {
                fclose(fpoutd_mzidentmltmp); // close for writing and re-open for reading
 
-               if ((fpoutd_mzidentmltmp = fopen(szOutputDecoyMzIdentMLtmp, "r")) == NULL)
+               if ((fpoutd_mzidentmltmp = fopen(sOutputDecoyMzIdentMLtmp.c_str(), "r")) == NULL)
                {
-                  string strErrorMsg = " Error - cannot read temporary file \"" + std::string(szOutputDecoyMzIdentMLtmp) + "\".\n";
+                  string strErrorMsg = " Error - cannot read temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                   logerr(strErrorMsg);
                   bSucceeded = false;
                }
 
                // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, szOutputDecoyMzIdentMLtmp, *this);
+               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, sOutputDecoyMzIdentMLtmp.c_str(), *this);
 
                fclose(fpoutd_mzidentmltmp);
-               remove(szOutputDecoyMzIdentMLtmp);
+               remove(sOutputDecoyMzIdentMLtmp.c_str());
             }
 
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
@@ -3144,7 +3256,7 @@ cleanup_results:
          fclose(fpout_pepxml);
          fpout_pepxml = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputPepXML);
+            remove(sOutputPepXML.c_str());
       }
 
       if (NULL != fpoutd_pepxml)
@@ -3152,17 +3264,17 @@ cleanup_results:
          fclose(fpoutd_pepxml);
          fpoutd_pepxml = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputDecoyPepXML);
+            remove(sOutputDecoyPepXML.c_str());
       }
 
       if (NULL != fpout_mzidentml)
       {
          fclose(fpout_mzidentml);
-         fpout_mzidentml= NULL;
+         fpout_mzidentml = NULL;
          if (iTotalSpectraSearched == 0)
          {
-            remove(szOutputMzIdentML);
-            remove(szOutputMzIdentMLtmp);
+            remove(sOutputMzIdentML.c_str());
+            remove(sOutputMzIdentMLtmp.c_str());
          }
       }
 
@@ -3172,8 +3284,8 @@ cleanup_results:
          fpoutd_mzidentml = NULL;
          if (iTotalSpectraSearched == 0)
          {
-            remove(szOutputDecoyMzIdentML);
-            remove(szOutputDecoyMzIdentMLtmp);
+            remove(sOutputDecoyMzIdentML.c_str());
+            remove(sOutputDecoyMzIdentMLtmp.c_str());
          }
       }
 
@@ -3182,7 +3294,7 @@ cleanup_results:
          fclose(fpout_percolator);
          fpout_percolator = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputPercolator);
+            remove(sOutputPercolator.c_str());
       }
 
       if (NULL != fpout_sqt)
@@ -3190,7 +3302,7 @@ cleanup_results:
          fclose(fpout_sqt);
          fpout_sqt = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputSQT);
+            remove(sOutputSQT.c_str());
       }
 
       if (NULL != fpoutd_sqt)
@@ -3198,7 +3310,15 @@ cleanup_results:
          fclose(fpoutd_sqt);
          fpoutd_sqt = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputDecoySQT);
+            remove(sOutputDecoySQT.c_str());
+      }
+
+      if (NULL != fpoutd_sqt)
+      {
+         fclose(fpoutd_sqt);
+         fpoutd_sqt = NULL;
+         if (iTotalSpectraSearched == 0)
+            remove(sOutputDecoySQT.c_str());
       }
 
       if (NULL != fpout_txt)
@@ -3206,7 +3326,7 @@ cleanup_results:
          fclose(fpout_txt);
          fpout_txt = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputTxt);
+            remove(sOutputTxt.c_str());
       }
 
       if (NULL != fpoutd_txt)
@@ -3214,7 +3334,7 @@ cleanup_results:
          fclose(fpoutd_txt);
          fpoutd_txt = NULL;
          if (iTotalSpectraSearched == 0)
-            remove(szOutputDecoyTxt);
+            remove(sOutputDecoyTxt.c_str());
       }
 
       if (iTotalSpectraSearched == 0)
@@ -3257,6 +3377,9 @@ cleanup_results:
       printf(" - done.\n\n");
    }
 
+   if (g_staticParams.options.iPrintAScoreProScore)
+      DeleteAScoreDllInterface(g_AScoreInterface);
+
    if (bBlankSearchFile)
       return false;
    else
@@ -3266,6 +3389,7 @@ cleanup_results:
 
 bool CometSearchManager::InitializeSingleSpectrumSearch()
 {
+
    // Skip doing if already completed successfully.
    if (singleSearchInitializationComplete)
       return true;
@@ -3301,8 +3425,20 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    {
       sqSearch.ReadPlainPeptideIndex();
       sqSearch.CreateFragmentIndex(tp);
-   }
 
+      if (g_staticParams.options.iPrintAScoreProScore)
+      {
+         SetAScoreOptions();  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
+
+         // Create the AScoreDllInterface using the factory function
+         g_AScoreInterface = CreateAScoreDllInterface();
+         if (!g_AScoreInterface)
+         {
+            std::cerr << "Failed to create AScore interface." << std::endl;
+            exit(1);
+         }
+      }
+   }
    singleSearchInitializationComplete = true;
 
    return true;
@@ -3313,13 +3449,13 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 {
    if (singleSearchInitializationComplete)
    {
-      //MH: Deallocate spectral processing memory.
-//    CometPreprocess::DeallocateMemory(singleSearchThreadCount);
-
       // Deallocate search memory
       CometSearch::DeallocateMemory(singleSearchThreadCount);
 
       fclose(fpfasta);
+
+      if (g_staticParams.options.iPrintAScoreProScore)
+         DeleteAScoreDllInterface(g_AScoreInterface);
 
       singleSearchInitializationComplete = false;
    }
@@ -3497,6 +3633,12 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       CometPostAnalysis::CalculateSP(pQuery->_pResults, 0, takeSearchResultsN);
       CometPostAnalysis::CalculateEValue(iWhichQuery, 0);
       CometPostAnalysis::CalculateDeltaCn(iWhichQuery);
+
+      if (g_staticParams.options.iPrintAScoreProScore
+            && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+      {
+         CometPostAnalysis::CalculateAScorePro(0, g_AScoreInterface);
+      }
    }
    else
       goto cleanup_results;
@@ -3513,11 +3655,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       score.xCorr = g_staticParams.options.dMinimumXcorr;
       score.matchedIons = 0;
       score.totalIons = 0;
+      score.dAScorePro = 0;
+      score.sAScoreProSiteScores.clear();
       std::string eachStrReturnPeptide;
       std::string eachStrReturnProtein;
       vector<Fragment> eachMatchedFragments;
 
-      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr && pQuery->_pResults[iWhichResult].iLenPeptide > 0)
+      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr
+            && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
       {
          Results* pOutput = pQuery->_pResults;
 
@@ -3528,14 +3673,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          eachStrReturnPeptide = std::string(1, pOutput[iWhichResult].cPrevAA) + ".";
 
          // n-term variable mod
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] != 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] != 0)
          {
             std::stringstream ss;
-            ss << "n[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].iLenPeptide] << "]";
+            ss << "n[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide] << "]";
             eachStrReturnPeptide += ss.str();
          }
 
-         for (int i = 0; i < pOutput[iWhichResult].iLenPeptide; ++i)
+         for (int i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
          {
             eachStrReturnPeptide += pOutput[iWhichResult].szPeptide[i];
 
@@ -3548,10 +3693,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          }
 
          // c-term variable mod
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide + 1] != 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] != 0)
          {
             std::stringstream ss;
-            ss << "c[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].iLenPeptide + 1] << "]";
+            ss << "c[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] << "]";
             eachStrReturnPeptide += ss.str();
          }
          eachStrReturnPeptide += "." + std::string(1, pOutput[iWhichResult].cNextAA);
@@ -3564,7 +3709,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          unsigned int uiNumTotProteins = 0;
          bool bReturnFullProteinString = true;
 
-         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
+               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
          bool bPrintDelim = false;
          if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
@@ -3603,32 +3749,34 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dSp = pOutput[iWhichResult].fScoreSp;                      // prelim score
          score.dExpect = pOutput[iWhichResult].dExpect;                   // E-value
          score.mass = pOutput[iWhichResult].dPepMass - PROTON_MASS;       // calc neutral pep mass
-         score.matchedIons = pOutput[iWhichResult].iMatchedIons;          // ions matched
-         score.totalIons = pOutput[iWhichResult].iTotalIons;              // ions tot
+         score.matchedIons = pOutput[iWhichResult].usiMatchedIons;        // ions matched
+         score.totalIons = pOutput[iWhichResult].usiTotalIons;            // ions tot
+         score.dAScorePro = pOutput[iWhichResult].fAScorePro;             // AScore
+         score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores; // AScore site-specific
 
          int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
          for (int x = 0; x < iSize; ++x)
          {
-               int iLen = (int)strlen(pOutput[x].szPeptide);
-               if (iLen == 0)
-                  break;
-               if (iLen < iMinLength)
-                  iMinLength = iLen;
+            int iLen = (int)strlen(pOutput[x].szPeptide);
+            if (iLen == 0)
+               break;
+            if (iLen < iMinLength)
+               iMinLength = iLen;
          }
 
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
          {
-               // N term relative
-               -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
-               0,                                                  // b
-               (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
+            // N term relative
+            -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
+            0,                                                  // b
+            (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
 
-               // C Term relative
-               (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
-               0,                                                  // y
-               -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
-               -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
+            // C Term relative
+            (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
+            0,                                                  // y
+            -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
+            -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
          };
 
          // now deal with calculating b- and y-ions and returning most intense matches
@@ -3646,15 +3794,15 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
          // mods at peptide length +1 and +2 are for n- and c-terminus
          if (g_staticParams.variableModParameters.bVarModSearch
-               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].iLenPeptide] != 0))
+               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] != 0))
          {
-            dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].iLenPeptide] - 1].dVarModMass;
+            dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] - 1].dVarModMass;
          }
 
          if (g_staticParams.variableModParameters.bVarModSearch
-               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].iLenPeptide + 1] != 0))
+               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] != 0))
          {
-            dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].iLenPeptide + 1] - 1].dVarModMass;
+            dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] - 1].dVarModMass;
          }
 
          int iTmp;
@@ -3663,14 +3811,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
          for (int iMod = 0; iMod < VMODS; ++iMod)
          {
-               bAddNtermFragmentNeutralLoss[iMod] = false;
-               bAddCtermFragmentNeutralLoss[iMod] = false;
+            bAddNtermFragmentNeutralLoss[iMod] = false;
+            bAddCtermFragmentNeutralLoss[iMod] = false;
          }
 
          // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
-         for (int i = 0; i < pQuery->_pResults[iWhichResult].iLenPeptide - 1; ++i)
+         for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)
          {
-            int iPos = pQuery->_pResults[iWhichResult].iLenPeptide - i - 1;
+            int iPos = pQuery->_pResults[iWhichResult].usiLenPeptide - i - 1;
 
             dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[i]];
             dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[iPos]];
@@ -3685,7 +3833,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             }
 
             map<int, double>::iterator it;
-            for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+            for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
             {
                // calculate every ion series the user specified
                for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
@@ -3791,7 +3939,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.mass = 0;        // calc neutral pep mass
          score.matchedIons = 0;        // ions matched
          score.totalIons = 0;        // ions tot
+         score.dAScorePro = 0;        // AScore
          score.dCn = 0;        // dCn
+         score.sAScoreProSiteScores.clear();
       }
       strReturnPeptide.push_back(eachStrReturnPeptide);
       strReturnProtein.push_back(eachStrReturnProtein);
@@ -3865,8 +4015,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    QueryMS1* pQueryMS1;
    pQueryMS1 = g_pvQueryMS1.at(0);
-   pQueryMS1->_pSpecLibResultsMS1.fXcorr = 0.0;
-   pQueryMS1->_pSpecLibResultsMS1.fCn = 0.0;
+   pQueryMS1->_pSpecLibResultsMS1.fDotProduct = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
    pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
 
@@ -3879,8 +4028,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
    if (bSucceeded)
    {
       ScoresMS1 scoreMS1;
-      scoreMS1.fXcorr = pQueryMS1->_pSpecLibResultsMS1.fXcorr;
-      scoreMS1.fCn = pQueryMS1->_pSpecLibResultsMS1.fCn;
+      scoreMS1.fDotProduct = pQueryMS1->_pSpecLibResultsMS1.fDotProduct;
 //      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
       scoreMS1.fRTime = (float)dLinearRegressionRT;
       scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
@@ -3983,4 +4131,215 @@ bool CometSearchManager::ReadProteinVarModFilterFile()
       logerr(strErrorMsg);
       return false;
    }
+}
+
+
+//SetAScoreOptions(g_AScoreOptions);
+void CometSearchManager::SetAScoreOptions(void)
+{
+   using namespace AScoreProCpp;
+
+   std::vector<std::string> ionSeriesList;
+   unsigned int uiIonSeriesMask = 0;
+   bool bSetNeutralLossMask = false;
+
+   // AScorePro set up differential modifications
+   std::vector<AScoreProCpp::PeptideMod> diffMods;
+
+   for (int i = 0; i < VMODS; ++i)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
+      {
+         AScoreProCpp::PeptideMod pepMod;
+
+         pepMod.setSymbol(i + 1 + '0');
+         pepMod.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         pepMod.setMass(g_staticParams.variableModParameters.varModList[i].dVarModMass);
+         pepMod.setIsNTerm(false);
+         pepMod.setIsCTerm(false);
+
+         diffMods.push_back(pepMod);
+
+         if (g_staticParams.options.iPrintAScoreProScore - 1 == i)
+         {
+            // Target modification settings
+            g_AScoreOptions.setSymbol(i + 1 + '0');
+            g_AScoreOptions.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+
+            // Set up neutral loss
+            AScoreProCpp::NeutralLoss neutralLoss;
+            neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
+            neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+            g_AScoreOptions.setNeutralLoss(neutralLoss);
+
+            if (!isEqual(g_staticParams.variableModParameters.varModList[i].dNeutralLoss, 0.0))
+               bSetNeutralLossMask = true;
+         }
+      }
+   }
+   g_AScoreOptions.setDiffMods(diffMods);
+
+   //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
+   //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
+
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_A])
+   {
+      uiIonSeriesMask += 8;
+      ionSeriesList.push_back("a");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 1; // add ammonia loss to A series
+         ionSeriesList.push_back("nA");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_B])
+   {
+      uiIonSeriesMask += 16;
+      ionSeriesList.push_back("b");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 2; // add ammonia loss to B series
+         ionSeriesList.push_back("nB");
+      }
+   }
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_C])
+      uiIonSeriesMask += 32;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_X])
+      uiIonSeriesMask += 512;
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Y])
+   {
+      uiIonSeriesMask += 1024;
+      ionSeriesList.push_back("y");
+      if (bSetNeutralLossMask)
+      {
+         uiIonSeriesMask += 4; // add ammonia loss to Y series
+         ionSeriesList.push_back("nY");
+      }
+   }
+   // FIX: need to check if AScorePro uses Z or Z' series
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
+      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
+   {
+      uiIonSeriesMask += 2048;
+      ionSeriesList.push_back("z");
+   }
+
+   g_AScoreOptions.setIonSeries(uiIonSeriesMask);
+   g_AScoreOptions.setIonSeriesList(ionSeriesList);
+
+   // Peak depth settings
+   g_AScoreOptions.setPeakDepth(0);
+   g_AScoreOptions.setMaxPeakDepth(50);
+
+   // Fragment matching tolerance
+
+   if (g_staticParams.tolerances.dFragmentBinSize <= 0.05)
+      g_AScoreOptions.setTolerance(0.05);
+   else
+      g_AScoreOptions.setTolerance(0.3);
+
+   g_AScoreOptions.setUnits(Mass::Units::DALTON);
+   g_AScoreOptions.setUnitText("Da");
+
+   // Window size for filtering peaks
+   g_AScoreOptions.setWindow(70);
+
+   // Enable low mass cutoff
+   g_AScoreOptions.setLowMassCutoff(true);
+
+   // Filter low intensity peaks
+   g_AScoreOptions.setFilterLowIntensity(0);
+
+   // C-terminal settings
+   g_AScoreOptions.setNoCterm(true);
+
+   // Scoring options
+   g_AScoreOptions.setUseMobScore(true);
+   g_AScoreOptions.setUseDeltaAscore(true);
+
+   // Max peptides and other limits
+   g_AScoreOptions.setMaxPeptides(1000);
+   // g_AScoreOptions.setMaxDiff(5); // From max_diff in JSON
+
+   // Initialize other fields to default values from JSON
+   g_AScoreOptions.setMz(0);
+   g_AScoreOptions.setPeptide("");
+   g_AScoreOptions.setScan(0);
+
+   // Deisotoping type (empty string means no deisotoping)
+   //g_AScoreOptions.setDeisotopingType("");
+
+   // Set up static modifications
+   // FIX:  deal with static N-term and C-term mods
+   std::vector<PeptideMod> staticMods;
+   for (int i = 'A' ; i <= 'Z'; ++i)
+   {
+      if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0)
+         && (char(i) != 'B' && char(i) != 'J' && char(i) != 'O' && char(i) != 'U' && char(i) != 'X' && char(i) != 'Z'))
+      {
+         PeptideMod pepMod;
+         pepMod.setSymbol(char(i + 32));  // use lowercase letter for static mods symbol
+         pepMod.setResidues(std::string(1, char(i)));
+         pepMod.setMass(g_staticParams.staticModifications.pdStaticMods[i]);
+         pepMod.setIsNTerm(false);
+         pepMod.setIsCTerm(false);
+         staticMods.push_back(pepMod);
+      }
+   }
+   g_AScoreOptions.setStaticMods(staticMods);
+
+   // Apply static mods to AminoAcidMasses
+   AminoAcidMasses& masses = g_AScoreOptions.getMasses();
+   for (const auto& mod : staticMods)
+   {
+      const std::string& residues = mod.getResidues();
+      if (!residues.empty())
+      {
+         for (char c : residues)
+         {
+            masses.modifyAminoAcidMass(c, mod.getMass());
+         }
+      }
+
+      if (mod.getIsNTerm())
+      {
+         masses.modifyNTermMass(mod.getMass());
+      }
+
+      if (mod.getIsCTerm())
+      {
+         masses.modifyCTermMass(mod.getMass());
+      }
+   }
+
+   // Print all AScoreOptions values
+/*
+   std::cout << "AScoreOptions values:" << std::endl;
+   std::cout << "ionSeriesList: ";
+   for (const auto& s : g_AScoreOptions.getIonSeriesList()) std::cout << s << " ";
+   std::cout << std::endl;
+   std::cout << "ionSeries: " << g_AScoreOptions.getIonSeries() << std::endl;
+   std::cout << "diffMods: ";
+   for (const auto& mod : g_AScoreOptions.getDiffMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   std::cout << std::endl;
+   std::cout << "staticMods: ";
+   for (const auto& mod : g_AScoreOptions.getStaticMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   std::cout << std::endl;
+   std::cout << "neutralLoss: " << g_AScoreOptions.getNeutralLoss().getMass() << " " << g_AScoreOptions.getNeutralLoss().getResidues() << std::endl;
+   std::cout << "peakDepth: " << g_AScoreOptions.getPeakDepth() << std::endl;
+   std::cout << "maxPeakDepth: " << g_AScoreOptions.getMaxPeakDepth() << std::endl;
+   std::cout << "tolerance: " << g_AScoreOptions.getTolerance() << std::endl;
+   std::cout << "unitText: " << g_AScoreOptions.getUnitText() << std::endl;
+   std::cout << "units: " << static_cast<int>(g_AScoreOptions.getUnits()) << std::endl;
+   std::cout << "window: " << g_AScoreOptions.getWindow() << std::endl;
+   std::cout << "lowMassCutoff: " << g_AScoreOptions.getLowMassCutoff() << std::endl;
+   std::cout << "filterLowIntensity: " << g_AScoreOptions.getFilterLowIntensity() << std::endl;
+   std::cout << "noCterm: " << g_AScoreOptions.getNoCterm() << std::endl;
+   std::cout << "useMobScore: " << g_AScoreOptions.getUseMobScore() << std::endl;
+   std::cout << "useDeltaAscore: " << g_AScoreOptions.getUseDeltaAscore() << std::endl;
+   std::cout << "symbol: " << g_AScoreOptions.getSymbol() << std::endl;
+   std::cout << "residues: " << g_AScoreOptions.getResidues() << std::endl;
+   std::cout << "maxPeptides: " << g_AScoreOptions.getMaxPeptides() << std::endl;
+*/
 }

@@ -18,7 +18,7 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
-#include "ModificationsPermuter.h"
+#include "CometModificationsPermuter.h"
 
 #include <cstdio>
 #include <iostream>
@@ -74,7 +74,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
       for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
       {
          g_iFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int*[g_massRange.g_uiMaxFragmentArrayIndex];
-         g_iCountFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex];
+         g_iCountFragmentIndex[iWhichThread][iPrecursorBin] = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex]();
       }
    }
 
@@ -173,16 +173,6 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    cout <<  "   - count fragment index vector sizes ... "; fflush(stdout);
    // stupid workaround for Windows/Visual Studio performance ... first calculate all
    // fragments to find size of each fragment on index vector
-   for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
-   {
-      for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
-      {
-         for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
-         {
-            g_iCountFragmentIndex[iWhichThread][iPrecursorBin][iMass] = 0;
-         }
-      }
-   }
 
    for (int iWhichThread = 0; iWhichThread<iNumIndexingThreads; ++iWhichThread)
       pFragmentIndexPool->doJob(std::bind(AddFragmentsThreadProc, iWhichThread, iNumIndexingThreads, 1, pFragmentIndexPool));
@@ -285,10 +275,11 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
    // each thread will loop through a subset of the g_vRawPeptides
    for (size_t iWhichPeptide = iWhichThread; iWhichPeptide < g_vRawPeptides.size(); iWhichPeptide += iNumIndexingThreads)
    {
-      // AddFragments for unmodified peptide
-      // FIX: if require variable mod is set, this would not be called here
-      AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, -1, bCountOnly);
+      // AddFragments for unmodified peptide; only if no variable mods are required
+      if (!g_staticParams.variableModParameters.iRequireVarMod)
+         AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, -1, bCountOnly);
 
+      // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
       // Possibly analyze peptides with a terminal mod and no variable mod on any residue
@@ -298,7 +289,8 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
          for (short ctNtermMod=0; ctNtermMod<FRAGINDEX_VMODS; ++ctNtermMod)
          {
             if (g_staticParams.variableModParameters.varModList[ctNtermMod].bNtermMod
-                     && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter
+                        || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
             {
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, ctNtermMod, -1, bCountOnly);
             }
@@ -308,7 +300,8 @@ void CometFragmentIndex::AddFragmentsThreadProc(int iWhichThread,
          for (short ctCtermMod=0; ctCtermMod< FRAGINDEX_VMODS; ++ctCtermMod)
          {
             if (g_staticParams.variableModParameters.varModList[ctCtermMod].bCtermMod
-                     && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter
+                        || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
             {
                AddFragments(g_vRawPeptides, iWhichThread, iWhichPeptide, -1, -1, ctCtermMod, bCountOnly);
             }
@@ -816,7 +809,12 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, "\n");
 
    // Variable mod protein filter:
-   fprintf(fp, "ProteinModList: %d\n", g_staticParams.variableModParameters.bVarModProteinFilter?1:0);
+   fprintf(fp, "ProteinModList: %d\n", g_staticParams.variableModParameters.bVarModProteinFilter ? 1 : 0);
+
+   // Require variable mods:
+   fprintf(fp, "RequireVariableMod: %d\n", g_staticParams.variableModParameters.iRequireVarMod);
+   for (int x = 0; x < FRAGINDEX_VMODS; ++x)
+      fprintf(fp, " %d", g_staticParams.variableModParameters.varModList[x].iRequireThisMod);
 
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fp);
    size_t tNumPeptides = g_pvDBIndex.size();
@@ -1065,6 +1063,44 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
             g_staticParams.variableModParameters.bVarModProteinFilter = true;
 
          break;
+      }
+      else if (!strncmp(szBuf, "RequireVariableMod:", 19))
+      {
+         string strMods = szBuf + 13;
+
+         istringstream iss(strMods);
+
+         int iNumMods = 0;
+
+         do
+         {
+            string subStr;
+            int iIntData;
+
+            iss >> subStr;
+
+            iRet = sscanf(subStr.c_str(), "%d", &iIntData);
+
+            if (iNumMods == 0)  // first value is global require variable mod flag
+            {
+               if (iIntData > 0)
+                  g_staticParams.variableModParameters.iRequireVarMod |= 1UL << 0;  // set 0th bit for global require var mod
+               else
+                  g_staticParams.variableModParameters.iRequireVarMod = 0;
+            }
+            else  // subsequent values are per variable mod
+            {
+               if (iIntData > 0)
+                  g_staticParams.variableModParameters.iRequireVarMod |= 1UL << iNumMods;   // set iNumMods bit
+               g_staticParams.variableModParameters.varModList[iNumMods - 1].iRequireThisMod = iIntData;
+            }
+
+            iNumMods++;
+
+            if (iNumMods == FRAGINDEX_VMODS + 1)
+               break;
+
+         } while (iss);
       }
    }
 

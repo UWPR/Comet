@@ -1,0 +1,48 @@
+#pragma once
+
+#ifndef _ASCORECACULATOR_H_
+#define _ASCORECACULATOR_H_
+
+#include <vector>
+#include "AScoreOptions.h"
+#include "AScoreOutput.h"
+#include "AScorePeptide.h"
+#include "AScoreScan.h"
+
+namespace AScoreProCpp
+{
+
+   /**
+    * The AScoreCalculator class stores the configuration for the
+    * instance of AScore and can run AScore for a peptide and scan.
+    */
+   class AScoreCalculator
+   {
+private:
+      AScoreOptions options_;
+
+      /**
+       * Pre-processes a scan using the configured filters
+       */
+      void PreProcessScan(Scan& scan);
+
+public:
+      /**
+       * Constructor with AScoreOptions
+       */
+      explicit AScoreCalculator(const AScoreOptions& options);
+
+      /**
+       * Get a copy of the options
+       */
+      AScoreOptions GetOptions() const;
+
+      /**
+       * Runs AScore for a single peptide
+       */
+      AScoreOutput Run(Peptide& peptide, const Scan& inputScan);
+   };
+
+} // namespace AScoreProCpp
+
+#endif // _ASCORECACULATOR_H_

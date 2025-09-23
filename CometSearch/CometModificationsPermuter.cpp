@@ -24,7 +24,7 @@
 #include <unordered_set>
 #include "Common.h"
 #include "CometDataInternal.h"
-#include "ModificationsPermuter.h"
+#include "CometModificationsPermuter.h"
 #include "CombinatoricsUtils.h"
 #include "CometFragmentIndex.h"
 

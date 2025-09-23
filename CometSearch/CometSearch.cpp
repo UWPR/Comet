@@ -22,7 +22,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometFragmentIndex.h"
 #include "CometPeptideIndex.h"
-#include "ModificationsPermuter.h"
+#include "CometModificationsPermuter.h"
 
 #include <cstdio>
 #include <cstring>
@@ -44,8 +44,8 @@ CometSearch::CometSearch()
 
    // Allocate memory for protein sequence if necessary.
 
-   _iSizepiVarModSites = sizeof(int)*MAX_PEPTIDE_LEN_P2;
-   _iSizepdVarModSites = sizeof(double)*MAX_PEPTIDE_LEN_P2;
+   _usiSizepiVarModSites = (unsigned short)(sizeof(int)*MAX_PEPTIDE_LEN_P2);
+   _usiSizepdVarModSites = (unsigned short)(sizeof(double)*MAX_PEPTIDE_LEN_P2);
 }
 
 
@@ -1079,6 +1079,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
    // the global error variable before we get here, so no need to check
    // the return value here.
    sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
+
    delete pSearchThreadData;
    pSearchThreadData = NULL;
 }
@@ -1300,7 +1301,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       // We can consider higher charged fragments by simply assuming each fragment mass is
       // higher charged and convert to singly charged to look into the 1+ paXionfileOffsets[].
       // FIX: ideally deconvolute input spectrum to singly charged first
-      for (int iChg = 1; iChg <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ++iChg)
+      for (int iChg = 1; iChg <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge; ++iChg)
       {
          uiFragmentMass = BIN((*it2) * iChg - (iChg - 1.0));
 
@@ -1535,7 +1536,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             pdAAreverse[iPosForward] = dYion;
          }
 
-         int iMaxFragmentCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge;
+         int iMaxFragmentCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge;
          if (iMaxFragmentCharge > 2)   // ony use up to 2+ fragments for the fragment index query
             iMaxFragmentCharge = 2;
 
@@ -1548,7 +1549,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
             memset(uiBinnedPrecursorNL, 0, sizeof(uiBinnedPrecursorNL));
 
          // set pbDuplFragment[bin] to true for each fragment ion bin
-         for (ctCharge = 1; ctCharge <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+         for (ctCharge = 1; ctCharge <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
          {
             for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
             {
@@ -1662,7 +1663,7 @@ bool CometSearch::SearchPeptideIndex(void)
       bool bFoundVariable = false;
 
       // read in static and variable mods
-      while (fgets(szBuf, sizeof(szBuf), fp))
+      while (fgets(szBuf, SIZE_BUF, fp))
       {
          if (!strncmp(szBuf, "MassType:", 9))
          {
@@ -2105,7 +2106,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
             // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
             // First initialize pbDuplFragment and _uiBinnedIonMasses
-            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+            for (ctCharge=1; ctCharge<=g_massRange.usiMaxFragmentCharge; ctCharge++)
             {
                for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                {
@@ -2164,7 +2165,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
             for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
             {
-               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                {
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
@@ -2177,7 +2178,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                }
             }
 
-            for (ctCharge=1; ctCharge<=g_massRange.iMaxFragmentCharge; ctCharge++)
+            for (ctCharge=1; ctCharge<=g_massRange.usiMaxFragmentCharge; ctCharge++)
             {
                for (ctIonSeries=0; ctIonSeries<g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                {
@@ -2233,9 +2234,9 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             }
 
             // Precursor NL peaks added here
-            for (int ctNL=0; ctNL<g_staticParams.iPrecursorNLSize; ctNL++)
+            for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
             {
-               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
@@ -2330,7 +2331,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                // First initialize pbDuplFragment and _uiBinnedIonMassesDecoy
-               for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ctCharge++)
+               for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ctCharge++)
                {
                   for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                   {
@@ -2388,7 +2389,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -2401,7 +2402,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                   }
                }
 
-               for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ctCharge++)
+               for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ctCharge++)
                {
                   for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ctIonSeries++)
                   {
@@ -2459,7 +2460,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                // Precursor NL peaks added here
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -2514,15 +2515,14 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
             dScore += g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
          }
 
-         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
          {
             Threading::LockMutex(g_pvQueryMutex);
-            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr)
+            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
             {
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fXcorr = (float)dScore;
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fCn = 0.0;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct = (float)dScore;
                // scale back to reference RT
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT;
+               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = (float)(g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT);
                g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
             }
             Threading::UnlockMutex(g_pvQueryMutex);
@@ -2939,7 +2939,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
                         // First initialize pbDuplFragment and _uiBinnedIonMasses
-                        for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+                        for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                         {
                            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                            {
@@ -2962,7 +2962,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -2976,7 +2976,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         }
 
                         // Now set _uiBinnedIonMasses; use pbDuplFragment to make sure a fragment isn't counted twice
-                        for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+                        for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                         {
                            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                            {
@@ -3002,7 +3002,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Precursor NL peaks added here
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3093,7 +3093,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         // Now get the set of binned fragment ions once for all matching decoy peptides
                         // First initialize pbDuplFragment and _uiBinnedIonMassesDecoy
-                        for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+                        for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                         {
                            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                            {
@@ -3114,7 +3114,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3128,7 +3128,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         }
 
                         // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-                        for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+                        for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                         {
                            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                            {
@@ -3155,7 +3155,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Precursor NL peaks added here
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                           for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                               int iVal = BIN(dNLMass);
@@ -4183,7 +4183,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    int bin,x,y;
 
-   for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+   for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
    {
       for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
       {
@@ -4252,7 +4252,7 @@ void CometSearch::XcorrScore(char *szProteinSeq,
    ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
    for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
    {
-      for (int ctZ = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ >= 1; --ctZ)
+      for (int ctZ = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctZ >= 1; --ctZ)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
 
@@ -4311,7 +4311,9 @@ void CometSearch::XcorrScore(char *szProteinSeq,
 
    // do need this fudge factor in comparing dXcorr to dLowestXcorrScore as there must be some
    // rounding errors that where random duplicate, same score peptides doesn't make it past here
-   if (dXcorr + 0.00005 >= dLowestXcorrScore && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
+   if (dXcorr >= g_staticParams.options.dMinimumXcorr
+      && dXcorr + 0.00005 >= dLowestXcorrScore
+      && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
    {
       // no need to check duplicates if fragment ion indexed database search (internal decoys not supported yet)
       // and !g_staticParams.options.bTreatSameIL and no internal decoys
@@ -4362,7 +4364,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
 
    float **ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
 
-   for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.iMaxFragCharge; ++ctCharge)
+   for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
    {
       for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
       {
@@ -4411,7 +4413,7 @@ void CometSearch::XcorrScoreI(char *szProteinSeq,
    // precursor NL
    for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
    {
-      for (int ctZ = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctZ >= 1; --ctZ)
+      for (int ctZ = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctZ >= 1; --ctZ)
       {
          bin = uiBinnedPrecursorNL[ctNL][ctZ];
 
@@ -4488,6 +4490,9 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
    int iLenPeptide2;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
+   if (dXcorr < g_staticParams.options.dMinimumXcorr)
+      return;
+
    iLenPeptide = iEndPos - iStartPos + 1;
    iLenPeptide2 = iLenPeptide + 2;
 
@@ -4503,7 +4508,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          {
             siLowestDecoyXcorrScoreIndex = siA;
          }
-         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr ==  pQuery->_pDecoys[siA].fXcorr)
+         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr ==  pQuery->_pDecoys[siA].fXcorr
+            && pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr >= g_staticParams.options.dMinimumXcorr)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -4527,7 +4533,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                else if (g_staticParams.variableModParameters.bVarModSearch)
                {
                   // different peptides with same mod state; replace last mod state
-                  for (int x = 0; x < pQuery->_pDecoys[siA].iLenPeptide + 2; ++x)
+                  for (int x = 0; x < pQuery->_pDecoys[siA].usiLenPeptide + 2; ++x)
                   {
                      if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x] < pQuery->_pDecoys[siA].piVarModSites[x])
                      {
@@ -4560,21 +4566,21 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
 
       pQuery->iDecoyMatchPeptideCount++;
-      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iLenPeptide = iLenPeptide;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].dPepMass = dCalcPepMass;
 
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+      if (pQuery->_spectrumInfoInternal.usiChargeState > 2)
       {
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
-            * pQuery->_spectrumInfoInternal.iMaxFragCharge
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.usiMaxFragCharge
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
@@ -4631,13 +4637,14 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 0;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!iFoundVariableMod)   // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+            memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
          }
          else
          {
@@ -4652,12 +4659,18 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                {
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i]
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
+
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 2;
+                  else
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
                }
                else
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4666,8 +4679,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
       else
       {
-         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+         memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
       }
 
       // walk through stored entries and get new lowest xcorr score
@@ -4698,7 +4711,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
             siLowestXcorrScoreIndex = siA;
          }
          else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr ==  pQuery->_pResults[siA].fXcorr
-               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > g_staticParams.options.dMinimumXcorr)
+               && pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr >= g_staticParams.options.dMinimumXcorr)
          {
             // if current lowest score is the same as current siA peptide,
             // determine if need to point to siA peptide as the one to replace
@@ -4722,7 +4735,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                else if (g_staticParams.variableModParameters.bVarModSearch)
                {
                   // same peptides with different mod state; replace last mod state
-                  for (int x = 0; x < pQuery->_pResults[siA].iLenPeptide + 2; ++x)
+                  for (int x = 0; x < pQuery->_pResults[siA].usiLenPeptide + 2; ++x)
                   {
                      if (pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x] < pQuery->_pResults[siA].piVarModSites[x])
                      {
@@ -4756,21 +4769,21 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
 
       pQuery->iMatchPeptideCount++;
-      pQuery->_pResults[siLowestXcorrScoreIndex].iLenPeptide = iLenPeptide;
+      pQuery->_pResults[siLowestXcorrScoreIndex].usiLenPeptide = iLenPeptide;
 
       memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, szProteinSeq+iStartPos, iLenPeptide*sizeof(char));
       pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide[iLenPeptide]='\0';
       pQuery->_pResults[siLowestXcorrScoreIndex].dPepMass = dCalcPepMass;
 
-      if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+      if (pQuery->_spectrumInfoInternal.usiChargeState > 2)
       {
-         pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
-            * pQuery->_spectrumInfoInternal.iMaxFragCharge
+         pQuery->_pResults[siLowestXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.usiMaxFragCharge
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
       else
       {
-         pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
+         pQuery->_pResults[siLowestXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
             * g_staticParams.ionInformation.iNumIonSeriesUsed;
       }
 
@@ -4829,18 +4842,20 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
+      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 0;
 
       if (bDecoyPep)
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       else
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.push_back(pTmp);
 
+
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
          if (!iFoundVariableMod)  // Normal peptide in variable mod search.
          {
-            memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-            memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+            memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
          }
          else
          {
@@ -4854,12 +4869,17 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
+                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+                  else
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pResults[siLowestXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
                }
                else
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4868,8 +4888,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
       else
       {
-         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _iSizepiVarModSites);
-         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _iSizepdVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
+         memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
       }
 
       // walk through stored entries and get new lowest xcorr score
@@ -4909,21 +4929,21 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
    short siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
 
    pQuery->iMatchPeptideCount++;
-   pQuery->_pResults[siLowestXcorrScoreIndex].iLenPeptide = iLenPeptide;
+   pQuery->_pResults[siLowestXcorrScoreIndex].usiLenPeptide = iLenPeptide;
 
    memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
    pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide[iLenPeptide] = '\0';
    pQuery->_pResults[siLowestXcorrScoreIndex].dPepMass = dCalcPepMass;
 
-   if (pQuery->_spectrumInfoInternal.iChargeState > 2)
+   if (pQuery->_spectrumInfoInternal.usiChargeState > 2)
    {
-      pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
-         * pQuery->_spectrumInfoInternal.iMaxFragCharge
+      pQuery->_pResults[siLowestXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
+         * pQuery->_spectrumInfoInternal.usiMaxFragCharge
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
    }
    else
    {
-      pQuery->_pResults[siLowestXcorrScoreIndex].iTotalIons = (iLenPeptide - 1)
+      pQuery->_pResults[siLowestXcorrScoreIndex].usiTotalIons = (iLenPeptide - 1)
          * g_staticParams.ionInformation.iNumIonSeriesUsed;
    }
 
@@ -4961,8 +4981,12 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
 
             if (iVal > 0)
             {
-               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i]
-                  = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
+               pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
+
+               if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+               else
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
             }
             else
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4981,7 +5005,7 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
 
    for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
    {
-      if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].iLenPeptide == 0)
+      if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].usiLenPeptide == 0)
       {
          pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
          siLowestXcorrScoreIndex = i;
@@ -5016,9 +5040,9 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i = 0; i < g_staticParams.options.iNumStored; ++i)
       {
          // Quick check of peptide sequence length first.
-         if (iLenPeptide == pQuery->_pDecoys[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
+         if (iLenPeptide == pQuery->_pDecoys[i].usiLenPeptide && isEqual(dCalcPepMass, pQuery->_pDecoys[i].dPepMass))
          {
-            if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pDecoys[i].iLenPeptide)))
+            if (!memcmp(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pDecoys[i].usiLenPeptide)))
             {
                bIsDuplicate = 1;
             }
@@ -5046,7 +5070,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
-                  for (int ii = 0; ii <= pQuery->_pDecoys[i].iLenPeptide; ++ii)
+                  for (int ii = 0; ii <= pQuery->_pDecoys[i].usiLenPeptide; ++ii)
                   {
                      iVal = pQuery->_pDecoys[i].piVarModSites[ii];
 
@@ -5078,7 +5102,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                }
                else
                {
-                  if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, sizeof(int)*(pQuery->_pDecoys[i].iLenPeptide + 2)))
+                  if (!memcmp(piVarModSites, pQuery->_pDecoys[i].piVarModSites, (sizeof(int)*(pQuery->_pDecoys[i].usiLenPeptide + 2))))
                      bIsDuplicate = 1;
                   else
                     bIsDuplicate = 0;
@@ -5119,9 +5143,11 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   pQuery->_pDecoys[i].lProteinFilePosition = dbe->lProteinFilePosition;
 
                   // also if IL equivalence set, go ahead and copy peptide from first sequence
-                  memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq+iStartPos, pQuery->_pDecoys[i].iLenPeptide*sizeof(char));
-                  pQuery->_pDecoys[i].szPeptide[pQuery->_pDecoys[i].iLenPeptide]='\0';
+                  memcpy(pQuery->_pDecoys[i].szPeptide, szProteinSeq + iStartPos, (pQuery->_pDecoys[i].usiLenPeptide * sizeof(char)));
+                  pQuery->_pDecoys[i].szPeptide[pQuery->_pDecoys[i].usiLenPeptide]='\0';
                }
+
+               pQuery->iDecoyMatchPeptideCount++;
 
                break;
             }
@@ -5133,9 +5159,9 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
       for (i = 0; i < g_staticParams.options.iNumStored; ++i)
       {
          // Quick check of peptide sequence length.
-         if (iLenPeptide == pQuery->_pResults[i].iLenPeptide && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
+         if (iLenPeptide == pQuery->_pResults[i].usiLenPeptide && isEqual(dCalcPepMass, pQuery->_pResults[i].dPepMass))
          {
-            if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pResults[i].iLenPeptide)))
+            if (!memcmp(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, sizeof(char)*(pQuery->_pResults[i].usiLenPeptide)))
             {
                bIsDuplicate = 1;
             }
@@ -5163,7 +5189,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
-                  for (int ii = 0; ii <= pQuery->_pResults[i].iLenPeptide; ++ii)
+                  for (int ii = 0; ii <= pQuery->_pResults[i].usiLenPeptide; ++ii)
                   {
                      iVal = pQuery->_pResults[i].piVarModSites[ii];
 
@@ -5193,7 +5219,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                }
                else
                {
-                  if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].iLenPeptide + 2)))
+                  if (!memcmp(piVarModSites, pQuery->_pResults[i].piVarModSites, sizeof(int)*(pQuery->_pResults[i].usiLenPeptide + 2)))
                      bIsDuplicate = 1;
                   else
                      bIsDuplicate = 0;
@@ -5246,8 +5272,8 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                      pQuery->_pResults[i].lProteinFilePosition = dbe->lProteinFilePosition;
 
                      // also if IL equivalence set, go ahead and copy peptide from first sequence
-                     memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, pQuery->_pResults[i].iLenPeptide * sizeof(char));
-                     pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].iLenPeptide] = '\0';
+                     memcpy(pQuery->_pResults[i].szPeptide, szProteinSeq + iStartPos, pQuery->_pResults[i].usiLenPeptide * sizeof(char));
+                     pQuery->_pResults[i].szPeptide[pQuery->_pResults[i].usiLenPeptide] = '\0';
 
                      pQuery->_pResults[i].cPrevAA = pTmp.cPrevAA;
                      pQuery->_pResults[i].cNextAA = pTmp.cNextAA;
@@ -6215,7 +6241,7 @@ void CometSearch::VariableModSearch(char *szProteinSeq,
                                                 {
                                                    if (g_staticParams.variableModParameters.varModList[i].dVarModMass > 0.0  && piTmpVarModCounts[i] > 0)
                                                    {
-                                                      memset(_varModInfo.varModStatList[i].iVarModSites, 0, _iSizepiVarModSites);
+                                                      memset(_varModInfo.varModStatList[i].iVarModSites, 0, _usiSizepiVarModSites);
                                                    }
 
                                                    _varModInfo.varModStatList[i].iMatchVarModCt = piTmpVarModCounts[i];
@@ -6578,7 +6604,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
    // contains positional coding of a variable mod at each index which equals an AA residue
-   memset(piVarModSites, 0, _iSizepiVarModSites);
+   memset(piVarModSites, 0, _usiSizepiVarModSites);
    memset(piVarModCharIdx, 0, sizeof(piVarModCharIdx));
 
    // deal with n-term mod
@@ -6748,6 +6774,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          }
       }
 
+      // FIX 20250903: I don't understand this logic below. Looks like I should test that if
+      // any individual required mod is not present, return out of this fn. Current logic just
+      // tests if any required mod is present.
+
       // above checked for required individual mods; now check if any of multiple mods is present
       bool bValid = false;
       int iSize = _varModInfo.iEndPos+2;
@@ -6763,7 +6793,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
       if (!bValid)
          return true;
-
    }
 
    // Check to see if variable mod cannot occur on c-term residue
@@ -6787,7 +6816,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
    if (*bDoPeffAnalysis && !g_staticParams.options.bCreatePeptideIndex)
    {
       int piTmpVarModSites[MAX_PEPTIDE_LEN_P2];
-      memcpy(piTmpVarModSites, piVarModSites, _iSizepiVarModSites);
+      memcpy(piTmpVarModSites, piVarModSites, _usiSizepiVarModSites);
 
       // permute through PEFF
 
@@ -6811,7 +6840,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
                dMassAddition = (*vPeffArray).at(i).vectorMassDiffMono.at(ii);
 
                // For each iteration of PEFF mods, start with fresh state of variable mods
-               memcpy(piVarModSites, piTmpVarModSites, _iSizepiVarModSites);
+               memcpy(piVarModSites, piTmpVarModSites, _usiSizepiVarModSites);
 
                // if dCalcPepMass + dMassAddition is within mass tol, add these mods
 
@@ -7080,7 +7109,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
             // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
             // First initialize pbDuplFragment and _uiBinnedIonMasses
-            for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+            for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
             {
                for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                {
@@ -7146,7 +7175,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             // initialize precursorNL
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                   int iVal = BIN(dNLMass);
@@ -7160,7 +7189,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             }
 
             // set pbDuplFragment[bin] to true for each fragment ion bin
-            for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+            for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
             {
                for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                {
@@ -7229,7 +7258,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
             // Precursor NL peaks added here
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+               for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
 
@@ -7417,7 +7446,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
 
                // Now get the set of binned fragment ions once for all matching decoy peptides
                // First initialize pbDuplFragment and _uiBinnedIonMassesDecoy
-               for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+               for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                {
                   for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                   {
@@ -7474,7 +7503,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                // initialize precursorNL for decoy
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                  for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                      int iVal = BIN(dNLMass);
@@ -7488,7 +7517,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                }
 
                // set pbDuplFragment[bin] to true for each fragment ion bin
-               for (ctCharge = 1; ctCharge <= g_massRange.iMaxFragmentCharge; ++ctCharge)
+               for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
                {
                   for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
                   {
@@ -7546,7 +7575,7 @@ bool CometSearch::CalcVarModIons(char *szProteinSeq,
                // Precursor NL peaks added here
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iChargeState; ctCharge>=1; ctCharge--)
+                  for (ctCharge=g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge>=1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                      int iVal = BIN(dNLMass);
