@@ -49,7 +49,6 @@ using namespace std;
 class  thpldata
 {
 public:
-//   thpldata() {};
    thpldata() : thread_no(0), tp(nullptr) {};
    void setThreadNum(int i)
    {
