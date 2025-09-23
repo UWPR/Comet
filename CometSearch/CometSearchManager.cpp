@@ -83,7 +83,7 @@ std::deque<RetentionMatch> RetentionMatchHistory;
 * Static helper functions
 *
 ******************************************************************************/
-std::string GetHostName()
+static std::string GetHostName()
 {
    char hostname[128] = { 0 };
 
