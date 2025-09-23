@@ -156,7 +156,8 @@ bool CometWriteOut::PrintResults(int iWhichQuery,
       fprintf(fpout, " total inten = %0.2E, lowest Sp = 0, # matched peptides = %lu\n",
          pQuery->_spectrumInfoInternal.dTotalIntensity,
          pQuery->_uliNumMatchedPeptides);
-   }   fprintf(fpout, " %s\n", sDBLine.c_str());
+   }
+   fprintf(fpout, " %s\n", sDBLine.c_str());
 
    fprintf(fpout, " %s\n", g_staticParams.szIonSeries);
    fprintf(fpout, " %s\n", g_staticParams.szDisplayLine);
