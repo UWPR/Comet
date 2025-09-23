@@ -6774,6 +6774,10 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
          }
       }
 
+      // FIX 20250903: I don't understand this logic below. Looks like I should test that if
+      // any individual required mod is not present, return out of this fn. Current logic just
+      // tests if any required mod is present.
+
       // above checked for required individual mods; now check if any of multiple mods is present
       bool bValid = false;
       int iSize = _varModInfo.iEndPos+2;
@@ -6789,7 +6793,6 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
       if (!bValid)
          return true;
-
    }
 
    // Check to see if variable mod cannot occur on c-term residue

@@ -326,12 +326,14 @@ static bool AllocateResultsMem()
          pQuery->_pResults[j].dExpect = 999;
          pQuery->_pResults[j].fScoreSp = 0.0;
          pQuery->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pQuery->_pResults[j].fAScorePro = 0.0;
          pQuery->_pResults[j].usiLenPeptide = 0;
          pQuery->_pResults[j].usiRankSp = 0;
          pQuery->_pResults[j].usiMatchedIons = 0;
          pQuery->_pResults[j].usiTotalIons = 0;
          pQuery->_pResults[j].szPeptide[0] = '\0';
-         pQuery->_pResults[j].strSingleSearchProtein = "";
+         pQuery->_pResults[j].strSingleSearchProtein.clear();
+         pQuery->_pResults[j].sAScoreProSiteScores.clear();
          pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].sPeffOrigResidues.clear();
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
@@ -346,13 +348,15 @@ static bool AllocateResultsMem()
             pQuery->_pDecoys[j].dExpect = 999;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
             pQuery->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+            pQuery->_pDecoys[j].fAScorePro = 0.0;
             pQuery->_pDecoys[j].usiLenPeptide = 0;
             pQuery->_pDecoys[j].usiRankSp = 0;
             pQuery->_pDecoys[j].usiMatchedIons = 0;
             pQuery->_pDecoys[j].usiTotalIons = 0;
             pQuery->_pDecoys[j].szPeptide[0] = '\0';
-            pQuery->_pDecoys[j].strSingleSearchProtein = "";
-            //pQuery->_pDecoys[j].cPeffOrigResidue = '\0';
+            pQuery->_pDecoys[j].strSingleSearchProtein.clear();
+            pQuery->_pDecoys[j].sAScoreProSiteScores.clear();
+            pQuery->_pDecoys[j].pWhichProtein.clear();
             pQuery->_pDecoys[j].sPeffOrigResidues.clear();
             pQuery->_pDecoys[j].iPeffOrigResiduePosition = -9;
          }
@@ -2837,7 +2841,6 @@ bool CometSearchManager::DoSearch()
 
          if (g_staticParams.options.iPrintAScoreProScore && bPerformAScoreInitialization)
          {
-            //FIX make sure this is done only once!!!
             SetAScoreOptions();
 
             // Create the AScoreDllInterface using the factory function
@@ -3631,8 +3634,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       CometPostAnalysis::CalculateEValue(iWhichQuery, 0);
       CometPostAnalysis::CalculateDeltaCn(iWhichQuery);
 
-      if (g_staticParams.options.iPrintAScoreProScore && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+      if (g_staticParams.options.iPrintAScoreProScore
+            && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+      {
          CometPostAnalysis::CalculateAScorePro(0, g_AScoreInterface);
+      }
    }
    else
       goto cleanup_results;
@@ -3655,7 +3661,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       std::string eachStrReturnProtein;
       vector<Fragment> eachMatchedFragments;
 
-      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
+      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr
+            && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
       {
          Results* pOutput = pQuery->_pResults;
 
@@ -3702,7 +3709,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          unsigned int uiNumTotProteins = 0;
          bool bReturnFullProteinString = true;
 
-         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
+               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
          bool bPrintDelim = false;
          if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
@@ -3743,7 +3751,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.mass = pOutput[iWhichResult].dPepMass - PROTON_MASS;       // calc neutral pep mass
          score.matchedIons = pOutput[iWhichResult].usiMatchedIons;        // ions matched
          score.totalIons = pOutput[iWhichResult].usiTotalIons;            // ions tot
-         score.dAScorePro = pOutput[iWhichResult].fAScorePro;           // AScore
+         score.dAScorePro = pOutput[iWhichResult].fAScorePro;             // AScore
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores; // AScore site-specific
 
          int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
@@ -4167,7 +4175,6 @@ void CometSearchManager::SetAScoreOptions(void)
 
             if (!isEqual(g_staticParams.variableModParameters.varModList[i].dNeutralLoss, 0.0))
                bSetNeutralLossMask = true;
-
          }
       }
    }

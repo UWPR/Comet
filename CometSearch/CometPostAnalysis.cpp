@@ -109,7 +109,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // Calculate A-Score if specified and peptide has phospho mod
    if (g_staticParams.options.iPrintAScoreProScore
-      && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+         && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
    {
       CalculateAScorePro(iQueryIndex, g_AScoreInterface);
    }
