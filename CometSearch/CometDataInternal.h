@@ -138,16 +138,13 @@ struct Options
    bool bOutputPepXMLFile;
    int iOutputMzIdentMLFile;
    bool bOutputPercolatorFile;
-   bool bOutputOutFiles;
    bool bClipNtermMet;           // 0=leave protein sequences alone; 1=also consider w/o N-term methionine
    bool bClipNtermAA;            // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
-   bool bSkipAlreadyDone;        // 0=search everything; 1=don't re-search if .out exists
    bool bMango;                  // 0=normal; 1=Mango x-link ms2 input
    bool bScaleFragmentNL;        // 0=no; 1=scale fragment NL for each modified residue contained in fragment
    bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index file
    bool bCreatePeptideIndex;     // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
    bool bVerboseOutput;
-   bool bShowFragmentIons;
    bool bExplicitDeltaCn;        // if set to 1, do not use sequence similarity logic
    bool bPrintExpectScore;
    bool bExportAdditionalScoresPepXML;  // if 1, also report lnrSp, lnExpect, IonFrac, lnNumSP to pepXML output
@@ -203,16 +200,13 @@ struct Options
       bOutputPepXMLFile = a.bOutputPepXMLFile;
       iOutputMzIdentMLFile = a.iOutputMzIdentMLFile;
       bOutputPercolatorFile = a.bOutputPercolatorFile;
-      bOutputOutFiles = a.bOutputOutFiles;
       bClipNtermMet = a.bClipNtermMet;
       bClipNtermAA = a.bClipNtermAA;
-      bSkipAlreadyDone = a.bSkipAlreadyDone;
       bMango = a.bMango;
       bScaleFragmentNL = a.bScaleFragmentNL;
       bCreatePeptideIndex = a.bCreatePeptideIndex;
       bCreateFragmentIndex = a.bCreateFragmentIndex;
       bVerboseOutput = a.bVerboseOutput;
-      bShowFragmentIons = a.bShowFragmentIons;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
       iPrintAScoreProScore = a.iPrintAScoreProScore;
@@ -759,10 +753,7 @@ struct IonInfo
 struct StaticParams
 {
    string          sHostName;
-   string          strOutFileTimeString;
-   char            szIonSeries[256];   // used for .out files
-   char            szDisplayLine[256]; // used for .out files
-   char            szMod[512];         // used for .out files
+   char            szMod[512];         // used for sqt output
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
    string          sDecoyPrefix;       // escaped version of szDecoyPrefix for output within XML files
    char            szOutputSuffix[256]; // used for suffix to append to output file base names
@@ -803,9 +794,6 @@ struct StaticParams
    StaticParams& operator=(StaticParams& a)
    {
        sHostName = a.sHostName;
-       strOutFileTimeString = a.strOutFileTimeString;
-       strcpy(szIonSeries, a.szIonSeries);
-       strcpy(szDisplayLine, a.szDisplayLine);
        strcpy(szMod, a.szMod);
        strcpy(szDecoyPrefix, a.szDecoyPrefix);
        strcpy(szOutputSuffix, a.szOutputSuffix);
@@ -937,7 +925,6 @@ struct StaticParams
       options.iNumStored = 100;                         // default # of search results to store for xcorr analysis.
       options.iMaxDuplicateProteins = 20;               // maximum number of duplicate proteins to report or store in idx file
 
-      options.bShowFragmentIons = false;
       options.bExplicitDeltaCn = false;
       options.bPrintExpectScore = true;
       options.iPrintAScoreProScore = 0;
@@ -955,11 +942,9 @@ struct StaticParams
       options.bOutputPepXMLFile = true;
       options.iOutputMzIdentMLFile = false;
       options.bOutputPercolatorFile = false;
-      options.bOutputOutFiles = false;
 
       options.bResolveFullPaths = true;
 
-      options.bSkipAlreadyDone = true;
       options.bMango = false;
       options.bScaleFragmentNL = false;
       options.bCreatePeptideIndex = false;

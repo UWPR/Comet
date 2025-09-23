@@ -11,14 +11,14 @@ endif
 
 EXECNAME = comet.exe
 OBJS = Comet.o
-DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/CometPreprocess.h CometSearch/CometWriteOut.h CometSearch/CometWriteSqt.h\
+DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/CometPreprocess.h CometSearch/CometWriteSqt.h\
 		 CometSearch/OSSpecificThreading.h CometSearch/CometMassSpecUtils.h CometSearch/CometSearch.h CometSearch/CometWritePepXML.h\
 		 CometSearch/CometWriteMzIdentML.h CometSearch/CometWriteTxt.h CometSearch/Threading.h CometSearch/CometPostAnalysis.h\
 		 CometSearch/CometSearchManager.h CometSearch/CometWritePercolator.h CometSearch/Common.h CometSearch/ThreadPool.h\
 		 CometSearch/CombinatoricsUtils.h CometSearch/CometModificationsPermuter.h CometSearch/CometMassSpecUtils.cpp\
 		 CometSearch/CometSearch.cpp CometSearch/CometWritePepXML.cpp CometSearch/CometWriteMzIdentML.cpp CometSearch/CometWriteTxt.cpp\
 		 CometSearch/CometPostAnalysis.cpp CometSearch/CometSearchManager.cpp CometSearch/CometWritePercolator.cpp CometSearch/Threading.cpp\
-		 CometSearch/CometPreprocess.cpp CometSearch/CometWriteOut.cpp CometSearch/CometWriteSqt.cpp CometSearch/CombinatoricsUtils.cpp\
+		 CometSearch/CometPreprocess.cpp CometSearch/CometWriteSqt.cpp CometSearch/CombinatoricsUtils.cpp\
 		 CometSearch/CometModificationsPermuter.cpp CometSearch/CometInterfaces.h CometSearch/CometInterfaces.cpp\
 		 CometSearch/CometFragmentIndex.cpp CometSearch/CometFragmentIndex.h\
 		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h\

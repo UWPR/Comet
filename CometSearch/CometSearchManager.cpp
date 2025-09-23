@@ -18,7 +18,6 @@
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
 #include "CometPreprocess.h"
-#include "CometWriteOut.h"
 #include "CometWriteSqt.h"
 #include "CometWriteTxt.h"
 #include "CometWritePepXML.h"
@@ -206,66 +205,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    }
 #endif
 
-   // Create .out directory.
-   if (g_staticParams.options.bOutputOutFiles)
-   {
-#ifdef _WIN32
-      if (_mkdir(g_staticParams.inputFile.szBaseName) == -1)
-      {
-         errno_t err;
-         _get_errno(&err);
-
-         if (err != EEXIST)
-         {
-            string strErrorMsg = " Error - could not create directory\"" + string(g_staticParams.inputFile.szBaseName) + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
-      }
-      if (g_staticParams.options.iDecoySearch == 2)
-      {
-         string sDecoyDir;
-         sDecoyDir = g_staticParams.inputFile.szBaseName + string("_decoy");
-
-         if (_mkdir(sDecoyDir.c_str()) == -1)
-         {
-            errno_t err;
-            _get_errno(&err);
-
-            if (err != EEXIST)
-            {
-               string strErrorMsg = " Error - could not create directory \"" + sDecoyDir + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               return false;
-            }
-         }
-      }
-#else
-      if ((mkdir(g_staticParams.inputFile.szBaseName, 0775) == -1) && (errno != EEXIST))
-      {
-         string strErrorMsg = " Error - could not create directory \"" + string(g_staticParams.inputFile.szBaseName) + "\".\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-      if (g_staticParams.options.iDecoySearch == 2)
-      {
-         string sDecoyDir;
-         sDecoyDir = g_staticParams.inputFile.szBaseName + string("_decoy");
-
-         if ((mkdir(sDecoyDir.c_str(), 0775) == -1) && (errno != EEXIST))
-         {
-            string strErrorMsg = " Error - could not create directory \"" + sDecoyDir + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
-      }
-#endif
-   }
-
    return true;
 }
 
@@ -415,96 +354,6 @@ static bool compareByScanNumber(Query const* a, Query const* b)
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
 
-static void CalcRunTime(time_t tStartTime)
-{
-   time_t tEndTime;
-   int iTmp;
-
-   time(&tEndTime);
-
-   int iElapseTime = static_cast<int>(difftime(tEndTime, tStartTime));
-
-   // Use a C++ string for output instead of C char array
-   std::string outFileTimeString = std::string(g_staticParams.szDate) + ",";
-
-   if ((iTmp = static_cast<int>(iElapseTime / 3600)) > 0)
-      outFileTimeString += " " + std::to_string(iTmp) + " hr.";
-   if ((iTmp = static_cast<int>((iElapseTime - static_cast<int>(iElapseTime / 3600) * 3600) / 60)) > 0)
-      outFileTimeString += " " + std::to_string(iTmp) + " min.";
-   if ((iTmp = static_cast<int>((iElapseTime - (static_cast<int>(iElapseTime / 3600)) * 3600) % 60)) > 0)
-      outFileTimeString += " " + std::to_string(iTmp) + " sec.";
-   if (iElapseTime == 0)
-      outFileTimeString += " 0 sec.";
-   outFileTimeString += " on " + g_staticParams.sHostName;
-
-   g_staticParams.iElapseTime = iElapseTime;
-   g_staticParams.strOutFileTimeString = outFileTimeString;
-}
-
-// for .out files
-static void PrintOutfileHeader()
-{
-   // print parameters
-
-   char szIsotope[32] = "";
-   char szPeak[16] = "";
-
-   sprintf(g_staticParams.szIonSeries, "ion series ABCXYZ nl: %d%d%d%d%d%d%d %d",
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_A],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_B],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_C],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_X],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_Y],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_Z],
-         g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1],
-         g_staticParams.ionInformation.bUseWaterAmmoniaLoss);
-
-   char szUnits[8];
-   char szDecoy[20];
-   char szReadingFrame[20];
-   char szRemovePrecursor[20];
-
-   if (g_staticParams.tolerances.iMassToleranceUnits==0)
-      strcpy(szUnits, " AMU");
-   else if (g_staticParams.tolerances.iMassToleranceUnits==1)
-      strcpy(szUnits, " MMU");
-   else
-      strcpy(szUnits, " PPM");
-
-   if (g_staticParams.options.iDecoySearch)
-      sprintf(szDecoy, " DECOY%d", g_staticParams.options.iDecoySearch);
-   else
-      szDecoy[0]=0;
-
-   if (g_staticParams.options.iRemovePrecursor)
-      sprintf(szRemovePrecursor, " REMOVEPREC%d", g_staticParams.options.iRemovePrecursor);
-   else
-      szRemovePrecursor[0]=0;
-
-   if (g_staticParams.options.iWhichReadingFrame)
-      sprintf(szReadingFrame, " FRAME%d", g_staticParams.options.iWhichReadingFrame);
-   else
-      szReadingFrame[0]=0;
-
-   if (g_staticParams.tolerances.iIsotopeError > 0)
-      sprintf(szIsotope, " ISOTOPE%d", g_staticParams.tolerances.iIsotopeError);
-
-   szPeak[0]='\0';
-   if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 1)
-      strcpy(szPeak, " PEAK1");
-
-   sprintf(g_staticParams.szDisplayLine, "display top %d,%s%s%s%s%s%s%s%s",
-         g_staticParams.options.iNumPeptideOutputLines,
-         szRemovePrecursor,
-         szReadingFrame,
-         szPeak,
-         szUnits,
-         (g_staticParams.tolerances.iMassToleranceType==0?" MH+":" m/z"),
-         szIsotope,
-         szDecoy,
-         (g_staticParams.options.bClipNtermMet?" CLIPMET":"") );
-}
-
 static bool ValidateOutputFormat()
 {
    if (!g_staticParams.options.bOutputSqtStream
@@ -512,8 +361,7 @@ static bool ValidateOutputFormat()
          && !g_staticParams.options.bOutputTxtFile
          && !g_staticParams.options.bOutputPepXMLFile
          && !g_staticParams.options.iOutputMzIdentMLFile
-         && !g_staticParams.options.bOutputPercolatorFile
-         && !g_staticParams.options.bOutputOutFiles)
+         && !g_staticParams.options.bOutputPercolatorFile)
    {
       string strErrorMsg = " Please specify at least one output format.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -523,7 +371,6 @@ static bool ValidateOutputFormat()
 
    return true;
 }
-
 
 static bool ValidateSequenceDatabaseFile()
 {
@@ -789,14 +636,6 @@ bool CometSearchManager::InitializeStaticParams()
 
    GetParamValue("mass_type_fragment", g_staticParams.massUtility.bMonoMassesFragment);
 
-   if (GetParamValue("show_fragment_ions", iIntData))
-   {
-      if (iIntData == 0)
-         g_staticParams.options.bShowFragmentIons = false;
-      else
-         g_staticParams.options.bShowFragmentIons = true;
-   }
-
    if (GetParamValue("explicit_deltacn", iIntData))
    {
       if (iIntData == 0)
@@ -1017,22 +856,6 @@ bool CometSearchManager::InitializeStaticParams()
          g_staticParams.options.bOutputPercolatorFile = false;
       else
          g_staticParams.options.bOutputPercolatorFile = true;
-   }
-
-   if (GetParamValue("output_outfiles", iIntData))
-   {
-      if (iIntData == 0)
-         g_staticParams.options.bOutputOutFiles = false;
-      else
-         g_staticParams.options.bOutputOutFiles = true;
-   }
-
-   if (GetParamValue("skip_researching", iIntData))
-   {
-      if (iIntData == 0)
-         g_staticParams.options.bSkipAlreadyDone = false;
-      else
-         g_staticParams.options.bSkipAlreadyDone = true;
    }
 
    if (GetParamValue("mango_search", iIntData))
@@ -1827,9 +1650,6 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
-   if (!g_staticParams.options.bOutputOutFiles)
-      g_staticParams.options.bSkipAlreadyDone = 0;
-
    g_staticParams.precalcMasses.dNtermProton = g_staticParams.staticModifications.dAddNterminusPeptide
       + PROTON_MASS;
 
@@ -2375,9 +2195,6 @@ bool CometSearchManager::DoSearch()
        if (g_pvInputFiles.size() == 0)
           return bSucceeded;
    }
-
-   if (g_staticParams.options.bOutputOutFiles)
-      PrintOutfileHeader();
 
    bool bBlankSearchFile = false;
 
@@ -3109,15 +2926,6 @@ bool CometSearchManager::DoSearch()
             {
                logout("  done\n");
                fflush(stdout);
-            }
-
-            if (g_staticParams.options.bOutputOutFiles)
-            {
-               CalcRunTime(tStartTime);
-
-               bSucceeded = CometWriteOut::WriteOut(fpdb);
-               if (!bSucceeded)
-                  goto cleanup_results;
             }
 
             if (g_staticParams.options.bOutputPepXMLFile)

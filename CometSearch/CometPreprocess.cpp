@@ -1396,8 +1396,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          int iPrecursorCharge = (*iter).first;
          double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
 
-         if (CheckExistOutFile(iPrecursorCharge, iScanNumber)
-               && (isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
+         if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || ((dMass >= g_staticParams.options.dPeptideMassLow)
                      && (dMass <= g_staticParams.options.dPeptideMassHigh)))
                && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge
@@ -1457,50 +1456,6 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    }
 
    return true;
-}
-
-
-// Skip repeating a search if output exists only works for .out files
-bool CometPreprocess::CheckExistOutFile(int iCharge,
-                                        int iScanNum)
-{
-   bool bSearchSpectrum = 1;
-
-   if (g_staticParams.options.bOutputOutFiles
-         && g_staticParams.options.bSkipAlreadyDone
-         && !g_staticParams.options.bOutputSqtStream
-         && !g_staticParams.options.bOutputSqtFile
-         && !g_staticParams.options.bOutputPepXMLFile
-         && !g_staticParams.options.bOutputPercolatorFile)
-   {
-      char *pStr;
-      FILE *fpcheck;
-
-      if ( (pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
-            && (pStr = strrchr(g_staticParams.inputFile.szBaseName, '/')) == NULL)
-      {
-         pStr = g_staticParams.inputFile.szBaseName;
-      }
-      else
-         (*pStr)++;
-
-      std::ostringstream oss;
-      oss << g_staticParams.inputFile.szBaseName << "/"
-          << pStr << "."
-          << std::setfill('0') << std::setw(5) << iScanNum << "."
-          << std::setfill('0') << std::setw(5) << iScanNum << "."
-          << iCharge << ".out";
-      std::string strOutputFileName = oss.str();
-
-      // Check existence of .out file.
-      if ((fpcheck = fopen(strOutputFileName.c_str(), "r")) != NULL)
-      {
-         bSearchSpectrum = 0;
-         fclose(fpcheck);
-      }
-   }
-
-   return bSearchSpectrum;
 }
 
 

@@ -112,8 +112,6 @@ private:
                                   float *pfFastXcorrData,
                                   float *pfFastXcorrDataNL,
                                   float *pfSpScoreData);
-   static bool CheckExistOutFile(int iCharge,
-                                 int iScanNum);
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
    static bool Preprocess(struct Query *pScoring,

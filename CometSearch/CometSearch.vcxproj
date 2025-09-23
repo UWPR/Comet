@@ -102,7 +102,6 @@
     <ClInclude Include="CometSpecLib.h" />
     <ClInclude Include="CometStatus.h" />
     <ClInclude Include="CometWriteMzIdentML.h" />
-    <ClInclude Include="CometWriteOut.h" />
     <ClInclude Include="CometWritePepXML.h" />
     <ClInclude Include="CometWritePercolator.h" />
     <ClInclude Include="CometWriteSqt.h" />
@@ -127,7 +126,6 @@
     <ClCompile Include="CometSearchManager.cpp" />
     <ClCompile Include="CometSpecLib.cpp" />
     <ClCompile Include="CometWriteMzIdentML.cpp" />
-    <ClCompile Include="CometWriteOut.cpp" />
     <ClCompile Include="CometWritePepXML.cpp" />
     <ClCompile Include="CometWritePercolator.cpp" />
     <ClCompile Include="CometWriteSqt.cpp" />

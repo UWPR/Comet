@@ -85,6 +85,8 @@ bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
 void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
                                                ThreadPool* tp)
 {
+   (void)tp; // suppress unused parameter warning
+
    int iQueryIndex = pThreadData->iQueryIndex;
 
    AnalyzeSP(iQueryIndex);
@@ -712,7 +714,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    // both the score and site scores.
    if (!result.peptides.empty())
    {
-      g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = result.peptides[0].getScore();
+      g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = (float)result.peptides[0].getScore();
 
       if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= 13.0)
       {
@@ -1196,16 +1198,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
    // EXPECT_DECOY_SIZE is the minimum # of decoys required or else this function isn't
    // called.  So need to generate iLoopMax more xcorr scores for the histogram.
    int iLoopMax = EXPECT_DECOY_SIZE - pQuery->uiHistogramCount;
-   int iLastEntry;
-
-   // Determine if using target or decoy peptides to rotate to fill out histogram.
-   if (pQuery->iMatchPeptideCount >= pQuery->iDecoyMatchPeptideCount)
-      iLastEntry = pQuery->iMatchPeptideCount;
-   else
-      iLastEntry = pQuery->iDecoyMatchPeptideCount;
-
-   if (iLastEntry > g_staticParams.options.iNumStored)
-      iLastEntry = g_staticParams.options.iNumStored;
 
    j=0;
    for (i=0; i<iLoopMax; ++i)  // iterate through required # decoys
