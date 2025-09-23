@@ -3635,7 +3635,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       CometPostAnalysis::CalculateDeltaCn(iWhichQuery);
 
       if (g_staticParams.options.iPrintAScoreProScore
-            && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+            && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
       {
          CometPostAnalysis::CalculateAScorePro(0, g_AScoreInterface);
       }

@@ -109,7 +109,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // Calculate A-Score if specified and peptide has phospho mod
    if (g_staticParams.options.iPrintAScoreProScore
-         && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == 2)  //FIX: 2 should be enum
+         && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
    {
       CalculateAScorePro(iQueryIndex, g_AScoreInterface);
    }
@@ -674,7 +674,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    int precursorCharge;
 
    // sanity check here; AScorePro will segfault if peptide length is 0
-   if (!(g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod == 2
+   if (!(g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro
       && g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide > 0))
    {
       return;

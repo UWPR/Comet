@@ -444,6 +444,14 @@ enum InputType
    InputType_MGF
 };
 
+// enum for cHasVariableMod in Results struct
+enum HasVariableModType
+{
+   HasVariableModType_None = 0,
+   HasVariableModType_True,          // peptide contains a variable modification
+   HasVariableModType_AScorePro      // peptide contains a variable modification that will get localized with AScorePro
+};
+
 struct InputFileInfo
 {
    int  iInputType;

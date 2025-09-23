@@ -272,7 +272,7 @@ struct Results
    char   cPrevAA;                            // stores prev flanking AA
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
-   char   cHasVariableMod;                    // 0 = no variable mod, 1 = has varaible mod, 2 = has AScorePro mod
+   char   cHasVariableMod;                    // HasVariableModType enum: 0 = no variable mod, 1 = has variable mod, 2 = has AScorePro mod
    string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
    string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string

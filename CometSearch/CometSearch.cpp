@@ -4637,7 +4637,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
-      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 0;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {
@@ -4661,16 +4661,16 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                      = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
 
                   if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
-                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 2;
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
                   else
-                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
-                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = 1;
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4842,7 +4842,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
-      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 0;
+      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
 
       if (bDecoyPep)
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
@@ -4870,16 +4870,16 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
                   if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
-                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
                   else
-                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else if (iVal < 0)
                {
                   int iTmp = -iVal - 1;
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = dbe->vectorPeffMod.at(iTmp).dMassDiffMono;
                   strcpy(pQuery->_pResults[siLowestXcorrScoreIndex].pszMod[i], dbe->vectorPeffMod.at(iTmp).szMod);
-                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
@@ -4984,9 +4984,9 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 
                if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
-                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 2;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
                else
-                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = 1;
+                  pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
             }
             else
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
