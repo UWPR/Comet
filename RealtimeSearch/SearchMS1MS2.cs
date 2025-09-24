@@ -134,7 +134,7 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 1000;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
@@ -176,9 +176,8 @@
 
                         int iMS1TopN = 1; // report up to iMS1TopN hits per query; unused right now as only top matching MS1 scan is returned
 
-                        if (scanFilter.MSOrder == MSOrderType.Ms)
+                        if (false && scanFilter.MSOrder == MSOrderType.Ms)
                         {
-/*
                            watch.Start();
                            SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
                            watch.Stop();
@@ -205,7 +204,6 @@
                                  piTimeSearchMS1[iTime] += 1;
                            }
                            watch.Reset();
-*/
                         }
                         else if (scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
                         {
@@ -355,13 +353,17 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("retentiontime_tol", sTmp, iTmp);
 
-            dTmp = 1.0005; // mass bin width
+            dTmp = 0.02; // mass bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.4;  // mass bin offset
+            dTmp = 0.0;  // mass bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_offset", sTmp, dTmp);
+
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
             double dMS1MassLow = 0.0;
             double dMS1MassHigh = 2000.0;
@@ -405,9 +407,6 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 /*
             iTmp = 3;
             sTmp = iTmp.ToString();
@@ -462,7 +461,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
-            iTmp = 1;  // 0=unused, otherwise which variable_modXX to localize e.g. 1 for variable_mod01
+            iTmp = 1;  // 0=unused, otherwise which variable_modXX to localize e.g. 1 for variable_mod01, 2 for variable_mod02, etc.
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 

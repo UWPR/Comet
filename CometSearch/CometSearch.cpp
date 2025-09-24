@@ -4960,6 +4960,8 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
    pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
    pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
+   pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
+
    int iSizepiVarModSites = sizeof(int) * MAX_PEPTIDE_LEN_P2;
    int iSizepdVarModSites = sizeof(double) * MAX_PEPTIDE_LEN_P2;
 
