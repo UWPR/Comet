@@ -197,3 +197,37 @@
    - Component:        twiddle.c
    - Original Author:  Matthew Belmonte
    - Original Source:  https://www.netlib.org/toms-2014-06-10/382
+   - Origial Licnese:  permission to use; maintain copyright notice
+
+   - Component:        AScorePro
+   - Original Author:  Gygi lab and code authors
+   - Original Source:  https://github.com/gygilab/MPToolkit/
+   - Original License: MIT License (included below)
+   - NOTE:  AScorepro was translated to C++ by Vagisha Sharma. The original
+            MIT License still applies to the logic, structure, and design
+            of this code.
+
+   ---
+   
+   ### MIT License (for MPToolkit)
+   
+   Copyright (c) 2022 Gygi Lab and the code authors.
+   
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+   
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+   
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+   

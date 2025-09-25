@@ -12,7 +12,7 @@ To compile on linux and macOS:
 
 To compile with Microsoft Visual Studio:
 
-- Use build tools v143 with Microsoft Visual Studio 2022.
+- We current use build tools v143 with Microsoft Visual Studio 2022.
 
 - First install [MSFileReader from Thermo Fischer Scientific](https://uwpr.github.io/Comet/notes/20220228_rawfile.html).
 
@@ -21,3 +21,8 @@ To compile with Microsoft Visual Studio:
 - Set the build to "Release" and "x64".
 
 - Right-mouse-click on the "Comet" project and choose "Build". This should generate a binary "Comet.exe" in x64/Release.
+
+Comet integrates:
+- Mike Hoopmann's [MSToolkit library](https://github.com/mhoopmann/mstoolkit) for reading various file formats.
+- Matthew Belmonte's [C implementation of twiddle](https://www.netlib.org/toms-2014-06-10/382) for modification combinations generation.
+- C++ port of Gygi Lab's [AScorePro](https://github.com/gygilab/MPToolkit/) for modification localization. 
