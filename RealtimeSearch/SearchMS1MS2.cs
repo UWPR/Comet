@@ -176,7 +176,7 @@
 
                         int iMS1TopN = 1; // report up to iMS1TopN hits per query; unused right now as only top matching MS1 scan is returned
 
-                        if (false && scanFilter.MSOrder == MSOrderType.Ms)
+                        if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
                            watch.Start();
                            SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);

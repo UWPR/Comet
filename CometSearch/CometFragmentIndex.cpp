@@ -812,9 +812,10 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, "ProteinModList: %d\n", g_staticParams.variableModParameters.bVarModProteinFilter ? 1 : 0);
 
    // Require variable mods:
-   fprintf(fp, "RequireVariableMod: %d\n", g_staticParams.variableModParameters.iRequireVarMod);
+   fprintf(fp, "RequireVariableMod: %d", g_staticParams.variableModParameters.iRequireVarMod);
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       fprintf(fp, " %d", g_staticParams.variableModParameters.varModList[x].iRequireThisMod);
+   fprintf(fp, "\n");
 
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fp);
    size_t tNumPeptides = g_pvDBIndex.size();
@@ -1061,8 +1062,6 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iTmp)
             g_staticParams.variableModParameters.bVarModProteinFilter = true;
-
-         break;
       }
       else if (!strncmp(szBuf, "RequireVariableMod:", 19))
       {
@@ -1101,6 +1100,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
                break;
 
          } while (iss);
+
+         break;  // break out of parsing header after last header entry
       }
    }
 
