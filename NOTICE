@@ -1,8 +1,9 @@
 This project incorporates code from:
 
 MSToolkit (https://github.com/mhoopmann/mstoolkit/)
-Copyright Michael Hoopmann, licensed under the Apache License, Version 2.0.  
+Copyright Michael Hoopmann. Licensed under the Apache License, Version 2.0.  
 For a copy of the license, see http://www.apache.org/licenses/LICENSE-2.0 
+
 
 twiddle.c (https://www.netlib.org/toms-2014-06-10/382)
 Copyright 1996 by Matthew Belmonte.
@@ -16,3 +17,23 @@ outlined on that webpage.  These terms include the requirement that the
 original copyright notice and reference list (pertaining to Algorithm 382)
 be included in their entirety, and that any changes made to the program
 are clearly noted. The software is provided "as is" without warranty.
+
+
+AScorePro (https://github.com/gygilab/MPToolkit/)
+Copyright 2022 Gygi Lab and the code authors.  Permission is hereby granted,
+free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+Licensed under the MIT License:  https://opensource.org/license/mit
