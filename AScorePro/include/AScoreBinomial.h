@@ -13,7 +13,7 @@ namespace AScoreProCpp
     */
    class Binomial
    {
-   public:
+public:
       /**
        * Calculates the binomial probability mass function.
        * P(X = k) = (n choose k) * p^k * (1-p)^(n-k)
@@ -36,7 +36,7 @@ namespace AScoreProCpp
        */
       static double CDF(double p, int n, int k);
 
-   private:
+private:
       /**
        * Computes the logarithm of the gamma function.
        * Used internally for calculating combinations.

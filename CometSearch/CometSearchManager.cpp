@@ -3442,8 +3442,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       CometPostAnalysis::CalculateEValue(iWhichQuery, 0);
       CometPostAnalysis::CalculateDeltaCn(iWhichQuery);
 
-      if (g_staticParams.options.iPrintAScoreProScore
-            && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
+      if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
+         && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
       {
          CometPostAnalysis::CalculateAScorePro(0, g_AScoreInterface);
       }
@@ -3969,24 +3969,34 @@ void CometSearchManager::SetAScoreOptions(void)
 
          diffMods.push_back(pepMod);
 
+         if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore - 1 == i)
+            && g_staticParams.variableModParameters.varModList[i].dNeutralLoss != 0.0)
+         {
+            // Set up neutral loss. If iPrintAScoreProScore == -1, will use the last neutral loss.
+            // Else neutral loss is from specified mod only.
+            AScoreProCpp::NeutralLoss neutralLoss;
+            neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
+            neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+            g_AScoreOptions.setNeutralLoss(neutralLoss);
+            bSetNeutralLossMask = true;
+         }
+
          if (g_staticParams.options.iPrintAScoreProScore - 1 == i)
          {
             // Target modification settings
             g_AScoreOptions.setSymbol(i + 1 + '0');
             g_AScoreOptions.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
-
-            // Set up neutral loss
-            AScoreProCpp::NeutralLoss neutralLoss;
-            neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
-            neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
-            g_AScoreOptions.setNeutralLoss(neutralLoss);
-
-            if (!isEqual(g_staticParams.variableModParameters.varModList[i].dNeutralLoss, 0.0))
-               bSetNeutralLossMask = true;
          }
       }
    }
    g_AScoreOptions.setDiffMods(diffMods);
+
+   if (g_staticParams.options.iPrintAScoreProScore == -1)
+   {
+      g_AScoreOptions.setSymbol('\0');
+      g_AScoreOptions.setResidues("");
+   }
+
 
    //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
    //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }

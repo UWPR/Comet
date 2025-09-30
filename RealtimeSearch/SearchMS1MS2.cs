@@ -349,19 +349,19 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("spectral_library_ms_level", sTmp, iTmp);
 
-            iTmp = 0; // retention time tolerance in seconds
+            iTmp = 300; // retention time tolerance in seconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("retentiontime_tol", sTmp, iTmp);
 
-            dTmp = 0.02; // mass bin width
+            dTmp = 1.0005; // mass bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0;  // mass bin offset
+            dTmp = 0.4;  // mass bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -407,28 +407,6 @@
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-/*
-            iTmp = 3;
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("fragindex_min_ions_score", sTmp, iTmp);
-
-            iTmp = 3;
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("fragindex_min_ions_report", sTmp, iTmp);
-
-            iTmp = 100;
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("fragindex_num_spectrumpeaks", sTmp, iTmp);
-
-            dTmp = 200.0;
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragindex_min_fragmentmass", sTmp, dTmp);
-
-            dTmp = 2000.0;
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragindex_max_fragmentmass", sTmp, dTmp);
-*/
-
             iTmp = 100; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
@@ -461,7 +439,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
-            iTmp = 1;  // 0=unused, otherwise which variable_modXX to localize e.g. 1 for variable_mod01, 2 for variable_mod02, etc.
+            iTmp = -1;  // 0=unused, -1=localize all mods; otherwise 1 for variable_mod01, 2 for variable_mod02, etc.
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 

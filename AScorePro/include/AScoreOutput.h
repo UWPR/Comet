@@ -20,7 +20,7 @@ namespace AScoreProCpp
     */
    class ASCORE_API AScoreOutput
    {
-   public:
+public:
       AScoreOutput() : modCount_(0), bestPeakDepth_(0), bestPeptideScore_(0.0) {}
 
       /**
