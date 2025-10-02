@@ -2660,7 +2660,7 @@ bool CometSearchManager::DoSearch()
          {
             SetAScoreOptions(g_AScoreOptions);
 
-            PrintAScoreOptions(g_AScoreOptions);
+//            PrintAScoreOptions(g_AScoreOptions);
 
             // Create the AScoreDllInterface using the factory function
             g_AScoreInterface = CreateAScoreDllInterface();
@@ -4138,7 +4138,7 @@ void CometSearchManager::PrintAScoreOptions(const AScoreProCpp::AScoreOptions& o
    using std::cout;
    using std::endl;
 
-   cout << endl <<  "AScoreOptions values:" << endl;
+   cout << endl <<  " AScoreOptions values:" << endl;
 
    // Ion series
    cout << " ionSeriesList: ";

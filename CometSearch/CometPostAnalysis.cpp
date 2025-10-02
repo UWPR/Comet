@@ -803,7 +803,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
          g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
       }
 
-
+/*
       // Print results
       std::cout << "\n\n";
       std::cout << "Original sequence: " << sequence << "\n";
@@ -820,7 +820,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
             break;
       }
       std::cout << "\n";
-
+*/
    }
 }
 
