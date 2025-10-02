@@ -136,13 +136,13 @@
     <ClCompile Include="AScorePeakMatcher.cpp" />
     <ClCompile Include="AScorePeptide.cpp" />
     <ClCompile Include="AScorePeptideBuilder.cpp" />
-    <ClCompile Include="AScorePeptideGenerator.cpp" />
     <ClCompile Include="AScorePeptideMod.cpp" />
     <ClCompile Include="AScorePeptideMods.cpp" />
     <ClCompile Include="AScorePrecursor.cpp" />
     <ClCompile Include="AScoreScan.cpp" />
     <ClCompile Include="AScoreSiteIons.cpp" />
     <ClCompile Include="AScoreTopIonsFilter.cpp" />
+    <ClCompile Include="AScoreUnifiedPeptideGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\AScoreAminoAcidMasses.h" />
@@ -165,7 +165,6 @@
     <ClInclude Include="include\AScorePeakMatcher.h" />
     <ClInclude Include="include\AScorePeptide.h" />
     <ClInclude Include="include\AScorePeptideBuilder.h" />
-    <ClInclude Include="include\AScorePeptideGenerator.h" />
     <ClInclude Include="include\AScorePeptideMod.h" />
     <ClInclude Include="include\AScorePeptideMods.h" />
     <ClInclude Include="include\AScorePrecursor.h" />
@@ -173,6 +172,7 @@
     <ClInclude Include="include\AScoreSiteIons.h" />
     <ClInclude Include="include\AScoreSiteScore.h" />
     <ClInclude Include="include\AScoreTopIonsFilter.h" />
+    <ClInclude Include="include\AScoreUnifiedPeptideGenerator.h" />
     <ClInclude Include="include\AScoreWaterLossFilter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

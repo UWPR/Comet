@@ -4645,6 +4645,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          {
             memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
             memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
+
          }
          else
          {
@@ -4657,12 +4659,14 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
 
                if (iVal > 0)
                {
-                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i]
-                     = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
 
-                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+                  if (g_staticParams.options.iPrintAScoreProScore == -1
+                     || (g_staticParams.options.iPrintAScoreProScore > 0 && iVal == g_AScoreOptions.getSymbol() - '0'))
+                  {
                      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
-                  else
+                  }
+                  else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
                      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else if (iVal < 0)
@@ -4856,6 +4860,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          {
             memset(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
             memset(pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
+            pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
          }
          else
          {
@@ -4869,9 +4874,13 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal-1].dVarModMass;
-                  if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+
+                  if (g_staticParams.options.iPrintAScoreProScore == -1
+                     || (g_staticParams.options.iPrintAScoreProScore > 0 && iVal == g_AScoreOptions.getSymbol() - '0'))
+                  {
                      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
-                  else
+                  }
+                  else if (pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
                      pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
                }
                else if (iVal < 0)
@@ -4985,9 +4994,12 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
             {
                pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 
-               if (g_staticParams.options.iPrintAScoreProScore && iVal == g_AScoreOptions.getSymbol() - '0')
+               if (g_staticParams.options.iPrintAScoreProScore == -1
+                  || (g_staticParams.options.iPrintAScoreProScore > 0 && iVal == g_AScoreOptions.getSymbol() - '0'))
+               {
                   pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_AScorePro;
-               else
+               }
+               else if (pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
                   pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
             }
             else

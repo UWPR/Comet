@@ -24,7 +24,7 @@ class MOBScore
 private:
       class MOBPeakMatch
       {
-      public:
+public:
          double error;
          int theoIndex;
          int obsIndex;

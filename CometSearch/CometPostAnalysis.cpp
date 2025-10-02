@@ -110,8 +110,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    CalculateDeltaCn(iQueryIndex);
 
    // Calculate A-Score if specified and peptide has phospho mod
-   if (g_staticParams.options.iPrintAScoreProScore
-         && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
+   if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
+      && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
    {
       CalculateAScorePro(iQueryIndex, g_AScoreInterface);
    }
@@ -676,11 +676,12 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    int precursorCharge;
 
    // sanity check here; AScorePro will segfault if peptide length is 0
-   if (!(g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro
-      && g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide > 0))
-   {
+   if (g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide <= 0)
       return;
-   }
+
+   // if specific variable mod specified, check if peptide contains that mod
+   if (g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod != HasVariableModType_AScorePro)
+      return;
 
    precursorCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState;
    precursorMz = (g_pvQuery.at(iWhichQuery)->_pResults[0].dPepMass + (precursorCharge -1) * PROTON_MASS) / precursorCharge;
@@ -716,7 +717,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    {
       g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = (float)result.peptides[0].getScore();
 
-      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= 13.0)
+      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= ASCORE_CUTOFF_TO_ACCEPT)
       {
          // set piVarModSites and pdVarModSites based on AScore localized peptide
          memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
@@ -804,19 +805,13 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
 
 /*
       // Print results
-      printf("OK AScorePro localized peptide:\n");
-      for (int i= 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
-         printf("%c", g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i]);
-      printf("\n");
-      for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
-         printf("%d", g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
-      printf("\n");      std::cout << endl << "Original sequence: " << sequence << "\n";
-
-      std::cout << "Peptides scored: " << result.peptides.size() << "\n";
-      std::cout << "Sites scored: " << result.sites.size() << "\n";
-      std::cout << "Best peptide: " << result.peptides[0].toString() << "\n";
-      std::cout << "Score: " << result.peptides[0].getScore() << "\n";
-      std::cout << "Site scores: ";
+      std::cout << "\n\n";
+      std::cout << "Original sequence: " << sequence << "\n";
+      std::cout << "     Best peptide: " << result.peptides[0].toString() << "\n";
+      std::cout << "  Peptides scored: " << result.peptides.size() << "\n";
+      std::cout << "     Sites scored: " << result.sites.size() << "\n";
+      std::cout << "            Score: " << result.peptides[0].getScore() << "\n";
+      std::cout << "      Site scores: ";
       for (size_t i = 0; i < 6; ++i)
       {
          if (i < result.sites.size())

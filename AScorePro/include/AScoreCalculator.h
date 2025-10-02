@@ -9,6 +9,8 @@
 #include "AScorePeptide.h"
 #include "AScoreScan.h"
 
+using namespace AScoreProCpp;
+
 namespace AScoreProCpp
 {
 
@@ -25,6 +27,15 @@ private:
        * Pre-processes a scan using the configured filters
        */
       void PreProcessScan(Scan& scan);
+
+      void ProcessPeptides(
+         const Peptide& peptide,
+         const Scan& scan,
+         int fragmentChargeMax,
+         double minMz,
+         double maxMz,
+         bool useMultiMod,
+         AScoreOutput& output);
 
 public:
       /**

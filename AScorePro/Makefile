@@ -1,8 +1,7 @@
 .DEFAULT_GOAL := all
 
-C = gcc
 CC = g++
-CFLAGS = -O3 -std=c++11
+CFLAGS = -O3 -std=c++14
 SLFLAGS = -shared -fPIC -g
 INCLUDE = -I./include
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC

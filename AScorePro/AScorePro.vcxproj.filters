@@ -66,7 +66,7 @@
     <ClCompile Include="AScorePeptideBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AScorePeptideGenerator.cpp">
+    <ClCompile Include="AScoreUnifiedPeptideGenerator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -84,9 +84,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\AScorePeptideBuilder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="include\AScorePeptideGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\AScorePeptideMod.h">
@@ -156,6 +153,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\AScoreAPI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AScoreUnifiedPeptideGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

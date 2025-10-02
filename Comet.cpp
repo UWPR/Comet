@@ -1011,7 +1011,7 @@ output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\
    {
       fprintf(fp,
 "print_expect_score = 1                 # 0=no, 1=yes to replace Sp with expect in out & sqt\n\
-print_ascorepro_score = 1              # 0=no, 1=yes to report AScorePro scores in txt, pepxml, and mzid outputs\n");
+print_ascorepro_score = 1              # 0=no, 0 to 5 to localize variable_mod01 to _mod05; -1 to localize all variable mods\n");
    }
  
    fprintf(fp,
