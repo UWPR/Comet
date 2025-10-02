@@ -372,7 +372,7 @@ namespace AScoreProCpp {
       double yMass = (3 * Mass::Hydrogen) + Mass::Oxygen - Mass::Electron;
       double zMass = 2.99966565 - Mass::Electron;
 
-      for (int i = static_cast<int>(sequence.length()) - 1; i > 0; --i) \
+      for (int i = static_cast<int>(sequence.length()) - 1; i > 0; --i)
       {
          double residueMass = effectiveMasses[i];
          yMass += residueMass;
@@ -381,7 +381,7 @@ namespace AScoreProCpp {
 
          fragCanNL |= posCanNL[i];
 
-         for (int charge = 1; charge <= maxCharge; ++charge) \
+         for (int charge = 1; charge <= maxCharge; ++charge)
          {
             if (ionSeriesFlags & static_cast<int>(Mass::IonSeries::X_IONS))
             {
