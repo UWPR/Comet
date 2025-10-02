@@ -717,7 +717,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
    {
       g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = (float)result.peptides[0].getScore();
 
-      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= 13.0)
+      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= ASCORE_CUTOFF_TO_ACCEPT)
       {
          // set piVarModSites and pdVarModSites based on AScore localized peptide
          memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
@@ -803,7 +803,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
          g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
       }
 
-/*
+
       // Print results
       std::cout << "\n\n";
       std::cout << "Original sequence: " << sequence << "\n";
@@ -820,7 +820,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
             break;
       }
       std::cout << "\n";
-*/
+
    }
 }
 

@@ -110,6 +110,7 @@ private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
    static void SetAScoreOptions();
+   static void PrintAScoreOptions(const AScoreProCpp::AScoreOptions& options);
    bool singleSearchInitializationComplete;
    bool singleSearchMS1InitializationComplete;
    int singleSearchThreadCount;

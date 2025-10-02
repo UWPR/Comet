@@ -70,6 +70,8 @@ class CometSearchManager;
 
 #define NO_PEFF_VARIANT             -127
 
+#define ASCORE_CUTOFF_TO_ACCEPT     13.0     // minimum AScore value to accept localization
+
 #define FRAGINDEX_VMODS             5        // only parse first five variable mods for fragment ion index searches
                                              // if this is ever larger than 16, need to extend range of siVarModProteinFilter
 

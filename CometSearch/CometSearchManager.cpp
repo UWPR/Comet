@@ -2660,6 +2660,8 @@ bool CometSearchManager::DoSearch()
          {
             SetAScoreOptions();
 
+            PrintAScoreOptions(g_AScoreOptions);
+
             // Create the AScoreDllInterface using the factory function
             g_AScoreInterface = CreateAScoreDllInterface();
             if (!g_AScoreInterface)
@@ -3997,7 +3999,6 @@ void CometSearchManager::SetAScoreOptions(void)
       g_AScoreOptions.setResidues("");
    }
 
-
    //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
    //    { "d", 64 }, { "v", 128 }, { "w", 256 }, { "x", 512 }, { "y", 1024 }, { "z", 2048 }
 
@@ -4091,7 +4092,7 @@ void CometSearchManager::SetAScoreOptions(void)
    // Set up static modifications
    // FIX:  deal with static N-term and C-term mods
    std::vector<PeptideMod> staticMods;
-   for (int i = 'A' ; i <= 'Z'; ++i)
+   for (int i = 'A'; i <= 'Z'; ++i)
    {
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0)
          && (char(i) != 'B' && char(i) != 'J' && char(i) != 'O' && char(i) != 'U' && char(i) != 'X' && char(i) != 'Z'))
@@ -4130,34 +4131,36 @@ void CometSearchManager::SetAScoreOptions(void)
          masses.modifyCTermMass(mod.getMass());
       }
    }
+}
 
+
+void CometSearchManager::PrintAScoreOptions(const AScoreProCpp::AScoreOptions& options)
+{
    // Print all AScoreOptions values
-/*
    std::cout << "AScoreOptions values:" << std::endl;
    std::cout << "ionSeriesList: ";
-   for (const auto& s : g_AScoreOptions.getIonSeriesList()) std::cout << s << " ";
+   for (const auto& s : options.getIonSeriesList()) std::cout << s << " ";
    std::cout << std::endl;
-   std::cout << "ionSeries: " << g_AScoreOptions.getIonSeries() << std::endl;
+   std::cout << "ionSeries: " << options.getIonSeries() << std::endl;
    std::cout << "diffMods: ";
-   for (const auto& mod : g_AScoreOptions.getDiffMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   for (const auto& mod : options.getDiffMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
    std::cout << std::endl;
    std::cout << "staticMods: ";
-   for (const auto& mod : g_AScoreOptions.getStaticMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
+   for (const auto& mod : options.getStaticMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
    std::cout << std::endl;
-   std::cout << "neutralLoss: " << g_AScoreOptions.getNeutralLoss().getMass() << " " << g_AScoreOptions.getNeutralLoss().getResidues() << std::endl;
-   std::cout << "peakDepth: " << g_AScoreOptions.getPeakDepth() << std::endl;
-   std::cout << "maxPeakDepth: " << g_AScoreOptions.getMaxPeakDepth() << std::endl;
-   std::cout << "tolerance: " << g_AScoreOptions.getTolerance() << std::endl;
-   std::cout << "unitText: " << g_AScoreOptions.getUnitText() << std::endl;
-   std::cout << "units: " << static_cast<int>(g_AScoreOptions.getUnits()) << std::endl;
-   std::cout << "window: " << g_AScoreOptions.getWindow() << std::endl;
-   std::cout << "lowMassCutoff: " << g_AScoreOptions.getLowMassCutoff() << std::endl;
-   std::cout << "filterLowIntensity: " << g_AScoreOptions.getFilterLowIntensity() << std::endl;
-   std::cout << "noCterm: " << g_AScoreOptions.getNoCterm() << std::endl;
-   std::cout << "useMobScore: " << g_AScoreOptions.getUseMobScore() << std::endl;
-   std::cout << "useDeltaAscore: " << g_AScoreOptions.getUseDeltaAscore() << std::endl;
-   std::cout << "symbol: " << g_AScoreOptions.getSymbol() << std::endl;
-   std::cout << "residues: " << g_AScoreOptions.getResidues() << std::endl;
-   std::cout << "maxPeptides: " << g_AScoreOptions.getMaxPeptides() << std::endl;
-*/
+   std::cout << "neutralLoss: " << options.getNeutralLoss().getMass() << " " << options.getNeutralLoss().getResidues() << std::endl;
+   std::cout << "peakDepth: " << options.getPeakDepth() << std::endl;
+   std::cout << "maxPeakDepth: " << options.getMaxPeakDepth() << std::endl;
+   std::cout << "tolerance: " << options.getTolerance() << std::endl;
+   std::cout << "unitText: " << options.getUnitText() << std::endl;
+   std::cout << "units: " << static_cast<int>(options.getUnits()) << std::endl;
+   std::cout << "window: " << options.getWindow() << std::endl;
+   std::cout << "lowMassCutoff: " << options.getLowMassCutoff() << std::endl;
+   std::cout << "filterLowIntensity: " << options.getFilterLowIntensity() << std::endl;
+   std::cout << "noCterm: " << options.getNoCterm() << std::endl;
+   std::cout << "useMobScore: " << options.getUseMobScore() << std::endl;
+   std::cout << "useDeltaAscore: " << options.getUseDeltaAscore() << std::endl;
+   std::cout << "symbol: " << options.getSymbol() << std::endl;
+   std::cout << "residues: " << options.getResidues() << std::endl;
+   std::cout << "maxPeptides: " << options.getMaxPeptides() << std::endl;
 }
