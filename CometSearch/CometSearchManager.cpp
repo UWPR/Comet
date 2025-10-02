@@ -2658,7 +2658,7 @@ bool CometSearchManager::DoSearch()
 
          if (g_staticParams.options.iPrintAScoreProScore && bPerformAScoreInitialization)
          {
-            SetAScoreOptions();
+            SetAScoreOptions(g_AScoreOptions);
 
             PrintAScoreOptions(g_AScoreOptions);
 
@@ -3238,7 +3238,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.options.iPrintAScoreProScore)
       {
-         SetAScoreOptions();  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
+         SetAScoreOptions(g_AScoreOptions);  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
 
          // Create the AScoreDllInterface using the factory function
          g_AScoreInterface = CreateAScoreDllInterface();
@@ -3944,8 +3944,7 @@ bool CometSearchManager::ReadProteinVarModFilterFile()
 }
 
 
-//SetAScoreOptions(g_AScoreOptions);
-void CometSearchManager::SetAScoreOptions(void)
+void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
 {
    using namespace AScoreProCpp;
 
@@ -3979,24 +3978,24 @@ void CometSearchManager::SetAScoreOptions(void)
             AScoreProCpp::NeutralLoss neutralLoss;
             neutralLoss.setMass(-(g_staticParams.variableModParameters.varModList[i].dNeutralLoss));
             neutralLoss.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
-            g_AScoreOptions.setNeutralLoss(neutralLoss);
+            options.setNeutralLoss(neutralLoss);
             bSetNeutralLossMask = true;
          }
 
          if (g_staticParams.options.iPrintAScoreProScore - 1 == i)
          {
             // Target modification settings
-            g_AScoreOptions.setSymbol(i + 1 + '0');
-            g_AScoreOptions.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+            options.setSymbol(i + 1 + '0');
+            options.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
          }
       }
    }
-   g_AScoreOptions.setDiffMods(diffMods);
+   options.setDiffMods(diffMods);
 
    if (g_staticParams.options.iPrintAScoreProScore == -1)
    {
-      g_AScoreOptions.setSymbol('\0');
-      g_AScoreOptions.setResidues("");
+      options.setSymbol('\0');
+      options.setResidues("");
    }
 
    //    { "nA", 1 }, { "nB", 2 }, { "nY", 4 }, { "a", 8 }, { "b", 16 }, { "c", 32 },
@@ -4044,50 +4043,50 @@ void CometSearchManager::SetAScoreOptions(void)
       ionSeriesList.push_back("z");
    }
 
-   g_AScoreOptions.setIonSeries(uiIonSeriesMask);
-   g_AScoreOptions.setIonSeriesList(ionSeriesList);
+   options.setIonSeries(uiIonSeriesMask);
+   options.setIonSeriesList(ionSeriesList);
 
    // Peak depth settings
-   g_AScoreOptions.setPeakDepth(0);
-   g_AScoreOptions.setMaxPeakDepth(50);
+   options.setPeakDepth(0);
+   options.setMaxPeakDepth(50);
 
    // Fragment matching tolerance
 
    if (g_staticParams.tolerances.dFragmentBinSize <= 0.05)
-      g_AScoreOptions.setTolerance(0.05);
+      options.setTolerance(0.05);
    else
-      g_AScoreOptions.setTolerance(0.3);
+      options.setTolerance(0.3);
 
-   g_AScoreOptions.setUnits(Mass::Units::DALTON);
-   g_AScoreOptions.setUnitText("Da");
+   options.setUnits(Mass::Units::DALTON);
+   options.setUnitText("Da");
 
    // Window size for filtering peaks
-   g_AScoreOptions.setWindow(70);
+   options.setWindow(70);
 
    // Enable low mass cutoff
-   g_AScoreOptions.setLowMassCutoff(true);
+   options.setLowMassCutoff(true);
 
    // Filter low intensity peaks
-   g_AScoreOptions.setFilterLowIntensity(0);
+   options.setFilterLowIntensity(0);
 
    // C-terminal settings
-   g_AScoreOptions.setNoCterm(true);
+   options.setNoCterm(true);
 
    // Scoring options
-   g_AScoreOptions.setUseMobScore(true);
-   g_AScoreOptions.setUseDeltaAscore(true);
+   options.setUseMobScore(true);
+   options.setUseDeltaAscore(true);
 
    // Max peptides and other limits
-   g_AScoreOptions.setMaxPeptides(1000);
-   // g_AScoreOptions.setMaxDiff(5); // From max_diff in JSON
+   options.setMaxPeptides(1000);
+   // options.setMaxDiff(5); // From max_diff in JSON
 
    // Initialize other fields to default values from JSON
-   g_AScoreOptions.setMz(0);
-   g_AScoreOptions.setPeptide("");
-   g_AScoreOptions.setScan(0);
+   options.setMz(0);
+   options.setPeptide("");
+   options.setScan(0);
 
    // Deisotoping type (empty string means no deisotoping)
-   //g_AScoreOptions.setDeisotopingType("");
+   // options.setDeisotopingType("");
 
    // Set up static modifications
    // FIX:  deal with static N-term and C-term mods
@@ -4106,10 +4105,10 @@ void CometSearchManager::SetAScoreOptions(void)
          staticMods.push_back(pepMod);
       }
    }
-   g_AScoreOptions.setStaticMods(staticMods);
+   options.setStaticMods(staticMods);
 
    // Apply static mods to AminoAcidMasses
-   AminoAcidMasses& masses = g_AScoreOptions.getMasses();
+   AminoAcidMasses& masses = options.getMasses();
    for (const auto& mod : staticMods)
    {
       const std::string& residues = mod.getResidues();
@@ -4136,31 +4135,62 @@ void CometSearchManager::SetAScoreOptions(void)
 
 void CometSearchManager::PrintAScoreOptions(const AScoreProCpp::AScoreOptions& options)
 {
-   // Print all AScoreOptions values
-   std::cout << "AScoreOptions values:" << std::endl;
-   std::cout << "ionSeriesList: ";
-   for (const auto& s : options.getIonSeriesList()) std::cout << s << " ";
-   std::cout << std::endl;
-   std::cout << "ionSeries: " << options.getIonSeries() << std::endl;
-   std::cout << "diffMods: ";
-   for (const auto& mod : options.getDiffMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
-   std::cout << std::endl;
-   std::cout << "staticMods: ";
-   for (const auto& mod : options.getStaticMods()) std::cout << mod.getResidues() << "(" << mod.getMass() << ") ";
-   std::cout << std::endl;
-   std::cout << "neutralLoss: " << options.getNeutralLoss().getMass() << " " << options.getNeutralLoss().getResidues() << std::endl;
-   std::cout << "peakDepth: " << options.getPeakDepth() << std::endl;
-   std::cout << "maxPeakDepth: " << options.getMaxPeakDepth() << std::endl;
-   std::cout << "tolerance: " << options.getTolerance() << std::endl;
-   std::cout << "unitText: " << options.getUnitText() << std::endl;
-   std::cout << "units: " << static_cast<int>(options.getUnits()) << std::endl;
-   std::cout << "window: " << options.getWindow() << std::endl;
-   std::cout << "lowMassCutoff: " << options.getLowMassCutoff() << std::endl;
-   std::cout << "filterLowIntensity: " << options.getFilterLowIntensity() << std::endl;
-   std::cout << "noCterm: " << options.getNoCterm() << std::endl;
-   std::cout << "useMobScore: " << options.getUseMobScore() << std::endl;
-   std::cout << "useDeltaAscore: " << options.getUseDeltaAscore() << std::endl;
-   std::cout << "symbol: " << options.getSymbol() << std::endl;
-   std::cout << "residues: " << options.getResidues() << std::endl;
-   std::cout << "maxPeptides: " << options.getMaxPeptides() << std::endl;
+   using std::cout;
+   using std::endl;
+
+   cout << endl <<  "AScoreOptions values:" << endl;
+
+   // Ion series
+   cout << " ionSeriesList: ";
+   for (const auto& s : options.getIonSeriesList())
+      cout << s << " ";
+   cout << endl;
+   cout << " ionSeries bitmask (dec): " << options.getIonSeries()
+      << " (hex: 0x" << std::hex << options.getIonSeries() << std::dec << ")" << endl;
+
+   // Differential (variable) mods
+   cout << " diffMods (" << options.getDiffMods().size() << "): ";
+   for (const auto& mod : options.getDiffMods())
+      cout << mod.getResidues() << "(" << mod.getMass() << ",sym=" << mod.getSymbol() << ") ";
+   cout << endl;
+
+   // Static mods
+   cout << " staticMods (" << options.getStaticMods().size() << "): ";
+   for (const auto& mod : options.getStaticMods())
+      cout << mod.getResidues() << "(" << mod.getMass()
+      << (mod.getIsNTerm() ? ",Nterm" : "")
+      << (mod.getIsCTerm() ? ",Cterm" : "")
+      << ",sym=" << mod.getSymbol() << ") ";
+   cout << endl;
+
+   // Neutral loss
+   auto nl = options.getNeutralLoss();
+   cout << " neutralLoss mass: " << nl.getMass()
+      << " residues: " << nl.getResidues()
+      << (nl.getMass() == 0.0 ? " (disabled)" : "") << endl;
+
+   // Core numeric / boolean settings
+   cout << std::boolalpha;
+   cout << " peakDepth: " << options.getPeakDepth() << endl;
+   cout << " maxPeakDepth: " << options.getMaxPeakDepth() << endl;
+   cout << " tolerance: " << options.getTolerance() << " " << options.getUnitText() << endl;
+   cout << " units enum: " << static_cast<int>(options.getUnits()) << endl;
+   cout << " window: " << options.getWindow() << endl;
+   cout << " lowMassCutoff: " << options.getLowMassCutoff() << endl;
+   cout << " filterLowIntensity: " << options.getFilterLowIntensity() << endl;
+   cout << " noCterm: " << options.getNoCterm() << endl;
+   cout << " useMobScore: " << options.getUseMobScore() << endl;
+   cout << " useDeltaAscore: " << options.getUseDeltaAscore() << endl;
+   cout << " maxPeptides: " << options.getMaxPeptides() << endl;
+
+   // Target (scoring) modification focus
+   char targetSym = options.getSymbol();
+   cout << " targetModSymbol: " << (targetSym ? std::string(1, targetSym) : "(none)") << endl;
+   cout << " targetModResidues: " << (options.getResidues().empty() ? "(none)" : options.getResidues()) << endl;
+
+   // Summaries
+   size_t totalModSymbols = options.getDiffMods().size() + options.getStaticMods().size();
+   cout << " totalModsDefined: " << totalModSymbols << endl;
+
+   cout << " Done printing AScoreOptions." << endl << endl;
 }
