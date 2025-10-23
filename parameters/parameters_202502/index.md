@@ -107,6 +107,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [peff_verbose_output](peff_verbose_output.html)
 - [peptide_length_range](peptide_length_range.html)
 - [precursor_NL_ions](precursor_NL_ions.html)
+- [protein_modslist_file](protein_modslist_file.html)
 - [skip_researching](skip_researching.html)
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
