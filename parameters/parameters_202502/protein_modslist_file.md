@@ -1,4 +1,4 @@
-### Comet parameter: protein_modlist_file
+### Comet parameter: protein_modslist_file
 
 - A full or relative path to a protein modifications file.
 - If this entry is blank, aka no file is specified, then this functionality is ignored.
@@ -17,9 +17,9 @@
 
 Example:
 ```
-protein_modlist_file = myproteinmodslist
-protein_modlist_file = C:\local\myproteinmods.txt
-protein_modlist_file = /usr/local/proteinmods.file
+protein_modslist_file = myproteinmodslist
+protein_modslist_file = C:\local\myproteinmods.txt
+protein_modslist_file = /usr/local/proteinmods.file
 ```
 
 Example contents of the protein modifications file.  In this example, varible_mod02 will only be applied to HLAA_HUMAN

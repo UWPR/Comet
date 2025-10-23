@@ -30,6 +30,6 @@ For example, one can now limit mono-, di-, and tri-methylation
 as variable modifications to only histone proteins and not have
 to apply those modifications on all proteins in the human database.
 This functionality is controlled by the
-[protein_modlist_file](https://uwpr.github.io/Comet/parameters/parameters_202402/protein_modlist_file.html)
+[protein_modslist_file](https://uwpr.github.io/Comet/parameters/parameters_202402/protein_modslist_file.html)
 parameter.  Note there will be issues for post processing analysis, such
 as FDR, when applying this feature.  Thanks to C. McGann for the feature request.
