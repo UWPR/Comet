@@ -42,14 +42,12 @@ class CometSearchManager;
 #define FRAGINDEX_MIN_IONS_REPORT   3        // min # of matched ions for peptide to be reported
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index
-#define FRAGINDEX_MAX_THREADS       16       // not sure it makes sense to set this max limit
-#define FRAGINDEX_MAX_BATCHSIZE     2000     // maximum number of spectra loaded when querying fragment index
+#define FRAGINDEX_MAX_BATCHSIZE     1000     // maximum number of spectra loaded when querying fragment index
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  2000
 #define FRAGINDEX_MAX_MODS_PER_MOD  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
-#define FRAGINDEX_PRECURSORBINS     300      // bins for precursors, mass range of each bin will be (max_mass - min_mass)/FRAGINDEX_PRECURSORBINS
 
 #define MS1_MIN_MASS                0.0      // only parse up to this mass in MS1 scans for MS1 library searches
 #define MS1_MAX_MASS                3000.0   // only parse up to this mass in MS1 scans for MS1 library searches
@@ -154,7 +152,6 @@ struct Options
    bool bTreatSameIL;
    int iPrintAScoreProScore;    // 0=no, otherwise specify variable_modXX number e.g. 1 for variable_mod01
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
-   int iFragIndexNumThreads;     // # of threads to use for fragment index (as not sure humongous # makes sense)
    int iFragIndexMinIonsScore;   // minimum matched fragment index ions for scoring
    int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
@@ -232,7 +229,6 @@ struct Options
 
       dFragIndexMinMass = a.dFragIndexMinMass;
       dFragIndexMaxMass = a.dFragIndexMaxMass;
-      iFragIndexNumThreads = a.iFragIndexNumThreads;
       iFragIndexMinIonsScore = a.iFragIndexMinIonsScore;    
       iFragIndexMinIonsReport = a.iFragIndexMinIonsReport ;  
       iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;
@@ -461,33 +457,47 @@ struct DBIndex
    double dPepMass;                               // MH+ pep mass
    unsigned short siVarModProteinFilter;          // bitwise representation of mmapProtein
 
-   bool operator==(const DBIndex &rhs) const
+   bool operator==(const DBIndex& rhs) const
    {
-      if (!strcmp(szPeptide, rhs.szPeptide))
+      if (strcmp(szPeptide, rhs.szPeptide) != 0)
+         return false;
+
+      if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+         return false;
+
+      int iLen = (int)strlen(szPeptide) + 2;
+      for (int i = 0; i < iLen; ++i)
       {
-         // peptides are same here
-
-         // different masses should equate to different mod state
-         if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+         if (pcVarModSites[i] != rhs.pcVarModSites[i])
             return false;
-
-         // masses are the same at this point
-         // next compare modification states
-         int iLen = (int)strlen(szPeptide)+2;
-         for (int i = 0; i < iLen; ++i)
-         {
-            if (pcVarModSites[i] != rhs.pcVarModSites[i])
-            {
-               return false;
-            }
-         }
-
-         // if it gets here, same peptide, same mass, same mod state
-         return true;
       }
 
-      // peptides are different
-      return false;
+      // optionally compare others if meaningful
+      // e.g., siVarModProteinFilter or lIndexProteinFilePosition
+
+      return true;
+   }
+
+   bool operator<(const DBIndex& rhs) const
+   {
+      int cmp = strcmp(szPeptide, rhs.szPeptide);
+      if (cmp != 0)
+         return cmp < 0;
+
+      if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+         return dPepMass < rhs.dPepMass;
+
+      int iLen = (int)strlen(szPeptide) + 2;
+      for (int i = 0; i < iLen; ++i)
+      {
+         if (pcVarModSites[i] != rhs.pcVarModSites[i])
+            return pcVarModSites[i] < rhs.pcVarModSites[i];
+      }
+
+      if (lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)
+         return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
+
+      return false; // equal
    }
 };
 
@@ -514,8 +524,8 @@ struct FragmentPeptidesStruct
    size_t iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
    int modNumIdx;
    double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
-   short siNtermMod;
-   short siCtermMod;
+   char cNtermMod;
+   char cCtermMod;
 
    bool operator<(const FragmentPeptidesStruct& a) const
    {
@@ -554,8 +564,8 @@ struct RetentionMatch
 };
 extern std::deque<RetentionMatch> RetentionMatchHistory;
 
-extern unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];           // 4D array [thread][precursor_mass][BIN[fragment mass)][which entries in g_vFragmentPeptides]
-extern unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];       // array of ints: [thread][precursor_mass][BIN(fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int** g_iFragmentIndex;           // 2D array [BIN[fragment mass)][which entries in g_vFragmentPeptides]
+extern unsigned int* g_iCountFragmentIndex;       // array of ints: [BIN(fragment mass)] count size of g_iFragmentIndex[][x]
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
@@ -974,7 +984,7 @@ struct StaticParams
       options.dMinIntensity = 0.0;
       options.dMinPercentageIntensity = 0.0;
       options.dPeptideMassLow = 600.0;
-      options.dPeptideMassHigh = 8000.0;
+      options.dPeptideMassHigh = 5000.0;
       options.dMinimumXcorr = XCORR_CUTOFF;
       options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
       options.dFragIndexMinMass = FRAGINDEX_MIN_MASS;
@@ -985,7 +995,6 @@ struct StaticParams
 
       options.dFragIndexMinMass = FRAGINDEX_MIN_MASS;
       options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
-      options.iFragIndexNumThreads = FRAGINDEX_MAX_THREADS;
       options.iFragIndexMinIonsScore = FRAGINDEX_MIN_IONS_SCORE;
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;

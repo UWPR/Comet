@@ -27,7 +27,6 @@
 #include "AScorePeptideBuilder.h"
 #include "AScoreMass.h"
 
-
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 
@@ -956,7 +955,9 @@ bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
 
    int iLoopCount;
 
-   iLoopCount = max(pQuery->iMatchPeptideCount, pQuery->iDecoyMatchPeptideCount);
+   iLoopCount = pQuery->iMatchPeptideCount;
+   if (pQuery->iDecoyMatchPeptideCount > iLoopCount)
+      iLoopCount = pQuery->iDecoyMatchPeptideCount;
 
    if (iLoopCount > g_staticParams.options.iNumPeptideOutputLines)
       iLoopCount = g_staticParams.options.iNumPeptideOutputLines;

@@ -55,8 +55,8 @@ AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
-unsigned int** g_iFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];        // stores fragment index; [thread][pepmass][BIN(mass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex[FRAGINDEX_MAX_THREADS][FRAGINDEX_PRECURSORBINS];      // stores counts of fragment index; [thread][pepmass][BIN(mass)]
+unsigned int** g_iFragmentIndex;                            // stores fragment index; [BIN(fragmass)][which g_vFragmentPeptides entries]
+unsigned int* g_iCountFragmentIndex;                        // stores counts of fragment index; [BIN(fragmass)]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
@@ -1674,7 +1674,6 @@ bool CometSearchManager::InitializeStaticParams()
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
 
    g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
-   g_staticParams.options.iFragIndexNumThreads = (g_staticParams.options.iNumThreads > FRAGINDEX_MAX_THREADS ? FRAGINDEX_MAX_THREADS : g_staticParams.options.iNumThreads);
 
    // At this point, check extension to set whether index database or not
    if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
@@ -2057,7 +2056,7 @@ bool CometSearchManager::CreateFragmentIndex()
    g_cometStatus.ResetStatus();
 
    // Override the Create Index flag to force it to create
-   g_staticParams.options.bCreateFragmentIndex = 1;
+   g_staticParams.options.bCreateFragmentIndex = true;
 
    // The DoSearch will create the index and exit
    return DoSearch();
@@ -2068,7 +2067,7 @@ bool CometSearchManager::CreatePeptideIndex()
    g_cometStatus.ResetStatus();
 
    // Override the Create Index flag to force it to create
-   g_staticParams.options.bCreatePeptideIndex = 1;
+   g_staticParams.options.bCreatePeptideIndex = true;
 
    // The DoSearch will create the index and exit
    return DoSearch();
@@ -2079,6 +2078,8 @@ bool CometSearchManager::DoSearch()
    string strOut;
 
    ThreadPool *tp = _tp;
+
+   auto tGlobalStartTime = chrono::steady_clock::now();
 
    if (!InitializeStaticParams())
       return false;
@@ -2138,13 +2139,11 @@ bool CometSearchManager::DoSearch()
       fflush(stdout);
    }
 
-   if (g_staticParams.iIndexDb == 1)
-      tp->fillPool(g_staticParams.options.iFragIndexNumThreads);
-   else
-      tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    if (g_staticParams.options.bCreatePeptideIndex)
    {
+      // WritePeptideIndex calls RunSearch just to query fasta and generate uniq peptide list
       bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
       return bSucceeded;
    }
@@ -2971,7 +2970,7 @@ cleanup_results:
          {
             const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
             double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
-            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << " (" << std::setprecision(3) << dTimePerSpectra << " ms per spectra)" << endl;
+            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << " (" << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms per spectrum)" << endl;
          }
 
          if (bSucceeded)
@@ -3158,34 +3157,21 @@ cleanup_results:
 
    if (g_staticParams.iIndexDb == 1) // clean fragment ion index
    {
-      int iNumIndexingThreads = g_staticParams.options.iNumThreads;
-      if (iNumIndexingThreads > FRAGINDEX_MAX_THREADS)
-         iNumIndexingThreads = FRAGINDEX_MAX_THREADS;
-
       free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
 
-      for (int iWhichThread = 0; iWhichThread < iNumIndexingThreads; ++iWhichThread)
+      for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
       {
-         for (int iPrecursorBin = 0; iPrecursorBin < FRAGINDEX_PRECURSORBINS; ++iPrecursorBin)
+         if (g_iFragmentIndex[iMass] != NULL)
          {
-            for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
-            {
-               if (g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass] != NULL)
-               {
-                  delete [] g_iFragmentIndex[iWhichThread][iPrecursorBin][iMass];
-               }
-            }
-            delete[] g_iFragmentIndex[iWhichThread][iPrecursorBin];
-            delete[] g_iCountFragmentIndex[iWhichThread][iPrecursorBin];
+            delete[] g_iFragmentIndex[iMass];
          }
       }
+      delete[] g_iFragmentIndex;
+      delete[] g_iCountFragmentIndex;
+   }
 
-      printf(" - done.\n\n");
-   }
-   else if (g_staticParams.iIndexDb == 2)
-   {
-      printf(" - done.\n\n");
-   }
+   if (g_staticParams.iIndexDb) // for either index search
+      std::cout << " - done. (" << CometFragmentIndex::ElapsedTime(tGlobalStartTime) << ")" << endl << endl;
 
    if (g_staticParams.options.iPrintAScoreProScore)
       DeleteAScoreDllInterface(g_AScoreInterface);

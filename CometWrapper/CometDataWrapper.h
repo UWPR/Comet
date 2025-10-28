@@ -268,7 +268,7 @@ namespace CometWrapper {
     public ref class ScoreWrapper
     {
     public:
-        ScoreWrapper(Scores & score)
+        ScoreWrapper(const Scores & score)
         {
             pScores = new Scores(score);
         }
@@ -335,7 +335,7 @@ namespace CometWrapper {
     public ref class ScoreWrapperMS1
     {
     public:
-       ScoreWrapperMS1(ScoresMS1& score)
+       ScoreWrapperMS1(const ScoresMS1& score)
        {
           pScoresMS1 = new ScoresMS1(score);
        }
@@ -374,7 +374,7 @@ namespace CometWrapper {
     public ref class FragmentWrapper
     {
     public:
-        FragmentWrapper(Fragment & fragment)
+        FragmentWrapper(const Fragment & fragment)
         {
             pFragment = new Fragment(fragment);
         }

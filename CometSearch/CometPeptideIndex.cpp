@@ -47,6 +47,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
 
+   // these are used in call to RunSearch to generate peptides
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
@@ -136,30 +137,31 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    // JKE FIX:  Currently g_vProteinsList has an entry for every peptide and there
    // can be duplicates set of file pointers in g_vProteinsList.  Ideally each entry
-   // in g_vProteinsList is a unique set of file points which means a bit of
+   // in g_vProteinsList is a unique set of file pointers which means a bit of
    // optimization needs to happen to here (granted resuting only in storage/ram
    // savings for the reduced size of g_vProteinsList).
 
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end());  // sort by peptide sequence, mod state, protein file position
    g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
 
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometFragmentIndex::CompareByMass);
 
 /*
+   printf("OK unique peptide index entries:\n");
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
-      printf("OK after unique ");
       if ((*it).pcVarModSites[strlen((*it).szPeptide)] != 0)
-         printf("n*");
+         printf("n%d", (*it).pcVarModSites[strlen((*it).szPeptide)] - 1);
       for (unsigned int x = 0; x < strlen((*it).szPeptide); x++)
       {
          printf("%c", (*it).szPeptide[x]);
          if ((*it).pcVarModSites[x] != 0)
-            printf("*");
+            printf("%d", (*it).pcVarModSites[x] - 1);
       }
       if ((*it).pcVarModSites[strlen((*it).szPeptide) + 1] != 0)
-         printf("c*");
-      printf("   %f   %lld\n", (*it).dPepMass, (*it).lIndexProteinFilePosition);
+         printf("c%d", (*it).pcVarModSites[strlen((*it).szPeptide)] - 1);
+      printf("\t%f\t%lld\t%d\n", (*it).dPepMass, (*it).lIndexProteinFilePosition,(*it).siVarModProteinFilter);
    }
    printf("\n");
 */
@@ -240,7 +242,6 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
       int iLen = (int)strlen((*it).szPeptide);
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
-//    fwrite((*it).szPrevNextAA, sizeof(char), 2, fptr);
 
       // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
       int iLen2 = iLen + 2;
@@ -283,7 +284,19 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    fclose(fptr);
 
-   string strOut = " - done. " + std::string(szIndexFile) + " (" + std::to_string(tNumPeptides) + " peptides)\n\n";
+   std::string strNumPeps;
+   if (tNumPeptides > 1e6)
+   {
+      std::ostringstream oss;
+      oss << std::scientific << std::setprecision(3) << static_cast<double>(tNumPeptides);
+      strNumPeps = oss.str();
+   }
+   else
+   {
+      strNumPeps = std::to_string(tNumPeptides);
+   }
+
+   string strOut = " - done. " + std::string(szIndexFile) + " (" + strNumPeps + " peptides)\n\n";
    logout(strOut);
    fflush(stdout);
 

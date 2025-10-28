@@ -80,6 +80,7 @@
                // Loop through to find first MS1 scan; get mass range from that
                // Current assumption is that the MS1 mass range is fixed throughout
                // the acquisition
+
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
                   // Get the scan filter for this scan number
@@ -104,7 +105,7 @@
                double[] pdInten;
                Stopwatch watch = new Stopwatch();
 
-               int iMaxElapsedTime = 25;
+               int iMaxElapsedTime = 50;
                int[] piTimeSearchMS1 = new int[iMaxElapsedTime];  // histogram of search times
                int[] piTimeSearchMS2 = new int[iMaxElapsedTime];  // histogram of search times
 
@@ -112,7 +113,8 @@
                {
                   piTimeSearchMS1[i] = 0;
                   piTimeSearchMS2[i] = 0;
-               }
+               } 
+
 
                int iPass = 1;  // count number of passes/loops through raw file
                int iTime;
@@ -134,8 +136,13 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1000;
+               int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
+
+/*
+               iFirstScan = 6409;
+               iLastScan =  6409;
+*/
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
@@ -176,24 +183,12 @@
 
                         int iMS1TopN = 1; // report up to iMS1TopN hits per query; unused right now as only top matching MS1 scan is returned
 
-                        if (scanFilter.MSOrder == MSOrderType.Ms)
+                        if (false && scanFilter.MSOrder == MSOrderType.Ms)
                         {
+                           watch.Reset();
                            watch.Start();
                            SearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT, pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
                            watch.Stop();
-
-                           if (vScores.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
-                           {
-                              for (int x = 0; x < 1; ++x)
-                              {
-                                 Console.WriteLine("MS1 output query scan {0}\tlibscan {4}\tquery RT {1:F2}\tlib RT {3:F2}\tdotp {2:F3}",
-                                    iScanNumber, dRT, vScores[x].fDotProduct, vScores[x].fRTime, vScores[x].iScanNumber);
-
-//                                 Console.WriteLine("MS1    {0} >>> {1}, RT {2:F3}",
-//                                 iScanNumber, vScores[x].iScanNumber, dRT);
-
-                              }
-                           }
 
                            if (vScores.Count > 0)
                            {
@@ -202,8 +197,20 @@
                                  iTime = iMaxElapsedTime - 1;
                               if (iTime >= 0)
                                  piTimeSearchMS1[iTime] += 1;
+
+                              if ((iScanNumber % iPrintEveryScan) == 0)
+                              {
+                                 for (int x = 0; x < 1; ++x)
+                                 {
+                                    Console.WriteLine("MS1 output query scan {0}\tlibscan {4}\tquery RT {1:F2}\tlib RT {3:F2}\tdotp {2:F3}\t{5} ms",
+                                       iScanNumber, dRT, vScores[x].fDotProduct, vScores[x].fRTime, vScores[x].iScanNumber, iTime);
+
+//                                  Console.WriteLine("MS1    {0} >>> {1}, RT {2:F3}",
+//                                  iScanNumber, vScores[x].iScanNumber, dRT);
+
+                                 }
+                              }
                            }
-                           watch.Reset();
                         }
                         else if (scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
                         {
@@ -237,6 +244,7 @@
                            List<string> vPeptide = new List<string>();
                            List<string> vProtein = new List<string>();
 
+                           watch.Reset();
                            watch.Start();
                            SearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
@@ -256,8 +264,10 @@
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F3}, E-value {3:0.##E+00}, AScore {4:F2}, Sites {5}", 
-                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores);
+                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F4}, E-value {3:0.##E+00}, mass {8:F4}, AScore {4:F2}, Sites {5}, {6} ms, {7} count", 
+                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect,
+                                          vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
+                                          watch.ElapsedMilliseconds, vScores[x].MatchedIons, dExpPepMass);
 
                                        double dTmp = vScores[x].dAScoreScore;
 /*
@@ -284,7 +294,6 @@
                               if (iTime >= 0)
                                  piTimeSearchMS2[iTime] += 1;
                            }
-                           watch.Reset();
 
                         }
 
@@ -353,17 +362,13 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("retentiontime_tol", sTmp, iTmp);
 
-            dTmp = 1.0005; // mass bin width
+            dTmp = 1.0005; // MS1 mass bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.4;  // mass bin offset
+            dTmp = 0.4;  // MS1 mass bin offset
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("ms1_bin_offset", sTmp, dTmp);
-
-            iTmp = 1; // 0=use flanking peaks, 1=M peak only
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
             double dMS1MassLow = 0.0;
             double dMS1MassHigh = 2000.0;
@@ -378,6 +383,18 @@
             iTmp = 8;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("num_threads", sTmp, iTmp);
+
+            dTmp = 0.02; // fragment bin width
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
+
+            dTmp = 0.0;  // fragment bin offst
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
+
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
             dTmp = 20.0;  // peptide mass tolerance plus
             sTmp = dTmp.ToString();
@@ -395,19 +412,11 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
+            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            dTmp = 0.02; // fragment bin width
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
-
-            dTmp = 0.0;  // fragment bin offst
-            sTmp = dTmp.ToString();
-            SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
-
-            iTmp = 100; // search time cutoff in milliseconds
+            iTmp = 100000; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
@@ -427,7 +436,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("equal_I_and_L", sTmp, iTmp);
 
-            dTmp = 0.05; // base peak percentage cutoff
+            dTmp = 0.0; // base peak percentage cutoff
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("percentage_base_peak", sTmp, dTmp);
 

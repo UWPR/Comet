@@ -118,9 +118,7 @@ private:
                               int end,
                               string strMod,
                               vector<OBOStruct>& vectorPeffOBO);
-   static size_t BinarySearchIndexMass(int iWhichThread,
-                                       int iPrecursorBin,
-                                       size_t start,
+   static size_t BinarySearchIndexMass(size_t start,
                                        size_t end,
                                        double dQueryMass,
                                        unsigned int *uiFragmentMass);
@@ -211,50 +209,50 @@ private:
                           int iStartPos,
                           int iEndPos,
                           int iClipNtermMetOffset,
-                          bool *pbDuplFragment,
+                          bool* pbDuplFragment,
                           struct sDBEntry *dbe);
-   double TotalVarModMass(int *pVarModCounts);
-   bool PermuteMods(char *szProteinSeq,
+   double TotalVarModMass(int* pVarModCounts);
+   bool PermuteMods(char* szProteinSeq,
                     int iWhichQuery,
                     int iWhichMod,
                     int iClipNtermMetOffset,
-                    bool *pbDuplFragments,
-                    bool *bDoPeffAnalysis,
+                    bool* pbDuplFragments,
+                    bool* bDoPeffAnalysis,
                     vector <PeffPositionStruct>* vPeffArray,
                     struct sDBEntry *dbe);
-   int  twiddle( int *x, int *y, int *z, int *p);
+   int  twiddle(int* x, int* y, int* z, int* p);
    void inittwiddle(int m, int n, int *p);
-   bool MergeVarMods(char *szProteinSeq,
+   bool MergeVarMods(char* szProteinSeq,
                      int iWhichQuery,
                      int iClipNtermMetOffset,
-                     bool *pbDuplFragments,
-                     bool *bDoPeffAnalysis,
+                     bool* pbDuplFragments,
+                     bool* bDoPeffAnalysis,
                      std::vector <PeffPositionStruct>* vPeffArray,
-                     struct sDBEntry *dbe);
+                     struct sDBEntry* dbe);
    bool CalcVarModIons(char *szProteinSeq,
                        int iWhichQuery,
-                       bool *pbDuplFragment,
-                       int *piVarModSites,
+                       bool* pbDuplFragment,
+                       int* piVarModSites,
                        double dCalcPepMass,
                        int iLenPeptide,
-                       struct sDBEntry *dbe);
+                       struct sDBEntry* dbe);
    static void SearchFragmentIndex(size_t iWhichQuery,
-                                   ThreadPool *tp);
-   bool SearchPeptideIndex(void);
+                                   ThreadPool* tp);
+   bool SearchPeptideIndex(ThreadPool* tp);
    void AnalyzePeptideIndex(int iWhichQuery,
                             DBIndex sDBI,
                             bool *pbDuplFragment,
                             struct sDBEntry *dbe);
    bool SearchForPeptides(struct sDBEntry dbe,
-                          char *szProteinSeq,
+                          char* szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
-                          bool *pbDuplFragment);
+                          bool* pbDuplFragment);
    void SearchForVariants(struct sDBEntry dbe,
-                          char *szProteinSeq,
-                          bool *pbDuplFragment);
-   bool TranslateNA2AA(int *frame,
+                          char* szProteinSeq,
+                          bool* pbDuplFragment);
+   bool TranslateNA2AA(int* frame,
                        int iDirection,
-                       char *sDNASequence);
+                       char* sDNASequence);
    static void SearchMS1Library(size_t iWhichMS1Query,
                                 const int iWhichThread,
                                 const double dRT,
@@ -264,7 +262,7 @@ private:
                                 ThreadPool* tp);
    char GetAA(int i,
               int iDirection,
-              char *sDNASequence);
+              char* sDNASequence);
 
    struct VarModStat
    {

@@ -568,7 +568,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
       iScanNumber = mstSpectrum.getScanNumber();
 
-      if (iScanNumber % 100)
+      if (iScanNumber % 500)
       {
          printf("%3d%%", (int)(100.0 * (double)iScanNumber / iFileLastScan));
          fflush(stdout);
