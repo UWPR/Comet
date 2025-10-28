@@ -103,7 +103,10 @@
                double dPrecursorMZ = 0;
                double[] pdMass;
                double[] pdInten;
+
                Stopwatch watch = new Stopwatch();
+               Stopwatch watchGlobal = new Stopwatch();
+               TimeSpan elapsedGlobal;
 
                int iMaxElapsedTime = 50;
                int[] piTimeSearchMS1 = new int[iMaxElapsedTime];  // histogram of search times
@@ -136,13 +139,15 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 1000;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
 
 /*
                iFirstScan = 6409;
                iLastScan =  6409;
 */
+
+               watchGlobal.Start();
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
@@ -183,7 +188,7 @@
 
                         int iMS1TopN = 1; // report up to iMS1TopN hits per query; unused right now as only top matching MS1 scan is returned
 
-                        if (false && scanFilter.MSOrder == MSOrderType.Ms)
+                        if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
                            watch.Reset();
                            watch.Start();
@@ -202,12 +207,8 @@
                               {
                                  for (int x = 0; x < 1; ++x)
                                  {
-                                    Console.WriteLine("MS1 output query scan {0}\tlibscan {4}\tquery RT {1:F2}\tlib RT {3:F2}\tdotp {2:F3}\t{5} ms",
-                                       iScanNumber, dRT, vScores[x].fDotProduct, vScores[x].fRTime, vScores[x].iScanNumber, iTime);
-
-//                                  Console.WriteLine("MS1    {0} >>> {1}, RT {2:F3}",
-//                                  iScanNumber, vScores[x].iScanNumber, dRT);
-
+                                    Console.WriteLine("*MS1 {0}  libscan {1}  queryRT {2:F2}  libRT {3:F2}  dotp {4:F3}  {5} ms",
+                                       iScanNumber, vScores[x].iScanNumber, dRT, vScores[x].fRTime, vScores[x].fDotProduct, iTime);
                                  }
                               }
                            }
@@ -264,10 +265,10 @@
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine("   MS2 {0} ... {1}, xcorr {2:F4}, E-value {3:0.##E+00}, mass {8:F4}, AScore {4:F2}, Sites {5}, {6} ms, {7} count", 
-                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect,
+                                       Console.WriteLine(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  {4:F4}  AScore {5:F2}  Sites '{6}'  {7} ms", 
+                                          iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, dExpPepMass,
                                           vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
-                                          watch.ElapsedMilliseconds, vScores[x].MatchedIons, dExpPepMass);
+                                          watch.ElapsedMilliseconds);
 
                                        double dTmp = vScores[x].dAScoreScore;
 /*
@@ -301,14 +302,15 @@
 
                      }
                   }
-/*
+
                   if (iScanNumber == iLastScan)
                   {
                      iScanNumber = 0;
-                     Console.WriteLine("pass {0}", iPass);
+                     elapsedGlobal = watchGlobal.Elapsed;
+                     Console.WriteLine("pass {0}, {1} min", iPass, elapsedGlobal.TotalMinutes);
                      iPass++;
                   }
-*/
+
                }
 
                SearchMgr.FinalizeSingleSpectrumSearch();
@@ -380,7 +382,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
-            iTmp = 8;
+            iTmp = 0;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("num_threads", sTmp, iTmp);
 

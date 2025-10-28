@@ -20,6 +20,8 @@
 #ifndef _COMETMASSSPECUTILS_H_
 #define _COMETMASSSPECUTILS_H_
 
+#include "CometDataInternal.h"
+
 const double Hydrogen_Mono = 1.007825035;
 const double Oxygen_Mono = 15.99491463;
 const double Carbon_Mono = 12.00000000;
@@ -81,6 +83,14 @@ public:
    static double DenormalizeCharToDouble(char dChar,
                                          double dMin,
                                          double dMax);
+
+   static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
+
+   static bool DBICompareByPeptide(const DBIndex& lhs,
+                                   const DBIndex& rhs);
+
+   static bool DBICompareByMass(const DBIndex& lhs,
+                                const DBIndex& rhs);
 };
 
 #endif // _COMETMASSSPECUTILS_H_

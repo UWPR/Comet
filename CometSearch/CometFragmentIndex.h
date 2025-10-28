@@ -29,12 +29,7 @@ public:
    static bool WritePlainPeptideIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);
-   static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
    static int WhichPrecursorBin(double dMass);
-   static bool CompareByPeptide(const DBIndex &lhs,
-                                const DBIndex &rhs);
-   static bool CompareByMass(const DBIndex &lhs,
-                             const DBIndex &rhs);
 
 private:
 

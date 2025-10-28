@@ -22,11 +22,12 @@
 #include <bitset>
 #include <chrono>
 #include <unordered_set>
+
 #include "Common.h"
 #include "CometDataInternal.h"
+#include "CometMassSpecUtils.h"
 #include "CometModificationsPermuter.h"
 #include "CombinatoricsUtils.h"
-#include "CometFragmentIndex.h"
 
 //using namespace std;
 
@@ -236,7 +237,7 @@ vector<string> ModificationsPermuter::readPeptides(string file)
       }
       myfile.close();
 
-      cout << "Read " << std::to_string(peptides.size()) << " peptides" << CometFragmentIndex::ElapsedTime(start);
+      cout << "Read " << std::to_string(peptides.size()) << " peptides" << CometMassSpecUtils::ElapsedTime(start);
    }
    else cout << "ERROR: Unable to open file" << endl;
 

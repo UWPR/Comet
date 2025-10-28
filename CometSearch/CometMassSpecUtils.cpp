@@ -757,3 +757,100 @@ double CometMassSpecUtils::DenormalizeCharToDouble(char dChar, double dMin, doub
 
    return unnormalizedValue;
 }
+
+
+
+// will return string "XX min YY sec" of elasped time from tStartTime to now
+// pass in tStartTime = chrono::steady_clock::now();
+string CometMassSpecUtils::ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime)
+{
+   auto tEndTime = chrono::steady_clock::now();
+   auto duration = chrono::duration_cast<chrono::milliseconds>(tEndTime - tStartTime);
+   auto minutes = duration.count() / 60000;
+   auto seconds = (duration.count() - minutes * 60000) / 1000;
+
+   string sReturn;
+   if (minutes > 0)
+      sReturn = std::to_string(minutes) + " min " + std::to_string(seconds) + " sec";
+   else
+      sReturn = std::to_string(seconds) + " sec";
+
+   return sReturn;
+}
+
+
+bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
+                                             const DBIndex& rhs)
+{
+   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   {
+      // peptides are same here so look at mass next
+      if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+      {
+         // masses are different
+         if (lhs.dPepMass < rhs.dPepMass)
+            return true;
+         else
+            return false;
+      }
+
+      // FIX: if protein terminal mods are specified, address them
+
+      // at this point, same peptide, same mass, same mods so return first protein
+      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
+         return true;
+      else
+         return false;
+   }
+
+   // peptides are different
+   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
+      return true;
+   else
+      return false;
+};
+
+
+// sort by mass, then peptide, then modification state, then protein fp location
+bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
+                                          const DBIndex& rhs)
+{
+   if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
+   {
+      // masses are different
+      if (lhs.dPepMass < rhs.dPepMass)
+         return true;
+      else
+         return false;
+   }
+
+   // at this point, peptides are same mass so next need to compare sequences
+
+   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   {
+      // same sequences and masses here so next look at mod state
+      for (unsigned int i = 0; i < strlen(lhs.szPeptide) + 2; ++i)
+      {
+         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
+         {
+            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
+               return true;
+            else
+               return false;
+         }
+      }
+
+      // at this point, same peptide, same mass, same mods so return first protein
+      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
+         return true;
+      else
+         return false;
+   }
+
+   // if here, peptide sequences are different (but w/same mass) so sort alphabetically
+   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
+      return true;
+   else
+      return false;
+
+}

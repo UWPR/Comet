@@ -543,6 +543,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    msLevel.push_back(MS1);  // we want to read only MS1 scans
    mstReader.setFilter(msLevel);
 
+   auto tStartTime = chrono::steady_clock::now();
+
    // Load all input spectra.
    while (true)
    {
@@ -641,6 +643,8 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    pLoadSpecThreadPool->wait_on_threads();
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+
+   cout << "100% (" << CometMassSpecUtils::ElapsedTime(tStartTime) << ")" << endl;
 
    g_bSpecLibRead = true;
 //   mstReader.closeFile();   //FIX when does this get closed?

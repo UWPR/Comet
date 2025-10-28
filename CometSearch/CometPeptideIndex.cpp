@@ -84,7 +84,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
    // keep unique entries only; sort by peptide/modification state and protein
    // first sort by peptide, then mod state, then protein file position
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometFragmentIndex::CompareByPeptide);
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByPeptide);
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
    // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry
@@ -145,7 +145,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
 
    // sort by mass;
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometFragmentIndex::CompareByMass);
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
 
 /*
    printf("OK unique peptide index entries:\n");

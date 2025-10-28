@@ -2227,7 +2227,7 @@ bool CometSearchManager::DoSearch()
          }
 
          if (!g_staticParams.options.bOutputSqtStream)
-            cout << CometFragmentIndex::ElapsedTime(tTime1) << endl;
+            cout << CometMassSpecUtils::ElapsedTime(tTime1) << endl;
       }
       else
       {
@@ -2648,7 +2648,7 @@ bool CometSearchManager::DoSearch()
 
                if (!g_staticParams.options.bOutputSqtStream)
                {
-                  cout << CometFragmentIndex::ElapsedTime(tStartTime) << endl;
+                  cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
                }
 
                sqSearch.CreateFragmentIndex(tp);
@@ -2969,7 +2969,7 @@ cleanup_results:
          {
             const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
             double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
-            cout << CometFragmentIndex::ElapsedTime(tBeginTime) << " (" << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms per spectrum)" << endl;
+            cout << CometMassSpecUtils::ElapsedTime(tBeginTime) << " (" << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms per spectrum)" << endl;
          }
 
          if (bSucceeded)
@@ -3170,7 +3170,7 @@ cleanup_results:
    }
 
    if (g_staticParams.iIndexDb) // for either index search
-      std::cout << " - done. (" << CometFragmentIndex::ElapsedTime(tGlobalStartTime) << ")" << endl << endl;
+      std::cout << " - done. (" << CometMassSpecUtils::ElapsedTime(tGlobalStartTime) << ")" << endl << endl;
 
    if (g_staticParams.options.iPrintAScoreProScore)
       DeleteAScoreDllInterface(g_AScoreInterface);
