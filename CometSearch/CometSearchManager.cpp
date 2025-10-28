@@ -1673,7 +1673,7 @@ bool CometSearchManager::InitializeStaticParams()
 // for (int x=1; x<=9; ++x)
 //    printf("OK bit %d: %d\n", x, (g_staticParams.variableModParameters.iRequireVarMod >> x) & 1U);
 
-   g_massRange.g_uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
+   g_massRange.uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
 
    // At this point, check extension to set whether index database or not
    if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
@@ -3158,7 +3158,7 @@ cleanup_results:
    {
       free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
 
-      for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+      for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
       {
          if (g_iFragmentIndex[iMass] != NULL)
          {

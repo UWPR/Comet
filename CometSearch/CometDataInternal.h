@@ -321,7 +321,7 @@ struct MassRange
    double dMaxMass;
    unsigned short    usiMaxFragmentCharge;  // global maximum fragment charge
    bool   bNarrowMassRange;    // used to determine how to parse peptides in SearchForPeptides
-   unsigned int g_uiMaxFragmentArrayIndex; // BIN(dFragIndexMaxMass); used as fragment array index
+   unsigned int uiMaxFragmentArrayIndex; // BIN(dFragIndexMaxMass); used as fragment array index
 };
 
 extern MassRange g_massRange;

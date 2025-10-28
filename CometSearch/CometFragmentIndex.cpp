@@ -68,8 +68,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // - modification encoding index
    // - modification mass
 
-   g_iFragmentIndex = new unsigned int* [g_massRange.g_uiMaxFragmentArrayIndex];
-   g_iCountFragmentIndex = new unsigned int[g_massRange.g_uiMaxFragmentArrayIndex]();
+   g_iFragmentIndex = new unsigned int* [g_massRange.uiMaxFragmentArrayIndex];
+   g_iCountFragmentIndex = new unsigned int[g_massRange.uiMaxFragmentArrayIndex]();
 
    // generate the modified peptides to calculate the fragment index
    GenerateFragmentIndex(tp);
@@ -165,7 +165,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    pFragmentIndexPool->wait_on_threads();
 
    // now reserve memory for the fragment index vectors
-   for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+   for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
    {
       if (g_iCountFragmentIndex[iMass] > 0)
       {
@@ -210,7 +210,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    unsigned long long ullCount = 0;
 //   unsigned long long ullMax = 0;
-   for (unsigned int iMass = 0; iMass < g_massRange.g_uiMaxFragmentArrayIndex; ++iMass)
+   for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
    {
       // count and report the # of entries in the fragment index
       ullCount += g_iCountFragmentIndex[iMass];
@@ -524,7 +524,7 @@ if (!(iWhichPeptide%1000))
          {
             int iBinBion = BIN(dBion);
 
-            if ((unsigned int)iBinBion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinBion >= g_massRange.uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
                exit(1);
@@ -544,7 +544,7 @@ if (!(iWhichPeptide%1000))
          {
             int iBinYion = BIN(dYion);
 
-            if ((unsigned int)iBinYion >= g_massRange.g_uiMaxFragmentArrayIndex)
+            if ((unsigned int)iBinYion >= g_massRange.uiMaxFragmentArrayIndex)
             {
                printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
                exit(1);

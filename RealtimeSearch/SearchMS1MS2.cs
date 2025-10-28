@@ -122,15 +122,8 @@
                int iPass = 1;  // count number of passes/loops through raw file
                int iTime;
 
-               SearchMgr.InitializeSingleSpectrumMS1Search();
 
-               if (bDatabaseSearch)
-               {
-                  // trigger loading the .idx database
-                  SearchMgr.InitializeSingleSpectrumSearch();
-               }
-
-               double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
+               double dMaxMS1RTDiff = 100.0;    // maximum allowed retention time difference between query and reference, in seconds
                                                 // set to 0.0 to not apply aka do not apply any RT restrictions
 
 
@@ -139,12 +132,27 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1000;
+               int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
+               bool bContinuousLoop = false; // set to true to continuously loop through the raw file
+               bool bPrintHistogram = false;
+               bool bPrintMatchedFragmentIons = false;
+               bool bPerformMS1Search = false;
+               bool bPerformMS2Search = true;
 
+               if (bPerformMS1Search)
+               {
+                  SearchMgr.InitializeSingleSpectrumMS1Search();
+               }
+
+               if (bDatabaseSearch && bPerformMS2Search)
+               {
+                  // trigger loading the .idx database
+                  SearchMgr.InitializeSingleSpectrumSearch();
+               }
 /*
-               iFirstScan = 6409;
-               iLastScan =  6409;
+               iFirstScan = 37174;
+               iLastScan =  37174;
 */
 
                watchGlobal.Start();
@@ -188,7 +196,7 @@
 
                         int iMS1TopN = 1; // report up to iMS1TopN hits per query; unused right now as only top matching MS1 scan is returned
 
-                        if (scanFilter.MSOrder == MSOrderType.Ms)
+                        if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
                         {
                            watch.Reset();
                            watch.Start();
@@ -213,7 +221,7 @@
                               }
                            }
                         }
-                        else if (scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
+                        else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)  // MS2 scan
                         {
                            iPrecursorCharge = 0;
                            dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
@@ -271,16 +279,19 @@
                                           watch.ElapsedMilliseconds);
 
                                        double dTmp = vScores[x].dAScoreScore;
-/*
-                                       foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
+
+                                       if (bPrintMatchedFragmentIons)
                                        {
-                                          Console.WriteLine("\t{0:0.0000}\t{1:0.0}\t{2}+\t{3}-ion",
-                                             myFragment.Mass,
-                                             myFragment.Intensity,
-                                             myFragment.Charge,
-                                             myFragment.Type);
+                                          foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
+                                          {
+                                             Console.WriteLine("\t{0:0.0000}\t{1:0.0}\t{2}+\t{3}-ion",
+                                                myFragment.Mass,
+                                                myFragment.Intensity,
+                                                myFragment.Charge,
+                                                myFragment.Type);
+                                          }
                                        }
-*/
+
                                     }
                                  }
 //                                 Console.WriteLine("");
@@ -303,7 +314,7 @@
                      }
                   }
 
-                  if (iScanNumber == iLastScan)
+                  if (bContinuousLoop && iScanNumber == iLastScan)
                   {
                      iScanNumber = 0;
                      elapsedGlobal = watchGlobal.Elapsed;
@@ -315,9 +326,12 @@
 
                SearchMgr.FinalizeSingleSpectrumSearch();
 
-               // write out histogram of spectrum search times
-               for (int i = 0; i < iMaxElapsedTime; ++i)
-                  Console.WriteLine("histogram\t{0}\t{1}\t{2}", i, piTimeSearchMS1[i], piTimeSearchMS2[i]);
+               if (bPrintHistogram)
+               {
+                  // write out histogram of spectrum search times
+                  for (int i = 0; i < iMaxElapsedTime; ++i)
+                     Console.WriteLine("histogram\t{0}\t{1}\t{2}", i, piTimeSearchMS1[i], piTimeSearchMS2[i]);
+               }
 
                rawFile.Dispose();
             }
@@ -386,15 +400,15 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("num_threads", sTmp, iTmp);
 
-            dTmp = 0.02; // fragment bin width
+            dTmp = 1.0005; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0;  // fragment bin offst
+            dTmp = 0.4;  // fragment bin offst
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 

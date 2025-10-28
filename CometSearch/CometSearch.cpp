@@ -1261,7 +1261,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    // print out fragment masses at each fragment index
    int x=0;
 
-   for (unsigned int i = 0; i < g_massRange.g_uiMaxFragmentArrayIndex; ++i)
+   for (unsigned int i = 0; i < g_massRange.uiMaxFragmentArrayIndex; ++i)
    {
       if (g_iCountFragmentIndex[i] > 0)
       {
@@ -1294,7 +1294,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
       {
          uiFragmentMass = BIN((*it2) * iChg - (iChg - 1.0));
 
-         if (uiFragmentMass < g_massRange.g_uiMaxFragmentArrayIndex)
+         if (uiFragmentMass < g_massRange.uiMaxFragmentArrayIndex)
          {
             // number of peptides that contain this fragment mass
             lNumPeps = (size_t)g_iCountFragmentIndex[uiFragmentMass];
@@ -2118,7 +2118,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                      int iVal = BIN(dFragMass);
 
-                     if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                     if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
                      {
                         pbDuplFragment[iVal] = false;
                         _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
@@ -2147,7 +2147,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                                     iVal = BIN(dNewMass);
 
-                                    if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                                    if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
                                     {
                                        pbDuplFragment[iVal] = false;
                                        iFoundVariableMod = 2;
@@ -2169,7 +2169,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
 
-                  if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                  if (iVal > 0 && (unsigned int)iVal < g_massRange.uiMaxFragmentArrayIndex)
                   {
                      pbDuplFragment[iVal] = false;
                      _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
@@ -2190,7 +2190,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                      double dFragMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse);
                      int iVal = BIN(dFragMass);
 
-                     if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                     if (iVal > 0 && (unsigned int)iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
                      {
                         _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = iVal;
                         pbDuplFragment[iVal] = true;
@@ -2218,7 +2218,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                                     iVal = BIN(dNewMass);
 
-                                    if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                                    if (iVal > 0 && (unsigned int)iVal < g_massRange.uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
                                     {
                                        _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][x + 1 + iWhichNL] = iVal;
                                        pbDuplFragment[iVal] = true;
@@ -2240,7 +2240,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge*PROTON_MASS)/ctCharge;
                   int iVal = BIN(dNLMass);
 
-                  if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                  if (iVal > 0 && (unsigned int)iVal < g_massRange.uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
                   {
                      _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
                      pbDuplFragment[iVal] = true;
@@ -2342,7 +2342,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                         int iVal = BIN(dFragMass);
 
-                        if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                        if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
                         {
                            pbDuplFragment[iVal] = false;
                            _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
@@ -2370,7 +2370,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                                           dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 / ctCharge;
 
                                        iVal = BIN(dNewMass);
-                                       if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                                       if (iVal > 0 && (unsigned int)iVal < g_massRange.uiMaxFragmentArrayIndex)
                                        {
                                           pbDuplFragment[iVal] = false;
                                           iFoundVariableModDecoy = 2;
@@ -2392,7 +2392,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
 
-                     if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex)
+                     if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
                      {
                         pbDuplFragment[iVal] = false;
                         _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
@@ -2413,7 +2413,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                         double dFragMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy);
                         int iVal = BIN(dFragMass);
 
-                        if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                        if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
                         {
                            _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
                            pbDuplFragment[iVal] = true;
@@ -2441,7 +2441,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                                        iVal = BIN(dNewMass);
 
-                                       if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                                       if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
                                        {
                                           _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][x + 1 + iWhichNL] = iVal;
                                           pbDuplFragment[iVal] = true;
@@ -2463,7 +2463,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
 
-                     if (iVal > 0 && (unsigned int)iVal < g_massRange.g_uiMaxFragmentArrayIndex && pbDuplFragment[iVal] == false)
+                     if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
                      {
                         _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
                         pbDuplFragment[iVal] = true;
