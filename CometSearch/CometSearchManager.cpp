@@ -2658,8 +2658,7 @@ bool CometSearchManager::DoSearch()
          if (g_staticParams.options.iPrintAScoreProScore && bPerformAScoreInitialization)
          {
             SetAScoreOptions(g_AScoreOptions);
-
-//            PrintAScoreOptions(g_AScoreOptions);
+//          PrintAScoreOptions(g_AScoreOptions);
 
             // Create the AScoreDllInterface using the factory function
             g_AScoreInterface = CreateAScoreDllInterface();
@@ -3225,6 +3224,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       if (g_staticParams.options.iPrintAScoreProScore)
       {
          SetAScoreOptions(g_AScoreOptions);  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
+//       PrintAScoreOptions(g_AScoreOptions);
 
          // Create the AScoreDllInterface using the factory function
          g_AScoreInterface = CreateAScoreDllInterface();
@@ -3235,6 +3235,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          }
       }
    }
+
    singleSearchInitializationComplete = true;
 
    return true;

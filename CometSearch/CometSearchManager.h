@@ -104,13 +104,13 @@ public:
    virtual void CancelSearch();
    virtual bool IsCancelSearch();
    virtual void ResetSearchStatus();
+   virtual void SetAScoreOptions(AScoreProCpp::AScoreOptions& g_vAScoreOptions);
+   virtual void PrintAScoreOptions(const AScoreProCpp::AScoreOptions& g_vAScoreOptions);
 
 
 private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
-   static void SetAScoreOptions(AScoreProCpp::AScoreOptions& g_vAScoreOptions);
-   static void PrintAScoreOptions(const AScoreProCpp::AScoreOptions& g_vAScoreOptions);
    bool singleSearchInitializationComplete;
    bool singleSearchMS1InitializationComplete;
    int singleSearchThreadCount;

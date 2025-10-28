@@ -17,12 +17,13 @@
 #include "CometSpecLib.h"
 #include "CometDataInternal.h"
 #include "ThreadPool.h"
-#include "CometStatus.h"
-#include "CometPostAnalysis.h"
-#include "CometMassSpecUtils.h"
 #include "CometFragmentIndex.h"
-#include "CometPeptideIndex.h"
+#include "CometMassSpecUtils.h"
 #include "CometModificationsPermuter.h"
+#include "CometPeptideIndex.h"
+#include "CometPostAnalysis.h"
+#include "CometSearchManager.h"
+#include "CometStatus.h"
 
 #include <cstdio>
 #include <cstring>
@@ -1764,6 +1765,21 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
 
       // peptide index searches will always set this to true
       g_staticParams.variableModParameters.bVarModSearch = true;
+
+      if (g_staticParams.options.iPrintAScoreProScore)
+      {
+         static CometSearchManager g_cometSearchManager;            // (or use an existing instance if available)
+         g_cometSearchManager.SetAScoreOptions(g_AScoreOptions);    // Call as a member function
+//       g_cometSearchManager.PrintAScoreOptions(g_AScoreOptions);  // Call as a member function
+
+         // Create the AScoreDllInterface using the factory function
+         g_AScoreInterface = CreateAScoreDllInterface();
+         if (!g_AScoreInterface)
+         {
+            std::cerr << "Failed to create AScore interface." << std::endl;
+            exit(1);
+         }
+      }
    }
 
    // read fp of index
