@@ -17,12 +17,10 @@
 #define _COMETPEPTIDEINDEX_H_
 
 #include "Common.h"
-//#include "CometDataInternal.h"
 #include "CometPostAnalysis.h"
 #include "CometSearch.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
-#include "CometFragmentIndex.h"
 #include "ThreadPool.h"
 
 

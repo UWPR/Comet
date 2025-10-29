@@ -662,7 +662,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    Threading::DestroyMutex(_maxChargeMutex);
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
- 
+
    return bSucceeded;
 }
 
@@ -1639,6 +1639,9 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
    }
+
+   pPre->iHighestIon = 0;
+   pPre->dHighestIntensity = 0.0;
 
    // read peaks in reverse order as they're possibly sorted in ascending order by
    // intensity and vdRawFragmentPeakMass needs most intense peaks

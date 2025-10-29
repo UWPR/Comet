@@ -19,31 +19,42 @@ else
    override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-write-strings -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -D_NOSQLITE -D__int64=off64_t -I. -I$(MSTPATH)/include -I$(MSTPATH)/src/expat-2.2.9/lib -I$(MSTPATH)/src/zlib-1.2.11 -I../$(ASCOREPRO)/include
 endif
 
+# dependency generation (gcc/clang)
+DEPFLAGS := -MMD -MP
+
 OBJDIR = obj
 COMETSEARCH_SRC = Threading CometInterfaces CometSearch CometPreprocess CometPostAnalysis CometMassSpecUtils \
-				  CometWriteSqt CometWritePepXML CometWriteMzIdentML CometWritePercolator CometWriteTxt CometSearchManager \
-				  CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometSpecLib CometAlignment
+					CometWriteSqt CometWritePepXML CometWriteMzIdentML CometWritePercolator CometWriteTxt CometSearchManager \
+					CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometSpecLib CometAlignment
 
 COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC)))
 
-all: $(OBJDIR) $(COMETSEARCH_OBJ)
+all: libcometsearch.a
+
+libcometsearch.a: $(OBJDIR) $(COMETSEARCH_OBJ)
 	ar rcs libcometsearch.a $(COMETSEARCH_OBJ)
 
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-$(OBJDIR)/%.o: %.cpp %.h | $(OBJDIR)
+$(OBJDIR)/%.o: %.cpp %.h Common.h CometDataInternal.h | $(OBJDIR)
 	${CXX} ${CXXFLAGS} $< -c -o $@
 
 # Add specific dependency rules for object files that require multiple headers
-$(OBJDIR)/CometSearch.o: CometSearch.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometInterfaces.h ThreadPool.h CometFragmentIndex.h CometPeptideIndex.h | $(OBJDIR)
-	${CXX} ${CXXFLAGS} CometSearch.cpp -c -o $@
+$(OBJDIR)/CometSearch.o: CometSearch.cpp CometDataInternal.h CometFragmentIndex.h CometMassSpecUtils.h CometModificationsPermuter.h CometPeptideIndex.h \
+               CometPostAnalysis.h CometSearch.h CometSearchManager.h CometSpecLib.h CometStatus.h Common.h ThreadPool.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometSearch.cpp -c -o $@
 
-$(OBJDIR)/CometPreprocess.o: CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometInterfaces.h $(MSTPATH) | $(OBJDIR)
-	${CXX} ${CXXFLAGS} CometPreprocess.cpp -c -o $@
+$(OBJDIR)/CometSearchManager.o: CometSearchManager.cpp Common.h CometMassSpecUtils.h CometSearch.h CometPostAnalysis.h CometPreprocess.h CometWriteSqt.h \
+					CometWriteTxt.h CometWritePepXML.h CometWriteMzIdentML.h CometWritePercolator.h CometDataInternal.h CometSearchManager.h CometStatus.h \
+					CometFragmentIndex.h CometPeptideIndex.h CometSpecLib.h CometAlignment.h ../$(ASCOREPRO)/include/AScoreOptions.h ../$(ASCOREPRO)/include/AScoreFactory.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometSearchManager.cpp -c -o $@
 
-$(OBJDIR)/CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometMassSpecUtils.h CometInterfaces.h | $(OBJDIR)
-	${CXX} ${CXXFLAGS} CometMassSpecUtils.cpp -c -o $@
+$(OBJDIR)/CometPreprocess.o: CometPreprocess.cpp Common.h CometData.h CometDataInternal.h CometPreprocess.h CometStatus.h CometMassSpecUtils.h CometInterfaces.h $(MSTPATH) | $(OBJDIR)
+	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometPreprocess.cpp -c -o $@
+
+$(OBJDIR)/CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometSearchManager.h CometMassSpecUtils.h CometInterfaces.h | $(OBJDIR)
+	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometMassSpecUtils.cpp -c -o $@
 
 clean:
 	rm -rf $(OBJDIR) *.a
