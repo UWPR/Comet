@@ -138,7 +138,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    // JKE FIX:  Currently g_vProteinsList has an entry for every peptide and there
    // can be duplicates set of file pointers in g_vProteinsList.  Ideally each entry
    // in g_vProteinsList is a unique set of file pointers which means a bit of
-   // optimization needs to happen to here (granted resuting only in storage/ram
+   // optimization needs to happen to here (granted resulting only in storage/ram
    // savings for the reduced size of g_vProteinsList).
 
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end());  // sort by peptide sequence, mod state, protein file position
