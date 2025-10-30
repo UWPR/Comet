@@ -313,7 +313,8 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
       pepIdx++;
    }
 
-   cout << " - " << std::to_string(modifiablePeptides) << " modifiable peptides; " << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
+   cout << " - " << vRawPeptides.size() << " plain peptides, " << std::to_string(modifiablePeptides) << " modifiable peptides" << endl; // << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
+
    return ret;
 }
 

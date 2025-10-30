@@ -1683,40 +1683,46 @@ bool CometSearchManager::InitializeStaticParams()
       char szTmp[512];
       FILE *fp;
 
+      // If .idx specified but does not exist, Comet will generate a fragment ion index
+      // for the search.
       if ( (fp=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
-         string strErrorMsg = " Error - cannot open database index file \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-
-      if (fgets(szTmp, 512, fp) == NULL) // grab first line of peptide index
-      {
-         // throw error
-      }
-      fclose(fp);
-
-      if (!strncmp(szTmp, "Comet peptide index", 19))
-      {
-         g_staticParams.iIndexDb = 2;  // peptide index
-      }
-      else if (!strncmp(szTmp, "Comet fragment ion index", 24))
-      {
-          g_staticParams.iIndexDb = 1;  // fragment ion index
-
-         // if searching fragment index database, limit load of query spectra as no
-         // need to load all spectra into memory since querying spectra sequentially
+         g_staticParams.iIndexDb = 1;  // fragment ion index
          if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
       else
       {
-         string strErrorMsg = " Error - first line of database index file \""
-            + std::string(g_staticParams.databaseInfo.szDatabase) + "\" contains:\n" + std::string(szTmp) + "\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
+         if (fgets(szTmp, 512, fp) == NULL) // grab first line of peptide index
+         {
+            string strErrorMsg = " Error - .idx file is blank?? \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+         fclose(fp);
+
+         if (!strncmp(szTmp, "Comet peptide index", 19))
+         {
+            g_staticParams.iIndexDb = 2;  // peptide index
+         }
+         else if (!strncmp(szTmp, "Comet fragment ion index", 24))
+         {
+             g_staticParams.iIndexDb = 1;  // fragment ion index
+
+            // if searching fragment index database, limit load of query spectra as no
+            // need to load all spectra into memory since querying spectra sequentially
+            if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+               g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
+         }
+         else
+         {
+            string strErrorMsg = " Error - first line of database index file \""
+               + std::string(g_staticParams.databaseInfo.szDatabase) + "\" contains:\n" + std::string(szTmp) + "\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
    }
 
