@@ -127,7 +127,7 @@ bool CometSearch::RunSearch(ThreadPool *tp)
 
 bool CometSearch::RunSearch(int iPercentStart,
                             int iPercentEnd,
-                            ThreadPool *tp)
+                            ThreadPool* tp)
 {
    bool bSucceeded = true;
 
@@ -142,7 +142,7 @@ bool CometSearch::RunSearch(int iPercentStart,
          sqFI.CreateFragmentIndex(tp);
       }
 
-      ThreadPool *pSearchThreadPool = tp;
+      ThreadPool* pSearchThreadPool = tp;
 
       size_t iEnd = g_pvQuery.size();
 
@@ -173,14 +173,14 @@ bool CometSearch::RunSearch(int iPercentStart,
    else
    {
       sDBEntry dbe;
-      FILE *fp;
+      FILE* fp;
       int iTmpCh = 0;
       comet_fileoffset_t lEndPos = 0;
       comet_fileoffset_t lCurrPos = 0;
       bool bTrimDescr = false;
       string strPeffHeader;
-      char *szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
-      char *szPeffLine = 0;         // store description line starting with first \ to parse above
+      char* szMods = 0;             // will store ModResPsi (or ModResUnimod) and VariantSimple text for parsing for all entries; resize as needed
+      char* szPeffLine = 0;         // store description line starting with first \ to parse above
       comet_fileoffset_t iLenAllocMods = 0;
       int iLenSzLine = 0;
       comet_fileoffset_t iLen = 0;
@@ -188,8 +188,8 @@ bool CometSearch::RunSearch(int iPercentStart,
       vector<OBOStruct> vectorPeffOBO;
 
       //Reuse existing ThreadPool
-      ThreadPool *pSearchThreadPool = tp;
-      
+      ThreadPool* pSearchThreadPool = tp;
+
       g_staticParams.databaseInfo.uliTotAACount = 0;
       g_staticParams.databaseInfo.iTotalNumProteins = 0;
 
@@ -1045,29 +1045,38 @@ bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct
 
 void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPool* tp)
 {
-   // Grab available array from shared memory pool.
    int i;
 
-   Threading::LockMutex(g_searchMemoryPoolMutex);
+   // Grab available array from shared memory pool.
 
-   for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
+   Threading::LockMutex(g_searchMemoryPoolMutex);
+   auto tStartTime = std::chrono::high_resolution_clock::now();
+   const auto timeout_duration = std::chrono::seconds(240);
+
+   while (true)
    {
-      if (!_pbSearchMemoryPool[i])
+      for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
       {
-          _pbSearchMemoryPool[i] = true;
-          break;
+         if (_pbSearchMemoryPool[i] == false)
+         {
+            _pbSearchMemoryPool[i] = true;
+            break;
+         }
+      }
+
+      if (i < g_staticParams.options.iNumThreads
+         || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
+      {
+         break;
       }
    }
+   Threading::UnlockMutex(g_searchMemoryPoolMutex);
 
-   // Fail-safe to stop if memory isn't available for the next thread.
-   // Needs better capture and return?
    if (i == g_staticParams.options.iNumThreads)
    {
-      printf("Error with memory pool in SearchThreadProc.\n");
-      exit(1);
+      logerr(" Error - could not find available memory pool for MS2 search thread.\n");
+      return;
    }
-
-   Threading::UnlockMutex(g_searchMemoryPoolMutex);
 
    // Give memory manager access to the thread.
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];

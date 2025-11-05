@@ -673,26 +673,36 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
 
-   //MH: Grab available array from shared memory pool.
    int i;
 
+   //MH: Grab available array from shared memory pool.
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-   for (i=0; i<g_staticParams.options.iNumThreads; ++i)
+   auto tStartTime = std::chrono::high_resolution_clock::now();
+   const auto timeout_duration = std::chrono::seconds(240);
+
+   while (true)
    {
-      if (pbMemoryPool[i]==false)
+      for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
       {
-         pbMemoryPool[i]=true;
+         if (pbMemoryPool[i] == false)
+         {
+            pbMemoryPool[i] = true;
+            break;
+         }
+      }
+
+      if (i < g_staticParams.options.iNumThreads
+         || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
+      {
          break;
       }
    }
    Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
-   //MH: Fail-safe to stop if memory isn't available for the next thread.
-   //Needs better capture and return?
-   if (i==g_staticParams.options.iNumThreads)
+   if (i == g_staticParams.options.iNumThreads)
    {
-      printf("Error with memory pool in preprocessing.\n");
-      exit(1);
+      logerr(" Error - could not find available memory pool for MS2 preprocessing thread.\n");
+      return;
    }
 
    //MH: Give memory manager access to the thread.
@@ -722,22 +732,32 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    int i;
 
    Threading::LockMutex(g_preprocessMemoryPoolMutex);
-   for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
+   auto tStartTime = std::chrono::high_resolution_clock::now();
+   const auto timeout_duration = std::chrono::seconds(240);
+
+   while (true)
    {
-      if (pbMemoryPool[i] == false)
+      for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
       {
-         pbMemoryPool[i] = true;
+         if (pbMemoryPool[i] == false)
+         {
+            pbMemoryPool[i] = true;
+            break;
+         }
+      }
+
+      if (i < g_staticParams.options.iNumThreads
+         || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
+      {
          break;
       }
    }
    Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
-   //MH: Fail-safe to stop if memory isn't available for the next thread.
-   //Needs better capture and return?
    if (i == g_staticParams.options.iNumThreads)
    {
-      printf("Error with memory pool in preprocessing.\n");
-      exit(1);
+      logerr(" Error - could not find available memory pool for MS1 preprocessing thread.\n");
+      return;
    }
 
    //MH: Give memory manager access to the thread.

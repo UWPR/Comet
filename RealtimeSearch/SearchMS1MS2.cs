@@ -56,8 +56,8 @@
 
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
-            Console.Write(" input: {0}  \n", rawFileName);
-            Console.Write(" MS1 reference run: {0}  \n", sRawFileReference);
+            Console.Write(" query file: {0}  \n", rawFileName);
+            Console.Write(" MS1 reference file: {0}  \n", sRawFileReference);
             if (bDatabaseSearch)
                Console.Write(" Indexed database: {0}  \n", sDB);
             Console.Write("\n");
@@ -132,9 +132,9 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 500;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
-               bool bContinuousLoop = false; // set to true to continuously loop through the raw file
+               bool bContinuousLoop = true; // set to true to continuously loop through the raw file
                bool bPrintHistogram = false;
                bool bPrintMatchedFragmentIons = false;
                bool bPerformMS1Search = false;
@@ -152,8 +152,8 @@
                }
 /*
                iFirstScan = 37174;
-               iLastScan =  37174;
 */
+               iLastScan = 20000;
 
                watchGlobal.Start();
 
@@ -267,7 +267,7 @@
                               {
                                  for (int x = 0; x < 1; ++x)
                                  {
-                                    if (vPeptide[x].Length > 0)// && vScores[x].dAScoreScore >= 1.0)
+                                    if (vPeptide[x].Length > 0)
                                     {
                                        string protein = vProtein[x];
                                        if (protein.Length > iProteinLengthCutoff)
@@ -278,8 +278,18 @@
                                           vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
                                           watch.ElapsedMilliseconds);
 
-                                       double dTmp = vScores[x].dAScoreScore;
+/*
+                                       if (vScores[x].dAScoreScore >= 13.0 && vScores[x].xCorr > 2.0
+                                          && (vScores[x].sAScoreProSiteScores.Contains(":0.00") || vScores[x].sAScoreProSiteScores.Contains(":-")))
+                                       {
+                                          double dMZ = (dExpPepMass - 1.00727646688) / iPrecursorCharge;
 
+                                          Console.WriteLine(" MS2 {0}\t{0}\t{1}\t{2}\t{3:F4}\t{4:0.##E+00}\t{5:F4}\tAScore {6:F2}\tSites '{7}'\t{8} ms",
+                                            iScanNumber, vPeptide[x], dMZ, vScores[x].xCorr, vScores[x].dExpect, dExpPepMass,
+                                            vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
+                                            watch.ElapsedMilliseconds);
+                                       }
+*/
                                        if (bPrintMatchedFragmentIons)
                                        {
                                           foreach (var myFragment in vMatchingFragments[x]) // print matched fragment ions
@@ -308,9 +318,6 @@
                            }
 
                         }
-
-
-
                      }
                   }
 
@@ -318,7 +325,7 @@
                   {
                      iScanNumber = 0;
                      elapsedGlobal = watchGlobal.Elapsed;
-                     Console.WriteLine("pass {0}, {1} min", iPass, elapsedGlobal.TotalMinutes);
+                     Console.WriteLine("pass {0}, {1:F2} min", iPass, elapsedGlobal.TotalMinutes);
                      iPass++;
                   }
 
@@ -400,15 +407,15 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("num_threads", sTmp, iTmp);
 
-            dTmp = 1.0005; // fragment bin width
+            dTmp = 0.02; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.4;  // fragment bin offst
+            dTmp = 0.0;  // fragment bin offst
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 1; // 0=use flanking peaks, 1=M peak only
+            iTmp = 0; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -468,69 +475,158 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 
-/* unused for the search as these are applied during the plain peptide .idx index creation
-            VarModsWrapper varMods = new VarModsWrapper();
-            sTmp = "15.9949 M 0 2 -1 0 0";
-            varMods.set_VarModMass(15.9949);
-            varMods.set_VarModChar("M");
-            SearchMgr.SetParam("variable_mod01", sTmp, varMods);
-
-            sTmp = "79.9663 STY 0 2 -1 0 0";
-            varMods.set_VarModMass(79.9663);
-            varMods.set_VarModChar("STY");
-            SearchMgr.SetParam("variable_mod02", sTmp, varMods);
-
-            iTmp = 4;
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
-*/
-
             if (bDatabaseSearch)
             {
-               // Now actually open the .idx database to read mass range from it
-               int iLineCount = 0;
-               bool bFoundMassRange = false;
-               string strLine;
-               System.IO.StreamReader dbFile = new System.IO.StreamReader(@sDB);
+               // If the .idx file already exists, read the mass and length ranges from it.
+               // Otherwise set those here (before index is created automatically)
 
-               while ((strLine = dbFile.ReadLine()) != null)
+               if (System.IO.File.Exists(sDB))
                {
-                  string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                  if (strParsed[0].Equals("MassRange:"))
+                  using (System.IO.StreamReader dbFile = new System.IO.StreamReader(sDB))
                   {
-                     dPeptideMassLow = double.Parse(strParsed[1]);
-                     dPeptideMassHigh = double.Parse(strParsed[2]);
+                     // Now actually open the .idx database to read mass range from it
+                     int iLineCount = 0;
+                     bool bFoundMassRange = false;
+                     string strLine;
 
-                     var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
-                     string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
-                     SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
+                    while ((strLine = dbFile.ReadLine()) != null)
+                     {
+                        string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                        if (strParsed[0].Equals("MassRange:"))
+                        {
+                           dPeptideMassLow = double.Parse(strParsed[1]);
+                           dPeptideMassHigh = double.Parse(strParsed[2]);
 
-                     bFoundMassRange = true;
+                           var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
+                           string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                           SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
+
+                           bFoundMassRange = true;
+                        }
+
+                        if (strParsed[0].Equals("LengthRange:"))
+                        {
+                           int iLengthMin = int.Parse(strParsed[1]);
+                           int iLengthMax = int.Parse(strParsed[2]);
+
+                           var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
+                           string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                           SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
+
+                           bFoundMassRange = true;
+                        }
+
+                        iLineCount++;
+
+                        if (strParsed[0].Equals("VariableMod:"))
+                           break;
+                     }
+                     dbFile.Close();
+
+                     if (!bFoundMassRange)
+                     {
+                        Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
+                        System.Environment.Exit(1);
+                     }
+
                   }
-
-                  if (strParsed[0].Equals("LengthRange:"))
-                  {
-                     int iLengthMin = int.Parse(strParsed[1]);
-                     int iLengthMax = int.Parse(strParsed[2]);
-
-                     var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
-                     string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
-                     SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
-
-                     bFoundMassRange = true;
-                  }
-
-                  iLineCount++;
-
-                  if (iLineCount > 6)  // header information should only be in first few lines
-                     break;
                }
-               dbFile.Close();
-
-               if (!bFoundMassRange)
+               else
                {
-                  Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
-                  System.Environment.Exit(1);
+                  // .idx file does not exist so set appropriate parameters here for generating fragment ion indexing's plain peptide .idx
+
+                  // digest mass range
+                  dPeptideMassLow =   800.0;
+                  dPeptideMassHigh = 4000.0;
+                  var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
+                  string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                  SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
+
+                  // digest length range
+                  int iLengthMin =  8;
+                  int iLengthMax = 40;
+                  var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
+                  string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
+                  SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
+
+                  // parent/fragment mass types
+                  iTmp = 1;  // 0=average, 1=monoisotopic
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("mass_type_parent", sTmp, iTmp);
+
+                  iTmp = 1;  // 0=average, 1=monoisotopic
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("mass_type_fragment", sTmp, iTmp);
+
+                  // variable mods
+                  VarModsWrapper varMods = new VarModsWrapper();
+                  sTmp = "15.9949 M 0 2 -1 0 0 0.0";
+                  varMods.set_VarModMass(15.9949);
+                  varMods.set_VarModChar("M");
+                  varMods.set_BinaryMod(0);
+                  varMods.set_MaxNumVarModAAPerMod(2);
+                  varMods.set_RequireThisMod(0);
+                  varMods.set_VarModTermDistance(-1);
+                  varMods.set_WhichTerm(0);
+                  varMods.set_VarNeutralLoss(0.0);
+                  SearchMgr.SetParam("variable_mod01", sTmp, varMods);
+
+                  sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
+                  varMods.set_VarModMass(79.9663);
+                  varMods.set_VarModChar("STY");
+                  varMods.set_BinaryMod(0);
+                  varMods.set_MaxNumVarModAAPerMod(2);
+                  varMods.set_RequireThisMod(0);
+                  varMods.set_VarModTermDistance(-1);
+                  varMods.set_WhichTerm(0);
+                  varMods.set_VarNeutralLoss(97.976896);
+                  SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+
+                  iTmp = 4;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
+
+                  // static mods
+                  dTmp = 57.021464;
+                  sTmp = dTmp.ToString();
+                  SearchMgr.SetParam("add_C_cysteine", sTmp, dTmp);
+
+                  // enzyme settings
+                  var enzymeInfo = new EnzymeInfoWrapper();
+                  string enzymeInfoString = "0. Cut_everywhere  0 0 0 \n1. Trypsin 1 KR P";
+                  enzymeInfo.set_SearchEnzymeName("Trypsin");
+                  enzymeInfo.set_SearchEnzymeBreakAA("KR");
+                  enzymeInfo.set_SearchEnzymeNoBreakAA("P");
+                  enzymeInfo.set_SearchEnzymeOffSet(1); // 0=cleave before; 1=cleave after
+                  enzymeInfo.set_SearchEnzyme2Name("Cut_everywhere");
+                  enzymeInfo.set_SearchEnzyme2BreakAA("-");
+                  enzymeInfo.set_SearchEnzyme2NoBreakAA("-");
+                  enzymeInfo.set_SearchEnzyme2OffSet(0); // 0=cleave before; 1=cleave after
+                  SearchMgr.SetParam("[COMET_ENZYME_INFO]", enzymeInfoString, enzymeInfo);
+
+                  iTmp = 3;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("allowed_missed_cleavage", sTmp, iTmp);
+
+                  // FI setting
+                  iTmp = 3;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("fragindex_min_ions_score", sTmp, iTmp);
+                  iTmp = 3;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("fragindex_min_ions_report", sTmp, iTmp);
+                  iTmp = 100;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("fragindex_num_spectrumpeaks", sTmp, iTmp);
+                  dTmp = 200.0;
+                  sTmp = dTmp.ToString();
+                  SearchMgr.SetParam("fragindex_min_fragmentmass", sTmp, dTmp);
+                  dTmp = 2000.0;
+                  sTmp = dTmp.ToString();
+                  SearchMgr.SetParam("fragindex_max_fragmentmass", sTmp, dTmp);
+                  iTmp = 1;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("fragindex_skipreadprecursors", sTmp, iTmp);
                }
             }
 

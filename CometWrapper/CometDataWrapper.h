@@ -170,6 +170,9 @@ namespace CometWrapper {
         int get_SearchEnzymeOffSet() {return _pEnzymeInfo->iSearchEnzymeOffSet;}
         void set_SearchEnzymeOffSet(int iSearchEnzymeOffSet) {_pEnzymeInfo->iSearchEnzymeOffSet = iSearchEnzymeOffSet;}
 
+        int get_SearchEnzyme2OffSet() { return _pEnzymeInfo->iSearchEnzyme2OffSet; }
+        void set_SearchEnzyme2OffSet(int iSearchEnzyme2OffSet) { _pEnzymeInfo->iSearchEnzyme2OffSet = iSearchEnzyme2OffSet; }
+
         int get_SampleEnzymeOffSet() {return _pEnzymeInfo->iSampleEnzymeOffSet;}
         void set_SampleEnzymeOffSet(int iSampleEnzymeOffSet) {_pEnzymeInfo->iSampleEnzymeOffSet = iSampleEnzymeOffSet;}
 
@@ -192,6 +195,27 @@ namespace CometWrapper {
         {
             std::string stdSearchEnzymeNoBreakAA = marshal_as<std::string>(searchEnzymeNoBreakAA);    
             strcpy(_pEnzymeInfo->szSearchEnzymeNoBreakAA, stdSearchEnzymeNoBreakAA.c_str());
+        }
+
+        System::String^% get_SearchEnzyme2Name() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2Name)))); }
+        void set_SearchEnzyme2Name(System::String^ searchEnzyme2Name)
+        {
+           std::string stdSearchEnzyme2Name = marshal_as<std::string>(searchEnzyme2Name);
+           strcpy(_pEnzymeInfo->szSearchEnzyme2Name, stdSearchEnzyme2Name.c_str());
+        }
+
+        System::String^% get_SearchEnzyme2BreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2BreakAA)))); }
+        void set_SearchEnzyme2BreakAA(System::String^ searchEnzyme2BreakAA)
+        {
+           std::string stdSearchEnzyme2BreakAA = marshal_as<std::string>(searchEnzyme2BreakAA);
+           strcpy(_pEnzymeInfo->szSearchEnzyme2BreakAA, stdSearchEnzyme2BreakAA.c_str());
+        }
+
+        System::String^% get_SearchEnzyme2NoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2NoBreakAA)))); }
+        void set_SearchEnzyme2NoBreakAA(System::String^ searchEnzyme2NoBreakAA)
+        {
+           std::string stdSearchEnzyme2NoBreakAA = marshal_as<std::string>(searchEnzyme2NoBreakAA);
+           strcpy(_pEnzymeInfo->szSearchEnzyme2NoBreakAA, stdSearchEnzyme2NoBreakAA.c_str());
         }
 
         System::String^% get_SampleEnzymeName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeName))));}

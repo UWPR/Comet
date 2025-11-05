@@ -135,12 +135,9 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 
    MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
-   auto tStartTime = chrono::steady_clock::now();
-   cout <<  "   - get modification combinations ... "; fflush(stdout);
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(MOD_SEQS, vMaxNumVarModsPerMod, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
-   cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 }
 
 
@@ -570,6 +567,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    string strIndexFile;
 
+   auto tPlainPeptideIndexStartTime = chrono::steady_clock::now();
+
    if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
       strIndexFile = g_staticParams.databaseInfo.szDatabase;  // .idx specified but not present to create it
@@ -815,7 +814,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done. " + strIndexFile + " (" + std::to_string(tNumPeptides) + " plain peptides)\n\n";
+   strOut = " - done. " + strIndexFile + " ... " + CometMassSpecUtils::ElapsedTime(tPlainPeptideIndexStartTime) + "\n\n";
    logout(strOut);
    fflush(stdout);
 

@@ -533,9 +533,10 @@ static bool ValidatePeptideLengthRange()
 ******************************************************************************/
 
 CometSearchManager::CometSearchManager() :
-    singleSearchInitializationComplete(false),
-    singleSearchMS1InitializationComplete(false),
-    singleSearchThreadCount(1)
+   singleSearchInitializationComplete(false),
+   singleSearchMS1InitializationComplete(false),
+   staticParamsInitializationComplete(false),
+   singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
    Threading::CreateMutex(&g_pvQueryMutex);
@@ -585,6 +586,9 @@ bool CometSearchManager::InitializeStaticParams()
    string strData;
    IntRange intRangeData;
    DoubleRange doubleRangeData;
+
+   if (staticParamsInitializationComplete)
+      return true;
 
    if (GetParamValue("database_name", strData))
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
@@ -1342,14 +1346,14 @@ bool CometSearchManager::InitializeStaticParams()
       iNumCPUCores = sysinfo.dwNumberOfProcessors;
 
       // if user specifies a negative # threads, subtract this from # cores
-      if (g_staticParams.options.iNumThreads < 0)
+      if (g_staticParams.options.iNumThreads < 0 && iNumCPUCores + g_staticParams.options.iNumThreads > 0)
          g_staticParams.options.iNumThreads = iNumCPUCores + g_staticParams.options.iNumThreads;
       else
          g_staticParams.options.iNumThreads = iNumCPUCores;
 #else
       iNumCPUCores = sysconf( _SC_NPROCESSORS_ONLN );
 
-      if (g_staticParams.options.iNumThreads < 0)
+      if (g_staticParams.options.iNumThreads < 0 && iNumCPUCores + g_staticParams.options.iNumThreads > 0)
          g_staticParams.options.iNumThreads = iNumCPUCores + g_staticParams.options.iNumThreads;
       else
          g_staticParams.options.iNumThreads = iNumCPUCores;
@@ -1363,11 +1367,6 @@ bool CometSearchManager::InitializeStaticParams()
             g_staticParams.options.iNumThreads = detectedThreads;
       }
 #endif
-      if (g_staticParams.options.iNumThreads < 0)
-      {
-         g_staticParams.options.iNumThreads = 4;
-         logout(" Setting number of threads to 4");
-      }
 
       if (g_staticParams.options.iNumThreads > MAX_THREADS)
       {
@@ -1766,6 +1765,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
    g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion) * g_staticParams.dInverseBinWidth);
+
+   staticParamsInitializationComplete = true;
 
    return true;
 }
@@ -3218,10 +3219,27 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       return bSucceeded;
 
    ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);  JKE FIX
+   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    // Load databases
    CometFragmentIndex sqSearch;
+
+   if (g_staticParams.options.bCreatePeptideIndex)
+   {
+      // WritePeptideIndex calls RunSearch just to query fasta and generate uniq peptide list
+      bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
+      if (!bSucceeded)
+         return bSucceeded;
+   }
+   if (g_staticParams.options.bCreateFragmentIndex)
+   {
+      bSucceeded = CreateFragmentIndex();
+
+      if (!bSucceeded)
+         return bSucceeded;
+   }
+
+
    if (g_staticParams.iIndexDb == 1 && !g_bPlainPeptideIndexRead)
    {
       sqSearch.ReadPlainPeptideIndex();
@@ -3298,7 +3316,7 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
    pMS1Aligner.reset();
 
    ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads); // g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
+   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
 
    singleSearchMS1InitializationComplete = true;
 

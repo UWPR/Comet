@@ -113,6 +113,7 @@ private:
    bool ReadProteinVarModFilterFile();
    bool singleSearchInitializationComplete;
    bool singleSearchMS1InitializationComplete;
+   bool staticParamsInitializationComplete;
    int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;
 };

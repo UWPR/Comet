@@ -617,9 +617,6 @@ void LoadParameters(char* pszParamsFile,
    char szSearchEnzymeName[ENZYME_NAME_LEN];
    char szSearchEnzyme2Name[ENZYME_NAME_LEN];
    char szSampleEnzymeName[ENZYME_NAME_LEN];
-   szSearchEnzymeName[0] = '\0';
-   szSearchEnzyme2Name[0] = '\0';
-   szSampleEnzymeName[0] = '\0';
    EnzymeInfo enzymeInformation;
 
    strcpy(szSearchEnzymeName, "-");
