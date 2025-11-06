@@ -5,7 +5,7 @@ include RefSeq or UniProt.
 - Database can contain amino acid sequences or nucleic acid sequences.  If sequences are amino acid
 sequences, set the parameter "[nucleotide_reading_frame = 0](nucleotide_reading_frame.html)".  If the sequences are nucleic acid
 sequences, you must instruct Comet to translate these to amino acid sequences.  Do this by setting
-"[nucleotide_reading_frame](nucleotid_reading_frame.html)" to a value between 1 and 9.
+"[nucleotide_reading_frame](nucleotide_reading_frame.html)" to a value between 1 and 9.
 - Databases can also be Comet indexed peptide database format (with .idx extension), currently
 intended for real-time, on-the-fly searches only.
 - There is no default value if this parameter is missing.
