@@ -135,7 +135,12 @@ namespace CometWrapper {
         int get_VarNeutralLoss() {return (int)_pVarMods->dNeutralLoss;}
         void set_VarNeutralLoss(double dNeutralLoss) {_pVarMods->dNeutralLoss = dNeutralLoss;}
 
-        System::String^% get_VarModChar() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pVarMods->szVarModChar))));}
+        // Changed return type from System::String^% to System::String^ to avoid returning a tracking reference
+        // to a temporary. Also removed unnecessary gcnew (PtrToStringAnsi already returns a managed String^).
+        System::String^ get_VarModChar()
+        {
+            return Marshal::PtrToStringAnsi(IntPtr(_pVarMods->szVarModChar));
+        }
         void set_VarModChar(System::String^ varModChar) 
         {
             std::string stdVarModChar = marshal_as<std::string>(varModChar);    
@@ -152,141 +157,175 @@ namespace CometWrapper {
     {
     public:
         EnzymeInfoWrapper() { _pEnzymeInfo = new EnzymeInfo(); }
-        EnzymeInfoWrapper(EnzymeInfo &enzymeInfo) { _pEnzymeInfo = new EnzymeInfo(enzymeInfo);}
-        virtual ~EnzymeInfoWrapper() 
-        { 
-            if (NULL != _pEnzymeInfo)
+        EnzymeInfoWrapper(EnzymeInfo &enzymeInfo) { _pEnzymeInfo = new EnzymeInfo(enzymeInfo); }
+        virtual ~EnzymeInfoWrapper()
+        {
+            if (_pEnzymeInfo)
             {
                 delete _pEnzymeInfo;
-                _pEnzymeInfo = NULL;
+                _pEnzymeInfo = nullptr;
             }
         }
-        
-        EnzymeInfo* get_EnzymeInfoPtr() {return _pEnzymeInfo;}
 
-        int get_AllowedMissedCleavge() {return _pEnzymeInfo->iAllowedMissedCleavage;}
-        void set_AllowedMissedCleavge(int iAllowedMissedCleavage) {_pEnzymeInfo->iAllowedMissedCleavage = iAllowedMissedCleavage;}
+        EnzymeInfo* get_EnzymeInfoPtr() { return _pEnzymeInfo; }
 
-        int get_SearchEnzymeOffSet() {return _pEnzymeInfo->iSearchEnzymeOffSet;}
-        void set_SearchEnzymeOffSet(int iSearchEnzymeOffSet) {_pEnzymeInfo->iSearchEnzymeOffSet = iSearchEnzymeOffSet;}
+        int get_AllowedMissedCleavge() { return _pEnzymeInfo->iAllowedMissedCleavage; }
+        void set_AllowedMissedCleavge(int v) { _pEnzymeInfo->iAllowedMissedCleavage = v; }
+
+        int get_SearchEnzymeOffSet() { return _pEnzymeInfo->iSearchEnzymeOffSet; }
+        void set_SearchEnzymeOffSet(int v) { _pEnzymeInfo->iSearchEnzymeOffSet = v; }
 
         int get_SearchEnzyme2OffSet() { return _pEnzymeInfo->iSearchEnzyme2OffSet; }
-        void set_SearchEnzyme2OffSet(int iSearchEnzyme2OffSet) { _pEnzymeInfo->iSearchEnzyme2OffSet = iSearchEnzyme2OffSet; }
+        void set_SearchEnzyme2OffSet(int v) { _pEnzymeInfo->iSearchEnzyme2OffSet = v; }
 
-        int get_SampleEnzymeOffSet() {return _pEnzymeInfo->iSampleEnzymeOffSet;}
-        void set_SampleEnzymeOffSet(int iSampleEnzymeOffSet) {_pEnzymeInfo->iSampleEnzymeOffSet = iSampleEnzymeOffSet;}
+        int get_SampleEnzymeOffSet() { return _pEnzymeInfo->iSampleEnzymeOffSet; }
+        void set_SampleEnzymeOffSet(int v) { _pEnzymeInfo->iSampleEnzymeOffSet = v; }
 
-        System::String^% get_SearchEnzymeName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeName))));}
-        void set_SearchEnzymeName(System::String^ searchEnzymeName) 
+        // Changed all System::String^% returns to System::String^ to avoid C4172 (tracking reference to temporary).
+        System::String^ get_SearchEnzymeName()
         {
-            std::string stdSearchEnzymeName = marshal_as<std::string>(searchEnzymeName);    
-            strcpy(_pEnzymeInfo->szSearchEnzymeName, stdSearchEnzymeName.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzymeName));
+        }
+        void set_SearchEnzymeName(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzymeName, tmp.c_str());
         }
 
-        System::String^% get_SearchEnzymeBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeBreakAA))));}
-        void set_SearchEnzymeBreakAA(System::String^ searchEnzymeBreakAA) 
+        System::String^ get_SearchEnzymeBreakAA()
         {
-            std::string stdSearchEnzymeBreakAA = marshal_as<std::string>(searchEnzymeBreakAA);    
-            strcpy(_pEnzymeInfo->szSearchEnzymeBreakAA, stdSearchEnzymeBreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzymeBreakAA));
+        }
+        void set_SearchEnzymeBreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzymeBreakAA, tmp.c_str());
         }
 
-        System::String^% get_SearchEnzymeNoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSearchEnzymeNoBreakAA))));}
-        void set_SearchEnzymeNoBreakAA(System::String^ searchEnzymeNoBreakAA) 
+        System::String^ get_SearchEnzymeNoBreakAA()
         {
-            std::string stdSearchEnzymeNoBreakAA = marshal_as<std::string>(searchEnzymeNoBreakAA);    
-            strcpy(_pEnzymeInfo->szSearchEnzymeNoBreakAA, stdSearchEnzymeNoBreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzymeNoBreakAA));
+        }
+        void set_SearchEnzymeNoBreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzymeNoBreakAA, tmp.c_str());
         }
 
-        System::String^% get_SearchEnzyme2Name() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2Name)))); }
-        void set_SearchEnzyme2Name(System::String^ searchEnzyme2Name)
+        System::String^ get_SearchEnzyme2Name()
         {
-           std::string stdSearchEnzyme2Name = marshal_as<std::string>(searchEnzyme2Name);
-           strcpy(_pEnzymeInfo->szSearchEnzyme2Name, stdSearchEnzyme2Name.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzyme2Name));
+        }
+        void set_SearchEnzyme2Name(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzyme2Name, tmp.c_str());
         }
 
-        System::String^% get_SearchEnzyme2BreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2BreakAA)))); }
-        void set_SearchEnzyme2BreakAA(System::String^ searchEnzyme2BreakAA)
+        System::String^ get_SearchEnzyme2BreakAA()
         {
-           std::string stdSearchEnzyme2BreakAA = marshal_as<std::string>(searchEnzyme2BreakAA);
-           strcpy(_pEnzymeInfo->szSearchEnzyme2BreakAA, stdSearchEnzyme2BreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzyme2BreakAA));
+        }
+        void set_SearchEnzyme2BreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzyme2BreakAA, tmp.c_str());
         }
 
-        System::String^% get_SearchEnzyme2NoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char*>(_pEnzymeInfo->szSearchEnzyme2NoBreakAA)))); }
-        void set_SearchEnzyme2NoBreakAA(System::String^ searchEnzyme2NoBreakAA)
+        System::String^ get_SearchEnzyme2NoBreakAA()
         {
-           std::string stdSearchEnzyme2NoBreakAA = marshal_as<std::string>(searchEnzyme2NoBreakAA);
-           strcpy(_pEnzymeInfo->szSearchEnzyme2NoBreakAA, stdSearchEnzyme2NoBreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSearchEnzyme2NoBreakAA));
+        }
+        void set_SearchEnzyme2NoBreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSearchEnzyme2NoBreakAA, tmp.c_str());
         }
 
-        System::String^% get_SampleEnzymeName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeName))));}
-        void set_SampleEnzymeName(System::String^ sampleEnzymeName) 
+        System::String^ get_SampleEnzymeName()
         {
-            std::string stdSampleEnzymeName = marshal_as<std::string>(sampleEnzymeName);    
-            strcpy(_pEnzymeInfo->szSampleEnzymeName, stdSampleEnzymeName.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSampleEnzymeName));
+        }
+        void set_SampleEnzymeName(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSampleEnzymeName, tmp.c_str());
         }
 
-        System::String^% get_SampleEnzymeBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeBreakAA))));}
-        void set_SampleEnzymeBreakAA(System::String^ sampleEnzymeBreakAA) 
+        System::String^ get_SampleEnzymeBreakAA()
         {
-            std::string stdSampleEnzymeBreakAA = marshal_as<std::string>(sampleEnzymeBreakAA);    
-            strcpy(_pEnzymeInfo->szSampleEnzymeBreakAA, stdSampleEnzymeBreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSampleEnzymeBreakAA));
+        }
+        void set_SampleEnzymeBreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSampleEnzymeBreakAA, tmp.c_str());
         }
 
-        System::String^% get_SampleEnzymeNoBreakAA() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pEnzymeInfo->szSampleEnzymeNoBreakAA))));}
-        void set_SampleEnzymeNoBreakAA(System::String^ sampleEnzymeNoBreakAA) 
+        System::String^ get_SampleEnzymeNoBreakAA()
         {
-            std::string stdSampleEnzymeNoBreakAA = marshal_as<std::string>(sampleEnzymeNoBreakAA);    
-            strcpy(_pEnzymeInfo->szSampleEnzymeNoBreakAA, stdSampleEnzymeNoBreakAA.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pEnzymeInfo->szSampleEnzymeNoBreakAA));
+        }
+        void set_SampleEnzymeNoBreakAA(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pEnzymeInfo->szSampleEnzymeNoBreakAA, tmp.c_str());
         }
 
     private:
-        EnzymeInfo *_pEnzymeInfo;
+        EnzymeInfo* _pEnzymeInfo;
     };
 
     public ref class InputFileInfoWrapper
     {
     public:
         InputFileInfoWrapper() { _pInputFileInfo = new InputFileInfo(); }
-        InputFileInfoWrapper(InputFileInfo &inputFileInfo) { _pInputFileInfo = new InputFileInfo(inputFileInfo);}
-        virtual ~InputFileInfoWrapper() 
-        { 
-            if (NULL != _pInputFileInfo)
+        InputFileInfoWrapper(InputFileInfo &inputFileInfo) { _pInputFileInfo = new InputFileInfo(inputFileInfo); }
+        virtual ~InputFileInfoWrapper()
+        {
+            if (_pInputFileInfo)
             {
                 delete _pInputFileInfo;
-                _pInputFileInfo = NULL;
+                _pInputFileInfo = nullptr;
             }
         }
-        
-        InputFileInfo* get_InputFileInfoPtr() {return _pInputFileInfo;}
 
-        InputType get_InputType() {return static_cast<InputType>(_pInputFileInfo->iInputType);}
-        void set_InputType(InputType inputType) {_pInputFileInfo->iInputType = static_cast<int>(inputType);}
+        InputFileInfo* get_InputFileInfoPtr() { return _pInputFileInfo; }
 
-        AnalysisType get_AnalysisType() {return static_cast<AnalysisType>(_pInputFileInfo->iAnalysisType);}
-        void set_AnalysisType(AnalysisType analysisType) {_pInputFileInfo->iAnalysisType = static_cast<int>(analysisType);}
+        InputType get_InputType() { return static_cast<InputType>(_pInputFileInfo->iInputType); }
+        void set_InputType(InputType v) { _pInputFileInfo->iInputType = static_cast<int>(v); }
 
-        int get_FirstScan() {return _pInputFileInfo->iFirstScan;}
-        void set_FirstScan(int iFirstScan) {_pInputFileInfo->iFirstScan = iFirstScan;}
+        AnalysisType get_AnalysisType() { return static_cast<AnalysisType>(_pInputFileInfo->iAnalysisType); }
+        void set_AnalysisType(AnalysisType v) { _pInputFileInfo->iAnalysisType = static_cast<int>(v); }
 
-        int get_LastScan() {return _pInputFileInfo->iLastScan;}
-        void set_LastScan(int iLastScan) {_pInputFileInfo->iLastScan = iLastScan;}
+        int get_FirstScan() { return _pInputFileInfo->iFirstScan; }
+        void set_FirstScan(int v) { _pInputFileInfo->iFirstScan = v; }
 
-        System::String^% get_FileName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pInputFileInfo->szFileName))));}
-        void set_FileName(System::String^ fileName) 
+        int get_LastScan() { return _pInputFileInfo->iLastScan; }
+        void set_LastScan(int v) { _pInputFileInfo->iLastScan = v; }
+
+        System::String^ get_FileName()
         {
-            std::string stdFileName = marshal_as<std::string>(fileName);    
-            strcpy(_pInputFileInfo->szFileName, stdFileName.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pInputFileInfo->szFileName));
+        }
+        void set_FileName(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pInputFileInfo->szFileName, tmp.c_str());
         }
 
-        System::String^% get_BaseName() { return gcnew String(Marshal::PtrToStringAnsi(static_cast<IntPtr>(const_cast<char *>(_pInputFileInfo->szBaseName))));}
-        void set_BaseName(System::String^ baseName) 
+        System::String^ get_BaseName()
         {
-            std::string stdBaseName = marshal_as<std::string>(baseName);
-            strcpy(_pInputFileInfo->szBaseName, stdBaseName.c_str());
+            return Marshal::PtrToStringAnsi(IntPtr(_pInputFileInfo->szBaseName));
+        }
+        void set_BaseName(System::String^ value)
+        {
+            std::string tmp = marshal_as<std::string>(value);
+            strcpy(_pInputFileInfo->szBaseName, tmp.c_str());
         }
 
     private:
-        InputFileInfo *_pInputFileInfo;
+        InputFileInfo* _pInputFileInfo;
     };
 
     public ref class ScoreWrapper

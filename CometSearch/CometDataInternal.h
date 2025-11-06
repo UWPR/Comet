@@ -1100,10 +1100,9 @@ struct Query
    // Store raw peaks for AScorePro
 
    // List of ms/ms masses for fragment index search; intensity not important at this stage
-   vector<double> vdRawFragmentPeakMass;
-   // Consider replacing vdRawFragmentPeakMass with a vector<pair<double, double>> to store
+   vector<float> vfRawFragmentPeakMass;
+   // Consider replacing vfRawFragmentPeakMass with a vector<pair<double, double>> to store
    // both mass and intensity if AScorePro is used
-//  vector<pair<double, double>> vRawFragmentPeakMassIntensity;
    vector<AScoreProCpp::Centroid> vRawFragmentPeakMassIntensity;
 
 
@@ -1146,7 +1145,7 @@ struct Query
       ppfSparseFastXcorrData = NULL;
       ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
 
-      vdRawFragmentPeakMass.clear();
+      vfRawFragmentPeakMass.clear();
       vRawFragmentPeakMassIntensity.clear();
 
       _pepMassInfo.dCalcPepMass = 0.0;

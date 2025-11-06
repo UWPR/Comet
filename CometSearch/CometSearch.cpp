@@ -1293,8 +1293,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
-   for (auto it2 = g_pvQuery.at(iWhichQuery)->vdRawFragmentPeakMass.begin();
-      it2 != g_pvQuery.at(iWhichQuery)->vdRawFragmentPeakMass.end(); ++it2)
+   for (auto it2 = g_pvQuery.at(iWhichQuery)->vfRawFragmentPeakMass.begin();
+      it2 != g_pvQuery.at(iWhichQuery)->vfRawFragmentPeakMass.end(); ++it2)
    {
       // We can consider higher charged fragments by simply assuming each fragment mass is
       // higher charged and convert to singly charged to look into the 1+ paXionfileOffsets[].

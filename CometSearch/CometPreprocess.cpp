@@ -1664,7 +1664,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    pPre->dHighestIntensity = 0.0;
 
    // read peaks in reverse order as they're possibly sorted in ascending order by
-   // intensity and vdRawFragmentPeakMass needs most intense peaks
+   // intensity and vfRawFragmentPeakMass needs most intense peaks
    for (i = mstSpectrum.size() - 1; i >= 0; --i)
    {
       dIon = mstSpectrum.at(i).mz;
@@ -1678,7 +1678,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here
-            pScoring->vdRawFragmentPeakMass.push_back(dIon);
+            pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
 
             iNumFragmentPeaks++;
          }
@@ -2125,7 +2125,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
          }
 
          if (g_staticParams.iIndexDb)
-            pScoring->vdRawFragmentPeakMass.push_back(dIon);
+            pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
          {
