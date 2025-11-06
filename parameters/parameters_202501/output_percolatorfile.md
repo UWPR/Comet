@@ -19,7 +19,7 @@ tab-delimited input format.
   - Sp:  preliminary score
   - IonFrac:  decimal value representing matched fragment ions count divided by total fragment ions count
   - Mass:  repeat of ExpMass (this column may not even be relevant and could be deprecated in the future) 
-  - PepLen:  length of petpide
+  - PepLen:  length of peptide
   - Charge[n]:  boolean, is this a charged n spectrum
   - enzN: boolean, is the peptide's n-terminus consistent with the sample enzyme
   - enzC: boolean, is the peptide's c-terminus consistent with the sample enzyme
