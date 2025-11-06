@@ -4,8 +4,8 @@ There are 8 fields/settings that are associated with these parameters:
   - The first entry is a decimal value specifying the modification mass difference.
   - The second entry is the residue(s) that the modifications are possibly applied to.
     If more than a single residue is modified by the same mass difference, list them
-    all as a string.  Use 'n' for N-terminal modfication and 'c' for C-terminal modification.
-  - The third entry is a integer to specify whether the modification is a
+    all as a string.  Use 'n' for N-terminal modification and 'c' for C-terminal modification.
+  - The third entry is an integer to specify whether the modification is a
     variable modification (0) or a binary modification (non-zero value).
     Note that if you set the same binary modification value in multiple "variable_mod?" parameter
     entries, Comet will treat those variable modifications as a "binary set".  This means
@@ -23,7 +23,7 @@ There are 8 fields/settings that are associated with these parameters:
     would specify that peptides must have between 2 and 4 of this variable modification.
   - The fifth entry specifies the distance the modification is applied to from the respective terminus:
     - -2 = apply anywhere except c-terminal residue of peptide
-    - -1 = no distance contraint
+    - -1 = no distance constraint
     - 0 = only applies to terminal residue
     - 1 = only applies to terminal residue and next residue
     - 2 = only applies to terminal residue through next 2 residues
@@ -37,7 +37,7 @@ There are 8 fields/settings that are associated with these parameters:
     only peptides that contain this modification will be analyzed.
     - 0 = not forced to be present
     - 1 = modification is required 
-  - The eigth entry is an optional fragment neutral loss field. For any fragment ion that
+  - The eighth entry is an optional fragment neutral loss field. For any fragment ion that
     contain the variable modification, a neutral loss will also be analyzed if the specified
     neutral loss value is not zero (0.0).
   - The default value is "0.0 X 0 3 -1 0 0 0.0" if this parameter is missing *except* if Comet is

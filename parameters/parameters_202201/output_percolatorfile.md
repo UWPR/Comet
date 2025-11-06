@@ -13,7 +13,7 @@ tab-delimited input format.
   - CalcMass: calculated peptide neutral mass
   - lnrSp: natural log of the preliminary score rank (aka Sp rank)
   - deltLCn:  last dCn in the output list 
-  - deltCn:  deltaCn which is the normalized xcor difference between the top hit and next best hit
+  - deltCn:  deltaCn which is the normalized xcorr difference between the top hit and next best hit
   - lnExpect:  natural log of the expectation value or E-value
   - Xcorr:  cross-correlation score
   - Sp:  preliminary score

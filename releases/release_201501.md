@@ -87,7 +87,7 @@ the output.
 queue status for loading sequences to search. Before this change, some search
 conditions would cause the CPU usage to be very low due to the contant while
 loop check. Implemented by T. Jahan.
-- Ability to now search Thermo .raw files directly in Windows. This requires
+- Ability to now search Thermo .raw files directly on Windows. This requires
 Thermo's freely available MSFileReader library to be installed. Implemented by
 T. Jahan. Unfortunately you will need to copy the XRawfile2.dll or
 XRawfile2_x64.dll to c:\Windows\MSFileReader.XRawfile2.dll for this to work.

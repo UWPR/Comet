@@ -161,7 +161,7 @@ resulting from a clipped methionine. Thanks to Thermo's BioPharma Finder group
 for reporting the bug.
 - Bug fix: In the text file output, the position of static C-terminal
 modifications in the "modifications" column was always incorrectly reported as
-"1" in the encoded modfication string; this has been corrected. Thanks to
+"1" in the encoded modification string; this has been corrected. Thanks to
 Thermo's BioPharma Finder group for reporting the bug.
 - Bug fix: When running multiple searches via interfacing with CometWrapper.dll
 under Windows, the output file of subsequent searches was not updating. Thus

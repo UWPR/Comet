@@ -46,7 +46,7 @@ annotation now shows the modified residue mass (e.g. DLSTM[147]HK).
 #### release 2016.01 rev. 0 (2016.01.0), release date 2016/03/15
 - Known bug: when using a decoy search and variable n- or c-terminal
 modifications, Comet could segfault/crash due to accessing an array out of
-bounds. This is due to the modfications not being properly translated to the
+bounds. This is due to the modifications not being properly translated to the
 decoy peptide which could result in calculated fragment ion masses that are too
 large. A fix is implemented and will be part of the next release. Until the
 next release is available, email me if you would like a patched binary.

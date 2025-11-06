@@ -18,7 +18,7 @@ parameter will be deprecated in the next release.
 are ~2x slower than 2014.01.0 due to an unnecessary array initialization that
 was added in this maintenance release.
 - Known issue: Using -N<name> command line option adds full path to "spectrum"
-attribute in Windows.
+attribute on Windows.
 - Known issue: Using -N<name> command line option, the pep.xml "base_name"
 attribute has full path to the output file instead of to the input file.
 - Re-use temporary arrays during spectral preprocessing for better memory
