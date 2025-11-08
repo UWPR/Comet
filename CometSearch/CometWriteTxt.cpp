@@ -341,7 +341,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          }
          else
          {
-            fprintf(fpout, "%c.%s.%c", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
+            fprintf(fpout, "%c.%s.%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
          }
 
          // mod string with PEFF
