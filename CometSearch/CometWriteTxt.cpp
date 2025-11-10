@@ -54,25 +54,28 @@ void CometWriteTxt::WriteTxt(FILE *fpout,
 void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 {
 #ifdef CRUX
-   fprintf(fpout, "scan\t");
-   fprintf(fpout, "charge\t");
-   fprintf(fpout, "spectrum precursor m/z\t");
-   fprintf(fpout, "spectrum neutral mass\t");
-   fprintf(fpout, "peptide mass\t");
-   fprintf(fpout, "delta_cn\t");
-   fprintf(fpout, "sp score\t");
-   fprintf(fpout, "sp rank\t");
-   fprintf(fpout, "xcorr score\t");
-   fprintf(fpout, "xcorr rank\t");
-   fprintf(fpout, "b/y ions matched\t");
-   fprintf(fpout, "b/y ions total\t");
-   fprintf(fpout, "total matches/spectrum\t");
-   fprintf(fpout, "sequence\t");
-   fprintf(fpout, "modified sequence\t");
-   fprintf(fpout, "modifications\t");
-   fprintf(fpout, "protein id\t");
-   fprintf(fpout, "flanking aa\t");
-   fprintf(fpout, "e-value\n");
+   fprintf(fpout, "scan");
+   fprintf(fpout, "\tcharge");
+   fprintf(fpout, "\tspectrum precursor m/z");
+   fprintf(fpout, "\tspectrum neutral mass");
+   fprintf(fpout, "\tpeptide mass");
+   fprintf(fpout, "\tdelta_cn");
+   fprintf(fpout, "\tsp score");
+   fprintf(fpout, "\tsp rank");
+   fprintf(fpout, "\txcorr score");
+   fprintf(fpout, "\txcorr rank");
+   fprintf(fpout, "\tb/y ions matched");
+   fprintf(fpout, "\tb/y ions total");
+   fprintf(fpout, "\ttotal matches/spectrum");
+   fprintf(fpout, "\tsequence");
+   fprintf(fpout, "\tmodified sequence");
+   fprintf(fpout, "\tmodifications");
+   fprintf(fpout, "\tprotein id");
+   fprintf(fpout, "\tflanking aa");
+   fprintf(fpout, "\te-value");
+   if (g_staticParams.options.iPrintAScoreProScore)
+      fprintf(fpout, "\tascorepro");
+   fprintf(fpout, "\n");
 #else
    fprintf(fpout, "CometVersion %s\t", g_sCometVersion.c_str());
    fprintf(fpout, "%s\t", g_staticParams.inputFile.szBaseName);
@@ -88,8 +91,6 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "\txcorr");
    fprintf(fpout, "\tdelta_cn");
    fprintf(fpout, "\tsp_score");
-   if (g_staticParams.options.iPrintAScoreProScore)
-      fprintf(fpout, "\tascorepro");
    fprintf(fpout, "\tions_matched");
    fprintf(fpout, "\tions_total");
    fprintf(fpout, "\tplain_peptide");
@@ -103,6 +104,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "\tmodifications");
    fprintf(fpout, "\tretention_time_sec");
    fprintf(fpout, "\tsp_rank");
+   if (g_staticParams.options.iPrintAScoreProScore)
+      fprintf(fpout, "\tascorepro\tascore_sitescores");
 // fprintf(fpout, "\tnum_matched_peptides");
    fprintf(fpout, "\n");
 #endif
@@ -120,7 +123,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    {
       Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-      int charge = pQuery->_spectrumInfoInternal.iChargeState;
+      int charge = pQuery->_spectrumInfoInternal.usiChargeState;
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
       double spectrum_mz = (spectrum_neutral_mass + charge*PROTON_MASS) / (double)charge;
 
@@ -150,17 +153,17 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
             continue;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
-         fprintf(fpout, "%d\t",  pQuery->_spectrumInfoInternal.iChargeState);
+         fprintf(fpout, "%d\t",  pQuery->_spectrumInfoInternal.usiChargeState);
          fprintf(fpout, "%0.6f\t",  spectrum_mz);
          fprintf(fpout, "%0.6f\t", spectrum_neutral_mass);
          fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass - PROTON_MASS);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fScoreSp);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iRankSp);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiRankSp);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%d\t", iWhichResult + 1);                 // assuming want index starting at 1
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iMatchedIons);
-         fprintf(fpout, "%d\t", pOutput[iWhichResult].iTotalIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);
          fprintf(fpout, "%lu\t", iNumMatches);
 
          // plain peptide
@@ -175,23 +178,23 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          double dCterm = 0.0;
 
          // See if n-term variable mod needs to be reported
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide] > 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] > 0)
          {
             bNterm = true;
-            dNterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide]-1].dVarModMass;
+            dNterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].dVarModMass;
          }
 
          // See if c-term variable mod needs to be reported
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1] > 0)
+         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1] > 0)
          {
             bCterm = true;
-            dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].iLenPeptide+1]-1].dVarModMass;
+            dCterm = g_staticParams.variableModParameters.varModList[(int)pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].dVarModMass;
          }
 
          // generate modified_peptide string
          if (bNterm)
             fprintf(fpout, "n[%0.4f]", dNterm);
-         for (int i=0; i<pOutput[iWhichResult].iLenPeptide; ++i)
+         for (int i=0; i<pOutput[iWhichResult].usiLenPeptide; ++i)
          {
             fprintf(fpout, "%c", pOutput[iWhichResult].szPeptide[i]);
 
@@ -214,7 +217,12 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
 
          // e-value
-         fprintf(fpout, "%0.2E\n", pOutput[iWhichResult].dExpect);
+         fprintf(fpout, "%0.2E", pOutput[iWhichResult].dExpect);
+
+         if (g_staticParams.options.iPrintAScoreProScore)
+            fprintf(fpout, "\t%0.2f", pOutput[iWhichResult].fAScorePro);
+
+         fprintf(fpout, "\n");
       }
    }
 
@@ -293,8 +301,6 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
-         if (g_staticParams.options.iPrintAScoreProScore)
-            fprintf(fpout, "%0.2f\t", pOutput[iWhichResult].fAScorePro);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);
 
@@ -383,6 +389,9 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          // Sp rank
          fprintf(fpout, "%d", pOutput[iWhichResult].usiRankSp);
+
+         if (g_staticParams.options.iPrintAScoreProScore)
+            fprintf(fpout, "\t%0.2f\t'%s'", pOutput[iWhichResult].fAScorePro, pOutput[iWhichResult].sAScoreProSiteScores.c_str());
 
 //       // number of scored peptides
 //       fprintf(fpout, "\t%u", pQuery->uiHistogramCount);

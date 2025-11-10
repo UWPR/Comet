@@ -165,7 +165,6 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    {
        return false;
    }
-   int iLen = (int)strlen(g_staticParams.inputFile.szFileName);
 
    // per request, perform quick check to validate file still exists
    // to avoid creating stub output files in these cases.
@@ -186,6 +185,7 @@ static bool UpdateInputFile(InputFileInfo *pFileInfo)
    if (bUpdateBaseName) // set individual basename from input file
    {
       char *pStr;
+      int iLen = (int)strlen(g_staticParams.inputFile.szFileName);
 
       strcpy(g_staticParams.inputFile.szBaseName, g_staticParams.inputFile.szFileName);
 
