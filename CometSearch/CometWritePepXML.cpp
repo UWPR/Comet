@@ -823,7 +823,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
 
    if (g_staticParams.options.iPrintAScoreProScore && iWhichResult == 0 && pOutput[iWhichResult].cHasVariableMod == HasVariableModType_AScorePro)
    {
-      fprintf(fpout, "    <search_score name=\"ascorepro_score\" value=\"%0.2f\"/>\n", pOutput[iWhichResult].fAScorePro);
+      fprintf(fpout, "    <search_score name=\"ascorepro_score\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fAScorePro);
       fprintf(fpout, "    <search_score name=\"ascorepro_sitescore\" value=\"%s\"/>\n", pOutput[iWhichResult].sAScoreProSiteScores.c_str());
    }
 

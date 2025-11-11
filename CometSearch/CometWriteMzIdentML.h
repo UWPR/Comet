@@ -37,6 +37,8 @@ class CometWriteMzIdentML
       float  fXcorr;
       float  fCn;
       float  fSp;
+      float  fAScorePro;
+      char   cHasVariableMod;
       char   cPrevNext[3];
       string strPeptide;
       string strMods;

@@ -185,37 +185,43 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                Stmp.fSp = std::stof(field);
                break;
             case 10:
-               Stmp.iRankSp = std::stoi(field);
+               Stmp.fAScorePro = std::stof(field);
                break;
             case 11:
-               Stmp.iMatchedIons = std::stoi(field);
+               Stmp.cHasVariableMod = std::stoi(field);
                break;
             case 12:
-               Stmp.iTotalIons = std::stoi(field);
+               Stmp.iRankSp = std::stoi(field);
                break;
             case 13:
-               Stmp.strPeptide = field;
+               Stmp.iMatchedIons = std::stoi(field);
                break;
             case 14:
+               Stmp.iTotalIons = std::stoi(field);
+               break;
+            case 15:
+               Stmp.strPeptide = field;
+               break;
+            case 16:
                Stmp.cPrevNext[0] = field.at(0);
                Stmp.cPrevNext[1] = field.at(1);
                break;
-            case 15:
+            case 17:
                Stmp.strMods = field;
                break;
-            case 16:
+            case 18:
                Stmp.strProtsTarget = field;
                break;
-            case 17:
+            case 19:
                Stmp.strProtsDecoy = field;
                break;
-            case 18:
+            case 20:
                Stmp.iWhichQuery = std::stoi(field);
                break;
-            case 19:
+            case 21:
                Stmp.iWhichResult = std::stoi(field);
                break;
-            case 20:
+            case 22:
                Stmp.fRTime = std::stof(field);
                break;
             default:
@@ -1340,7 +1346,10 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
-//    fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
+      if (g_staticParams.options.iPrintAScoreProScore && (*itMzid).cHasVariableMod == HasVariableModType_AScorePro)
+         fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001968\" name=\"PTM localization PSM-level statistic\" value=\"%0.4f\" />\n", (*itMzid).fAScorePro);
+
+      //    fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002500\" name=\"peptide passes threshold\" value=\"false\" />\n");
       fprintf(fpout, "     </SpectrumIdentificationItem>\n");
 
 
@@ -1418,6 +1427,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
+         fprintf(fpout, "%0.2f\t", pOutput[iWhichResult].fAScorePro);
+         fprintf(fpout, "%d\t", pOutput[iWhichResult].cHasVariableMod);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiRankSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);

@@ -391,7 +391,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%d", pOutput[iWhichResult].usiRankSp);
 
          if (g_staticParams.options.iPrintAScoreProScore)
-            fprintf(fpout, "\t%0.2f\t'%s'", pOutput[iWhichResult].fAScorePro, pOutput[iWhichResult].sAScoreProSiteScores.c_str());
+            fprintf(fpout, "\t%0.4f\t'%s'", pOutput[iWhichResult].fAScorePro, pOutput[iWhichResult].sAScoreProSiteScores.c_str());
 
 //       // number of scored peptides
 //       fprintf(fpout, "\t%u", pQuery->uiHistogramCount);
