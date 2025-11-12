@@ -3349,6 +3349,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             vector<vector<Fragment>>& matchedFragments,
                                                             vector<Scores>& scores)
 {
+   FILE* fpdb = nullptr;  // need FASTA file again to grab headers for output (currently just store file positions)
+
    if (iNumPeaks == 0)
       return false;
 
@@ -3438,7 +3440,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    //FIX ... is there a way to not have to do this just once and not have to fopen/fclose this db
    // file pointer for each query?
-   FILE* fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
    sTmpDB = g_staticParams.databaseInfo.szDatabase;
    sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
    if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
@@ -3772,7 +3773,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
 cleanup_results:
 
-   fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
+   if (fpdb != nullptr)
+      fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).
