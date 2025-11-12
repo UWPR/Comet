@@ -57,6 +57,9 @@ CometSearch::~CometSearch()
 
 bool CometSearch::AllocateMemory(int maxNumThreads)
 {
+   if (g_bCometSearchMemoryAllocated)  // already allocated
+      return true;
+
    try
    {
       _pbSearchMemoryPool = new bool[maxNumThreads]();
@@ -65,6 +68,8 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       for (int i = 0; i < maxNumThreads; ++i)
          _ppbDuplFragmentArr[i] = new bool[g_staticParams.iArraySizeGlobal]();
 
+      g_bCometSearchMemoryAllocated = true;
+
       return true;
    }
    catch (const std::bad_alloc& ba)
@@ -72,6 +77,9 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       string strErrorMsg = " Error - memory allocation failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
+
+      g_bCometSearchMemoryAllocated = false;
+
       return false;
    }
 }
@@ -87,6 +95,8 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
    }
 
    delete [] _ppbDuplFragmentArr;
+
+   g_bCometSearchMemoryAllocated = false;
 
    return true;
 }

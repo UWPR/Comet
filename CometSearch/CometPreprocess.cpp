@@ -1855,6 +1855,9 @@ void CometPreprocess::MakeCorrData(double* pdTmpRawData,
 //MH: This function allocates memory to be shared by threads for spectral processing
 bool CometPreprocess::AllocateMemory(int maxNumThreads)
 {
+   if (g_bCometPreprocessMemoryAllocated)  // already allocated
+      return true;
+
    int i;
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
@@ -1984,6 +1987,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
    }
 
+   g_bCometPreprocessMemoryAllocated = true;
    return true;
 }
 
@@ -2011,6 +2015,9 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
    delete [] ppfFastXcorrData;
    delete [] ppfFastXcorrDataNL;
    delete [] ppfSpScoreData;
+
+   g_bCometPreprocessMemoryAllocated = false;
+
    return true;
 }
 

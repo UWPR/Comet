@@ -68,6 +68,9 @@ bool g_bPeptideIndexRead = false;
 bool g_bSpecLibRead = false;
 bool g_bPerformSpecLibSearch = false;
 bool g_bPerformDatabaseSearch = false;
+bool g_bCometPreprocessMemoryAllocated = false;
+bool g_bCometSearchMemoryAllocated = false;
+
 FILE* fpfasta;      // file pointer to FASTA; would be same as fpdb if input db was already FASTA but otherwise needed if input is .idx file
 
 double dMaxSpecLibRT = 0.0;
@@ -1763,8 +1766,15 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
+   // Since g_staticParams.iArraySizeGlobal is used to define the size of the reused memory pool which
+   // are shared between MS1 and MS2 queries, make sure to define its size based on the larger of the two.
    double dCushion = CometPreprocess::GetMassCushion(g_staticParams.options.dPeptideMassHigh);
-   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dPeptideMassHigh + dCushion) * g_staticParams.dInverseBinWidth);
+   double dUseBinSize = (g_staticParams.tolerances.dMS1BinSize < g_staticParams.tolerances.dFragmentBinSize ?
+      g_staticParams.tolerances.dMS1BinSize : g_staticParams.tolerances.dFragmentBinSize);
+   double dUseMaxMass = (g_staticParams.options.dPeptideMassHigh > g_staticParams.options.dMS1MaxMass ?
+      g_staticParams.options.dPeptideMassHigh : g_staticParams.options.dMS1MaxMass);
+
+   g_staticParams.iArraySizeGlobal = (int)((dUseMaxMass + dCushion) / dUseBinSize);
 
    staticParamsInitializationComplete = true;
 
@@ -3298,9 +3308,6 @@ bool CometSearchManager::InitializeSingleSpectrumMS1Search()
    // these two mean nothing for MS1
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
-
-   // Set in InitializeStaticParams for peptide search; must set after for MS1
-   g_staticParams.iArraySizeGlobal = (int)((g_staticParams.options.dMS1MaxMass + 2.0) / g_staticParams.tolerances.dMS1BinSize);
 
    bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.

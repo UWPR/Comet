@@ -1062,6 +1062,9 @@ extern bool g_bSpecLibRead;             // set to true if spectral library file 
 extern bool g_bPerformSpecLibSearch;    // set to true if doing spectral library search
 extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
 
+extern bool g_bCometPreprocessMemoryAllocated;    // set to true when memory has been allocated
+extern bool g_bCometSearchMemoryAllocated;        // set to true when memory has been allocated
+
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
 struct Query

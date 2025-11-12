@@ -118,26 +118,23 @@
                   piTimeSearchMS2[i] = 0;
                } 
 
-
                int iPass = 1;  // count number of passes/loops through raw file
                int iTime;
 
-
-               double dMaxMS1RTDiff = 100.0;    // maximum allowed retention time difference between query and reference, in seconds
+               double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
                                                 // set to 0.0 to not apply aka do not apply any RT restrictions
-
 
                double dMaxQueryRT;  // this is the maximum RT in seconds for the query run, used to
                                     // scale the query RTs against the reference run RTs which may
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 500;
+               int iPrintEveryScan = 1;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
-               bool bContinuousLoop = true; // set to true to continuously loop through the raw file
-               bool bPrintHistogram = false;
+               bool bContinuousLoop = false; // set to true to continuously loop through the raw file
+               bool bPrintHistogram = true;
                bool bPrintMatchedFragmentIons = false;
-               bool bPerformMS1Search = false;
+               bool bPerformMS1Search = true;
                bool bPerformMS2Search = true;
 
                if (bPerformMS1Search)
@@ -151,10 +148,9 @@
                   SearchMgr.InitializeSingleSpectrumSearch();
                }
 /*
-               iFirstScan = 37174;
-*/
+               iFirstScan = 10000;
                iLastScan = 20000;
-
+*/
                watchGlobal.Start();
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
@@ -243,7 +239,6 @@
 
                            // skip analysis of spectrum if ion is outside of indexed db mass range
                            double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * 1.00727646688;
-
                            if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
                               continue;
 
@@ -371,8 +366,6 @@
             String sTmp;
             int iTmp;
             double dTmp;
-//            DoubleRangeWrapper doubleRangeParam = new DoubleRangeWrapper();
-//            IntRangeWrapper intRangeParam = new IntRangeWrapper();
 
             SearchMgr.SetParam("spectral_library_name", sRawFileReference, sRawFileReference);
             SearchMgr.SetParam("database_name", sDB, sDB);
@@ -439,7 +432,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            iTmp = 100000; // search time cutoff in milliseconds
+            iTmp = 100; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
