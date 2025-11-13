@@ -4,11 +4,14 @@
 to the search results.
 - The AScorePro algorithm is only applied to the top ranked hit for each spectrum query.
 - If it is applied, the AScorePro MOB score will be available in the real-time search
-interface as well as .txt, .pep.xml output formats.
+interface as well as .txt, .pep.xml, and .mzid output formats.
 - In the .txt output, the AScorePro MOB score is reported in column titled "ascorepro".
 - In the .pep.xml output, the AScorePro MOB score is reported as a search score using 
 the "ascorepro_score" attribute. The site scores are reported as a search score using
 the "ascorepro_sitescore" attribute.
+- In the .mzid output, the AScorePro MOB score is reported as a search score using the
+cvParam element with the following attributes:
+cvRef="PSI-MS" accession="MS:1001968" name="PTM localization PSM-level statistic" value="X.XXXX".
 - Both the MOB score and site scores are returned through the CometWrapper real-time
 search interface.
 - AScorePro MOB scores are a decimal value whereas site scores are reported as
@@ -30,6 +33,11 @@ further details of their algorithm.
   - "4" to localize the modification specified by variable_mod04
   - "5" to localize the modification specified by variable_mod05
 - The default value is "0" if this parameter is missing.
+- Note that this is currently considered an experimental score in Comet. Especially the
+extension to localize all modifications in a peptide (or any modification that is not
+phosphoprylation per the (AScorePro publication)[https://pubmed.ncbi.nlm.nih.gov/36280721/]).
+The meaning or utility of the AScorePro MOB score to localize non-phosphorylation
+modifications will need to be validated.
 
 Example:
 ```
