@@ -119,6 +119,12 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 
+### MS1 real-time alignment
+- [ms1_bin_tol](ms1_bin_tol.html) <font color="red">*</font>
+- [ms1_bin_offset](ms1_bin_offset.html) <font color="red">*</font>
+- [ms1_mass_range](ms1_mass_range.html) <font color="red">*</font>
+- [retentiontime_tol](retentiontime_tol.html) <font color="red">*</font>
+
 #### Spectral processing
 
 - [clear_mz_range](clear_mz_range.html)
