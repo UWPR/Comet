@@ -33,16 +33,17 @@ The AScorePro results are currently exported in the .txt, .pep.xml and.mzid outp
   - “ascorepro_score” (as a single floating point number)
   - “ascorepro_site_score” (as space separated “position:site_score” pairs e.g. “6:3.28 10:41.53”)
 - .pep.xml output as additional search scores:
-  - <search_score name=”ascorepro” value=”129.3530”/>
-  - <search_score name=”ascorepro_sitescore” value=”4:38.4034 12:0.0000”/>
+  - &lt;search_score name=”ascorepro” value=”129.3530”/&gt;
+  - &lt;search_score name=”ascorepro_sitescore” value=”4:38.4034 12:0.0000”/&gt;
 - .mzid output as an additional search score:
-   - <cvParam cvRef="PSI-MS" accession="MS:1001968" name="PTM localization PSM-level statistic" value="129.3530"/>
+   - &lt;vParam cvRef="PSI-MS" accession="MS:1001968" name="PTM localization PSM-level statistic" value="129.3530"/&gt;
 
 ### Real-time search output
 - Report AScorePro score (ScoreWrapper .dAScoreScore)
 - Report site score as a string composed of space separated “position:score” pairs e.g. “6:3.28 10:41.53”.  (ScoreWrapper .sAScoreProSiteScores).
    
-The chart below shows RTS search times for a query with or without AScorePro.  The timings show that
-the AScorePro algorithm imparts negligible costs in terms of per-spectrum-query run times.
+The chart below shows RTS search times for a single RTS run with or without AScorePro.  The timings show that
+the AScorePro algorithm imparts negligible costs in terms of per-spectrum-query run times.  Any differences are
+minor and can be attributed to standard run-to-run variability.
 
 ![AScorePro timing](https://uwpr.github.io/Comet/notes/20251112-AScoreProTiming.png)
