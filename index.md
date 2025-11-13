@@ -2,16 +2,15 @@
 
 <div id="sidebar">
   <h2>News</h2>
+  <h3>2025/11/12: <a href="/Comet/releases/release_202503.html">Release 2025.03 rev. 0</a> is now available.</h3>
   <h3>2025/06/05: <a href="/Comet/releases/release_202502.html">Release 2025.02 rev. 0</a> is now available.</h3>
-  <h3>2025/03/15: <a href="/Comet/releases/release_202501.html">Release 2025.01 rev. 1</a> is now available.</h3>
   <h3>2021/09/17: The Comet repository has migrated to GitHub from [SourceForge](https://sourceforge.net/projects/comet-ms/).</h3>
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
 </div>
 
 Comet is an open source tandem mass spectrometry (MS/MS) sequence database
-search tool released under the [Apache 2.0
-license](https://www.apache.org/licenses/LICENSE-2.0).
+search tool released under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
 
 Searching uninterpreted tandem mass spectra of peptides against sequence
 databases is the most common method used to identify peptides and proteins.
@@ -24,7 +23,7 @@ License, version 2.0. The repository was [migrated to
 GitHub](https://github.com/UWPR/Comet) in September 2021.
 
 Comet is multithreaded, supports multiple input and output formats, and
-binaries are available for both Windows and Linux operating systems.  Note that
+binaries are available for both Windows, Linux, and macOS operating systems.  Note that
 Comet is just a single command line binary that performs  MS/MS database search.
 It takes in spectra in various supported input formats, using the [MSToolkit
 C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml,
@@ -47,6 +46,9 @@ doi: 10.1021/acs.jproteome.9b00860
 - [Extending Comet for Global Amino Acid Variant and Post-Translational Modification Analysis Using the PSI Extended FASTA Format](https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/pmic.201900362).
 Eng JK and Deutsch EW. Proteomics. Proteomics. 2020 Nov;20(21-22):e1900362. 
 doi: 10.1002/pmic.201900362.
+- [Comet Fragment-Ion Indexing for Enhanced Peptide Sequencing](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c01094)
+McGann CD, Bergstrom EJ, Sharma V, Heil LR, Yu Q, Eng JK, Schweppe DK.
+J Proteome Res. 2025 Jul 4;24(7):3715-3721. doi: 10.1021/acs.jproteome.4c01094.
 
 *I know you're smart. But everyone here is smart. Smart isn't enough. The kind
 of people I want on my research team are those who will help everyone feel
