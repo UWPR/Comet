@@ -18,6 +18,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 ### Miscellaneous Notes
 
 - 2025/11/12:  [AScorePro integration](20251112_AScorePro.html)
+- 2025/11/12:  [MS1 retention time alignment](20251112_MS1-RT-Alignment.html)
 - 2024/10/01:  [Comet fragment ion index](20241001_FI.html)
 - 2023/06/13:  [Linux compile issues](20230613_linuxcompile.html)
 - 2022/02/28:  [Searching Thermo RAW files supported only under Windows](20220228_rawfile.html)
