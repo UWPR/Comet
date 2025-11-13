@@ -2,8 +2,7 @@
 
 As of Comet release v2025.03 rev. 0, the AScorePro site localization algorithm has
 been integrated into the program.  Comet's AScorePro code is based on translating
-the C# code from https://github.com/gygilab/MPToolkit to C++.  This work was
-performed by the talented V. Sharma.
+the C# code from https://github.com/gygilab/MPToolkit to C++.
 
 
 Until noted otherwise, this is considered an experimental
@@ -11,9 +10,18 @@ feature as I still need to figure out how to validate the the ASCorePro MOB scor
 generated in Comet are valid, especially those from our custom extension to allow
 localization on all variable modifications on a peptide and not just for phosphorylation.
 
+I want to thank V. Sharma for translating the code to C++ and extending the scoring
+to all modifications in a peptide.
+
+### How to run AScorePro in Comet
+- Use the [print_ascorepro_score](https://uwpr.github.io/Comet/parameters/parameters_202503/print_ascorepro_score.html) parameter to control how to apply AScorePro in Comet.
+- Site localization can be specified to happen on any one variable modification (e.g. set the parameter value to "1" to localization the modification specified by variable_mod01 or set the parameter value to "3" to localize the modification specified by variable_mod03).
+- Site localization can be specified to happen on all variable modifications in a peptide by setting the parameter value to "-1".
+- Site localization is not performed if this parameter is missing for the parameter value is set to "0".
+
 ### Application of AScorePro both real-time and standard (offline) searches
 
-- Controlled by the (print_ascore_pro)[https://uwpr.github.io/Comet/parameters/parameters_202503/print_ascorepro_score.html] search parameter.
+- Controlled by the [print_ascore_pro](https://uwpr.github.io/Comet/parameters/parameters_202503/print_ascorepro_score.html) search parameter.
 - Applies to top hit only.
 - Replace Comet’s top hit peptide with AScorePro localized peptide only if AScorePro MOB score is 13 or greater.
   - This means it’s possible that the 2nd or lower peptide in the output list can be the same as the new/replaced top hit.
@@ -37,4 +45,4 @@ The AScorePro results are currently exported in the .txt, .pep.xml and.mzid outp
 The chart below shows RTS search times for a query with or without AScorePro.  The timings show that
 the AScorePro algorithm imparts negligible costs in terms of per-spectrum-query run times.
 
-![AScorePro timing](https://uwpr.github.io/Comet/notes/20251112_AScoreProTiming.png)
+![AScorePro timing](https://uwpr.github.io/Comet/notes/20251112-AScoreProTiming.png)
