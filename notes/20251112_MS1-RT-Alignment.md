@@ -6,9 +6,11 @@ align an acquisition run against a reference run using MS1 scans.
 Alignment is performed by scoring each query MS1 scan against the reference MS1 scans
 using a unit vector dot product (that's also referred to as cosine similarity score).
 The range of reference MS1 scans is limited by those within the retentime time tolerance
-specified.  Alignment of runs of difference linear gradient lengths is supported (although
+specified.  Alignment of runs of different linear gradient lengths is supported although
 now that I'm writing this documentation, I think I may need to add another parameter to
-allow the user to specify the RTS query's gradient length to support this).
+allow the user to specify the RTS query's gradient length to support this. I guess I need to
+label this as an experimental feature until it can be tested in an real-time environment to
+identify whether or not any feature/parameters need to be implemented.
 
 The best match reference MS1 scan, based on having the highest unit vector dot product score,
 is returned.
@@ -25,8 +27,8 @@ performed with outlier detection.  See CometAlignment.cpp for details.
 
 Real-time MS1 alignment queries can be performed alongside real-time MS/MS searches.  The
 example C# program RealTimeSearch/SearchMS1MS2.cs gives an example of how these searches
-can be run by calling DoMS1SearchMultiResult() and DoSingleSpectrumSearchMultiResult() in
-the CometWrapper interface.
+can be run by calling DoMS1SearchMultiResult() for MS1 scans and DoSingleSpectrumSearchMultiResult()
+for MS/MS scans in the CometWrapper interface.
 
 
 ### MS1 alignment specific paramters

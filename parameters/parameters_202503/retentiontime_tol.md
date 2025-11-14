@@ -9,5 +9,5 @@ scan will be analyzed against every reference run MS1 scan.
 
 Example:
 ```
-retentiontime_tol = 300    (for +/- 5 minutes
+retentiontime_tol = 300    (for +/- 5 minutes)
 ```

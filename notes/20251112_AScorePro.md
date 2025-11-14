@@ -6,7 +6,7 @@ the C# code from https://github.com/gygilab/MPToolkit to C++.
 
 
 Until noted otherwise, this is considered an experimental
-feature as I still need to figure out how to validate the the ASCorePro MOB scores
+feature as I still need to spend more time to validate that the ASCorePro MOB scores
 generated in Comet are valid, especially those from our custom extension to allow
 localization on all variable modifications on a peptide and not just for phosphorylation.
 
