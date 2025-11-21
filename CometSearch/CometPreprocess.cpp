@@ -1826,7 +1826,7 @@ void CometPreprocess::MakeCorrData(double* pdTmpRawData,
       for (ii=0; ii<iWindowSize; ++ii)    // Find max inten. in window.
       {
          iBin = i*iWindowSize+ii;
-         if (iBin <= iHighestIon)
+         if (iBin <= iHighestIon && iBin < g_staticParams.iArraySizeGlobal)
          {
             if (pdTmpRawData[iBin] > dMaxWindowInten)
                dMaxWindowInten = pdTmpRawData[iBin];
@@ -1841,7 +1841,7 @@ void CometPreprocess::MakeCorrData(double* pdTmpRawData,
          for (ii=0; ii<iWindowSize; ++ii)    // Normalize to max inten. in window.
          {
             iBin = i*iWindowSize+ii;
-            if (iBin <= iHighestIon)
+            if (iBin <= iHighestIon && iBin < g_staticParams.iArraySizeGlobal)
             {
                if (pdTmpRawData[iBin] > dTmp2)
                   pdTmpCorrelationData[iBin] = pdTmpRawData[iBin]*dTmp1;
