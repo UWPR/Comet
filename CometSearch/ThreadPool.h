@@ -17,14 +17,12 @@
 #define _THREAD_POOL_H_
 #include <iostream>
 
-//#include "Threading.h"
-//#include <mutex>
-//#include <condition_variable>
-#include <deque>
-#include <vector>
-#include <functional>
 #include <chrono>
+#include <deque>
+#include <functional>
+#include <iostream>
 #include <thread>
+#include <vector>
 
 #ifdef TPP_WIN32THREADS
 #define _WIN32

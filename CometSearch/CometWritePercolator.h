@@ -38,8 +38,8 @@ private:
                                     int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
-                                    vector<string> vProteinTargets,
-                                    vector<string> vProteinDecoys);
+                                    std::vector<std::string> vProteinTargets,
+                                    std::vector<std::string> vProteinDecoys);
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

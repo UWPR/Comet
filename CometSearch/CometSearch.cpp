@@ -74,7 +74,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    }
    catch (const std::bad_alloc& ba)
    {
-      string strErrorMsg = " Error - memory allocation failed. bad_alloc: " + std::string(ba.what()) + ".\n";
+      std::string strErrorMsg = " Error - memory allocation failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
 
@@ -932,7 +932,7 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
 
 
 void CometSearch::ReadOBO(char *szOBO,
-                          vector<OBOStruct> *vectorPeffOBO)
+                          std::vector<OBOStruct> *vectorPeffOBO)
 {
    FILE *fp;
 
@@ -1014,7 +1014,7 @@ void CometSearch::ReadOBO(char *szOBO,
 }
 
 
-bool CometSearch::MapOBO(string strMod, vector<OBOStruct> *vectorPeffOBO, struct PeffModStruct *pData)
+bool CometSearch::MapOBO(string strMod, std::vector<OBOStruct> *vectorPeffOBO, struct PeffModStruct *pData)
 {
    int iPos;
 
@@ -1191,7 +1191,7 @@ bool CometSearch::DoSearch(sDBEntry dbe, bool *pbDuplFragment)
          }
          catch (std::bad_alloc& ba)
          {
-            string strErrorMsg =  " Error - new(szTemp[" + std::to_string(seqSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            std::string strErrorMsg =  " Error - new(szTemp[" + std::to_string(seqSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
                + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
                + "parameters to mitigate memory use.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

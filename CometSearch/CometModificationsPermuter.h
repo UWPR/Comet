@@ -20,10 +20,10 @@ class ModificationsPermuter
 {
 public:
 
-   static chrono::time_point<chrono::steady_clock> startTime();
-   static long duration(chrono::time_point<chrono::steady_clock> start);
+   static std::chrono::time_point<std::chrono::steady_clock> startTime();
+   static long duration(std::chrono::time_point<std::chrono::steady_clock> start);
    static bool isModifiable(char aa,
-                            vector<string>& ALL_MODS);
+                            std::vector<std::string>& ALL_MODS);
    static void printBits(unsigned long long number);
    static void getCombinations(int n,
                                int k,
@@ -33,32 +33,32 @@ public:
                                 int maxMods,
                                 unsigned long long** ALL_COMBINATIONS,
                                 int* ALL_COMBINATION_CNT);
-   static vector<string> readPeptides(string file);
-   static string getModifiableAas(std::string peptide,
-                                  vector<string>& ALL_MODS);
-   static vector<string> getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
+   static std::vector<std::string> readPeptides(std::string file);
+   static std::string getModifiableAas(std::string peptide,
+                                  std::vector<std::string>& ALL_MODS);
+   static std::vector<std::string> getModifiableSequences(std::vector<PlainPeptideIndexStruct>& vRawPeptides,
                                                 int* PEPTIDE_MOD_SEQ_IDXS,
-                                                vector<string>& ALL_MODS);
-   static unsigned long long getModBitmask(string* modSeq,
-                                           string sModChars);
-   static vector<vector<int>> getCombinationSets(int modCount);
-   static int getTotalCombinationCount(vector<int> combinationCounts,
-                                       vector<vector<int>> combinationSets);
+                                                std::vector<std::string>& ALL_MODS);
+   static unsigned long long getModBitmask(std::string* modSeq,
+                                           std::string sModChars);
+   static std::vector<std::vector<int>> getCombinationSets(int modCount);
+   static int getTotalCombinationCount(std::vector<int> combinationCounts,
+                                       std::vector<std::vector<int>> combinationSets);
    static bool combine(int* modNumbers,
                        unsigned long long* bitmasks,
                        int modNumCount,
                        int modStringLen);
-   static void generateModifications(string* sequence,
-                                     vector<int>& vMaxNumVarModsPerMod,
+   static void generateModifications(std::string* sequence,
+                                     std::vector<int>& vMaxNumVarModsPerMod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,
-                                     vector<string>& ALL_MODS,
+                                     std::vector<std::string>& ALL_MODS,
                                      int MOD_CNT,
                                      int ALL_COMBINATION_CNT,
                                      unsigned long long* ALL_COMBINATIONS);
-   static void getModificationCombinations(const vector<string> modifiableSeqs,
-                                           vector<int>& vMaxNumVarModsPerMod,
-                                           vector<string>& ALL_MODS,
+   static void getModificationCombinations(const std::vector<std::string> modifiableSeqs,
+                                           std::vector<int>& vMaxNumVarModsPerMod,
+                                           std::vector<std::string>& ALL_MODS,
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,
                                            unsigned long long* ALL_COMBINATIONS);

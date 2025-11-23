@@ -106,7 +106,7 @@ struct Scores
     double mass;
     int matchedIons;
     int totalIons;
-    string sAScoreProSiteScores;  // AScore site scores as string
+    std::string sAScoreProSiteScores;  // AScore site scores as string
 
     Scores() :
         xCorr(0),
@@ -120,7 +120,7 @@ struct Scores
         sAScoreProSiteScores("")
     { }
 
-    Scores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
+    Scores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, std::string sAScoreProSiteScores) :
         xCorr(xCorr),
         dSp(dSp),
         dCn(dCn),
@@ -547,13 +547,13 @@ enum CometParamType
 class CometParam
 {
 public:
-   CometParam(CometParamType paramType, const string& strValue)
+   CometParam(CometParamType paramType, const std::string& strValue)
       : _paramType(paramType), _strValue(strValue) {}
    virtual ~CometParam() {}
-   string& GetStringValue() { return _strValue; }
+   std::string& GetStringValue() { return _strValue; }
 private:
    CometParamType _paramType;
-   string _strValue;
+   std::string _strValue;
 };
 
 
@@ -566,7 +566,7 @@ template< typename T >
 class TypedCometParam : public CometParam
 {
 public:
-   TypedCometParam (CometParamType paramType, const string& strValue, const T& value)
+   TypedCometParam (CometParamType paramType, const std::string& strValue, const T& value)
       : CometParam(paramType, strValue), _value(value) {}
 
    T& GetValue() { return _value; }

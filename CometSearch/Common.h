@@ -47,8 +47,6 @@ typedef off64_t comet_fileoffset_t;
 #define comet_ftell(handle) ftello64(handle)
 #endif
 
-using namespace std;
-
 #include "ThreadPool.h"
 #include "MSReader.h"
 #include "Spectrum.h"
@@ -68,7 +66,7 @@ using namespace std;
 
 #define comet_version   "2025.03 rev. 0"
 #define copyright "(c) University of Washington"
-extern string g_sCometVersion;   // version string including git hash
+extern std::string g_sCometVersion;   // version string including git hash
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.

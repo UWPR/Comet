@@ -18,7 +18,6 @@
 
 #include "Common.h"
 #include "CometSearch.h"
-#include <functional>
 
 class CometFragmentIndex
 {
@@ -33,9 +32,9 @@ public:
 
 private:
 
-   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
+   static void PermuteIndexPeptideMods(std::vector<PlainPeptideIndexStruct>& vRawPeptides);
    static void GenerateFragmentIndex(ThreadPool *tp);
-   static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
+   static void AddFragments(std::vector<PlainPeptideIndexStruct>& vRawPeptides,
                             size_t iWhichPeptide,
                             size_t iWhichFragmentPeptide,
                             int modNumIdx,

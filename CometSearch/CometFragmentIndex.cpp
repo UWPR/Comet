@@ -27,8 +27,8 @@
 #include <limits>
 
 
-vector<ModificationNumber> MOD_NUMBERS;
-vector<string> MOD_SEQS;    // Unique modifiable sequences.
+std::vector<ModificationNumber> MOD_NUMBERS;
+std::vector<std::string> MOD_SEQS;    // Unique modifiable sequences.
 int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
@@ -78,10 +78,10 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
 }
 
 
-void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& g_vRawPeptides)
+void CometFragmentIndex::PermuteIndexPeptideMods(std::vector<PlainPeptideIndexStruct>& g_vRawPeptides)
 {
-   vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
-   vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
+   std::vector<std::string> ALL_MODS; // An array of all the user specified amino acids that can be modified
+   std::vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
    // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
@@ -107,15 +107,15 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 
    int MOD_CNT = (int)ALL_MODS.size();
 
-   cout << " - mods: ";
+   std::cout << " - mods: ";
    for (int i = 0; i < MOD_CNT; ++i)
    {
       if (i==0)
-         cout << ALL_MODS[i];
+         std::cout << ALL_MODS[i];
       else
-         cout << ", " << ALL_MODS[i];
+         std::cout << ", " << ALL_MODS[i];
    }
-   cout << endl;
+   std::cout << std::endl;
 
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
@@ -143,7 +143,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 
 void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
-   cout <<  " - generate fragment index\n"; fflush(stdout);
+   std::cout <<  " - generate fragment index\n"; fflush(stdout);
 
    Threading::CreateMutex(&_vFragmentPeptidesMutex);
 
@@ -154,8 +154,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // Sort the peptides by mass
 
-   cout <<  "   - storing peptide list and reserving memory ... "; fflush(stdout);
-   auto tStartTime = chrono::steady_clock::now();
+   std::cout <<  "   - storing peptide list and reserving memory ... "; fflush(stdout);
+   auto tStartTime = std::chrono::steady_clock::now();
    // stupid workaround for Windows/Visual Studio performance ... first calculate all
    // fragments to find size of each fragment on index vector
    AddFragmentsThreadProc(1, pFragmentIndexPool);
@@ -172,16 +172,16 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       else
          g_iFragmentIndex[iMass] = NULL;
    }
-   cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
+   std::cout << CometMassSpecUtils::ElapsedTime(tStartTime) << std::endl;
 
    // now sort g_vFragmentPeptides by mass; this was filled in the above AddFragmentsThreadProc calls
-   tStartTime = chrono::steady_clock::now();
-   cout << "   - sorting peptides by mass ... "; fflush(stdout);
+   tStartTime = std::chrono::steady_clock::now();
+   std::cout << "   - sorting peptides by mass ... "; fflush(stdout);
    sort(g_vFragmentPeptides.begin(), g_vFragmentPeptides.end(), [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
       {
          return a.dPepMass < b.dPepMass;
       });
-   cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
+   std::cout << CometMassSpecUtils::ElapsedTime(tStartTime) << std::endl;
 
    // In the for loop below, peptide references (iWhichFragmentPeptide) are stored in the FI.
    // As the FI is an array of unsigned int pointers, need to ensure that iWhichFragmentPeptide
@@ -193,8 +193,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    }
 
    // now populate the fragment index vector
-   tStartTime = chrono::steady_clock::now();
-   cout <<  "   - populating index ... "; fflush(stdout);
+   tStartTime = std::chrono::steady_clock::now();
+   std::cout <<  "   - populating index ... "; fflush(stdout);
    for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
    {
       auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
@@ -363,7 +363,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
 }
 
 
-void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPeptides,
+void CometFragmentIndex::AddFragments(std::vector<PlainPeptideIndexStruct>& g_vRawPeptides,
                                       size_t iWhichPeptide,
                                       size_t iWhichFragmentPeptide,
                                       int modNumIdx,
@@ -371,12 +371,12 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       char cCtermMod,
                                       bool bCountOnly)
 {
-   string sPeptide = g_vRawPeptides.at(iWhichPeptide).sPeptide;
+   std::string sPeptide = g_vRawPeptides.at(iWhichPeptide).sPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
    int modSeqIdx = -1;
-   string modSeq;
+   std::string modSeq;
 
    if (modNumIdx >= 0)  // set modified peptide info
    {
@@ -563,11 +563,11 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    FILE *fp;
    bool bSucceeded;
    bool bSwapIdxExtension = false;
-   string strOut;
+   std::string strOut;
 
-   string strIndexFile;
+   std::string strIndexFile;
 
-   auto tPlainPeptideIndexStartTime = chrono::steady_clock::now();
+   auto tPlainPeptideIndexStartTime = std::chrono::steady_clock::now();
 
    if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
@@ -576,7 +576,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       bSwapIdxExtension = true;  // need to make database regular fasta, then RunSearch to get plain peptides, then swap back
    }
    else
-      strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");  // fasta specified so add .idx extension
+      strIndexFile = g_staticParams.databaseInfo.szDatabase + std::string(".idx");  // fasta specified so add .idx extension
 
    if ((fp = fopen(strIndexFile.c_str(), "wb")) == NULL)
    {
@@ -619,7 +619,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    if (!bSucceeded)
    {
-      string strErrorMsg =  " Error performing RunSearch() to create indexed database.\n";
+      std::string strErrorMsg =  " Error performing RunSearch() to create indexed database.\n";
       logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
@@ -628,7 +628,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // sanity check
    if (g_pvDBIndex.size() == 0)
    {
-      string strErrorMsg = " Error - no peptides in index; check the input database file.\n";
+      std::string strErrorMsg = " Error - no peptides in index; check the input database file.\n";
       logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
@@ -644,7 +644,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
    // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
    // to every protein. g_pvdbindex.at().lproteinfileposition is now reference to protein vector entry
-   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvproteinslist
+   std::vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvproteinslist
 
    // Create g_pvProteinsList.  This is a vector of vectors.  Each element is a vector list
    // of duplicate proteins (generated as "temp") ... these are generated by looping
@@ -694,7 +694,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    // sort by mass;
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
 
-   cout << " - write peptides/proteins to file" << endl;
+   std::cout << " - write peptides/proteins to file" << std::endl;
 
    // write out index header
    fprintf(fp, "Comet fragment ion index plain peptides.  Comet version %s\n", g_sCometVersion.c_str());
@@ -828,13 +828,13 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    FILE *fp;
    int iRet;     // used to reduce compiler warnings only
    char szBuf[SIZE_BUF];
-   string strIndexFile;
+   std::string strIndexFile;
 
    if (g_bPlainPeptideIndexRead)
       return 1;
 
    if (g_staticParams.options.bCreateFragmentIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
-      strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
+      strIndexFile = g_staticParams.databaseInfo.szDatabase + std::string(".idx");
    else // database already is .idx
       strIndexFile = g_staticParams.databaseInfo.szDatabase;
 
@@ -855,7 +855,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          
          if (iRet != 2)
          {
-            string strErrorMsg = " Error with raw peptide index database format. MassType: did not parse 2 values.\n";
+            std::string strErrorMsg = " Error with raw peptide index database format. MassType: did not parse 2 values.\n";
             logerr(strErrorMsg);
             fclose(fp);
             return false;
@@ -867,7 +867,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 2)
          {
-            string strErrorMsg = " Error with raw peptide index database format. LengthRange: did not parse 2 values.\n";
+            std::string strErrorMsg = " Error with raw peptide index database format. LengthRange: did not parse 2 values.\n";
             logerr(strErrorMsg);
             fclose(fp);
             return false;
@@ -881,7 +881,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 3)
          {
-            string strErrorMsg = " Error with raw peptide index database format. Enzyme: did not parse 3 values.\n";
+            std::string strErrorMsg = " Error with raw peptide index database format. Enzyme: did not parse 3 values.\n";
             logerr(strErrorMsg);
             fclose(fp);
             return false;
@@ -895,7 +895,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
          if (iRet != 3)
          {
-            string strErrorMsg = " Error with raw peptide index database format. Enzyme2: did not parse 3 values.\n";
+            std::string strErrorMsg = " Error with raw peptide index database format. Enzyme2: did not parse 3 values.\n";
             logerr(strErrorMsg);
             fclose(fp);
             return false;
@@ -946,15 +946,15 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "VariableMod:", 12)) // read in variable mods
       {
-         string strMods = szBuf + 13;
+         std::string strMods = szBuf + 13;
 
-         istringstream iss(strMods);
+         std::istringstream iss(strMods);
 
          int iNumMods = 0;
 
          do
          {
-            string subStr;
+            std::string subStr;
 
             iss >> subStr;  // parse each word which is a colon delimited triplet pair for modmass:neutralloss:modchars
             std::replace(subStr.begin(), subStr.end(), ':', ' ');
@@ -990,15 +990,15 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
       else if (!strncmp(szBuf, "RequireVariableMod:", 19))
       {
-         string strMods = szBuf + 20;
+         std::string strMods = szBuf + 20;
 
-         istringstream iss(strMods);
+         std::istringstream iss(strMods);
 
          int iNumMods = 0;
 
          do
          {
-            string subStr;
+            std::string subStr;
             int iIntData;
 
             iss >> subStr;
@@ -1032,7 +1032,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    if (!bFoundStatic || !bFoundVariable)
    {
-      string strErrorMsg = " Error with raw peptide index database format. Modifications ("
+      std::string strErrorMsg = " Error with raw peptide index database format. Modifications ("
          + std::to_string(bFoundStatic) + "/" + std::to_string(bFoundVariable) + ") not parsed.\n";
       logerr(strErrorMsg);
       fclose(fp);
@@ -1077,7 +1077,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
    size_t tSize;
    tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
-   vector<comet_fileoffset_t> vTmp;
+   std::vector<comet_fileoffset_t> vTmp;
 
    g_pvProteinsList.clear();
    g_pvProteinsList.reserve(tSize);

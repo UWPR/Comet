@@ -46,7 +46,7 @@ public:
 
    static void GetProteinSequence(FILE *fpdb,
                                   comet_fileoffset_t lFilePosition,
-                                  string &strSeq);
+                                  std::string &strSeq);
 
    static void GetProteinNameString(FILE *fpdb,
                                     int iWhichQuery,  // which search
@@ -54,8 +54,8 @@ public:
                                     int iPrintTargetDecoy,
                                     bool bReturnFullProteinString,   // 0 = return accession only, 1 = return full description line
                                     unsigned int *iNumTotProteins,   // matched protein count
-                                    vector<string>& vProteinTargets,  // the target protein names
-                                    vector<string>& vProteinDecoys);  // the decoy protein names if applicable
+                                    std::vector<std::string>& vProteinTargets,  // the target protein names
+                                    std::vector<std::string>& vProteinDecoys);  // the decoy protein names if applicable
 
    static void GetPrevNextAA(FILE *fpdb,
                              int iWhichQuery,  // which search
@@ -70,7 +70,7 @@ public:
                               int iWhichResult,
                               int iWhichTerm);
 
-   static string GetField(std::string *s,
+   static std::string GetField(std::string *s,
                           unsigned int n,
                           char cDelimeter);
 
@@ -84,7 +84,7 @@ public:
                                          double dMin,
                                          double dMax);
 
-   static string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
+   static std::string ElapsedTime(std::chrono::time_point<std::chrono::steady_clock> tStartTime);
 
    static bool DBICompareByPeptide(const DBIndex& lhs,
                                    const DBIndex& rhs);

@@ -126,8 +126,8 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
             pQuery->_spectrumInfoInternal.usiChargeState,
             iWhichResult+1);
 
-      std::vector<string> vProteinTargets;  // store vector of target protein names
-      std::vector<string> vProteinDecoys;   // store vector of decoy protein names
+      std::vector<std::string> vProteinTargets;  // store vector of target protein names
+      std::vector<std::string> vProteinDecoys;   // store vector of decoy protein names
 
       unsigned int uiNumTotProteins = 0;  // unused in pin
       bool bReturnFulProteinString = false;
@@ -146,7 +146,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
          // So compare the protein string to see if any match g_staticParams.szDecoyPrefix.
          // If so, annotate those with a decoy label.
          bool bTarget = false;
-         std::vector<string>::iterator it;
+         std::vector<std::string>::iterator it;
 
          for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
          {
@@ -181,8 +181,8 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     Results *pOutput,
                                                     FILE *fpout,
 
-                                                    vector<string> vProteinTargets,
-                                                    vector<string> vProteinDecoys)
+                                                    std::vector<std::string> vProteinTargets,
+                                                    std::vector<std::string> vProteinDecoys)
 {
    int iNterm;
    int iCterm;
@@ -277,7 +277,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%c.%s.%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
 
-   std::vector<string>::iterator it;
+   std::vector<std::string>::iterator it;
 
    bool bPrintTab = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins

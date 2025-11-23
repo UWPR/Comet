@@ -19,8 +19,6 @@
 #include "Common.h"
 #include "CometDataInternal.h"
 #include "CometSearch.h"
-//#include <sqlite3.h>
-#include <functional>
 
 class CometSpecLib
 {
@@ -28,7 +26,7 @@ public:
    CometSpecLib();
    ~CometSpecLib();
 
-   static bool LoadSpecLib(string strSpecLibFile);
+   static bool LoadSpecLib(std::string strSpecLibFile);
    static bool SearchSpecLib(int iWhichQuery,
                              ThreadPool *tp);
    static double ScoreSpecLib(Query *it,
@@ -42,9 +40,9 @@ public:
 
 
 private:
-   static bool ReadSpecLibRaw(string strSpecLib);
-   static bool ReadSpecLibSqlite(string strSpecLib);
-   static bool ReadSpecLibMSP(string strSpecLib);
+   static bool ReadSpecLibRaw(std::string strSpecLib);
+   static bool ReadSpecLibSqlite(std::string strSpecLib);
+   static bool ReadSpecLibMSP(std::string strSpecLib);
    static std::vector<double> decodeBlob(const void* blob, int size);
    static void printDoubleVector(const std::vector<double>& vec);
    static void SetSpecLibPrecursorIndex(double dNeutralMass,

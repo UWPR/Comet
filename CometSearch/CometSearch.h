@@ -18,7 +18,6 @@
 #include "CometDataInternal.h"
 #include "ThreadPool.h"
 #include "Common.h"
-#include <vector>
 #include <memory>
 #include <algorithm>
 
@@ -98,7 +97,7 @@ public:
        char szProteinName[WIDTH_REFERENCE];
        char *pszProteinSeq;
        //char cPeffOrigResidue;                     // original residue of a PEFF variant
-       string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+       std::string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
        int    iPeffNewResidueCount;               // number of new residue(s) being substituted/added in PEFF variant
        char cPrevAA;  // hack for indexdb realtime search
        char cNextAA;  // hack for indexdb realtime search
@@ -110,14 +109,14 @@ private:
 
    // Core search functions
    void ReadOBO(char *szOBO,
-                vector<OBOStruct> *vectorUniModOBO);
-   bool MapOBO(string strMod,
-               vector<OBOStruct> *vectorPeffOBO,
+                std::vector<OBOStruct> *vectorUniModOBO);
+   bool MapOBO(std::string strMod,
+               std::vector<OBOStruct> *vectorPeffOBO,
                struct PeffModStruct *pData);
    int BinarySearchPeffStrMod(int start,
                               int end,
-                              string strMod,
-                              vector<OBOStruct>& vectorPeffOBO);
+                              std::string strMod,
+                              std::vector<OBOStruct>& vectorPeffOBO);
    static size_t BinarySearchIndexMass(size_t start,
                                        size_t end,
                                        double dQueryMass,
@@ -137,7 +136,7 @@ private:
                            int iStartPos,
                            int iEndPos);
    bool WithinMassTolerancePeff(double dCalcPepMass,
-                                vector<PeffPositionStruct>* vPeffArray,
+                                std::vector<PeffPositionStruct>* vPeffArray,
                                 int iStartPos,
                                 int iEndPos);
    void XcorrScore(char *szProteinSeq,
@@ -218,7 +217,7 @@ private:
                     int iClipNtermMetOffset,
                     bool* pbDuplFragments,
                     bool* bDoPeffAnalysis,
-                    vector <PeffPositionStruct>* vPeffArray,
+                    std::vector <PeffPositionStruct>* vPeffArray,
                     struct sDBEntry *dbe);
    int  twiddle(int* x, int* y, int* z, int* p);
    void inittwiddle(int m, int n, int *p);

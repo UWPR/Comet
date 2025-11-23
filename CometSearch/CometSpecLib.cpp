@@ -20,8 +20,6 @@
 #include "ThreadPool.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
-#include <string>
-#include <string.h>
 
 
 CometSpecLib::CometSpecLib()
@@ -35,7 +33,7 @@ CometSpecLib::~CometSpecLib()
 
 
 // SpecLib will be a vector of structs. Structs contain spectra and IDs (peptide, scan #, etc.)
-bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
+bool CometSpecLib::LoadSpecLib(std::string strSpecLibFile)
 {
    FILE *fp;
 
@@ -44,7 +42,7 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
 
    if ((fp = fopen(g_staticParams.speclibInfo.strSpecLibFile.c_str(), "r")) == NULL)
    {
-      string strErrorMsg = "Error, spectral library file cannot be read: '" + g_staticParams.speclibInfo.strSpecLibFile + "'.\n";
+      std::string strErrorMsg = "Error, spectral library file cannot be read: '" + g_staticParams.speclibInfo.strSpecLibFile + "'.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -84,7 +82,7 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
    }
    else
    {
-      string strErrorMsg = "Error, expecting sqlite .db or Thermo .raw file for the spectral library.\n";
+      std::string strErrorMsg = "Error, expecting sqlite .db or Thermo .raw file for the spectral library.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -110,7 +108,7 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
 }
 
 
-bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
+bool CometSpecLib::ReadSpecLibSqlite(std::string strSpecLibFile)
 {
 
    printf(" Error - sqlite/.db files as spectral libraries are not supported yet.\n");
@@ -192,14 +190,14 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
 }
 
 
-bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
+bool CometSpecLib::ReadSpecLibRaw(std::string strSpecLibFile)
 {
    printf(" Error - raw files as spectral libraries are not supported yet.\n");
    exit(1);
 
    MSReader mstReader;
 
-   vector<MSSpectrumType> msLevel;
+   std::vector<MSSpectrumType> msLevel;
 
    mstReader.setFilter(msLevel);
 
@@ -211,7 +209,7 @@ bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
       msLevel.push_back(MS3);
    else
    {
-      string strErrorMsg = "Error, MS level not set for the spectral library input.\n";
+      std::string strErrorMsg = "Error, MS level not set for the spectral library input.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -354,13 +352,13 @@ bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
 // 102.0552	4117.3	"IEA/2.4ppm"
 // 105.0657	730.7	"?"
 // 107.4682	612.6	"?"
-bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
+bool CometSpecLib::ReadSpecLibMSP(std::string strSpecLibFile)
 {
    FILE *fp;
 
    if ( (fp=fopen(strSpecLibFile.c_str(), "r")) == NULL)
    {
-      string strErrorMsg = "Error, MSP spectral library file cannot be read: '" + strSpecLibFile + "'\n";
+      std::string strErrorMsg = "Error, MSP spectral library file cannot be read: '" + strSpecLibFile + "'\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -444,7 +442,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
                   sscanf(szBuf, "%lf %lf %*s", &dMass, &dInten);
 
                   if (dMass > 0.0 && dMass < 1e6 && dInten > 0.0)  // some sanity check on parsed mass
-                     pTmp.vSpecLibPeaks.push_back(make_pair(dMass, (float)dInten));
+                     pTmp.vSpecLibPeaks.push_back(std::make_pair(dMass, (float)dInten));
                }
 
                break;
@@ -497,7 +495,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    Spectrum mstSpectrum;           // For holding spectrum.
 
    // We want to read only M1 scans.
-   vector<MSSpectrumType> msLevel;
+   std::vector<MSSpectrumType> msLevel;
    msLevel.push_back(MS1);
    msLevel.push_back(MS2);
    msLevel.push_back(MS3);  // need all levels to get last scan RT
@@ -514,7 +512,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    if (*dMaxSpecLibRT == 0.0)
    {
-      string strErrorMsg = " Error - read dMaxSpecLibRT as " + std::to_string(*dMaxSpecLibRT) + ".\n";
+      std::string strErrorMsg = " Error - read dMaxSpecLibRT as " + std::to_string(*dMaxSpecLibRT) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -522,7 +520,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    if (iFileLastScan <= 0)
    {
-      string strErrorMsg = " Error - read iFileLastScan as " + std::to_string (iFileLastScan) + "%d.\n";
+      std::string strErrorMsg = " Error - read iFileLastScan as " + std::to_string (iFileLastScan) + "%d.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -543,7 +541,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    msLevel.push_back(MS1);  // we want to read only MS1 scans
    mstReader.setFilter(msLevel);
 
-   auto tStartTime = chrono::steady_clock::now();
+   auto tStartTime = std::chrono::steady_clock::now();
 
    // Load all input spectra.
    while (true)
@@ -644,7 +642,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    bool bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 
-   cout << "100% (" << CometMassSpecUtils::ElapsedTime(tStartTime) << ")" << endl;
+   std::cout << "100% (" << CometMassSpecUtils::ElapsedTime(tStartTime) << ")" << std::endl;
 
    g_bSpecLibRead = true;
 //   mstReader.closeFile();   //FIX when does this get closed?
@@ -727,7 +725,7 @@ void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
    }
    else
    {
-      string strErrorMsg = " Error - peptide_mass_units must be 0, 1 or 2. Value set is "
+      std::string strErrorMsg = " Error - peptide_mass_units must be 0, 1 or 2. Value set is "
          + std::to_string(g_staticParams.tolerances.iMassToleranceUnits) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);

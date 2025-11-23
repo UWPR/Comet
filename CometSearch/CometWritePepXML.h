@@ -66,7 +66,7 @@ private:
 
    static void WriteStaticMod(FILE *fpout,
                               CometSearchManager &searchMgr,
-                              string varModName);
+                              std::string varModName);
 
 };
 

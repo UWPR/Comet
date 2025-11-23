@@ -40,10 +40,10 @@ class CometWriteMzIdentML
       float  fAScorePro;
       char   cHasVariableMod;
       char   cPrevNext[3];
-      string strPeptide;
-      string strMods;
-      string strProtsTarget;   // delimited list of file offsets
-      string strProtsDecoy;    // delimited list of file offsets
+      std::string strPeptide;
+      std::string strMods;
+      std::string strProtsTarget;   // delimited list of file offsets
+      std::string strProtsDecoy;    // delimited list of file offsets
    };
 
 public:
@@ -57,7 +57,7 @@ public:
 
    static void WriteMzIdentML(FILE *fpout,
                               FILE *fpdb,
-                              string sTmpFile,
+                              std::string sTmpFile,
                               CometSearchManager &searchMgr);
 
 private:
@@ -78,15 +78,15 @@ private:
 
    static void WriteStaticMod(FILE *fpout,
                               CometSearchManager &searchMgr,
-                              string varModName);
+                              std::string varModName);
 
    static void GetModificationID(char cResidue,
                                  double dModMass,
-                                 string *strModID,
-                                 string *strModRef,
-                                 string *strModName);
+                                 std::string *strModID,
+                                 std::string *strModRef,
+                                 std::string *strModName);
 
-   static string GetAdditionalEnzymeInfo(int iWhichEnzyme);
+   static std::string GetAdditionalEnzymeInfo(int iWhichEnzyme);
  
    static void WriteEnzyme(FILE *fpout);
 
@@ -98,11 +98,11 @@ private:
 
    static void WriteSpectrumIdentificationList(FILE* fpout,
                                                FILE *fpdb,
-                                               vector<MzidTmpStruct>* vMzid);
+                                               std::vector<MzidTmpStruct>* vMzid);
 
    static bool ParseTmpFile(FILE *fpout,
                             FILE *fpdb,
-                            string ssTmpFile,
+                            std::string ssTmpFile,
                             CometSearchManager &searchMgr);
 };
 

@@ -172,7 +172,7 @@ struct Options
    IntRange peptideLengthRange;
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
-   string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
+   std::string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
 
    Options& operator=(Options& a)
    {
@@ -265,13 +265,13 @@ struct Results
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
    char   cHasVariableMod;                    // HasVariableModType enum: 0 = no variable mod, 1 = has variable mod, 2 = has AScorePro mod
-   string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
-   string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
-   string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string
+   std::string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
+   std::string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
+   std::string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
    int    iPeffNewResidueCount;               // more than 0 new residues is a substitution (if iPeffOrigResidueCount=1) or insertion (if iPeffOrigResidueCount>1)
-   vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
-   vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
+   std::vector<struct ProteinEntryStruct> pWhichProtein;       // file positions of matched protein entries
+   std::vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
 struct SpecLibResults // MS2 spec lib
@@ -338,7 +338,7 @@ struct OBOStruct           // stores info read from OBO file
 {
    double dMassDiffAvg;    // this is looked up from strMod string from OBO
    double dMassDiffMono;
-   string strMod;          // mod string, PSI-MOD, Unimod or custom
+   std::string strMod;          // mod string, PSI-MOD, Unimod or custom
 
    bool operator<(const OBOStruct& a) const
    {
@@ -387,7 +387,7 @@ struct PeffVariantComplexStruct  // stores info read from PEFF header
 {
   int    iPositionA;       // start position of variant
   int    iPositionB;       // end position of variant
-  string sResidues;        // if !empty(), insertion replacing aa from pos A to B;
+  std::string sResidues;        // if !empty(), insertion replacing aa from pos A to B;
                            // if empty(), deletion of aa from pos A to B
 
   bool operator<(const PeffVariantComplexStruct& a) const
@@ -405,9 +405,9 @@ struct PeffProcessedStruct
 struct PeffPositionStruct  // collate PEFF mods by position in sequence
 {
    int iPosition;  // position within the sequence
-   vector<int>    vectorWhichPeff;  // which specific peff entry from PeffModStruct
-   vector<double> vectorMassDiffAvg;
-   vector<double> vectorMassDiffMono;
+   std::vector<int>    vectorWhichPeff;  // which specific peff entry from PeffModStruct
+   std::vector<double> vectorMassDiffAvg;
+   std::vector<double> vectorMassDiffMono;
 };
 
 struct PeffSearchStruct  // variant info passed to SearchForPeptides
@@ -421,13 +421,13 @@ struct PeffSearchStruct  // variant info passed to SearchForPeptides
 //-->MH
 typedef struct sDBEntry
 {
-   string strName;           // might be able to delete this here
-   string strSeq;
+   std::string strName;           // might be able to delete this here
+   std::string strSeq;
    comet_fileoffset_t lProteinFilePosition;
-   vector<PeffModStruct> vectorPeffMod;
-   vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
-   vector<PeffVariantComplexStruct> vectorPeffVariantComplex;
-   vector<PeffProcessedStruct> vectorPeffProcessed;
+   std::vector<PeffModStruct> vectorPeffMod;
+   std::vector<PeffVariantSimpleStruct> vectorPeffVariantSimple;
+   std::vector<PeffVariantComplexStruct> vectorPeffVariantComplex;
+   std::vector<PeffProcessedStruct> vectorPeffProcessed;
 } sDBEntry;
 
 struct DBInfo
@@ -505,7 +505,7 @@ struct DBIndex
 // file and read in to this data struct.  Same as DBIndex w/o pcVarModSites[]
 struct PlainPeptideIndexStruct
 {
-   string sPeptide;
+   std::string sPeptide;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
    unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
@@ -535,12 +535,12 @@ struct FragmentPeptidesStruct
 
 struct SpecLibInfo      // why a struct for just a string???
 {
-   string strSpecLibFile;
+   std::string strSpecLibFile;
 };
 
 struct SpecLibStruct
 {
-   string strName;                   // any string associated with speclib entry
+   std::string strName;                   // any string associated with speclib entry
    unsigned int iLibEntry;           // a reference number associated with speclib entry
    unsigned int iNumPeaks;
    int iSpecLibCharge;               // precursor charge; not relevant for MS1 speclib
@@ -548,7 +548,7 @@ struct SpecLibStruct
    float fRTime;
    float fScaleMinInten;             // min intensity of data prior to encoding to pccSparseFastXcorrData; 0.0 for unit vector
    float fScaleMaxInten;             // max intensity of data prior to encoding to ppcSparseFastXcorrData
-   vector<std::pair<double, float>> vSpecLibPeaks;
+   std::vector<std::pair<double, float>> vSpecLibPeaks;
    float* pfUnitVector;
    unsigned int uiArraySizeMS1;
 };
@@ -566,11 +566,11 @@ extern std::deque<RetentionMatch> RetentionMatchHistory;
 
 extern unsigned int** g_iFragmentIndex;           // 2D array [BIN[fragment mass)][which entries in g_vFragmentPeptides]
 extern unsigned int* g_iCountFragmentIndex;       // array of ints: [BIN(fragment mass)] count size of g_iFragmentIndex[][x]
-extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
-extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
+extern std::vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
+extern std::vector<PlainPeptideIndexStruct> g_vRawPeptides;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
-extern vector<SpecLibStruct> g_vSpecLib;
-extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>
+extern std::vector<SpecLibStruct> g_vSpecLib;
+extern std::vector<std::vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>
 
 struct IndexProteinStruct  // for indexed database
 {
@@ -644,8 +644,8 @@ struct VarModParams
    int     iMaxPermutations;
    VarMods varModList[VMODS];
    char    cModCode[VMODS];          // mod characters
-   string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
-   multimap<int, string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
+   std::string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
+   std::multimap<int, std::string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -764,10 +764,10 @@ struct IonInfo
 // static user params, won't change per thread - can make global!
 struct StaticParams
 {
-   string          sHostName;
+   std::string     sHostName;
    char            szMod[512];         // used for sqt output
    char            szDecoyPrefix[256]; // used for prefix to indicate decoys
-   string          sDecoyPrefix;       // escaped version of szDecoyPrefix for output within XML files
+   std::string     sDecoyPrefix;       // escaped version of szDecoyPrefix for output within XML files
    char            szOutputSuffix[256]; // used for suffix to append to output file base names
    char            szTxtFileExt[256];  // text file extension; default "txt"
    int             iElapseTime;
@@ -791,8 +791,8 @@ struct StaticParams
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
    int             iIndexDb;            // 0 = normal fasta; 1 = fragment ion indexed; 2 = peptide index
-   vector<double>  vectorMassOffsets;
-   vector<double>  precursorNLIons;
+   std::vector<double>  vectorMassOffsets;
+   std::vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
    int             iOldModsEncoding;
    bool            bSkipToStartScan;
@@ -1029,9 +1029,9 @@ struct StaticParams
 
 extern StaticParams    g_staticParams;
 
-extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
+extern std::vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 
-extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+extern std::vector<std::vector<comet_fileoffset_t>> g_pvProteinsList;
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
@@ -1043,8 +1043,8 @@ struct ModificationNumber
    char* modifications;
 };
 
-extern vector<ModificationNumber> MOD_NUMBERS;
-extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
+extern std::vector<ModificationNumber> MOD_NUMBERS;
+extern std::vector<std::string> MOD_SEQS;    // Unique modifiable sequences.
 extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 
@@ -1103,10 +1103,10 @@ struct Query
    // Store raw peaks for AScorePro
 
    // List of ms/ms masses for fragment index search; intensity not important at this stage
-   vector<float> vfRawFragmentPeakMass;
+   std::vector<float> vfRawFragmentPeakMass;
    // Consider replacing vfRawFragmentPeakMass with a vector<pair<double, double>> to store
    // both mass and intensity if AScorePro is used
-   vector<AScoreProCpp::Centroid> vRawFragmentPeakMassIntensity;
+   std::vector<AScoreProCpp::Centroid> vRawFragmentPeakMassIntensity;
 
 
    PepMassInfo          _pepMassInfo;
@@ -1260,9 +1260,9 @@ struct QueryMS1
    }
 };
 
-extern vector<Query*>          g_pvQuery;
-extern vector<QueryMS1*>       g_pvQueryMS1;
-extern vector<InputFileInfo*>  g_pvInputFiles;
+extern std::vector<Query*>          g_pvQuery;
+extern std::vector<QueryMS1*>       g_pvQueryMS1;
+extern std::vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_pvDBIndexMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;

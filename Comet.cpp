@@ -258,14 +258,14 @@ void LoadParameters(char* pszParamsFile,
          if (!strncmp(szParamBuf, "# comet_version ", 16))
          {
             char szRev1[12], szRev2[12];
-            sscanf(szParamBuf, "%*s %*s %127s %11s %11s", szVersion, szRev1, szRev2);
+            std::sscanf(szParamBuf, "%*s %*s %127s %11s %11s", szVersion, szRev1, szRev2);
 
             if (pSearchMgr->IsValidCometVersion(std::string(szVersion)))
             {
                bValidParamsFile = true;
                char szVersion2[128];
-               sprintf(szVersion2, "%.100s %.11s %.11s", szVersion, szRev1, szRev2);
-               strcpy(szVersion, szVersion2);
+               std::sprintf(szVersion2, "%.100s %.11s %.11s", szVersion, szRev1, szRev2);
+               std::strcpy(szVersion, szVersion2);
                pSearchMgr->SetParam("# comet_version", szVersion, szVersion);
                break;
             }

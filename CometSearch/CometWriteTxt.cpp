@@ -411,9 +411,9 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
                                   int iPrintTargetDecoy,
                                   unsigned int *uiNumTotProteins)
 {
-   std::vector<string> vProteinTargets;  // store vector of target protein names
-   std::vector<string> vProteinDecoys;   // store vector of decoy protein names
-   std::vector<string>::iterator it;
+   std::vector<std::string> vProteinTargets;  // store vector of target protein names
+   std::vector<std::string> vProteinDecoys;   // store vector of decoy protein names
+   std::vector<std::string>::iterator it;
 
    bool bReturnFulProteinString = false;
 

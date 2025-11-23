@@ -18,7 +18,6 @@
 #include "CometPreprocess.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
-#include <string.h>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -135,7 +134,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
          for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
          {
             double dMZ = 0.0;              // m/z to use for analysis
-            vector<pair<int,double>> vChargeStates;   // charge, m/z
+            std::vector<std::pair<int,double>> vChargeStates;   // charge, m/z
 
             if (mstSpectrum.sizeMZ() == mstSpectrum.sizeZ())
             {
@@ -191,7 +190,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                   // ignore spectrum charge and use precursor_charge range
                   for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                   {
-                     vChargeStates.push_back(make_pair(z, dMZ));
+                     vChargeStates.push_back(std::make_pair(z, dMZ));
                   }
                }
                else if (g_staticParams.options.iOverrideCharge == 2)
@@ -200,14 +199,14 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                   for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                   {
                      if (z == iSpectrumCharge)
-                        vChargeStates.push_back(make_pair(z, dMZ));
+                        vChargeStates.push_back(std::make_pair(z, dMZ));
                   }
                }
                else if (g_staticParams.options.iOverrideCharge == 3)
                {
                   if (iSpectrumCharge > 0)
                   {
-                     vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+                     vChargeStates.push_back(std::make_pair(iSpectrumCharge, dMZ));
                   }
                   else // use 1+ or charge range
                   {
@@ -223,13 +222,13 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
 
                      if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
                      {
-                        vChargeStates.push_back(make_pair(1, dMZ));
+                        vChargeStates.push_back(std::make_pair(1, dMZ));
                      }
                      else
                      {
                         for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                         {
-                           vChargeStates.push_back(make_pair(z, dMZ));
+                           vChargeStates.push_back(std::make_pair(z, dMZ));
                         }
                      }
                   }
@@ -239,14 +238,14 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
             {
                if (iSpectrumCharge > 0) // use charge from file
                {
-                  vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+                  vChargeStates.push_back(std::make_pair(iSpectrumCharge, dMZ));
 
                   // add in any other charge states for the single precursor m/z
                   if (mstSpectrum.sizeMZ() == 1 && mstSpectrum.sizeMZ() < mstSpectrum.sizeZ())
                   {
                      for (int ii = 1 ; ii < mstSpectrum.sizeZ(); ++ii)
                      {
-                        vChargeStates.push_back(make_pair(mstSpectrum.atZ(ii).z, (mstSpectrum.atZ(ii).mh + PROTON_MASS * (mstSpectrum.atZ(ii).z - 1)) / mstSpectrum.atZ(ii).z));
+                        vChargeStates.push_back(std::make_pair(mstSpectrum.atZ(ii).z, (mstSpectrum.atZ(ii).mh + PROTON_MASS * (mstSpectrum.atZ(ii).z - 1)) / mstSpectrum.atZ(ii).z));
                      }
                   }
                }
@@ -265,18 +264,18 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
 
                   if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
                   {
-                     vChargeStates.push_back(make_pair(1, dMZ));
+                     vChargeStates.push_back(std::make_pair(1, dMZ));
                   }
                   else
                   {
-                     vChargeStates.push_back(make_pair(2, dMZ));
-                     vChargeStates.push_back(make_pair(3, dMZ));
+                     vChargeStates.push_back(std::make_pair(2, dMZ));
+                     vChargeStates.push_back(std::make_pair(3, dMZ));
                   }
                }
             }
 
             // now analyze all possible precursor charges for this spectrum
-            for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
+            for (std::vector<std::pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
             {
                int iPrecursorCharge = (*iter).first;
                double dProtonatedMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
@@ -315,7 +314,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                }
                else
                {
-                  string strErrorMsg = " Error - peptide_mass_units must be 0, 1 or 2. Value set is "
+                  std::string strErrorMsg = " Error - peptide_mass_units must be 0, 1 or 2. Value set is "
                      + std::to_string(g_staticParams.tolerances.iMassToleranceUnits) + ".\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                   logerr(strErrorMsg);
@@ -602,8 +601,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                iNumSpectraLoaded = (int)g_pvQuery.size();
                iNumSpectraLoaded++;
                Threading::UnlockMutex(g_pvQueryMutex);
-
-               pPreprocessThreadPool->wait_for_available_thread();
 
                //-->MH
                //If there are no Z-lines, filter the spectrum for charge state
@@ -978,7 +975,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
+         std::string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
             + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1000,7 +997,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                }
                catch (std::bad_alloc& ba)
                {
-                  string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
+                  std::string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
                      + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
                      + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
                      + "parameters to address mitigate memory use.\n";
@@ -1024,7 +1021,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    catch (std::bad_alloc& ba)
    {
-      string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
+      std::string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
          + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
          + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
          + "parameters to address mitigate memory use.\n";
@@ -1046,7 +1043,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             }
             catch (std::bad_alloc& ba)
             {
-               string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
+               std::string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
                   + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
                   + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
                   + "parameters to address mitigate memory use.\n";
@@ -1077,7 +1074,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
    catch (std::bad_alloc& ba)
    {
-      string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
+      std::string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
          + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
          + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
          + "parameters to address mitigate memory use.\n";
@@ -1099,7 +1096,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             }
             catch (std::bad_alloc& ba)
             {
-               string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
+               std::string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
                   + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
                   + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
                   + "parameters to address mitigate memory use.\n";
@@ -1270,7 +1267,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    for (int i = 0 ; i < spec.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
    {
       double dMZ = 0.0;              // m/z to use for analysis
-      vector<pair<int,double>> vChargeStates;   // charge, m/z
+      std::vector<std::pair<int,double>> vChargeStates;   // charge, m/z
 
       if (spec.sizeMZ() == spec.sizeZ())
       {
@@ -1326,7 +1323,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             // ignore spectrum charge and use precursor_charge range
             for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
             {
-               vChargeStates.push_back(make_pair(z, dMZ));
+               vChargeStates.push_back(std::make_pair(z, dMZ));
             }
          }
          else if (g_staticParams.options.iOverrideCharge == 2)
@@ -1335,14 +1332,14 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
             {
                if (z == iSpectrumCharge)
-                  vChargeStates.push_back(make_pair(z, dMZ));
+                  vChargeStates.push_back(std::make_pair(z, dMZ));
             }
          }
          else if (g_staticParams.options.iOverrideCharge == 3)
          {
             if (iSpectrumCharge > 0)
             {
-               vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+               vChargeStates.push_back(std::make_pair(iSpectrumCharge, dMZ));
             }
             else // use 1+ or charge range
             {
@@ -1358,13 +1355,13 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
                if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
                {
-                  vChargeStates.push_back(make_pair(1, dMZ));
+                  vChargeStates.push_back(std::make_pair(1, dMZ));
                }
                else
                {
                   for (z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                   {
-                     vChargeStates.push_back(make_pair(z, dMZ));
+                     vChargeStates.push_back(std::make_pair(z, dMZ));
                   }
                }
             }
@@ -1374,14 +1371,14 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       {
          if (iSpectrumCharge > 0) // use charge from file
          {
-            vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+            vChargeStates.push_back(std::make_pair(iSpectrumCharge, dMZ));
 
             // add in any other charge states for the single precursor m/z
             if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
             {
                for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
                {
-                  vChargeStates.push_back(make_pair(spec.atZ(ii).z, (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z ));
+                  vChargeStates.push_back(std::make_pair(spec.atZ(ii).z, (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z ));
                }
             }
          }
@@ -1400,18 +1397,18 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             if (isEqual(dSumTotal, 0.0) || ((dSumBelow/dSumTotal) > 0.95))
             {
-               vChargeStates.push_back(make_pair(1, dMZ));
+               vChargeStates.push_back(std::make_pair(1, dMZ));
             }
             else
             {
-               vChargeStates.push_back(make_pair(2, dMZ));
-               vChargeStates.push_back(make_pair(3, dMZ));
+               vChargeStates.push_back(std::make_pair(2, dMZ));
+               vChargeStates.push_back(std::make_pair(3, dMZ));
             }
          }
       }
 
       // now analyze all possible precursor charges for this spectrum
-      for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
+      for (std::vector<std::pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = (*iter).first;
          double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
@@ -1564,7 +1561,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    }
    else  // Should not get here.
    {
-      string strErrorMsg = " Error - iIsotopeError=" + std::to_string(g_staticParams.tolerances.iIsotopeError) + "\n";
+      std::string strErrorMsg = " Error - iIsotopeError=" + std::to_string(g_staticParams.tolerances.iIsotopeError) + "\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -1877,7 +1874,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppdTmpRawDataArr["
+         std::string strErrorMsg = " Error - new(ppdTmpRawDataArr["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1897,7 +1894,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppdTmpFastXcorrDataArr["
+         std::string strErrorMsg = " Error - new(ppdTmpFastXcorrDataArr["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1917,7 +1914,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppdTmpCorrelationDataArr["
+         std::string strErrorMsg = " Error - new(ppdTmpCorrelationDataArr["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1937,7 +1934,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppfFastXcorrData["
+         std::string strErrorMsg = " Error - new(ppfFastXcorrData["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1957,7 +1954,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppfFastXcorrDataNL["
+         std::string strErrorMsg = " Error - new(ppfFastXcorrDataNL["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -1977,7 +1974,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(ppfSpScoreData["
+         std::string strErrorMsg = " Error - new(ppfSpScoreData["
             + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -2172,7 +2169,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(pfFastXcorrDataNL["
+         std::string strErrorMsg = " Error - new(pfFastXcorrDataNL["
             + std::to_string(pScoring->_spectrumInfoInternal.iArraySize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -2268,7 +2265,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
       }
       catch (std::bad_alloc& ba)
       {
-         string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
+         std::string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
             + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
@@ -2290,7 +2287,7 @@ bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                }
                catch (std::bad_alloc& ba)
                {
-                  string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
+                  std::string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
                      + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
                      + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
                      + "parameters to address mitigate memory use.\n";
