@@ -12,10 +12,9 @@
 C = gcc
 CC = g++
 
-CFLAGS = -O3 -std=c++11
+CFLAGS = -O3 -std=c++14
 SLFLAGS = -shared -fPIC -g
 INCLUDE = -I./include
-INCLUDE_EXT = -I./include/extern
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 DFLAGS_EXT = -DHAVE_EXPAT_CONFIG_H
 
@@ -24,14 +23,6 @@ ifneq ($(UNAME_S),Darwin)
 SFLAGS += -Wl,-z,norelro
 endif
 
-
-# -- Need to fix HDF5
-#ifdef HDF5
-#CFLAGS = -O3 -std=c++11 -I. -I./include -I$(HDF5_DIR)/include -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H $(HDF5)
-#SFLAGS = -O3 -std=c++11 -shared -fPIC -g -I. -I./include -I$(HDF5_DIR)/include  -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC -DHAVE_EXPAT_CONFIG_H $(HDF5)
-#else
-#CFLAGS = -O3 -std=c++11
-#endif
 
 SOVER = 2
 RELVER = $(SOVER).0.0
@@ -72,8 +63,8 @@ realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclea
 #
 EXPAT_VER := expat-2.2.9
 EXPAT_SRC := $(BUILD_EXT)/$(EXPAT_VER)
-EXPAT_DST := include/extern/expat_config.h $(BUILD_DIR)/libexpat.a
-EXPAT_DSO := $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmltok.o
+EXPAT_DST := include/expat_config.h $(BUILD_DIR)/libexpat.a
+# EXPAT_DSO := $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmltok.o
 
 .PHONY : expat expat-clean expat-realclean
 
@@ -107,11 +98,12 @@ expat-realclean : expat-clean
 #
 # http://zlib.net/
 #
-ZLIB_VER := zlib-1.2.11
+ZLIB_VER := zlib-1.3.1
 ZLIB_SRC := $(BUILD_EXT)/$(ZLIB_VER)
-ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
+ZLIB_SRC_C := $(wildcard $(ZLIB_SRC)/*.c)
+ZLIB_SRC_H := $(wildcard $(ZLIB_SRC)/*.h)
 ZLIB_DST := $(BUILD_DIR)/libz.a
-ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
+# ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRC_C))
 
 .PHONY : zlib zlib-clean zlib-realclean
 
@@ -119,7 +111,7 @@ zlib : $(ZLIB_DST)
 
 #$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
 $(ZLIB_DST) :
-	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
+	cd $(BUILD_EXT); unzip -o -qq zlib-1.3.1.zip
 	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
 	make -C $(ZLIB_SRC) install
 
@@ -130,7 +122,7 @@ endif
 
 zlib-realclean : zlib-clean
 	rm -rf $(ZLIB_DST) $(BUILD_DIR)/libz.so* $(SRC_DIR)/include/zlib.h $(SRC_DIR)/include/zconf.h
-	rm -rf $(ZLIB_SRC) ; cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
+	rm -rf $(ZLIB_SRC) ; cd $(BUILD_EXT); unzip -o -qq zlib-1.3.1.zip
 	
 
 # -- MSToolkit  ---------------------------------------------------------------
@@ -151,6 +143,7 @@ mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
 
 $(MSTOOLKIT_DST) : | $(BUILD_DIR)/
 $(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp
+# 	cp $(ZLIB_SRC_H) $(BUILD_EXT_INC)
 	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
 
 $(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp
@@ -246,7 +239,7 @@ endif
 ifneq ($(UNAME_S),Darwin)
 	ar -M <mstoolkitextern.mri
 else
-	ar -qc libmstoolkitextern.a extern/expat-2.2.9/lib/*.o extern/zlib-1.2.11/*.o
+	ar -qc libmstoolkitextern.a $(BUILD_EXT)/expat-2.2.9/lib/*.o $(BUILD_EXT)/zlib-1.3.1/*.o
 endif
 
 libextern-clean :

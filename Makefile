@@ -4,9 +4,9 @@ COMETSEARCH =  CometSearch
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-   override CXXFLAGS += -O3         -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.2.11 -I$(COMETSEARCH) -I$(ASCOREPRO)/include
+   override CXXFLAGS += -O3         -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.3.1 -I$(COMETSEARCH) -I$(ASCOREPRO)/include
 else
-   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.2.11 -I$(COMETSEARCH) -I$(ASCOREPRO)/include
+   override CXXFLAGS += -O3 -static -std=c++14 -fpermissive -Wall -Wextra -Wno-char-subscripts -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -D__LINUX__ -D_NOSQLITE -I$(MSTOOLKIT)/include -I$(MSTOOLKIT)/extern/expat-2.2.9/lib -I$(MSTOOLKIT)/extern/zlib-1.3.1 -I$(COMETSEARCH) -I$(ASCOREPRO)/include
 endif
 
 EXECNAME = comet.exe

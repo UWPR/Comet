@@ -72,7 +72,7 @@ mzparser : $(MZP_SRCDIR)\\*.cpp
 # -- zlib ---------------------------------------------
 # zlib file compression
 #------------------------------------------------------
-ZLIB_SRCDIR=$(BUILD_EXT)\zlib-1.2.11
+ZLIB_SRCDIR=$(BUILD_EXT)\zlib-1.3.1
 
 zlib : $(ZLIB_SRCDIR)\\*.c
 	cl $(CFLAGS) $(CDEFS) /I"$(BUILD_INC)" /c /Fo$(BUILD_DIR_EXT)\ $?
