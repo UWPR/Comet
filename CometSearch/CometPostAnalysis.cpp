@@ -1268,7 +1268,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
                         + ", scan " + std::to_string(pQuery->_spectrumInfoInternal.iScanNumber)
                         + ", z " + std::to_string(ctCharge);
 
-                     string strErrorMsg(sErrorMsg.c_str());
+                     std::string strErrorMsg(sErrorMsg.c_str());
                      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                      logerr(sErrorMsg);
                      return false;
