@@ -122,8 +122,8 @@ int mzParser::b64_decode_mio ( char *dest,  const char *src, size_t size )
 
 	for (;;)
 	{
-		int register a;
-		int register b;
+		int a;
+		int b;
 		int t1,t2,t3,t4;
 
 		if (!(t1 = *src++) || !(t2 = *src++) || !(t3 = *src++) || !(t4 = *src++))
