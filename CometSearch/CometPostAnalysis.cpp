@@ -120,7 +120,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 }
 
 
-void CometPostAnalysis::CalculateDeltaCnAndRank(Results* pOutput, int iNumPrintLines) {
+void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrintLines) {
 
    // extend 1 past iNumPeptideOutputLines need for deltaCn calculation of last entry
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
@@ -221,12 +221,11 @@ void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    // After ProcessResults for targets
-   CalculateDeltaCnAndRank(pQuery->_pResults, pQuery->iMatchPeptideCount);
+   CalculateDeltaCnsAndRank(pQuery->_pResults, pQuery->iMatchPeptideCount);
 
    // After ProcessResults for decoys (if any)
    if (g_staticParams.options.iDecoySearch == 2)
-      CalculateDeltaCnAndRank(pQuery->_pDecoys, pQuery->iMatchPeptideCount);
-
+      CalculateDeltaCnsAndRank(pQuery->_pDecoys, pQuery->iMatchPeptideCount);
 }
 
 void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
