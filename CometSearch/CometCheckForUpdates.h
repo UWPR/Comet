@@ -17,13 +17,14 @@
 #define _COMETCHECKFORUPDATES_H_
 
 #include "Common.h"
-//#include "CometDataInternal.h"
 
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <stdarg.h>
 
 class CometCheckForUpdates
