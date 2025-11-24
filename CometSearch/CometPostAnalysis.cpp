@@ -217,15 +217,9 @@ void CometPostAnalysis::CalculateDeltaCnAndRank(Results* pOutput, int iNumPrintL
 
 void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 {
-   int iNumPrintLines;
-   int iMinLength;
-
-   Results* pOutput;
 
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
-   pOutput = pQuery->_pResults;
-   
    // After ProcessResults for targets
    CalculateDeltaCnAndRank(pQuery->_pResults, pQuery->iMatchPeptideCount);
 
