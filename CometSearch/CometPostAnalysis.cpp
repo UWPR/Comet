@@ -126,7 +126,7 @@ void CometPostAnalysis::CalculateDeltaCnAndRank(Results* pOutput, int iNumPrintL
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines + 1;
 
-   iMinLength = 999;
+   int iMinLength = 999;
    for (int i = 0; i < iNumPrintLines; ++i)
    {
       int iLen = (int)strlen(pOutput[i].szPeptide);
