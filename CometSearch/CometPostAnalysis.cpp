@@ -787,7 +787,7 @@ void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
             }
          }
 
-         // Report site score as a string composed of space separated “position:score” pairs
+         // Report site score as a string composed of space separated "position:score" pairs
          g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores.clear();
          int iPosition;
          double dScore;
