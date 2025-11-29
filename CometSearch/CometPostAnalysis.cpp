@@ -120,7 +120,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 }
 
 
-void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrintLines) {
+void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrintLines)
+{
 
    // extend 1 past iNumPeptideOutputLines need for deltaCn calculation of last entry
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
