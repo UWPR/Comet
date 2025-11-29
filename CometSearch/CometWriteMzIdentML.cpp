@@ -22,7 +22,6 @@
 #include "CometWritePepXML.h"
 
 #include "limits.h"
-#include "stdlib.h"
 
 #ifdef _WIN32
 #define strcasecmp _stricmp
