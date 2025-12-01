@@ -120,9 +120,9 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 }
 
 
-void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrintLines)
+void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput,
+                                                 int iNumPrintLines)
 {
-
    // extend 1 past iNumPeptideOutputLines need for deltaCn calculation of last entry
    if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines + 1)
       iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines + 1;
@@ -215,6 +215,7 @@ void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput, int iNumPrint
       pOutput[iWhichResult].usiRankXcorr = usiRankXcorr;
    }
 }
+
 
 void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
 {
@@ -338,6 +339,7 @@ void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
 }
 
 
+// Peptide masses are recalculated here as well
 void CometPostAnalysis::CalculateSP(Results *pOutput,
                                     int iWhichQuery,
                                     int iSize)
@@ -399,6 +401,9 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          double dBion = g_staticParams.precalcMasses.dNtermProton;
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
+         // recalculate dCalcPepMass here for deterministic mass
+         double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+
          double dTmpIntenMatch = 0.0;
 
          unsigned short usiMatchedFragmentIonCt = 0;
@@ -411,20 +416,28 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
          usiMaxFragCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge;
 
          if (pOutput[i].cPrevAA == '-' || pOutput[i].bClippedM)
+         {
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+            dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+         }
          if (pOutput[i].cNextAA == '-')
+         {
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+            dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+         }
 
          if (g_staticParams.variableModParameters.bVarModSearch
                && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] > 0))
          {
             dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] - 1].dVarModMass;
+            dCalcPepMass += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] - 1].dVarModMass;
          }
 
          if (g_staticParams.variableModParameters.bVarModSearch
                && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] > 0))
          {
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] - 1].dVarModMass;
+            dCalcPepMass += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] - 1].dVarModMass;
          }
 
          for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
@@ -467,12 +480,14 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
             dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
             dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
+            dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)pOutput[i].szPeptide[ii]];
 
             if (g_staticParams.variableModParameters.bVarModSearch)
             {
                if (pOutput[i].piVarModSites[ii] != 0)
                {
                   dBion += pOutput[i].pdVarModSites[ii];
+                  dCalcPepMass += pOutput[i].pdVarModSites[ii];
 
                   int iMod = pOutput[i].piVarModSites[ii];
 
@@ -503,6 +518,14 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
 
             pdAAforward[ii] = dBion;
             pdAAreverse[ii] = dYion;
+         }
+
+         // Add last amino acid mass as above loop stops before peptide length minus 1
+         dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)pOutput[i].szPeptide[iLenMinus1]];
+         if (g_staticParams.variableModParameters.bVarModSearch)
+         {
+            if (pOutput[i].piVarModSites[iLenMinus1] != 0)
+               dCalcPepMass += pOutput[i].pdVarModSites[iLenMinus1];
          }
 
          int iMax = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
@@ -656,6 +679,8 @@ void CometPostAnalysis::CalculateSP(Results *pOutput,
                }
             }
          }
+
+         pOutput[i].dPepMass = dCalcPepMass;
 
          pOutput[i].fScoreSp = (float)((dTmpIntenMatch * usiMatchedFragmentIonCt * (1.0 + dConsec)) /
             ((pOutput[i].usiLenPeptide - 1.0) * usiMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
