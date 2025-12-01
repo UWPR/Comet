@@ -355,7 +355,7 @@ struct EnzymeInfo
       szSearchEnzymeBreakAA[0] = '\0';
       szSearchEnzymeNoBreakAA[0] = '\0';
 
-      strcpy(szSearchEnzyme2Name, "cut_everywhere");
+      strcpy(szSearchEnzyme2Name, "Cut_everywhere");
       strcpy(szSearchEnzyme2BreakAA, "-");
       strcpy(szSearchEnzyme2NoBreakAA, "-");
 

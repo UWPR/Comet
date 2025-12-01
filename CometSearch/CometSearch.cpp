@@ -2768,7 +2768,15 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   if (g_staticParams.options.bCreateFragmentIndex
                         || (g_staticParams.options.bCreatePeptideIndex && dCalcPepMass >= g_massRange.dMinMass && dCalcPepMass <= g_massRange.dMaxMass))
                   {
-                     g_pvDBIndex.push_back(sEntry);  // can save a few transient bytes by going with <PlainPeptideIndexStruct> g_vRawPeptides here
+                     try
+                     {
+                        g_pvDBIndex.push_back(sEntry);
+                     }
+                     catch (const std::bad_alloc& e)
+                     {
+                        std::cerr << "Error with g_pvDBIndex.push_back().  Vector size: " << g_pvDBIndex.size() << " Capacity: " << g_pvDBIndex.capacity() << " Exception caught" << e.what() << std::endl;
+                        throw;
+                     }
                   }
                }
 
@@ -6969,7 +6977,15 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             for (int x=0; x<iLen2; x++)  // +2 for n/c term mods
                sDBTmp.pcVarModSites[x] = piVarModSites[x];
 
-            g_pvDBIndex.push_back(sDBTmp);
+            try
+            {
+               g_pvDBIndex.push_back(sDBTmp);
+            }
+            catch (const std::bad_alloc& e)
+            {
+               std::cerr << "Error with g_pvDBIndex.push_back().  Vector size: " << g_pvDBIndex.size() << " Capacity: " << g_pvDBIndex.capacity() << " Exception caught" << e.what() << std::endl;
+               throw;
+            }
 
             Threading::UnlockMutex(g_pvDBIndexMutex);
          }
