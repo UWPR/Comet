@@ -3066,10 +3066,6 @@ cleanup_results:
          fclose(fpdb);
       }
 
-      // Clean up the input files vector
-//    g_staticParams.vectorMassOffsets.clear();
-//    g_staticParams.precursorNLIons.clear();
-
       //MH: Deallocate spectral processing memory.
       CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
 

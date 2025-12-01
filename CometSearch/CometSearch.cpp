@@ -87,6 +87,9 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
 
 bool CometSearch::DeallocateMemory(int maxNumThreads)
 {
+   if (!g_bCometSearchMemoryAllocated)
+      return true;
+
    delete [] _pbSearchMemoryPool;
 
    for (int i = 0; i < maxNumThreads; ++i)

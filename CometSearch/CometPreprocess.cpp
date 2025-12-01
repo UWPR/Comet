@@ -1997,6 +1997,9 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 {
    int i;
 
+   if (!g_bCometPreprocessMemoryAllocated)
+      return true;
+
    delete [] pbMemoryPool;
 
    for (i=0; i<maxNumThreads; ++i)
