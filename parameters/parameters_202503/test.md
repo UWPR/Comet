@@ -162,11 +162,6 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
     </div>
 
     <div class="vmg-field">
-      <label for="vmg-neutral-loss">Fragment Neutral Loss (optional, up to 2 allowed, comma separated no spaces):</label>
-      <input type="text" id="vmg-neutral-loss" value="0.0" />
-    </div>
-
-    <div class="vmg-field">
       <label for="vmg-neutral-loss">Fragment Neutral Loss (single float or two floats comma separated no spaces):</label>
       <input type="text" id="vmg-neutral-loss" value="0.0" />
       <small id="vmg-neutral-loss-error" class="vmg-error" style="display:none">
@@ -347,6 +342,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 </script>
 
 <!-- End of generator section -->
+
 
 
 
