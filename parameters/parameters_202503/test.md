@@ -166,6 +166,14 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
       <input type="text" id="vmg-neutral-loss" value="0.0" />
     </div>
 
+    <div class="vmg-field">
+      <label for="vmg-neutral-loss">Fragment Neutral Loss (single float or two floats comma separated no spaces):</label>
+      <input type="text" id="vmg-neutral-loss" value="0.0" />
+      <small id="vmg-neutral-loss-error" class="vmg-error" style="display:none">
+        Enter either a single float ("97.976896") or two floats comma-separated with NO spaces ("97.976896,79.966331"). Enter "0.0" for no fragment neutral loss.
+      </small>
+    </div>
+
     <div style="margin-top:0.5em;">
       <span style="font-weight:bold">variable_modXX =</span>
       <div id="vmg-config-string" style="display:inline-block; border:1px solid #ccc; padding:8px; margin-left:0.5em; font-weight:bold; min-width:320px;">&nbsp;</div>
@@ -180,7 +188,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
 <style>
   /* Scoped styles for the variable mod generator */
-  #vmg-generator { background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
+  #vmg-generator { font-size:12px; background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
   #vmg-generator h3 { margin-top:0; }
   #vmg-generator .vmg-field { margin-bottom:0.8em; }
   #vmg-generator label { display:block; font-weight:600; margin-bottom:0.25em; }
@@ -208,17 +216,24 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
     terminus: root.querySelector('#vmg-terminus'),
     modRequired: root.querySelector('#vmg-mod-required'),
     neutralLoss: root.querySelector('#vmg-neutral-loss'),
+    neutralLossError: root.querySelector('#vmg-neutral-loss-error'),
     configDisplay: root.querySelector('#vmg-config-string'),
     copyBtn: root.querySelector('#vmg-copy-btn')
   };
 
+	// Regex to enforce:
+	// - single float that MUST have a decimal point (optionally leading -)
+	// - OR two floats separated by a single comma with NO spaces
+	// Examples valid: 97.976896  ;  97.976896,79.966331
+	const neutralLossPattern = /^-?\d+\.\d+(,-?\d+\.\d+)?$/;
+	
   function validateInputs() {
     let isValid = true;
 
     // Validate mass difference: require numeric value (allow negative), must include a dot or be a valid float
     const massVal = elems.massDifference.value;
     const massNumeric = parseFloat(massVal);
-    if (massVal === "" || Number.isNaN(massNumeric) || !/^-?\d+(\.\d+)$/.test(massVal)) {
+    if (massVal === "" || Number.isNaN(parseFloat(massNumeric)) || !/^-?\d+(\.\d+)$/.test(massVal)) {
       elems.massError.style.display = 'inline';
       isValid = false;
     } else {
@@ -243,6 +258,18 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
       elems.maxModifiedError.style.display = 'none';
     }
 
+    // neutral loss: enforce single float or two floats comma separated, no spaces
+    const nl = (elems.neutralLoss.value || '').trim();
+    if (nl === "") {
+      // Empty is treated as the default neutral loss "0.0" (valid).
+      elems.neutralLossError.style.display = 'none';
+    } else if (!neutralLossPattern.test(nl)) {
+      elems.neutralLossError.style.display = 'inline';
+      isValid = false;
+    } else {
+      elems.neutralLossError.style.display = 'none';
+    }
+	  
     // distance always valid from select; placeholder error not used except for future checks
     return isValid;
   }
@@ -262,8 +289,9 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
       elems.distance.value,
       elems.terminus.value,
       elems.modRequired.value.trim(),
-      elems.neutralLoss.value.trim()
-    ];
+      // If neutralLoss is empty, use default "0.0"
+      (elems.neutralLoss.value && elems.neutralLoss.value.trim() !== '') ? elems.neutralLoss.value.trim() : '0.0'
+	];
 
     const configString = parts.join(' ');
     elems.configDisplay.textContent = configString;
@@ -319,6 +347,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 </script>
 
 <!-- End of generator section -->
+
 
 
 
