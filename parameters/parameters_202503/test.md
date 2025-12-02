@@ -89,9 +89,6 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
 ---
 
-## Comet Variable Mod Config Generator
-
-
 <div id="vmg-generator" class="vmg-container">
   <h3>Comet Variable Mod Config Generator</h3>
   <p>
@@ -113,12 +110,11 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
     <div class="vmg-field">
       <label for="vmg-modification-type">Modification Type (Variable or Binary):</label>
-	  
-      <input type="number" id="vmg-modification-type" value="0" />
 	  <select id="vmg-modification-type">
         <option value="0">Variable modification</option>
         <option value="1">Binary modification (residues are either all modified or not modified)</option>
       </select>
+      <small id="vmg-modification-type-error" class="vmg-error" style="display:none">Please select a valid modification type.</small>
     </div>
 
     <div class="vmg-field">
@@ -200,6 +196,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
     residues: root.querySelector('#vmg-residues'),
     residuesError: root.querySelector('#vmg-residues-error'),
     modType: root.querySelector('#vmg-modification-type'),
+    modTypeError: root.querySelector('#vmg-modification-type-error'),
     maxModified: root.querySelector('#vmg-max-modified'),
     maxModifiedError: root.querySelector('#vmg-max-modified-error'),
     distance: root.querySelector('#vmg-distance'),
@@ -318,3 +315,4 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 </script>
 
 <!-- End of generator section -->
+
