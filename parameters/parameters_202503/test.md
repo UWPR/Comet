@@ -111,8 +111,8 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
     <div class="vmg-field">
       <label for="vmg-modification-type">Modification Type (Variable or Binary):</label>
 	  <select id="vmg-modification-type">
-        <option value="0">Variable modification</option>
-        <option value="1">Binary modification (residues are either all modified or not modified)</option>
+        <option value="0">Variable modification (0)</option>
+        <option value="1">Binary modification (1); residues are either all modified or not modified</option>
       </select>
       <small id="vmg-modification-type-error" class="vmg-error" style="display:none">Please select a valid modification type.</small>
     </div>
@@ -145,19 +145,19 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
     <div class="vmg-field">
       <label for="vmg-terminus">Terminus:</label>
       <select id="vmg-terminus">
-        <option value="0">Protein N-terminus</option>
-        <option value="1">Protein C-terminus</option>
-        <option value="2">Peptide N-terminus</option>
-        <option value="3">Peptide C-terminus</option>
+        <option value="0">Protein N-terminus (0)</option>
+        <option value="1">Protein C-terminus (1)</option>
+        <option value="2">Peptide N-terminus (2)</option>
+        <option value="3">Peptide C-terminus (3)</option>
       </select>
     </div>
 
     <div class="vmg-field">
       <label for="vmg-mod-required">Modification Required:</label>
 	  <select id="vmg-mod-required">
-        <option value="0">this variable modification not forced to be present</option>
-        <option value="1">this variable modification is required to be present</option>
-        <option value="-1">this is an exclusive modification</option>
+        <option value="0">this variable modification not forced to be present (0)</option>
+        <option value="1">this variable modification is required to be present (1)</option>
+        <option value="-1">this is an exclusive modification (-1)</option>
       </select>
     </div>
 
@@ -180,7 +180,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
 <style>
   /* Scoped styles for the variable mod generator */
-  #vmg-generator { font-size: 10px; background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
+  #vmg-generator { background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
   #vmg-generator h3 { margin-top:0; }
   #vmg-generator .vmg-field { margin-bottom:0.8em; }
   #vmg-generator label { display:block; font-weight:600; margin-bottom:0.25em; }
@@ -319,5 +319,6 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 </script>
 
 <!-- End of generator section -->
+
 
 
