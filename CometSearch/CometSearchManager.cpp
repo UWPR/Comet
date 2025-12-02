@@ -1778,6 +1778,28 @@ bool CometSearchManager::InitializeStaticParams()
 
    staticParamsInitializationComplete = true;
 
+/*
+   // Print out all variable modifications being used.
+   for (int i = 0; i < VMODS; ++i)
+   {
+      if (g_staticParams.variableModParameters.varModList[i].bUseMod)
+      {
+         printf("OK variable modification %d\n", i);
+         printf("mass %lf\n", g_staticParams.variableModParameters.varModList[i].dVarModMass);
+         printf("chars %s\n", g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         printf("max per mod %d\n", g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
+         printf("min per mod %d\n", g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod);
+         printf("term distance %d\n", g_staticParams.variableModParameters.varModList[i].iVarModTermDistance);
+         printf("which term %d\n", g_staticParams.variableModParameters.varModList[i].iWhichTerm);
+         printf("require this mod %d\n", g_staticParams.variableModParameters.varModList[i].iRequireThisMod);
+         printf("binary mod %d\n", g_staticParams.variableModParameters.varModList[i].iBinaryMod);
+         printf("neutral loss %lf\n", g_staticParams.variableModParameters.varModList[i].dNeutralLoss);
+         printf("neutral loss2 %lf\n", g_staticParams.variableModParameters.varModList[i].dNeutralLoss2);
+         printf("\n");
+      }
+   }
+*/
+
    return true;
 }
 

@@ -112,7 +112,18 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
       && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
    {
-      CalculateAScorePro(iQueryIndex, g_AScoreInterface);
+      bool bHasTerminalVariableMod = false;
+
+      // also skip AScore if peptide has a teriminal modification until I can figure out how
+      // to handle that properly
+      if (g_pvQuery.at(iQueryIndex)->_pResults[0].piVarModSites[g_pvQuery.at(iQueryIndex)->_pResults[0].usiLenPeptide] != 0
+         || g_pvQuery.at(iQueryIndex)->_pResults[0].piVarModSites[g_pvQuery.at(iQueryIndex)->_pResults[0].usiLenPeptide + 1] != 0)
+      {
+         bHasTerminalVariableMod = true;
+      }
+
+      if (!bHasTerminalVariableMod)
+         CalculateAScorePro(iQueryIndex, g_AScoreInterface);
    }
 
    delete pThreadData;

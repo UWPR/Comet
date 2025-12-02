@@ -4676,7 +4676,6 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
             memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites, 0, _usiSizepiVarModSites);
             memset(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites, 0, _usiSizepdVarModSites);
             pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
-
          }
          else
          {
@@ -5114,7 +5113,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
-                  for (int ii = 0; ii <= pQuery->_pDecoys[i].usiLenPeptide; ++ii)
+                  for (int ii = 0; ii < pQuery->_pDecoys[i].usiLenPeptide + 2; ++ii)
                   {
                      iVal = pQuery->_pDecoys[i].piVarModSites[ii];
 
@@ -6665,7 +6664,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
 
             // store the modification number at modification position
             piVarModSites[iLenPeptide] = _varModInfo.varModStatList[j].iVarModSites[piVarModCharIdx[j]];
-            dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;;
+            dCalcPepMass += g_staticParams.variableModParameters.varModList[j].dVarModMass;
          }
          piVarModCharIdx[j] += 1;
       }
