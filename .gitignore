@@ -1,3 +1,13 @@
+# ignore unpacked shipped dependencies
+MSToolkit/extern/zlib-1.3.1/
+MSToolkit/extern/expat-2.2.9/
+
+# ignore dynamically generated files
+MSToolkit/include/expat.h
+MSToolkit/include/expat_external.h
+MSToolkit/include/zconf.h
+MSToolkit/include/zlib.h
+
 .DS_Store
 .idea
 *.log
