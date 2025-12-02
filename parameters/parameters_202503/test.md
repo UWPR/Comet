@@ -37,7 +37,7 @@ There are 8 fields/settings that are associated with these parameters:
     only peptides that contain this modification will be analyzed.
     - 0 = not forced to be present
     - 1 = modification is required 
-    - -1 = exclusive modification; only of of the set of exclusive modifications can appear in the peptide;
+    - -1 = exclusive modification; only one of the set of exclusive modifications can appear in the peptide;
            this functionality was added with release 2024.01.0
   - The eighth entry is an optional fragment neutral loss field. For any fragment ion that
     contain the variable modification, a neutral loss will also be analyzed if the specified
@@ -65,7 +65,7 @@ variable_mod04 = -18.010565 E 0 1 0 2 0 0.0          ... cyclization of N-termin
 Here is a binary modification search example of triple SILAC plus acetylation of lysine.
 The SILAC modifications are "R +6 and K +4" (medium) and "R +10 and K +8" (heavy).
 In conjunction with K +42 acetylation, the binary modification sets would be
-"R +6, K +4, K +4+42" for SILAC medium (binary group 1)> and
+"R +6, K +4, K +4+42" for SILAC medium (binary group 1) and
 "R +10, K +8, K +8+42" for SILAC heavy (binary group 2).
 Mass values are listed with no precision for clarity; definitely use precise
 modification masses in practice.
@@ -154,16 +154,20 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
     <div class="vmg-field">
       <label for="vmg-mod-required">Modification Required:</label>
-      <input type="number" id="vmg-mod-required" value="0" />
+	  <select id="vmg-mod-required">
+        <option value="0">this variable modification not forced to be present</option>
+        <option value="1">this variable modification is required to be present</option>
+        <option value="-1">this is an exclusive modification</option>
+      </select>
     </div>
 
     <div class="vmg-field">
-      <label for="vmg-neutral-loss">Fragment Neutral Loss (optional):</label>
+      <label for="vmg-neutral-loss">Fragment Neutral Loss (optional, up to 2 allowed, comma separated no spaces):</label>
       <input type="text" id="vmg-neutral-loss" value="0.0" />
     </div>
 
     <div style="margin-top:0.5em;">
-      <span style="font-weight:bold">variable_mod_[n] =</span>
+      <span style="font-weight:bold">variable_modXX =</span>
       <div id="vmg-config-string" style="display:inline-block; border:1px solid #ccc; padding:8px; margin-left:0.5em; font-weight:bold; min-width:320px;">&nbsp;</div>
     </div>
 
@@ -176,7 +180,7 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 
 <style>
   /* Scoped styles for the variable mod generator */
-  #vmg-generator { font-family: Arial, sans-serif; background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
+  #vmg-generator { font-size: 10px; background:#fff; padding:12px; border-radius:6px; border:1px solid #e1e4e8; box-shadow:0 1px 0 rgba(0,0,0,0.03); max-width:880px; }
   #vmg-generator h3 { margin-top:0; }
   #vmg-generator .vmg-field { margin-bottom:0.8em; }
   #vmg-generator label { display:block; font-weight:600; margin-bottom:0.25em; }
@@ -315,4 +319,5 @@ variable_mod15 =  0.0 X 0 3 -1 0 0 0.0
 </script>
 
 <!-- End of generator section -->
+
 
