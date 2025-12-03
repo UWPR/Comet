@@ -556,9 +556,40 @@ void LoadParameters(char* pszParamsFile,
             if (!strncmp(szParamName, "variable_mod", 12) && strlen(szParamName) == 14)
             {
                char szTmp[512], szTmp1[512];
+
+               // Validate that the variable mod parameter has the correct number of fields (8 entries)
+               int iEntryCount = 0;
+               bool inString = false;
+
+               for (int i = 0; szParamVal[i] != '\0'; i++)
+               {
+                  if (!isspace(szParamVal[i]))
+                  {  // We're in a non-whitespace character
+                     if (!inString)
+                     {  // Starting a new string
+                        iEntryCount++;
+                        inString = true;
+                     }
+                  }
+                  else
+                  {  // We hit whitespace
+                     inString = false;
+                  }
+               }
+
+               if (iEntryCount != 8)
+               {
+                  string strErrorMsg = "\n Comet version " + g_sCometVersion + "\n\n"
+                     + " Error: Invalid variable_mod parameter found; expected parameter 8 values but found " + std::to_string(iEntryCount) + ".\n"
+                     + "        " + std::string(szParamName) + " = " + std::string(szParamVal) + "\n";
+                  logerr(strErrorMsg);
+                  exit(1);
+               }
+
                varModsParam.szVarModChar[0] = '\0';
                varModsParam.iMinNumVarModAAPerMod = 0;
                varModsParam.iMaxNumVarModAAPerMod = 0;
+
                sscanf(szParamVal, "%lf %31s %d %511s %d %d %d %s",
                   &varModsParam.dVarModMass,
                   varModsParam.szVarModChar,
