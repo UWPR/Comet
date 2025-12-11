@@ -1030,7 +1030,7 @@ use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral
 # output\n\
 #\n\
 output_sqtfile = 0                     # 0=no, 1=yes  write sqt file\n\
-output_txtfile = 0                     # 0=no, 1=yes  write tab-delimited txt file\n\
+output_txtfile = 0                     # 0=no, 1=yes, 2=Crux-formatted  write tab-delimited txt file\n\
 output_pepxmlfile = 1                  # 0=no, 1=yes  write pepXML file\n\
 output_mzidentmlfile = 0               # 0=no, 1=yes  write mzIdentML file\n\
 output_percolatorfile = 0              # 0=no, 1=yes  write Percolator pin file\n");
