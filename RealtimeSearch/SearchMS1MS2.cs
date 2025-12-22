@@ -129,12 +129,12 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 100;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
                bool bContinuousLoop = false; // set to true to continuously loop through the raw file
                bool bPrintHistogram = true;
                bool bPrintMatchedFragmentIons = false;
-               bool bPerformMS1Search = true;
+               bool bPerformMS1Search = false;
                bool bPerformMS2Search = true;
 
                if (bPerformMS1Search)

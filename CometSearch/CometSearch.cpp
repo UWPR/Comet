@@ -14,22 +14,7 @@
 
 #include "Common.h"
 #include "CometSearch.h"
-#include "CometSpecLib.h"
-#include "CometDataInternal.h"
-#include "ThreadPool.h"
-#include "CometFragmentIndex.h"
-#include "CometMassSpecUtils.h"
-#include "CometModificationsPermuter.h"
-#include "CometPeptideIndex.h"
-#include "CometPostAnalysis.h"
-#include "CometSearchManager.h"
-#include "CometStatus.h"
 
-#include <cstdio>
-#include <cstring>
-#include <sstream>
-#include <bitset>
-#include <functional>
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
@@ -772,6 +757,16 @@ bool CometSearch::RunSearch(int iPercentStart,
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                return false;
+            }
+
+            if (g_staticParams.options.bCreateFragmentIndex || g_staticParams.options.bCreatePeptideIndex)
+            {
+               struct IndexProteinStruct sEntry;
+
+               // store protein name
+               strcpy(sEntry.szProt, dbe.strName.c_str());
+               sEntry.lProteinFilePosition = dbe.lProteinFilePosition;
+               g_pvProteinNames.insert({ sEntry.lProteinFilePosition, sEntry });
             }
 
             // Load sequence

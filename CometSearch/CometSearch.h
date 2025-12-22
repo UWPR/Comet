@@ -15,12 +15,25 @@
 #ifndef _COMETSEARCH_H_
 #define _COMETSEARCH_H_
 
-#include "CometDataInternal.h"
-#include "ThreadPool.h"
 #include "Common.h"
-#include <vector>
-#include <memory>
+#include "CometDataInternal.h"
+#include "CometFragmentIndex.h"
+#include "CometMassSpecUtils.h"
+#include "CometModificationsPermuter.h"
+#include "CometPeptideIndex.h"
+#include "CometPostAnalysis.h"
+#include "CometSearchManager.h"
+#include "CometSpecLib.h"
+#include "CometStatus.h"
+#include "ThreadPool.h"
 #include <algorithm>
+#include <bitset>
+#include <cstdio>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <sstream>
+#include <vector>
 
 struct SearchThreadData
 {

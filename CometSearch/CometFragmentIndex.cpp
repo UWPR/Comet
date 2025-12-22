@@ -740,7 +740,22 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, "RequireVariableMod: %d", g_staticParams.variableModParameters.iRequireVarMod);
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       fprintf(fp, " %d", g_staticParams.variableModParameters.varModList[x].iRequireThisMod);
-   fprintf(fp, "\n");
+   fprintf(fp, "\n\n");
+
+   int iTmp = (int)g_pvProteinNames.size();
+   comet_fileoffset_t* lProteinIndex = new comet_fileoffset_t[iTmp];
+   for (int i = 0; i < iTmp; i++)
+      lProteinIndex[i] = -1;
+
+   // first just write out protein names. Track file position of each protein name
+   int ctProteinNames = 0;
+   for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
+   {
+      lProteinIndex[ctProteinNames] = comet_ftell(fp);
+      fwrite(it->second.szProt, sizeof(char) * WIDTH_REFERENCE, 1, fp);
+      it->second.iWhichProtein = ctProteinNames;
+      ctProteinNames++;
+   }
 
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fp);
    size_t tNumPeptides = g_pvDBIndex.size();
@@ -768,13 +783,22 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fp);
    tTmp = g_pvProteinsList.size();
    fwrite(&tTmp, clSizeCometFileOffset, 1, fp);
+   int iWhichProtein = 0;
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fp);
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
-         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fp);
+//         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fp);
+
+         auto result = g_pvProteinNames.find((*it).at(it2));
+         if (result != g_pvProteinNames.end())
+         {
+            iWhichProtein = result->second.iWhichProtein;
+         }
+
+         fwrite(&lProteinIndex[iWhichProtein], clSizeCometFileOffset, 1, fp);
       }
    }
 
@@ -793,7 +817,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fwrite(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    fwrite(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
    fwrite(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);
-   int iTmp;
+
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
       iTmp = (int)MOD_SEQS[i].size();

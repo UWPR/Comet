@@ -50,6 +50,8 @@ Mutex                         g_preprocessMemoryPoolMutex;
 Mutex                         g_searchMemoryPoolMutex;
 CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
+map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
+
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
@@ -381,6 +383,7 @@ static bool ValidateSequenceDatabaseFile()
 
    // open FASTA for retrieving protein names
    string sTmpDB = g_staticParams.databaseInfo.szDatabase;
+/*
    if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
    if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
@@ -390,6 +393,7 @@ static bool ValidateSequenceDatabaseFile()
       logerr(strErrorMsg);
       return false;
    }
+*/
 
    // if .idx database specified but does not exist, first see if corresponding
    // fasta exists and if it does, create the .idx file
@@ -415,6 +419,12 @@ static bool ValidateSequenceDatabaseFile()
             return true;
          }
       }
+
+      fclose(fpcheck);
+      g_staticParams.options.bCreateFragmentIndex = false;
+      return true;
+
+/*
       else
       {
          string strFasta = g_staticParams.databaseInfo.szDatabase;
@@ -435,6 +445,7 @@ static bool ValidateSequenceDatabaseFile()
             return true;
          }
       }
+*/
    }
 
 #ifndef WIN32
@@ -1469,12 +1480,6 @@ bool CometSearchManager::InitializeStaticParams()
 
    for (int i=0; i<VMODS; ++i)
    {
-      // Crux has been using "null" as its default modification character string which
-      // sadly didn't behave as they might have thought. To address that, this will
-      // zero out the modification mass if "null" is the amino acid string.
-      if (!strcmp(g_staticParams.variableModParameters.varModList[i].szVarModChar, "null"))
-         g_staticParams.variableModParameters.varModList[i].dVarModMass = 0.0;
-
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
@@ -1930,7 +1935,7 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    }
 }
 
-bool CometSearchManager::GetParamValue(const string &name, double &value)
+bool CometSearchManager::GetParamValue(const string &name, double& value)
 {
    std::map<string, CometParam*>::iterator it;
    it = _mapStaticParams.find(name);
@@ -1953,7 +1958,7 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    }
 }
 
-bool CometSearchManager::GetParamValue(const string &name, VarMods &value)
+bool CometSearchManager::GetParamValue(const string &name, VarMods & value)
 {
    std::map<string, CometParam*>::iterator it;
    it = _mapStaticParams.find(name);
@@ -2659,11 +2664,13 @@ bool CometSearchManager::DoSearch()
          if (g_bPerformDatabaseSearch)
          {
             string sTmpDB = g_staticParams.databaseInfo.szDatabase;
-            if (g_staticParams.iIndexDb > 0)
-               sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
+
+            // either open fasta or .idx to read protein name strings
+//            if (g_staticParams.iIndexDb > 0)
+//               sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
             if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
             {
-               string strErrorMsg = " Error (1) - cannot read FASTA sequence database file \"" + sTmpDB + "\".\n";
+               string strErrorMsg = " Error (1) - cannot read sequence database file \"" + sTmpDB + "\".\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                return false;
@@ -2935,7 +2942,8 @@ bool CometSearchManager::DoSearch()
 
                   for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
                   {
-                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide > 0 && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
+                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide > 0
+                        && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
                      {
                         int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
                         int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide - 1];
@@ -3471,6 +3479,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    //FIX ... is there a way to not have to do this just once and not have to fopen/fclose this db
    // file pointer for each query?
+/*
    sTmpDB = g_staticParams.databaseInfo.szDatabase;
    sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
    if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
@@ -3480,6 +3489,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       logerr(strErrorMsg);
       return false;
    }
+*/
 
    if (bSucceeded && pQuery->iMatchPeptideCount > 0)
    {
@@ -3520,7 +3530,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          Results* pOutput = pQuery->_pResults;
 
          // Comment out this next line to not parse previous/next amino acids from  fasta for RTS reporting
-         CometMassSpecUtils::GetPrevNextAA(fpfasta, 0, iWhichResult, 0, 0);
+//         CometMassSpecUtils::GetPrevNextAA(fpfasta, 0, iWhichResult, 0, 0);
 
          // Set return values for peptide sequence, protein, xcorr and E-value
          eachStrReturnPeptide = std::string(1, pOutput[iWhichResult].cPrevAA) + ".";
@@ -3562,8 +3572,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          unsigned int uiNumTotProteins = 0;
          bool bReturnFullProteinString = true;
 
-         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
-               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+//FIX:
+//         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
+//               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
          bool bPrintDelim = false;
          if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins

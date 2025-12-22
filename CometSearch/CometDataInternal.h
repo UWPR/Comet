@@ -1030,6 +1030,7 @@ struct StaticParams
 extern StaticParams    g_staticParams;
 
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
+extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 

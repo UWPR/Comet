@@ -333,9 +333,11 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
          vector<string> vTmp;      // store decoy matches here to append at end
 
          comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
             comet_fseek(fpfasta, *it, SEEK_SET);
+
             if (bReturnFullProteinString)
             {
                if (fgets(szProteinName, 511, fpfasta) == NULL)
@@ -459,6 +461,11 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                                        int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
                                        int iWhichTerm)   // 0=no term constraint, 1=protein N-term, 2=protein C-term
 {
+   // FIX:
+   g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].cPrevAA = '-';
+   g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].cNextAA = '-';
+   return;
+
    if (g_staticParams.iIndexDb)  // fragment ion or peptide index
    {
       Results *pOutput;
