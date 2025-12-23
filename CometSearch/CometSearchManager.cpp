@@ -2928,53 +2928,6 @@ bool CometSearchManager::DoSearch()
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
-            // Get flanking amino acid residues
-            if (g_bPerformDatabaseSearch && g_staticParams.iIndexDb)
-            {
-               for (int iWhichQuery = 0; iWhichQuery < (int)g_pvQuery.size(); ++iWhichQuery)
-               {
-                  int iNumPrintLines;
-                  int iPrintTargetDecoy = 0;   // will set to 1 or 2 when index db supports internal decoys
-
-                  iNumPrintLines = g_pvQuery.at(iWhichQuery)->iMatchPeptideCount;
-                  if (iNumPrintLines > g_staticParams.options.iNumPeptideOutputLines)
-                     iNumPrintLines = g_staticParams.options.iNumPeptideOutputLines;
-
-                  for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
-                  {
-                     if (g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide > 0
-                        && g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
-                     {
-                        int iNtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[0];
-                        int iCtermMod = g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].piVarModSites[g_pvQuery.at(iWhichQuery)->_pResults[iWhichResult].usiLenPeptide - 1];
-
-                        if (!(iNtermMod <0 || iNtermMod > FRAGINDEX_VMODS) && !(iCtermMod < 0 || iCtermMod > FRAGINDEX_VMODS))
-                        {
-                           if (iNtermMod > 0
-                              && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iVarModTermDistance == 0
-                              && g_staticParams.variableModParameters.varModList[iNtermMod - 1].iWhichTerm == 0)
-                           {
-                              // only match to peptides at the N-terminus of proteins as protein terminal mod applied
-                              CometMassSpecUtils::GetPrevNextAA(fpfasta, iWhichQuery, iWhichResult, iPrintTargetDecoy, 1);
-                           }
-                           else if (iCtermMod > 0
-                              && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iVarModTermDistance == 0
-                              && g_staticParams.variableModParameters.varModList[iCtermMod - 1].iWhichTerm == 1)
-                           {
-                              // only match to peptides at the C-terminus of proteins as protein terminal mod applied
-                              CometMassSpecUtils::GetPrevNextAA(fpfasta, iWhichQuery, iWhichResult, iPrintTargetDecoy, 2);
-                           }
-                           else
-                           {
-                              // peptide can be anywhere in sequence
-                              CometMassSpecUtils::GetPrevNextAA(fpfasta, iWhichQuery, iWhichResult, iPrintTargetDecoy, 0);
-                           }
-                        }
-                     }
-                  }
-               }
-            }
-
             if (!g_staticParams.options.bOutputSqtStream && !g_staticParams.iIndexDb)
             {
                logout("  done\n");

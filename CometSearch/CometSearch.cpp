@@ -4634,6 +4634,11 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          else
             pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
       }
+      else
+      {
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = '-';
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = '-';
+      }
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
       if (_proteinInfo.iPeffOrigResiduePosition != NO_PEFF_VARIANT
@@ -4819,8 +4824,8 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
 
       if (g_staticParams.iIndexDb)
       {
-         pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = _proteinInfo.cPrevAA;
-         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = _proteinInfo.cNextAA;
+         pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
+         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
       }
       else
       {

@@ -118,7 +118,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
          }
          else
          {
-            // different peptide + mod state so go ahead and push temp onto pvProteinsListLocalk
+            // different peptide + mod state so go ahead and push temp onto pvProteinsListLocal
             // and store current protein reference into new temp
             // temp can have duplicates due to mod forms of peptide so make unique here
             sort(temp.begin(), temp.end());
@@ -129,6 +129,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
             temp.clear();
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
+
          }
       }
    }
@@ -209,6 +210,21 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    }
    fprintf(fptr, "\n\n");
 
+   int iTmp = (int)g_pvProteinNames.size();
+   comet_fileoffset_t* lProteinIndex = new comet_fileoffset_t[iTmp];
+   for (int i = 0; i < iTmp; i++)
+      lProteinIndex[i] = -1;
+
+   // first just write out protein names. Track file position of each protein name
+   int ctProteinNames = 0;
+   for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
+   {
+      lProteinIndex[ctProteinNames] = comet_ftell(fptr);
+      fwrite(it->second.szProt, sizeof(char) * WIDTH_REFERENCE, 1, fptr);
+      it->second.iWhichProtein = ctProteinNames;
+      ctProteinNames++;
+   }
+
    // Now write out: vector<vector<comet_fileoffset_t>> pvProteinsListLocal
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fptr);
    size_t tTmp = pvProteinsListLocal.size();
@@ -217,9 +233,19 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fptr);
+
+      int iWhichProtein = 0;
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
-         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fptr);
+         // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
+         auto result = g_pvProteinNames.find((*it).at(it2));
+         if (result != g_pvProteinNames.end())
+         {
+            iWhichProtein = result->second.iWhichProtein;
+         }
+
+         comet_fileoffset_t lPosition = lProteinIndex[iWhichProtein];
+         fwrite(&lPosition, clSizeCometFileOffset, 1, fptr);
       }
    }
 
@@ -247,8 +273,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
       // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
       int iLen2 = iLen + 2;
-      unsigned char cNumMods = 0; 
-      for (unsigned char x=0; x<iLen2; x++)
+      unsigned char cNumMods = 0;
+      for (unsigned char x = 0; x < iLen2; x++)
       {
          if ((*it).pcVarModSites[x] != 0)
             cNumMods++;
@@ -257,13 +283,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 
       if (cNumMods > 0)
       {
-         for (unsigned char x=0; x<iLen2; x++)
+         for (unsigned char x = 0; x < iLen2; x++)
          {
             if ((*it).pcVarModSites[x] != 0)
             {
                char cWhichMod = (*it).pcVarModSites[x];
                fwrite(&x, sizeof(unsigned char), 1, fptr);
-               fwrite(&cWhichMod , sizeof(char), 1, fptr);
+               fwrite(&cWhichMod, sizeof(char), 1, fptr);
             }
          }
       }

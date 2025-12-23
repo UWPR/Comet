@@ -773,7 +773,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       sTmp.sPeptide = (*it).szPeptide;
-      sTmp.lIndexProteinFilePosition = clSizeCometFileOffset;
+      sTmp.lIndexProteinFilePosition = clSizeCometFileOffset;   // FIX what should this be?
       sTmp.dPepMass = (*it).dPepMass;
       sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;
       g_vRawPeptides.push_back(sTmp);
