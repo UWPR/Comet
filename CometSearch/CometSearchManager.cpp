@@ -2675,9 +2675,6 @@ bool CometSearchManager::DoSearch()
                   logerr(strErrorMsg);
                   return false;
                }
-
-               printf("\nOK fasta %s\n", sTmpDB.c_str());
-
             }
          }
 

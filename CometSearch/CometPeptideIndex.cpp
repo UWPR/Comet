@@ -271,6 +271,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
 
+      fwrite(&((*it).cPrevAA), sizeof(char), 1, fptr);
+      fwrite(&((*it).cNextAA), sizeof(char), 1, fptr);
+
       // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
       int iLen2 = iLen + 2;
       unsigned char cNumMods = 0;
@@ -345,6 +348,9 @@ void CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex *sDBI, FILE *fp)
    tTmp = fread(&iLen, sizeof(int), 1, fp);
    tTmp = fread(sDBI->szPeptide, sizeof(char), iLen, fp);
    sDBI->szPeptide[iLen] = '\0';
+
+   tTmp = fread(&(sDBI->cPrevAA), sizeof(char), 1, fp);
+   tTmp = fread(&(sDBI->cNextAA), sizeof(char), 1, fp);
 
    unsigned char cNumMods;  // number of var mods encoded as position:residue pairs
    tTmp = fread(&cNumMods, sizeof(unsigned char), 1, fp);  // read how many var mods are stored

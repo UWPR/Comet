@@ -2513,7 +2513,37 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             }
          }
 
-         XcorrScore(sDBI.szPeptide, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
+         char cPrevAA = sDBI.cPrevAA;
+         char cNextAA = sDBI.cNextAA;
+         char szProtein[128];
+         if (cPrevAA == '-')
+         {
+            iStartPos = 0;
+            strcpy(szProtein, sDBI.szPeptide);
+         }
+         else
+         {
+            iStartPos = 1;
+            sprintf(szProtein, "%c%s", cPrevAA, sDBI.szPeptide);
+         }
+
+         if (cNextAA == '-')
+         {
+            iEndPos = strlen(szProtein) - 1;
+         }
+         else
+         {
+            sprintf(szProtein, "%s%c", szProtein, cNextAA);
+            iEndPos = strlen(szProtein) - 2;
+         }
+
+         if (iEndPos < 0)
+         {
+            printf("OK exiting:  %d, %d, szProtein %s, sDBI.szPeptide %s, mass %lf\n", iStartPos, iEndPos, szProtein, sDBI.szPeptide, sDBI.dPepMass); fflush(stdout);
+            exit(0);
+         }
+
+         XcorrScore(szProtein, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
             sDBI.dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
          
          if (g_staticParams.options.iDecoySearch)
@@ -6989,6 +7019,16 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             sDBTmp.dPepMass = dCalcPepMass;  //MH+ mass
             strncpy(sDBTmp.szPeptide, szProteinSeq + _varModInfo.iStartPos, iLenPeptide);
             sDBTmp.szPeptide[iLenPeptide]='\0';
+
+            if (_varModInfo.iStartPos == 0)
+               sDBTmp.cPrevAA = '-';
+            else
+               sDBTmp.cPrevAA = szProteinSeq[_varModInfo.iStartPos - 1];
+
+            if (_varModInfo.iEndPos == strlen(szProteinSeq) - 1)
+               sDBTmp.cNextAA = '-';
+            else
+               sDBTmp.cNextAA = szProteinSeq[_varModInfo.iEndPos + 1];
 
             sDBTmp.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
 
