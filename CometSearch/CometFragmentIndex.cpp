@@ -558,7 +558,7 @@ if (!(iWhichPeptide%1000))
 }
 
 
-bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
+bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
@@ -768,6 +768,8 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
       fwrite(&iLen, sizeof(int), 1, fp);
       fwrite((*it).szPeptide, sizeof(char), iLen, fp);
+      fwrite(&((*it).cPrevAA), sizeof(char), 1, fp); // write prev AA
+      fwrite(&((*it).cNextAA), sizeof(char), 1, fp); // write next AA
       fwrite(&((*it).dPepMass), sizeof(double), 1, fp);
       fwrite(&((*it).siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
@@ -1087,6 +1089,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       tTmp = fread(szPeptide, sizeof(char), iLen, fp);
       szPeptide[iLen] = '\0';
       sTmp.sPeptide = szPeptide;
+      tTmp = fread(&(sTmp.cPrevAA), sizeof(char), 1, fp);
+      tTmp = fread(&(sTmp.cNextAA), sizeof(char), 1, fp);
       tTmp = fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
       tTmp = fread(&(sTmp.siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       tTmp = fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);

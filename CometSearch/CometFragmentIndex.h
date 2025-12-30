@@ -26,7 +26,7 @@ public:
    CometFragmentIndex();
    ~CometFragmentIndex();
 
-   static bool WritePlainPeptideIndex(ThreadPool *tp);
+   static bool WriteFIPlainPeptideIndex(ThreadPool *tp);
    static bool ReadPlainPeptideIndex(void);
    static bool CreateFragmentIndex(ThreadPool *tp);
    static int WhichPrecursorBin(double dMass);

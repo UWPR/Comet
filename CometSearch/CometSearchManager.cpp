@@ -2213,7 +2213,7 @@ bool CometSearchManager::DoSearch()
    {
        // write out .idx file containing unmodified peptides and protein refs;
        // this calls RunSearch just to query fasta and generate uniq peptide list
-       bSucceeded = CometFragmentIndex::WritePlainPeptideIndex(tp);
+       bSucceeded = CometFragmentIndex::WriteFIPlainPeptideIndex(tp);
        if (!bSucceeded)
           return bSucceeded;
 

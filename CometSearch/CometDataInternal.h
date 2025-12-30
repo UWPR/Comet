@@ -452,6 +452,8 @@ struct DBInfo
 struct DBIndex
 {
    char szPeptide[MAX_PEPTIDE_LEN];
+   char cPrevAA;
+   char cNextAA;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];        // encodes 0 to VMODS-1 indicating which var mod at which position
    comet_fileoffset_t lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                               // MH+ pep mass
@@ -497,7 +499,9 @@ struct DBIndex
       if (lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)
          return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
 
-      return false; // equal
+      // FINAL tie-breaker: lowest protein index first in order
+      // to keep cPrevAA/cNextAA from the first protein
+      return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
    }
 };
 
@@ -506,6 +510,8 @@ struct DBIndex
 struct PlainPeptideIndexStruct
 {
    string sPeptide;
+   char cPrevAA;
+   char cNextAA;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
    unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein

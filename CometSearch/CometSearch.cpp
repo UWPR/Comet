@@ -1374,7 +1374,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
    int ctIonSeries;
    int ctLen;
    int iLenMinus1;
-   char szPeptide[512];
+   char szPeptide[MAX_PEPTIDE_LEN];
    int piVarModSites[MAX_PEPTIDE_LEN_P2];
    int iPositionNLB[FRAGINDEX_VMODS];
    int iPositionNLY[FRAGINDEX_VMODS];
@@ -1620,12 +1620,35 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          struct sDBEntry dbe;
 
+         char cPrevAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cPrevAA;
+         char cNextAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cNextAA;
+         char szProtein[128];
+         if (cPrevAA == '-')
+         {
+            iStartPos = 0;
+            strcpy(szProtein, szPeptide);
+         }
+         else
+         {
+            iStartPos = 1;
+            sprintf(szProtein, "%c%s", cPrevAA, szPeptide);
+         }
+         if (cNextAA == '-')
+         {
+            iEndPos = strlen(szProtein) - 1;
+         }
+         else
+         {
+            sprintf(szProtein, "%s%c", szProtein, cNextAA);
+            iEndPos = strlen(szProtein) - 2;
+         }
+
          dbe.strName = "";
-         dbe.strSeq = szPeptide;
+         dbe.strSeq = szProtein;
          // this lProteinFilePosition is actually the entry in g_pvProteinsList that contains the list of proteins for that peptide
          dbe.lProteinFilePosition = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
 
-         XcorrScoreI(szPeptide, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, iWhichQuery,
+         XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, iWhichQuery,
                iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
 
          uiNumScored++;
@@ -2754,6 +2777,8 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
                sEntry.szPeptide[iLenPeptide]='\0';
+               sEntry.cPrevAA = (iStartPos > 0) ? szProteinSeq[iStartPos - 1] : '-';
+               sEntry.cNextAA = (iEndPos < iProteinSeqLengthMinus1) ? szProteinSeq[iEndPos + 1] : '-';
                sEntry.siVarModProteinFilter = siVarModProteinFilter;
 
                // little sanity check here to not include peptides with '*' in them
@@ -4610,35 +4635,26 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
-      if (!g_staticParams.iIndexDb)
+      if (iStartPos == 0)
       {
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
-
-         if (iStartPos == 0)
+         // check if clip n-term met
+         if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
          {
-            // check if clip n-term met
-            if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
-            {
-               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = 'M';
-               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = true;
-            }
-            else
-               pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = '-';
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = 'M';
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = true;
          }
          else
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
-
-         if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = '-';
-         else
-            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
+            pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = '-';
       }
       else
-      {
-         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = '-';
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
+
+      if (iEndPos == _proteinInfo.iTmpProteinSeqLength - 1)
          pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = '-';
-      }
+      else
+         pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
       if (_proteinInfo.iPeffOrigResiduePosition != NO_PEFF_VARIANT
@@ -4822,29 +4838,21 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
 
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
 
-      if (g_staticParams.iIndexDb)
+      if (iStartPos == 0)
       {
-         pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
-         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
+         // check if clip n-term met
+         if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
+            pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = 'M';
+         else
+            pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
       }
       else
-      {
-         if (iStartPos == 0)
-         {
-            // check if clip n-term met
-            if (g_staticParams.options.bClipNtermMet && dbe->strSeq.c_str()[0] == 'M' && !strcmp(dbe->strSeq.c_str() + 1, szProteinSeq))
-               pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = 'M';
-            else
-               pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
-         }
-         else
-            pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
+         pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
 
-         if (iEndPos == _proteinInfo.iTmpProteinSeqLength-1)
-            pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
-         else
-            pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
-      }
+      if (iEndPos == _proteinInfo.iTmpProteinSeqLength - 1)
+         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
+      else
+         pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
 
       // store PEFF info; +1 and -1 to account for PEFF in flanking positions
       if (_proteinInfo.iPeffOrigResiduePosition != NO_PEFF_VARIANT
@@ -4989,6 +4997,16 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
 
    pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
    pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
+
+   if (iStartPos == 0)
+      pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
+   else
+      pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
+
+   if (iEndPos == strlen(szProteinSeq) - 1)
+      pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
+   else
+      pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
 
    pQuery->_pResults[siLowestXcorrScoreIndex].iPeffOrigResiduePosition = NO_PEFF_VARIANT;
    pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues.clear();

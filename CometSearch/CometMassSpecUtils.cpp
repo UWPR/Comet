@@ -371,7 +371,6 @@ void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                   return;
             }
          }
-
       }
       else // fragment ion index
       {
