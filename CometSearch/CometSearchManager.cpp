@@ -73,7 +73,7 @@ bool g_bPerformDatabaseSearch = false;
 bool g_bCometPreprocessMemoryAllocated = false;
 bool g_bCometSearchMemoryAllocated = false;
 
-FILE* fpfasta;      // file pointer to FASTA; would be same as fpdb if input db was already FASTA but otherwise needed if input is .idx file
+bool g_bIdxNoFasta = false;  // if true, .idx file has no associated .fasta file
 
 double dMaxSpecLibRT = 0.0;
 
@@ -383,17 +383,18 @@ static bool ValidateSequenceDatabaseFile()
 
    // open FASTA for retrieving protein names
    string sTmpDB = g_staticParams.databaseInfo.szDatabase;
-/*
+
    if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
-   if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
+   if ((fpcheck = fopen(sTmpDB.c_str(), "r")) == NULL)
    {
-      string strErrorMsg = " Error (4) - cannot read FASTA sequence database file \"" + sTmpDB + "\".\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
-      return false;
+      g_bIdxNoFasta = true;  // .idx database but corresponding fasta not found
    }
-*/
+   else
+   {
+      fclose(fpcheck);
+      g_bIdxNoFasta = false;
+   }
 
    // if .idx database specified but does not exist, first see if corresponding
    // fasta exists and if it does, create the .idx file
@@ -423,29 +424,6 @@ static bool ValidateSequenceDatabaseFile()
       fclose(fpcheck);
       g_staticParams.options.bCreateFragmentIndex = false;
       return true;
-
-/*
-      else
-      {
-         string strFasta = g_staticParams.databaseInfo.szDatabase;
-         strFasta.erase(strFasta.length() - 4);  // remove .idx extension
-
-         if ((fpcheck=fopen(strFasta.c_str(), "r")) == NULL)
-         {
-            string strErrorMsg = " Error - peptide index file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
-               + "\" is present but corresponding FASTA file \"" + strFasta + "\" file is missing.\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
-         else
-         {
-            fclose(fpcheck);
-            g_staticParams.options.bCreateFragmentIndex = false;
-            return true;
-         }
-      }
-*/
    }
 
 #ifndef WIN32
@@ -2659,21 +2637,47 @@ bool CometSearchManager::DoSearch()
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
 
-         FILE *fpdb;  // need FASTA file again to grab headers for output (currently just store file positions)
+         FILE* fpfasta;  // pointer to FASTA file; if .idx search, FASTA is used to retrieve sequences (mzid output)
+         FILE* fpidx;    // pointer to .idx file if used
 
          if (g_bPerformDatabaseSearch)
          {
             string sTmpDB = g_staticParams.databaseInfo.szDatabase;
 
-            // either open fasta or .idx to read protein name strings
-//            if (g_staticParams.iIndexDb > 0)
-//               sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
-            if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
+            if (g_staticParams.iIndexDb > 0)
             {
-               string strErrorMsg = " Error (1) - cannot read sequence database file \"" + sTmpDB + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               return false;
+               // .idx db so first open .idx file
+               if ((fpidx = fopen(sTmpDB.c_str(), "r")) == NULL)
+               {
+                  string strErrorMsg = " Error (1a) - cannot read .idx file \"" + sTmpDB + "\".\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
+
+               // .idx db so next check if FASTA is present (not required)
+               sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
+               if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
+               {
+                  g_bIdxNoFasta = true;
+                  fpfasta = NULL;
+               }
+            }
+            else
+            {
+               // FASTA search only
+               fpidx = NULL;
+
+               if ((fpfasta = fopen(sTmpDB.c_str(), "r")) == NULL)
+               {
+                  string strErrorMsg = " Error (1b) - cannot read sequence database file \"" + sTmpDB + "\".\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
+
+               printf("\nOK fasta %s\n", sTmpDB.c_str());
+
             }
          }
 
@@ -2729,6 +2733,12 @@ bool CometSearchManager::DoSearch()
             printf(" - searching \"%s\" ... ", g_staticParams.inputFile.szBaseName);
             fflush(stdout);
          }
+
+         FILE* fpdb;
+         if (g_staticParams.iIndexDb > 0)
+            fpdb = fpidx;
+         else
+            fpdb = fpfasta;
 
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
@@ -3052,7 +3062,10 @@ cleanup_results:
             }
          }
 
-         fclose(fpdb);
+         if (fpidx != NULL)
+            fclose(fpidx);
+         if (fpfasta != NULL)
+            fclose(fpfasta);
       }
 
       //MH: Deallocate spectral processing memory.
@@ -3234,7 +3247,6 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          return bSucceeded;
    }
 
-
    if (g_staticParams.iIndexDb == 1 && !g_bPlainPeptideIndexRead)
    {
       sqSearch.ReadPlainPeptideIndex();
@@ -3267,8 +3279,6 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
    {
       // Deallocate search memory
       CometSearch::DeallocateMemory(singleSearchThreadCount);
-
-      fclose(fpfasta);
 
       if (g_staticParams.options.iPrintAScoreProScore)
          DeleteAScoreDllInterface(g_AScoreInterface);
@@ -3322,9 +3332,6 @@ void CometSearchManager::FinalizeSingleSpectrumMS1Search()
    {
       // Deallocate search memory
       CometSearch::DeallocateMemory(singleSearchThreadCount);
-
-      fclose(fpfasta);
-
       singleSearchMS1InitializationComplete = false;
    }
 }
@@ -3341,8 +3348,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             vector<vector<Fragment>>& matchedFragments,
                                                             vector<Scores>& scores)
 {
-   FILE* fpdb = nullptr;  // need FASTA file again to grab headers for output (currently just store file positions)
-
    if (iNumPeaks == 0)
       return false;
 
@@ -3429,20 +3434,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
-
-   //FIX ... is there a way to not have to do this just once and not have to fopen/fclose this db
-   // file pointer for each query?
-/*
-   sTmpDB = g_staticParams.databaseInfo.szDatabase;
-   sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
-   if ((fpdb = fopen(sTmpDB.c_str(), "r")) == NULL)
-   {
-      string strErrorMsg = " Error (5) - cannot read database file \"" + sTmpDB + "\".\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
-      return false;
-   }
-*/
 
    if (bSucceeded && pQuery->iMatchPeptideCount > 0)
    {
@@ -3767,9 +3758,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
 
 cleanup_results:
-
-   if (fpdb != nullptr)
-      fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).

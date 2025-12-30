@@ -790,8 +790,6 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
       fwrite(&tTmp, sizeof(size_t), 1, fp);
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
-//         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fp);
-
          auto result = g_pvProteinNames.find((*it).at(it2));
          if (result != g_pvProteinNames.end())
          {

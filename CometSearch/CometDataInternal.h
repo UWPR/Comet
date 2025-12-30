@@ -256,7 +256,7 @@ struct Results
    unsigned short    usiMatchedIons;
    unsigned short    usiTotalIons;  
    comet_fileoffset_t   lProteinFilePosition; // for indexdb, this is the entry in g_pvProteinsList
-   long   lWhichProtein;
+   long   lWhichProtein;                      // which entry in g_pvProteinsList[] contains the matched proteins
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
@@ -1065,6 +1065,9 @@ extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
 
 extern bool g_bCometPreprocessMemoryAllocated;    // set to true when memory has been allocated
 extern bool g_bCometSearchMemoryAllocated;        // set to true when memory has been allocated
+
+extern bool g_bIdxNoFasta;   // set to true when .idx file being search but corresponidn .fasta not present
+                             // used in mzid output to skip sequence retrieval
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

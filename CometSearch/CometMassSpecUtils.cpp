@@ -130,38 +130,14 @@ void CometMassSpecUtils::AssignMass(double *pdAAMass,
 
 
 // return a single protein name as a C char string
-void CometMassSpecUtils::GetProteinName(FILE *fpfasta,
+// compatible with both FASTA and indexed database
+void CometMassSpecUtils::GetProteinName(FILE *fpdb,
                                         comet_fileoffset_t lFilePosition,
                                         char *szProteinName)
 {
-   comet_fseek(fpfasta, lFilePosition, SEEK_SET);
-
-   if (g_staticParams.iIndexDb)  //fragment ion or peptide index
-   {
-      long lSize;
-
-      size_t tTmp = fread(&lSize, sizeof(long), 1, fpfasta);
-      vector<comet_fileoffset_t> vOffsets;
-      for (long x = 0; x < lSize; ++x) // read file offsets
-      {
-         comet_fileoffset_t tmpoffset;
-         tTmp = fread(&tmpoffset, sizeof(comet_fileoffset_t), 1, fpfasta);
-         vOffsets.push_back(tmpoffset);
-      }
-      for (long x = 0; x < lSize; ++x) // read name from fasta
-      {
-         char szTmp[WIDTH_REFERENCE];
-         comet_fseek(fpfasta, vOffsets.at(x), SEEK_SET);
-         tTmp = fread(szTmp, sizeof(char)*WIDTH_REFERENCE, 1, fpfasta);
-         sscanf(szTmp, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-         break;  //break here to only get first protein reference (out of lSize)
-      }
-   }
-   else  //regular fasta database
-   {
-      iRet = fscanf(fpfasta, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-      szProteinName[511] = '\0';
-   }
+   comet_fseek(fpdb, lFilePosition, SEEK_SET);
+   iRet = fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
+   szProteinName[511] = '\0';
 }
 
 
@@ -204,7 +180,7 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpfasta,
 
 
 // return all matched protein names in a vector of strings
-void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
+void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               int iWhichQuery,  // which search
                                               int iWhichResult, // which peptide within the search
                                               int iPrintTargetDecoy,    // 0 = target+decoys, 1=target only, 2=decoy only
@@ -242,17 +218,17 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
 
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
-            comet_fseek(fpfasta, *it, SEEK_SET);
+            comet_fseek(fpdb, *it, SEEK_SET);
 
             if (bReturnFullProteinString)
             {
-               if (fgets(szProteinName, 511, fpfasta) == NULL)
+               if (fgets(szProteinName, 511, fpdb) == NULL)
                {
                   // throw error
                }
             }
             else
-               iRet = fscanf(fpfasta, "%500s", szProteinName);
+               iRet = fscanf(fpdb, "%500s", szProteinName);
 
             szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
@@ -294,16 +270,16 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
          {
             for (auto it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
-               comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
+               comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
                {
-                  if (fgets(szProteinName, 511, fpfasta) == NULL)
+                  if (fgets(szProteinName, 511, fpdb) == NULL)
                   {
                      // throw error
                   }
                }
                else
-                  iRet = fscanf(fpfasta, "%500s", szProteinName);
+                  iRet = fscanf(fpdb, "%500s", szProteinName);
                szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
                // remove all terminating chars
@@ -329,16 +305,16 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                   break;
 
-               comet_fseek(fpfasta, (*it).lWhichProtein, SEEK_SET);
+               comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
                {
-                  if (fgets(szProteinName, 511, fpfasta) == NULL)
+                  if (fgets(szProteinName, 511, fpdb) == NULL)
                   {
                      // throw error
                   }
                }
                else
-                  iRet = fscanf(fpfasta, "%500s", szProteinName);
+                  iRet = fscanf(fpdb, "%500s", szProteinName);
                szProteinName[500] = '\0';  // limit protein name strings to 500 chars
 
                // remove all terminating chars
@@ -360,7 +336,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpfasta,
 
 
 // find prev, next AA from first matched protein
-// this is only valid if searching indexed db with peptide/protein .idx file
+// this is intended for use when generating .idx file at fwrite stage
 void CometMassSpecUtils::GetPrevNextAA(FILE *fpfasta,
                                        int iWhichQuery,  // which search
                                        int iWhichResult, // which peptide within the search

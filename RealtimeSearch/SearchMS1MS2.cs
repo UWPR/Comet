@@ -1,15 +1,15 @@
 ﻿namespace RealTimeSearch
 {
+   //using System.Threading.Tasks;
+
+   using CometWrapper;
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
    using System.IO;
    using System.Linq;
    using System.Text;
-   //using System.Threading.Tasks;
-
-   using CometWrapper;
-
+   using System.Threading;
    using ThermoFisher.CommonCore.Data.Business;
    using ThermoFisher.CommonCore.Data.FilterEnums;
    using ThermoFisher.CommonCore.Data.Interfaces;
@@ -151,6 +151,7 @@
                iFirstScan = 10000;
                iLastScan = 20000;
 */
+
                watchGlobal.Start();
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
