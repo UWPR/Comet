@@ -496,9 +496,6 @@ struct DBIndex
             return pcVarModSites[i] < rhs.pcVarModSites[i];
       }
 
-      if (lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)
-         return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
-
       // FINAL tie-breaker: lowest protein index first in order
       // to keep cPrevAA/cNextAA from the first protein
       return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
