@@ -3452,6 +3452,17 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (!bSucceeded)
       goto cleanup_results;
 
+   // Open .idx file for retrieving protein names
+   FILE* fp;
+   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   {
+      string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+         + "\" " + std::strerror(errno) + "\n.";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
       CometScores score;
@@ -3510,9 +3521,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          unsigned int uiNumTotProteins = 0;
          bool bReturnFullProteinString = true;
 
-//FIX:
-//         CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
-//               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+         CometMassSpecUtils::GetProteinNameString(fp, iWhichQuery, iWhichResult, iPrintTargetDecoy,
+               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
 
          bool bPrintDelim = false;
          if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
@@ -3750,6 +3760,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       matchedFragments.push_back(eachMatchedFragments);
       scores.push_back(score);
    }
+   
+   fclose(fp);
 
 cleanup_results:
 

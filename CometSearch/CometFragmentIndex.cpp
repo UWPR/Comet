@@ -776,7 +776,7 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       sTmp.sPeptide = (*it).szPeptide;
-      sTmp.lIndexProteinFilePosition = clSizeCometFileOffset;   // FIX what should this be?
+      sTmp.lIndexProteinFilePosition = (*it).lIndexProteinFilePosition;
       sTmp.dPepMass = (*it).dPepMass;
       sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;
       g_vRawPeptides.push_back(sTmp);
@@ -786,22 +786,36 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fp);
    tTmp = g_pvProteinsList.size();
    fwrite(&tTmp, clSizeCometFileOffset, 1, fp);
-   int iWhichProtein = 0;
+   int iWhichProtein;
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fp);
+
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
+         iWhichProtein = -1;
+
          auto result = g_pvProteinNames.find((*it).at(it2));
          if (result != g_pvProteinNames.end())
          {
             iWhichProtein = result->second.iWhichProtein;
          }
 
+         if (iWhichProtein == -1)
+         {
+            string strErrorMsg = " Error writing protein index; protein not found in name map.\n";
+            logerr(strErrorMsg);
+            fclose(fp);
+            delete[] lProteinIndex;
+            return false;
+         }
+
          fwrite(&lProteinIndex[iWhichProtein], clSizeCometFileOffset, 1, fp);
       }
    }
+
+   delete[] lProteinIndex;
 
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);

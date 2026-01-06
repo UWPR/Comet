@@ -255,7 +255,7 @@
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                            watch.Stop();
 
-                           int iProteinLengthCutoff = 30;
+                           int iProteinLengthCutoff = 90;
 
                            if (vPeptide.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
                            {
@@ -269,10 +269,10 @@
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  {4:F4}  AScore {5:F2}  Sites '{6}'  {7} ms", 
+                                       Console.WriteLine(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  {4:F4}  AScore {5:F2}  Sites '{6}'  {7} ms  prot '{8}'", 
                                           iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, dExpPepMass,
                                           vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
-                                          watch.ElapsedMilliseconds);
+                                          watch.ElapsedMilliseconds, protein);
 
 /*
                                        if (vScores[x].dAScoreScore >= 13.0 && vScores[x].xCorr > 2.0

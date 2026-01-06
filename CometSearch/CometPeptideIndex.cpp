@@ -228,15 +228,17 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    // Now write out: vector<vector<comet_fileoffset_t>> pvProteinsListLocal
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fptr);
    size_t tTmp = pvProteinsListLocal.size();
+   int iWhichProtein;
    fwrite(&tTmp, clSizeCometFileOffset, 1, fptr);
    for (auto it = pvProteinsListLocal.begin(); it != pvProteinsListLocal.end(); ++it)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fptr);
 
-      int iWhichProtein = 0;
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
+         iWhichProtein = -1;
+
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
          auto result = g_pvProteinNames.find((*it).at(it2));
          if (result != g_pvProteinNames.end())
@@ -244,8 +246,16 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
             iWhichProtein = result->second.iWhichProtein;
          }
 
-         comet_fileoffset_t lPosition = lProteinIndex[iWhichProtein];
-         fwrite(&lPosition, clSizeCometFileOffset, 1, fptr);
+         if (iWhichProtein == -1)
+         {
+            string strErrorMsg = " Error in WritePeptideIndex(): cannot find protein file position in protein names map.\n";
+            logerr(strErrorMsg);
+            fclose(fptr);
+            delete[] lProteinIndex;
+            return false;
+         }
+
+         fwrite(&lProteinIndex[iWhichProtein], clSizeCometFileOffset, 1, fptr);
       }
    }
 
