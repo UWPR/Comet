@@ -2537,12 +2537,6 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             iEndPos = strlen(szProtein) - 2;
          }
 
-         if (iEndPos < 0)
-         {
-            printf("OK exiting:  %d, %d, szProtein %s, sDBI.szPeptide %s, mass %lf\n", iStartPos, iEndPos, szProtein, sDBI.szPeptide, sDBI.dPepMass); fflush(stdout);
-            exit(0);
-         }
-
          XcorrScore(szProtein, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
             sDBI.dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
          
