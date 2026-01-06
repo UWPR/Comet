@@ -137,7 +137,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
    // --- Prepare native output containers ---
    std::vector<std::string> stdPeptides;
    std::vector<std::string> stdProteins;
-   std::vector<Scores> stdScores;
+   std::vector<CometScores> stdScores;
    std::vector<std::vector<Fragment>> stdMatchedFrags;
 
    // --- Perform native search ---
@@ -204,7 +204,7 @@ bool CometSearchManagerWrapper::DoMS1SearchMultiResults(double dMaxMS1RTDiff,
    vector<std::string> stdStringszPeptide;
    vector<std::string> stdStringszProtein;
 
-   vector<ScoresMS1> scoresMS1;
+   vector<CometScoresMS1> scoresMS1;
    vector<vector<Fragment>> matchedFragments;
 
    // perform the search

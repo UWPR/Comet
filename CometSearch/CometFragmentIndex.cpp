@@ -186,7 +186,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    // In the for loop below, peptide references (iWhichFragmentPeptide) are stored in the FI.
    // As the FI is an array of unsigned int pointers, need to ensure that iWhichFragmentPeptide
    // will fit into an unsigned int.
-   if (g_vFragmentPeptides.size() > std::numeric_limits<unsigned int>::max())
+   // NOTE: explicitly use (std::numeric_limits<unsigned int>::max)() to avoid macro expansion on Windows.
+   if (g_vFragmentPeptides.size() > (std::numeric_limits<unsigned int>::max)())
    {
       // handle error: value too large to fit in unsigned int
       throw std::overflow_error(" Error: g_vFragmentPeptides.size() too large for unsigned int");

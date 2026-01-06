@@ -331,9 +331,9 @@ namespace CometWrapper {
     public ref class ScoreWrapper
     {
     public:
-        ScoreWrapper(const Scores & score)
+        ScoreWrapper(const CometScores & score)
         {
-            pScores = new Scores(score);
+            pScores = new CometScores(score);
         }
 
         ~ScoreWrapper()
@@ -392,15 +392,15 @@ namespace CometWrapper {
         }
 
     private:
-        Scores * pScores;
+       CometScores * pScores;
     };
 
     public ref class ScoreWrapperMS1
     {
     public:
-       ScoreWrapperMS1(const ScoresMS1& score)
+       ScoreWrapperMS1(const CometScoresMS1& score)
        {
-          pScoresMS1 = new ScoresMS1(score);
+          pScoresMS1 = new CometScoresMS1(score);
        }
 
        ~ScoreWrapperMS1()
@@ -429,7 +429,7 @@ namespace CometWrapper {
        }
 
     private:
-       ScoresMS1* pScoresMS1;
+       CometScoresMS1* pScoresMS1;
     };
 
     public enum class IonSeries : int { a, b, c, x, y, z };

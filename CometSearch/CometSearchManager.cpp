@@ -3343,7 +3343,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             vector<string>& strReturnPeptide,
                                                             vector<string>& strReturnProtein,
                                                             vector<vector<Fragment>>& matchedFragments,
-                                                            vector<Scores>& scores)
+                                                            vector<CometScores>& scores)
 {
    if (iNumPeaks == 0)
       return false;
@@ -3454,7 +3454,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
-      Scores score;
+      CometScores score;
       score.dCn = 0;
       score.xCorr = g_staticParams.options.dMinimumXcorr;
       score.matchedIons = 0;
@@ -3781,7 +3781,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                                  double* pdMass,
                                                  double* pdInten,
                                                  int iNumPeaks,
-                                                 vector<ScoresMS1>& scoresMS1)
+                                                 vector<CometScoresMS1>& scoresMS1)
 {
    bool bSucceeded = false;
    double dMatchedSpecLibRT = 0.0;
@@ -3830,7 +3830,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    if (bSucceeded)
    {
-      ScoresMS1 scoreMS1;
+      CometScoresMS1 scoreMS1;
       scoreMS1.fDotProduct = pQueryMS1->_pSpecLibResultsMS1.fDotProduct;
 //      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
       scoreMS1.fRTime = (float)dLinearRegressionRT;
