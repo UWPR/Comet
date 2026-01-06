@@ -3470,9 +3470,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       {
          Results* pOutput = pQuery->_pResults;
 
-         // Comment out this next line to not parse previous/next amino acids from  fasta for RTS reporting
-//         CometMassSpecUtils::GetPrevNextAA(fpfasta, 0, iWhichResult, 0, 0);
-
          // Set return values for peptide sequence, protein, xcorr and E-value
          eachStrReturnPeptide = std::string(1, pOutput[iWhichResult].cPrevAA) + ".";
 
