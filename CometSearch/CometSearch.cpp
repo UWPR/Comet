@@ -5019,9 +5019,6 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
 
    pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
 
-   pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
-   pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
-
    if (iStartPos == 0)
       pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = '-';
    else

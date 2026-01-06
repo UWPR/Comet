@@ -2731,11 +2731,14 @@ bool CometSearchManager::DoSearch()
             fflush(stdout);
          }
 
-         FILE* fpdb;
-         if (g_staticParams.iIndexDb > 0)
-            fpdb = fpidx;
-         else
-            fpdb = fpfasta;
+         FILE* fpdb = NULL;
+         if (g_bPerformDatabaseSearch)
+         {
+            if (g_staticParams.iIndexDb > 0)
+               fpdb = fpidx;
+            else
+               fpdb = fpfasta;
+         }
 
          int iBatchNum = 0;
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
@@ -3850,9 +3853,6 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
       goto cleanup_results;
 
 cleanup_results:
-
-   // close raw file here?
-   // fclose(fpdb);  //FIX: would be nice to not fopen/fclose with each query
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).
