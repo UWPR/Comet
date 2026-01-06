@@ -1072,7 +1072,7 @@ extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
 extern bool g_bCometPreprocessMemoryAllocated;    // set to true when memory has been allocated
 extern bool g_bCometSearchMemoryAllocated;        // set to true when memory has been allocated
 
-extern bool g_bIdxNoFasta;   // set to true when .idx file being search but corresponidn .fasta not present
+extern bool g_bIdxNoFasta;   // set to true when .idx file being search but corresponding .fasta not present
                              // used in mzid output to skip sequence retrieval
 
 // Query stores information for peptide scoring and results
