@@ -249,6 +249,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
       }
    }
 
+   delete[] lProteinIndex;
+
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
    int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
