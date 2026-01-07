@@ -767,6 +767,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                std::strncpy(sEntry.szProt, dbe.strName.c_str(), sizeof(sEntry.szProt) - 1);
                sEntry.szProt[sizeof(sEntry.szProt) - 1] = '\0';
                sEntry.lProteinFilePosition = dbe.lProteinFilePosition;
+               sEntry.iWhichProtein = -1; // not used for index creation
                g_pvProteinNames.insert({ sEntry.lProteinFilePosition, sEntry });
             }
 

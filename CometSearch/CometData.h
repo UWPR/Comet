@@ -144,7 +144,7 @@ struct CometScores
         sAScoreProSiteScores(a.sAScoreProSiteScores)
     { }
 
-    CometScores& operator=(CometScores& a)
+    CometScores& operator=(const CometScores& a)
     {
         xCorr = a.xCorr;
         dSp = a.dSp;
@@ -183,7 +183,7 @@ struct CometScoresMS1
       iScanNumber(a.iScanNumber)
    { }
 
-   CometScoresMS1& operator=(CometScoresMS1& a)
+   CometScoresMS1& operator=(const CometScoresMS1& a)
    {
       fDotProduct = a.fDotProduct;
       fRTime = a.fRTime;
