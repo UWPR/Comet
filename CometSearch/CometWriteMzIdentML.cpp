@@ -318,7 +318,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB\"", strProteinName.c_str(), strProteinName.c_str());
 
-         if (bPrintSequences)
+         if (bPrintSequences && !g_bIdxNoFasta)
          {
             CometMassSpecUtils::GetProteinSequence(fpdb, *it, strProteinSeq);
             if (strProteinSeq.size() > 0)
@@ -1465,13 +1465,30 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          std::vector<ProteinEntryStruct>::iterator it;
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
-            for (it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
+            if (g_staticParams.iIndexDb)
             {
+               comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+
+               for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+               {
 #ifdef _WIN32
-               fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%I64d:%d;", *it, 0);
 #else
-               fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%ld:%d;", *it, 0);
 #endif
+               }
+
+            }
+            else
+            {
+               for (it = pOutput[iWhichResult].pWhichProtein.begin(); it != pOutput[iWhichResult].pWhichProtein.end(); ++it)
+               {
+#ifdef _WIN32
+                  fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+#else
+                  fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+#endif
+               }
             }
             fprintf(fpout, "\t");
          }

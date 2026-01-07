@@ -67,7 +67,7 @@ public:
                                                    vector<string>& strReturnPeptide,
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
-                                                   vector<Scores>& scores);
+                                                   vector<CometScores>& scores);
    virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                         const double dMaxQueryRT,
                                         const int topN,
@@ -75,7 +75,7 @@ public:
                                         double* pdMass,
                                         double* pdInten,
                                         int iNumPeaks,
-                                        vector<ScoresMS1>& scores);
+                                        vector<CometScoresMS1>& scores);
    virtual void AddInputFiles(vector<InputFileInfo*> &pvInputFiles);
    virtual void SetOutputFileBaseName(const char *pszBaseName);
    virtual void SetParam(const string &name, const string &strValue, const string &value);

@@ -256,7 +256,7 @@ struct Results
    unsigned short    usiMatchedIons;
    unsigned short    usiTotalIons;  
    comet_fileoffset_t   lProteinFilePosition; // for indexdb, this is the entry in g_pvProteinsList
-   long   lWhichProtein;
+   long   lWhichProtein;                      // which entry in g_pvProteinsList[] contains the matched proteins
    int    piVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods encoding, +2 to accomodate N/C-term
    double pdVarModSites[MAX_PEPTIDE_LEN_P2];  // store variable mods mass diffs, +2 to accomodate N/C-term
    char   pszMod[MAX_PEPTIDE_LEN][MAX_PEFFMOD_LEN];    // store PEFF mod string
@@ -452,6 +452,8 @@ struct DBInfo
 struct DBIndex
 {
    char szPeptide[MAX_PEPTIDE_LEN];
+   char cPrevAA;
+   char cNextAA;
    char pcVarModSites[MAX_PEPTIDE_LEN_P2];        // encodes 0 to VMODS-1 indicating which var mod at which position
    comet_fileoffset_t lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                               // MH+ pep mass
@@ -494,10 +496,9 @@ struct DBIndex
             return pcVarModSites[i] < rhs.pcVarModSites[i];
       }
 
-      if (lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)
-         return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
-
-      return false; // equal
+      // FINAL tie-breaker: lowest protein index first in order
+      // to grab flanking residues from the first protein
+      return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
    }
 };
 
@@ -506,6 +507,8 @@ struct DBIndex
 struct PlainPeptideIndexStruct
 {
    string sPeptide;
+   char cPrevAA;
+   char cNextAA;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
    double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
    unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
@@ -1030,6 +1033,7 @@ struct StaticParams
 extern StaticParams    g_staticParams;
 
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
+extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
@@ -1064,6 +1068,9 @@ extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
 
 extern bool g_bCometPreprocessMemoryAllocated;    // set to true when memory has been allocated
 extern bool g_bCometSearchMemoryAllocated;        // set to true when memory has been allocated
+
+extern bool g_bIdxNoFasta;   // set to true when .idx file being search but corresponding .fasta not present
+                             // used in mzid output to skip sequence retrieval
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination

@@ -186,7 +186,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    // In the for loop below, peptide references (iWhichFragmentPeptide) are stored in the FI.
    // As the FI is an array of unsigned int pointers, need to ensure that iWhichFragmentPeptide
    // will fit into an unsigned int.
-   if (g_vFragmentPeptides.size() > std::numeric_limits<unsigned int>::max())
+   // NOTE: explicitly use (std::numeric_limits<unsigned int>::max)() to avoid macro expansion on Windows.
+   if (g_vFragmentPeptides.size() > (std::numeric_limits<unsigned int>::max)())
    {
       // handle error: value too large to fit in unsigned int
       throw std::overflow_error(" Error: g_vFragmentPeptides.size() too large for unsigned int");
@@ -558,7 +559,7 @@ if (!(iWhichPeptide%1000))
 }
 
 
-bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
+bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 {
    FILE *fp;
    bool bSucceeded;
@@ -740,7 +741,22 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fprintf(fp, "RequireVariableMod: %d", g_staticParams.variableModParameters.iRequireVarMod);
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       fprintf(fp, " %d", g_staticParams.variableModParameters.varModList[x].iRequireThisMod);
-   fprintf(fp, "\n");
+   fprintf(fp, "\n\n");
+
+   int iTmp = (int)g_pvProteinNames.size();
+   comet_fileoffset_t* lProteinIndex = new comet_fileoffset_t[iTmp];
+   for (int i = 0; i < iTmp; i++)
+      lProteinIndex[i] = -1;
+
+   // first just write out protein names. Track file position of each protein name
+   int ctProteinNames = 0;
+   for (auto it = g_pvProteinNames.begin(); it != g_pvProteinNames.end(); ++it)
+   {
+      lProteinIndex[ctProteinNames] = comet_ftell(fp);
+      fwrite(it->second.szProt, sizeof(char) * WIDTH_REFERENCE, 1, fp);
+      it->second.iWhichProtein = ctProteinNames;
+      ctProteinNames++;
+   }
 
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fp);
    size_t tNumPeptides = g_pvDBIndex.size();
@@ -753,12 +769,14 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
 
       fwrite(&iLen, sizeof(int), 1, fp);
       fwrite((*it).szPeptide, sizeof(char), iLen, fp);
+      fwrite(&((*it).cPrevAA), sizeof(char), 1, fp); // write prev AA
+      fwrite(&((*it).cNextAA), sizeof(char), 1, fp); // write next AA
       fwrite(&((*it).dPepMass), sizeof(double), 1, fp);
       fwrite(&((*it).siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
       sTmp.sPeptide = (*it).szPeptide;
-      sTmp.lIndexProteinFilePosition = clSizeCometFileOffset;
+      sTmp.lIndexProteinFilePosition = (*it).lIndexProteinFilePosition;
       sTmp.dPepMass = (*it).dPepMass;
       sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;
       g_vRawPeptides.push_back(sTmp);
@@ -768,15 +786,36 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fp);
    tTmp = g_pvProteinsList.size();
    fwrite(&tTmp, clSizeCometFileOffset, 1, fp);
+   int iWhichProtein;
    for (auto it = g_pvProteinsList.begin(); it != g_pvProteinsList.end(); ++it)
    {
       tTmp = (*it).size();
       fwrite(&tTmp, sizeof(size_t), 1, fp);
+
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {
-         fwrite(&((*it).at(it2)), clSizeCometFileOffset, 1, fp);
+         iWhichProtein = -1;
+
+         auto result = g_pvProteinNames.find((*it).at(it2));
+         if (result != g_pvProteinNames.end())
+         {
+            iWhichProtein = result->second.iWhichProtein;
+         }
+
+         if (iWhichProtein == -1)
+         {
+            string strErrorMsg = " Error writing protein index; protein not found in name map.\n";
+            logerr(strErrorMsg);
+            fclose(fp);
+            delete[] lProteinIndex;
+            return false;
+         }
+
+         fwrite(&lProteinIndex[iWhichProtein], clSizeCometFileOffset, 1, fp);
       }
    }
+
+   delete[] lProteinIndex;
 
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);
@@ -793,7 +832,7 @@ bool CometFragmentIndex::WritePlainPeptideIndex(ThreadPool *tp)
    fwrite(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    fwrite(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
    fwrite(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);
-   int iTmp;
+
    for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
    {
       iTmp = (int)MOD_SEQS[i].size();
@@ -1065,6 +1104,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       tTmp = fread(szPeptide, sizeof(char), iLen, fp);
       szPeptide[iLen] = '\0';
       sTmp.sPeptide = szPeptide;
+      tTmp = fread(&(sTmp.cPrevAA), sizeof(char), 1, fp);
+      tTmp = fread(&(sTmp.cNextAA), sizeof(char), 1, fp);
       tTmp = fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
       tTmp = fread(&(sTmp.siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       tTmp = fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);

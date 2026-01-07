@@ -1,15 +1,15 @@
 ﻿namespace RealTimeSearch
 {
+   //using System.Threading.Tasks;
+
+   using CometWrapper;
    using System;
    using System.Collections.Generic;
    using System.Diagnostics;
    using System.IO;
    using System.Linq;
    using System.Text;
-   //using System.Threading.Tasks;
-
-   using CometWrapper;
-
+   using System.Threading;
    using ThermoFisher.CommonCore.Data.Business;
    using ThermoFisher.CommonCore.Data.FilterEnums;
    using ThermoFisher.CommonCore.Data.Interfaces;
@@ -129,12 +129,12 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 1;
+               int iPrintEveryScan = 100;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
                bool bContinuousLoop = false; // set to true to continuously loop through the raw file
                bool bPrintHistogram = true;
                bool bPrintMatchedFragmentIons = false;
-               bool bPerformMS1Search = true;
+               bool bPerformMS1Search = false;
                bool bPerformMS2Search = true;
 
                if (bPerformMS1Search)
@@ -151,6 +151,7 @@
                iFirstScan = 10000;
                iLastScan = 20000;
 */
+
                watchGlobal.Start();
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
@@ -254,7 +255,7 @@
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                            watch.Stop();
 
-                           int iProteinLengthCutoff = 30;
+                           int iProteinLengthCutoff = 90;
 
                            if (vPeptide.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
                            {
@@ -268,10 +269,10 @@
                                        if (protein.Length > iProteinLengthCutoff)
                                           protein = protein.Substring(0, iProteinLengthCutoff);  // trim to avoid printing long protein description string
 
-                                       Console.WriteLine(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  {4:F4}  AScore {5:F2}  Sites '{6}'  {7} ms", 
+                                       Console.WriteLine(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  {4:F4}  AScore {5:F2}  Sites '{6}'  {7} ms  prot '{8}'", 
                                           iScanNumber, vPeptide[x], vScores[x].xCorr, vScores[x].dExpect, dExpPepMass,
                                           vScores[x].dAScoreScore, vScores[x].sAScoreProSiteScores,
-                                          watch.ElapsedMilliseconds);
+                                          watch.ElapsedMilliseconds, protein);
 
 /*
                                        if (vScores[x].dAScoreScore >= 13.0 && vScores[x].xCorr > 2.0

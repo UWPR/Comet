@@ -96,7 +96,7 @@ struct IntRange
    }
 };
 
-struct Scores
+struct CometScores
 {
     double xCorr;
     double dSp;
@@ -108,7 +108,7 @@ struct Scores
     int totalIons;
     string sAScoreProSiteScores;  // AScore site scores as string
 
-    Scores() :
+    CometScores() :
         xCorr(0),
         dSp(0),
         dCn(0),
@@ -120,7 +120,7 @@ struct Scores
         sAScoreProSiteScores("")
     { }
 
-    Scores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
+    CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
         xCorr(xCorr),
         dSp(dSp),
         dCn(dCn),
@@ -132,7 +132,7 @@ struct Scores
         sAScoreProSiteScores(sAScoreProSiteScores)
     { }
 
-    Scores(const Scores& a) :
+    CometScores(const CometScores& a) :
         xCorr(a.xCorr),
         dSp(a.dSp),
         dCn(a.dCn),
@@ -144,7 +144,7 @@ struct Scores
         sAScoreProSiteScores(a.sAScoreProSiteScores)
     { }
 
-    Scores& operator=(Scores& a)
+    CometScores& operator=(const CometScores& a)
     {
         xCorr = a.xCorr;
         dSp = a.dSp;
@@ -159,31 +159,31 @@ struct Scores
     }
 };
 
-struct ScoresMS1
+struct CometScoresMS1
 {
    float fDotProduct;
    float fRTime;  // in seconds
    int iScanNumber;
 
-   ScoresMS1() :
+   CometScoresMS1() :
       fDotProduct(0),
       fRTime(0),
       iScanNumber(0)
    { }
 
-   ScoresMS1(float fDotProduct, float fRTime, int iScanNumber) :
+   CometScoresMS1(float fDotProduct, float fRTime, int iScanNumber) :
       fDotProduct(fDotProduct),
       fRTime(fRTime),
       iScanNumber(iScanNumber)
    { }
 
-   ScoresMS1(const ScoresMS1& a) :
+   CometScoresMS1(const CometScoresMS1& a) :
       fDotProduct(a.fDotProduct),
       fRTime(a.fRTime),
       iScanNumber(a.iScanNumber)
    { }
 
-   ScoresMS1& operator=(ScoresMS1& a)
+   CometScoresMS1& operator=(const CometScoresMS1& a)
    {
       fDotProduct = a.fDotProduct;
       fRTime = a.fRTime;
