@@ -3763,10 +3763,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       matchedFragments.push_back(eachMatchedFragments);
       scores.push_back(score);
    }
-   
-   fclose(fp);
 
 cleanup_results:
+
+   if (fp != NULL)
+      fclose(fp);
 
    // Deleting each Query object in the vector calls its destructor, which
    // frees the spectral memory (see definition for Query in CometDataInternal.h).

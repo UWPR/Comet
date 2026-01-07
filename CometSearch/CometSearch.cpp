@@ -2516,7 +2516,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
          char cPrevAA = sDBI.cPrevAA;
          char cNextAA = sDBI.cNextAA;
-         char szProtein[128];
+         char szProtein[MAX_PEPTIDE_LEN_P2];
          if (cPrevAA == '-')
          {
             iStartPos = 0;
@@ -5118,8 +5118,6 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
    int iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    int bIsDuplicate=0;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
-
-   iLenPeptide = iEndPos - iStartPos + 1;
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {

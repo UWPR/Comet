@@ -497,7 +497,7 @@ struct DBIndex
       }
 
       // FINAL tie-breaker: lowest protein index first in order
-      // to keep cPrevAA/cNextAA from the first protein
+      // to grab flanking residues from the first protein
       return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
    }
 };
