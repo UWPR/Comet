@@ -2637,8 +2637,8 @@ bool CometSearchManager::DoSearch()
          // We need to reset some of the static variables in-between input files
          CometPreprocess::Reset();
 
-         FILE* fpfasta;  // pointer to FASTA file; if .idx search, FASTA is used to retrieve sequences (mzid output)
-         FILE* fpidx;    // pointer to .idx file if used
+         FILE* fpfasta = NULL;  // pointer to FASTA file; if .idx search, FASTA is used to retrieve sequences (mzid output)
+         FILE* fpidx = NULL;    // pointer to .idx file if used
 
          if (g_bPerformDatabaseSearch)
          {
