@@ -1458,6 +1458,12 @@ bool CometSearchManager::InitializeStaticParams()
 
    for (int i=0; i<VMODS; ++i)
    {
+      // Crux has been using "null" as its default modification character string which
+      // sadly didn't behave as they might have thought. To address that, this will
+      // zero out the modification mass if "null" is the amino acid string.
+      if (!strcmp(g_staticParams.variableModParameters.varModList[i].szVarModChar, "null"))
+         g_staticParams.variableModParameters.varModList[i].dVarModMass = 0.0;
+
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
