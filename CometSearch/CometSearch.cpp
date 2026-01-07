@@ -806,7 +806,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 
             g_staticParams.databaseInfo.iTotalNumProteins++;
 
-            if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins%500))
+            if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins%1000))
             {
                char szTmp[128];
                lCurrPos = ftell(fp);
