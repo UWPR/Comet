@@ -2542,6 +2542,8 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          
          if (g_staticParams.options.iDecoySearch)
          {
+            iStartPos = 0;
+            iEndPos = iLenPeptide - 1;
             XcorrScore(szDecoyPeptide, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableModDecoy,
                sDBI.dPepMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
          }
