@@ -764,7 +764,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                struct IndexProteinStruct sEntry;
 
                // store protein name
-               strcpy(sEntry.szProt, dbe.strName.c_str());
+               std::strncpy(sEntry.szProt, dbe.strName.c_str(), sizeof(sEntry.szProt) - 1);
+               sEntry.szProt[sizeof(sEntry.szProt) - 1] = '\0';
                sEntry.lProteinFilePosition = dbe.lProteinFilePosition;
                g_pvProteinNames.insert({ sEntry.lProteinFilePosition, sEntry });
             }
@@ -1622,7 +1623,7 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
          char cPrevAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cPrevAA;
          char cNextAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cNextAA;
-         char szProtein[128];
+         char szProtein[MAX_PEPTIDE_LEN_P2];
          if (cPrevAA == '-')
          {
             iStartPos = 0;
@@ -4993,10 +4994,10 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
                                 int* piVarModSites,
                                 struct sDBEntry* dbe)
 {
-   int iLenPeptide;
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   int iLenPeptide = iEndPos - iStartPos + 1;
+   int iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
 
-   iLenPeptide = iEndPos - iStartPos + 1;
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    short siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
 
@@ -5026,7 +5027,7 @@ void CometSearch::StorePeptideI(size_t iWhichQuery,
    else
       pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA = szProteinSeq[iStartPos - 1];
 
-   if (iEndPos == strlen(szProteinSeq) - 1)
+   if (iEndPos == iLenProteinMinus1)
       pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = '-';
    else
       pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA = szProteinSeq[iEndPos + 1];
@@ -5112,9 +5113,10 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                                 int *piVarModSites,
                                 struct sDBEntry *dbe)
 {
-   int i,
-       iLenPeptide,
-       bIsDuplicate=0;
+   int i;
+   int iLenPeptide = iEndPos - iStartPos + 1;
+   int iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
+   int bIsDuplicate=0;
    Query* pQuery = g_pvQuery.at(iWhichQuery);
 
    iLenPeptide = iEndPos - iStartPos + 1;
@@ -5212,7 +5214,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
+                  if (iEndResidue == iLenProteinMinus1)
                      pTmp.cNextAA = '-';
                   else
                      pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
@@ -5329,7 +5331,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                   else
                      pTmp.cPrevAA = szProteinSeq[iStartResidue - 1];
 
-                  if (iEndResidue == (int)(strlen(szProteinSeq) - 1))
+                  if (iEndResidue == iLenProteinMinus1)
                      pTmp.cNextAA = '-';
                   else
                      pTmp.cNextAA = szProteinSeq[iEndResidue + 1];
@@ -7018,7 +7020,7 @@ bool CometSearch::MergeVarMods(char *szProteinSeq,
             else
                sDBTmp.cPrevAA = szProteinSeq[_varModInfo.iStartPos - 1];
 
-            if (_varModInfo.iEndPos == strlen(szProteinSeq) - 1)
+            if (_varModInfo.iEndPos == iLenProteinMinus1)
                sDBTmp.cNextAA = '-';
             else
                sDBTmp.cNextAA = szProteinSeq[_varModInfo.iEndPos + 1];
