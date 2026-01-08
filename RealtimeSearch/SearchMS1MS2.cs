@@ -129,9 +129,10 @@
                                     // have a different maximum RT value. Assumes a linear gradient.
                dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
-               int iPrintEveryScan = 100;
+               int iPrintEveryScan = 5000;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
-               bool bContinuousLoop = false; // set to true to continuously loop through the raw file
+               int iMaxLoopIterations = 5; // set to >1 to loop multiple times through the raw file for testing
+               bool bContinuousLoop = true; // set to true to continuously loop through the raw file
                bool bPrintHistogram = true;
                bool bPrintMatchedFragmentIons = false;
                bool bPerformMS1Search = false;
@@ -152,7 +153,17 @@
                iLastScan = 20000;
 */
 
+               // Track max elapsed time for each scan range, for each loop iteration
+               int scanRangeSize = 5000;
+               int numScanRanges = ((iLastScan - iFirstScan) / scanRangeSize) + 1;
+               int[,] maxElapsedTimeByRange = new int[iMaxLoopIterations, numScanRanges];
+               for (int i = 0; i < iMaxLoopIterations; ++i)
+                  for (int j = 0; j < numScanRanges; ++j)
+                     maxElapsedTimeByRange[i, j] = 0;
+
                watchGlobal.Start();
+
+               int iLoopCount = 0;
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {
@@ -307,6 +318,17 @@
                            if (vPeptide.Count > 0)
                            {
                               iTime = (int)watch.ElapsedMilliseconds;
+
+                              // Determine scan range index
+                              int scanRangeIndex = (iScanNumber - iFirstScan) / scanRangeSize;
+                              if (scanRangeIndex < 0) scanRangeIndex = 0;
+                              if (scanRangeIndex >= numScanRanges) scanRangeIndex = numScanRanges - 1;
+
+                              // Update max elapsed time for this scan range and loop
+                              if (iTime > maxElapsedTimeByRange[iLoopCount, scanRangeIndex])
+                                 maxElapsedTimeByRange[iLoopCount, scanRangeIndex] = iTime;
+
+
                               if (iTime >= iMaxElapsedTime)
                                  iTime = iMaxElapsedTime - 1;
                               if (iTime >= 0)
@@ -319,6 +341,10 @@
 
                   if (bContinuousLoop && iScanNumber == iLastScan)
                   {
+                     iLoopCount++;
+                     if (iLoopCount >= iMaxLoopIterations)
+                        break;
+
                      iScanNumber = 0;
                      elapsedGlobal = watchGlobal.Elapsed;
                      Console.WriteLine("pass {0}, {1:F2} min", iPass, elapsedGlobal.TotalMinutes);
@@ -332,8 +358,38 @@
                if (bPrintHistogram)
                {
                   // write out histogram of spectrum search times
-                  for (int i = 0; i < iMaxElapsedTime; ++i)
-                     Console.WriteLine("histogram\t{0}\t{1}\t{2}", i, piTimeSearchMS1[i], piTimeSearchMS2[i]);
+                  using (var writer = new StreamWriter("histogram.txt"))
+                  {
+                     for (int i = 0; i < iMaxElapsedTime; ++i)
+                     {
+                        string line = $"histogram\t{i}\t{piTimeSearchMS1[i]}\t{piTimeSearchMS2[i]}";
+                        Console.WriteLine(line);
+                        writer.WriteLine(line);
+                     }
+
+                     // Export table of maximum run times for each scan range and loop iteration
+                     writer.WriteLine("\nMax elapsed run times (ms) by scan range and loop:");
+                     Console.WriteLine("\nMax elapsed run times (ms) by scan range and loop:");
+
+                     StringBuilder header = new StringBuilder("Loop\\Range");
+                     for (int r = 0; r < numScanRanges; ++r)
+                     {
+                        int rangeStart = iFirstScan + r * scanRangeSize;
+                        int rangeEnd = Math.Min(iLastScan, rangeStart + scanRangeSize - 1);
+                        header.Append($"\t{rangeStart}-{rangeEnd}");
+                     }
+                     Console.WriteLine(header.ToString());
+                     writer.WriteLine(header.ToString());
+
+                     for (int loop = 0; loop < iMaxLoopIterations; ++loop)
+                     {
+                        StringBuilder row = new StringBuilder($"{loop + 1}");
+                        for (int r = 0; r < numScanRanges; ++r)
+                           row.Append($"\t{maxElapsedTimeByRange[loop, r]}");
+                        Console.WriteLine(row.ToString());
+                        writer.WriteLine(row.ToString());
+                     }
+                  }
                }
 
                rawFile.Dispose();
@@ -401,15 +457,15 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("num_threads", sTmp, iTmp);
 
-            dTmp = 0.02; // fragment bin width
+            dTmp = 1.0005; // fragment bin width
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0;  // fragment bin offst
+            dTmp = 0.4;  // fragment bin offst
             sTmp = dTmp.ToString();
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = 1; // 0=use flanking peaks, 1=M peak only
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
