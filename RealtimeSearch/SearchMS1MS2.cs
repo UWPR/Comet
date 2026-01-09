@@ -108,11 +108,11 @@
                Stopwatch watchGlobal = new Stopwatch();
                TimeSpan elapsedGlobal;
 
-               int iMaxElapsedTime = 50;
-               int[] piTimeSearchMS1 = new int[iMaxElapsedTime];  // histogram of search times
-               int[] piTimeSearchMS2 = new int[iMaxElapsedTime];  // histogram of search times
+               int iMaxHistogramTime = 30;
+               int[] piTimeSearchMS1 = new int[iMaxHistogramTime];  // histogram of search times
+               int[] piTimeSearchMS2 = new int[iMaxHistogramTime];  // histogram of search times
 
-               for (int i = 0; i < iMaxElapsedTime; ++i)
+               for (int i = 0; i < iMaxHistogramTime; ++i)
                {
                   piTimeSearchMS1[i] = 0;
                   piTimeSearchMS2[i] = 0;
@@ -131,12 +131,14 @@
 
                int iPrintEveryScan = 5000;
                int iMS2TopN = 1; // report up to topN hits per MS/MS query
-               int iMaxLoopIterations = 5; // set to >1 to loop multiple times through the raw file for testing
+               int iMaxLoopIterations = 3; // set to >1 to loop multiple times through the raw file for testing
                bool bContinuousLoop = true; // set to true to continuously loop through the raw file
                bool bPrintHistogram = true;
                bool bPrintMatchedFragmentIons = false;
                bool bPerformMS1Search = false;
                bool bPerformMS2Search = true;
+
+               int iProteinLengthCutoff = 90;
 
                if (bPerformMS1Search)
                {
@@ -160,6 +162,9 @@
                for (int i = 0; i < iMaxLoopIterations; ++i)
                   for (int j = 0; j < numScanRanges; ++j)
                      maxElapsedTimeByRange[i, j] = 0;
+
+               // Track the slowest spectrum queries
+               var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
 
                watchGlobal.Start();
 
@@ -214,8 +219,8 @@
                            if (vScores.Count > 0)
                            {
                               iTime = (int)watch.ElapsedMilliseconds;
-                              if (iTime >= iMaxElapsedTime)
-                                 iTime = iMaxElapsedTime - 1;
+                              if (iTime >= iMaxHistogramTime)
+                                 iTime = iMaxHistogramTime - 1;
                               if (iTime >= 0)
                                  piTimeSearchMS1[iTime] += 1;
 
@@ -265,8 +270,6 @@
                            SearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ, pdMass, pdInten, iNumPeaks,
                               out vPeptide, out vProtein, out List<List<FragmentWrapper>> vMatchingFragments, out List<ScoreWrapper> vScores);
                            watch.Stop();
-
-                           int iProteinLengthCutoff = 90;
 
                            if (vPeptide.Count > 0 && (iScanNumber % iPrintEveryScan) == 0)
                            {
@@ -319,6 +322,14 @@
                            {
                               iTime = (int)watch.ElapsedMilliseconds;
 
+                              // Store info for slowest runs (use first/top hit for each scan)
+                              if (vPeptide[0].Length > 0 && vScores.Count > 0)
+                              {
+                                 slowestRuns.Add((iTime, vPeptide[0], iScanNumber, vScores[0].xCorr));
+                                 // Keep only the 5 slowest
+                                 slowestRuns = slowestRuns.OrderByDescending(x => x.TimeMs).Take(5).ToList();
+                              }
+
                               // Determine scan range index
                               int scanRangeIndex = (iScanNumber - iFirstScan) / scanRangeSize;
                               if (scanRangeIndex < 0) scanRangeIndex = 0;
@@ -329,8 +340,8 @@
                                  maxElapsedTimeByRange[iLoopCount, scanRangeIndex] = iTime;
 
 
-                              if (iTime >= iMaxElapsedTime)
-                                 iTime = iMaxElapsedTime - 1;
+                              if (iTime >= iMaxHistogramTime)
+                                 iTime = iMaxHistogramTime - 1;
                               if (iTime >= 0)
                                  piTimeSearchMS2[iTime] += 1;
                            }
@@ -360,12 +371,38 @@
                   // write out histogram of spectrum search times
                   using (var writer = new StreamWriter("histogram.txt"))
                   {
-                     for (int i = 0; i < iMaxElapsedTime; ++i)
+                     int iTot = 0;
+                     int iAbove5ms = 0;
+                     int iAbove10ms = 0;
+                     for (int i = 0; i < iMaxHistogramTime; ++i)
                      {
                         string line = $"histogram\t{i}\t{piTimeSearchMS1[i]}\t{piTimeSearchMS2[i]}";
                         Console.WriteLine(line);
                         writer.WriteLine(line);
+
+                        iTot += piTimeSearchMS2[i];
+                        if (i > 5)
+                           iAbove5ms += piTimeSearchMS2[i];
+                        if (i > 10)
+                           iAbove10ms += piTimeSearchMS2[i];
+
                      }
+
+                     Console.WriteLine("\n5 Slowest MS2 Runs:");
+                     writer.WriteLine("\n5 Slowest MS2 Runs:");
+                     Console.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
+                     writer.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
+                     foreach (var run in slowestRuns.OrderByDescending(x => x.TimeMs))
+                     {
+                        string line = $"{run.TimeMs}\t{run.ScanNumber}\t{run.Peptide}\t{run.XCorr:F4}";
+                        Console.WriteLine(line);
+                        writer.WriteLine(line);
+                     }
+
+                     Console.WriteLine("\n<= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
+                        iTot - iAbove5ms, iAbove5ms, iAbove10ms, ((double)iAbove5ms / iTot)*100.0, ((double)iAbove10ms / iTot) * 100.0);
+                     writer.WriteLine("\n<= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
+                        iTot - iAbove5ms, iAbove5ms, iAbove10ms, ((double)iAbove5ms / iTot) * 100.0, ((double)iAbove10ms / iTot) * 100.0);
 
                      // Export table of maximum run times for each scan range and loop iteration
                      writer.WriteLine("\nMax elapsed run times (ms) by scan range and loop:");
