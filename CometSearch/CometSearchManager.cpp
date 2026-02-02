@@ -3764,6 +3764,36 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dCn = 0;        // dCn
          score.sAScoreProSiteScores.clear();
       }
+
+      if (false)  // set to true to enable debug mass check
+      {
+         // Compare peptide against input mz/charge mass
+         double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+         for (int i = 0; i < pQuery->_pResults[0].usiLenPeptide; ++i)
+         {
+            dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[pQuery->_pResults[0].szPeptide[i]];
+            if (g_staticParams.variableModParameters.bVarModSearch)
+               if (pQuery->_pResults[0].piVarModSites[i] != 0)
+                  dCalcPepMass += pQuery->_pResults[0].pdVarModSites[i];
+         }
+         if (g_staticParams.variableModParameters.bVarModSearch)
+         {
+            // n-term mod
+            if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] != 0)
+               dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide];
+            // c-term mod
+            if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
+               dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide + 1];
+         }
+         double dExpMass = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
+         if (fabs(dCalcPepMass - dExpMass) > 0.2)
+         {
+            printf("OK %s, dCalcPepMass %0.4lf, pepmass %0.3lf, expmass %0.4lf\n",
+               g_pvQuery.at(0)->_pResults[0].szPeptide, dCalcPepMass, g_pvQuery.at(0)->_pResults[0].dPepMass, dExpMass);
+            getchar();
+         }
+      }
+
       strReturnPeptide.push_back(eachStrReturnPeptide);
       strReturnProtein.push_back(eachStrReturnProtein);
       matchedFragments.push_back(eachMatchedFragments);
