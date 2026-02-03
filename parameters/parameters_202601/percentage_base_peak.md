@@ -10,5 +10,5 @@
 
 Example:
 ```
-percentage_base_peak = 0.05             # only consider peaks that are at least 5% of the base peak intensity
+percentage_base_peak = 0.05      # only consider peaks that are at least 5% of the base peak intensity
 ```

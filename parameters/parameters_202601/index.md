@@ -1,4 +1,4 @@
-### Search parameters (2025.03)
+### Search parameters (2026.01)
 
 Comet search parameters are defined here. These are valid for Comet version 2025.02.X.
 
@@ -112,7 +112,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [peptide_length_range](peptide_length_range.html)
 - [pinfile_protein_delimiter](pinfile_protein_delimiter.html)
 - [precursor_NL_ions](precursor_NL_ions.html)
-- [print_ascorepro_score](print_ascorepro_score.html) <font color="red">*</font>
+- [print_ascorepro_score](print_ascorepro_score.html)
 - [protein_modslist_file](protein_modslist_file.html)
 - [resolve_fullpaths](resolve_fullpaths.html)
 - [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue
@@ -122,10 +122,10 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [xcorr_processing_offset](xcorr_processing_offset.html)
 
 ### MS1 real-time alignment
-- [ms1_bin_tol](ms1_bin_tol.html) <font color="red">*</font>
-- [ms1_bin_offset](ms1_bin_offset.html) <font color="red">*</font>
-- [ms1_mass_range](ms1_mass_range.html) <font color="red">*</font>
-- [retentiontime_tol](retentiontime_tol.html) <font color="red">*</font>
+- [ms1_bin_tol](ms1_bin_tol.html)
+- [ms1_bin_offset](ms1_bin_offset.html)
+- [ms1_mass_range](ms1_mass_range.html)
+- [retentiontime_tol](retentiontime_tol.html)
 
 #### Spectral processing
 
