@@ -1,5 +1,6 @@
 ### Comet Releases
 
+- [Release 2026.01, 2026/02/03](/Comet/releases/release_202601.html)
 - [Release 2025.03, 2025/11/12](/Comet/releases/release_202503.html)
 - [Release 2025.02, 2025/06/05](/Comet/releases/release_202502.html)
 - [Release 2025.01, 2025/02/19, last revised 2025/03/15](/Comet/releases/release_202501.html)
@@ -32,7 +33,7 @@ Comet is currently supported within the following software projects:
 - [Crux](https://crux.ms)
 - [OpenMS](https://www.openms.de)
 - [quantms](https://quantms.org)
-- [Bio Docker](https://hub.docker.com/r/biocontainers/comet)
+- [Docker](https://hub.docker.com/r/biocontainers/comet), [latest](https://github.com/UWPR/Comet/pkgs/container/comet)
 - [MASSyPupX](https://codeberg.org/LabABI/MASSyPupX)
 - [ProHits](https://prohitsms.com/)
 - [GalaxyP ](https://galaxyp.org)
