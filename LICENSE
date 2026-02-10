@@ -197,7 +197,7 @@
    - Component:        twiddle.c
    - Original Author:  Matthew Belmonte
    - Original Source:  https://www.netlib.org/toms-2014-06-10/382
-   - Origial Licnese:  permission to use; maintain copyright notice
+   - Original License: permission to use; maintain copyright notice
 
    - Component:        AScorePro
    - Original Author:  Gygi lab and code authors
@@ -210,12 +210,12 @@
    - Component:        BS::thread_pool (BS_thread_pool.hpp)
    - Original Author:  Barak Shoshany
    - Original Source:  https://github.com/bshoshany/thread-pool
-   - Origial Licnese:  MIT License (included below)
+   - Original License: MIT License (included below)
    
    - Component:        RawFileReader
    - Original Author:  Thermo Finnigan LLC
    - Original Source:  https://github.com/thermofisherlsms/RawFileReader
-   - Origial Licnese:  license terms below
+   - Original License: license terms below
 			
 
    ---
