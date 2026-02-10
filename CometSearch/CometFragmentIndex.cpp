@@ -145,7 +145,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment index\n"; fflush(stdout);
 
-   Threading::CreateMutex(&_vFragmentPeptidesMutex);
+   Threading::InitMutex(&_vFragmentPeptidesMutex);
 
    ThreadPool *pFragmentIndexPool = tp;
 

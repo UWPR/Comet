@@ -14,15 +14,16 @@
 
 
 #include "Threading.h"
+#include <thread>
+#include <chrono>
+
+///////////////////////////////////////////////////////////////
+// Cross-platform implementations using C++ standard library
+///////////////////////////////////////////////////////////////
 
 ThreadId Threading::_threadId;
-
-#ifndef _WIN32
-#include <unistd.h>
-
-///////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to POSIX
-///////////////////////////////////////////////////////////////
+std::mutex Threading::_threadMapMutex;
+std::unordered_map<ThreadId, std::unique_ptr<std::thread>> Threading::_threads;
 
 Threading::Threading()
 {
@@ -32,155 +33,102 @@ Threading::~Threading()
 {
 }
 
-// Posix specific object destructor.
-bool Threading::CreateMutex(Mutex* pMutex)
+// Mutex-specific methods
+bool Threading::InitMutex(Mutex* pMutex)
 {
-   pthread_mutex_init(pMutex, NULL);
-   return true;
+    // std::mutex is constructed by default constructor
+    // Nothing needed here as the mutex is already initialized
+    return (pMutex != nullptr);
 }
 
 void Threading::LockMutex(Mutex& mutex)
 {
-   pthread_mutex_lock(&mutex);
+    mutex.lock();
 }
 
 void Threading::UnlockMutex(Mutex& mutex)
 {
-   pthread_mutex_unlock(&mutex);
+    mutex.unlock();
 }
 
 void Threading::DestroyMutex(Mutex& mutex)
 {
-   pthread_mutex_destroy(&mutex);
+    // std::mutex destructor handles cleanup automatically
+    // Ensure mutex is unlocked before destruction
+    // (caller's responsibility to ensure proper unlocking)
 }
 
+// Thread-specific methods
 void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
-   _threadId = *pThreadId;
-   pthread_create(pThreadId, NULL, pFunction, arg);
+    // Create a new thread
+    auto threadPtr = std::make_unique<std::thread>([pFunction, arg]() {
+        // Execute the thread procedure
+        pFunction(arg);
+        });
+
+    // Get the thread ID before moving the thread
+    ThreadId newThreadId = threadPtr->get_id();
+
+    // Store the thread ID
+    if (pThreadId != nullptr)
+    {
+        *pThreadId = newThreadId;
+    }
+    _threadId = newThreadId;
+
+    // Detach the thread to allow independent execution
+    threadPtr->detach();
 }
 
 void Threading::EndThread()
 {
-    pthread_exit((void*)&_threadId);
+    // Modern C++ threads end automatically when the thread function returns
+    // No explicit action needed - thread cleanup is handled by std::thread destructor
 }
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)
 {
-// usleep(dwMilliseconds);  // usleep deprecated
-   struct timespec ts;
-   ts.tv_sec = dwMilliseconds / 1000;
-   ts.tv_nsec = (dwMilliseconds % 1000) * 1000000;
-   nanosleep(&ts, NULL);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dwMilliseconds));
 }
 
-void Threading::CreateSemaphore(Semaphore* pSem)
+// Semaphore methods
+void Threading::InitSemaphore(Semaphore* pSem)
 {
-   pthread_cond_init(&(pSem->condition), NULL);
-   pthread_mutex_init(&(pSem->mutex), NULL);
-   pSem->conditionSet = false;
+    // Semaphore members are already initialized by the constructor
+    // Just ensure the condition flag is set to false
+    if (pSem != nullptr)
+    {
+        pSem->conditionSet = false;
+    }
 }
 
 void Threading::WaitSemaphore(Semaphore& sem)
 {
-   pthread_mutex_lock(&sem.mutex);
-   while (!(sem.conditionSet))
-   {
-      pthread_cond_wait(&sem.condition, &sem.mutex);
-   }
-   sem.conditionSet = false;
-   pthread_mutex_unlock(&sem.mutex);
+    std::unique_lock<std::mutex> lock(sem.mutex);
+    // Wait until condition is set
+    sem.condition.wait(lock, [&sem] { return sem.conditionSet; });
+    // Reset the condition after being signaled
+    sem.conditionSet = false;
 }
 
 void Threading::SignalSemaphore(Semaphore& sem)
 {
-   pthread_mutex_lock(&sem.mutex);
-   sem.conditionSet = true;
-   pthread_cond_signal(&sem.condition);
-   pthread_mutex_unlock(&sem.mutex);
+    {
+        std::lock_guard<std::mutex> lock(sem.mutex);
+        sem.conditionSet = true;
+    }
+    // Notify one waiting thread
+    sem.condition.notify_one();
 }
 
 void Threading::DestroySemaphore(Semaphore& sem)
 {
-   pthread_cond_destroy(&sem.condition);
-   pthread_mutex_destroy(&sem.mutex);
+    // std::condition_variable and std::mutex destructors handle cleanup automatically
+    // Wake up any waiting threads before destruction
+    {
+        std::lock_guard<std::mutex> lock(sem.mutex);
+        sem.conditionSet = true;
+    }
+    sem.condition.notify_all();
 }
-
-#else  // _WIN32
-#include <process.h>
-
-//////////////////////////////////////////////////////////////////////
-// Implementations for Threading base class specific to the WIN32 OS
-//////////////////////////////////////////////////////////////////////
-
-Threading::Threading()
-{
-}
-
-Threading::~Threading()
-{
-}
-
-bool Threading::CreateMutex(Mutex* pMutex)
-{
-   InitializeCriticalSection(pMutex);
-   return (pMutex!=NULL);
-}
-
-void Threading::LockMutex(Mutex& mutex)
-{
-   EnterCriticalSection(&mutex);
-}
-
-void Threading::UnlockMutex(Mutex& mutex)
-{
-   LeaveCriticalSection(&mutex);
-}
-
-void Threading::DestroyMutex(Mutex& mutex)
-{
-   DeleteCriticalSection(&mutex);
-}
-
-void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
-{
-    _threadId = *pThreadId;
-   _beginthreadex (NULL,
-         0,
-         (unsigned int(__stdcall*) ( void*)) pFunction,
-         (void*) arg,
-         0,
-         pThreadId);
-}
-
-void Threading::EndThread()
-{
-    _endthreadex(0);
-}
-
-void Threading::ThreadSleep(unsigned long dwMilliseconds)
-{
-   Sleep(dwMilliseconds);
-}
-
-void Threading::CreateSemaphore(Semaphore* pSem)
-{
-   *pSem = CreateEvent(NULL,0,0,NULL);
-}
-
-void Threading::WaitSemaphore(Semaphore& sem)
-{
-   WaitForSingleObject(sem, INFINITE);
-}
-
-void Threading::SignalSemaphore(Semaphore& sem)
-{
-   SetEvent(sem);
-}
-
-void Threading::DestroySemaphore(Semaphore& sem)
-{
-   CloseHandle(sem);
-}
-
-#endif // ifdef _WIN32

@@ -531,16 +531,16 @@ CometSearchManager::CometSearchManager() :
    singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
-   Threading::CreateMutex(&g_pvQueryMutex);
+   Threading::InitMutex(&g_pvQueryMutex);
 
    // Initialize the mutexes we'll use to protect DBIndex.
-   Threading::CreateMutex(&g_pvDBIndexMutex);
+   Threading::InitMutex(&g_pvDBIndexMutex);
 
    // Initialize the mutex we'll use to protect the preprocess memory pool
-   Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
+   Threading::InitMutex(&g_preprocessMemoryPoolMutex);
 
    // Initialize the mutex we'll use to protect the search memory pool
-   Threading::CreateMutex(&g_searchMemoryPoolMutex);
+   Threading::InitMutex(&g_searchMemoryPoolMutex);
 
    // Initialize the Comet version
    SetParam("# comet_version", comet_version, comet_version);
