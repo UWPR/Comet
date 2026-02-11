@@ -19,6 +19,8 @@
 #include "BS_thread_pool.hpp"
 #include <functional>
 #include <stdexcept>
+#include <chrono>
+#include <thread>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -67,13 +69,36 @@ public:
       if (pool_)
       {
          // Wait until at least one thread is available
+         // Use progressive backoff to reduce CPU usage:
+         // 1. Yield a few times (low latency, low cost)
+         // 2. Then sleep with increasing duration (reduces CPU burn)
+         static constexpr int MAX_YIELD_ATTEMPTS = 10;
+         static constexpr int MAX_SHORT_SLEEP_ATTEMPTS = 20;
+         static constexpr int MAX_BACKOFF_LEVEL = MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS;
+         int attempts = 0;
+         
          while (pool_->get_tasks_running() >= pool_->get_thread_count())
          {
+            if (attempts < MAX_YIELD_ATTEMPTS)
+            {
+               // Fast path: just yield to other threads
 #ifdef _WIN32
-            SwitchToThread();
+               SwitchToThread();
 #else
-            sched_yield();
+               sched_yield();
 #endif
+            }
+            else if (attempts < MAX_BACKOFF_LEVEL)
+            {
+               // Medium path: short sleep (1ms)
+               std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            else
+            {
+               // Long wait path: longer sleep (5ms) to avoid burning CPU
+               std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+            attempts++;
          }
       }
    }
