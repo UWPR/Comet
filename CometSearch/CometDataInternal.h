@@ -1175,7 +1175,7 @@ struct Query
       _pDecoys = NULL;
       _pSpecLibResults = NULL;
 
-      Threading::CreateMutex(&accessMutex);
+      Threading::InitMutex(&accessMutex);
    }
 
    ~Query()
@@ -1256,7 +1256,7 @@ struct QueryMS1
       _pSpecLibResultsMS1.fDotProduct = 0.0;
       _pSpecLibResultsMS1.fRTime = 0.0;
 
-      Threading::CreateMutex(&accessMutex);
+      Threading::InitMutex(&accessMutex);
    }
 
    ~QueryMS1()

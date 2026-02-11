@@ -19,6 +19,8 @@
 // threads. It is meant to be used as a singleton - use Threading::Inst() to
 // get a pointer to the single instance of the Threading object and use it
 // to access the interface methods.
+//
+// Now implemented using C++ standard library for cross-platform consistency.
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _THREADING_H_
@@ -30,25 +32,26 @@ class Threading
 {
 public:
 
-   Threading();
-   ~Threading();
+    Threading();
+    ~Threading();
 
-   // Mutex-specific methods
-   static bool CreateMutex(Mutex* pMutex);
-   static void LockMutex(Mutex& mutex);
-   static void UnlockMutex(Mutex& mutex);
-   static void DestroyMutex(Mutex& mutex);
+    // Mutex-specific methods
+    // Renamed to avoid Windows API macro conflicts
+    static bool InitMutex(Mutex* pMutex);
+    static void LockMutex(Mutex& mutex);
+    static void UnlockMutex(Mutex& mutex);
+    static void DestroyMutex(Mutex& mutex);
 
-   // Thread-specific methods
-   static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
-   static void ThreadSleep(unsigned long dwMilliseconds);
-   static void EndThread();
+    // Thread-specific methods
+    static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
+    static void ThreadSleep(unsigned long dwMilliseconds);
 
-   // Semaphore methods
-   static void CreateSemaphore(Semaphore* pSem);
-   static void WaitSemaphore(Semaphore& sem);
-   static void SignalSemaphore(Semaphore& sem);
-   static void DestroySemaphore(Semaphore& sem);
+    // Semaphore methods
+    // Renamed to avoid Windows API macro conflicts
+    static void InitSemaphore(Semaphore* pSem);
+    static void WaitSemaphore(Semaphore& sem);
+    static void SignalSemaphore(Semaphore& sem);
+    static void DestroySemaphore(Semaphore& sem);
 
 private:
     static ThreadId _threadId;

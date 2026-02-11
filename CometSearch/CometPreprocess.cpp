@@ -492,7 +492,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
 
    // Create the mutex we will use to protect g_massRange.iMaxFragmentCharge.
-   Threading::CreateMutex(&_maxChargeMutex);
+   Threading::InitMutex(&_maxChargeMutex);
 
    // Get the thread pool of threads that will preprocess the data.
 

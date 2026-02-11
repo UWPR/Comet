@@ -42,7 +42,7 @@ jobs:
 
     - name: Build Comet
       run: |
-        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v142 -tv:Current
+        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143 -tv:Current
 
     - name: Test Comet
       shell: cmd

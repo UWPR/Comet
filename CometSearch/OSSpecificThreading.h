@@ -12,43 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef _OSSPECIFICTHREADING_H_
+#define _OSSPECIFICTHREADING_H_
 
-///////////////////////////////////////////////////////////////////////////////
-// This file defines generic types for OS-specific threading resources
-///////////////////////////////////////////////////////////////////////////////
+// Modern C++ cross-platform threading using standard library
+#include <mutex>
+#include <condition_variable>
+#include <thread>
 
-#ifndef _OSSPECIFICTHREADING_H
-#define _OSSPECIFICTHREADING_H
+// Type definitions for cross-platform threading
+using Mutex = std::mutex;
+using ThreadId = std::thread::id;
 
-#ifdef _WIN32
+// Thread procedure signature
+// Returns void* for compatibility with existing code
+using ThreadProc = void* (*)(void*);
 
-///////////////////////////////////////////////////////////////////////////////
-//  Windows-specific definitions for threading
-///////////////////////////////////////////////////////////////////////////////
-#include <windows.h>
-
-typedef CRITICAL_SECTION Mutex;
-typedef HANDLE Semaphore;
-typedef unsigned int ThreadId;
-typedef void* (__cdecl *ThreadProc)(void*);
-
-#else
-
-///////////////////////////////////////////////////////////////////////////////
-//  Posix-specific definitions for threading
-///////////////////////////////////////////////////////////////////////////////
-#include <pthread.h>
-
-typedef pthread_mutex_t Mutex;
-typedef pthread_t ThreadId;
-typedef void* (*ThreadProc)(void*);
-typedef struct PosixSemaphore
+// Semaphore implementation using C++ standard library primitives
+struct Semaphore
 {
-   pthread_mutex_t mutex;
-   pthread_cond_t condition;
-   bool conditionSet;
-} Semaphore;
+	std::condition_variable condition;
+	std::mutex mutex;
+	bool conditionSet;
 
-#endif // ifdef _WIN32
+	Semaphore() : conditionSet(false) {}
+};
 
-#endif  // ifndef _OSSPECIFICTHREADING_H
+#endif // _OSSPECIFICTHREADING_H_

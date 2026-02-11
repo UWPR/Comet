@@ -34,7 +34,7 @@ public:
        _cometResult = CometResult_Succeeded;
       _strStatusMessage = "";
 
-      Threading::CreateMutex(&_statusCheckMutex);
+      Threading::InitMutex(&_statusCheckMutex);
    }
 
    ~CometStatus()
