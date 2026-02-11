@@ -18,6 +18,7 @@
 
 #include "BS_thread_pool.hpp"
 #include <functional>
+#include <stdexcept>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -90,10 +91,11 @@ public:
 
    void doJob(std::function<void(void)> func)
    {
-      if (pool_)
+      if (!pool_)
       {
-         pool_->detach_task(std::move(func));
+         throw std::logic_error("ThreadPool::doJob() called before fillPool() - work would be silently dropped");
       }
+      pool_->detach_task(std::move(func));
    }
 
    int getAvailableThreads(int user)
