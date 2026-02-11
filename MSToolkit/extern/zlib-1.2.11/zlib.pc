@@ -1,0 +1,13 @@
+prefix=/home/runner/work/Comet/Comet/MSToolkit/obj
+exec_prefix=${prefix}
+libdir=/home/runner/work/Comet/Comet/MSToolkit/obj
+sharedlibdir=${libdir}
+includedir=/home/runner/work/Comet/Comet/MSToolkit/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.11
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}
