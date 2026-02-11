@@ -74,6 +74,7 @@ public:
          // 2. Then sleep with increasing duration (reduces CPU burn)
          constexpr int MAX_YIELD_ATTEMPTS = 10;
          constexpr int MAX_SHORT_SLEEP_ATTEMPTS = 20;
+         constexpr int MAX_BACKOFF_LEVEL = MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS;
          int attempts = 0;
          
          while (pool_->get_tasks_running() >= pool_->get_thread_count())
@@ -87,7 +88,7 @@ public:
                sched_yield();
 #endif
             }
-            else if (attempts < MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS)
+            else if (attempts < MAX_BACKOFF_LEVEL)
             {
                // Medium path: short sleep (1ms)
                std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -97,7 +98,10 @@ public:
                // Long wait path: longer sleep (5ms) to avoid burning CPU
                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
-            attempts++;
+            
+            // Cap attempts counter to prevent overflow
+            if (attempts < MAX_BACKOFF_LEVEL)
+               attempts++;
          }
       }
    }
