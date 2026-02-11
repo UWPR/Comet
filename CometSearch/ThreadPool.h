@@ -129,6 +129,11 @@ public:
          return 0;
       }
       
+      bool empty() const
+      {
+         return size() == 0;
+      }
+      
    private:
       ThreadPool* tp_;
    };
