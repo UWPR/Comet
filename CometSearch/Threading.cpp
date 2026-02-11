@@ -16,6 +16,9 @@
 #include "Threading.h"
 #include <thread>
 #include <chrono>
+#include <memory>
+#include <mutex>
+#include <condition_variable>
 
 ///////////////////////////////////////////////////////////////
 // Cross-platform implementations using C++ standard library
