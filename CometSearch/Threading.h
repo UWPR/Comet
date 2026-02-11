@@ -45,7 +45,6 @@ public:
     // Thread-specific methods
     static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
     static void ThreadSleep(unsigned long dwMilliseconds);
-    static void EndThread();
 
     // Semaphore methods
     // Renamed to avoid Windows API macro conflicts

@@ -82,12 +82,6 @@ void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId
     threadPtr->detach();
 }
 
-void Threading::EndThread()
-{
-    // Modern C++ threads end automatically when the thread function returns
-    // No explicit action needed - thread cleanup is handled by std::thread destructor
-}
-
 void Threading::ThreadSleep(unsigned long dwMilliseconds)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(dwMilliseconds));
