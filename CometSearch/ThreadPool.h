@@ -98,10 +98,7 @@ public:
                // Long wait path: longer sleep (5ms) to avoid burning CPU
                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
-            
-            // Cap attempts counter to prevent overflow
-            if (attempts < MAX_BACKOFF_LEVEL)
-               attempts++;
+            attempts++;
          }
       }
    }
