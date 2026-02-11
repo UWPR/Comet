@@ -1,5 +1,0 @@
-create libmstoolkitextern.a
-addlib obj/libexpat.a
-addlib obj/libz.a
-save
-end
