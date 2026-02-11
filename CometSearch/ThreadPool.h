@@ -41,8 +41,16 @@ public:
 
    void fillPool(int threads)
    {
-      thread_count_ = threads;
-      pool_ = std::make_unique<BS::thread_pool<>>(threads);
+       // Map non-positive values to a single worker thread to preserve
+       // original "total thread count" semantics and avoid BS::thread_pool's
+       // special meaning for 0 ("use hardware_concurrency default").
+       int pool_threads = threads;
+       if (pool_threads <= 0)
+       {
+           pool_threads = 1;
+       }
+       thread_count_ = pool_threads;
+       pool_ = std::make_unique<BS::thread_pool<>>(pool_threads);
    }
 
    void wait_on_threads()

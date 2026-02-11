@@ -184,10 +184,7 @@
 
    ---
 
-   NOTICE:  This project includes third-party components.  See the NOTICE
-   file for additional details.
-
-   Third-Party Components:
+   This project includes third-party components:
 
    - Component:        MSToolkit
    - Original Author:  Michael Hoopmann
