@@ -99,7 +99,7 @@ public:
                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
             
-            // Cap counter to prevent overflow (though extremely unlikely in practice)
+            // Cap counter at final backoff level (no need to count beyond this)
             if (attempts < MAX_BACKOFF_LEVEL)
                attempts++;
          }
