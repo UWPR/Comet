@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -99,9 +100,8 @@ public:
                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
             
-            // Cap counter at final backoff level (no need to count beyond this)
-            if (attempts < MAX_BACKOFF_LEVEL)
-               attempts++;
+            // Cap counter at final backoff level
+            attempts = std::min(attempts + 1, MAX_BACKOFF_LEVEL);
          }
       }
    }
