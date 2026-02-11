@@ -72,9 +72,9 @@ public:
          // Use progressive backoff to reduce CPU usage:
          // 1. Yield a few times (low latency, low cost)
          // 2. Then sleep with increasing duration (reduces CPU burn)
-         constexpr int MAX_YIELD_ATTEMPTS = 10;
-         constexpr int MAX_SHORT_SLEEP_ATTEMPTS = 20;
-         constexpr int MAX_BACKOFF_LEVEL = MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS;
+         static constexpr int MAX_YIELD_ATTEMPTS = 10;
+         static constexpr int MAX_SHORT_SLEEP_ATTEMPTS = 20;
+         static constexpr int MAX_BACKOFF_LEVEL = MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS;
          int attempts = 0;
          
          while (pool_->get_tasks_running() >= pool_->get_thread_count())
