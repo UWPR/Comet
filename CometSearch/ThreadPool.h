@@ -21,7 +21,6 @@
 #include <stdexcept>
 #include <chrono>
 #include <thread>
-#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -99,9 +98,7 @@ public:
                // Long wait path: longer sleep (5ms) to avoid burning CPU
                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
-            
-            // Cap counter at final backoff level
-            attempts = std::min(attempts + 1, MAX_BACKOFF_LEVEL);
+            attempts++;
          }
       }
    }
