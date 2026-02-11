@@ -27,8 +27,6 @@
 #define _THREADING_H_
 
 #include "OSSpecificThreading.h"
-#include <memory>
-#include <unordered_map>
 
 class Threading
 {
@@ -58,10 +56,6 @@ public:
 
 private:
     static ThreadId _threadId;
-
-    // Thread management for proper cleanup
-    static std::mutex _threadMapMutex;
-    static std::unordered_map<ThreadId, std::unique_ptr<std::thread>> _threads;
 };
 
 #endif // ifndef _THREADING_H_

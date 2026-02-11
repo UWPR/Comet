@@ -22,8 +22,6 @@
 ///////////////////////////////////////////////////////////////
 
 ThreadId Threading::_threadId;
-std::mutex Threading::_threadMapMutex;
-std::unordered_map<ThreadId, std::unique_ptr<std::thread>> Threading::_threads;
 
 Threading::Threading()
 {
