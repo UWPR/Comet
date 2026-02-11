@@ -19,6 +19,7 @@
 #include "BS_thread_pool.hpp"
 #include <functional>
 #include <stdexcept>
+#include <iostream>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -95,7 +96,24 @@ public:
       {
          throw std::logic_error("ThreadPool::doJob() called before fillPool() - work would be silently dropped");
       }
-      pool_->detach_task(std::move(func));
+      
+      // Wrap the task with exception logging to preserve debuggability
+      auto wrapped_func = [func = std::move(func)]() {
+         try
+         {
+            func();
+         }
+         catch (const std::exception& e)
+         {
+            std::cerr << " Warning: Exception in thread pool task: " << e.what() << std::endl;
+         }
+         catch (...)
+         {
+            std::cerr << " Warning: Unknown exception in thread pool task" << std::endl;
+         }
+      };
+      
+      pool_->detach_task(std::move(wrapped_func));
    }
 
    int getAvailableThreads(int user)
