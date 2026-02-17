@@ -54,8 +54,6 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
       for (i = 0; i < (int)g_pvQuery.size(); ++i)
          PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched);
    }
-
-   fflush(fpout);
 }
 
 bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
@@ -291,7 +289,6 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
 
    fprintf(fpout, " </search_summary>\n");
-   fflush(fpout);
 
    return true;
 }
@@ -406,7 +403,6 @@ void CometWritePepXML::WritePepXMLEndTags(FILE *fpout)
 {
    fprintf(fpout, " </msms_run_summary>\n");
    fprintf(fpout, "</msms_pipeline_analysis>\n");
-   fflush(fpout);
 }
 
 void CometWritePepXML::PrintResults(int iWhichQuery,
@@ -467,7 +463,6 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
       fprintf(fpout, ">\n");
 
    fprintf(fpout, "  <search_result>\n");
-   fflush(fpout);
 
    Results *pOutput;
 
@@ -503,7 +498,6 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    fprintf(fpout, "  </search_result>\n");
    fprintf(fpout, " </spectrum_query>\n");
-   fflush(fpout);
 }
 
 

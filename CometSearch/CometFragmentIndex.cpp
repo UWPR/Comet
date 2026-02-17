@@ -587,7 +587,6 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
    strOut = " Creating plain peptide/protein index file for fragment ion indexing:\n";
    logout(strOut);
-   fflush(stdout);
    strOut = " - parse peptides from database ... ";
    logout(strOut);
    fflush(stdout);

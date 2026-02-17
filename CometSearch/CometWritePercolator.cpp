@@ -51,8 +51,6 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
       }
    }
 
-   fflush(fpout);
-
    return true;
 }
 
@@ -84,8 +82,6 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "absdM\t");
    fprintf(fpout, "Peptide\t");
    fprintf(fpout, "Proteins\n");
-
-   fflush(fpout);
 }
 
 
