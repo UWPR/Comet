@@ -531,16 +531,16 @@ CometSearchManager::CometSearchManager() :
    singleSearchThreadCount(1)
 {
    // Initialize the mutexes we'll use to protect global data.
-   Threading::CreateMutex(&g_pvQueryMutex);
+   Threading::InitMutex(&g_pvQueryMutex);
 
    // Initialize the mutexes we'll use to protect DBIndex.
-   Threading::CreateMutex(&g_pvDBIndexMutex);
+   Threading::InitMutex(&g_pvDBIndexMutex);
 
    // Initialize the mutex we'll use to protect the preprocess memory pool
-   Threading::CreateMutex(&g_preprocessMemoryPoolMutex);
+   Threading::InitMutex(&g_preprocessMemoryPoolMutex);
 
    // Initialize the mutex we'll use to protect the search memory pool
-   Threading::CreateMutex(&g_searchMemoryPoolMutex);
+   Threading::InitMutex(&g_searchMemoryPoolMutex);
 
    // Initialize the Comet version
    SetParam("# comet_version", comet_version, comet_version);
@@ -3784,13 +3784,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             // c-term mod
             if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
                dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide + 1];
-         }
-         double dExpMass = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
-         if (fabs(dCalcPepMass - dExpMass) > 0.2)
-         {
-            printf("OK %s, dCalcPepMass %0.4lf, pepmass %0.3lf, expmass %0.4lf\n",
-               g_pvQuery.at(0)->_pResults[0].szPeptide, dCalcPepMass, g_pvQuery.at(0)->_pResults[0].dPepMass, dExpMass);
-            getchar();
          }
       }
 

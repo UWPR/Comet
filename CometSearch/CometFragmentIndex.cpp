@@ -145,7 +145,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment index\n"; fflush(stdout);
 
-   Threading::CreateMutex(&_vFragmentPeptidesMutex);
+   Threading::InitMutex(&_vFragmentPeptidesMutex);
 
    ThreadPool *pFragmentIndexPool = tp;
 
@@ -587,7 +587,6 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
    strOut = " Creating plain peptide/protein index file for fragment ion indexing:\n";
    logout(strOut);
-   fflush(stdout);
    strOut = " - parse peptides from database ... ";
    logout(strOut);
    fflush(stdout);

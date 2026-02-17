@@ -57,8 +57,6 @@ void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
       for (i=0; i<(int)g_pvQuery.size(); ++i)
          PrintTmpPSM(i, 0, iBatchNum, fpout);
    }
-
-   fflush(fpout);
 }
 
 
@@ -106,8 +104,6 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
    fprintf(fpout, "   <SoftwareName><cvParam cvRef=\"PSI-MS\" accession=\"MS:1002251\" name=\"Comet\" value=\"\" /></SoftwareName>\n");
    fprintf(fpout, "  </AnalysisSoftware>\n");
    fprintf(fpout, " </AnalysisSoftwareList>\n");
-
-   fflush(fpout);
 
    return true;
 }

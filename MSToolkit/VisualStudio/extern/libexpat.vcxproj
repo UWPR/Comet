@@ -107,6 +107,7 @@
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <FloatingPointModel>Fast</FloatingPointModel>
       <FloatingPointExceptions>false</FloatingPointExceptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN32;_WINDOWS;NDEBUG;HAVE_EXPAT_CONFIG_H;_CRT_SECURE_NO_WARNINGS;XML_STATIC;CMAKE_INTDIR=\"Release\"</PreprocessorDefinitions>
