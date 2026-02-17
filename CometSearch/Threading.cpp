@@ -62,24 +62,15 @@ void Threading::DestroyMutex(Mutex& mutex)
 // Thread-specific methods
 void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
 {
-    // Create a new thread
-    auto threadPtr = std::make_unique<std::thread>([pFunction, arg]() {
-        // Execute the thread procedure
-        pFunction(arg);
-        });
+   std::thread t([pFunction, arg]() { pFunction(arg); });
 
-    // Get the thread ID before moving the thread
-    ThreadId newThreadId = threadPtr->get_id();
+   ThreadId newThreadId = t.get_id();
 
-    // Store the thread ID
-    if (pThreadId != nullptr)
-    {
-        *pThreadId = newThreadId;
-    }
-    _threadId = newThreadId;
+   if (pThreadId != nullptr)
+      *pThreadId = newThreadId;
+   _threadId = newThreadId;
 
-    // Detach the thread to allow independent execution
-    threadPtr->detach();
+   t.detach();
 }
 
 void Threading::ThreadSleep(unsigned long dwMilliseconds)

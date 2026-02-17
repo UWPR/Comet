@@ -38,10 +38,16 @@ public:
    {
    }
 
-   ThreadPool(int threads) : pool_(nullptr), thread_count_(threads)
+   ThreadPool(int threads) : pool_(nullptr), thread_count_(0)
    {
       fillPool(threads);
    }
+
+   // Delete copy and move operations to prevent dangling pointer in jobs_proxy
+   ThreadPool(const ThreadPool&) = delete;
+   ThreadPool& operator=(const ThreadPool&) = delete;
+   ThreadPool(ThreadPool&&) = delete;
+   ThreadPool& operator=(ThreadPool&&) = delete;
 
    /// @brief Initialize the thread pool with the specified number of threads
    /// @param threads Thread count: <0 = (CPU threads + threads), 0 = all CPU threads, >0 = exact count
@@ -80,7 +86,7 @@ public:
          }
       }
 
-      thread_count_ = pool_threads;
+      thread_count_ = static_cast<size_t>(pool_threads);
       pool_ = std::make_unique<BS::thread_pool<>>(pool_threads);
    }
 
