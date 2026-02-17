@@ -3785,13 +3785,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
                dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide + 1];
          }
-         double dExpMass = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
-         if (fabs(dCalcPepMass - dExpMass) > 0.2)
-         {
-            printf("OK %s, dCalcPepMass %0.4lf, pepmass %0.3lf, expmass %0.4lf\n",
-               g_pvQuery.at(0)->_pResults[0].szPeptide, dCalcPepMass, g_pvQuery.at(0)->_pResults[0].dPepMass, dExpMass);
-            getchar();
-         }
       }
 
       strReturnPeptide.push_back(eachStrReturnPeptide);

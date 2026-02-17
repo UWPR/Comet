@@ -795,7 +795,7 @@ bool CometSearch::RunSearch(int iPercentStart,
             // a memory issue for extremely large fasta files
             while (pSearchThreadPool->jobs_.size() >= 500)
             {
-               pSearchThreadPool->wait_on_threads();
+                pSearchThreadPool->wait_for_available_thread();
             }
 
             // Now search sequence entry; add threading here so that
@@ -1065,20 +1065,29 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData, ThreadPo
 
    while (true)
    {
-      for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
-      {
-         if (_pbSearchMemoryPool[i] == false)
-         {
-            _pbSearchMemoryPool[i] = true;
-            break;
-         }
-      }
+       for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
+       {
+           if (_pbSearchMemoryPool[i] == false)
+           {
+               _pbSearchMemoryPool[i] = true;
+               break;
+           }
+       }
 
-      if (i < g_staticParams.options.iNumThreads
-         || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
-      {
-         break;
-      }
+       if (i < g_staticParams.options.iNumThreads)
+       {
+           break;
+       }
+
+       if (std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
+       {
+           break;
+       }
+
+       // Release mutex and yield to allow other threads to release memory
+       Threading::UnlockMutex(g_searchMemoryPoolMutex);
+       std::this_thread::yield();
+       Threading::LockMutex(g_searchMemoryPoolMutex);
    }
    Threading::UnlockMutex(g_searchMemoryPoolMutex);
 

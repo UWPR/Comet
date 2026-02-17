@@ -44,14 +44,14 @@ void CometWritePepXML::WritePepXML(FILE *fpout,
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
+      for (i = 0; i < (int)g_pvQuery.size(); ++i)
          PrintResults(i, 1, fpout, fpdb, iNumSpectraSearched);
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
+      for (i = 0; i < (int)g_pvQuery.size(); ++i)
          PrintResults(i, 2, fpoutd, fpdb, iNumSpectraSearched);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
+      for (i = 0; i < (int)g_pvQuery.size(); ++i)
          PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched);
    }
 
@@ -503,6 +503,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    fprintf(fpout, "  </search_result>\n");
    fprintf(fpout, " </spectrum_query>\n");
+   fflush(fpout);
 }
 
 
