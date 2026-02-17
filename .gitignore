@@ -151,3 +151,6 @@ ipch/
 *.msix
 *.msm
 *.msp
+
+# Artifact of CodeQL
+_codeql_detected_source_root
