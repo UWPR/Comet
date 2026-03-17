@@ -1748,6 +1748,10 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
                + g_staticParams.staticModifications.dAddCterminusPeptide
                + g_staticParams.staticModifications.dAddNterminusPeptide;
          }
+         else if (!strncmp(szBuf, "DecoySearch:", 12))
+         {
+            sscanf(szBuf, "DecoySearch: %d", &(g_staticParams.options.iDecoySearch));
+         }
          else if (!strncmp(szBuf, "Enzyme:", 7))
          {
             sscanf(szBuf, "Enzyme: %s [%d %s %s]", g_staticParams.enzymeInformation.szSearchEnzymeName,
@@ -2549,9 +2553,11 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             iEndPos = strlen(szProtein) - 2;
          }
 
+         _proteinInfo.iTmpProteinSeqLength = (int)strlen(szProtein);
+
          XcorrScore(szProtein, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
             sDBI.dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
-         
+
          if (g_staticParams.options.iDecoySearch)
          {
             iStartPos = 0;
@@ -4927,7 +4933,6 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
       else
          pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.push_back(pTmp);
-
 
       if (g_staticParams.variableModParameters.bVarModSearch)
       {

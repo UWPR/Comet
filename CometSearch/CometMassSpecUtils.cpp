@@ -193,6 +193,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
+   *uiNumTotProteins = 0;
+
    // FIX:  protein references is so convoluted with the restoration of peptide index.  This
    // seems to work now but definitely needs to be revisited to be cleaned up.
    // Look into lProteinFilePosition and lWhichProtein with Results struct.
@@ -205,16 +207,19 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       else
          pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
 
-      *uiNumTotProteins = (unsigned int)g_pvProteinsList.at(pOutput[iWhichResult].lProteinFilePosition).size();
-
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
       // get target proteins
-      if (iPrintTargetDecoy != 2)  // if not decoy-only
+      if (g_staticParams.iIndexDb == 1 || pOutput[iWhichResult].pWhichProtein.size() > 0)
       {
-         vector<string> vTmp;      // store decoy matches here to append at end
+         comet_fileoffset_t lEntry;
 
-         comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+         if (g_staticParams.iIndexDb == 1)
+            lEntry = pOutput[iWhichResult].lProteinFilePosition;
+         else
+            lEntry = pOutput[iWhichResult].pWhichProtein.at(0).lWhichProtein;
+
+         *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
 
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
@@ -231,22 +236,42 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                iRet = fscanf(fpdb, "%500s", szProteinName);
 
             szProteinName[500] = '\0';  // limit protein name strings to 500 chars
-
-            if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
-               vTmp.push_back(szProteinName);
-            else
-               vProteinTargets.push_back(szProteinName);
+            vProteinTargets.push_back(szProteinName);
 
             iPrintDuplicateProteinCt++;
             if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                break;
          }
-
-         if (vTmp.size() > 0)      // append any decoy matches now
-            vProteinTargets.insert(vProteinTargets.end(), vTmp.begin(), vTmp.end());
       }
 
-      // FIX need to handle decoys
+      // get decoy proteins for peptide index searches
+      if (g_staticParams.iIndexDb == 2 && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+      {
+         comet_fileoffset_t lEntry = pOutput[iWhichResult].pWhichDecoyProtein.at(0).lWhichProtein;
+         *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
+
+         for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+         {
+            comet_fseek(fpdb, *it, SEEK_SET);
+
+            if (bReturnFullProteinString)
+            {
+               if (fgets(szProteinName, 511, fpdb) == NULL)
+               {
+                  // throw error
+               }
+            }
+            else
+               iRet = fscanf(fpdb, "%500s", szProteinName);
+
+            szProteinName[500] = '\0';  // limit protein name strings to 500 chars
+            vProteinDecoys.push_back(szProteinName);
+
+            iPrintDuplicateProteinCt++;
+            if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+               break;
+         }
+      }
    }
    else  // regular fasta database
    {
