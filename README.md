@@ -25,4 +25,6 @@ To compile with Microsoft Visual Studio:
 Comet integrates:
 - Mike Hoopmann's [MSToolkit library](https://github.com/mhoopmann/mstoolkit) for reading various file formats.
 - Matthew Belmonte's C implementation of the [Twiddle algorithm](https://www.netlib.org/toms-2014-06-10/382) used in generating modification permutations.
-- C++ port of Gygi Lab's [AScorePro](https://github.com/gygilab/MPToolkit/) for modification localization. 
+- C++ port of Gygi Lab's [AScorePro](https://github.com/gygilab/MPToolkit/) for modification localization.
+- Barak Shoshany's [BS::thread_pool C++ thread pool library](https://github.com/bshoshany/thread-pool).
+- Thermo Fischer's [RawFileReader .Net assembly](https://github.com/thermofisherlsms/RawFileReader).
