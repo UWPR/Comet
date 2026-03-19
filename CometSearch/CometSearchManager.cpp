@@ -3558,8 +3558,15 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                else
                   bPrintDelim = true;
 
-               string sTmp = g_staticParams.szDecoyPrefix;
-               sTmp += *it;
+               string sTmp;
+               if ((*it).starts_with(g_staticParams.szDecoyPrefix))
+                  sTmp = *it;
+               else
+               {
+                  sTmp = g_staticParams.szDecoyPrefix;
+                  sTmp += *it;
+               }
+
                std::replace(sTmp.begin(), sTmp.end(), ';', ',');  // since ';' is the delimiter between proteins, change all occurrences to ','
                eachStrReturnProtein += sTmp;
             }
