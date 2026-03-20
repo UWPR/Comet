@@ -10,6 +10,7 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 - The restored peptide indexing now supports Comet's internal decoys.
 - Bug fix: address wrong mass being returned by RTS fragment ion index searches in the 2026.01 rev. 0 release that did not take into account static modifications in the mass calculation.
 - Known bug: reported RTS decoy proteins have the decoy tag repeated twice e.g. DECOY_DECOY_sp|P21675|TAF1_HUMAN instead of DECOY_sp|P21675|TAF1_HUMAN.
+- Note v2026.01.1 was originally tagged from commit [9df704c](https://github.com/UWPR/Comet/commit/9df704c073559738e7148c45a165cdc29021893b) on 2026/03/16; it was retagged on 2026/03/20 to incorporate a small bug fix with commit [31e0634](https://github.com/UWPR/Comet/commit/31e063404b528e5b806b24a15b7bbd1a309e05b6).
 
 #### release 2026.01 rev. 0 (2026.01.0), release date 2026/02/03
 
