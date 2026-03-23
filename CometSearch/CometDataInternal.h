@@ -1001,7 +1001,7 @@ struct StaticParams
       options.iFragIndexMinIonsScore = FRAGINDEX_MIN_IONS_SCORE;
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
-      options.iFragIndexSkipReadPrecursors = 0;
+      options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;
@@ -1131,6 +1131,7 @@ struct Query
       iMatchPeptideCount = 0;
       iDecoyMatchPeptideCount = 0;
       uiHistogramCount = 0;
+      iMinXcorrHisto = 0;
 
       fPar[0]=0.0;
       fPar[1]=0.0;

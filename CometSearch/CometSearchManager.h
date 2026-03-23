@@ -56,7 +56,7 @@ public:
    virtual bool DoSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
-   virtual bool InitializeSingleSpectrumMS1Search();
+   virtual bool InitializeSingleSpectrumMS1Search(const double dMaxQueryRT);
    virtual void FinalizeSingleSpectrumMS1Search();
    virtual bool DoSingleSpectrumSearchMultiResults(const int topN,
                                                    int iPrecursorCharge,

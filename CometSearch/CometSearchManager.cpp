@@ -39,7 +39,13 @@
 #undef PERF_DEBUG
 
 std::vector<Query*>           g_pvQuery;
+
+// g_pvQueryMS1: BATCH PATH ONLY — used by RunMS1Search(ThreadPool*,...) and
+// PreprocessMS1SingleSpectrum(). The single-spectrum MS1 search path
+// (DoMS1SearchMultiResults) uses thread-local QueryMS1* objects and never
+// reads or writes this vector. Do not access from concurrent search threads.
 std::vector<QueryMS1*>        g_pvQueryMS1;
+
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
 vector<DBIndex>               g_pvDBIndex;
@@ -57,6 +63,8 @@ AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+
+// Fragment index globals - INITIALIZED ONCE, READ-ONLY DURING SEARCH
 unsigned int** g_iFragmentIndex;                            // stores fragment index; [BIN(fragmass)][which g_vFragmentPeptides entries]
 unsigned int* g_iCountFragmentIndex;                        // stores counts of fragment index; [BIN(fragmass)]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
@@ -74,6 +82,11 @@ bool g_bCometPreprocessMemoryAllocated = false;
 bool g_bCometSearchMemoryAllocated = false;
 
 bool g_bIdxNoFasta = false;  // if true, .idx file has no associated .fasta file
+
+// FI Thread-safety notes:
+// - Index is created once in InitializeSingleSpectrumSearch() under mutex protection
+// - All search threads access index READ-ONLY
+// - No modifications after g_bPlainPeptideIndexRead = true
 
 double dMaxSpecLibRT = 0.0;
 
@@ -1771,6 +1784,12 @@ bool CometSearchManager::InitializeStaticParams()
 
    g_staticParams.iArraySizeGlobal = (int)((dUseMaxMass + dCushion) / dUseBinSize);
 
+   // Ensure pool buffers are large enough for MS1 binning (BINPREC) as well.
+   // BINPREC uses dMS1BinSize which can produce larger indices than BIN.
+   int iArraySizeMS1 = BINPREC(g_staticParams.options.dMS1MaxMass) + 1;
+   if (iArraySizeMS1 > g_staticParams.iArraySizeGlobal)
+      g_staticParams.iArraySizeGlobal = iArraySizeMS1;
+
    staticParamsInitializationComplete = true;
 
 /*
@@ -2263,11 +2282,6 @@ bool CometSearchManager::DoSearch()
          if (!g_staticParams.options.bOutputSqtStream)
             cout << CometMassSpecUtils::ElapsedTime(tTime1) << endl;
       }
-      else
-      {
-         cout << " - read precursors ... skipping" << endl;
-         fflush(stdout);
-      }
    }
 
    if (g_bPerformSpecLibSearch)
@@ -2563,7 +2577,7 @@ bool CometSearchManager::DoSearch()
             fpoutd_mzidentml = fopen(sOutputDecoyMzIdentML.c_str(), "w");
             if (!fpoutd_mzidentml)
             {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentML + "\".\n";
+               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentML + "\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
                bSucceeded = false;
@@ -2977,7 +2991,7 @@ bool CometSearchManager::DoSearch()
 cleanup_results:
 
             // Deleting each Query object in the vector calls its destructor, which
-            // frees the spectral memory (see definition for Query in CometData.h).
+            // frees the spectral memory (see definition for Query in CometDataInternal.h).
             for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
                delete (*it);
 
@@ -3205,32 +3219,47 @@ cleanup_results:
 
 bool CometSearchManager::InitializeSingleSpectrumSearch()
 {
+   static Mutex g_initSingleSearchMutex;
 
-   // Skip doing if already completed successfully.
+   // Fast path
    if (singleSearchInitializationComplete)
       return true;
 
+   // RAII lock guard (automatically unlocks on scope exit)
+   struct ScopedLock
+   {
+      Mutex* m;
+      ScopedLock(Mutex* mutex) : m(mutex) { Threading::LockMutex(*m); }
+      ~ScopedLock() { Threading::UnlockMutex(*m); }
+   } lock(&g_initSingleSearchMutex);
+
+   // Double-check
+   if (singleSearchInitializationComplete)
+      return true;
+
+   // Initialization code (no manual unlock needed!)
    if (!InitializeStaticParams())
       return false;
 
    if (!ValidateSequenceDatabaseFile())
       return false;
 
+   g_sCometVersion = comet_version;
+
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   bool bSucceeded;
    //MH: Allocate memory shared by threads during spectral processing.
-   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
+   bool bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
-      return bSucceeded;
+      return false;
 
    // Allocate memory shared by threads during search
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
    if (!bSucceeded)
-      return bSucceeded;
+      return false;
 
    ThreadPool* tp = _tp;
    tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
@@ -3243,14 +3272,14 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       // WritePeptideIndex calls RunSearch just to query fasta and generate uniq peptide list
       bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
       if (!bSucceeded)
-         return bSucceeded;
+         return false;
    }
+
    if (g_staticParams.options.bCreateFragmentIndex)
    {
       bSucceeded = CreateFragmentIndex();
-
       if (!bSucceeded)
-         return bSucceeded;
+         return false;
    }
 
    if (g_staticParams.iIndexDb == 1 && !g_bPlainPeptideIndexRead)
@@ -3260,7 +3289,9 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.options.iPrintAScoreProScore)
       {
-         SetAScoreOptions(g_AScoreOptions);  // normally set at end of InitializeStaticParams; must do here again after ReadPlainPeptideIndex for single spectrum search
+         // normally set at end of InitializeStaticParams; must do here again after
+         // ReadPlainPeptideIndex for single spectrum search
+         SetAScoreOptions(g_AScoreOptions);
 //       PrintAScoreOptions(g_AScoreOptions);
 
          // Create the AScoreDllInterface using the factory function
@@ -3268,12 +3299,17 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          if (!g_AScoreInterface)
          {
             std::cerr << "Failed to create AScore interface." << std::endl;
-            exit(1);
+            return false;
          }
       }
    }
 
+   // Mark as complete BEFORE unlocking (mutex unlock provides memory fence)
    singleSearchInitializationComplete = true;
+
+   // Freeze index (make immutable); already set in ReadPlainPeptideIndex but doing
+   // here again to be safe for no good reason.
+   g_bPlainPeptideIndexRead = true;
 
    return true;
 }
@@ -3294,40 +3330,35 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 }
 
 
-bool CometSearchManager::InitializeSingleSpectrumMS1Search()
+// Task 1.1 + 1.2: Load reference library once during init; fix thread pool deadlock
+bool CometSearchManager::InitializeSingleSpectrumMS1Search(const double dMaxQueryRT)
 {
-   // Skip doing if already completed successfully.
    if (singleSearchMS1InitializationComplete)
       return true;
 
    if (!InitializeStaticParams())
       return false;
 
-   if (!ValidateSpecLibFile())
+   int iNumThreads = g_staticParams.options.iNumThreads;
+   if (iNumThreads < 1)
+      iNumThreads = 1;
+
+   // Task 1.2: Ensure at least 1 worker thread so LoadSpecLibMS1Raw doesn't deadlock.
+   // _tp may already be created by InitializeSingleSpectrumSearch(); if so, reuse it.
+   // If not, create it here.
+   if (_tp == nullptr)
+      _tp = new ThreadPool();
+
+   // fillPool with at least 1 worker — fillPool(0) causes deadlock in LoadSpecLibMS1Raw
+   int iPoolSize = (iNumThreads > 1) ? (iNumThreads - 1) : 1;
+   _tp->fillPool(iPoolSize);
+
+   // Task 1.1: Load reference library ONCE, here in init (single-threaded context).
+   // After this call, g_vSpecLib is populated and g_bSpecLibRead == true.
+   if (!CometSpecLib::LoadSpecLibMS1Raw(_tp, dMaxQueryRT, &dMaxSpecLibRT))
       return false;
 
-   // these two mean nothing for MS1
-   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
-   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
-
-   bool bSucceeded;
-   //MH: Allocate memory shared by threads during spectral processing.
-   bSucceeded = CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-      return bSucceeded;
-
-   // Allocate memory shared by threads during search
-   bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
-   if (!bSucceeded)
-      return bSucceeded;
-
-   pMS1Aligner.reset();
-
-   ThreadPool* tp = _tp;
-   tp->fillPool(g_staticParams.options.iNumThreads < 0 ? 0 : g_staticParams.options.iNumThreads - 1);
-
    singleSearchMS1InitializationComplete = true;
-
    return true;
 }
 
@@ -3366,9 +3397,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // tRealTimeStart used to track elapsed search time and to exit if g_staticParams.options.iMaxIndexRunTime is surpased
    g_staticParams.tRealTimeStart = std::chrono::high_resolution_clock::now();
 
-   // We need to reset some of the static variables in-between input files
-   CometPreprocess::Reset();
-
 #ifdef PERF_DEBUG
    // print set search parameters
    std::map<std::string, CometParam*> mapParams = GetParamsMap();
@@ -3381,177 +3409,244 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
 #endif
 
-   // IMPORTANT: From this point onwards, because we've loaded some
-   // spectra, we MUST "goto cleanup_results" before exiting the loop,
-   // or we will create a memory leak!
+   bool bSucceeded = true;
 
-   string sTmpDB;
-   double* pdTmpSpectrum = new double[g_staticParams.iArraySizeGlobal];  // use this to determine most intense b/y-ions masses to report back
+   // Allocate thread-local scratch spectrum buffer for fragment ion matching
+   double* pdTmpSpectrum = new double[g_staticParams.iArraySizeGlobal]();
 
-   bool bSucceeded = CometPreprocess::PreprocessSingleSpectrum(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+   // Step 1: Preprocess into a thread-local Query* (does NOT touch g_pvQuery)
+   Query* pQuery = CometPreprocess::PreprocessSingleSpectrumThreadLocal(
+      iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
-   int iSize;
-   int takeSearchResultsN;
-   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   if (g_pvQuery.empty())
+   if (pQuery == nullptr)
    {
       delete[] pdTmpSpectrum;
-      return false; // no search to run
-   }
-   bSucceeded = AllocateResultsMem();
-
-   int iWhichQuery;
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   iWhichQuery = 0; // dealing with one query
-
-   Query* pQuery;
-   pQuery = g_pvQuery.at(iWhichQuery);  // there's only a single query spectrum
-
-   g_massRange.dMinMass = pQuery->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
-      g_massRange.bNarrowMassRange = true;  // unused in this context but setting here anyways
-   else
-      g_massRange.bNarrowMassRange = false;
-
-   g_sCometVersion = comet_version;
-
-   // Now that spectra are loaded to memory and sorted, do search.
-   bSucceeded = CometSearch::RunSearch(tp);
-
-   iSize = g_pvQuery.at(0)->iMatchPeptideCount;
-   if (iSize > g_staticParams.options.iNumStored)
-      iSize = g_staticParams.options.iNumStored;
-
-   if (iSize > 1)
-   {
-      std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
-   }
-
-   takeSearchResultsN = topN; // return up to the top N results, or iSize
-
-   if (takeSearchResultsN > iSize)
-      takeSearchResultsN = iSize;
-
-   if (bSucceeded && pQuery->iMatchPeptideCount > 0)
-   {
-      CometPostAnalysis::CalculateSP(pQuery->_pResults, 0, takeSearchResultsN);
-      CometPostAnalysis::CalculateEValue(iWhichQuery, 0);
-      CometPostAnalysis::CalculateDeltaCn(iWhichQuery);
-
-      if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
-         && g_pvQuery.at(0)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
-      {
-         CometPostAnalysis::CalculateAScorePro(0, g_AScoreInterface);
-      }
-   }
-   else
-      goto cleanup_results;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   // Open .idx file for retrieving protein names
-   FILE* fp;
-   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
-   {
-      string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
-         + "\" " + std::strerror(errno) + "\n.";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
       return false;
    }
 
-   for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
+   // Step 3: Run the fragment index search on the thread-local Query*
+   // This uses the new RunSearch(Query*) overload that allocates its own
+   // pbDuplFragment and never touches g_pvQuery or _ppbDuplFragmentArr.
+   bSucceeded = CometSearch::RunSearch(pQuery); 
+
+   if (!bSucceeded)
+      goto cleanup_results;
+
    {
-      CometScores score;
-      score.dCn = 0;
-      score.xCorr = g_staticParams.options.dMinimumXcorr;
-      score.matchedIons = 0;
-      score.totalIons = 0;
-      score.dAScorePro = 0;
-      score.sAScoreProSiteScores.clear();
-      std::string eachStrReturnPeptide;
-      std::string eachStrReturnProtein;
-      vector<Fragment> eachMatchedFragments;
+      int iSize = pQuery->iMatchPeptideCount;
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
 
-      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr
-            && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
+      if (iSize > 1)
       {
-         Results* pOutput = pQuery->_pResults;
+         std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
+      }
 
-         // Set return values for peptide sequence, protein, xcorr and E-value
-         eachStrReturnPeptide = std::string(1, pOutput[iWhichResult].cPrevAA) + ".";
+      int takeSearchResultsN = topN;
+      if (takeSearchResultsN > iSize)
+         takeSearchResultsN = iSize;
 
-         // n-term variable mod
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] != 0)
+      // Step 4: Post-analysis using Query* overloads (no g_pvQuery access)
+      if (pQuery->iMatchPeptideCount > 0)
+      {
+         CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, takeSearchResultsN);
+         CometPostAnalysis::CalculateEValue(pQuery, false);
+         CometPostAnalysis::CalculateDeltaCn(pQuery);
+
+         if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
+            && pQuery->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
          {
-            std::stringstream ss;
-            ss << "n[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide] << "]";
-            eachStrReturnPeptide += ss.str();
+            bool bHasTerminalVariableMod = false;
+            if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] != 0
+               || pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
+            {
+               bHasTerminalVariableMod = true;
+            }
+            if (!bHasTerminalVariableMod)
+               CometPostAnalysis::CalculateAScorePro(pQuery, g_AScoreInterface);
          }
+      }
+      else
+      {
+         goto cleanup_results;
+      }
 
-         for (int i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
+      bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+      if (!bSucceeded)
+         goto cleanup_results;
+
+      // Step 5: Open .idx file for retrieving protein names
+      // Each concurrent call opens its own FILE* so there is no shared file pointer state.
+      FILE* fp;
+      if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+      {
+         string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+            + "\" " + std::strerror(errno) + "\n.";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         bSucceeded = false;
+         goto cleanup_results;
+      }
+
+      // Step 6: Extract results from thread-local Query*
+      for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
+      {
+         CometScores score;
+         score.dCn = 0;
+         score.xCorr = g_staticParams.options.dMinimumXcorr;
+         score.matchedIons = 0;
+         score.totalIons = 0;
+         score.dAScorePro = 0;
+         score.sAScoreProSiteScores.clear();
+         std::string eachStrReturnPeptide;
+         std::string eachStrReturnProtein;
+         vector<Fragment> eachMatchedFragments;
+
+         if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr
+            && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
          {
-            eachStrReturnPeptide += pOutput[iWhichResult].szPeptide[i];
+            Results* pOutput = pQuery->_pResults;
 
-            if (pOutput[iWhichResult].piVarModSites[i] != 0)
+            // Set return values for peptide sequence, protein, xcorr and E-value
+            eachStrReturnPeptide = std::string(1, pOutput[iWhichResult].cPrevAA) + ".";
+
+            // n-term variable mod
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] != 0)
             {
                std::stringstream ss;
-               ss << "[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[i] << "]";
+               ss << "n[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide] << "]";
                eachStrReturnPeptide += ss.str();
             }
-         }
 
-         // c-term variable mod
-         if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] != 0)
-         {
-            std::stringstream ss;
-            ss << "c[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] << "]";
-            eachStrReturnPeptide += ss.str();
-         }
-         eachStrReturnPeptide += "." + std::string(1, pOutput[iWhichResult].cNextAA);
+            for (int i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
+            {
+               eachStrReturnPeptide += pOutput[iWhichResult].szPeptide[i];
 
-         std::vector<string> vProteinTargets;  // store vector of target protein names
-         std::vector<string> vProteinDecoys;   // store vector of decoy protein names
-         std::vector<string>::iterator it;
+               if (pOutput[iWhichResult].piVarModSites[i] != 0)
+               {
+                  std::stringstream ss;
+                  ss << "[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[i] << "]";
+                  eachStrReturnPeptide += ss.str();
+               }
+            }
 
-         int iPrintTargetDecoy = 0;
-         unsigned int uiNumTotProteins = 0;
-         bool bReturnFullProteinString = true;
+            // c-term variable mod
+            if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] != 0)
+            {
+               std::stringstream ss;
+               ss << "c[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] << "]";
+               eachStrReturnPeptide += ss.str();
+            }
+            eachStrReturnPeptide += "." + std::string(1, pOutput[iWhichResult].cNextAA);
 
-         CometMassSpecUtils::GetProteinNameString(fp, iWhichQuery, iWhichResult, iPrintTargetDecoy,
-               bReturnFullProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+            // Protein name retrieval — done inline using pOutput directly instead of
+            // calling GetProteinNameString which indexes into g_pvQuery.
+            // This replicates the indexed-db path from GetProteinNameString.
+               char szProteinName[512];
+            int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
-         bool bPrintDelim = false;
-         if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
-         {
-            for (it = vProteinTargets.begin(); it != vProteinTargets.end(); ++it)
+            std::vector<string> vProteinTargets;
+            std::vector<string> vProteinDecoys;
+
+            if (g_staticParams.iIndexDb)
+            {
+               comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+               int iPrintDuplicateProteinCt = 0;
+
+               for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
+               {
+                  comet_fseek(fp, *itProt, SEEK_SET);
+                  if (fgets(szProteinName, 511, fp) == NULL)
+                  {
+                     // error reading protein name; skip
+                  }
+                  szProteinName[500] = '\0';
+
+                  // remove trailing newline/carriage return
+                  while (strlen(szProteinName) > 0
+                     && (szProteinName[strlen(szProteinName) - 1] == '\n'
+                        || szProteinName[strlen(szProteinName) - 1] == '\r'))
+                  {
+                     szProteinName[strlen(szProteinName) - 1] = '\0';
+                  }
+
+                  if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+                     vProteinDecoys.push_back(szProteinName);
+                  else
+                     vProteinTargets.push_back(szProteinName);
+
+                  iPrintDuplicateProteinCt++;
+                  if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                     break;
+               }
+            }
+            else
+            {
+               // Non-indexed (FASTA) path
+               int iPrintDuplicateProteinCt = 0;
+
+               if (pOutput[iWhichResult].pWhichProtein.size() > 0)
+               {
+                  for (auto itProt = pOutput[iWhichResult].pWhichProtein.begin(); itProt != pOutput[iWhichResult].pWhichProtein.end(); ++itProt)
+                  {
+                     comet_fseek(fp, (*itProt).lWhichProtein, SEEK_SET);
+                     if (fgets(szProteinName, 511, fp) == NULL)
+                     {
+                        // error
+                     }
+                     szProteinName[500] = '\0';
+                     while (strlen(szProteinName) > 0
+                        && (szProteinName[strlen(szProteinName) - 1] == '\n'
+                           || szProteinName[strlen(szProteinName) - 1] == '\r'))
+                     {
+                        szProteinName[strlen(szProteinName) - 1] = '\0';
+                     }
+                     vProteinTargets.push_back(szProteinName);
+                     iPrintDuplicateProteinCt++;
+                     if (iPrintDuplicateProteinCt > g_staticParams.options.iMaxDuplicateProteins)
+                        break;
+                  }
+               }
+
+               if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+               {
+                  for (auto itProt = pOutput[iWhichResult].pWhichDecoyProtein.begin(); itProt != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++itProt)
+                  {
+                     if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                        break;
+                     comet_fseek(fp, (*itProt).lWhichProtein, SEEK_SET);
+                     if (fgets(szProteinName, 511, fp) == NULL)
+                     {
+                        // error
+                     }
+                     szProteinName[500] = '\0';
+                     while (strlen(szProteinName) > 0
+                        && (szProteinName[strlen(szProteinName) - 1] == '\n'
+                           || szProteinName[strlen(szProteinName) - 1] == '\r'))
+                     {
+                        szProteinName[strlen(szProteinName) - 1] = '\0';
+                     }
+                     vProteinDecoys.push_back(szProteinName);
+                     iPrintDuplicateProteinCt++;
+                  }
+               }
+            }
+
+            // Build the protein string from targets and decoys
+            bool bPrintDelim = false;
+            for (auto itProt = vProteinTargets.begin(); itProt != vProteinTargets.end(); ++itProt)
             {
                if (bPrintDelim)
                   eachStrReturnProtein += " ; ";
                else
                   bPrintDelim = true;
 
-               string sTmp = *it;
-               std::replace(sTmp.begin(), sTmp.end(), ';', ',');  // since ';' is the delimiter between proteins, change all occurrences to ','
+               string sTmp = *itProt;
+               std::replace(sTmp.begin(), sTmp.end(), ';', ',');
                eachStrReturnProtein += sTmp;
             }
-         }
 
-         if (iPrintTargetDecoy != 1)  // if not target only, print decoy proteins
-         {
-            for (it = vProteinDecoys.begin(); it != vProteinDecoys.end(); ++it)
+            for (auto itProt = vProteinDecoys.begin(); itProt != vProteinDecoys.end(); ++itProt)
             {
                if (bPrintDelim)
                   eachStrReturnProtein += " ; ";
@@ -3559,196 +3654,194 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                   bPrintDelim = true;
 
                string sTmp;
-               if ((*it).starts_with(g_staticParams.szDecoyPrefix))
-                  sTmp = *it;
+               if ((*itProt).starts_with(g_staticParams.szDecoyPrefix))
+                  sTmp = *itProt;
                else
                {
                   sTmp = g_staticParams.szDecoyPrefix;
-                  sTmp += *it;
+                  sTmp += *itProt;
                }
 
-               std::replace(sTmp.begin(), sTmp.end(), ';', ',');  // since ';' is the delimiter between proteins, change all occurrences to ','
+               std::replace(sTmp.begin(), sTmp.end(), ';', ',');
                eachStrReturnProtein += sTmp;
             }
-         }
 
-         score.xCorr = pOutput[iWhichResult].fXcorr;                      // xcorr
-         score.dCn = pOutput[iWhichResult].fDeltaCn;                      // deltaCn
-         score.dSp = pOutput[iWhichResult].fScoreSp;                      // prelim score
-         score.dExpect = pOutput[iWhichResult].dExpect;                   // E-value
-         score.mass = pOutput[iWhichResult].dPepMass - PROTON_MASS;       // calc neutral pep mass
-         score.matchedIons = pOutput[iWhichResult].usiMatchedIons;        // ions matched
-         score.totalIons = pOutput[iWhichResult].usiTotalIons;            // ions tot
-         score.dAScorePro = pOutput[iWhichResult].fAScorePro;             // AScore
-         score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores; // AScore site-specific
+            score.xCorr = pOutput[iWhichResult].fXcorr;
+            score.dCn = pOutput[iWhichResult].fDeltaCn;
+            score.dSp = pOutput[iWhichResult].fScoreSp;
+            score.dExpect = pOutput[iWhichResult].dExpect;
+            score.mass = pOutput[iWhichResult].dPepMass - PROTON_MASS;
+            score.matchedIons = pOutput[iWhichResult].usiMatchedIons;
+            score.totalIons = pOutput[iWhichResult].usiTotalIons;
+            score.dAScorePro = pOutput[iWhichResult].fAScorePro;
+            score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
 
-         int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
-         for (int x = 0; x < iSize; ++x)
-         {
-            int iLen = (int)strlen(pOutput[x].szPeptide);
-            if (iLen == 0)
-               break;
-            if (iLen < iMinLength)
-               iMinLength = iLen;
-         }
-
-         // Conversion table from b/y ions to the other types (a,c,x,z)
-         const double ionMassesRelative[NUM_ION_SERIES] =
-         {
-            // N term relative
-            -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
-            0,                                                  // b
-            (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
-
-            // C Term relative
-            (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
-            0,                                                  // y
-            -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
-            -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
-         };
-
-         // now deal with calculating b- and y-ions and returning most intense matches
-         double dBion = g_staticParams.precalcMasses.dNtermProton;
-         double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
-
-         if (pQuery->_pResults[iWhichResult].cPrevAA == '-')
-         {
-            dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-         }
-         if (pQuery->_pResults[iWhichResult].cNextAA == '-')
-         {
-            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-         }
-
-         // mods at peptide length +1 and +2 are for n- and c-terminus
-         if (g_staticParams.variableModParameters.bVarModSearch
-               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] != 0))
-         {
-            dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] - 1].dVarModMass;
-         }
-
-         if (g_staticParams.variableModParameters.bVarModSearch
-               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] != 0))
-         {
-            dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] - 1].dVarModMass;
-         }
-
-         int iTmp;
-         bool bAddNtermFragmentNeutralLoss[VMODS];
-         bool bAddCtermFragmentNeutralLoss[VMODS];
-
-         for (int iMod = 0; iMod < VMODS; ++iMod)
-         {
-            bAddNtermFragmentNeutralLoss[iMod] = false;
-            bAddCtermFragmentNeutralLoss[iMod] = false;
-         }
-
-         // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
-         for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)
-         {
-            int iPos = pQuery->_pResults[iWhichResult].usiLenPeptide - i - 1;
-
-            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[i]];
-            dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[iPos]];
-
-            if (g_staticParams.variableModParameters.bVarModSearch)
+            int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
+            for (int x = 0; x < iSize; ++x)
             {
-               if (pQuery->_pResults[iWhichResult].piVarModSites[i] != 0)
-                  dBion += pQuery->_pResults[iWhichResult].pdVarModSites[i];
-
-               if (pQuery->_pResults[iWhichResult].piVarModSites[iPos] != 0)
-                  dYion += pQuery->_pResults[iWhichResult].pdVarModSites[iPos];
+               int iLen = (int)strlen(pOutput[x].szPeptide);
+               if (iLen == 0)
+                  break;
+               if (iLen < iMinLength)
+                  iMinLength = iLen;
             }
 
-            map<int, double>::iterator it;
-            for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+            // Conversion table from b/y ions to the other types (a,c,x,z)
+            const double ionMassesRelative[NUM_ION_SERIES] =
             {
-               // calculate every ion series the user specified
-               for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
+               // N term relative
+               -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
+               0,                                                  // b
+               (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
+
+               // C Term relative
+               (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
+               0,                                                  // y
+               -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
+               -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
+            };
+
+            // now deal with calculating b- and y-ions and returning most intense matches
+            double dBion = g_staticParams.precalcMasses.dNtermProton;
+            double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+            if (pQuery->_pResults[iWhichResult].cPrevAA == '-')
+            {
+               dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+            }
+            if (pQuery->_pResults[iWhichResult].cNextAA == '-')
+            {
+               dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+            }
+
+            // mods at peptide length +1 and +2 are for n- and c-terminus
+            if (g_staticParams.variableModParameters.bVarModSearch
+               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] != 0))
+            {
+               dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] - 1].dVarModMass;
+            }
+
+            if (g_staticParams.variableModParameters.bVarModSearch
+               && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] != 0))
+            {
+               dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] - 1].dVarModMass;
+            }
+
+            int iTmp;
+            bool bAddNtermFragmentNeutralLoss[VMODS];
+            bool bAddCtermFragmentNeutralLoss[VMODS];
+
+            for (int iMod = 0; iMod < VMODS; ++iMod)
+            {
+               bAddNtermFragmentNeutralLoss[iMod] = false;
+               bAddCtermFragmentNeutralLoss[iMod] = false;
+            }
+
+            // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
+            for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)
+            {
+               int iPos = pQuery->_pResults[iWhichResult].usiLenPeptide - i - 1;
+
+               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[i]];
+               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[iPos]];
+
+               if (g_staticParams.variableModParameters.bVarModSearch)
                {
-                  // skip ion series that are not enabled.
-                  if (!g_staticParams.ionInformation.iIonVal[ionSeries])
+                  if (pQuery->_pResults[iWhichResult].piVarModSites[i] != 0)
+                     dBion += pQuery->_pResults[iWhichResult].pdVarModSites[i];
+
+                  if (pQuery->_pResults[iWhichResult].piVarModSites[iPos] != 0)
+                     dYion += pQuery->_pResults[iWhichResult].pdVarModSites[iPos];
+               }
+
+               for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+               {
+                  // calculate every ion series the user specified
+                  for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
                   {
-                     continue;
-                  }
-
-                  bool isNTerm = (ionSeries <= ION_SERIES_C);
-
-                  // get the fragment mass if it is n- or c-terimnus
-                  double mass = (isNTerm) ? dBion : dYion;
-                  int fragNumber = i + 1;
-
-                  // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
-                  mass += ionMassesRelative[ionSeries];
-
-                  double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
-                  iTmp = BIN(mz);
-                  if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
-                  {
-                     Fragment frag;
-                     frag.intensity = pdTmpSpectrum[iTmp];
-                     frag.mass = mass;
-                     frag.type = ionSeries;
-                     frag.number = fragNumber;
-                     frag.charge = ctCharge;
-                     frag.neutralLoss = false;
-                     frag.neutralLossMass = 0.0;
-                     eachMatchedFragments.push_back(frag);
-                  }
-
-                  if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
-                  {
-                     for (int iMod = 0; iMod < VMODS; ++iMod)
+                     // skip ion series that are not enabled.
+                     if (!g_staticParams.ionInformation.iIonVal[ionSeries])
                      {
-                        for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
+                        continue;
+                     }
+
+                     bool isNTerm = (ionSeries <= ION_SERIES_C);
+
+                     // get the fragment mass if it is n- or c-terminus
+                     double mass = (isNTerm) ? dBion : dYion;
+                     int fragNumber = i + 1;
+
+                     // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
+                     mass += ionMassesRelative[ionSeries];
+
+                     double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
+                     iTmp = BIN(mz);
+                     if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
+                     {
+                        Fragment frag;
+                        frag.intensity = pdTmpSpectrum[iTmp];
+                        frag.mass = mass;
+                        frag.type = ionSeries;
+                        frag.number = fragNumber;
+                        frag.charge = ctCharge;
+                        frag.neutralLoss = false;
+                        frag.neutralLossMass = 0.0;
+                        eachMatchedFragments.push_back(frag);
+                     }
+
+                     if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+                     {
+                        for (int iMod = 0; iMod < VMODS; ++iMod)
                         {
-                           double dNLmass;
-
-                           if (iWhichNL == 0)
-                              dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
-                           else
-                              dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2;
-
-                           if (dNLmass == 0.0 || g_staticParams.variableModParameters.varModList[iMod].dVarModMass == 0.0)
+                           for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
                            {
-                              continue;  // continue if this iMod entry has no mod mass or no NL mass specified
-                           }
+                              double dNLmass;
 
-                           if (isNTerm)
-                           {
-                              // if have not already come across n-term mod residue for variable mod iMod, see if position i contains the variable mod
-                              if (!bAddNtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[i] == iMod + 1)
+                              if (iWhichNL == 0)
+                                 dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
+                              else
+                                 dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2;
+
+                              if (dNLmass == 0.0 || g_staticParams.variableModParameters.varModList[iMod].dVarModMass == 0.0)
                               {
-                                 bAddNtermFragmentNeutralLoss[iMod] = true;
+                                 continue;
                               }
-                           }
-                           else
-                           {
-                              if (!bAddCtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[iPos] == iMod + 1)
+
+                              if (isNTerm)
                               {
-                                 bAddCtermFragmentNeutralLoss[iMod] = true;
+                                 if (!bAddNtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[i] == iMod + 1)
+                                 {
+                                    bAddNtermFragmentNeutralLoss[iMod] = true;
+                                 }
                               }
-                           }
+                              else
+                              {
+                                 if (!bAddCtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[iPos] == iMod + 1)
+                                 {
+                                    bAddCtermFragmentNeutralLoss[iMod] = true;
+                                 }
+                              }
 
-                           if ((isNTerm && !bAddNtermFragmentNeutralLoss[iMod])
-                              || (!isNTerm && !bAddCtermFragmentNeutralLoss[iMod]))
-                           {
-                              continue;  // no fragment NL yet in peptide so continue
-                           }
+                              if ((isNTerm && !bAddNtermFragmentNeutralLoss[iMod])
+                                 || (!isNTerm && !bAddCtermFragmentNeutralLoss[iMod]))
+                              {
+                                 continue;
+                              }
 
-                           double dNLfragMz = mz - (dNLmass / ctCharge);
-                           iTmp = BIN(dNLfragMz);
-                           if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
-                           {
-                              Fragment frag;
-                              frag.intensity = pdTmpSpectrum[iTmp];
-                              frag.mass = mass - dNLmass;
-                              frag.type = ionSeries;
-                              frag.number = fragNumber;
-                              frag.charge = ctCharge;
-                              frag.neutralLoss = true;
-                              frag.neutralLossMass = dNLmass;
-                              eachMatchedFragments.push_back(frag);
+                              double dNLfragMz = mz - (dNLmass / ctCharge);
+                              iTmp = BIN(dNLfragMz);
+                              if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
+                              {
+                                 Fragment frag;
+                                 frag.intensity = pdTmpSpectrum[iTmp];
+                                 frag.mass = mass - dNLmass;
+                                 frag.type = ionSeries;
+                                 frag.number = fragNumber;
+                                 frag.charge = ctCharge;
+                                 frag.neutralLoss = true;
+                                 frag.neutralLossMass = dNLmass;
+                                 eachMatchedFragments.push_back(frag);
+                              }
                            }
                         }
                      }
@@ -3756,65 +3849,60 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                }
             }
          }
-      }
-      else
-      {
-         eachStrReturnPeptide = "";  // peptide
-         eachStrReturnProtein = "";  // protein
-         score.xCorr = -999  ;       // xcorr
-         score.dSp = 0;        // prelim score
-         score.dExpect = 999;      // E-value
-         score.mass = 0;        // calc neutral pep mass
-         score.matchedIons = 0;        // ions matched
-         score.totalIons = 0;        // ions tot
-         score.dAScorePro = 0;        // AScore
-         score.dCn = 0;        // dCn
-         score.sAScoreProSiteScores.clear();
-      }
-
-      if (false)  // set to true to enable debug mass check
-      {
-         // Compare peptide against input mz/charge mass
-         double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
-         for (int i = 0; i < pQuery->_pResults[0].usiLenPeptide; ++i)
+         else
          {
-            dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[pQuery->_pResults[0].szPeptide[i]];
+            eachStrReturnPeptide = "";
+            eachStrReturnProtein = "";
+            score.xCorr = -999;
+            score.dSp = 0;
+            score.dExpect = 999;
+            score.mass = 0;
+            score.matchedIons = 0;
+            score.totalIons = 0;
+            score.dAScorePro = 0;
+            score.dCn = 0;
+            score.sAScoreProSiteScores.clear();
+         }
+
+         if (false)  // set to true to enable debug mass check
+         {
+            // Compare peptide against input mz/charge mass
+            double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+            for (int i = 0; i < pQuery->_pResults[0].usiLenPeptide; ++i)
+            {
+               dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[pQuery->_pResults[0].szPeptide[i]];
+               if (g_staticParams.variableModParameters.bVarModSearch)
+                  if (pQuery->_pResults[0].piVarModSites[i] != 0)
+                     dCalcPepMass += pQuery->_pResults[0].pdVarModSites[i];
+            }
             if (g_staticParams.variableModParameters.bVarModSearch)
-               if (pQuery->_pResults[0].piVarModSites[i] != 0)
-                  dCalcPepMass += pQuery->_pResults[0].pdVarModSites[i];
+            {
+               // n-term mod
+               if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] != 0)
+                  dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide];
+               // c-term mod
+               if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
+                  dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide + 1];
+            }
          }
-         if (g_staticParams.variableModParameters.bVarModSearch)
-         {
-            // n-term mod
-            if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] != 0)
-               dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide];
-            // c-term mod
-            if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
-               dCalcPepMass += pQuery->_pResults[0].pdVarModSites[pQuery->_pResults[0].usiLenPeptide + 1];
-         }
+
+         strReturnPeptide.push_back(eachStrReturnPeptide);
+         strReturnProtein.push_back(eachStrReturnProtein);
+         matchedFragments.push_back(eachMatchedFragments);
+         scores.push_back(score);
       }
 
-      strReturnPeptide.push_back(eachStrReturnPeptide);
-      strReturnProtein.push_back(eachStrReturnProtein);
-      matchedFragments.push_back(eachMatchedFragments);
-      scores.push_back(score);
+      if (fp != NULL)
+         fclose(fp);
    }
-
-   if (fp != NULL)
-      fclose(fp);
 
 cleanup_results:
 
-   // Deleting each Query object in the vector calls its destructor, which
-   // frees the spectral memory (see definition for Query in CometDataInternal.h).
-   for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-      delete (*it);
-
-   g_pvQuery.clear();
-
-   // Clean up the input files vector
-   g_staticParams.vectorMassOffsets.clear();
-   g_staticParams.precursorNLIons.clear();
+   // Clean up the thread-local Query* — its destructor frees spectral memory
+   // (pfFastXcorrData, pfFastXcorrDataNL, etc.)
+   // The _pResults and _pDecoys arrays were allocated by PreprocessSingleSpectrumCore.
+   delete pQuery;
+   pQuery = nullptr;
 
    delete[] pdTmpSpectrum;
 
@@ -3825,78 +3913,63 @@ cleanup_results:
 // Load all MS1 from raw file. Then search each MS1 query.
 bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                                  const double dMaxQueryRT,
-                                                 const int /*topN*/,
+                                                 const int topN,
                                                  const double dQueryRT,
                                                  double* pdMass,
                                                  double* pdInten,
                                                  int iNumPeaks,
                                                  vector<CometScoresMS1>& scoresMS1)
 {
-   bool bSucceeded = false;
-   double dMatchedSpecLibRT = 0.0;
-   double dLinearRegressionRT = 0.0;
+   // Phase 3 / Task 3.2: Verify init completed before any search call.
+   // InitializeSingleSpectrumMS1Search() must be called (and return) before
+   // any thread calls DoMS1SearchMultiResults(). The C# Task.Run() scheduling
+   // provides a happens-before guarantee for all writes made during init.
+   if (!singleSearchMS1InitializationComplete)
+   {
+      string strErrorMsg = " Error - DoMS1SearchMultiResults() called before InitializeSingleSpectrumMS1Search() completed.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   // At this point g_vSpecLib and g_bSpecLibRead are guaranteed visible and immutable.
 
    if (iNumPeaks == 0)
       return false;
 
-   bSucceeded = InitializeSingleSpectrumMS1Search();
-   if (bSucceeded == false)
-      return bSucceeded;
+   // Task 2.1: Create thread-local QueryMS1* — no global state touched.
+   QueryMS1* pQueryMS1 = CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(pdMass, pdInten, iNumPeaks);
 
-   g_pvQueryMS1.clear();
+   if (pQueryMS1 == nullptr)
+      return false;
 
-   ThreadPool* tp = _tp;  // filled in InitializeSingleSpectrumSearch
+   // Task 2.2: Run search using thread-local overload — reads only g_vSpecLib (immutable).
+   vector<CometScoresMS1> localScores;
+   bool bSucceeded = CometSearch::RunMS1Search(pQueryMS1, topN, dQueryRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, localScores);
 
-   //Load all MS1 spectrum from file
-   if (g_bSpecLibRead == false)
-      CometSpecLib::LoadSpecLibMS1Raw(tp, dMaxQueryRT, &dMaxSpecLibRT);
-
-   // Process current MS1
-   bSucceeded = CometPreprocess::PreprocessMS1SingleSpectrum(pdMass, pdInten, iNumPeaks);
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   if (g_pvQueryMS1.empty())
-      return false; // no search to run
-
-   bSucceeded = AllocateResultsMemMS1();
-
-   if (!bSucceeded)
-      goto cleanup_results;
-
-   QueryMS1* pQueryMS1;
-   pQueryMS1 = g_pvQueryMS1.at(0);
-   pQueryMS1->_pSpecLibResultsMS1.fDotProduct = 0.0;
-   pQueryMS1->_pSpecLibResultsMS1.fRTime = 0.0;
-   pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib = 0;
-
-   bSucceeded = CometSearch::RunMS1Search(tp, dQueryRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT);
-
-   // pass best RT match to regression
-   dMatchedSpecLibRT = pQueryMS1->_pSpecLibResultsMS1.fRTime;
-   dLinearRegressionRT = pMS1Aligner.processRetentionMatch(dQueryRT, dMatchedSpecLibRT);
-
-   if (bSucceeded)
+   if (bSucceeded && !localScores.empty())
    {
-      CometScoresMS1 scoreMS1;
-      scoreMS1.fDotProduct = pQueryMS1->_pSpecLibResultsMS1.fDotProduct;
-//      scoreMS1.fRTime = pQueryMS1->_pSpecLibResultsMS1.fRTime;
-      scoreMS1.fRTime = (float)dLinearRegressionRT;
-      scoreMS1.iScanNumber = pQueryMS1->_pSpecLibResultsMS1.iWhichSpecLib;
-      scoresMS1.push_back(scoreMS1);
+      // Pass best RT match to regression aligner.
+      // pMS1Aligner is per-CometSearchManager instance state, but the C# code
+      // currently calls DoMS1SearchMultiResults from multiple threads.
+      // For now, protect with the existing g_pvQueryMutex since the aligner
+      // is lightweight and this serialization only affects the RT regression,
+      // not the scoring.
+      double dMatchedSpecLibRT = localScores[0].fRTime;
+
+      Threading::LockMutex(g_pvQueryMutex);
+      double dLinearRegressionRT = pMS1Aligner.processRetentionMatch(dQueryRT, dMatchedSpecLibRT);
+      Threading::UnlockMutex(g_pvQueryMutex);
+
+      // Overwrite the RT with the regression-adjusted value
+      localScores[0].fRTime = (float)dLinearRegressionRT;
+
+      scoresMS1 = std::move(localScores);
    }
-   else
-      goto cleanup_results;
 
-cleanup_results:
-
-   // Deleting each Query object in the vector calls its destructor, which
-   // frees the spectral memory (see definition for Query in CometDataInternal.h).
-   for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-      delete (*it);
-
-   g_pvQuery.clear();
+   // Task 2.3: Clean up thread-local QueryMS1*
+   delete pQueryMS1;
+   pQueryMS1 = nullptr;
 
    return bSucceeded;
 }

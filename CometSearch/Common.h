@@ -66,7 +66,7 @@ using namespace std;
 #include <iostream>
 #include <functional>
 
-#define comet_version   "2026.01 rev. 1"
+#define comet_version   "2026.02 rev. 0"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 

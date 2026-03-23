@@ -275,7 +275,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
    }
    else  // regular fasta database
    {
-      Results *pOutput;
+      Results* pOutput;
 
       if (iPrintTargetDecoy != 2)
          pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
@@ -293,7 +293,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       {
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
-            for (auto it=pOutput[iWhichResult].pWhichProtein.begin(); it!=pOutput[iWhichResult].pWhichProtein.end(); ++it)
+            for (auto it = pOutput[iWhichResult].pWhichProtein.begin(); it != pOutput[iWhichResult].pWhichProtein.end(); ++it)
             {
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
@@ -325,7 +325,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
             // collate decoy proteins, if needed, from target-decoy search
-            for (auto it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            for (auto it = pOutput[iWhichResult].pWhichDecoyProtein.begin(); it != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
             {
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                   break;

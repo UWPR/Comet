@@ -45,15 +45,24 @@ public:
    static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
                                       ThreadPool* tp);
    static void CalculateDeltaCn(int i);
+   static void CalculateDeltaCn(Query* pQuery);
    static void CalculateDeltaCnsAndRank(Results* pOutput,
                                        int iNumPrintLines);
    static void AnalyzeSP(int i);
+   static void AnalyzeSP(Query* pQuery);
    static void CalculateSP(Results *pOutput,
                            int iWhichQuery,
                            int iSize);
+   static void CalculateSP(Results *pOutput,
+                           Query *pQuery,
+                           int iSize);
    static bool CalculateEValue(int iWhichQuery,
                                bool bTopHitOnly);
+   static bool CalculateEValue(Query* pQuery,
+                               bool bTopHitOnly);
    static void CalculateAScorePro(int iWhichQuery,
+                                  AScoreProCpp::AScoreDllInterface* ascoreInterface);
+   static void CalculateAScorePro(Query* pQuery,
                                   AScoreProCpp::AScoreDllInterface* ascoreInterface);
    static bool SortFnXcorr(const Results &a,
                            const Results &b);
@@ -68,6 +77,7 @@ private:
    static bool SortFnMod(const Results &a,
                          const Results &b);
    static bool GenerateXcorrDecoys(int iWhichQuery);
+   static bool GenerateXcorrDecoys(Query* pQuery);
    static void LinearRegression(int *pHistogram,
                                 double *dSlope,
                                 double *dIntercept,
