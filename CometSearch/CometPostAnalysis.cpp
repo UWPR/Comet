@@ -87,8 +87,9 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    (void)tp; // suppress unused parameter warning
 
    int iQueryIndex = pThreadData->iQueryIndex;
+   Query* pQuery = g_pvQuery.at(iQueryIndex);
 
-   AnalyzeSP(iQueryIndex);
+   AnalyzeSP(pQuery);
 
    // Calculate E-values if necessary.
    // Only time to not calculate E-values is for .out/.sqt output only and
@@ -98,15 +99,12 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
          || g_staticParams.options.bOutputPercolatorFile
          || g_staticParams.options.bOutputTxtFile)
    {
-      if (g_pvQuery.at(iQueryIndex)->iMatchPeptideCount > 0
-            || g_pvQuery.at(iQueryIndex)->iDecoyMatchPeptideCount > 0)
-      {
-         CalculateEValue(iQueryIndex, 0);
-      }
+      if (pQuery->iMatchPeptideCount > 0 || pQuery->iDecoyMatchPeptideCount > 0)
+         CalculateEValue(pQuery, false);
    }
 
    // this has to happen after AnalyzeSP as results are sorted in that fn
-   CalculateDeltaCn(iQueryIndex);
+   CalculateDeltaCn(pQuery);
 
    // Calculate A-Score if specified and peptide has phospho mod
    if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
@@ -116,15 +114,16 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
       // also skip AScore if peptide has a teriminal modification until I can figure out how
       // to handle that properly
-      if (g_pvQuery.at(iQueryIndex)->_pResults[0].piVarModSites[g_pvQuery.at(iQueryIndex)->_pResults[0].usiLenPeptide] != 0
-         || g_pvQuery.at(iQueryIndex)->_pResults[0].piVarModSites[g_pvQuery.at(iQueryIndex)->_pResults[0].usiLenPeptide + 1] != 0)
+      if (pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide] != 0
+         || pQuery->_pResults[0].piVarModSites[pQuery->_pResults[0].usiLenPeptide + 1] != 0)
       {
          bHasTerminalVariableMod = true;
       }
 
       if (!bHasTerminalVariableMod)
-         CalculateAScorePro(iQueryIndex, g_AScoreInterface);
+         CalculateAScorePro(pQuery, g_AScoreInterface);
    }
+
 
    delete pThreadData;
    pThreadData = NULL;
@@ -240,20 +239,6 @@ void CometPostAnalysis::CalculateDeltaCn(Query* pQuery)
 }
 
 
-// Original overload: delegates to the Query* version.
-void CometPostAnalysis::CalculateDeltaCn(int iWhichQuery)
-{
-   CalculateDeltaCn(g_pvQuery.at(iWhichQuery));
-}
-
-
-// Original overload: delegates to the Query* version.
-void CometPostAnalysis::AnalyzeSP(int iWhichQuery)
-{
-   AnalyzeSP(g_pvQuery.at(iWhichQuery));
-}
-
-
 // Thread-local overload: accepts Query* directly, no g_pvQuery access.
 void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 {
@@ -364,8 +349,8 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 
 // Thread-local overload: accepts Query* directly, no g_pvQuery access.
 void CometPostAnalysis::CalculateSP(Results* pOutput,
-   Query* pQuery,
-   int iSize)
+                                    Query* pQuery,
+                                    int iSize)
 {
    int i;
    double pdAAforward[MAX_PEPTIDE_LEN];
@@ -722,172 +707,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 }
 
 
-// Original overload: delegates to the Query* version.
-void CometPostAnalysis::CalculateSP(Results* pOutput,
-                                    int iWhichQuery,
-                                    int iSize)
-{
-   CalculateSP(pOutput, g_pvQuery.at(iWhichQuery), iSize);
-}
-
-
 using namespace AScoreProCpp;
-
-void CometPostAnalysis::CalculateAScorePro(int iWhichQuery,
-                                           AScoreDllInterface* ascoreInterface)
-{
-   std::string sequence;
-   double precursorMz;
-   int precursorCharge;
-
-   // sanity check here; AScorePro will segfault if peptide length is 0
-   if (g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide <= 0)
-      return;
-
-   // if specific variable mod specified, check if peptide contains that mod
-   if (g_pvQuery.at(iWhichQuery)->_pResults[0].cHasVariableMod != HasVariableModType_AScorePro)
-      return;
-
-   precursorCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState;
-   precursorMz = (g_pvQuery.at(iWhichQuery)->_pResults[0].dPepMass + (precursorCharge - 1) * PROTON_MASS) / precursorCharge;
-
-   // Generate peptide sequence of format "K.M0LAES1DDSGDEES1VSQTDK.T" where the mod char is the mod #
-   sequence = g_pvQuery.at(iWhichQuery)->_pResults[0].cPrevAA + std::string(".");
-   for (int i = 0; i < g_pvQuery.at(iWhichQuery)->_pResults[0].usiLenPeptide; ++i)
-   {
-      sequence += g_pvQuery.at(iWhichQuery)->_pResults[0].szPeptide[i];
-
-      if (g_staticParams.variableModParameters.bVarModSearch && g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] != 0)
-      {
-         if (g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i] > 0)
-         {
-            sequence += std::to_string(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[i]);
-         }
-         else
-         {
-            sequence += "?";    // PEFF:  no clue how to specify mod encoding
-         }
-      }
-   }
-   sequence += std::string(".") + g_pvQuery.at(iWhichQuery)->_pResults[0].cNextAA;
-
-   // Calculate AScore using the DLL interface
-   AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
-      g_pvQuery.at(iWhichQuery)->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
-
-   // The question is what to do with AScore results.  For now, I plan on using the AScore
-   // localized peptide to replace the original peptide in the results structure and report
-   // both the score and site scores.
-   if (!result.peptides.empty())
-   {
-      g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro = (float)result.peptides[0].getScore();
-
-      if (g_pvQuery.at(iWhichQuery)->_pResults[0].fAScorePro >= ASCORE_CUTOFF_TO_ACCEPT)
-      {
-         // set piVarModSites and pdVarModSites based on AScore localized peptide
-         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
-         memset(g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites, 0, (unsigned short)(sizeof(double) * MAX_PEPTIDE_LEN_P2));
-
-         std::string sPeptide = result.peptides[0].toString();
-
-         // Extract the peptide portion (between the two dots)
-         size_t firstDot = sPeptide.find('.');
-         size_t lastDot = sPeptide.rfind('.');
-         std::string peptide = sPeptide.substr(firstDot + 1, lastDot - firstDot - 1);
-
-         int position = 0; // position within peptide
-         int iPosMinus1 = 0;
-         for (size_t i = 0; i < peptide.size();)
-         {
-            if (std::isalpha(peptide[i]))
-            {
-               // Amino acid -> increment residue counter
-               position++;
-               i++;
-            }
-            else if (std::isdigit(peptide[i]))
-            {
-               // Modification reference -> capture full number
-               size_t j = i;
-               while (j < peptide.size() && std::isdigit(peptide[j]))
-               {
-                  j++;
-               }
-
-               int modIndex = std::stoi(peptide.substr(i, j - i));
-
-               // sanity check
-               if (modIndex < 0 || modIndex > VMODS)
-               {
-                  std::cerr << "Error: (1) AScorePro returned invalid modification index " << modIndex << " in peptide " << sPeptide << std::endl;
-                  return;
-               }
-
-               iPosMinus1 = position - 1;
-               if (iPosMinus1 >= 0 && iPosMinus1 < MAX_PEPTIDE_LEN)
-               {
-                  g_pvQuery.at(iWhichQuery)->_pResults[0].piVarModSites[iPosMinus1] = modIndex;
-                  g_pvQuery.at(iWhichQuery)->_pResults[0].pdVarModSites[iPosMinus1] = g_staticParams.variableModParameters.varModList[modIndex - 1].dVarModMass;
-               }
-               else
-               {
-                  // FIX: need to do something more here to address mod sites that might not be correct anymore
-                  std::cerr << "Error: (2) AScorePro returned invalid modification position " << (iPosMinus1) << " in peptide " << sPeptide << std::endl;
-                  return;
-               }
-
-               i = j;
-            }
-            else
-            {
-               // Unexpected character, skip it
-               i++;
-            }
-         }
-
-         // Report site score as a string composed of space separated "position:score" pairs
-         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores.clear();
-         int iPosition;
-         double dScore;
-         char szBuffer[32];
-
-         for (size_t i = 0; i < result.sites.size(); ++i)
-         {
-            iPosition = result.sites[i].getPosition();
-            dScore = result.sites[i].getScore();
-
-            snprintf(szBuffer, sizeof(szBuffer), "%.2f", dScore);
-
-            if (i > 0)
-               g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += " ";
-            g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores += std::to_string(iPosition) + ":" + szBuffer;
-         }
-      }
-      else
-      {
-         g_pvQuery.at(iWhichQuery)->_pResults[0].sAScoreProSiteScores = "";
-      }
-
-      /*
-            // Print results
-            std::cout << "\n\n";
-            std::cout << "Original sequence: " << sequence << "\n";
-            std::cout << "     Best peptide: " << result.peptides[0].toString() << "\n";
-            std::cout << "  Peptides scored: " << result.peptides.size() << "\n";
-            std::cout << "     Sites scored: " << result.sites.size() << "\n";
-            std::cout << "            Score: " << result.peptides[0].getScore() << "\n";
-            std::cout << "      Site scores: ";
-            for (size_t i = 0; i < 6; ++i)
-            {
-               if (i < result.sites.size())
-                  std::cout << result.sites[i].getScore() << " (" << result.sites[i].getPosition() << +") \t";
-               else
-                  break;
-            }
-            std::cout << "\n";
-      */
-   }
-}
 
 // Thread-local overload: accepts Query* directly, no g_pvQuery access.
 void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
@@ -1412,13 +1232,6 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
 }
 
 
-// Original overload: delegates to the Query* version.
-bool CometPostAnalysis::GenerateXcorrDecoys(int iWhichQuery)
-{
-   return GenerateXcorrDecoys(g_pvQuery.at(iWhichQuery));
-}
-
-
 float CometPostAnalysis::FindSpScore(Query *pQuery,
                                      int bin,
                                      int iMax)
@@ -1509,13 +1322,3 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
 
    return true;
 }
-
-
-// Original overload: delegates to the Query* version.
-bool CometPostAnalysis::CalculateEValue(int iWhichQuery,
-                                        bool bTopHitOnly)
-{
-   return CalculateEValue(g_pvQuery.at(iWhichQuery), bTopHitOnly);
-}
-
-
