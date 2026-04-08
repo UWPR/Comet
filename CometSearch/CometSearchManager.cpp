@@ -63,7 +63,7 @@ map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
-// Thread-safety note — g_AScoreInterface is shared across PostAnalysis threads.
+// Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
 // AScoreDllInterface::CalculateScoreWithOptions() is assumed to be thread-safe because
 // it does not modify any mutable member state; all intermediate computation uses local
 // variables. If AScorePro is ever changed to use internal mutable state, this must be
@@ -403,8 +403,10 @@ static bool ValidateSequenceDatabaseFile()
    // open FASTA for retrieving protein names
    string sTmpDB = g_staticParams.databaseInfo.szDatabase;
 
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
+
    if ((fpcheck = fopen(sTmpDB.c_str(), "r")) == NULL)
    {
       g_bIdxNoFasta = true;  // .idx database but corresponding fasta not found
@@ -417,7 +419,7 @@ static bool ValidateSequenceDatabaseFile()
 
    // if .idx database specified but does not exist, first see if corresponding
    // fasta exists and if it does, create the .idx file
-   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   if (databaseLen >= 4 &&  strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
       if ((fpcheck=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
@@ -1717,7 +1719,8 @@ bool CometSearchManager::InitializeStaticParams()
    g_massRange.uiMaxFragmentArrayIndex = BIN(g_staticParams.options.dFragIndexMaxMass) + 1;
 
    // At this point, check extension to set whether index database or not
-   if (!strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && !strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
       // Has .idx extension.  Now parse first line ot see if peptide index or fragment index.
       // either "Comet peptide index" or "Comet fragment ion index"
@@ -3282,7 +3285,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       return false;
 
    // Determine index type from .idx file header
-   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && strstr(g_staticParams.databaseInfo.szDatabase + databaseLen - 4, ".idx"))
    {
       FILE* fpCheck = fopen(g_staticParams.databaseInfo.szDatabase, "rb");
       if (fpCheck)
@@ -3633,7 +3637,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    {
       string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
          + "\" " + std::strerror(errno) + "\n.";
-      // Don't poison global state — just log and fail this query
+      // Don't poison global state - just log and fail this query
       logerr(strErrorMsg);
       bSucceeded = false;
       goto cleanup_results;

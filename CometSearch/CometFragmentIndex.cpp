@@ -569,8 +569,9 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    string strIndexFile;
 
    auto tPlainPeptideIndexStartTime = chrono::steady_clock::now();
-
-   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
       strIndexFile = g_staticParams.databaseInfo.szDatabase;  // .idx specified but not present to create it
       g_staticParams.databaseInfo.szDatabase[strlen(g_staticParams.databaseInfo.szDatabase) - 4] = '\0';
@@ -871,8 +872,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    if (g_bPlainPeptideIndexRead)
       return 1;
 
-   if (g_staticParams.options.bCreateFragmentIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (g_staticParams.options.bCreateFragmentIndex
+      && (databaseLen >=4 && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx")))
+   {
       strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
+   }
    else // database already is .idx
       strIndexFile = g_staticParams.databaseInfo.szDatabase;
 

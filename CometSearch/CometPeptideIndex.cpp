@@ -157,7 +157,15 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    for (uint64_t i = 0; i < tNumPeptides; ++i)
    {
       DBIndex sEntry;
-      ReadPeptideIndexEntry(&sEntry, fp);
+      if (!ReadPeptideIndexEntry(&sEntry, fp))
+      {
+         g_pvDBIndex.clear();
+         delete[] lIndex;
+         fclose(fp);
+         logout(" Error - failed to read peptide index entry " + to_string(i)
+            + " from .idx file; file may be truncated or corrupt.\n");
+         return false;
+      }
       g_pvDBIndex.push_back(sEntry);
    }
 

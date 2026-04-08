@@ -63,13 +63,14 @@
          }
 
          // Parse number of threads (default to processor count)
-         int numThreads = Environment.ProcessorCount;
+         int defaultNumThreads = Environment.ProcessorCount;
+         int numThreads = defaultNumThreads;
          if (args.Length >= 4)
          {
             if (!int.TryParse(args[3], out numThreads) || numThreads < 1)
             {
-               Console.WriteLine(" Warning: Invalid num_threads '{0}', using {1} threads", args[3], numThreads);
-               numThreads = Environment.ProcessorCount;
+               Console.WriteLine(" Warning: Invalid num_threads '{0}', using {1} threads", args[3], defaultNumThreads);
+               numThreads = defaultNumThreads;
             }
          }
 
@@ -104,179 +105,123 @@
             {
                try
                {
-                  // Open raw file ONCE
-                  IRawDataPlus rawFile = RawFileReaderAdapter.FileFactory(rawFileName);
-                  if (!rawFile.IsOpen || rawFile.IsError)
+                  // Open raw file ONCE; using ensures Dispose on all paths
+                  using (IRawDataPlus rawFile = RawFileReaderAdapter.FileFactory(rawFileName))
                   {
-                     Console.WriteLine(" Error: unable to access the RAW file using the RawFileReader class.");
-                     return;
-                  }
-
-                  rawFile.SelectInstrument(Device.MS, 1);
-
-                  // Get the first and last scan from the RAW file
-                  int iFirstScan = rawFile.RunHeaderEx.FirstSpectrum;
-                  int iLastScan = rawFile.RunHeaderEx.LastSpectrum;
-
-                  // Get MS1 mass range from first MS1 scan
-                  DoubleRangeWrapper MS1MassRange = null;
-
-                  for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
-                  {
-                     var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
-
-                     if (scanFilter.MSOrder == MSOrderType.Ms)
+                     if (!rawFile.IsOpen || rawFile.IsError)
                      {
-                        var stats1 = rawFile.GetScanStatsForScanNumber(iScanNumber);
-                        MS1MassRange = new DoubleRangeWrapper(stats1.LowMass, stats1.HighMass);
-                        break;
+                        Console.WriteLine(" Error: unable to access the RAW file using the RawFileReader class.");
+                        return;
                      }
-                  }
 
-                  if (MS1MassRange != null)
-                  {
-                     string MS1MassRangeString = MS1MassRange.get_dStart() + " " + MS1MassRange.get_dEnd();
-                     globalSearchMgr.SetParam("ms1_mass_range", MS1MassRangeString, MS1MassRange);
-                  }
+                     rawFile.SelectInstrument(Device.MS, 1);
 
-                  // MS1 RT parameters
-                  double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
-                  double dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
+                     // Get the first and last scan from the RAW file
+                     int iFirstScan = rawFile.RunHeaderEx.FirstSpectrum;
+                     int iLastScan = rawFile.RunHeaderEx.LastSpectrum;
 
-                  int iPrintEveryScan = 1;
-                  int iMS2TopN = 1; // report up to topN hits per MS/MS query
-                  int iProteinLengthCutoff = 50;
+                     // Get MS1 mass range from first MS1 scan
+                     DoubleRangeWrapper MS1MassRange = null;
 
-                  bool bPerformMS1Search = false;
-                  bool bPerformMS2Search = true;
-
-                  // Thread-safe collections
-                  var scanQueue = new ConcurrentQueue<int>();
-                  var results = new ConcurrentBag<ScanResult>();
-                  var progressLock = new object();
-                  int scansProcessed = 0;
-                  int totalScans = iLastScan - iFirstScan + 1;
-
-                  // Initialize ONCE (before threading)
-                  if (bPerformMS1Search)
-                     globalSearchMgr.InitializeSingleSpectrumMS1Search(dMaxQueryRT);
-
-
-                  Stopwatch watchIndexCreate = new Stopwatch();
-                  watchIndexCreate.Start();
-                  if (bDatabaseSearch && bPerformMS2Search)
-                     globalSearchMgr.InitializeSingleSpectrumSearch();
-                  watchIndexCreate.Stop();
-
-                  // Populate scan queue
-                  for (int i = iFirstScan; i <= iLastScan; ++i)
-                     scanQueue.Enqueue(i);
-
-                  Stopwatch watchGlobal = new Stopwatch();
-                  watchGlobal.Start();
-
-                  // Simplified worker thread function
-                  void ProcessScans(int threadId)
-                  {
-                     Stopwatch watch = new Stopwatch();
-
-                     // Process scans from queue using SHARED resources
-                     while (scanQueue.TryDequeue(out int iScanNumber))
+                     for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                      {
-                        try
+                        var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+
+                        if (scanFilter.MSOrder == MSOrderType.Ms)
                         {
-                           // Use SHARED raw file reader (thread-safe)
-                           var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
-                           double dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
-                           var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+                           var stats1 = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                           MS1MassRange = new DoubleRangeWrapper(stats1.LowMass, stats1.HighMass);
+                           break;
+                        }
+                     }
 
-                           if (scanFilter.MSOrder != MSOrderType.Ms && scanFilter.MSOrder != MSOrderType.Ms2)
+                     if (MS1MassRange != null)
+                     {
+                        string MS1MassRangeString = MS1MassRange.get_dStart() + " " + MS1MassRange.get_dEnd();
+                        globalSearchMgr.SetParam("ms1_mass_range", MS1MassRangeString, MS1MassRange);
+                     }
+
+                     // MS1 RT parameters
+                     double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
+                     double dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
+
+                     int iPrintEveryScan = 1;
+                     int iMS2TopN = 1; // report up to topN hits per MS/MS query
+                     int iProteinLengthCutoff = 50;
+
+                     bool bPerformMS1Search = false;
+                     bool bPerformMS2Search = true;
+
+                     // Thread-safe collections
+                     var scanQueue = new ConcurrentQueue<int>();
+                     var results = new ConcurrentBag<ScanResult>();
+                     var progressLock = new object();
+                     int scansProcessed = 0;
+                     int totalScans = iLastScan - iFirstScan + 1;
+
+                     // Initialize ONCE (before threading)
+                     if (bPerformMS1Search)
+                        globalSearchMgr.InitializeSingleSpectrumMS1Search(dMaxQueryRT);
+
+                     Stopwatch watchIndexCreate = new Stopwatch();
+                     watchIndexCreate.Start();
+                     if (bDatabaseSearch && bPerformMS2Search)
+                        globalSearchMgr.InitializeSingleSpectrumSearch();
+                     watchIndexCreate.Stop();
+
+                     // Populate scan queue
+                     for (int i = iFirstScan; i <= iLastScan; ++i)
+                        scanQueue.Enqueue(i);
+
+                     Stopwatch watchGlobal = new Stopwatch();
+                     watchGlobal.Start();
+
+                     // Simplified worker thread function
+                     void ProcessScans(int threadId)
+                     {
+                        Stopwatch watch = new Stopwatch();
+
+                        // Process scans from queue using SHARED resources
+                        while (scanQueue.TryDequeue(out int iScanNumber))
+                        {
+                           try
                            {
-                              // Update progress for non-searchable scans
-                              lock (progressLock)
+                              // Use SHARED raw file reader (thread-safe)
+                              var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                              double dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
+                              var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+
+                              if (scanFilter.MSOrder != MSOrderType.Ms && scanFilter.MSOrder != MSOrderType.Ms2)
                               {
-                                 scansProcessed++;
-                              }
-                              continue;
-                           }
-
-                           // Get spectral data
-                           double[] pdMass;
-                           double[] pdInten;
-                           int iNumPeaks;
-
-                           if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
-                           {
-                              var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
-                              iNumPeaks = centroidStream.Length;
-                              pdMass = centroidStream.Masses;
-                              pdInten = centroidStream.Intensities;
-                           }
-                           else
-                           {
-                              var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
-                              iNumPeaks = segmentedScan.Positions.Length;
-                              pdMass = segmentedScan.Positions;
-                              pdInten = segmentedScan.Intensities;
-                           }
-
-                           if (iNumPeaks < 10)  // don't bother searching sparse spectra
-                           {
-                              lock (progressLock)
-                              {
-                                 scansProcessed++;
-                              }
-                              continue;
-                           }
-
-                           ScanResult result = new ScanResult
-                           {
-                              ScanNumber = iScanNumber,
-                              ScanType = scanFilter.MSOrder,
-                              RT = dRT
-                           };
-
-                           // Perform search using SHARED manager (C++ is thread-safe via mutexes)
-                           if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
-                           {
-                              int iMS1TopN = 1;
-                              watch.Restart();
-
-                              // Use SHARED globalSearchMgr (thread-safe on C++ side)
-                              globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
-                                 pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
-
-                              watch.Stop();
-                              result.ScoresMS1 = vScores;
-                              result.ElapsedMs = (int)watch.ElapsedMilliseconds;
-                           }
-                           else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)
-                           {
-                              int iPrecursorCharge = 0;
-                              double dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
-
-                              var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
-                              for (int i = 0; i < trailerData.Length; ++i)
-                              {
-                                 if (trailerData.Labels[i] == "Monoisotopic M/Z:")
+                                 // Update progress for non-searchable scans
+                                 lock (progressLock)
                                  {
-                                    double dTmp = double.Parse(trailerData.Values[i]);
-                                    double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
-
-                                    if (dTmp != 0.0 && dMassDiff < 10.0)
-                                       dPrecursorMZ = dTmp;
+                                    scansProcessed++;
                                  }
-                                 else if (trailerData.Labels[i] == "Charge State:")
-                                    iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
+                                 continue;
                               }
 
-                              double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * dProtonMass;
+                              // Get spectral data
+                              double[] pdMass;
+                              double[] pdInten;
+                              int iNumPeaks;
 
-                              result.ExpMass = dExpPepMass - dProtonMass;  // store neutral mass
-                              result.Charge = iPrecursorCharge;
-                              result.MZ = dPrecursorMZ;
+                              if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
+                              {
+                                 var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
+                                 iNumPeaks = centroidStream.Length;
+                                 pdMass = centroidStream.Masses;
+                                 pdInten = centroidStream.Intensities;
+                              }
+                              else
+                              {
+                                 var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
+                                 iNumPeaks = segmentedScan.Positions.Length;
+                                 pdMass = segmentedScan.Positions;
+                                 pdInten = segmentedScan.Intensities;
+                              }
 
-                              if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
+                              if (iNumPeaks < 10)  // don't bother searching sparse spectra
                               {
                                  lock (progressLock)
                                  {
@@ -285,194 +230,247 @@
                                  continue;
                               }
 
-                              watch.Restart();
-
-                              // Use SHARED globalSearchMgr (thread-safe on C++ side)
-                              globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ,
-                                 pdMass, pdInten, iNumPeaks,
-                                 out List<string> vPeptide,
-                                 out List<string> vProtein,
-                                 out List<List<FragmentWrapper>> vMatchingFragments,
-                                 out List<ScoreWrapper> vScores);
-
-                              watch.Stop();
-                              result.Peptides = vPeptide;
-                              result.Proteins = vProtein;
-                              result.Scores = vScores;
-                              result.ElapsedMs = (int)watch.ElapsedMilliseconds;
-                           }
-
-                           results.Add(result);
-
-                           // Update progress
-                           lock (progressLock)
-                           {
-                              scansProcessed++;
-                              if (scansProcessed % 100 == 0)
+                              ScanResult result = new ScanResult
                               {
-                                 double percentComplete = (double)scansProcessed / totalScans * 100.0;
-                                 Console.Write("\r Progress: {0:F1}% ({1}/{2} scans)", percentComplete, scansProcessed, totalScans);
+                                 ScanNumber = iScanNumber,
+                                 ScanType = scanFilter.MSOrder,
+                                 RT = dRT
+                              };
+
+                              // Perform search using SHARED manager (C++ is thread-safe via mutexes)
+                              if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
+                              {
+                                 int iMS1TopN = 1;
+                                 watch.Restart();
+
+                                 // Use SHARED globalSearchMgr (thread-safe on C++ side)
+                                 globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
+                                    pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
+
+                                 watch.Stop();
+                                 result.ScoresMS1 = vScores;
+                                 result.ElapsedMs = (int)watch.ElapsedMilliseconds;
+                              }
+                              else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)
+                              {
+                                 int iPrecursorCharge = 0;
+                                 double dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
+
+                                 var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
+                                 for (int i = 0; i < trailerData.Length; ++i)
+                                 {
+                                    if (trailerData.Labels[i] == "Monoisotopic M/Z:")
+                                    {
+                                       double dTmp = double.Parse(trailerData.Values[i]);
+                                       double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+
+                                       if (dTmp != 0.0 && dMassDiff < 10.0)
+                                          dPrecursorMZ = dTmp;
+                                    }
+                                    else if (trailerData.Labels[i] == "Charge State:")
+                                       iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
+                                 }
+
+                                 double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * dProtonMass;
+
+                                 result.ExpMass = dExpPepMass - dProtonMass;  // store neutral mass
+                                 result.Charge = iPrecursorCharge;
+                                 result.MZ = dPrecursorMZ;
+
+                                 if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
+                                 {
+                                    lock (progressLock)
+                                    {
+                                       scansProcessed++;
+                                    }
+                                    continue;
+                                 }
+
+                                 watch.Restart();
+
+                                 // Use SHARED globalSearchMgr (thread-safe on C++ side)
+                                 globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ,
+                                    pdMass, pdInten, iNumPeaks,
+                                    out List<string> vPeptide,
+                                    out List<string> vProtein,
+                                    out List<List<FragmentWrapper>> vMatchingFragments,
+                                    out List<ScoreWrapper> vScores);
+
+                                 watch.Stop();
+                                 result.Peptides = vPeptide;
+                                 result.Proteins = vProtein;
+                                 result.Scores = vScores;
+                                 result.ElapsedMs = (int)watch.ElapsedMilliseconds;
+                              }
+
+                              results.Add(result);
+
+                              // Update progress
+                              lock (progressLock)
+                              {
+                                 scansProcessed++;
+                                 if (scansProcessed % 100 == 0)
+                                 {
+                                    double percentComplete = (double)scansProcessed / totalScans * 100.0;
+                                    Console.Write("\r Progress: {0:F1}% ({1}/{2} scans)", percentComplete, scansProcessed, totalScans);
+                                 }
+                              }
+                           }
+                           catch (Exception ex)
+                           {
+                              Console.WriteLine("\n Thread {0}: Error processing scan {1}: {2}", threadId, iScanNumber, ex.Message);
+                              lock (progressLock)
+                              {
+                                 scansProcessed++;
                               }
                            }
                         }
-                        catch (Exception ex)
+                     }
+
+                     // Launch worker threads
+                     Task[] tasks = new Task[numThreads];
+                     for (int i = 0; i < numThreads; ++i)
+                     {
+                        int threadId = i;
+                        tasks[i] = Task.Run(() => ProcessScans(threadId));
+                     }
+
+                     // Wait for all threads to complete
+                     Task.WaitAll(tasks);
+                     Console.WriteLine(); // newline after progress
+
+                     watchGlobal.Stop();
+                     TimeSpan elapsedGlobal = watchGlobal.Elapsed;
+
+                     // Cleanup ONCE
+                     if (bPerformMS2Search)
+                        globalSearchMgr.FinalizeSingleSpectrumSearch();
+                     if (bPerformMS1Search)
+                        globalSearchMgr.FinalizeSingleSpectrumMS1Search();
+
+                     // Process and display results
+                     var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
+
+                     // Create histograms
+                     int iMaxHistogramTime = 50;
+                     int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
+                     int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
+                     var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
+
+                     foreach (var result in sortedResults)
+                     {
+                        int iTime = result.ElapsedMs;
+
+                        if (result.ScanType == MSOrderType.Ms && result.ScoresMS1 != null && result.ScoresMS1.Count > 0)
                         {
-                           Console.WriteLine("\n Thread {0}: Error processing scan {1}: {2}", threadId, iScanNumber, ex.Message);
-                           lock (progressLock)
+                           if (iTime >= iMaxHistogramTime)
+                              iTime = iMaxHistogramTime - 1;
+                           if (iTime >= 0)
+                              piTimeSearchMS1[iTime] += 1;
+
+                           if ((result.ScanNumber % iPrintEveryScan) == 0)
                            {
-                              scansProcessed++;
+                              string line = string.Format("*MS1 {0}  libscan {1}  queryRT {2:F2}  libRT {3:F2}  dotp {4:F3}  {5} ms",
+                                  result.ScanNumber, result.ScoresMS1[0].iScanNumber, result.RT,
+                                  result.ScoresMS1[0].fRTime, result.ScoresMS1[0].fDotProduct, iTime);
+                              //Console.WriteLine(line);
+                              rtsWriter.WriteLine(line);
+                           }
+                        }
+                        else if (result.ScanType == MSOrderType.Ms2 && result.Peptides != null && result.Peptides.Count > 0)
+                        {
+                           if (iTime >= iMaxHistogramTime)
+                              iTime = iMaxHistogramTime - 1;
+                           if (iTime >= 0)
+                              piTimeSearchMS2[iTime] += 1;
+
+                           if (result.Peptides[0].Length > 0)
+                           {
+                              slowestRuns.Add((iTime, result.Peptides[0], result.ScanNumber, result.Scores[0].xCorr));
+                              slowestRuns = slowestRuns.OrderByDescending(x => x.TimeMs).Take(5).ToList();
+                           }
+
+                           if ((result.ScanNumber % iPrintEveryScan) == 0)
+                           {
+                              string protein = result.Proteins[0];
+                              if (protein.Length > iProteinLengthCutoff)
+                                 protein = protein.Substring(0, iProteinLengthCutoff);
+
+                              // replace space with semicolon for easy parsing
+                              string sAScoreProSiteScores = result.Scores[0].sAScoreProSiteScores.Replace(' ', ';');
+
+                              string line = string.Format(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  z {10}  exp {4:F4}  calc {5:F4}  AScore {6:F2}  Sites '{7}'  {8} ms  prot '{9}'",
+                                  result.ScanNumber, result.Peptides[0], result.Scores[0].xCorr, result.Scores[0].dExpect,
+                                  result.ExpMass, result.Scores[0].mass,
+                                  result.Scores[0].dAScorePro, sAScoreProSiteScores,
+                                  iTime, protein, result.Charge);
+                              //Console.WriteLine(line);
+                              rtsWriter.WriteLine(line);
+
+                              if (Math.Abs(result.ExpMass - result.Scores[0].mass) > 5.0)
+                              {
+                                 string warn = string.Format(" **** Warning: large mass error for scan {0}: {1:F4} Da", result.ScanNumber, result.ExpMass - result.Scores[0].mass);
+                                 Console.WriteLine(warn);
+                                 rtsWriter.WriteLine(warn);
+                              }
                            }
                         }
                      }
-                  }
 
-                  // Launch worker threads
-                  Task[] tasks = new Task[numThreads];
-                  for (int i = 0; i < numThreads; ++i)
-                  {
-                     int threadId = i;
-                     tasks[i] = Task.Run(() => ProcessScans(threadId));
-                  }
-
-                  // Wait for all threads to complete
-                  Task.WaitAll(tasks);
-                  Console.WriteLine(); // newline after progress
-
-                  watchGlobal.Stop();
-                  TimeSpan elapsedGlobal = watchGlobal.Elapsed;
-
-                  // Cleanup ONCE
-                  if (bPerformMS2Search)
-                     globalSearchMgr.FinalizeSingleSpectrumSearch();
-                  if (bPerformMS1Search)
-                     globalSearchMgr.FinalizeSingleSpectrumMS1Search();
-
-                  // Process and display results
-                  var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
-
-                  // Create histograms
-                  int iMaxHistogramTime = 50;
-                  int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
-                  int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
-                  var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
-
-                  foreach (var result in sortedResults)
-                  {
-                     int iTime = result.ElapsedMs;
-
-                     if (result.ScanType == MSOrderType.Ms && result.ScoresMS1 != null && result.ScoresMS1.Count > 0)
+                     // Write histogram
                      {
-                        if (iTime >= iMaxHistogramTime)
-                           iTime = iMaxHistogramTime - 1;
-                        if (iTime >= 0)
-                           piTimeSearchMS1[iTime] += 1;
-
-                        if ((result.ScanNumber % iPrintEveryScan) == 0)
+                        int iTot = 0;
+                        int iAbove5ms = 0;
+                        int iAbove10ms = 0;
+                        for (int i = 0; i < iMaxHistogramTime; ++i)
                         {
-                           string line = string.Format("*MS1 {0}  libscan {1}  queryRT {2:F2}  libRT {3:F2}  dotp {4:F3}  {5} ms",
-                               result.ScanNumber, result.ScoresMS1[0].iScanNumber, result.RT,
-                               result.ScoresMS1[0].fRTime, result.ScoresMS1[0].fDotProduct, iTime);
-                           //Console.WriteLine(line);
-                           rtsWriter.WriteLine(line);
-                           rtsWriter.Flush();
-                        }
-                     }
-                     else if (result.ScanType == MSOrderType.Ms2 && result.Peptides != null && result.Peptides.Count > 0)
-                     {
-                        if (iTime >= iMaxHistogramTime)
-                           iTime = iMaxHistogramTime - 1;
-                        if (iTime >= 0)
-                           piTimeSearchMS2[iTime] += 1;
+                           string line1 = $"histogram\t{i}\t{piTimeSearchMS1[i]}\t{piTimeSearchMS2[i]}";
+                           Console.WriteLine(line1);
+                           rtsWriter.WriteLine(line1);
 
-                        if (result.Peptides[0].Length > 0)
-                        {
-                           slowestRuns.Add((iTime, result.Peptides[0], result.ScanNumber, result.Scores[0].xCorr));
-                           slowestRuns = slowestRuns.OrderByDescending(x => x.TimeMs).Take(5).ToList();
+                           iTot += piTimeSearchMS2[i];
+                           if (i > 5)
+                              iAbove5ms += piTimeSearchMS2[i];
+                           if (i > 10)
+                              iAbove10ms += piTimeSearchMS2[i];
                         }
 
-                        if ((result.ScanNumber % iPrintEveryScan) == 0)
+                        Console.WriteLine("\n5 Slowest MS2 Runs:");
+                        rtsWriter.WriteLine("\n5 Slowest MS2 Runs:");
+                        Console.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
+                        rtsWriter.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
+                        foreach (var run in slowestRuns.OrderByDescending(x => x.TimeMs))
                         {
-                           string protein = result.Proteins[0];
-                           if (protein.Length > iProteinLengthCutoff)
-                              protein = protein.Substring(0, iProteinLengthCutoff);
-
-                           // replace space with semicolon for easy parsing
-                           string sAScoreProSiteScores = result.Scores[0].sAScoreProSiteScores.Replace(' ', ';');
-
-                           string line = string.Format(" MS2 {0}\t{1}  {2:F4}  {3:0.##E+00}  z {10}  exp {4:F4}  calc {5:F4}  AScore {6:F2}  Sites '{7}'  {8} ms  prot '{9}'",
-                               result.ScanNumber, result.Peptides[0], result.Scores[0].xCorr, result.Scores[0].dExpect,
-                               result.ExpMass, result.Scores[0].mass,
-                               result.Scores[0].dAScorePro, sAScoreProSiteScores,
-                               iTime, protein, result.Charge);
-                           //Console.WriteLine(line);
-                           rtsWriter.WriteLine(line);
-                           rtsWriter.Flush();
-
-                           if (Math.Abs(result.ExpMass - result.Scores[0].mass) > 5.0)
-                           {
-                              string warn = string.Format(" **** Warning: large mass error for scan {0}: {1:F4} Da", result.ScanNumber, result.ExpMass - result.Scores[0].mass);
-                              Console.WriteLine(warn);
-                              rtsWriter.WriteLine(warn);
-                              rtsWriter.Flush();
-                           }
+                           string line1 = $"{run.TimeMs}\t{run.ScanNumber}\t{run.Peptide}\t{run.XCorr:F4}";
+                           Console.WriteLine(line1);
+                           rtsWriter.WriteLine(line1);
                         }
-                     }
-                  }
 
-                  // Write histogram
-                  {
-                     int iTot = 0;
-                     int iAbove5ms = 0;
-                     int iAbove10ms = 0;
-                     for (int i = 0; i < iMaxHistogramTime; ++i)
-                     {
-                        string line1 = $"histogram\t{i}\t{piTimeSearchMS1[i]}\t{piTimeSearchMS2[i]}";
-                        Console.WriteLine(line1);
-                        rtsWriter.WriteLine(line1);
+                        string line = string.Format("\n<= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
+                           iTot - iAbove5ms, iAbove5ms, iAbove10ms,
+                           iTot > 0 ? ((double)iAbove5ms / iTot) * 100.0 : 0,
+                           iTot > 0 ? ((double)iAbove10ms / iTot) * 100.0 : 0);
+                        rtsWriter.WriteLine(line);
 
-                        iTot += piTimeSearchMS2[i];
-                        if (i > 5)
-                           iAbove5ms += piTimeSearchMS2[i];
-                        if (i > 10)
-                           iAbove10ms += piTimeSearchMS2[i];
-                     }
+                        line = string.Format("\nTotal elapsed time: {0:F2} minutes", elapsedGlobal.TotalMinutes);
+                        rtsWriter.WriteLine(line);
 
-                     Console.WriteLine("\n5 Slowest MS2 Runs:");
-                     rtsWriter.WriteLine("\n5 Slowest MS2 Runs:");
-                     Console.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
-                     rtsWriter.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
-                     foreach (var run in slowestRuns.OrderByDescending(x => x.TimeMs))
-                     {
-                        string line1 = $"{run.TimeMs}\t{run.ScanNumber}\t{run.Peptide}\t{run.XCorr:F4}";
-                        Console.WriteLine(line1);
-                        rtsWriter.WriteLine(line1);
+                        line = string.Format("Scans processed: {0}", scansProcessed);
+                        rtsWriter.WriteLine(line);
+
+                        line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessed);
+                        rtsWriter.WriteLine(line);
+
+                        line = string.Format("\nindex creation elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+                        line = string.Format("search elapsed time: {0:F2} s\n", watchGlobal.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+
                      }
 
-                     string line = string.Format("\n<= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
-                        iTot - iAbove5ms, iAbove5ms, iAbove10ms,
-                        iTot > 0 ? ((double)iAbove5ms / iTot) * 100.0 : 0,
-                        iTot > 0 ? ((double)iAbove10ms / iTot) * 100.0 : 0);
-                     rtsWriter.WriteLine(line);
-
-                     line = string.Format("\nTotal elapsed time: {0:F2} minutes", elapsedGlobal.TotalMinutes);
-                     rtsWriter.WriteLine(line);
-
-                     line = string.Format("Scans processed: {0}", scansProcessed);
-                     rtsWriter.WriteLine(line);
-
-                     line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessed);
-                     rtsWriter.WriteLine(line);
-
-                     line = string.Format("\nindex creation elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
-                     rtsWriter.WriteLine(line);
-                     Console.WriteLine(line);
-                     line = string.Format("search elapsed time: {0:F2} s\n", watchGlobal.Elapsed.TotalSeconds);
-                     rtsWriter.WriteLine(line);
-                     Console.WriteLine(line);
-
-                  }
-
-                  rawFile.Dispose();
+                  } // end using rawFile — Dispose called automatically
                }
                catch (Exception rawSearchEx)
                {

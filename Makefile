@@ -20,7 +20,7 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 		 CometSearch/CometPostAnalysis.cpp CometSearch/CometSearchManager.cpp CometSearch/CometWritePercolator.cpp CometSearch/Threading.cpp\
 		 CometSearch/CometPreprocess.cpp CometSearch/CometWriteSqt.cpp CometSearch/CombinatoricsUtils.cpp\
 		 CometSearch/CometModificationsPermuter.cpp CometSearch/CometInterfaces.h CometSearch/CometInterfaces.cpp\
-		 CometSearch/CometFragmentIndex.cpp CometSearch/CometFragmentIndex.h\
+		 CometSearch/CometFragmentIndex.cpp CometSearch/CometFragmentIndex.h CometSearch/CometFragmentIndexReader.h\
 		 CometSearch/CometPeptideIndex.cpp CometSearch/CometPeptideIndex.h\
 		 CometSearch/CometSpecLib.cpp CometSearch/CometSpecLib.h\
 		 CometSearch/CometAlignment.cpp CometSearch/CometAlignment.h\
