@@ -143,7 +143,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 
 void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
-   cout <<  " - generate fragment index\n"; fflush(stdout);
+   cout <<  " - generate fragment ion index\n"; fflush(stdout);
 
    Threading::InitMutex(&_vFragmentPeptidesMutex);
 
@@ -569,8 +569,9 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    string strIndexFile;
 
    auto tPlainPeptideIndexStartTime = chrono::steady_clock::now();
-
-   if (strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
       strIndexFile = g_staticParams.databaseInfo.szDatabase;  // .idx specified but not present to create it
       g_staticParams.databaseInfo.szDatabase[strlen(g_staticParams.databaseInfo.szDatabase) - 4] = '\0';
@@ -604,14 +605,14 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    if (bSucceeded)
    {
       g_staticParams.options.bCreateFragmentIndex = true;
-      g_staticParams.iIndexDb = 0;
+      g_staticParams.iDbType = DbType::FASTA_DB;
 
       // this step calls RunSearch just to pull out all peptides
       // to write into the .idx pepties/proteins file
       bSucceeded = CometSearch::RunSearch(0, 0, tp);
 
       g_staticParams.options.bCreateFragmentIndex = false;
-      g_staticParams.iIndexDb = 1;
+      g_staticParams.iDbType = DbType::FI_DB;
    }
 
    if (bSwapIdxExtension)
@@ -871,8 +872,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    if (g_bPlainPeptideIndexRead)
       return 1;
 
-   if (g_staticParams.options.bCreateFragmentIndex && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (g_staticParams.options.bCreateFragmentIndex
+      && (databaseLen >=4 && !strstr(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx")))
+   {
       strIndexFile = g_staticParams.databaseInfo.szDatabase + string(".idx");
+   }
    else // database already is .idx
       strIndexFile = g_staticParams.databaseInfo.szDatabase;
 

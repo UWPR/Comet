@@ -87,13 +87,13 @@ void CometSearchManagerWrapper::FinalizeSingleSpectrumSearch()
     }
 }
 
-bool CometSearchManagerWrapper::InitializeSingleSpectrumMS1Search()
+bool CometSearchManagerWrapper::InitializeSingleSpectrumMS1Search(double dMaxQueryRT)
 {
    if (!_pSearchMgr)
    {
       return false;
    }
-   return _pSearchMgr->InitializeSingleSpectrumMS1Search();
+   return _pSearchMgr->InitializeSingleSpectrumMS1Search(dMaxQueryRT);
 }
 
 void CometSearchManagerWrapper::FinalizeSingleSpectrumMS1Search()

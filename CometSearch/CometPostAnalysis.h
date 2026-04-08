@@ -42,43 +42,43 @@ public:
    CometPostAnalysis();
    ~CometPostAnalysis();
    static bool PostAnalysis(ThreadPool* tp);
-   static void PostAnalysisThreadProc(PostAnalysisThreadData *pThreadData,
+   static void PostAnalysisThreadProc(PostAnalysisThreadData* pThreadData,
                                       ThreadPool* tp);
-   static void CalculateDeltaCn(int i);
+   // Query*-based overloads, the only versions now
+   static void CalculateDeltaCn(Query* pQuery);
    static void CalculateDeltaCnsAndRank(Results* pOutput,
-                                       int iNumPrintLines);
-   static void AnalyzeSP(int i);
-   static void CalculateSP(Results *pOutput,
-                           int iWhichQuery,
+                                        int iNumPrintLines);
+   static void AnalyzeSP(Query* pQuery);
+   static void CalculateSP(Results* pOutput,
+                           Query* pQuery,
                            int iSize);
-   static bool CalculateEValue(int iWhichQuery,
+   static bool CalculateEValue(Query* pQuery,
                                bool bTopHitOnly);
-   static void CalculateAScorePro(int iWhichQuery,
+   static void CalculateAScorePro(Query* pQuery,
                                   AScoreProCpp::AScoreDllInterface* ascoreInterface);
-   static bool SortFnXcorr(const Results &a,
-                           const Results &b);
+   static bool SortFnXcorr(const Results& a,
+                           const Results& b);
    static bool SortSpecLibFnXcorrMS1(const SpecLibResultsMS1& a,
                                      const SpecLibResultsMS1& b);
 
 private:
 
-   static bool SortFnSp(const Results &a,
-                        const Results &b);
-
-   static bool SortFnMod(const Results &a,
-                         const Results &b);
-   static bool GenerateXcorrDecoys(int iWhichQuery);
-   static void LinearRegression(int *pHistogram,
-                                double *dSlope,
-                                double *dIntercept,
-                                int *iMaxCorr,
-                                int *iStartCorr,
-                                int *iNextCorr);
-   static float FindSpScore(Query *pQuery,
+   static bool SortFnSp(const Results& a,
+                        const Results& b);
+   static bool SortFnMod(const Results& a,
+                         const Results& b);
+   static bool GenerateXcorrDecoys(Query* pQuery);
+   static void LinearRegression(int* pHistogram,
+                                double* dSlope,
+                                double* dIntercept,
+                                int* iMaxCorr,
+                                int* iStartCorr,
+                                int* iNextCorr);
+   static float FindSpScore(Query* pQuery,
                             int bin,
                             int iMax);
-   static bool ProteinEntryCmp(const struct ProteinEntryStruct &a,
-                               const struct ProteinEntryStruct &b);
+   static bool ProteinEntryCmp(const struct ProteinEntryStruct& a,
+                               const struct ProteinEntryStruct& b);
 };
 
 

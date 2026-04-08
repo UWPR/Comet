@@ -26,13 +26,170 @@ CometPeptideIndex::~CometPeptideIndex()
 {
 }
 
+// Read the full peptide index (.idx) file into global read-only structures:
+//   g_pvDBIndex         - all peptide entries, sorted by mass
+//   g_pvProteinsList    - vector-of-vectors mapping peptide to protein file positions
+//   g_pvProteinNames    - map of file offset to protein name string
+//   g_bPeptideIndexRead - guard flag
+//
+// The .idx binary layout (written by WritePeptideIndex):
+//   [text header lines ending with blank line]
+//   [protein names: each WIDTH_REFERENCE chars]
+//   [proteins list: count then per-entry (size + file offsets)]
+//   [peptide entries: each via ReadPeptideIndexEntry format]
+//   [footer: iMinMass(int), iMaxMass(int), tNumPeptides(uint64_t),
+//            lIndex[iMaxMass*10](comet_fileoffset_t), lEndOfPeptides, clProteinsFilePos]
+//
+bool CometPeptideIndex::ReadPeptideIndex(void)
+{
+   if (g_bPeptideIndexRead)
+      return true;
 
-bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
+   FILE* fp;
+   char szBuf[SIZE_BUF];
+
+   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   {
+      string strErrorMsg = " Error - cannot open peptide index file \""
+         + string(g_staticParams.databaseInfo.szDatabase) + "\" for reading.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   // Verify this is a peptide index file (not a fragment index)
+   if (fgets(szBuf, SIZE_BUF, fp) == NULL)
+   {
+      fclose(fp);
+      return false;
+   }
+   if (strncmp(szBuf, "Comet peptide index database", 28) != 0)
+   {
+      string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+         + "\" is not a peptide index file.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      fclose(fp);
+      return false;
+   }
+
+   // Skip remaining header lines until blank line
+   while (fgets(szBuf, SIZE_BUF, fp) != NULL)
+   {
+      if (szBuf[0] == '\n' || szBuf[0] == '\r')
+         break;
+   }
+
+   // --- Read footer first to get layout positions ---
+   // Footer is at the very end of the file:
+   //   ... lEndOfPeptides(comet_fileoffset_t) clProteinsFilePos(comet_fileoffset_t)
+   // Seek to end minus 2 * sizeof(comet_fileoffset_t) to read both values
+   comet_fseek(fp, -2 * (long)clSizeCometFileOffset, SEEK_END);
+
+   comet_fileoffset_t lEndOfPeptides;
+   comet_fileoffset_t clProteinsFilePos;
+   size_t tTmpRead;
+   tTmpRead = fread(&lEndOfPeptides, clSizeCometFileOffset, 1, fp);
+   tTmpRead = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
+
+   // --- Read the mass index and peptide count from lEndOfPeptides position ---
+   comet_fseek(fp, lEndOfPeptides, SEEK_SET);
+
+   int iMinMass, iMaxMass;
+   uint64_t tNumPeptides;
+   tTmpRead = fread(&iMinMass, sizeof(int), 1, fp);
+   tTmpRead = fread(&iMaxMass, sizeof(int), 1, fp);
+   tTmpRead = fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
+
+   int iMaxPeptideMass10 = iMaxMass * 10;
+
+   // Read the mass index array: lIndex[0..iMaxPeptideMass10-1]
+   // Each entry is a file offset to the first peptide at that 0.1 Da mass bin
+   comet_fileoffset_t* lIndex = new comet_fileoffset_t[iMaxPeptideMass10];
+   tTmpRead = fread(lIndex, clSizeCometFileOffset, iMaxPeptideMass10, fp);
+
+   // --- Read protein names ---
+   // Protein names are stored between end-of-header and clProteinsFilePos
+   // Each protein name is WIDTH_REFERENCE chars.  We need to know how many
+   // there are.  Read them by seeking to the position right after the header
+   // and reading until clProteinsFilePos.
+
+   // Actually, the protein names are written BEFORE clProteinsFilePos.
+   // The structure is: [header][protein names][proteins list at clProteinsFilePos][peptides][footer]
+   // We need the protein name positions for g_pvProteinNames mapping.
+   // For the single-spectrum search path, protein names are resolved via
+   // g_pvProteinsList file offsets that point into the .idx file protein name region.
+   // We'll store them after reading the proteins list.
+
+   // --- Read proteins list (vector of vectors) from clProteinsFilePos ---
+   comet_fseek(fp, clProteinsFilePos, SEEK_SET);
+
+   size_t tNumProteinEntries;
+   tTmpRead = fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
+
+   g_pvProteinsList.clear();
+   g_pvProteinsList.resize(tNumProteinEntries);
+
+   for (size_t i = 0; i < tNumProteinEntries; ++i)
+   {
+      size_t tNumProteins;
+      tTmpRead = fread(&tNumProteins, sizeof(size_t), 1, fp);
+
+      g_pvProteinsList[i].resize(tNumProteins);
+      for (size_t j = 0; j < tNumProteins; ++j)
+      {
+         comet_fileoffset_t lProtFilePos;
+         tTmpRead = fread(&lProtFilePos, clSizeCometFileOffset, 1, fp);
+         g_pvProteinsList[i][j] = lProtFilePos;
+      }
+   }
+
+   // The file position after reading the proteins list is where the peptides start.
+   comet_fileoffset_t lFirstPeptidePos = comet_ftell(fp);
+
+   // --- Read all peptide entries into g_pvDBIndex ---
+   g_pvDBIndex.clear();
+   g_pvDBIndex.reserve((size_t)tNumPeptides);
+
+   // Seek to first peptide (right after the proteins list)
+   comet_fseek(fp, lFirstPeptidePos, SEEK_SET);
+
+   for (uint64_t i = 0; i < tNumPeptides; ++i)
+   {
+      DBIndex sEntry;
+      if (!ReadPeptideIndexEntry(&sEntry, fp))
+      {
+         g_pvDBIndex.clear();
+         delete[] lIndex;
+         fclose(fp);
+         logout(" Error - failed to read peptide index entry " + to_string(i)
+            + " from .idx file; file may be truncated or corrupt.\n");
+         return false;
+      }
+      g_pvDBIndex.push_back(sEntry);
+   }
+
+   // g_pvDBIndex is already sorted by mass from the .idx file
+
+   delete[] lIndex;
+   fclose(fp);
+
+   logout(" Read peptide index: " + to_string(tNumPeptides) + " peptides, "
+      + to_string(tNumProteinEntries) + " protein groups\n");
+
+   g_staticParams.iDbType = DbType::PI_DB;
+   g_bPeptideIndexRead = true;
+
+   return true;
+}
+
+
+bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 {
    bool bSucceeded;
-   FILE *fptr;
+   FILE* fptr;
 
-   const int iIndex_SIZE_FILE=SIZE_FILE+4;
+   const int iIndex_SIZE_FILE = SIZE_FILE + 4;
    char szIndexFile[iIndex_SIZE_FILE];
    sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
 
@@ -111,7 +268,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
       {
          // each unique peptide, irregardless of mod state, will have the same list
          // of matched proteins
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
+         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i - 1).szPeptide))
          {
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
@@ -122,7 +279,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
             // and store current protein reference into new temp
             // temp can have duplicates due to mod forms of peptide so make unique here
             sort(temp.begin(), temp.end());
-            temp.erase(unique(temp.begin(), temp.end()), temp.end() );
+            temp.erase(unique(temp.begin(), temp.end()), temp.end());
             pvProteinsListLocal.push_back(temp);
 
             lProtCount++; // start new row in pvProteinsListLocal
@@ -133,6 +290,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
          }
       }
    }
+
    // now at end of loop, push last temp onto pvProteinsListLocal
    sort(temp.begin(), temp.end());
    temp.erase(unique(temp.begin(), temp.end()), temp.end() );
@@ -203,10 +361,10 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    for (int x = 0; x < VMODS; x++)
    {
       fprintf(fptr, " %s:%lf:%lf:%lf",
-            g_staticParams.variableModParameters.varModList[x].szVarModChar,
-            g_staticParams.variableModParameters.varModList[x].dVarModMass,
-            g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
-            g_staticParams.variableModParameters.varModList[x].dNeutralLoss2);
+         g_staticParams.variableModParameters.varModList[x].szVarModChar,
+         g_staticParams.variableModParameters.varModList[x].dVarModMass,
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2);
 
    }
    fprintf(fptr, "\n\n");
@@ -265,7 +423,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
    // next write out the peptides and track peptide mass index
    int iMaxPeptideMass = (int)(g_staticParams.options.dPeptideMassHigh);
    int iMaxPeptideMass10 = iMaxPeptideMass * 10;  // make mass index at resolution of 0.1 Da
-   comet_fileoffset_t *lIndex = new comet_fileoffset_t[iMaxPeptideMass10 + 1];
+   comet_fileoffset_t* lIndex = new comet_fileoffset_t[iMaxPeptideMass10 + 1];
    for (int x = 0; x <= iMaxPeptideMass10; x++)
       lIndex[x] = -1;
 
@@ -353,35 +511,207 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool *tp)
 }
 
 
-void CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex *sDBI, FILE *fp)
+bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
 {
    int iLen;
    size_t tTmp;
 
    tTmp = fread(&iLen, sizeof(int), 1, fp);
+   if (tTmp != 1) return false;
    tTmp = fread(sDBI->szPeptide, sizeof(char), iLen, fp);
+   if (tTmp != (size_t)iLen) return false;
    sDBI->szPeptide[iLen] = '\0';
 
    tTmp = fread(&(sDBI->cPrevAA), sizeof(char), 1, fp);
+   if (tTmp != 1) return false;
    tTmp = fread(&(sDBI->cNextAA), sizeof(char), 1, fp);
+   if (tTmp != 1) return false;
 
    unsigned char cNumMods;  // number of var mods encoded as position:residue pairs
    tTmp = fread(&cNumMods, sizeof(unsigned char), 1, fp);  // read how many var mods are stored
+   if (tTmp != 1) return false;
 
-   memset(sDBI->pcVarModSites, 0, sizeof(unsigned char)*iLen+2);
+   // Issue 3: Add parentheses for correct precedence: sizeof(unsigned char) * (iLen + 2)
+   memset(sDBI->pcVarModSites, 0, sizeof(unsigned char) * (iLen + 2));
    if (cNumMods > 0)
    {
-      for (unsigned char x=0; x<cNumMods; x++)
+      for (unsigned char x = 0; x < cNumMods; x++)
       {
          unsigned char cPosition;
          char cResidue;
          tTmp = fread(&cPosition, sizeof(unsigned char), 1, fp);
+         if (tTmp != 1) return false;
          tTmp = fread(&cResidue, sizeof(char), 1, fp);
+         if (tTmp != 1) return false;
          sDBI->pcVarModSites[(int)cPosition] = cResidue;
       }
    }
    // done reading mod sites
 
    tTmp = fread(&(sDBI->dPepMass), sizeof(double), 1, fp);
+   if (tTmp != 1) return false;
    tTmp = fread(&(sDBI->lIndexProteinFilePosition), sizeof(comet_fileoffset_t), 1, fp);
+   if (tTmp != 1) return false;
+
+   return true;
+}
+
+
+// Parses the .idx text header lines (MassType:, StaticMod:, DecoySearch:,
+// Enzyme:, Enzyme2:, VariableMod:) from fp.  Reads until the VariableMod:
+// line (inclusive), which is always the last header entry before the blank
+// line separator.
+//
+// Both SearchPeptideIndex(ThreadPool*) and InitializeMassesFromPeptideIndex()
+// call this helper so that any future .idx header format changes only need to
+// be made in one place.
+//
+// IMPORTANT: resets pdAAMassFragment AND pdAAMassParent via AssignMass()
+// before applying static mods, so this is safe to call whether or not
+// InitializeStaticParams() has already applied static mods.
+bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
+{
+   char szBuf[SIZE_BUF];
+   bool bFoundStatic = false;
+   bool bFoundVariable = false;
+
+   // Ignore any static masses from the params file; only the values baked
+   // into the .idx header are authoritative for an index search.
+   memset(g_staticParams.staticModifications.pdStaticMods, 0,
+      sizeof(g_staticParams.staticModifications.pdStaticMods));
+
+   rewind(fp);
+
+   while (fgets(szBuf, SIZE_BUF, fp))
+   {
+      if (!strncmp(szBuf, "MassType:", 9))
+      {
+         sscanf(szBuf + 10, "%d %d",
+            &g_staticParams.massUtility.bMonoMassesParent,
+            &g_staticParams.massUtility.bMonoMassesFragment);
+      }
+      else if (!strncmp(szBuf, "StaticMod:", 10))
+      {
+         char* tok;
+         char  delims[] = " ";
+         int   x = 65;  // ASCII 'A'
+
+         // Reset BOTH mass arrays to bare (unmodified) residue masses before
+         // adding the static mods stored in the .idx header.  This prevents
+         // double-application when InitializeStaticParams() has already added
+         // static mods to pdAAMassParent.
+         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
+            g_staticParams.massUtility.bMonoMassesFragment,
+            &g_staticParams.massUtility.dOH2fragment);
+
+         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
+            g_staticParams.massUtility.bMonoMassesParent,
+            &g_staticParams.massUtility.dOH2parent);
+
+         bFoundStatic = true;
+         tok = strtok(szBuf + 11, delims);
+         while (tok != NULL)
+         {
+            sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
+            g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
+            g_staticParams.massUtility.pdAAMassParent[x] += g_staticParams.staticModifications.pdStaticMods[x];
+            tok = strtok(NULL, delims);
+            x++;
+            // 65-90 = A-Z; 91-94 = n/c-term peptide, n/c-term protein
+            if (x == 95)
+               break;
+         }
+
+         g_staticParams.staticModifications.dAddNterminusPeptide = g_staticParams.staticModifications.pdStaticMods[91];
+         g_staticParams.staticModifications.dAddCterminusPeptide = g_staticParams.staticModifications.pdStaticMods[92];
+         g_staticParams.staticModifications.dAddNterminusProtein = g_staticParams.staticModifications.pdStaticMods[93];
+         g_staticParams.staticModifications.dAddCterminusProtein = g_staticParams.staticModifications.pdStaticMods[94];
+
+         // Recalculate the precalculated masses that depend on terminal static mods.
+         g_staticParams.precalcMasses.dNtermProton =
+            g_staticParams.staticModifications.dAddNterminusPeptide + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dCtermOH2Proton =
+            g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.massUtility.dOH2fragment
+            + PROTON_MASS;
+
+         g_staticParams.precalcMasses.dOH2ProtonCtermNterm =
+            g_staticParams.massUtility.dOH2parent
+            + PROTON_MASS
+            + g_staticParams.staticModifications.dAddCterminusPeptide
+            + g_staticParams.staticModifications.dAddNterminusPeptide;
+      }
+      else if (!strncmp(szBuf, "DecoySearch:", 12))
+      {
+         sscanf(szBuf, "DecoySearch: %d", &(g_staticParams.options.iDecoySearch));
+      }
+      else if (!strncmp(szBuf, "Enzyme:", 7))
+      {
+         sscanf(szBuf, "Enzyme: %s [%d %s %s]",
+            g_staticParams.enzymeInformation.szSearchEnzymeName,
+            &(g_staticParams.enzymeInformation.iSearchEnzymeOffSet),
+            g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzymeNoBreakAA);
+      }
+      else if (!strncmp(szBuf, "Enzyme2:", 8))
+      {
+         sscanf(szBuf, "Enzyme2: %s [%d %s %s]",
+            g_staticParams.enzymeInformation.szSearchEnzyme2Name,
+            &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
+            g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
+            g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+      }
+      else if (!strncmp(szBuf, "VariableMod:", 12))
+      {
+         string strMods = szBuf + 13;
+         istringstream iss(strMods);
+         int iNumMods = 0;
+
+         bFoundVariable = true;
+
+         do
+         {
+            string subStr;
+            iss >> subStr;
+            std::replace(subStr.begin(), subStr.end(), ':', ' ');
+            int iRet = sscanf(subStr.c_str(), "%s %lf %lf %lf",
+               g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2));
+
+            if (iRet != 4)
+            {
+               string strErrorMsg = " Error parsing mod entry: " + subStr + ".\n";
+               logerr(strErrorMsg);
+               return false;
+            }
+
+            if (g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss != 0.0)
+               g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
+
+            iNumMods++;
+            if (iNumMods == VMODS)
+               break;
+         } while (iss);
+
+         // VariableMod: is always the last relevant header line.
+         break;
+      }
+   }
+
+   if (!(bFoundStatic && bFoundVariable))
+   {
+      string strErrorMsg = " Error with index database format. Mods not parsed ("
+         + std::to_string(bFoundStatic) + " " + std::to_string(bFoundVariable) + ").\n";
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   // Peptide index searches always have variable mod search enabled because
+   // mod sites are baked into every index entry.
+   g_staticParams.variableModParameters.bVarModSearch = true;
+
+   return true;
 }

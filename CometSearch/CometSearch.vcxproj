@@ -94,6 +94,7 @@
     <ClInclude Include="CometDataInternal.h" />
     <ClInclude Include="CometDecoys.h" />
     <ClInclude Include="CometFragmentIndex.h" />
+    <ClInclude Include="CometFragmentIndexReader.h" />
     <ClInclude Include="CometInterfaces.h" />
     <ClInclude Include="CometMassSpecUtils.h" />
     <ClInclude Include="CometModificationsPermuter.h" />

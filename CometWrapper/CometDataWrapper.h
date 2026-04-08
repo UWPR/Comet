@@ -88,10 +88,10 @@ namespace CometWrapper {
             }
         }
         
-        int get_dStart() {return (int)_pDoubleRange->dStart;}
+        double get_dStart() {return _pDoubleRange->dStart;}
         void set_dStart(double dStart) {_pDoubleRange->dStart = dStart;}
 
-        int get_dEnd() {return (int)_pDoubleRange->dEnd;}
+        double get_dEnd() {return _pDoubleRange->dEnd;}
         void set_dEnd(double dEnd) {_pDoubleRange->dEnd = dEnd;}
 
         DoubleRange* get_DoubleRangePtr() {return _pDoubleRange;}
@@ -366,7 +366,7 @@ namespace CometWrapper {
             double get() { return pScores->dExpect; }
         }
 
-        property double dAScoreScore
+        property double dAScorePro
         {
            double get() { return pScores->dAScorePro; }
         }

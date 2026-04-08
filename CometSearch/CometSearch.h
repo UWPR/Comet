@@ -67,10 +67,17 @@ public:
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
 
+   static bool InitializeMassesFromPeptideIndex();
+
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
                          ThreadPool* tp);
    static bool RunSearch(ThreadPool* tp);
+
+   // Task 1.3: Thread-local overload: searches a caller-owned Query* without
+   // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
+   static bool RunSearch(Query* pQuery);
+
    static bool RunSpecLibSearch(int iPercentStart,
                                 int iPercentEnd,
                                 ThreadPool* tp);
@@ -80,6 +87,15 @@ public:
                             double dMaxMS1RTDiff,
                             const double dMaxSpecLibRT,
                             const double dMaxQueryRT);
+   // Thread-local overload: searches a caller-owned QueryMS1* against read-only g_vSpecLib.
+   // No global mutable state accessed.
+   static bool RunMS1Search(QueryMS1* pQueryMS1,
+                            const int topN,
+                            double dRT,
+                            double dMaxMS1RTDiff,
+                            const double dMaxSpecLibRT,
+                            const double dMaxQueryRT,
+                            vector<CometScoresMS1>& scores);
 
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
@@ -100,6 +116,11 @@ public:
                         double dCalcPepMass) const;
    static bool CheckMassMatch(size_t iWhichQuery,
                               double dCalcPepMass);
+   // Task 1.2: Thread-local overload accepting Query* directly.
+   static bool CheckMassMatch(Query* pQuery,
+                              double dCalcPepMass);
+
+   bool SearchPeptideIndex(ThreadPool* tp);
 
    struct ProteinInfo
    {
@@ -165,6 +186,7 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe);
+   // Existing batch-path overload (indexes g_pvQuery)
    static void XcorrScoreI(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos,
@@ -175,7 +197,21 @@ private:
                            int iLenPeptide,
                            int *piVarModSites,
                            struct sDBEntry *dbe,
-                           unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][FRAGINDEX_VMODS+2],
+                           unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2],
+                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                           int iNumMatchedFragmentIons);
+   // Task 1.2: Thread-local overload accepting Query* directly.
+   static void XcorrScoreI(char *szProteinSeq,
+                           int iStartPos,
+                           int iEndPos,
+                           int iFoundVariableMod,
+                           double dCalcPepMass,
+                           bool bDecoyPep,
+                           Query* pQuery,
+                           int iLenPeptide,
+                           int *piVarModSites,
+                           struct sDBEntry *dbe,
+                           unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2],
                            unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
                            int iNumMatchedFragmentIons);
 /*
@@ -207,7 +243,19 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
+   // Existing batch-path overload (indexes g_pvQuery)
    static void StorePeptideI(size_t iWhichQuery,
+                             int iStartPos,
+                             int iEndPos,
+                             int iFoundVariableMod,
+                             char *szProteinSeq,
+                             double dCalcPepMass,
+                             double dXcorr,
+                             bool bStoreSeparateDecoy,
+                             int *piVarModSites,
+                             struct sDBEntry *dbe);
+   // Task 1.2: Thread-local overload accepting Query* directly.
+   static void StorePeptideI(Query* pQuery,
                              int iStartPos,
                              int iEndPos,
                              int iFoundVariableMod,
@@ -249,13 +297,31 @@ private:
                        double dCalcPepMass,
                        int iLenPeptide,
                        struct sDBEntry* dbe);
+   
+   // Existing batch-path overload (indexes g_pvQuery)
    static void SearchFragmentIndex(size_t iWhichQuery,
                                    ThreadPool* tp);
-   bool SearchPeptideIndex(ThreadPool* tp);
+
+   // Thread-local overload: searches a caller-owned Query* with
+   // a per-call pbDuplFragment buffer. Does not access g_pvQuery.
+   static void SearchFragmentIndex(Query* pQuery,
+                                   bool* pbDuplFragment);
+
+   // Thread-local overload: searches a caller-owned Query* against the
+   // read-only g_pvDBIndex. Does not access g_pvQuery.
+   static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment);
+
    void AnalyzePeptideIndex(int iWhichQuery,
                             DBIndex sDBI,
                             bool *pbDuplFragment,
                             struct sDBEntry *dbe);
+
+   // Thread-local overload accepting Query* directly.
+   static void AnalyzePeptideIndex(Query* pQuery,
+                                   DBIndex sDBI,
+                                   bool* pbDuplFragment,
+                                   struct sDBEntry* dbe);
+
    bool SearchForPeptides(struct sDBEntry dbe,
                           char* szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence

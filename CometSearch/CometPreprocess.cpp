@@ -735,6 +735,7 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    auto tStartTime = std::chrono::high_resolution_clock::now();
    const auto timeout_duration = std::chrono::seconds(240);
 
+
    while (true)
    {
       for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
@@ -798,10 +799,6 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
 
    for (int ii = 0; ii < pPreprocessThreadDataMS1->mstSpectrum.size(); ++ii)
    {
-      // store original spectrum
-//    auto p1 = std::make_pair(pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz, pPreprocessThreadDataMS1->mstSpectrum.at(ii).intensity);
-//    pTmp.vSpecLibPeaks.push_back(p1);
-
       double dMass = pPreprocessThreadDataMS1->mstSpectrum.at(ii).mz;
 
       if (g_staticParams.options.dMS1MinMass <= dMass && dMass <= g_staticParams.options.dMS1MaxMass)
@@ -1118,6 +1115,485 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    return true;
 }
 
+// Shared core: builds a fully preprocessed Query* from the input spectrum data.
+// Allocates its own scratch buffers on the heap - fully thread-safe.
+// Does NOT push the Query* into g_pvQuery.
+// Returns nullptr on failure.
+Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
+                                                     double dMZ,
+                                                     double *pdMass,
+                                                     double *pdInten,
+                                                     int iNumPeaks,
+                                                     double *pdTmpSpectrum)
+{
+   double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+
+   Query *pScoring = new Query();
+
+   pScoring->_pepMassInfo.dExpPepMass = dMass;
+   pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
+   pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
+   pScoring->_spectrumInfoInternal.iScanNumber = 0;
+   pScoring->_spectrumInfoInternal.fRTime = 0.0;
+   pScoring->_spectrumInfoInternal.szNativeID[0] = '\0';
+
+   if (iPrecursorCharge == 1)
+      pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
+   else
+   {
+      pScoring->_spectrumInfoInternal.usiMaxFragCharge = iPrecursorCharge - 1;
+
+      if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+         pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+   }
+
+   double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
+   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
+
+   if (!AdjustMassTol(pScoring))
+   {
+      delete pScoring;
+      return nullptr;
+   }
+
+   // Build a synthetic Spectrum from the input arrays for LoadIons/Preprocess.
+   // The caller's pdTmpSpectrum is used as scratch storage for binned raw data below.
+   // We need 6 scratch buffers that the existing Preprocess() expects:
+   //   pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData (double)
+   //   pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData (float)
+   //
+   // For single-spectrum search, pdTmpSpectrum is already sized to iArraySizeGlobal.
+   // We allocate the other 5 buffers on the heap for thread safety.
+
+   size_t iGlobalBytes = (size_t)g_staticParams.iArraySizeGlobal;
+
+   double *pdTmpRawData         = pdTmpSpectrum;  // reuse caller-provided buffer
+   double *pdTmpFastXcorrData   = new double[iGlobalBytes]();
+   double *pdTmpCorrelationData = new double[iGlobalBytes]();
+   float  *pfFastXcorrData      = new float[iGlobalBytes]();
+   float  *pfFastXcorrDataNL    = new float[iGlobalBytes]();
+   float  *pfSpScoreData        = new float[iGlobalBytes]();
+
+   // Zero the raw data buffer (caller may not have cleared it)
+   memset(pdTmpRawData, 0, iGlobalBytes * sizeof(double));
+
+   struct PreprocessStruct pPre;
+   pPre.iHighestIon = 0;
+   pPre.dHighestIntensity = 0;
+
+   // --- Inline LoadIons logic for raw arrays instead of Spectrum object ---
+
+   // Compute base-peak intensity so we can apply both absolute and percentage cutoffs
+   double dBasePeakIntensity = 0.0;
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      if (pdInten[i] > dBasePeakIntensity)
+         dBasePeakIntensity = pdInten[i];
+   }
+   // Start with the configured absolute minimum intensity
+   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
+   // If a minimum percentage of the base-peak intensity is configured, apply it as well
+   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && dBasePeakIntensity > 0.0)
+   {
+      double dPctCutoff = dBasePeakIntensity * g_staticParams.options.dMinPercentageIntensity;
+      if (dPctCutoff > dIntensityCutoff)
+         dIntensityCutoff = dPctCutoff;
+   }
+
+   int iNumFragmentPeaks = 0;
+
+   for (int i = iNumPeaks - 1; i >= 0; --i)
+   {
+      double dIon = pdMass[i];
+      double dIntensity = pdInten[i];
+
+      pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
+
+      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
+      {
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         {
+            pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
+            iNumFragmentPeaks++;
+         }
+         if (g_staticParams.options.iPrintAScoreProScore)
+         {
+            pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
+         }
+
+         if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
+         {
+            int iBinIon = BIN(dIon);
+
+            double dSqrtInten = sqrt(dIntensity);
+
+            if (iBinIon > pPre.iHighestIon)
+               pPre.iHighestIon = iBinIon;
+
+            if ((iBinIon < pScoring->_spectrumInfoInternal.iArraySize)
+                  && (dSqrtInten > pdTmpRawData[iBinIon]))
+            {
+               if (g_staticParams.options.iRemovePrecursor == 1)
+               {
+                  double dPrecMZ = (pScoring->_pepMassInfo.dExpPepMass
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+
+                  if (fabs(dIon - dPrecMZ) > g_staticParams.options.dRemovePrecursorTol)
+                  {
+                     if (dSqrtInten > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dSqrtInten;
+                     if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                        pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
+               else if (g_staticParams.options.iRemovePrecursor == 2)
+               {
+                  int bNotPrec = 1;
+                  for (int j = 1; j <= pScoring->_spectrumInfoInternal.usiChargeState; ++j)
+                  {
+                     double dPrecMZ = (pScoring->_pepMassInfo.dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
+                     if (fabs(dIon - dPrecMZ) < g_staticParams.options.dRemovePrecursorTol)
+                     {
+                        bNotPrec = 0;
+                        break;
+                     }
+                  }
+                  if (bNotPrec)
+                  {
+                     if (dSqrtInten > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dSqrtInten;
+                     if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                        pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
+               else if (g_staticParams.options.iRemovePrecursor == 3)
+               {
+                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+
+                  if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
+                        && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
+                  {
+                     if (dSqrtInten > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dSqrtInten;
+                     if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                        pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
+               else if (g_staticParams.options.iRemovePrecursor == 4)
+               {
+                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 18.010565
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 36.021129
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ3 = (pScoring->_pepMassInfo.dExpPepMass - 63.997737
+                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
+                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+
+                  if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
+                        && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol
+                        && fabs(dIon - dMZ3) > g_staticParams.options.dRemovePrecursorTol)
+                  {
+                     if (dSqrtInten > pdTmpRawData[iBinIon])
+                        pdTmpRawData[iBinIon] = dSqrtInten;
+                     if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                        pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+                  }
+               }
+               else // iRemovePrecursor==0
+               {
+                  if (dSqrtInten > pdTmpRawData[iBinIon])
+                     pdTmpRawData[iBinIon] = dSqrtInten;
+                  if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
+                     pPre.dHighestIntensity = pdTmpRawData[iBinIon];
+               }
+            }
+         }
+      }
+   }
+
+   if (pPre.dHighestIntensity <= 0.0)
+   {
+      // No usable peaks - clean up and return null
+      delete[] pdTmpFastXcorrData;
+      delete[] pdTmpCorrelationData;
+      delete[] pfFastXcorrData;
+      delete[] pfFastXcorrDataNL;
+      delete[] pfSpScoreData;
+      delete pScoring;
+      return nullptr;
+   }
+
+   // --- MakeCorrData: normalize to 100, windowed ---
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
+
+   // --- Make fast xcorr spectrum ---
+   int i;
+   double dSum = 0.0;
+   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
+   double dTmp = 1.0 / (iTmpRange - 1.0);
+   double dMinXcorrInten = 0.0;
+
+   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+      dSum += pdTmpCorrelationData[i];
+   for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
+   {
+      if (dMinXcorrInten < pdTmpCorrelationData[i])
+         dMinXcorrInten = pdTmpCorrelationData[i];
+
+      if (i < pScoring->_spectrumInfoInternal.iArraySize)
+         dSum += pdTmpCorrelationData[i];
+      if (i >= iTmpRange)
+         dSum -= pdTmpCorrelationData[i - iTmpRange];
+      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
+   }
+
+   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
+
+   pfFastXcorrData[0] = 0.0;
+   for (i = 1; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      double dVal = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
+
+      pfFastXcorrData[i] = (float)dVal;
+
+      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+      {
+         int iTmpIdx;
+         iTmpIdx = i - 1;
+         pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
+         iTmpIdx = i + 1;
+         if (iTmpIdx < pScoring->_spectrumInfoInternal.iArraySize)
+            pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
+      }
+
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      {
+         int iTmpIdx;
+         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
+
+         iTmpIdx = i - g_staticParams.precalcMasses.iMinus17;
+         if (iTmpIdx >= 0)
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
+
+         iTmpIdx = i - g_staticParams.precalcMasses.iMinus18;
+         if (iTmpIdx >= 0)
+            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
+      }
+   }
+
+   // --- Build sparse matrices on the Query ---
+   int x, y;
+   pScoring->iFastXcorrDataSize = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
+
+   // Sparse NL matrix
+   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+   {
+      try
+      {
+         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+      }
+      catch (std::bad_alloc&)
+      {
+         delete[] pdTmpFastXcorrData;
+         delete[] pdTmpCorrelationData;
+         delete[] pfFastXcorrData;
+         delete[] pfFastXcorrDataNL;
+         delete[] pfSpScoreData;
+         delete pScoring;
+         return nullptr;
+      }
+
+      for (i = 1; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+      {
+         if (pfFastXcorrDataNL[i] > FLOAT_ZERO || pfFastXcorrDataNL[i] < -FLOAT_ZERO)
+         {
+            x = i / SPARSE_MATRIX_SIZE;
+            if (pScoring->ppfSparseFastXcorrDataNL[x] == NULL)
+            {
+               pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
+            }
+            y = i - (x * SPARSE_MATRIX_SIZE);
+            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
+         }
+      }
+   }
+
+   // Sparse fast xcorr matrix
+   try
+   {
+      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
+   }
+   catch (std::bad_alloc&)
+   {
+      delete[] pdTmpFastXcorrData;
+      delete[] pdTmpCorrelationData;
+      delete[] pfFastXcorrData;
+      delete[] pfFastXcorrDataNL;
+      delete[] pfSpScoreData;
+      delete pScoring;
+      return nullptr;
+   }
+
+   for (i = 1; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      if (pfFastXcorrData[i] > FLOAT_ZERO || pfFastXcorrData[i] < -FLOAT_ZERO)
+      {
+         x = i / SPARSE_MATRIX_SIZE;
+         if (pScoring->ppfSparseFastXcorrData[x] == NULL)
+         {
+            pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
+         }
+         y = i - (x * SPARSE_MATRIX_SIZE);
+         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
+      }
+   }
+
+   // Sparse Sp score matrix
+   pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
+
+   try
+   {
+      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+   }
+   catch (std::bad_alloc&)
+   {
+      delete[] pdTmpFastXcorrData;
+      delete[] pdTmpCorrelationData;
+      delete[] pfFastXcorrData;
+      delete[] pfFastXcorrDataNL;
+      delete[] pfSpScoreData;
+      delete pScoring;
+      return nullptr;
+   }
+
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
+   }
+
+   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+   {
+      if (pfSpScoreData[i] > FLOAT_ZERO)
+      {
+         x = i / SPARSE_MATRIX_SIZE;
+         if (pScoring->ppfSparseSpScoreData[x] == NULL)
+         {
+            pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
+         }
+         y = i - (x * SPARSE_MATRIX_SIZE);
+         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
+      }
+   }
+
+   // Free heap-allocated scratch buffers (pdTmpRawData is caller-owned pdTmpSpectrum)
+   delete[] pdTmpFastXcorrData;
+   delete[] pdTmpCorrelationData;
+   delete[] pfFastXcorrData;
+   delete[] pfFastXcorrDataNL;
+   delete[] pfSpScoreData;
+
+   // Allocate _pResults (and _pDecoys if needed) so the Query is ready for search.
+   // This mirrors what AllocateResultsMem() does for batch-search g_pvQuery entries.
+   pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
+   pScoring->iMatchPeptideCount = 0;
+   pScoring->iDecoyMatchPeptideCount = 0;
+   memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
+
+   for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+   {
+      pScoring->_pResults[j].dPepMass = 0.0;
+      pScoring->_pResults[j].dExpect = 999;
+      pScoring->_pResults[j].fScoreSp = 0.0;
+      pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+      pScoring->_pResults[j].fAScorePro = 0.0;
+      pScoring->_pResults[j].usiLenPeptide = 0;
+      pScoring->_pResults[j].usiRankSp = 0;
+      pScoring->_pResults[j].usiMatchedIons = 0;
+      pScoring->_pResults[j].usiTotalIons = 0;
+      pScoring->_pResults[j].szPeptide[0] = '\0';
+      pScoring->_pResults[j].sAScoreProSiteScores.clear();
+      pScoring->_pResults[j].pWhichProtein.clear();
+      pScoring->_pResults[j].sPeffOrigResidues.clear();
+      pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+
+      if (g_staticParams.options.iDecoySearch)
+         pScoring->_pResults[j].pWhichDecoyProtein.clear();
+   }
+
+   if (g_staticParams.options.iDecoySearch == 2)
+   {
+      pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+
+      for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+      {
+         pScoring->_pDecoys[j].dPepMass = 0.0;
+         pScoring->_pDecoys[j].dExpect = 999;
+         pScoring->_pDecoys[j].fScoreSp = 0.0;
+         pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pScoring->_pDecoys[j].fAScorePro = 0.0;
+         pScoring->_pDecoys[j].usiLenPeptide = 0;
+         pScoring->_pDecoys[j].usiRankSp = 0;
+         pScoring->_pDecoys[j].usiMatchedIons = 0;
+         pScoring->_pDecoys[j].usiTotalIons = 0;
+         pScoring->_pDecoys[j].szPeptide[0] = '\0';
+         pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
+         pScoring->_pDecoys[j].pWhichProtein.clear();
+         pScoring->_pDecoys[j].sPeffOrigResidues.clear();
+         pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+      }
+   }
+
+   return pScoring;
+}
+
+
+// Thread-local public wrapper: returns Query* without touching g_pvQuery.
+// Caller owns the returned Query* and must delete it when done.
+Query* CometPreprocess::PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge,
+                                                            double dMZ,
+                                                            double *pdMass,
+                                                            double *pdInten,
+                                                            int iNumPeaks,
+                                                            double *pdTmpSpectrum)
+{
+   return PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+}
+
+
+// Original public entry point: builds Query* via Core, then pushes into g_pvQuery.
+// Preserves backward compatibility with existing callers.
+bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
+                                               double dMZ,
+                                               double *pdMass,
+                                               double *pdInten,
+                                               int iNumPeaks,
+                                               double *pdTmpSpectrum)
+{
+   Query* pScoring = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+
+   if (pScoring == nullptr)
+      return false;
+
+   Threading::LockMutex(g_pvQueryMutex);
+   g_pvQuery.push_back(pScoring);
+   Threading::UnlockMutex(g_pvQueryMutex);
+
+   return true;
+}
 
 //-->MH
 // Loads spectrum into spectrum object.
@@ -1257,10 +1733,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          float *pfFastXcorrDataNL,
                                          float *pfSpScoreData)
 {
-   int z;
-
    int iScanNumber = spec.getScanNumber();
-
    int iSpectrumCharge = 0;
 
    // To run a search, all that's needed is MH+ and Z. So need to generate
@@ -1362,7 +1835,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                }
                else
                {
-                  for (z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+                  for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
                   {
                      vChargeStates.push_back(make_pair(z, dMZ));
                   }
@@ -1429,8 +1902,9 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
-            pScoring->_spectrumInfoInternal.fRTime = (float)(60.0 * spec.getRTime());  // convert from minutes to seconds
             pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
+            pScoring->_spectrumInfoInternal.fRTime = (float)(60.0 * spec.getRTime());  // convert from minutes to seconds
+            pScoring->_spectrumInfoInternal.szNativeID[0] = '\0';
 
             if (iPrecursorCharge == 1)
                pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
@@ -1457,6 +1931,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             if (!AdjustMassTol(pScoring))
             {
+               delete pScoring;
                return false;
             }
 
@@ -1465,6 +1940,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             //       of repeating for each charge state.
             if (!Preprocess(pScoring, spec, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData, pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData))
             {
+               delete pScoring;
                return false;
             }
 
@@ -1654,7 +2130,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
-   if (g_staticParams.iIndexDb && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
+   if (g_staticParams.iDbType != DbType::FASTA_DB && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
    {
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
@@ -1674,10 +2150,12 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iIndexDb == 1 && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             // Store list of fragment masses for fragment index search
-            // Intensities don't matter here
+            // Intensities don't matter here. Note that peaks are sorted in
+            // ascending order by intensity so that the most intense peaks
+            // are stored in vfRawFragmentPeakMass.
             pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
 
             iNumFragmentPeaks++;
@@ -1801,31 +2279,33 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 }
 
 
+
+
 // pdTmpRawData now holds raw data, pdTmpCorrelationData is windowed data after this function
 // FIX: need to check why both iArraySize and iHighestIons are used
 void CometPreprocess::MakeCorrData(double* pdTmpRawData,
-                                   double* pdTmpCorrelationData,
-                                   int iHighestIon,
-                                   double dHighestIntensity)
+   double* pdTmpCorrelationData,
+   int iHighestIon,
+   double dHighestIntensity)
 {
    int  i,
-        ii,
-        iBin,
-        iWindowSize,
-        iNumWindows=10;
+      ii,
+      iBin,
+      iWindowSize,
+      iNumWindows = 10;
    double dMaxWindowInten,
-          dTmp1,
-          dTmp2;
+      dTmp1,
+      dTmp2;
 
    iWindowSize = (int)((iHighestIon) / iNumWindows) + 1;
 
-   for (i=0; i<iNumWindows; ++i)
+   for (i = 0; i < iNumWindows; ++i)
    {
       dMaxWindowInten = 0.0;
 
-      for (ii=0; ii<iWindowSize; ++ii)    // Find max inten. in window.
+      for (ii = 0; ii < iWindowSize; ++ii)    // Find max inten. in window.
       {
-         iBin = i*iWindowSize+ii;
+         iBin = i * iWindowSize + ii;
          if (iBin <= iHighestIon && iBin < g_staticParams.iArraySizeGlobal)
          {
             if (pdTmpRawData[iBin] > dMaxWindowInten)
@@ -1838,13 +2318,13 @@ void CometPreprocess::MakeCorrData(double* pdTmpRawData,
          dTmp1 = 50.0 / dMaxWindowInten;
          dTmp2 = 0.05 * dHighestIntensity;
 
-         for (ii=0; ii<iWindowSize; ++ii)    // Normalize to max inten. in window.
+         for (ii = 0; ii < iWindowSize; ++ii)    // Normalize to max inten. in window.
          {
-            iBin = i*iWindowSize+ii;
+            iBin = i * iWindowSize + ii;
             if (iBin <= iHighestIon && iBin < g_staticParams.iArraySizeGlobal)
             {
                if (pdTmpRawData[iBin] > dTmp2)
-                  pdTmpCorrelationData[iBin] = pdTmpRawData[iBin]*dTmp1;
+                  pdTmpCorrelationData[iBin] = pdTmpRawData[iBin] * dTmp1;
             }
          }
       }
@@ -1862,14 +2342,14 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
 
    //MH: Initally mark all arrays as available (i.e. false=not inuse).
    pbMemoryPool = new bool[maxNumThreads];
-   for (i=0; i<maxNumThreads; ++i)
+   for (i = 0; i < maxNumThreads; ++i)
    {
       pbMemoryPool[i] = false;
    }
 
    //MH: Allocate arrays
-   ppdTmpRawDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; ++i)
+   ppdTmpRawDataArr = new double* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
    {
       try
       {
@@ -1888,8 +2368,8 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
 
    //MH: Allocate arrays
-   ppdTmpFastXcorrDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; ++i)
+   ppdTmpFastXcorrDataArr = new double* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
    {
       try
       {
@@ -1908,8 +2388,8 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
 
    //MH: Allocate arrays
-   ppdTmpCorrelationDataArr = new double*[maxNumThreads]();
-   for (i=0; i<maxNumThreads; ++i)
+   ppdTmpCorrelationDataArr = new double* [maxNumThreads]();
+   for (i = 0; i < maxNumThreads; ++i)
    {
       try
       {
@@ -1933,7 +2413,7 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-        ppfFastXcorrData[i] = new float[g_staticParams.iArraySizeGlobal]();
+         ppfFastXcorrData[i] = new float[g_staticParams.iArraySizeGlobal]();
       }
       catch (std::bad_alloc& ba)
       {
@@ -2000,24 +2480,24 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
    if (!g_bCometPreprocessMemoryAllocated)
       return true;
 
-   delete [] pbMemoryPool;
+   delete[] pbMemoryPool;
 
-   for (i=0; i<maxNumThreads; ++i)
+   for (i = 0; i < maxNumThreads; ++i)
    {
-      delete [] ppdTmpRawDataArr[i];
-      delete [] ppdTmpFastXcorrDataArr[i];
-      delete [] ppdTmpCorrelationDataArr[i];
-      delete [] ppfFastXcorrData[i];
-      delete [] ppfFastXcorrDataNL[i];
-      delete [] ppfSpScoreData[i];
+      delete[] ppdTmpRawDataArr[i];
+      delete[] ppdTmpFastXcorrDataArr[i];
+      delete[] ppdTmpCorrelationDataArr[i];
+      delete[] ppfFastXcorrData[i];
+      delete[] ppfFastXcorrDataNL[i];
+      delete[] ppfSpScoreData[i];
    }
 
-   delete [] ppdTmpRawDataArr;
-   delete [] ppdTmpFastXcorrDataArr;
-   delete [] ppdTmpCorrelationDataArr;
-   delete [] ppfFastXcorrData;
-   delete [] ppfFastXcorrDataNL;
-   delete [] ppfSpScoreData;
+   delete[] ppdTmpRawDataArr;
+   delete[] ppdTmpFastXcorrDataArr;
+   delete[] ppdTmpCorrelationDataArr;
+   delete[] ppfFastXcorrData;
+   delete[] ppfFastXcorrDataNL;
+   delete[] ppfSpScoreData;
 
    g_bCometPreprocessMemoryAllocated = false;
 
@@ -2027,350 +2507,6 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 bool CometPreprocess::IsValidInputType(int inputType)
 {
    return (inputType == InputType_MZXML || inputType == InputType_RAW);
-}
-
-
-bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
-                                               double dMZ,
-                                               double *pdMass,
-                                               double *pdInten,
-                                               int iNumPeaks,
-                                               double *pdTmpSpectrum)
-{
-   float* pfFastXcorrData;
-   float* pfFastXcorrDataNL;
-   float* pfSpScoreData;
-   Query *pScoring = new Query();
-
-   pScoring->_pepMassInfo.dExpPepMass = (iPrecursorCharge * dMZ) - (iPrecursorCharge - 1.0) * PROTON_MASS;
-
-   if (pScoring->_pepMassInfo.dExpPepMass < g_staticParams.options.dPeptideMassLow
-      || pScoring->_pepMassInfo.dExpPepMass > g_staticParams.options.dPeptideMassHigh)
-   {
-      return false;
-   }
-
-   pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
-
-   if (iPrecursorCharge == 1)
-      pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
-   else
-   {
-      pScoring->_spectrumInfoInternal.usiMaxFragCharge = iPrecursorCharge - 1;
-
-      if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
-         pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
-   }
-
-   g_massRange.dMinMass = pScoring->_pepMassInfo.dExpPepMass;
-   g_massRange.dMaxMass = pScoring->_pepMassInfo.dExpPepMass;
-   g_massRange.usiMaxFragmentCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
-
-   //preprocess here
-   int i;
-   int x;
-   int y;
-   struct PreprocessStruct pPre;
-
-   pPre.iHighestIon = 0;
-   pPre.dHighestIntensity = 0;
-
-   if (!AdjustMassTol(pScoring))
-   {
-      return false;
-   }
-
-   double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
-   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
-
-   // initialize these temporary arrays before re-using
-   double *pdTmpRawData = ppdTmpRawDataArr[0];
-   double *pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
-   double *pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
-
-   size_t iTmp = (size_t)(pScoring->_spectrumInfoInternal.iArraySize * sizeof(double));
-   memset(pdTmpRawData, 0, iTmp);
-   memset(pdTmpFastXcorrData, 0, iTmp);
-   memset(pdTmpCorrelationData, 0, iTmp);
-   memset(pdTmpSpectrum, 0, iTmp);
-
-   // Loop through single spectrum and store in pdTmpRawData array
-   double dIon=0,
-          dIntensity=0;
-
-   // set dIntensityCutoff based on either minimum intensity or % of base peak
-   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
-
-   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && g_staticParams.options.dMinPercentageIntensity <= 1.0)
-   {
-      double dBasePeakIntensity = 0.0;
-
-      for (i = 0; i < iNumPeaks; ++i)
-      {
-         if (pdInten[i] > dBasePeakIntensity)
-            dBasePeakIntensity = pdInten[i];
-      }
-
-      dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
-
-      if (dIntensityCutoff < g_staticParams.options.dMinIntensity)
-         dIntensityCutoff = g_staticParams.options.dMinIntensity;
-   }
-
-   for (i = 0; i < iNumPeaks; ++i)
-   {
-      dIon = pdMass[i];
-      dIntensity = pdInten[i];
-
-      bool bPass = false;
-      if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
-         bPass = true;
-
-      if (bPass)
-      {
-         if (g_staticParams.options.iPrintAScoreProScore)
-         {
-            // Store list of fragment masses and intensities for AScore and ProScore
-            pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
-         }
-
-         if (g_staticParams.iIndexDb)
-            pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
-
-         if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
-         {
-            int iBinIon = BIN(dIon);
-
-            dIntensity = sqrt(dIntensity);
-
-            if (iBinIon < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iBinIon] < dIntensity)  // used in DoSingleSpectrumSearchMultiResults to return matched ions
-                pdTmpSpectrum[iBinIon] = dIntensity;
-
-            if (iBinIon > pPre.iHighestIon)
-               pPre.iHighestIon = iBinIon;
-
-            if ((iBinIon < pScoring->_spectrumInfoInternal.iArraySize)
-                  && (dIntensity > pdTmpRawData[iBinIon]))
-            {
-               if (dIntensity > pdTmpRawData[iBinIon])
-                  pdTmpRawData[iBinIon] = dIntensity;
-
-               if (pdTmpRawData[iBinIon] > pPre.dHighestIntensity)
-                  pPre.dHighestIntensity = pdTmpRawData[iBinIon];
-            }
-         }
-      }
-   }
-
-   pfFastXcorrData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
-      try
-      {
-         pfFastXcorrDataNL = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg = " Error - new(pfFastXcorrDataNL["
-            + std::to_string(pScoring->_spectrumInfoInternal.iArraySize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-   }
-
-   // Create data for correlation analysis.
-   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
-
-   // Make fast xcorr spectrum.
-   double dSum = 0.0;
-   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (iTmpRange - 1.0);
-   double dMinXcorrInten = 0.0;
-
-   dSum = 0.0;
-   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
-      dSum += pdTmpCorrelationData[i];
-   for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
-   {
-      if (dMinXcorrInten < pdTmpCorrelationData[i])
-         dMinXcorrInten = pdTmpCorrelationData[i];
-
-      if (i < pScoring->_spectrumInfoInternal.iArraySize)
-         dSum += pdTmpCorrelationData[i];
-      if (i >= iTmpRange)
-         dSum -= pdTmpCorrelationData[i - iTmpRange];
-      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
-   }
-
-   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
-
-   pfFastXcorrData[0] = 0.0;
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
-
-      pfFastXcorrData[i] = (float)dTmp;
-
-      // Add flanking peaks if used
-      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
-      {
-         int iTmp;
-
-         iTmp = i-1;
-         pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
-
-         iTmp = i+1;
-         if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
-      }
-
-      // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-      {
-         int iTmp;
-
-         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
-
-         iTmp = i-g_staticParams.precalcMasses.iMinus17;
-         if (iTmp>= 0)
-         {
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
-         }
-
-         iTmp = i-g_staticParams.precalcMasses.iMinus18;
-         if (iTmp>= 0)
-         {
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
-         }
-      }
-   }
-
-   pScoring->iFastXcorrDataSize = pScoring->_spectrumInfoInternal.iArraySize/SPARSE_MATRIX_SIZE+1;
-
-   // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
-   // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
-      try
-      {
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
-            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-
-      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-      {
-         if (pfFastXcorrDataNL[i]>FLOAT_ZERO || pfFastXcorrDataNL[i]<-FLOAT_ZERO)
-         {
-            x=i/SPARSE_MATRIX_SIZE;
-            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
-            {
-               try
-               {
-                  pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  string strErrorMsg = " Error - new(pScoring->ppfSparseFastXcorrDataNL["
-                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                     + "parameters to address mitigate memory use.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  return false;
-               }
-               for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
-                  pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
-            }
-            y=i-(x*SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
-         }
-      }
-
-      delete[] pfFastXcorrDataNL;
-      pfFastXcorrDataNL = NULL;
-   }
-
-   //MH: Fill sparse matrix
-   pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
-
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      if (pfFastXcorrData[i]>FLOAT_ZERO || pfFastXcorrData[i]<-FLOAT_ZERO)
-      {
-         x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseFastXcorrData[x]==NULL)
-         {
-            pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
-
-            for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
-               pScoring->ppfSparseFastXcorrData[x][y]=0;
-         }
-         y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
-      }
-   }
-
-   delete[] pfFastXcorrData;
-   pfFastXcorrData = NULL;
-
-   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
-   pfSpScoreData = new float[pScoring->_spectrumInfoInternal.iArraySize]();
-   memset(pfSpScoreData, 0, sizeof(float) * pScoring->_spectrumInfoInternal.iArraySize);
-
-   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
-   }
-
-   // MH: Fill sparse matrix for SpScore
-   pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
-
-   pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
-
-   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      if (pfSpScoreData[i] > FLOAT_ZERO)
-      {
-         x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseSpScoreData[x]==NULL)
-         {
-            pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
-            memset(pScoring->ppfSparseSpScoreData[x], 0, sizeof(float) * SPARSE_MATRIX_SIZE);
-         }
-         y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
-      }
-   }
-
-   delete[] pfSpScoreData;
-   pfSpScoreData = NULL;
-
-   g_pvQuery.push_back(pScoring);
-
-   return true;
 }
 
 
@@ -2441,4 +2577,78 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
    g_pvQueryMS1.push_back(pScoringMS1);
 
    return true;
+}
+
+
+// Thread-local version of PreprocessMS1SingleSpectrum.
+// Returns a heap-allocated QueryMS1* with pfFastXcorrData filled as a unit vector.
+// Caller owns the returned object and must free pfFastXcorrData and delete pQueryMS1.
+// Does NOT touch g_pvQueryMS1 or any other global mutable state.
+QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass,
+                                                                  double* pdInten,
+                                                                  int iNumPeaks)
+{
+   // Match the original PreprocessMS1SingleSpectrum: use the largest mass
+   // actually present in the spectrum (capped at dMS1MaxMass) to size the array,
+   // exactly as PreprocessThreadProcMS1 does for library entries.
+   double dLargestMass = pdMass[iNumPeaks - 1];  // expect pdMass array in ascending order
+   if (dLargestMass > g_staticParams.options.dMS1MaxMass)
+      dLargestMass = g_staticParams.options.dMS1MaxMass;
+   int iArraySizeMS1 = BINPREC(dLargestMass) + 1;
+
+   QueryMS1* pQueryMS1 = new QueryMS1();
+   pQueryMS1->iArraySizeMS1 = iArraySizeMS1;
+
+   try
+   {
+      pQueryMS1->pfFastXcorrData = new float[iArraySizeMS1]();
+   }
+   catch (std::bad_alloc&)
+   {
+      delete pQueryMS1;
+      return nullptr;
+   }
+
+   // Bin peaks into the array using sqrt(intensity), matching library preprocessing
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      double dMass = pdMass[i];
+
+      if (dMass < g_staticParams.options.dMS1MinMass || dMass > g_staticParams.options.dMS1MaxMass)
+         continue;
+
+      int iBin = BINPREC(dMass);
+      if (iBin >= 0 && iBin < iArraySizeMS1)
+      {
+         float fInten = (float)sqrt(pdInten[i]);
+         if (fInten > pQueryMS1->pfFastXcorrData[iBin])
+            pQueryMS1->pfFastXcorrData[iBin] = fInten;  // keep max intensity per bin
+      }
+   }
+
+   // Normalize to unit vector - must match library normalization
+   double dSumSquares = 0.0;
+   for (int i = 0; i < iArraySizeMS1; ++i)
+   {
+      dSumSquares += (double)pQueryMS1->pfFastXcorrData[i] * (double)pQueryMS1->pfFastXcorrData[i];
+   }
+
+   if (dSumSquares > 0.0)
+   {
+      float fNorm = (float)sqrt(dSumSquares);
+      for (int i = 0; i < iArraySizeMS1; ++i)
+      {
+         pQueryMS1->pfFastXcorrData[i] /= fNorm;
+      }
+   }
+   else
+   {
+      // Empty spectrum after filtering - return null
+      delete[] pQueryMS1->pfFastXcorrData;
+      pQueryMS1->pfFastXcorrData = nullptr;
+      delete pQueryMS1;
+      return nullptr;
+   }
+
+   return pQueryMS1;
 }

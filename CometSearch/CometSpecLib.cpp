@@ -341,6 +341,7 @@ bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
 
 */
 
+
 }
 
 
@@ -479,6 +480,12 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
    return true;
 }
 
+// NOTE (Phase 3 / Task 3.1 audit): After LoadSpecLibMS1Raw() returns and
+// g_bSpecLibRead is set to true, g_vSpecLib and all SpecLibStruct members
+// (pfUnitVector, fRTime, fScaleMaxInten, uiArraySizeMS1) are READ-ONLY.
+// No code path modifies g_vSpecLib during DoMS1SearchMultiResults().
+// This invariant is required for concurrent thread safety.
+
 // Loads all MS1 spectra from input file into g_vSpecLib.
 // Don't bother storing vSpecLibPeaks
 bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
@@ -522,10 +529,26 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    if (iFileLastScan <= 0)
    {
-      string strErrorMsg = " Error - read iFileLastScan as " + std::to_string (iFileLastScan) + "%d.\n";
+      string strErrorMsg = " Error - read iFileLastScan as " + std::to_string(iFileLastScan) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
+   }
+
+   // Determine the input type of the spec lib file for the IsValidInputType check below.
+   // In the batch search path, g_staticParams.inputFile.iInputType is set by UpdateInputFile(),
+   // but in the single-spectrum MS1 path, inputFile is never configured for the spec lib file.
+   // We need to determine the type directly from the file extension.
+   int iSpecLibInputType = InputType_UNKNOWN;
+   {
+      const char* pszFileName = g_staticParams.speclibInfo.strSpecLibFile.c_str();
+      int iLen = (int)strlen(pszFileName);
+      if (iLen > 4 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".raw"))
+         iSpecLibInputType = InputType_RAW;
+      else if (iLen > 6 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML"))
+         iSpecLibInputType = InputType_MZXML;
+      else if (iLen > 5 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML"))
+         iSpecLibInputType = InputType_MZML;
    }
 
    // Get the thread pool of threads that will preprocess the data.
@@ -545,6 +568,24 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
    auto tStartTime = chrono::steady_clock::now();
 
+   // Ensure the shared preprocessing memory pool is allocated before
+   // dispatching any PreprocessThreadProcMS1 jobs.  In the batch search
+   // path this is done by CometSearchManager, but in the single-spectrum
+   // MS1 path LoadSpecLibMS1Raw is the first (and only) caller.
+   if (!g_bCometPreprocessMemoryAllocated)
+   {
+      // Note that g_staticParams.options.iNumThreads will be >= 1 at this call. It's not possible
+      // for g_staticParams.options.iNumThreads to be 0 or negative here as that is checked in
+      // InitializeStaticParams() and its value is set to be >= 1.
+      if (g_staticParams.options.iNumThreads <= 0 || !CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads))
+      {
+         string strErrorMsg = " Error - CometPreprocess::AllocateMemory failed in LoadSpecLibMS1Raw.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
+   }
+
    // Load all input spectra.
    while (true)
    {
@@ -558,9 +599,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
       {
          mstReader.readFile(NULL, mstSpectrum);
       }
-
-//      if (iFileLastScan == -1)
-//         iFileLastScan = mstReader.getLastScan();
 
       if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
       {
@@ -597,12 +635,18 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
             PreprocessThreadData* pPreprocessThreadDataMS1 = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
 
+            // Gate: wait for a free thread before queuing more work.
+            // Without this, jobs queue faster than pool slots are freed,
+            // and the memory-pool busy-wait inside PreprocessThreadProcMS1
+            // can deadlock or overrun.
+            pLoadSpecThreadPool->wait_for_available_thread();
+
             pLoadSpecThreadPool->doJob(std::bind(CometPreprocess::PreprocessThreadProcMS1, pPreprocessThreadDataMS1, pLoadSpecThreadPool, dMaxQueryRT, *dMaxSpecLibRT));
          }
 
          iTotalScans++;
       }
-      else if (CometPreprocess::IsValidInputType(g_staticParams.inputFile.iInputType))
+      else if (CometPreprocess::IsValidInputType(iSpecLibInputType))
       {
          bDoneProcessingAllSpectra = true;
          break;
@@ -623,12 +667,12 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
       iNumSpectraLoaded = (int)g_vSpecLib.size();
 
       if (CometPreprocess::CheckExit(iAnalysisType,
-                                     iScanNumber,
-                                     iTotalScans,
-                                     iFileLastScan,
-                                     mstReader.getLastScan(),
-                                     iNumSpectraLoaded,
-                                     1))
+         iScanNumber,
+         iTotalScans,
+         iFileLastScan,
+         mstReader.getLastScan(),
+         iNumSpectraLoaded,
+         1))
       {
          Threading::UnlockMutex(g_pvQueryMutex);
          break;
@@ -647,7 +691,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    cout << "100% (" << CometMassSpecUtils::ElapsedTime(tStartTime) << ")" << endl;
 
    g_bSpecLibRead = true;
-//   mstReader.closeFile();   //FIX when does this get closed?
+   //   mstReader.closeFile();   //FIX when does this get closed?
 
    printf("\n"); fflush(stdout);
 

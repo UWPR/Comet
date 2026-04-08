@@ -40,7 +40,7 @@ namespace CometWrapper {
         bool DoSearch();
         bool InitializeSingleSpectrumSearch();
         void FinalizeSingleSpectrumSearch();
-        bool InitializeSingleSpectrumMS1Search();
+        bool InitializeSingleSpectrumMS1Search(double dMaxQueryRT);
         void FinalizeSingleSpectrumMS1Search();
         bool DoSingleSpectrumSearchMultiResults(int intValue1,                   // top N results
                                                 int intValue2,                   // precursor charge

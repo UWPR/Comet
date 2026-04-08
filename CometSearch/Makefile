@@ -41,7 +41,7 @@ $(OBJDIR)/%.o: %.cpp %.h Common.h CometDataInternal.h BS_thread_pool.hpp | $(OBJ
 	${CXX} ${CXXFLAGS} $< -c -o $@
 
 # Add specific dependency rules for object files that require multiple headers
-$(OBJDIR)/CometSearch.o: CometSearch.cpp CometDataInternal.h CometFragmentIndex.h CometMassSpecUtils.h CometModificationsPermuter.h CometPeptideIndex.h \
+$(OBJDIR)/CometSearch.o: CometSearch.cpp CometDataInternal.h CometFragmentIndex.h CometFragmentIndexReader.h CometMassSpecUtils.h CometModificationsPermuter.h CometPeptideIndex.h \
                CometPostAnalysis.h CometSearch.h CometSearchManager.h CometSpecLib.h CometStatus.h Common.h ThreadPool.h BS_thread_pool.hpp | $(OBJDIR)
 	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometSearch.cpp -c -o $@
 

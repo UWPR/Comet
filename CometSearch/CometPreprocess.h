@@ -85,10 +85,27 @@ public:
                                         double *pdInten,
                                         int iNumPeaks,
                                         double *pdTmpSpectrum);
+
+   // Thread-local version: returns Query* without touching g_pvQuery.
+   // Caller owns the returned Query* and must delete it when done.
+   static Query* PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge,
+                                                     double dMZ,
+                                                     double *pdMass,
+                                                     double *pdInten,
+                                                     int iNumPeaks,
+                                                     double *pdTmpSpectrum);
+
    static bool PreprocessMS1SingleSpectrum(double* pdMass,
                                            double* pdInten,
                                            int iNumPeaks);
+   // Thread-local version: returns QueryMS1* without touching g_pvQueryMS1.
+   // Caller owns the returned QueryMS1* and must delete it when done.
+   static QueryMS1* PreprocessMS1SingleSpectrumThreadLocal(double* pdMass,
+                                                           double* pdInten,
+                                                           int iNumPeaks);
+
    static double GetMassCushion(double dMass);
+
    static void PreloadIons(MSReader& mstReader,
                            Spectrum& spec,
                            bool bNext = false,
@@ -130,6 +147,16 @@ private:
                             double* pdTmpCorrelationData,
                             int iHighestIon,
                             double dHighestIntensity);
+
+   // Shared core of PreprocessSingleSpectrum and PreprocessSingleSpectrumThreadLocal.
+   // Builds a fully preprocessed Query* from the input spectrum data.
+   // Does NOT push the Query* into g_pvQuery.
+   static Query* PreprocessSingleSpectrumCore(int iPrecursorCharge,
+                                              double dMZ,
+                                              double *pdMass,
+                                              double *pdInten,
+                                              int iNumPeaks,
+                                              double *pdTmpSpectrum);
 
    // Private member variables
    static Mutex _maxChargeMutex;
