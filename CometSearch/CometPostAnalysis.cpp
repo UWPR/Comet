@@ -108,7 +108,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    // Calculate A-Score if specified and peptide has phospho mod
    if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
-      && g_pvQuery.at(iQueryIndex)->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
+      && pQuery->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
    {
       bool bHasTerminalVariableMod = false;
 
@@ -235,7 +235,7 @@ void CometPostAnalysis::CalculateDeltaCn(Query* pQuery)
 
    // After ProcessResults for decoys (if any)
    if (g_staticParams.options.iDecoySearch == 2)
-      CalculateDeltaCnsAndRank(pQuery->_pDecoys, pQuery->iMatchPeptideCount);
+      CalculateDeltaCnsAndRank(pQuery->_pDecoys, pQuery->iDecoyMatchPeptideCount);
 }
 
 
@@ -361,7 +361,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
    for (i = 0; i < iSize; ++i)
    {
-      if (!g_staticParams.iIndexDb)
+      if (g_staticParams.iDbType == DbType::FASTA_DB)
       {
          // hijack here to make protein vector unique
          if (pOutput[i].pWhichProtein.size() > 1)
@@ -409,7 +409,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
          double dBion = g_staticParams.precalcMasses.dNtermProton;
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
-         // recalculate dCalcPepMass here for deterministic mass
+         // recalculate dCalcPepMass here for deterministic mass, done only for FASTA DB 
          double dCalcPepMass = g_staticParams.precalcMasses.dNtermProton + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
 
          double dTmpIntenMatch = 0.0;
@@ -426,13 +426,13 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
          if (pOutput[i].cPrevAA == '-' || pOutput[i].bClippedM)
          {
             dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-            if (!g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType == DbType::FASTA_DB)  // no need to recalc pepmass for indexed DBs
                dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
          }
          if (pOutput[i].cNextAA == '-')
          {
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-            if (!g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType == DbType::FASTA_DB)
                dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
          }
 
@@ -440,7 +440,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
             && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] > 0))
          {
             dBion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] - 1].dVarModMass;
-            if (!g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType == DbType::FASTA_DB)
                dCalcPepMass += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide] - 1].dVarModMass;
          }
 
@@ -448,7 +448,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
             && (pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] > 0))
          {
             dYion += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] - 1].dVarModMass;
-            if (!g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType == DbType::FASTA_DB)
                dCalcPepMass += g_staticParams.variableModParameters.varModList[pOutput[i].piVarModSites[pOutput[i].usiLenPeptide + 1] - 1].dVarModMass;
          }
 
@@ -492,7 +492,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
             dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[ii]];
             dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pOutput[i].szPeptide[iPos]];
-            if (!g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType == DbType::FASTA_DB)
                dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)pOutput[i].szPeptide[ii]];
 
             if (g_staticParams.variableModParameters.bVarModSearch)
@@ -500,7 +500,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
                if (pOutput[i].piVarModSites[ii] != 0)
                {
                   dBion += pOutput[i].pdVarModSites[ii];
-                  if (!g_staticParams.iIndexDb)
+                  if (g_staticParams.iDbType == DbType::FASTA_DB)
                      dCalcPepMass += pOutput[i].pdVarModSites[ii];
 
                   int iMod = pOutput[i].piVarModSites[ii];
@@ -536,7 +536,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
          // Add last amino acid mass as above loop stops before peptide length minus 1
          dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)pOutput[i].szPeptide[iLenMinus1]];
-         if (!g_staticParams.iIndexDb && g_staticParams.variableModParameters.bVarModSearch && pOutput[i].piVarModSites[iLenMinus1] != 0)
+         if (g_staticParams.iDbType == DbType::FASTA_DB && g_staticParams.variableModParameters.bVarModSearch && pOutput[i].piVarModSites[iLenMinus1] != 0)
             dCalcPepMass += pOutput[i].pdVarModSites[iLenMinus1];
 
          int iMax = pQuery->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
@@ -693,13 +693,13 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
          // If searching FASTA file, recalculate peptide mass to address rounding issues
          // when adding/subtracting residues when parsing a protein sequence to get pepmass.
-         if (!g_staticParams.iIndexDb)
+         if (g_staticParams.iDbType == DbType::FASTA_DB)
             pOutput[i].dPepMass = dCalcPepMass;
 
          pOutput[i].fScoreSp = (float)((dTmpIntenMatch * usiMatchedFragmentIonCt * (1.0 + dConsec)) /
             ((pOutput[i].usiLenPeptide - 1.0) * usiMaxFragCharge * g_staticParams.ionInformation.iNumIonSeriesUsed));
-         // round Sp to 3 significant digits
-         pOutput[i].fScoreSp = (float)((((int)pOutput[i].fScoreSp) * 100) / 100.0);
+         // round Sp to 2 decimal places
+         pOutput[i].fScoreSp = (float)(((int)(pOutput[i].fScoreSp * 100.0 + 0.5)) / 100.0);
 
          pOutput[i].usiMatchedIons = usiMatchedFragmentIonCt;
       }

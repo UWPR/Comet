@@ -34,6 +34,12 @@
 class ThreadPool
 {
 public:
+   // Callback type for reporting task failures to the application error system.
+   // Set via setErrorHandler() so that doJob() can propagate exceptions without
+   // needing to #include CometStatus.h (which would create a circular include
+   // through Common.h -> ThreadPool.h -> CometStatus.h -> Common.h).
+   using ErrorHandler = std::function<void(const std::string&)>;
+
    ThreadPool() : pool_(nullptr), thread_count_(0)
    {
    }
@@ -49,45 +55,37 @@ public:
    ThreadPool(ThreadPool&&) = delete;
    ThreadPool& operator=(ThreadPool&&) = delete;
 
-   /// @brief Initialize the thread pool with the specified number of threads
-   /// @param threads Thread count: <0 = (CPU threads + threads), 0 = all CPU threads, >0 = exact count
+   /// @brief Register a callback invoked when a task throws an exception.
+   /// Typically set once after construction:
+   ///   tp->setErrorHandler([](const std::string& msg) {
+   ///       g_cometStatus.SetStatus(CometResult_Failed, msg);
+   ///   });
+   void setErrorHandler(ErrorHandler handler)
+   {
+      errorHandler_ = std::move(handler);
+   }
+
+   /// @brief Initialize the thread pool with the specified number of threads.
+   /// @param threads Must be >= 1. If <= 0, g_staticParams.options.iNumThreads was not set
+   ///        correctly by InitializeStaticParams(); throws std::invalid_argument.
    void fillPool(int threads)
    {
-      // Determine actual thread count based on input:
-      // - threads < 0: Use (CPU threads + threads). E.g., -1 on 8-core = 7 threads
-      // - threads == 0: Use all available CPU threads
-      // - threads > 0: Use exactly that many threads
-      int pool_threads = threads;
-
       if (threads <= 0)
       {
-         // Get hardware thread count
-         int hardware_threads = std::thread::hardware_concurrency();
-         if (hardware_threads == 0)
-         {
-            hardware_threads = 1; // Fallback if detection fails
-         }
-
-         if (threads == 0)
-         {
-            // Use all available CPU threads
-            pool_threads = hardware_threads;
-         }
-         else // threads < 0
-         {
-            // Use (CPU threads + threads). E.g., -1 on 8-core = 7 threads
-            pool_threads = hardware_threads + threads;
-
-            // Ensure at least 1 thread
-            if (pool_threads < 1)
-            {
-               pool_threads = 1;
-            }
-         }
+         throw std::invalid_argument(
+            "fillPool() called with invalid thread count " + std::to_string(threads)
+            + ". iNumThreads must be >= 1 after InitializeStaticParams().");
       }
 
-      thread_count_ = static_cast<size_t>(pool_threads);
-      pool_ = std::make_unique<BS::thread_pool<>>(pool_threads);
+      // Guard against calling fillPool when pool is already initialized.
+      // Drain existing pool first to avoid silently dropping in-flight tasks.
+      if (pool_)
+      {
+         drainPool();
+      }
+
+      thread_count_ = static_cast<size_t>(threads);
+      pool_ = std::make_unique<BS::thread_pool<>>(threads);
    }
 
    /// @brief Wait for all currently queued and running tasks to complete
@@ -166,19 +164,29 @@ public:
          throw std::logic_error("ThreadPool::doJob() called before fillPool() - work would be silently dropped");
       }
 
-      // Wrap the task with exception logging to preserve debuggability
-      auto wrapped_func = [func = std::move(func)]() {
+      // Capture the error handler by value so the lambda is self-contained.
+      // If no handler was set, exceptions are still logged to stderr.
+      ErrorHandler handler = errorHandler_;
+
+      auto wrapped_func = [func = std::move(func), handler = std::move(handler)]() {
          try
          {
             func();
          }
          catch (const std::exception& e)
          {
-            std::cerr << " Warning: Exception in thread pool task: " << e.what() << std::endl;
+            std::string strErrorMsg = " Error: Exception in thread pool task: "
+               + std::string(e.what()) + "\n";
+            std::cerr << strErrorMsg;
+            if (handler)
+               handler(strErrorMsg);
          }
          catch (...)
          {
-            std::cerr << " Warning: Unknown exception in thread pool task" << std::endl;
+            std::string strErrorMsg = " Error: Unknown exception in thread pool task\n";
+            std::cerr << strErrorMsg;
+            if (handler)
+               handler(strErrorMsg);
          }
          };
 
@@ -255,6 +263,7 @@ public:
 private:
    std::unique_ptr<BS::thread_pool<>> pool_;
    size_t thread_count_;  // Changed from int to size_t for consistency
+   ErrorHandler errorHandler_;  // Optional callback for propagating task errors
 };
 
 #endif // _THREAD_POOL_H_

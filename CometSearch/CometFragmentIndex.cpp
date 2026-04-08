@@ -143,7 +143,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 
 void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
-   cout <<  " - generate fragment index\n"; fflush(stdout);
+   cout <<  " - generate fragment ion index\n"; fflush(stdout);
 
    Threading::InitMutex(&_vFragmentPeptidesMutex);
 
@@ -604,14 +604,14 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    if (bSucceeded)
    {
       g_staticParams.options.bCreateFragmentIndex = true;
-      g_staticParams.iIndexDb = 0;
+      g_staticParams.iDbType = DbType::FASTA_DB;
 
       // this step calls RunSearch just to pull out all peptides
       // to write into the .idx pepties/proteins file
       bSucceeded = CometSearch::RunSearch(0, 0, tp);
 
       g_staticParams.options.bCreateFragmentIndex = false;
-      g_staticParams.iIndexDb = 1;
+      g_staticParams.iDbType = DbType::FI_DB;
    }
 
    if (bSwapIdxExtension)

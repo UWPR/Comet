@@ -299,7 +299,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    bool bPrintSequences = false;
    if (g_staticParams.options.iOutputMzIdentMLFile == 2) // print sequences in DBSequence
    {
-      if (g_staticParams.iIndexDb)
+      if (g_staticParams.iDbType != DbType::FASTA_DB)
          bPrintSequences = false;
       else
          bPrintSequences = true;
@@ -1461,7 +1461,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          std::vector<ProteinEntryStruct>::iterator it;
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
-            if (g_staticParams.iIndexDb)
+            if (g_staticParams.iDbType != DbType::FASTA_DB)
             {
                comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
 

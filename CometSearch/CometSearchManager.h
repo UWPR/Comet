@@ -21,6 +21,7 @@
 #include "CometInterfaces.h"
 #include "githubsha.h"           // blank hash that github workflows should populate
 
+#include <atomic>
 #include <errno.h>
 #include <string.h>
 #include <cstdio>
@@ -111,10 +112,9 @@ public:
 private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
-   bool singleSearchInitializationComplete;
-   bool singleSearchMS1InitializationComplete;
+   std::atomic<bool> singleSearchInitializationComplete;
+   std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;
-   int singleSearchThreadCount;
    std::map<std::string, CometParam*> _mapStaticParams;
 };
 

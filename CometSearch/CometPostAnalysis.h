@@ -43,8 +43,8 @@ public:
    ~CometPostAnalysis();
    static bool PostAnalysis(ThreadPool* tp);
    static void PostAnalysisThreadProc(PostAnalysisThreadData* pThreadData,
-      ThreadPool* tp);
-   // Query*-based overloads — the only versions now
+                                      ThreadPool* tp);
+   // Query*-based overloads, the only versions now
    static void CalculateDeltaCn(Query* pQuery);
    static void CalculateDeltaCnsAndRank(Results* pOutput,
                                         int iNumPrintLines);

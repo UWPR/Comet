@@ -17,13 +17,14 @@
 #define _COMETPEPTIDEINDEX_H_
 
 #include "Common.h"
-#include "CometPostAnalysis.h"
+#include "CometDataInternal.h"
+#include "CometMassSpecUtils.h"
 #include "CometSearch.h"
 #include "CometStatus.h"
-#include "CometMassSpecUtils.h"
-#include "ThreadPool.h"
 
-
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 class CometPeptideIndex
 {
@@ -31,11 +32,18 @@ public:
    CometPeptideIndex();
    ~CometPeptideIndex();
 
-   static bool WritePeptideIndex(ThreadPool *tp);
-   static void ReadPeptideIndexEntry(struct DBIndex *sDBI, FILE *fp);
+   static bool ReadPeptideIndex(void);
+   static bool WritePeptideIndex(ThreadPool* tp);
+   static bool ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp);
 
-private:
-   static Mutex _vFragmentPeptidesMutex;
+   // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,
+   // Enzyme2, VariableMod lines) from an already-open file pointer.
+   // Updates g_staticParams in-place and must only be called once per index
+   // load (guarded by g_bPeptideIndexRead). Called by both
+   // SearchPeptideIndex(ThreadPool*) and InitializeMassesFromPeptideIndex()
+   // to avoid duplication.
+   static bool ParsePeptideIndexHeader(FILE* fp);
+
 };
 
 #endif // _COMETPEPTIDEINDEX_H_

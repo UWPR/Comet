@@ -1116,7 +1116,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 }
 
 // Shared core: builds a fully preprocessed Query* from the input spectrum data.
-// Allocates its own scratch buffers on the heap — fully thread-safe.
+// Allocates its own scratch buffers on the heap - fully thread-safe.
 // Does NOT push the Query* into g_pvQuery.
 // Returns nullptr on failure.
 Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
@@ -1182,7 +1182,24 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    pPre.dHighestIntensity = 0;
 
    // --- Inline LoadIons logic for raw arrays instead of Spectrum object ---
+
+   // Compute base-peak intensity so we can apply both absolute and percentage cutoffs
+   double dBasePeakIntensity = 0.0;
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      if (pdInten[i] > dBasePeakIntensity)
+         dBasePeakIntensity = pdInten[i];
+   }
+   // Start with the configured absolute minimum intensity
    double dIntensityCutoff = g_staticParams.options.dMinIntensity;
+   // If a minimum percentage of the base-peak intensity is configured, apply it as well
+   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && dBasePeakIntensity > 0.0)
+   {
+      double dPctCutoff = dBasePeakIntensity * g_staticParams.options.dMinPercentageIntensity;
+      if (dPctCutoff > dIntensityCutoff)
+         dIntensityCutoff = dPctCutoff;
+   }
+
    int iNumFragmentPeaks = 0;
 
    for (int i = iNumPeaks - 1; i >= 0; --i)
@@ -1194,7 +1211,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iIndexDb == 1 && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
             iNumFragmentPeaks++;
@@ -1304,7 +1321,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    if (pPre.dHighestIntensity <= 0.0)
    {
-      // No usable peaks — clean up and return null
+      // No usable peaks - clean up and return null
       delete[] pdTmpFastXcorrData;
       delete[] pdTmpCorrelationData;
       delete[] pfFastXcorrData;
@@ -1508,7 +1525,6 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       pScoring->_pResults[j].usiMatchedIons = 0;
       pScoring->_pResults[j].usiTotalIons = 0;
       pScoring->_pResults[j].szPeptide[0] = '\0';
-      pScoring->_pResults[j].strSingleSearchProtein.clear();
       pScoring->_pResults[j].sAScoreProSiteScores.clear();
       pScoring->_pResults[j].pWhichProtein.clear();
       pScoring->_pResults[j].sPeffOrigResidues.clear();
@@ -1534,7 +1550,6 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          pScoring->_pDecoys[j].usiMatchedIons = 0;
          pScoring->_pDecoys[j].usiTotalIons = 0;
          pScoring->_pDecoys[j].szPeptide[0] = '\0';
-         pScoring->_pDecoys[j].strSingleSearchProtein.clear();
          pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
          pScoring->_pDecoys[j].pWhichProtein.clear();
          pScoring->_pDecoys[j].sPeffOrigResidues.clear();
@@ -2115,7 +2130,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
-   if (g_staticParams.iIndexDb && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
+   if (g_staticParams.iDbType != DbType::FASTA_DB && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
    {
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
@@ -2135,10 +2150,12 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iIndexDb == 1 && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
          {
             // Store list of fragment masses for fragment index search
-            // Intensities don't matter here
+            // Intensities don't matter here. Note that peaks are sorted in
+            // ascending order by intensity so that the most intense peaks
+            // are stored in vfRawFragmentPeakMass.
             pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
 
             iNumFragmentPeaks++;
@@ -2609,7 +2626,7 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
       }
    }
 
-   // Normalize to unit vector — must match library normalization
+   // Normalize to unit vector - must match library normalization
    double dSumSquares = 0.0;
    for (int i = 0; i < iArraySizeMS1; ++i)
    {
@@ -2626,7 +2643,7 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
    }
    else
    {
-      // Empty spectrum after filtering — return null
+      // Empty spectrum after filtering - return null
       delete[] pQueryMS1->pfFastXcorrData;
       pQueryMS1->pfFastXcorrData = nullptr;
       delete pQueryMS1;

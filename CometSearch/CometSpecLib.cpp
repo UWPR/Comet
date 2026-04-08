@@ -545,9 +545,10 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
       int iLen = (int)strlen(pszFileName);
       if (iLen > 4 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".raw"))
          iSpecLibInputType = InputType_RAW;
-      else if ((iLen > 6 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML"))
-         || (iLen > 5 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")))
+      else if (iLen > 6 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML"))
          iSpecLibInputType = InputType_MZXML;
+      else if (iLen > 5 && !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML"))
+         iSpecLibInputType = InputType_MZML;
    }
 
    // Get the thread pool of threads that will preprocess the data.
@@ -573,7 +574,10 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    // MS1 path LoadSpecLibMS1Raw is the first (and only) caller.
    if (!g_bCometPreprocessMemoryAllocated)
    {
-      if (!CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads))
+      // Note that g_staticParams.options.iNumThreads will be >= 1 at this call. It's not possible
+      // for g_staticParams.options.iNumThreads to be 0 or negative here as that is checked in
+      // InitializeStaticParams() and its value is set to be >= 1.
+      if (g_staticParams.options.iNumThreads <= 0 || !CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads))
       {
          string strErrorMsg = " Error - CometPreprocess::AllocateMemory failed in LoadSpecLibMS1Raw.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

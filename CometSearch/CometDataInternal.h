@@ -265,7 +265,6 @@ struct Results
    char   cNextAA;                            // stores following flanking AA
    bool   bClippedM;                          // true if new N-term protein due to clipped methionine
    char   cHasVariableMod;                    // HasVariableModType enum: 0 = no variable mod, 1 = has variable mod, 2 = has AScorePro mod
-   string strSingleSearchProtein;             // used only in single spectrum search to return protein name from index file
    string sPeffOrigResidues;                  // original residue(s) of a PEFF variant
    string sAScoreProSiteScores;               // AScorePro site scores as comma-separated string
    int    iPeffOrigResiduePosition;           // position of PEFF variant substitution; -1 = n-term, iLenPeptide = c-term; -9=unused
@@ -764,6 +763,15 @@ struct IonInfo
    }
 };
 
+// Identifies which type of database is being searched.
+// Defined before StaticParams so iDbType can use DbType.
+enum class DbType
+{
+   FASTA_DB = 0,  // normal FASTA sequence database
+   FI_DB = 1,     // fragment ion index (.idx)
+   PI_DB = 2      // peptide index (.idx)
+};
+
 // static user params, won't change per thread - can make global!
 struct StaticParams
 {
@@ -793,7 +801,7 @@ struct StaticParams
    double          dOneMinusBinOffset;  // this is used in BIN() many times so calculate once
    IonInfo         ionInformation;
    int             iXcorrProcessingOffset;
-   int             iIndexDb;            // 0 = normal fasta; 1 = fragment ion indexed; 2 = peptide index
+   DbType          iDbType;            // FASTA_DB = normal fasta; FI_DB = fragment ion indexed; PI_DB = peptide index
    vector<double>  vectorMassOffsets;
    vector<double>  precursorNLIons;
    int             iPrecursorNLSize;
@@ -847,7 +855,7 @@ struct StaticParams
       szMod[0] = '\0';
 
       iXcorrProcessingOffset = 75;
-      iIndexDb = 0;
+      iDbType = DbType::FASTA_DB;
 
       databaseInfo.szDatabase[0] = '\0';
       speclibInfo.strSpecLibFile.clear();
@@ -1060,7 +1068,7 @@ extern int* PEPTIDE_MOD_SEQ_IDXS;
 extern int MOD_NUM;
 extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
-extern bool g_bPeptideIndexRead;        // set to true if peptide index file is read
+extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
 extern bool g_bSpecLibRead;             // set to true if spectral library file is read
 
 extern bool g_bPerformSpecLibSearch;    // set to true if doing spectral library search
@@ -1121,6 +1129,8 @@ struct Query
    Results*             _pResults;
    Results*             _pDecoys;
    SpecLibResults*      _pSpecLibResults;
+
+   std::chrono::high_resolution_clock::time_point tSearchStart;  // per-query search start time for iMaxIndexRunTime timeout
 
    Mutex accessMutex;
 
