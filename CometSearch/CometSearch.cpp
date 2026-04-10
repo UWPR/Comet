@@ -198,14 +198,16 @@ bool CometSearch::RunSearch(int iPercentStart,
 
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      CometFragmentIndex sqFI;
-      CometSearch sqSearch;
+      CometFragmentIndex* sqFI = new CometFragmentIndex();
+      CometSearch* sqSearch = new CometSearch();
 
       if (!g_bPlainPeptideIndexRead)
       {
-         sqFI.ReadPlainPeptideIndex();
-         sqFI.CreateFragmentIndex(tp);
+         sqFI->ReadPlainPeptideIndex();
+         sqFI->CreateFragmentIndex(tp);
       }
+
+      delete sqFI;
 
       ThreadPool* pSearchThreadPool = tp;
 
@@ -229,12 +231,14 @@ bool CometSearch::RunSearch(int iPercentStart,
          logout("\b\b\b\b");
       }
 
+      delete sqSearch;
       return bSucceeded;
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)
    {
-      CometSearch sqSearch;
-      sqSearch.SearchPeptideIndex(tp);
+      CometSearch* sqSearch = new CometSearch();
+      sqSearch->SearchPeptideIndex(tp);
+      delete sqSearch;
       return bSucceeded;
    }
    else
@@ -1243,11 +1247,12 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
    // Give memory manager access to the thread.
    pSearchThreadData->pbSearchMemoryPool = &_pbSearchMemoryPool[i];
 
-   CometSearch sqSearch;
-   // DoSearch now returns true/false, but we already log errors and set
-   // the global error variable before we get here, so no need to check
-   // the return value here.
-   sqSearch.DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
+   // Heap-allocate to avoid thread stack overflow: CometSearch has ~295 KB of
+   // member arrays (_uiBinnedIonMasses, etc.) that would exhaust the 1 MB thread
+   // stack in debug builds when combined with the deep DoSearch call chain.
+   CometSearch* sqSearch = new CometSearch();
+   sqSearch->DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
+   delete sqSearch;
 
    delete pSearchThreadData;
    pSearchThreadData = NULL;
@@ -3825,6 +3830,16 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    if (iEndPos == iProteinSeqLengthMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
+   // Compound mods: track whether protein has J residues and count in current window
+   bool bProteinHasJ = false;
+   int iJcount = 0;
+   if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
+   {
+      bProteinHasJ = true;
+      if (szProteinSeq[iStartPos] == 'J')
+         iJcount = 1;
+   }
+
    // Search through entire protein.
    while (iStartPos < iLenProtein)
    {
@@ -4306,6 +4321,14 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
          }
       }
 
+      // Compound mods: for unmodified J-containing peptides in FASTA batch search
+      if (bProteinHasJ && iJcount > 0 && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos))
+      {
+         int piVarModSitesCM[MAX_PEPTIDE_LEN_P2];
+         memset(piVarModSitesCM, 0, sizeof(piVarModSitesCM));
+         CompoundModSearch(szProteinSeq, iStartPos, iEndPos, piVarModSitesCM, pbDuplFragment, &dbe);
+      }
+
       // Increment end.
       if (dCalcPepMass <= g_massRange.dMaxMass && iEndPos < iProteinSeqLengthMinus1 && iLenPeptide < g_staticParams.options.peptideLengthRange.iEnd)
       {
@@ -4320,6 +4343,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
             if (iEndPos == iProteinSeqLengthMinus1)
                dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+
+            if (bProteinHasJ && szProteinSeq[iEndPos] == 'J')
+               iJcount++;
          }
       }
       // Increment start, reset end.
@@ -4384,6 +4410,13 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   dCalcPepMass -= g_staticParams.staticModifications.dAddCterminusProtein;
                iEndPos--;
             }
+            // Recount J in the new window after narrow-range iEndPos shrink
+            if (bProteinHasJ)
+            {
+               iJcount = 0;
+               for (int x = iStartPos; x <= iEndPos; ++x)
+                  if (szProteinSeq[x] == 'J') iJcount++;
+            }
          }
          else
          {
@@ -4398,6 +4431,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   piVarModCounts[x] = 0;
                CountVarMods(piVarModCounts, szProteinSeq[iEndPos], iEndPos);
             }
+
+            if (bProteinHasJ)
+               iJcount = (szProteinSeq[iStartPos] == 'J') ? 1 : 0;
          }
       }
    }
@@ -5779,7 +5815,14 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
 
                iVal = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[i];
 
-               if (iVal > 0)
+               if (iVal >= COMPOUNDMODS_OFFSET)
+               {
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] =
+                     g_staticParams.variableModParameters.vdCompoundMasses.at(iVal - COMPOUNDMODS_OFFSET);
+                  if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
+               }
+               else if (iVal > 0)
                {
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 
@@ -5985,7 +6028,14 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
 
                iVal = pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[i];
 
-               if (iVal > 0)
+               if (iVal >= COMPOUNDMODS_OFFSET)
+               {
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] =
+                     g_staticParams.variableModParameters.vdCompoundMasses.at(iVal - COMPOUNDMODS_OFFSET);
+                  if (pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
+               }
+               else if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 
@@ -7717,6 +7767,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
    int piVarModCharIdx[VMODS];
    int i;
    int j;
+   int iJcount = 0;  // compound mods: count of J residues in peptide
 
    // at this point, need to compare current modified peptide
    // against all relevant entries
@@ -7787,6 +7838,10 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
       int iPos = i - _varModInfo.iStartPos;
 
       dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[i]];
+
+      // Compound mods: count J residues in peptide
+      if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && szProteinSeq[i] == 'J')
+         iJcount++;
 
       // This loop is where all individual variable mods are combined
       for (j = 0; j < VMODS; ++j)
@@ -8099,6 +8154,14 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
       }
    }
 
+   // Compound mods: if this varmod peptide also has J residues, search compound mods
+   // piVarModSites may contain regular varmod codes at non-J positions; CompoundModSearch guards these (B3 fix)
+   if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && iJcount > 0)
+   {
+      CompoundModSearch(szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos,
+                        piVarModSites, pbDuplFragment, dbe);
+   }
+
    return true;
 }
 
@@ -8202,7 +8265,11 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
                dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[i]];
 
-               if (piVarModSites[iPosForward] > 0)
+               if (piVarModSites[iPosForward] >= COMPOUNDMODS_OFFSET)
+               {
+                  dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iPosForward] - COMPOUNDMODS_OFFSET);
+               }
+               else if (piVarModSites[iPosForward] > 0)
                {
                   int iMod = piVarModSites[iPosForward] - 1;
 
@@ -8231,7 +8298,11 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
                dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosReverse]];
 
-               if (piVarModSites[iPosReverseModSite] > 0)
+               if (piVarModSites[iPosReverseModSite] >= COMPOUNDMODS_OFFSET)
+               {
+                  dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSites[iPosReverseModSite] - COMPOUNDMODS_OFFSET);
+               }
+               else if (piVarModSites[iPosReverseModSite] > 0)
                {
                   int iMod = piVarModSites[iPosReverseModSite] - 1;
 
@@ -8547,7 +8618,11 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
                   iPosReverseModSite = iDecoyEndPos - i;
 
                   dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[i]];
-                  if (piVarModSitesDecoy[iPosForward] > 0)
+                  if (piVarModSitesDecoy[iPosForward] >= COMPOUNDMODS_OFFSET)
+                  {
+                     dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iPosForward] - COMPOUNDMODS_OFFSET);
+                  }
+                  else if (piVarModSitesDecoy[iPosForward] > 0)
                   {
                      int iMod = piVarModSitesDecoy[iPosForward] - 1;
 
@@ -8573,7 +8648,11 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
                   dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosReverse]];
 
-                  if (piVarModSitesDecoy[iPosReverseModSite] > 0)
+                  if (piVarModSitesDecoy[iPosReverseModSite] >= COMPOUNDMODS_OFFSET)
+                  {
+                     dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(piVarModSitesDecoy[iPosReverseModSite] - COMPOUNDMODS_OFFSET);
+                  }
+                  else if (piVarModSitesDecoy[iPosReverseModSite] > 0)
                   {
                      int iMod = piVarModSitesDecoy[iPosReverseModSite] - 1;
 
@@ -9246,4 +9325,331 @@ bool CometSearch::InitializeMassesFromPeptideIndex()
 
    std::fclose(fp);
    return true;
+}
+
+
+// Search each J residue in [iStartPos, iEndPos] against every compound mass.
+// piVarModSites may contain regular varmod codes (1-VMODS) at non-J positions (called from MergeVarMods).
+// Bug fixes applied: B1 (bounds check before write), B2 (decoy mod-site mapping for N-term enzyme),
+//                    B3 (guard COMPOUNDMODS_OFFSET in base mass computation), B5 (no exit(1)).
+void CometSearch::CompoundModSearch(char *szProteinSeq,
+                                    int iStartPos,
+                                    int iEndPos,
+                                    int *piVarModSites,
+                                    bool *pbDuplFragment,
+                                    struct sDBEntry *dbe)
+{
+   int ctLen, ctIonSeries, ctCharge, iWhichIonSeries;
+   int iLenPeptide = iEndPos - iStartPos + 1;
+   int iLenMinus1 = iLenPeptide - 1;
+   int iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
+   int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
+   char szDecoyPeptide[MAX_PEPTIDE_LEN_P2];
+   int iDecoyStartPos = 0;
+   int iDecoyEndPos = 0;
+
+   // Set _varModInfo so XcorrScore/StorePeptide can reference start/end positions
+   _varModInfo.iStartPos = iStartPos;
+   _varModInfo.iEndPos = iEndPos;
+
+   // Compute base peptide mass: AA residues + any existing regular varmod contributions.
+   // B3 fix: skip piVarModSites entries >= COMPOUNDMODS_OFFSET (compound mod already placed).
+   double dBasePepMass = g_staticParams.precalcMasses.dNtermProton
+                       + g_staticParams.precalcMasses.dCtermOH2Proton - PROTON_MASS;
+
+   if (iStartPos == 0)
+      dBasePepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+   if (iEndPos == iLenProteinMinus1)
+      dBasePepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+
+   if (piVarModSites[iLenPeptide] > 0 && piVarModSites[iLenPeptide] < COMPOUNDMODS_OFFSET)
+      dBasePepMass += g_staticParams.variableModParameters.varModList[piVarModSites[iLenPeptide] - 1].dVarModMass;
+
+   if (piVarModSites[iLenPeptide + 1] > 0 && piVarModSites[iLenPeptide + 1] < COMPOUNDMODS_OFFSET)
+      dBasePepMass += g_staticParams.variableModParameters.varModList[piVarModSites[iLenPeptide + 1] - 1].dVarModMass;
+
+   for (int i = iStartPos; i <= iEndPos; ++i)
+   {
+      int iPos = i - iStartPos;
+      dBasePepMass += g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[i]];
+
+      int iSite = piVarModSites[iPos];
+      if (iSite > 0 && iSite < COMPOUNDMODS_OFFSET)  // B3 fix: do not index varModList if >= COMPOUNDMODS_OFFSET
+         dBasePepMass += g_staticParams.variableModParameters.varModList[iSite - 1].dVarModMass;
+   }
+
+   // Iterate through J positions
+   for (int i = iStartPos; i <= iEndPos; ++i)
+   {
+      if (szProteinSeq[i] != 'J')
+         continue;
+
+      int iJPosition = i - iStartPos;
+
+      // Skip if this J already carries a regular variable mod
+      if (piVarModSites[iJPosition] > 0 && piVarModSites[iJPosition] < COMPOUNDMODS_OFFSET)
+         continue;
+
+      // Try each compound mass (list is sorted ascending, so we can break early)
+      for (int iWhichCM = 0; iWhichCM < (int)g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCM)
+      {
+         double dModMass = dBasePepMass + g_staticParams.variableModParameters.vdCompoundMasses[iWhichCM];
+
+         if (dModMass > g_massRange.dMaxMass)
+            break;
+
+         // B1 fix: bounds-check iJPosition BEFORE writing to piVarModSites
+         if (iJPosition < 0 || iJPosition >= iLenPeptide)
+         {
+            string strErrorMsg = " Error in CompoundModSearch: iJPosition out of bounds.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return;
+         }
+
+         piVarModSites[iJPosition] = COMPOUNDMODS_OFFSET + iWhichCM;
+
+         int iWhichQuery = WithinMassTolerance(dModMass, szProteinSeq, iStartPos, iEndPos);
+
+         if (iWhichQuery == -1)
+         {
+            piVarModSites[iJPosition] = 0;
+            continue;
+         }
+
+         bool bFirstTime = true;
+
+         while (iWhichQuery < (int)g_pvQuery.size())
+         {
+            if (dModMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+               break;
+
+            if (CheckMassMatch(iWhichQuery, dModMass))
+            {
+               if (bFirstTime)
+               {
+                  bFirstTime = false;
+
+                  // Build forward/reverse AA fragment ladders with COMPOUNDMODS_OFFSET handling
+                  double dBion = g_staticParams.precalcMasses.dNtermProton;
+                  double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                  if (iStartPos == 0)
+                     dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+                  if (iEndPos == iLenProteinMinus1)
+                     dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+
+                  if (piVarModSites[iLenPeptide] > 0 && piVarModSites[iLenPeptide] < COMPOUNDMODS_OFFSET)
+                     dBion += g_staticParams.variableModParameters.varModList[piVarModSites[iLenPeptide] - 1].dVarModMass;
+                  if (piVarModSites[iLenPeptide + 1] > 0 && piVarModSites[iLenPeptide + 1] < COMPOUNDMODS_OFFSET)
+                     dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iLenPeptide + 1] - 1].dVarModMass;
+
+                  for (int ii = iStartPos; ii < iEndPos; ++ii)
+                  {
+                     int iPosF = ii - iStartPos;
+                     int iPosR = iEndPos - iPosF;
+                     int iPosRM = iEndPos - ii;
+
+                     dBion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[ii]];
+
+                     int iSiteF = piVarModSites[iPosF];
+                     if (iSiteF >= COMPOUNDMODS_OFFSET)
+                        dBion += g_staticParams.variableModParameters.vdCompoundMasses.at(iSiteF - COMPOUNDMODS_OFFSET);
+                     else if (iSiteF > 0)
+                        dBion += g_staticParams.variableModParameters.varModList[iSiteF - 1].dVarModMass;
+                     else if (iSiteF < 0)
+                        dBion += (dbe->vectorPeffMod.at(-iSiteF - 1)).dMassDiffMono;
+
+                     _pdAAforward[iPosF] = dBion;
+
+                     dYion += g_staticParams.massUtility.pdAAMassFragment[(int)szProteinSeq[iPosR]];
+
+                     int iSiteR = piVarModSites[iPosRM];
+                     if (iSiteR >= COMPOUNDMODS_OFFSET)
+                        dYion += g_staticParams.variableModParameters.vdCompoundMasses.at(iSiteR - COMPOUNDMODS_OFFSET);
+                     else if (iSiteR > 0)
+                        dYion += g_staticParams.variableModParameters.varModList[iSiteR - 1].dVarModMass;
+                     else if (iSiteR < 0)
+                        dYion += (dbe->vectorPeffMod.at(-iSiteR - 1)).dMassDiffMono;
+
+                     _pdAAreverse[iPosF] = dYion;
+                  }
+
+                  // Initialize then populate binned target fragment ions
+                  for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
+                  {
+                     for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+                     {
+                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+                        for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+                        {
+                           int iVal = BIN(CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
+                           if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                           {
+                              pbDuplFragment[iVal] = false;
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = 0;
+                           }
+                        }
+                     }
+                  }
+                  for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
+                  {
+                     for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+                     {
+                        iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+                        for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+                        {
+                           int iVal = BIN(CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforward, _pdAAreverse));
+                           if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
+                           {
+                              _uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0] = iVal;
+                              pbDuplFragment[iVal] = true;
+                           }
+                        }
+                     }
+                  }
+
+                  // Build decoy fragment ions (once per compound-mod/J-position combo)
+                  if (g_staticParams.options.iDecoySearch)
+                  {
+                     int piTmpVarModSearchSites[MAX_PEPTIDE_LEN_P2];
+
+                     if (iStartPos == 0)
+                        szDecoyPeptide[0] = '-';
+                     else
+                        szDecoyPeptide[0] = szProteinSeq[iStartPos - 1];
+
+                     if (iEndPos == iLenProteinMinus1)
+                        szDecoyPeptide[iLenPeptide + 1] = '-';
+                     else
+                        szDecoyPeptide[iLenPeptide + 1] = szProteinSeq[iEndPos + 1];
+
+                     szDecoyPeptide[iLenPeptide + 2] = '\0';
+
+                     if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
+                     {
+                        // Last residue stays same: ABCDEK -> EDCBAK
+                        for (int ii = iEndPos - 1; ii >= iStartPos; --ii)
+                        {
+                           szDecoyPeptide[iEndPos - ii] = szProteinSeq[ii];
+                           piTmpVarModSearchSites[iEndPos - ii - 1] = piVarModSites[ii - iStartPos];
+                        }
+                        szDecoyPeptide[iEndPos - iStartPos + 1] = szProteinSeq[iEndPos];
+                        piTmpVarModSearchSites[iLenPeptide - 1] = piVarModSites[iLenPeptide - 1];
+                     }
+                     else
+                     {
+                        // B2 fix: first residue stays same: ABCDEK -> AKEDCB
+                        // (original compoundmods branch had a bug here for iSearchEnzymeOffSet == 0)
+                        for (int ii = iEndPos; ii > iStartPos; --ii)
+                        {
+                           szDecoyPeptide[iEndPos - ii + 2] = szProteinSeq[ii];
+                           piTmpVarModSearchSites[iEndPos - ii + 1] = piVarModSites[ii - iStartPos];
+                        }
+                        szDecoyPeptide[1] = szProteinSeq[iStartPos];
+                        piTmpVarModSearchSites[0] = piVarModSites[0];
+                     }
+
+                     piTmpVarModSearchSites[iLenPeptide] = piVarModSites[iLenPeptide];
+                     piTmpVarModSearchSites[iLenPeptide + 1] = piVarModSites[iLenPeptide + 1];
+                     memcpy(piVarModSitesDecoy, piTmpVarModSearchSites, (iLenPeptide + 2) * sizeof(int));
+
+                     iDecoyStartPos = 1;
+                     iDecoyEndPos = (int)strlen(szDecoyPeptide) - 2;
+
+                     double dBionD = g_staticParams.precalcMasses.dNtermProton;
+                     double dYionD = g_staticParams.precalcMasses.dCtermOH2Proton;
+
+                     if (iStartPos == 0)
+                        dBionD += g_staticParams.staticModifications.dAddNterminusProtein;
+                     if (iEndPos == iLenProteinMinus1)
+                        dYionD += g_staticParams.staticModifications.dAddCterminusProtein;
+
+                     if (piVarModSitesDecoy[iLenPeptide] > 0 && piVarModSitesDecoy[iLenPeptide] < COMPOUNDMODS_OFFSET)
+                        dBionD += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iLenPeptide] - 1].dVarModMass;
+                     if (piVarModSitesDecoy[iLenPeptide + 1] > 0 && piVarModSitesDecoy[iLenPeptide + 1] < COMPOUNDMODS_OFFSET)
+                        dYionD += g_staticParams.variableModParameters.varModList[piVarModSitesDecoy[iLenPeptide + 1] - 1].dVarModMass;
+
+                     for (int ii = iDecoyStartPos; ii < iDecoyEndPos; ++ii)
+                     {
+                        int iPosF = ii - iDecoyStartPos;
+                        int iPosR = iDecoyEndPos - iPosF;
+                        int iPosRM = iDecoyEndPos - ii;
+
+                        dBionD += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[ii]];
+
+                        int iSiteF = piVarModSitesDecoy[iPosF];
+                        if (iSiteF >= COMPOUNDMODS_OFFSET)
+                           dBionD += g_staticParams.variableModParameters.vdCompoundMasses.at(iSiteF - COMPOUNDMODS_OFFSET);
+                        else if (iSiteF > 0)
+                           dBionD += g_staticParams.variableModParameters.varModList[iSiteF - 1].dVarModMass;
+                        else if (iSiteF < 0)
+                           dBionD += (dbe->vectorPeffMod.at(-iSiteF - 1)).dMassDiffMono;
+
+                        _pdAAforwardDecoy[iPosF] = dBionD;
+
+                        dYionD += g_staticParams.massUtility.pdAAMassFragment[(int)szDecoyPeptide[iPosR]];
+
+                        int iSiteR = piVarModSitesDecoy[iPosRM];
+                        if (iSiteR >= COMPOUNDMODS_OFFSET)
+                           dYionD += g_staticParams.variableModParameters.vdCompoundMasses.at(iSiteR - COMPOUNDMODS_OFFSET);
+                        else if (iSiteR > 0)
+                           dYionD += g_staticParams.variableModParameters.varModList[iSiteR - 1].dVarModMass;
+                        else if (iSiteR < 0)
+                           dYionD += (dbe->vectorPeffMod.at(-iSiteR - 1)).dMassDiffMono;
+
+                        _pdAAreverseDecoy[iPosF] = dYionD;
+                     }
+
+                     for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
+                     {
+                        for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+                        {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+                           for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+                           {
+                              int iVal = BIN(CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy));
+                              if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                              {
+                                 pbDuplFragment[iVal] = false;
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = 0;
+                              }
+                           }
+                        }
+                     }
+                     for (ctCharge = 1; ctCharge <= g_massRange.usiMaxFragmentCharge; ++ctCharge)
+                     {
+                        for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+                        {
+                           iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+                           for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+                           {
+                              int iVal = BIN(CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, _pdAAforwardDecoy, _pdAAreverseDecoy));
+                              if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
+                              {
+                                 _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
+                                 pbDuplFragment[iVal] = true;
+                              }
+                           }
+                        }
+                     }
+                  }  // end if iDecoySearch (fragment build)
+               }  // end if bFirstTime
+
+               XcorrScore(szProteinSeq, iStartPos, iEndPos, iStartPos, iEndPos,
+                  1, dModMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
+
+               if (g_staticParams.options.iDecoySearch)
+               {
+                  XcorrScore(szDecoyPeptide, iDecoyStartPos, iDecoyEndPos, 1, iLenPeptide,
+                     1, dModMass, true, iWhichQuery, iLenPeptide, piVarModSitesDecoy, dbe);
+               }
+            }  // end if CheckMassMatch
+
+            iWhichQuery++;
+         }  // end while iWhichQuery
+
+         piVarModSites[iJPosition] = 0;  // reset for next compound mass / next J position
+      }  // end for iWhichCM
+   }  // end for each position i (J search)
 }

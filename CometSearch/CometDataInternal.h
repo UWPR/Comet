@@ -74,6 +74,7 @@ class CometSearchManager;
                                              // if this is ever larger than 16, need to extend range of siVarModProteinFilter
 
 #define VMODS                       15       // also "VMODS+1" is 4th dimension of uiBinnedIonMasses to cover unmodified ions (0), mod NL (1-15)
+#define COMPOUNDMODS_OFFSET         100      // piVarModSites values >= 100 encode compound mods; index = value - 100
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
 #define VMOD_3_INDEX                2
@@ -648,6 +649,9 @@ struct VarModParams
    char    cModCode[VMODS];          // mod characters
    string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
    multimap<int, string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
+   string         sCompoundModsFile;              // path to compound mods mass file; empty = disabled
+   vector<double> vdCompoundMasses;               // sorted, deduplicated list of masses read from sCompoundModsFile
+   size_t         iNumCompoundMasses;             // vdCompoundMasses.size(); 0 when feature is disabled
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -668,6 +672,10 @@ struct VarModParams
          varModList[i] = a.varModList[i];
          cModCode[i] = a.cModCode[i];
       }
+
+      sCompoundModsFile = a.sCompoundModsFile;
+      vdCompoundMasses = a.vdCompoundMasses;
+      iNumCompoundMasses = a.iNumCompoundMasses;
 
       return *this;
    }
@@ -808,6 +816,7 @@ struct StaticParams
    int             iOldModsEncoding;
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
+   string          sCompoundModsFile;             // path to compound mods mass file; mirrors variableModParameters.sCompoundModsFile
 
    StaticParams()
    {
@@ -843,6 +852,7 @@ struct StaticParams
        dOneMinusBinOffset = a.dOneMinusBinOffset;
        iXcorrProcessingOffset = a.iXcorrProcessingOffset;
        ionInformation = a.ionInformation;
+       sCompoundModsFile = a.sCompoundModsFile;
        return *this;
    }
 
@@ -866,6 +876,11 @@ struct StaticParams
 
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
+
+      sCompoundModsFile = "";
+      variableModParameters.sCompoundModsFile = "";
+      variableModParameters.vdCompoundMasses.clear();
+      variableModParameters.iNumCompoundMasses = 0;
 
       iPrecursorNLSize = 0;
 

@@ -505,7 +505,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
                   int iMod = pOutput[i].piVarModSites[ii];
 
-                  if (iMod > 0)
+                  if (iMod > 0 && iMod < COMPOUNDMODS_OFFSET)
                   {
                      if (g_staticParams.options.bScaleFragmentNL)
                         iCountNLB[iMod - 1][ii] += 1;
@@ -520,7 +520,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
                   int iMod = pOutput[i].piVarModSites[iPos];
 
-                  if (iMod > 0)
+                  if (iMod > 0 && iMod < COMPOUNDMODS_OFFSET)
                   {
                      if (g_staticParams.options.bScaleFragmentNL)
                         iCountNLY[iMod - 1][ii] += 1;

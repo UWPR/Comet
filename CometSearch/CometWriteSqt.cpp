@@ -278,6 +278,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
          oss << pOutput[iWhichResult].szPeptide[i];
 
          if (g_staticParams.variableModParameters.bVarModSearch &&
+            pOutput[iWhichResult].piVarModSites[i] > 0 &&
+            pOutput[iWhichResult].piVarModSites[i] < COMPOUNDMODS_OFFSET &&
             !isEqual(g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[i] - 1].dVarModMass, 0.0))
          {
             oss << g_staticParams.variableModParameters.cModCode[pOutput[iWhichResult].piVarModSites[i] - 1];

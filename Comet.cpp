@@ -347,6 +347,7 @@ void LoadParameters(char* pszParamsFile,
       // String with whitespace trim
       {"database_name",                { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("database_name", szFile, szFile); }}},
       {"peff_obo",                     { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("peff_obo", szFile, szFile); }}},
+      {"compoundmods_file",            { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("compoundmods_file", szFile, szFile); }}},
       {"spectral_library_name",        { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("spectral_library_name", szFile, szFile); }}},
       // Simple strings
       {"activation_method",            { [&]() { parse_string("activation_method", 23); }}},
@@ -932,6 +933,8 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 #\n\
 peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
 peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
+\n\
+compoundmods_file =                    # path to compound mods mass file (one mass per line)\n\
 \n\
 #\n\
 # fragment ion index; limited to 5 variable mods and up to 5 modified residues per mod\n\

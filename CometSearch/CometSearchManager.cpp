@@ -662,6 +662,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("peff_obo", strData))
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
 
+   if (GetParamValue("compoundmods_file", strData))
+      g_staticParams.sCompoundModsFile = strData;
+
    GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 
    GetParamValue("mass_offsets", g_staticParams.vectorMassOffsets);
@@ -2270,6 +2273,46 @@ bool CometSearchManager::DoSearch()
             if (!bSucceeded)
                return bSucceeded;
          }
+      }
+   }
+
+   // Load compound mods mass file if specified (B4 fix: only if parameter is explicitly set)
+   if (g_staticParams.sCompoundModsFile.length() > 0)
+   {
+      FILE *fpCM;
+      if ((fpCM = fopen(g_staticParams.sCompoundModsFile.c_str(), "r")) != NULL)
+      {
+         char szBuf[512];
+         double dTmp;
+
+         printf(" Parsing compoundmods file: %s\n", g_staticParams.sCompoundModsFile.c_str());
+
+         while (fgets(szBuf, sizeof(szBuf), fpCM))
+         {
+            if (sscanf(szBuf, "%lf", &dTmp) == 1)
+               g_staticParams.variableModParameters.vdCompoundMasses.push_back(dTmp);
+         }
+         fclose(fpCM);
+
+         sort(g_staticParams.variableModParameters.vdCompoundMasses.begin(),
+              g_staticParams.variableModParameters.vdCompoundMasses.end());
+         g_staticParams.variableModParameters.vdCompoundMasses.erase(
+            unique(g_staticParams.variableModParameters.vdCompoundMasses.begin(),
+                   g_staticParams.variableModParameters.vdCompoundMasses.end()),
+            g_staticParams.variableModParameters.vdCompoundMasses.end());
+
+         g_staticParams.variableModParameters.iNumCompoundMasses =
+            g_staticParams.variableModParameters.vdCompoundMasses.size();
+
+         if (g_staticParams.variableModParameters.iNumCompoundMasses > 0)
+            g_staticParams.variableModParameters.bVarModSearch = true;  // B6: drives WithVariableMods path; see docs for trade-off
+      }
+      else
+      {
+         string strErrorMsg = " Error - could not open compoundmods_file \"" + g_staticParams.sCompoundModsFile + "\"\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
       }
    }
 

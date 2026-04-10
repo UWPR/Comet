@@ -49,9 +49,10 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_MBCS;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_MBCS;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;NOMINMAX;_HAS_STD_BYTE=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalOptions>/DEBUG %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
