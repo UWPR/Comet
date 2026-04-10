@@ -71,31 +71,33 @@ realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclea
 # http://expat.sourceforge.net/
 #
 EXPAT_VER := expat-2.2.9
+EXPAT_ZIP := $(EXPAT_VER).zip
 EXPAT_SRC := $(BUILD_EXT)/$(EXPAT_VER)
 EXPAT_DST := include/extern/expat_config.h $(BUILD_DIR)/libexpat.a
 EXPAT_DSO := $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmltok.o
+EXPAT_STAMP := $(BUILD_DIR)/.expat_installed
 
 .PHONY : expat expat-clean expat-realclean
 
-expat : $(EXPAT_DST)
+expat : $(EXPAT_STAMP)
 
-$(EXPAT_DST) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
-	cd $(BUILD_EXT); tar -xzf $(EXPAT_VER).tar.gz
+$(EXPAT_SRC)/ :
+	cd $(BUILD_EXT); unzip -o -qq $(EXPAT_ZIP)
+
+$(EXPAT_STAMP) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
 	cd $(EXPAT_SRC); ./configure --prefix=$(BUILD_DIR) \
 	   --enable-shared=yes --enable-static=yes \
 	   --without-xmlwf --without-examples --without-tests \
 	   --with-aix-soname=both \
-	   --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
+	   --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
 	make -C $(EXPAT_SRC) install
+	touch $(EXPAT_STAMP)
 
 expat-clean :
-ifneq (,$(wildcard $(EXPAT_SRC)/Makefile))
-	make -C $(EXPAT_SRC) clean
-endif
+	rm -rf $(EXPAT_SRC) $(EXPAT_STAMP)
 
 expat-realclean : expat-clean
-	rm -rf $(EXPAT_DST) $(BUILD_DIR)/libexpat.la $(BUILD_DIR)/libexpat.so* $(BUILD_DIR)/bin $(BUILD_DIR)/man $(SRC_DIR)/include/expat*.h
-	rm -rf $(EXPAT_SRC) ; cd $(BUILD_EXT); tar -xzf $(EXPAT_VER).tar.gz
+	rm -rf $(EXPAT_DST) $(EXPAT_STAMP) $(BUILD_DIR)/libexpat.la $(BUILD_DIR)/libexpat.so* $(BUILD_DIR)/bin $(BUILD_DIR)/man $(SRC_DIR)/include/expat*.h
 
 
 
@@ -117,20 +119,18 @@ ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
 
 zlib : $(ZLIB_DST)
 
-#$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
-$(ZLIB_DST) :
+$(ZLIB_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
-	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR) 
+
+$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
 	make -C $(ZLIB_SRC) install
 
 zlib-clean :
-ifneq (,$(wildcard $(ZLIB_SRC)/Makefile))
-	make -C $(ZLIB_SRC) distclean
-endif
+	rm -rf $(ZLIB_SRC)
 
 zlib-realclean : zlib-clean
 	rm -rf $(ZLIB_DST) $(BUILD_DIR)/libz.so* $(SRC_DIR)/include/zlib.h $(SRC_DIR)/include/zconf.h
-	rm -rf $(ZLIB_SRC) ; cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 	
 
 # -- MSToolkit  ---------------------------------------------------------------
