@@ -1841,10 +1841,11 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
+   bool bTimeout = false;
    for (auto it2 = pQuery->vfRawFragmentPeakMass.begin();
-      it2 != pQuery->vfRawFragmentPeakMass.end(); ++it2)
+      it2 != pQuery->vfRawFragmentPeakMass.end() && !bTimeout; ++it2)
    {
-      for (int iChg = 1; iChg <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++iChg)
+      for (int iChg = 1; iChg <= pQuery->_spectrumInfoInternal.usiMaxFragCharge && !bTimeout; ++iChg)
       {
          uiFragmentMass = BIN((*it2) * iChg - (iChg - 1.0));
 
@@ -1877,6 +1878,17 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                   }
                   else if (dCalcPepMass > pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
                      break;
+
+                  if (g_staticParams.options.iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
+                  {
+                     auto tNow = std::chrono::high_resolution_clock::now();
+                     auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+                     if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+                     {
+                        bTimeout = true;
+                        break;
+                     }
+                  }
                }
             }
          }
@@ -1885,6 +1897,14 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
    // copy mPeptides map to a vector of pairs and sort in
    // descending order of matched fragment ions
+   if (g_staticParams.options.iMaxIndexRunTime > 0)
+   {
+      auto tNow = std::chrono::high_resolution_clock::now();
+      auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+      if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+         return;
+   }
+
    std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
@@ -1893,6 +1913,15 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    }
 
    mPeptides.clear();
+
+   if (g_staticParams.options.iMaxIndexRunTime > 0)
+   {
+      auto tNow = std::chrono::high_resolution_clock::now();
+      auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+      if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+         return;
+   }
+
    sort(vPeptides.begin(), vPeptides.end(), [=](const std::pair<comet_fileoffset_t, int>& a, const std::pair<comet_fileoffset_t, int>& b) { return a.second > b.second; });
 
    int iLenPeptide;
@@ -1913,6 +1942,14 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
    for (auto ix = vPeptides.begin(); ix != vPeptides.end(); ++ix)
    {
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         auto tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            break;
+      }
+
       if (ix->second >= g_staticParams.options.iFragIndexMinIonsScore)
       {
          int iFoundVariableMod = 0;
@@ -2455,6 +2492,14 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
 
       dbe.lProteinFilePosition = g_pvDBIndex[i].lIndexProteinFilePosition;
       AnalyzePeptideIndex(pQuery, g_pvDBIndex[i], pbDuplFragment, &dbe);
+
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         auto tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            break;
+      }
    }
 }
 

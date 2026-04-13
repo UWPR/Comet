@@ -3591,6 +3591,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
+   if (g_staticParams.options.iMaxIndexRunTime > 0)
+   {
+      auto tNow = std::chrono::high_resolution_clock::now();
+      auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+      if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+         goto cleanup_results;
+   }
+
    if (iSize > 1)
    {
       std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
@@ -3603,8 +3611,34 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // Step 4: Post-analysis using Query* overloads (no g_pvQuery access)
    if (pQuery->iMatchPeptideCount > 0)
    {
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         auto tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            goto cleanup_results;
+      }
+
       CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, takeSearchResultsN);
+
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         auto tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            goto cleanup_results;
+      }
+
       CometPostAnalysis::CalculateEValue(pQuery, false);
+
+      if (g_staticParams.options.iMaxIndexRunTime > 0)
+      {
+         auto tNow = std::chrono::high_resolution_clock::now();
+         auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+         if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+            goto cleanup_results;
+      }
+
       CometPostAnalysis::CalculateDeltaCn(pQuery);
 
       if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
@@ -3629,6 +3663,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    {
       bSucceeded = false;
       goto cleanup_results;
+   }
+
+   if (g_staticParams.options.iMaxIndexRunTime > 0)
+   {
+      auto tNow = std::chrono::high_resolution_clock::now();
+      auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+      if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+         goto cleanup_results;
    }
 
    // Step 5: Open .idx file for retrieving protein names

@@ -114,6 +114,9 @@
                         return;
                      }
 
+                     Stopwatch watchGlobal = new Stopwatch();
+                     watchGlobal.Start();
+
                      rawFile.SelectInstrument(Device.MS, 1);
 
                      // Get the first and last scan from the RAW file
@@ -172,9 +175,6 @@
                      // Populate scan queue
                      for (int i = iFirstScan; i <= iLastScan; ++i)
                         scanQueue.Enqueue(i);
-
-                     Stopwatch watchGlobal = new Stopwatch();
-                     watchGlobal.Start();
 
                      // Simplified worker thread function
                      void ProcessScans(int threadId)
@@ -352,7 +352,7 @@
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
 
                      // Create histograms
-                     int iMaxHistogramTime = 50;
+                     int iMaxHistogramTime = 1000;
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
@@ -406,13 +406,14 @@
                                   iTime, protein, result.Charge);
                               //Console.WriteLine(line);
                               rtsWriter.WriteLine(line);
-
+/*
                               if (Math.Abs(result.ExpMass - result.Scores[0].mass) > 5.0)
                               {
                                  string warn = string.Format(" **** Warning: large mass error for scan {0}: {1:F4} Da", result.ScanNumber, result.ExpMass - result.Scores[0].mass);
                                  Console.WriteLine(warn);
                                  rtsWriter.WriteLine(warn);
                               }
+*/
                            }
                         }
                      }
