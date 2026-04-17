@@ -106,6 +106,13 @@ public:
 
    static double GetMassCushion(double dMass);
 
+   // Returns the thread-local raw-data buffer used by PreprocessSingleSpectrumThreadLocal.
+   // The buffer is sized to g_staticParams.iArraySizeGlobal and its content after a
+   // PreprocessSingleSpectrumThreadLocal call holds the binned sqrt-intensity spectrum
+   // needed for fragment-ion matching in DoSingleSpectrumSearchMultiResults.
+   // Calling this also initialises the thread-local RtsScratch pool if necessary.
+   static double* GetRtsRawDataBuffer();
+
    static void PreloadIons(MSReader& mstReader,
                            Spectrum& spec,
                            bool bNext = false,
@@ -151,12 +158,18 @@ private:
    // Shared core of PreprocessSingleSpectrum and PreprocessSingleSpectrumThreadLocal.
    // Builds a fully preprocessed Query* from the input spectrum data.
    // Does NOT push the Query* into g_pvQuery.
+   // When bUseThreadLocalPool=true the five scratch buffers and sparse child arrays
+   // are taken from the per-thread RtsScratch pool instead of being heap-allocated,
+   // which eliminates ~6 large malloc/free pairs and ~100 small ones per spectrum.
+   // Only PreprocessSingleSpectrumThreadLocal passes true here; the batch path must
+   // use false because pooled Queries are destroyed before the pool is reset.
    static Query* PreprocessSingleSpectrumCore(int iPrecursorCharge,
                                               double dMZ,
                                               double *pdMass,
                                               double *pdInten,
                                               int iNumPeaks,
-                                              double *pdTmpSpectrum);
+                                              double *pdTmpSpectrum,
+                                              bool bUseThreadLocalPool = false);
 
    // Private member variables
    static Mutex _maxChargeMutex;

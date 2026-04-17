@@ -3581,16 +3581,40 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    bool bSucceeded = true;
 
-   // Allocate thread-local scratch spectrum buffer for fragment ion matching
-   double* pdTmpSpectrum = new double[g_staticParams.iArraySizeGlobal]();
+#ifdef RTS_TIMING
+   using hrc = std::chrono::high_resolution_clock;
+   using chus = std::chrono::microseconds;
+   auto   tTimingStart     = hrc::now();
+   auto   tTimingMark      = tTimingStart;
+   long long llPreprocess  = 0;
+   long long llRunSearch   = 0;
+   long long llSort        = 0;
+   long long llCalcSP      = 0;
+   long long llCalcEValue  = 0;
+   long long llCalcDeltaCn = 0;
+   long long llCalcAScore  = 0;
+   long long llResults     = 0;
+#endif
+
+   // Obtain the thread-local raw-data buffer managed by RtsScratch.
+   // This avoids a per-spectrum new[]/delete[] of iArraySizeGlobal doubles
+   // (~40 KB) while also ensuring the pool is initialised for this thread.
+   // After PreprocessSingleSpectrumThreadLocal returns, the buffer holds
+   // the binned sqrt-intensity spectrum needed for fragment-ion matching below.
+   double* pdTmpSpectrum = CometPreprocess::GetRtsRawDataBuffer();
 
    // Step 1: Preprocess into a thread-local Query* (does NOT touch g_pvQuery)
+#ifdef RTS_TIMING
+   tTimingMark = hrc::now();
+#endif
    Query* pQuery = CometPreprocess::PreprocessSingleSpectrumThreadLocal(
       iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+#ifdef RTS_TIMING
+   llPreprocess = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
 
    if (pQuery == nullptr)
    {
-      delete[] pdTmpSpectrum;
       return false;
    }
 
@@ -3621,7 +3645,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // Step 3: Run the fragment index search on the thread-local Query*
    // This uses the new RunSearch(Query*) overload that allocates its own
    // pbDuplFragment and never touches g_pvQuery or _ppbDuplFragmentArr.
-   bSucceeded = CometSearch::RunSearch(pQuery); 
+#ifdef RTS_TIMING
+   tTimingMark = hrc::now();
+#endif
+   bSucceeded = CometSearch::RunSearch(pQuery);
+#ifdef RTS_TIMING
+   llRunSearch = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
 
    FILE* fp = NULL;
    int iSize;
@@ -3642,10 +3672,16 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          goto cleanup_results;
    }
 
+#ifdef RTS_TIMING
+   tTimingMark = hrc::now();
+#endif
    if (iSize > 1)
    {
       std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
+#ifdef RTS_TIMING
+   llSort = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
 
    takeSearchResultsN = topN;
    if (takeSearchResultsN > iSize)
@@ -3662,7 +3698,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             goto cleanup_results;
       }
 
+#ifdef RTS_TIMING
+      tTimingMark = hrc::now();
+#endif
       CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, takeSearchResultsN);
+#ifdef RTS_TIMING
+      llCalcSP = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+      tTimingMark = hrc::now();
+#endif
 
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -3673,6 +3716,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       }
 
       CometPostAnalysis::CalculateEValue(pQuery, false);
+#ifdef RTS_TIMING
+      llCalcEValue = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+      tTimingMark = hrc::now();
+#endif
 
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -3683,6 +3730,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       }
 
       CometPostAnalysis::CalculateDeltaCn(pQuery);
+#ifdef RTS_TIMING
+      llCalcDeltaCn = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
 
       if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
          && pQuery->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
@@ -3694,7 +3744,15 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             bHasTerminalVariableMod = true;
          }
          if (!bHasTerminalVariableMod)
+         {
+#ifdef RTS_TIMING
+            tTimingMark = hrc::now();
+#endif
             CometPostAnalysis::CalculateAScorePro(pQuery, g_AScoreInterface);
+#ifdef RTS_TIMING
+            llCalcAScore = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
+         }
       }
    }
    else
@@ -3718,6 +3776,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    // Step 5: Open .idx file for retrieving protein names
    // Each concurrent call opens its own FILE* so there is no shared file pointer state.
+#ifdef RTS_TIMING
+   tTimingMark = hrc::now();
+#endif
    if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
       string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
@@ -4131,8 +4192,20 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       matchedFragments.push_back(eachMatchedFragments);
       scores.push_back(score);
    }
+#ifdef RTS_TIMING
+   llResults = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
+#endif
 
 cleanup_results:
+
+#ifdef RTS_TIMING
+   {
+      long long llTotal = std::chrono::duration_cast<chus>(hrc::now() - tTimingStart).count();
+      printf("TIMING\t%.4f\t%d\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\n",
+             dMZ, iPrecursorCharge,
+             llPreprocess, llRunSearch, llSort, llCalcSP, llCalcEValue, llCalcDeltaCn, llCalcAScore, llResults, llTotal);
+   }
+#endif
 
    // Clean up the thread-local Query* - its destructor frees spectral memory
    // (pfFastXcorrData, pfFastXcorrDataNL, etc.)
@@ -4141,7 +4214,7 @@ cleanup_results:
       fclose(fp);
 
    delete pQuery;
-   delete[] pdTmpSpectrum;
+   // pdTmpSpectrum is owned by the thread-local RtsScratch pool; do not delete.
 
    return bSucceeded;
 }

@@ -145,6 +145,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment ion index\n"; fflush(stdout);
 
+   auto tFIGlobalStartTime = chrono::steady_clock::now();
+
    Threading::InitMutex(&_vFragmentPeptidesMutex);
 
    ThreadPool *pFragmentIndexPool = tp;
@@ -218,9 +220,12 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    else
       printf("   - %zu total peptides, ", g_vFragmentPeptides.size());
    if (ullCount > 1e6)
-      printf("%0.3e FI entries\n", (double)ullCount);
+      printf("%0.3e FI entries", (double)ullCount);
    else
-      printf("%llu FI entries\n", ullCount);
+      printf("%llu FI entries", ullCount);
+
+   cout << " ... " << CometMassSpecUtils::ElapsedTime(tFIGlobalStartTime) << endl;
+
 }
 
 

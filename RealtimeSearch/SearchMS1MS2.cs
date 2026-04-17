@@ -462,10 +462,10 @@
                         line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessed);
                         rtsWriter.WriteLine(line);
 
-                        line = string.Format("\nindex creation elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
+                        line = string.Format("\ninitialize search elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
-                        line = string.Format("search elapsed time: {0:F2} s\n", watchGlobal.Elapsed.TotalSeconds);
+                        line = string.Format("search elapsed time: {0:F2} s, avg per spectrum {1:F2} ms\n", watchGlobal.Elapsed.TotalSeconds, watchGlobal.Elapsed.TotalMilliseconds / scansProcessed);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
