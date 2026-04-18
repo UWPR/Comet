@@ -33,7 +33,7 @@ private:
 
       // Calculate AScore with custom options
       AScoreOutput CalculateScore(
-         const Scan& scan,
+         Scan scan,
          Peptide& peptide,
          const AScoreOptions& options) const;
 

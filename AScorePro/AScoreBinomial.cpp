@@ -58,28 +58,29 @@ namespace AScoreProCpp
       if (p == 0.0) return (k >= 0) ? 1.0 : 0.0;
       if (p == 1.0) return (k >= n) ? 1.0 : 0.0;
 
-
-      // For k = n-1, and large p, use the more efficient complementary calculation
+      // For k = n-1, and large p, use the complementary calculation.
+      // P(X <= n-1) = 1 - P(X = n) = 1 - p^n
       if (k == n - 1 && p > 0.5)
       {
-         // Use complementary calculation which is more numerically stable
-         // P(X <= k) = 1 - P(X > k) = 1 - P(X = n)
-         // For k = n-1, only need to subtract P(X = n)
-         return 1.0 - PMF(p, n, n);
+         return 1.0 - std::pow(p, n);
       }
 
-
-      // Calculate CDF by summing PMF values
-      double cdf = 0.0;
-      for (int i = 0; i <= k; ++i)
+      // Sum CDF using the iterative recurrence relation to avoid logGamma calls.
+      //   PMF(n, 0) = q^n
+      //   PMF(n, i+1) = PMF(n, i) * (n-i)/(i+1) * p/q
+      // This replaces 3 logGamma + exp calls per term with 2-3 multiplications.
+      const double q = 1.0 - p;
+      const double r = p / q;   // constant ratio for the recurrence
+      double pmf = std::pow(q, n);
+      double cdf = pmf;
+      for (int i = 0; i < k; ++i)
       {
-         cdf += PMF(p, n, i);
+         pmf *= static_cast<double>(n - i) / (i + 1) * r;
+         cdf += pmf;
       }
 
-      // Add numerical stability check - limit to [0,1]
       if (cdf < 0.0) return 0.0;
       if (cdf > 1.0) return 1.0;
-
 
       return cdf;
    }

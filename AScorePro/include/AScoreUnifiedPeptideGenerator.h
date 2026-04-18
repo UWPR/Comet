@@ -235,6 +235,17 @@ private:
 
         // Mass calculations
         std::vector<double> baseMasses_;           // Base masses (AA + terminals)
+
+        // getMassList() cache keyed on (ionSeriesFlags, maxCharge, minMz, maxMz).
+        // All configurations within one ProcessPeptides call share the same key,
+        // so site-scoring re-queries hit the cache instead of recomputing ions.
+        int cachedIonFlags_;
+        int cachedMaxCharge_;
+        double cachedMinMz_;
+        double cachedMaxMz_;
+        bool cacheKeySet_;
+        std::vector<std::vector<Centroid>> massListCache_;
+        std::vector<bool> massListCacheValid_;
     };
 
 } // namespace AScoreProCpp

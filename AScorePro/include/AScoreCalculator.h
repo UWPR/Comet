@@ -51,7 +51,7 @@ public:
       /**
        * Runs AScore for a single peptide
        */
-      AScoreOutput Run(Peptide& peptide, const Scan& inputScan);
+      AScoreOutput Run(Peptide& peptide, Scan scan);
    };
 
 } // namespace AScoreProCpp

@@ -96,7 +96,6 @@ namespace AScoreProCpp
       // mass deviation.
       // Matches are saved as (theoIndex, obsIndex)
       std::vector<MOBPeakMatch> allMatches;
-      std::unordered_map<int, int> obsToTheo;
 
       int obsIndex = 0;
       int prevObsStart = 0;
@@ -126,7 +125,6 @@ namespace AScoreProCpp
             match.theoIndex = theoIndex;
 
             allMatches.push_back(match);
-            obsToTheo[obsIndex] = theoIndex;
             ++obsIndex;
          }
       }
@@ -139,21 +137,22 @@ namespace AScoreProCpp
       });
 
       // Grant matches to those with the least error first.
+      // Use boolean vectors instead of hash maps for O(1) lookups with no allocation.
+      std::vector<bool> obsAvailable(obs.size(), true);
+      std::vector<bool> theoMatched(theo.size(), false);
       std::unordered_map<int, int> matches;
       for (const auto& allMatch : allMatches)
       {
          obsIndex = allMatch.obsIndex;
          int theoIndex = allMatch.theoIndex;
 
-         auto obsToTheoIt = obsToTheo.find(obsIndex);
-         auto matchesIt = matches.find(theoIndex);
-
-         if (obsToTheoIt != obsToTheo.end() && matchesIt == matches.end())
+         if (obsAvailable[obsIndex] && !theoMatched[theoIndex])
          {
-            // store new theoretical-experimental pairs,
-            // thus keeping only the best match per theoretical peak
+            // Store new theoretical-experimental pair,
+            // keeping only the best match per theoretical peak.
             matches[theoIndex] = obsIndex;
-            obsToTheo.erase(obsIndex);
+            obsAvailable[obsIndex] = false;
+            theoMatched[theoIndex] = true;
          }
       }
 

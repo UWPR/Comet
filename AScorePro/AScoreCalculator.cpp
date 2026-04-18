@@ -25,13 +25,12 @@ namespace AScoreProCpp
       return options_;
    }
 
-   AScoreOutput AScoreCalculator::Run(Peptide& peptide, const Scan& inputScan)
+   AScoreOutput AScoreCalculator::Run(Peptide& peptide, Scan scan)
    {
       AScoreOutput output;
       output.options = options_; // Using copy constructor
 
-      // Clone the input scan and set precursor m/z
-      Scan scan = inputScan;
+      // Set precursor m/z on our own copy of the scan
       if (!scan.getPrecursors().empty())
       {
          scan.getPrecursors()[0].setMz(peptide.getPrecursorMz());
