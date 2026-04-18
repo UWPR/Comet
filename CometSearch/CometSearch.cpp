@@ -2231,7 +2231,6 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
 {
    comet_fileoffset_t lEndOfStruct;
-   char szBuf[SIZE_BUF];
    FILE* fp;
    size_t tTmp;
 
