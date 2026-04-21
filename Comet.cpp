@@ -118,9 +118,9 @@ void Usage(char *pszCmd)
 
 
 void SetOptions(char *arg,
-      char *szParamsFile,
-      int *iPrintParams,
-      ICometSearchManager *pSearchMgr)
+                char *szParamsFile,
+                int *iPrintParams,
+                ICometSearchManager *pSearchMgr)
 {
    char szTmp[512];
    char szParamStringVal[512];

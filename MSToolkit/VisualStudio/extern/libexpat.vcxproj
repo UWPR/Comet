@@ -136,6 +136,8 @@
   </ImportGroup>
   <Target Name="UnpackExpat" BeforeTargets="PrepareForBuild"
           Condition="!Exists('$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9')">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9.zip')"
+           Text="Missing required archive: expat-2.2.9.zip not found in MSToolkit/extern/" />
     <Message Text="Extracting expat-2.2.9.zip..." Importance="high" />
     <Unzip SourceFiles="$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9.zip"
            DestinationFolder="$(MSBuildProjectDirectory)\..\..\extern\" />

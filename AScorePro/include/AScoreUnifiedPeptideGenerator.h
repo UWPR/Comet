@@ -164,7 +164,7 @@ public:
          * @param maxMz Maximum m/z for fragments
          * @return Theoretical fragment ions sorted by m/z
          */
-        std::vector<Centroid> getMassList(int ionSeriesFlags, int maxCharge,
+        const std::vector<Centroid>& getMassList(int ionSeriesFlags, int maxCharge,
             double minMz, double maxMz);
 
         /**

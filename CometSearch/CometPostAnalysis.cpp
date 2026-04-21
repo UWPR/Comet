@@ -45,12 +45,14 @@ static int s_pdMaxCharge  = 0;   // options.iMaxFragmentCharge at init time
 static int s_pdNPerPos    = 0;   // s_pdNIonSeries * s_pdMaxCharge
 static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
 
-// Inverted index: bin -> sorted list of decoy indices that have an ion at that bin.
+// Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
-// Entries within each bin are sorted by decoy index (ascending), enabling early-exit
-// when iLoopMax < EXPECT_DECOY_SIZE.
+// Each entry packs charge (high 16 bits) and decoy index (low 16 bits) into a uint32_t.
+// Entries within each bin are ordered by decoy index (ascending) — filled in outer-decoy-
+// loop order — enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
+// Storing charge allows GenerateXcorrDecoys to honour the per-query usiMaxFragCharge limit.
 static std::vector<int>      s_invIdx_start;   // size: iArraySizeGlobal + 2
-static std::vector<uint16_t> s_invIdx_data;    // ~480K uint16 entries typical
+static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
 
 static void InitPrecomputedDecoyBins()
 {
@@ -140,6 +142,8 @@ static void InitPrecomputedDecoyBins()
    s_invIdx_start[iMaxBin + 1] = s_invIdx_start[iMaxBin];  // sentinel
 
    // Pass 3: fill data array; reuse binCount as a per-bin write cursor.
+   // Each entry packs ctCharge (high 16 bits) and decoy_i (low 16 bits).
+   // ctCharge is recovered from the flat index: flat % s_pdMaxCharge + 1.
    const int iTotalEntries = s_invIdx_start[iMaxBin];
    s_invIdx_data.resize(iTotalEntries);
    std::fill(binCount.begin(), binCount.end(), 0);
@@ -152,7 +156,9 @@ static void InitPrecomputedDecoyBins()
          int b = s_preDecoyBins[iBase + flat];
          if (b >= 0 && b < iMaxBin)
          {
-            s_invIdx_data[s_invIdx_start[b] + binCount[b]] = (uint16_t)i;
+            const int ctCharge = flat % s_pdMaxCharge + 1;
+            s_invIdx_data[s_invIdx_start[b] + binCount[b]] =
+               ((uint32_t)ctCharge << 16) | (uint16_t)i;
             binCount[b]++;
          }
       }
@@ -1259,8 +1265,12 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    thread_local static float tl_decoyScores[EXPECT_DECOY_SIZE];
    memset(tl_decoyScores, 0, iLoopMax * sizeof(float));
 
+   // Use the per-query charge limit, not the global max, to match real xcorr scoring.
+   const int iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+
    // Scan the spectrum's sparse matrix.  For each non-zero bin, scatter its
-   // value to every decoy that has a fragment ion at that bin.
+   // value to every decoy that has a fragment ion at that bin for a charge
+   // <= iMaxFragCharge (matching what the real xcorr scorer uses).
    const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
    const int iInvIdxBins = (int)s_invIdx_start.size() - 1;  // == iArraySizeGlobal
 
@@ -1282,16 +1292,21 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
          if (b >= iArraySize || b >= iInvIdxBins)
             break;
 
-         // Scatter v to all decoys that have an ion at bin b.
-         // Entries are sorted by decoy index (ascending), so we can break early
-         // when decoy_i reaches iLoopMax.
+         // Scatter v to decoys that have an ion at bin b with charge <= iMaxFragCharge.
+         // Entries are ordered by decoy_i (low 16 bits) ascending; break when decoy_i
+         // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
+         // out-of-range charges since later entries may have the same decoy_i at a
+         // lower charge.
          const int kEnd = s_invIdx_start[b + 1];
          for (int k = s_invIdx_start[b]; k < kEnd; ++k)
          {
-            const uint16_t decoy_i = s_invIdx_data[k];
+            const uint32_t entry   = s_invIdx_data[k];
+            const uint16_t decoy_i = (uint16_t)(entry & 0xFFFF);
             if (decoy_i >= (uint16_t)iLoopMax)
                break;
-            tl_decoyScores[decoy_i] += v;
+            const int ctCharge = (int)(entry >> 16);
+            if (ctCharge <= iMaxFragCharge)
+               tl_decoyScores[decoy_i] += v;
          }
       }
    }

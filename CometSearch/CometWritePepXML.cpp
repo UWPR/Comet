@@ -198,7 +198,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
 
    for (unsigned int i = 0; i < g_staticParams.variableModParameters.uiNumCompoundMasses; ++i)
    {
-      fprintf(fpout, "  <aminoacid_modification aminoacid=\"J\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" symbol=\"\"/>\n",
+      fprintf(fpout, "  <aminoacid_modification aminoacid=\"J\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"/>\n",
             g_staticParams.variableModParameters.vdCompoundMasses.at(i),
             g_staticParams.massUtility.pdAAMassParent['J'] + g_staticParams.variableModParameters.vdCompoundMasses.at(i));
    }

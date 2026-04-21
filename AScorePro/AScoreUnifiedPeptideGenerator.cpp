@@ -292,7 +292,7 @@ namespace AScoreProCpp {
       return modTypes_;
    }
 
-   std::vector<Centroid> UnifiedPeptideGenerator::getMassList(int ionSeriesFlags,
+   const std::vector<Centroid>& UnifiedPeptideGenerator::getMassList(int ionSeriesFlags,
       int maxCharge,
       double minMz,
       double maxMz)
@@ -319,7 +319,7 @@ namespace AScoreProCpp {
       }
 
       if (massListCacheValid_[currentIndex_])
-         return massListCache_[currentIndex_];
+         return massListCache_[currentIndex_];  // return cached ref
 
       const Configuration& config = configurations_[currentIndex_];
       const std::string& sequence = basePeptide_.getSequence();
@@ -457,7 +457,6 @@ namespace AScoreProCpp {
             return a.getMz() < b.getMz();
          });
 
-      // Store in cache and return a copy of the cached entry
       massListCache_[currentIndex_] = std::move(output);
       massListCacheValid_[currentIndex_] = true;
       return massListCache_[currentIndex_];
