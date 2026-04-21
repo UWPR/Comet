@@ -3832,7 +3832,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    // Compound mods: track whether protein has J residues and count in current window
    bool bProteinHasJ = false;
    int iJcount = 0;
-   if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
+   if (g_staticParams.variableModParameters.uiNumCompoundMasses > 0 && strchr(szProteinSeq, 'J'))
    {
       bProteinHasJ = true;
       if (szProteinSeq[iStartPos] == 'J')
@@ -7839,7 +7839,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
       dCalcPepMass += g_staticParams.massUtility.pdAAMassParent[(int)szProteinSeq[i]];
 
       // Compound mods: count J residues in peptide
-      if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && szProteinSeq[i] == 'J')
+      if (g_staticParams.variableModParameters.uiNumCompoundMasses > 0 && szProteinSeq[i] == 'J')
          iJcount++;
 
       // This loop is where all individual variable mods are combined
@@ -8155,7 +8155,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
 
    // Compound mods: if this varmod peptide also has J residues, search compound mods
    // piVarModSites may contain regular varmod codes at non-J positions; CompoundModSearch guards these (B3 fix)
-   if (g_staticParams.variableModParameters.iNumCompoundMasses > 0 && iJcount > 0)
+   if (g_staticParams.variableModParameters.uiNumCompoundMasses > 0 && iJcount > 0)
    {
       CompoundModSearch(szProteinSeq, _varModInfo.iStartPos, _varModInfo.iEndPos,
                         piVarModSites, pbDuplFragment, dbe);
@@ -9347,6 +9347,8 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
    int iDecoyStartPos = 0;
    int iDecoyEndPos = 0;
 
+   //printf("OK in CompoundModSearch: %.*s\n", iLenPeptide, szProteinSeq + iStartPos);
+ 
    // Set _varModInfo so XcorrScore/StorePeptide can reference start/end positions
    _varModInfo.iStartPos = iStartPos;
    _varModInfo.iEndPos = iEndPos;
@@ -9390,7 +9392,7 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
          continue;
 
       // Try each compound mass (list is sorted ascending, so we can break early)
-      for (int iWhichCM = 0; iWhichCM < (int)g_staticParams.variableModParameters.iNumCompoundMasses; ++iWhichCM)
+      for (int iWhichCM = 0; iWhichCM < (int)g_staticParams.variableModParameters.uiNumCompoundMasses; ++iWhichCM)
       {
          double dModMass = dBasePepMass + g_staticParams.variableModParameters.vdCompoundMasses[iWhichCM];
 

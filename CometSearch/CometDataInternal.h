@@ -651,7 +651,7 @@ struct VarModParams
    multimap<int, string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
    string         sCompoundModsFile;              // path to compound mods mass file; empty = disabled
    vector<double> vdCompoundMasses;               // sorted, deduplicated list of masses read from sCompoundModsFile
-   size_t         iNumCompoundMasses;             // vdCompoundMasses.size(); 0 when feature is disabled
+   unsigned int   uiNumCompoundMasses;            // vdCompoundMasses.size(); 0 when feature is disabled
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -675,7 +675,7 @@ struct VarModParams
 
       sCompoundModsFile = a.sCompoundModsFile;
       vdCompoundMasses = a.vdCompoundMasses;
-      iNumCompoundMasses = a.iNumCompoundMasses;
+      uiNumCompoundMasses = a.uiNumCompoundMasses;
 
       return *this;
    }
@@ -880,7 +880,7 @@ struct StaticParams
       sCompoundModsFile = "";
       variableModParameters.sCompoundModsFile = "";
       variableModParameters.vdCompoundMasses.clear();
-      variableModParameters.iNumCompoundMasses = 0;
+      variableModParameters.uiNumCompoundMasses = 0;
 
       iPrecursorNLSize = 0;
 

@@ -2301,10 +2301,9 @@ bool CometSearchManager::DoSearch()
                    g_staticParams.variableModParameters.vdCompoundMasses.end()),
             g_staticParams.variableModParameters.vdCompoundMasses.end());
 
-         g_staticParams.variableModParameters.iNumCompoundMasses =
-            g_staticParams.variableModParameters.vdCompoundMasses.size();
+         g_staticParams.variableModParameters.uiNumCompoundMasses = (unsigned int)g_staticParams.variableModParameters.vdCompoundMasses.size();
 
-         if (g_staticParams.variableModParameters.iNumCompoundMasses > 0)
+         if (g_staticParams.variableModParameters.uiNumCompoundMasses > 0)
             g_staticParams.variableModParameters.bVarModSearch = true;  // B6: drives WithVariableMods path; see docs for trade-off
       }
       else
