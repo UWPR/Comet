@@ -65,18 +65,14 @@ namespace AScoreProCpp
          return 1.0 - std::pow(p, n);
       }
 
-      // Sum CDF using the iterative recurrence relation to avoid logGamma calls.
-      //   PMF(n, 0) = q^n
-      //   PMF(n, i+1) = PMF(n, i) * (n-i)/(i+1) * p/q
-      // This replaces 3 logGamma + exp calls per term with 2-3 multiplications.
-      const double q = 1.0 - p;
-      const double r = p / q;   // constant ratio for the recurrence
-      double pmf = std::pow(q, n);
-      double cdf = pmf;
-      for (int i = 0; i < k; ++i)
+      // Sum CDF by accumulating PMF terms computed in log-space (via PMF()).
+      // The direct recurrence q^n * product is numerically unstable when q is
+      // small (which occurs when binomialCDFUpper passes 1-p_small as the first
+      // argument), causing q^n to underflow to 0 and the entire CDF to be 0.
+      double cdf = 0.0;
+      for (int i = 0; i <= k; ++i)
       {
-         pmf *= static_cast<double>(n - i) / (i + 1) * r;
-         cdf += pmf;
+         cdf += PMF(p, n, i);
       }
 
       if (cdf < 0.0) return 0.0;
