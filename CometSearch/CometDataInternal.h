@@ -816,7 +816,6 @@ struct StaticParams
    int             iOldModsEncoding;
    bool            bSkipToStartScan;
    std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
-   string          sCompoundModsFile;             // path to compound mods mass file; mirrors variableModParameters.sCompoundModsFile
 
    StaticParams()
    {
@@ -852,7 +851,6 @@ struct StaticParams
        dOneMinusBinOffset = a.dOneMinusBinOffset;
        iXcorrProcessingOffset = a.iXcorrProcessingOffset;
        ionInformation = a.ionInformation;
-       sCompoundModsFile = a.sCompoundModsFile;
        return *this;
    }
 
@@ -877,7 +875,6 @@ struct StaticParams
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
 
-      sCompoundModsFile = "";
       variableModParameters.sCompoundModsFile = "";
       variableModParameters.vdCompoundMasses.clear();
       variableModParameters.uiNumCompoundMasses = 0;

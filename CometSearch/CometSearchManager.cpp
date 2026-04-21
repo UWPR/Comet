@@ -663,7 +663,7 @@ bool CometSearchManager::InitializeStaticParams()
       strcpy(g_staticParams.peffInfo.szPeffOBO, strData.c_str());
 
    if (GetParamValue("compoundmods_file", strData))
-      g_staticParams.sCompoundModsFile = strData;
+      g_staticParams.variableModParameters.sCompoundModsFile = strData;
 
    GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 
@@ -2277,15 +2277,15 @@ bool CometSearchManager::DoSearch()
    }
 
    // Load compound mods mass file if specified (B4 fix: only if parameter is explicitly set)
-   if (g_staticParams.sCompoundModsFile.length() > 0)
+   if (g_staticParams.variableModParameters.sCompoundModsFile.length() > 0)
    {
       FILE *fpCM;
-      if ((fpCM = fopen(g_staticParams.sCompoundModsFile.c_str(), "r")) != NULL)
+      if ((fpCM = fopen(g_staticParams.variableModParameters.sCompoundModsFile.c_str(), "r")) != NULL)
       {
          char szBuf[512];
          double dTmp;
 
-         printf(" Parsing compoundmods file: %s\n", g_staticParams.sCompoundModsFile.c_str());
+         printf(" Parsing compoundmods file: %s\n", g_staticParams.variableModParameters.sCompoundModsFile.c_str());
 
          while (fgets(szBuf, sizeof(szBuf), fpCM))
          {
@@ -2308,7 +2308,7 @@ bool CometSearchManager::DoSearch()
       }
       else
       {
-         string strErrorMsg = " Error - could not open compoundmods_file \"" + g_staticParams.sCompoundModsFile + "\"\n";
+         string strErrorMsg = " Error - could not open compoundmods_file \"" + g_staticParams.variableModParameters.sCompoundModsFile + "\"\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(strErrorMsg);
          return false;

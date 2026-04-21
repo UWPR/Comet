@@ -9347,8 +9347,6 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
    int iDecoyStartPos = 0;
    int iDecoyEndPos = 0;
 
-   //printf("OK in CompoundModSearch: %.*s\n", iLenPeptide, szProteinSeq + iStartPos);
- 
    // Set _varModInfo so XcorrScore/StorePeptide can reference start/end positions
    _varModInfo.iStartPos = iStartPos;
    _varModInfo.iEndPos = iEndPos;
