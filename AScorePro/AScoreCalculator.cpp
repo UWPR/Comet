@@ -25,13 +25,12 @@ namespace AScoreProCpp
       return options_;
    }
 
-   AScoreOutput AScoreCalculator::Run(Peptide& peptide, const Scan& inputScan)
+   AScoreOutput AScoreCalculator::Run(Peptide& peptide, Scan scan)
    {
       AScoreOutput output;
       output.options = options_; // Using copy constructor
 
-      // Clone the input scan and set precursor m/z
-      Scan scan = inputScan;
+      // Set precursor m/z on our own copy of the scan
       if (!scan.getPrecursors().empty())
       {
          scan.getPrecursors()[0].setMz(peptide.getPrecursorMz());
@@ -136,7 +135,7 @@ namespace AScoreProCpp
 
       for (; !peptideGenerator->atEnd() && peptides.size() < static_cast<size_t>(options_.getMaxPeptides()); peptideGenerator->next())
       {
-         auto ions = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
+         const auto& ions = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
          Peptide p = peptideGenerator->getPeptide();
          p.setScore(scoring.score(p, ions, scan, output));
          peptides.push_back(p);
@@ -206,10 +205,10 @@ namespace AScoreProCpp
 
                // Calculate site-determining ions
                peptideGenerator->setIndex(currentPeptide.getGeneratorIndex());
-               auto ions1 = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
+               const auto& ions1 = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
 
                peptideGenerator->setIndex(next.getGeneratorIndex());
-               auto ions2 = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
+               const auto& ions2 = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
 
                // Score the site determining ions
                auto siteIons = SiteIons::Filter(ions1, ions2);

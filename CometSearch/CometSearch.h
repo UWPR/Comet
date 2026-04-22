@@ -329,6 +329,12 @@ private:
    void SearchForVariants(struct sDBEntry dbe,
                           char* szProteinSeq,
                           bool* pbDuplFragment);
+   void CompoundModSearch(char *szProteinSeq,
+                          int iStartPos,
+                          int iEndPos,
+                          int *piVarModSites,
+                          bool *pbDuplFragment,
+                          struct sDBEntry *dbe);
    bool TranslateNA2AA(int* frame,
                        int iDirection,
                        char* sDNASequence);

@@ -74,6 +74,7 @@ class CometSearchManager;
                                              // if this is ever larger than 16, need to extend range of siVarModProteinFilter
 
 #define VMODS                       15       // also "VMODS+1" is 4th dimension of uiBinnedIonMasses to cover unmodified ions (0), mod NL (1-15)
+#define COMPOUNDMODS_OFFSET         100      // piVarModSites values >= 100 encode compound mods; index = value - 100
 #define VMOD_1_INDEX                0
 #define VMOD_2_INDEX                1
 #define VMOD_3_INDEX                2
@@ -648,6 +649,9 @@ struct VarModParams
    char    cModCode[VMODS];          // mod characters
    string  sProteinLModsListFile;                 // file containing list of proteins to restrict application of varmods to
    multimap<int, string> mmapProteinModsList;     // <varmod#, protein name> vector read from sProteinModsListFile if present
+   string         sCompoundModsFile;              // path to compound mods mass file; empty = disabled
+   vector<double> vdCompoundMasses;               // sorted, deduplicated list of masses read from sCompoundModsFile
+   unsigned int   uiNumCompoundMasses;            // vdCompoundMasses.size(); 0 when feature is disabled
 
    VarModParams& operator=(VarModParams& a)
    {
@@ -668,6 +672,10 @@ struct VarModParams
          varModList[i] = a.varModList[i];
          cModCode[i] = a.cModCode[i];
       }
+
+      sCompoundModsFile = a.sCompoundModsFile;
+      vdCompoundMasses = a.vdCompoundMasses;
+      uiNumCompoundMasses = a.uiNumCompoundMasses;
 
       return *this;
    }
@@ -866,6 +874,10 @@ struct StaticParams
 
       peffInfo.szPeffOBO[0] = '\0';
       peffInfo.iPeffSearch = 0;
+
+      variableModParameters.sCompoundModsFile = "";
+      variableModParameters.vdCompoundMasses.clear();
+      variableModParameters.uiNumCompoundMasses = 0;
 
       iPrecursorNLSize = 0;
 
@@ -1108,6 +1120,11 @@ struct Query
    unsigned long int  _uliNumMatchedPeptides;  // # of peptides that get scored
    unsigned long int  _uliNumMatchedDecoyPeptides;
 
+   // When true, sparse child arrays (float[SPARSE_MATRIX_SIZE]) belong to the
+   // thread-local RtsScratch pool and must NOT be delete[]'d by the destructor.
+   // Set only by PreprocessSingleSpectrumThreadLocal via PreprocessSingleSpectrumCore.
+   bool bSparseFromPool;
+
    // Sparse matrix representation of data
    int iSpScoreData;    //size of sparse matrix
    int iFastXcorrDataSize;
@@ -1162,6 +1179,8 @@ struct Query
       _uliNumMatchedPeptides = 0;
       _uliNumMatchedDecoyPeptides = 0;
 
+      bSparseFromPool = false;
+
       ppfSparseSpScoreData = NULL;
       ppfSparseFastXcorrData = NULL;
       ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
@@ -1192,10 +1211,13 @@ struct Query
    ~Query()
    {
       int i;
-      for (i = 0; i < iSpScoreData; ++i)
+      if (!bSparseFromPool)
       {
-         if (ppfSparseSpScoreData[i] != NULL)
-            delete[] ppfSparseSpScoreData[i];
+         for (i = 0; i < iSpScoreData; ++i)
+         {
+            if (ppfSparseSpScoreData[i] != NULL)
+               delete[] ppfSparseSpScoreData[i];
+         }
       }
       delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
@@ -1205,22 +1227,28 @@ struct Query
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         for (i = 0; i < iFastXcorrDataSize; ++i)
+         if (!bSparseFromPool)
          {
-            if (ppfSparseFastXcorrData[i] != NULL)
-               delete[] ppfSparseFastXcorrData[i];
-            if (ppfSparseFastXcorrDataNL[i]!=NULL)
-               delete[] ppfSparseFastXcorrDataNL[i];
+            for (i = 0; i < iFastXcorrDataSize; ++i)
+            {
+               if (ppfSparseFastXcorrData[i] != NULL)
+                  delete[] ppfSparseFastXcorrData[i];
+               if (ppfSparseFastXcorrDataNL[i]!=NULL)
+                  delete[] ppfSparseFastXcorrDataNL[i];
+            }
          }
          delete[] ppfSparseFastXcorrDataNL;
          ppfSparseFastXcorrDataNL = NULL;
       }
       else
       {
-         for (i = 0; i < iFastXcorrDataSize; ++i)
+         if (!bSparseFromPool)
          {
-            if (ppfSparseFastXcorrData[i] != NULL)
-               delete[] ppfSparseFastXcorrData[i];
+            for (i = 0; i < iFastXcorrDataSize; ++i)
+            {
+               if (ppfSparseFastXcorrData[i] != NULL)
+                  delete[] ppfSparseFastXcorrData[i];
+            }
          }
       }
       delete[] ppfSparseFastXcorrData;

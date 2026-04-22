@@ -164,7 +164,7 @@ public:
          * @param maxMz Maximum m/z for fragments
          * @return Theoretical fragment ions sorted by m/z
          */
-        std::vector<Centroid> getMassList(int ionSeriesFlags, int maxCharge,
+        const std::vector<Centroid>& getMassList(int ionSeriesFlags, int maxCharge,
             double minMz, double maxMz);
 
         /**
@@ -235,6 +235,17 @@ private:
 
         // Mass calculations
         std::vector<double> baseMasses_;           // Base masses (AA + terminals)
+
+        // getMassList() cache keyed on (ionSeriesFlags, maxCharge, minMz, maxMz).
+        // All configurations within one ProcessPeptides call share the same key,
+        // so site-scoring re-queries hit the cache instead of recomputing ions.
+        int cachedIonFlags_;
+        int cachedMaxCharge_;
+        double cachedMinMz_;
+        double cachedMaxMz_;
+        bool cacheKeySet_;
+        std::vector<std::vector<Centroid>> massListCache_;
+        std::vector<bool> massListCacheValid_;
     };
 
 } // namespace AScoreProCpp

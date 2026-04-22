@@ -58,28 +58,25 @@ namespace AScoreProCpp
       if (p == 0.0) return (k >= 0) ? 1.0 : 0.0;
       if (p == 1.0) return (k >= n) ? 1.0 : 0.0;
 
-
-      // For k = n-1, and large p, use the more efficient complementary calculation
+      // For k = n-1, and large p, use the complementary calculation.
+      // P(X <= n-1) = 1 - P(X = n) = 1 - p^n
       if (k == n - 1 && p > 0.5)
       {
-         // Use complementary calculation which is more numerically stable
-         // P(X <= k) = 1 - P(X > k) = 1 - P(X = n)
-         // For k = n-1, only need to subtract P(X = n)
-         return 1.0 - PMF(p, n, n);
+         return 1.0 - std::pow(p, n);
       }
 
-
-      // Calculate CDF by summing PMF values
+      // Sum CDF by accumulating PMF terms computed in log-space (via PMF()).
+      // The direct recurrence q^n * product is numerically unstable when q is
+      // small (which occurs when binomialCDFUpper passes 1-p_small as the first
+      // argument), causing q^n to underflow to 0 and the entire CDF to be 0.
       double cdf = 0.0;
       for (int i = 0; i <= k; ++i)
       {
          cdf += PMF(p, n, i);
       }
 
-      // Add numerical stability check - limit to [0,1]
       if (cdf < 0.0) return 0.0;
       if (cdf > 1.0) return 1.0;
-
 
       return cdf;
    }

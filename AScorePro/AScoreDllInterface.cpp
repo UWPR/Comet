@@ -248,7 +248,7 @@ namespace AScoreProCpp
       // Set the precursor m/z from the parameter
       peptide.setPrecursorMz(precursorMz);
 
-      return CalculateScore(scan, peptide, options);
+      return CalculateScore(std::move(scan), peptide, options);
    }
 
    AScoreOutput AScoreDllInterface::CalculateScoreWithOptions(
@@ -270,19 +270,19 @@ namespace AScoreProCpp
       // Set the precursor m/z from the parameter
       peptide.setPrecursorMz(precursorMz);
 
-      return CalculateScore(scan, peptide, options);
+      return CalculateScore(std::move(scan), peptide, options);
    }
 
    AScoreOutput AScoreDllInterface::CalculateScore(
-      const Scan& scan,
+      Scan scan,
       Peptide& peptide,
       const AScoreOptions& options) const
    {
       // Create AScoreCalculator with the provided options
       AScoreCalculator calculator(options);
 
-      // Run the calculation
-      return calculator.Run(peptide, scan);
+      // Run the calculation -- move scan in to avoid a third copy
+      return calculator.Run(peptide, std::move(scan));
    }
 
    AScoreOptions AScoreDllInterface::GetDefaultOptions() const

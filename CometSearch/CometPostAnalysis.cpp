@@ -29,6 +29,142 @@
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
+#include <mutex>    // std::once_flag, std::call_once
+
+// --- Pre-computed decoy fragment-ion bin table ---
+// Built once per process after g_staticParams is fully initialised.
+// If search parameters change between runs (different ion series, bin width, etc.)
+// the process must be restarted so the table is rebuilt.
+//
+// Flat layout: [decoy_i * s_pdNPerDecoy + j * s_pdNPerPos + ii * s_pdMaxCharge + (ctCharge-1)]
+// Value: fragment bin index, or -1 to skip (zero-padded ion, negative mass, etc.)
+static std::once_flag    s_preDecoyOnce;
+static std::vector<int>  s_preDecoyBins;
+static int s_pdNIonSeries = 0;   // iNumIonSeriesUsed at init time
+static int s_pdMaxCharge  = 0;   // options.iMaxFragmentCharge at init time
+static int s_pdNPerPos    = 0;   // s_pdNIonSeries * s_pdMaxCharge
+static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
+
+// Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
+// CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
+// Each entry packs charge (high 16 bits) and decoy index (low 16 bits) into a uint32_t.
+// Entries within each bin are ordered by decoy index (ascending) — filled in outer-decoy-
+// loop order — enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
+// Storing charge allows GenerateXcorrDecoys to honour the per-query usiMaxFragCharge limit.
+static std::vector<int>      s_invIdx_start;   // size: iArraySizeGlobal + 2
+static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
+
+static void InitPrecomputedDecoyBins()
+{
+   s_pdNIonSeries = g_staticParams.ionInformation.iNumIonSeriesUsed;
+   s_pdMaxCharge  = g_staticParams.options.iMaxFragmentCharge;
+   if (s_pdMaxCharge < 1) s_pdMaxCharge = 1;
+
+   s_pdNPerPos   = s_pdNIonSeries * s_pdMaxCharge;
+   s_pdNPerDecoy = MAX_DECOY_PEP_LEN * s_pdNPerPos;
+
+   s_preDecoyBins.assign((size_t)EXPECT_DECOY_SIZE * s_pdNPerDecoy, -1);
+
+   const double dInvBW  = g_staticParams.dInverseBinWidth;
+   const double dBinOff = g_staticParams.dOneMinusBinOffset;
+
+   for (int i = 0; i < EXPECT_DECOY_SIZE; ++i)
+   {
+      for (int j = 0; j < MAX_DECOY_PEP_LEN; ++j)
+      {
+         const double dBion     = decoyIons[i].pdIonsN[j];
+         const double dYion     = decoyIons[i].pdIonsC[j];
+         const bool   bBionZero = (dBion == 0.0);
+         const bool   bYionZero = (dYion == 0.0);
+
+         for (int ii = 0; ii < s_pdNIonSeries; ++ii)
+         {
+            const int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+
+            // Replicate the skip conditions from GenerateXcorrDecoys exactly
+            if (bBionZero && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C))
+               continue;   // entries remain -1
+            if (bYionZero && (iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z || iWhichIonSeries == ION_SERIES_Z1))
+               continue;
+
+            double dFragmentIonMass = 0.0;
+            switch (iWhichIonSeries)
+            {
+               case ION_SERIES_A:  dFragmentIonMass = dBion - g_staticParams.massUtility.dCO;              break;
+               case ION_SERIES_B:  dFragmentIonMass = dBion;                                                break;
+               case ION_SERIES_C:  dFragmentIonMass = dBion + g_staticParams.massUtility.dNH3;             break;
+               case ION_SERIES_X:  dFragmentIonMass = dYion + g_staticParams.massUtility.dCOminusH2;       break;
+               case ION_SERIES_Y:  dFragmentIonMass = dYion;                                                break;
+               case ION_SERIES_Z:  dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;             break;
+               case ION_SERIES_Z1: dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2 + Hydrogen_Mono; break;
+               default: continue;
+            }
+
+            const int iBase = i * s_pdNPerDecoy + j * s_pdNPerPos + ii * s_pdMaxCharge;
+
+            // Replicate the iterative charge formula from GenerateXcorrDecoys exactly,
+            // including the accumulating behaviour for ctCharge >= 3.
+            for (int ctCharge = 1; ctCharge <= s_pdMaxCharge; ++ctCharge)
+            {
+               dFragmentIonMass = (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
+               s_preDecoyBins[iBase + ctCharge - 1] = (dFragmentIonMass > 0.0)
+                  ? (int)(dFragmentIonMass * dInvBW + dBinOff)
+                  : -1;
+            }
+         }
+      }
+   }
+
+   // Build inverted index: bin -> sorted list of decoy indices.
+   // The decoy-i outer loop above fills s_preDecoyBins in ascending decoy order, so
+   // entries land in the data array already sorted by decoy index within each bin.
+   //
+   // Any bin >= iArraySizeGlobal is unreachable by any query and is excluded.
+   const int iMaxBin = g_staticParams.iArraySizeGlobal;
+
+   // Pass 1: count how many entries each bin has.
+   std::vector<int> binCount(iMaxBin, 0);
+   for (int i = 0; i < EXPECT_DECOY_SIZE; ++i)
+   {
+      const int iBase = i * s_pdNPerDecoy;
+      for (int flat = 0; flat < s_pdNPerDecoy; ++flat)
+      {
+         int b = s_preDecoyBins[iBase + flat];
+         if (b >= 0 && b < iMaxBin)
+            binCount[b]++;
+      }
+   }
+
+   // Pass 2: prefix-sum to build CSR start array.
+   s_invIdx_start.resize(iMaxBin + 2, 0);
+   for (int b = 0; b < iMaxBin; ++b)
+      s_invIdx_start[b + 1] = s_invIdx_start[b] + binCount[b];
+   s_invIdx_start[iMaxBin + 1] = s_invIdx_start[iMaxBin];  // sentinel
+
+   // Pass 3: fill data array; reuse binCount as a per-bin write cursor.
+   // Each entry packs ctCharge (high 16 bits) and decoy_i (low 16 bits).
+   // ctCharge is recovered from the flat index: flat % s_pdMaxCharge + 1.
+   const int iTotalEntries = s_invIdx_start[iMaxBin];
+   s_invIdx_data.resize(iTotalEntries);
+   std::fill(binCount.begin(), binCount.end(), 0);
+
+   for (int i = 0; i < EXPECT_DECOY_SIZE; ++i)
+   {
+      const int iBase = i * s_pdNPerDecoy;
+      for (int flat = 0; flat < s_pdNPerDecoy; ++flat)
+      {
+         int b = s_preDecoyBins[iBase + flat];
+         if (b >= 0 && b < iMaxBin)
+         {
+            const int ctCharge = flat % s_pdMaxCharge + 1;
+            s_invIdx_data[s_invIdx_start[b] + binCount[b]] =
+               ((uint32_t)ctCharge << 16) | (uint16_t)i;
+            binCount[b]++;
+         }
+      }
+   }
+}
+
 
 CometPostAnalysis::CometPostAnalysis()
 {
@@ -505,7 +641,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
                   int iMod = pOutput[i].piVarModSites[ii];
 
-                  if (iMod > 0)
+                  if (iMod > 0 && iMod < COMPOUNDMODS_OFFSET)
                   {
                      if (g_staticParams.options.bScaleFragmentNL)
                         iCountNLB[iMod - 1][ii] += 1;
@@ -520,7 +656,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
 
                   int iMod = pOutput[i].piVarModSites[iPos];
 
-                  if (iMod > 0)
+                  if (iMod > 0 && iMod < COMPOUNDMODS_OFFSET)
                   {
                      if (g_staticParams.options.bScaleFragmentNL)
                         iCountNLY[iMod - 1][ii] += 1;
@@ -1103,127 +1239,91 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
 }
 
 
-// Original overload: delegates to the Query* version.
-// Make synthetic decoy spectra to fill out correlation histogram by going
-// through each candidate peptide and rotating spectra in m/z space.
+// Make synthetic decoy spectra to fill out correlation histogram.
+//
+// Inverted-index approach: instead of iterating over 3000 decoys and for each
+// decoy ion looking up a bin in the spectrum (~480K spectrum lookups), we scan
+// the spectrum once and for each non-zero bin scatter the value to all decoys
+// that have an ion there.  For a sparse spectrum with N non-zero bins this costs
+// N * (avg decoys per bin) operations.  With ~480K total entries spread over
+// ~iArraySize bins, the average is ~160 entries/bin; a typical spectrum with
+// 100-300 non-zero bins therefore requires only 16K-48K operations instead of
+// 480K -- a 10-30x reduction.
 bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
 {
-   int i;
-   int ii;
-   int j;
-   int k;
-   int iMaxFragCharge;
-   int ctCharge;
-   double dBion;
-   double dYion;
-   double dFastXcorr;
-   double dFragmentIonMass = 0.0;
+   std::call_once(s_preDecoyOnce, InitPrecomputedDecoyBins);
 
-   int *piHistogram;
-
-   int iFragmentIonMass;
-
-   piHistogram = pQuery->iXcorrHistogram;
-
-   iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+   int *piHistogram = pQuery->iXcorrHistogram;
+   const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;
 
    // EXPECT_DECOY_SIZE is the minimum # of decoys required or else this function isn't
    // called.  So need to generate iLoopMax more xcorr scores for the histogram.
-   int iLoopMax = EXPECT_DECOY_SIZE - pQuery->uiHistogramCount;
+   const int iLoopMax = EXPECT_DECOY_SIZE - pQuery->uiHistogramCount;
 
-   j=0;
-   for (i=0; i<iLoopMax; ++i)  // iterate through required # decoys
+   // Per-thread score accumulator: 3000 floats = 12 KB, stays in L1 cache.
+   // Zero only the entries we will use.
+   thread_local static float tl_decoyScores[EXPECT_DECOY_SIZE];
+   memset(tl_decoyScores, 0, iLoopMax * sizeof(float));
+
+   // Use the per-query charge limit, not the global max, to match real xcorr scoring.
+   const int iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+
+   // Scan the spectrum's sparse matrix.  For each non-zero bin, scatter its
+   // value to every decoy that has a fragment ion at that bin for a charge
+   // <= iMaxFragCharge (matching what the real xcorr scorer uses).
+   const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
+   const int iInvIdxBins = (int)s_invIdx_start.size() - 1;  // == iArraySizeGlobal
+
+   for (int x = 0; x < iSparseRows; ++x)
    {
-      dFastXcorr = 0.0;
+      const float* row = pQuery->ppfSparseFastXcorrData[x];
+      if (row == nullptr)
+         continue;
 
-      for (j=0; j<MAX_DECOY_PEP_LEN; ++j)  // iterate through decoy fragment ions
+      const int bBase = x * SPARSE_MATRIX_SIZE;
+
+      for (int y = 0; y < SPARSE_MATRIX_SIZE; ++y)
       {
-         dBion = decoyIons[i].pdIonsN[j];
-         dYion = decoyIons[i].pdIonsC[j];
+         const float v = row[y];
+         if (v == 0.0f)
+            continue;
 
-         for (ii=0; ii<g_staticParams.ionInformation.iNumIonSeriesUsed; ++ii)
+         const int b = bBase + y;
+         if (b >= iArraySize || b >= iInvIdxBins)
+            break;
+
+         // Scatter v to decoys that have an ion at bin b with charge <= iMaxFragCharge.
+         // Entries are ordered by decoy_i (low 16 bits) ascending; break when decoy_i
+         // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
+         // out-of-range charges since later entries may have the same decoy_i at a
+         // lower charge.
+         const int kEnd = s_invIdx_start[b + 1];
+         for (int k = s_invIdx_start[b]; k < kEnd; ++k)
          {
-            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ii];
-
-            // skip any padded 0.0 masses in decoy ions
-            if (dBion == 0.0 && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_C))
-               continue;
-            else if (dYion == 0.0 && (iWhichIonSeries == ION_SERIES_X || iWhichIonSeries == ION_SERIES_Y || iWhichIonSeries == ION_SERIES_Z || iWhichIonSeries == ION_SERIES_Z1))
-               continue;
-
-            dFragmentIonMass =  0.0;
-
-            switch (iWhichIonSeries)
-            {
-               case ION_SERIES_A:
-                  dFragmentIonMass = dBion - g_staticParams.massUtility.dCO;
-                  break;
-               case ION_SERIES_B:
-                  dFragmentIonMass = dBion;
-                  break;
-               case ION_SERIES_C:
-                  dFragmentIonMass = dBion + g_staticParams.massUtility.dNH3;
-                  break;
-               case ION_SERIES_X:
-                  dFragmentIonMass = dYion + g_staticParams.massUtility.dCOminusH2;
-                  break;
-               case ION_SERIES_Y:
-                  dFragmentIonMass = dYion;
-                  break;
-               case ION_SERIES_Z:
-                  dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2;
-                  break;
-               case ION_SERIES_Z1:
-                  dFragmentIonMass = dYion - g_staticParams.massUtility.dNH2 + Hydrogen_Mono;
-                  break;
-            }
-
-            for (ctCharge=1; ctCharge<=iMaxFragCharge; ++ctCharge)
-            {
-               dFragmentIonMass = (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
-
-               if (dFragmentIonMass < pQuery->_pepMassInfo.dExpPepMass)
-               {
-                  iFragmentIonMass = BIN(dFragmentIonMass);
-
-                  if (iFragmentIonMass < pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
-                  {
-                     int x = iFragmentIonMass / SPARSE_MATRIX_SIZE;
-                     if (pQuery->ppfSparseFastXcorrData[x] != NULL)
-                     {
-                        int y = iFragmentIonMass - (x*SPARSE_MATRIX_SIZE);
-                        dFastXcorr += pQuery->ppfSparseFastXcorrData[x][y];
-                     }
-                  }
-                  else if (iFragmentIonMass > pQuery->_spectrumInfoInternal.iArraySize && iFragmentIonMass >= 0)
-                  {
-                     std::string sErrorMsg = " Error - XCORR DECOY: dFragMass " + std::to_string(dFragmentIonMass)
-                        + ", iFragMass " + std::to_string(iFragmentIonMass)
-                        + ", ArraySize " + std::to_string(pQuery->_spectrumInfoInternal.iArraySize)
-                        + ", InputMass " + std::to_string(pQuery->_pepMassInfo.dExpPepMass)
-                        + ", scan " + std::to_string(pQuery->_spectrumInfoInternal.iScanNumber)
-                        + ", z " + std::to_string(ctCharge);
-
-                     string strErrorMsg(sErrorMsg.c_str());
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr(sErrorMsg);
-                     return false;
-                  }
-               }
-            }
+            const uint32_t entry   = s_invIdx_data[k];
+            const uint16_t decoy_i = (uint16_t)(entry & 0xFFFF);
+            if (decoy_i >= (uint16_t)iLoopMax)
+               break;
+            const int ctCharge = (int)(entry >> 16);
+            if (ctCharge <= iMaxFragCharge)
+               tl_decoyScores[decoy_i] += v;
          }
       }
+   }
 
-      k = (int)(dFastXcorr*10.0*0.005 + 0.5);  // 10 for histogram, 0.005=50/10000.
+   // Histogram-bin all decoy scores.
+   for (int i = 0; i < iLoopMax; ++i)
+   {
+      int k = (int)(tl_decoyScores[i] * 10.0 * 0.005 + 0.5);  // 10 for histogram, 0.005=50/10000.
 
       if (k < 0)
          k = 0;
 
-      if (!(i%2) && k < pQuery->iMinXcorrHisto)  // lump some zero decoys into iMinXcorrHisto bin
+      if (!(i % 2) && k < pQuery->iMinXcorrHisto)  // lump some zero decoys into iMinXcorrHisto bin
          k = pQuery->iMinXcorrHisto;
 
       if (k >= HISTO_SIZE)
-         k = HISTO_SIZE-1;
+         k = HISTO_SIZE - 1;
 
       piHistogram[k] += 1;
    }
@@ -1276,7 +1376,10 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
    pQuery->fPar[3] = (float)iNextCorr;
    pQuery->siMaxXcorr = (short)iMaxCorr;
 
-   dSlope *= 10.0; // Used in pow() function so do multiply outside of for loop.
+   dSlope *= 10.0; // Used in exp() function so do multiply outside of for loop.
+
+   // exp(x * ln10) is equivalent to pow(10, x) but avoids the overhead of pow().
+   static const double kLn10 = 2.302585092994046;
 
    int iLoopCount;
 
@@ -1301,7 +1404,7 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
          double dExpect;
          if (i<pQuery->iMatchPeptideCount)
          {
-            dExpect = pow(10.0, dSlope * pQuery->_pResults[i].fXcorr + dIntercept);
+            dExpect = std::exp((dSlope * pQuery->_pResults[i].fXcorr + dIntercept) * kLn10);
             if (dExpect > 999.0)
                dExpect = 999.0;
             pQuery->_pResults[i].dExpect = dExpect;
@@ -1309,7 +1412,7 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
 
          if (i<pQuery->iDecoyMatchPeptideCount)
          {
-            dExpect = pow(10.0, dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept);
+            dExpect = std::exp((dSlope * pQuery->_pDecoys[i].fXcorr + dIntercept) * kLn10);
             if (dExpect > 999.0)
                dExpect = 999.0;
             pQuery->_pDecoys[i].dExpect = dExpect;

@@ -37,6 +37,7 @@ Use Windows-style carriage returns (`\r\n`) rather than Unix-style (`\n`).
 ## E. Comments
 
 Use `//` for inline comments. This reserves `/* */` for commenting out blocks of code (including lines that already contain `//` comments).
+Use ASCII characters only in comments.
 
 ## F. Variable naming — Systems Hungarian Notation
 

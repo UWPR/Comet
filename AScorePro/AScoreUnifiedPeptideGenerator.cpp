@@ -39,7 +39,12 @@ namespace AScoreProCpp {
       neutralLossResidues_(""),
       useNeutralLoss_(false),
       currentIndex_(0),
-      maxPeptides_(1000)
+      maxPeptides_(1000),
+      cachedIonFlags_(0),
+      cachedMaxCharge_(0),
+      cachedMinMz_(0.0),
+      cachedMaxMz_(0.0),
+      cacheKeySet_(false)
    {
       basePeptide_ = peptide.clone();
       initTargetMod(peptide, targetMod);
@@ -52,7 +57,12 @@ namespace AScoreProCpp {
       neutralLossResidues_(""),
       useNeutralLoss_(false),
       currentIndex_(0),
-      maxPeptides_(1000)
+      maxPeptides_(1000),
+      cachedIonFlags_(0),
+      cachedMaxCharge_(0),
+      cachedMinMz_(0.0),
+      cachedMaxMz_(0.0),
+      cacheKeySet_(false)
    {
       basePeptide_ = inputPeptide.clone();
       initMultiMod(inputPeptide);
@@ -187,6 +197,12 @@ namespace AScoreProCpp {
       // Set generator indices
       for (size_t i = 0; i < configurations_.size(); ++i)
          configurations_[i].generatorIndex = static_cast<int>(i);
+
+      // Size the getMassList() cache to match configuration count.
+      // Entries are populated on first use and keyed on the call parameters.
+      massListCache_.resize(configurations_.size());
+      massListCacheValid_.assign(configurations_.size(), false);
+      cacheKeySet_ = false;
    }
 
    void UnifiedPeptideGenerator::generateConfigurationsRecursive(int modTypeIndex, Configuration currentConfig)
@@ -276,13 +292,34 @@ namespace AScoreProCpp {
       return modTypes_;
    }
 
-   std::vector<Centroid> UnifiedPeptideGenerator::getMassList(int ionSeriesFlags,
+   const std::vector<Centroid>& UnifiedPeptideGenerator::getMassList(int ionSeriesFlags,
       int maxCharge,
       double minMz,
       double maxMz)
    {
       if (atEnd())
          throw std::out_of_range("Generator is at end");
+
+      // Invalidate cache if call parameters have changed.
+      // Within a single ProcessPeptides call all getMassList invocations share
+      // the same (ionSeriesFlags, maxCharge, minMz, maxMz), so site-scoring
+      // re-queries for already-visited configurations hit the cache.
+      if (!cacheKeySet_
+          || cachedIonFlags_ != ionSeriesFlags
+          || cachedMaxCharge_ != maxCharge
+          || cachedMinMz_ != minMz
+          || cachedMaxMz_ != maxMz)
+      {
+         massListCacheValid_.assign(configurations_.size(), false);
+         cachedIonFlags_ = ionSeriesFlags;
+         cachedMaxCharge_ = maxCharge;
+         cachedMinMz_ = minMz;
+         cachedMaxMz_ = maxMz;
+         cacheKeySet_ = true;
+      }
+
+      if (massListCacheValid_[currentIndex_])
+         return massListCache_[currentIndex_];  // return cached ref
 
       const Configuration& config = configurations_[currentIndex_];
       const std::string& sequence = basePeptide_.getSequence();
@@ -420,7 +457,9 @@ namespace AScoreProCpp {
             return a.getMz() < b.getMz();
          });
 
-      return output;
+      massListCache_[currentIndex_] = std::move(output);
+      massListCacheValid_[currentIndex_] = true;
+      return massListCache_[currentIndex_];
    }
 
    void UnifiedPeptideGenerator::printAllConfigurations() const

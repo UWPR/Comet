@@ -58,6 +58,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>$(PreDef)</AdditionalOptions>
       <AdditionalIncludeDirectories>..\include;..\include\extern;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
