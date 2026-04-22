@@ -73,8 +73,8 @@ AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 // Fragment index globals - INITIALIZED ONCE, READ-ONLY DURING SEARCH
-unsigned int** g_iFragmentIndex;                            // stores fragment index; [BIN(fragmass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex;                        // stores counts of fragment index; [BIN(fragmass)]
+unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
+unsigned int* g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
@@ -3280,15 +3280,8 @@ cleanup_results:
    {
       free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
 
-      for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
-      {
-         if (g_iFragmentIndex[iMass] != NULL)
-         {
-            delete[] g_iFragmentIndex[iMass];
-         }
-      }
       delete[] g_iFragmentIndex;
-      delete[] g_iCountFragmentIndex;
+      delete[] g_iFragmentIndexOffset;
    }
 
    if (g_staticParams.iDbType != DbType::FASTA_DB) // for either index search

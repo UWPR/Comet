@@ -567,8 +567,8 @@ struct RetentionMatch
 };
 extern std::deque<RetentionMatch> RetentionMatchHistory;
 
-extern unsigned int** g_iFragmentIndex;           // 2D array [BIN[fragment mass)][which entries in g_vFragmentPeptides]
-extern unsigned int* g_iCountFragmentIndex;       // array of ints: [BIN(fragment mass)] count size of g_iFragmentIndex[][x]
+extern unsigned int* g_iFragmentIndex;            // CSR flat data: all posting lists concatenated [g_iFragmentIndexOffset[bin]..g_iFragmentIndexOffset[bin+1])
+extern unsigned int* g_iFragmentIndexOffset;      // CSR offsets [uiMaxFragmentArrayIndex+1]: g_iFragmentIndexOffset[b] = start of bin b in g_iFragmentIndex
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)

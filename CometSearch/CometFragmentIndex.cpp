@@ -37,6 +37,10 @@ size_t tTmp;
 
 Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 
+// Temporary write-position array used only during the index fill pass.
+// Initialized to g_iFragmentIndexOffset[0..n-1] before filling, freed after.
+static unsigned int* s_iWritePos = nullptr;
+
 
 #ifdef _WIN32
 #ifdef _WIN64
@@ -68,8 +72,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // - modification encoding index
    // - modification mass
 
-   g_iFragmentIndex = new unsigned int* [g_massRange.uiMaxFragmentArrayIndex];
-   g_iCountFragmentIndex = new unsigned int[g_massRange.uiMaxFragmentArrayIndex]();
+   // CSR layout: allocate offset array now (size+1 for sentinel); flat data allocated after counting.
+   g_iFragmentIndexOffset = new unsigned int[g_massRange.uiMaxFragmentArrayIndex + 1]();
 
    // generate the modified peptides to calculate the fragment index
    GenerateFragmentIndex(tp);
@@ -163,17 +167,24 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    AddFragmentsThreadProc(1, pFragmentIndexPool);
    pFragmentIndexPool->wait_on_threads();
 
-   // now reserve memory for the fragment index vectors
-   for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
+   // Convert per-bin counts (stored in g_iFragmentIndexOffset[0..n-1] during count pass)
+   // to CSR prefix-sum offsets, then allocate the single flat data array.
    {
-      if (g_iCountFragmentIndex[iMass] > 0)
+      unsigned int uiTotal = 0;
+      for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
       {
-         g_iFragmentIndex[iMass] = new unsigned int[g_iCountFragmentIndex[iMass]];
-         g_iCountFragmentIndex[iMass] = 0;  // reset to zero as this will  be used to determine g_iFragmentIndex fill position
+         unsigned int uiCnt = g_iFragmentIndexOffset[iMass];
+         g_iFragmentIndexOffset[iMass] = uiTotal;
+         uiTotal += uiCnt;
       }
-      else
-         g_iFragmentIndex[iMass] = NULL;
+      g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex] = uiTotal;  // sentinel
+      g_iFragmentIndex = new unsigned int[uiTotal];
    }
+
+   // Initialize per-bin write positions as a copy of the base offsets.
+   s_iWritePos = new unsigned int[g_massRange.uiMaxFragmentArrayIndex];
+   memcpy(s_iWritePos, g_iFragmentIndexOffset, sizeof(unsigned int) * g_massRange.uiMaxFragmentArrayIndex);
+
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
    // now sort g_vFragmentPeptides by mass; this was filled in the above AddFragmentsThreadProc calls
@@ -206,14 +217,14 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    pFragmentIndexPool->wait_on_threads();
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
+   // Write positions no longer needed after fill.
+   delete[] s_iWritePos;
+   s_iWritePos = nullptr;
+
    Threading::DestroyMutex(_vFragmentPeptidesMutex);
 
-   unsigned long long ullCount = 0;
-   for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
-   {
-      // count and report the # of entries in the fragment index
-      ullCount += g_iCountFragmentIndex[iMass];
-   }
+   // Total entry count is the CSR sentinel value.
+   unsigned long long ullCount = g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex];
 
    if (g_vFragmentPeptides.size() > 1e6)
       printf("   - %0.3e total peptides, ", (double)g_vFragmentPeptides.size());
@@ -531,13 +542,9 @@ if (!(iWhichPeptide%1000))
             }
 
             if (bCountOnly)
-               g_iCountFragmentIndex[iBinBion] += 1;
+               g_iFragmentIndexOffset[iBinBion] += 1;
             else
-            {
-               int iEntry = g_iCountFragmentIndex[iBinBion];
-               g_iFragmentIndex[iBinBion][iEntry] = static_cast<unsigned int>(iWhichFragmentPeptide);
-               g_iCountFragmentIndex[iBinBion] += 1;
-            }
+               g_iFragmentIndex[s_iWritePos[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
          }
 
          if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
@@ -551,13 +558,9 @@ if (!(iWhichPeptide%1000))
             }
 
             if (bCountOnly)
-               g_iCountFragmentIndex[iBinYion] += 1;
+               g_iFragmentIndexOffset[iBinYion] += 1;
             else
-            {
-               int iEntry = g_iCountFragmentIndex[iBinYion];
-               g_iFragmentIndex[iBinYion][iEntry] = static_cast<unsigned int>(iWhichFragmentPeptide);
-               g_iCountFragmentIndex[iBinYion] += 1;
-            }
+               g_iFragmentIndex[s_iWritePos[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
          }
       }
    }
