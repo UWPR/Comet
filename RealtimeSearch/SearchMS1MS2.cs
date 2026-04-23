@@ -159,7 +159,7 @@
                      var scanQueue = new ConcurrentQueue<int>();
                      var results = new ConcurrentBag<ScanResult>();
                      var progressLock = new object();
-                     int scansProcessed = 0;
+                     int scansProcessedMS2 = 0;
                      int totalScans = iLastScan - iFirstScan + 1;
 
                      // Initialize ONCE (before threading)
@@ -193,11 +193,6 @@
 
                               if (scanFilter.MSOrder != MSOrderType.Ms && scanFilter.MSOrder != MSOrderType.Ms2)
                               {
-                                 // Update progress for non-searchable scans
-                                 lock (progressLock)
-                                 {
-                                    scansProcessed++;
-                                 }
                                  continue;
                               }
 
@@ -223,10 +218,6 @@
 
                               if (iNumPeaks < 10)  // don't bother searching sparse spectra
                               {
-                                 lock (progressLock)
-                                 {
-                                    scansProcessed++;
-                                 }
                                  continue;
                               }
 
@@ -279,10 +270,6 @@
 
                                  if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
                                  {
-                                    lock (progressLock)
-                                    {
-                                       scansProcessed++;
-                                    }
                                     continue;
                                  }
 
@@ -301,6 +288,12 @@
                                  result.Proteins = vProtein;
                                  result.Scores = vScores;
                                  result.ElapsedMs = (int)watch.ElapsedMilliseconds;
+
+
+                                 lock (progressLock)
+                                 {
+                                    scansProcessedMS2++;
+                                 }
                               }
 
                               results.Add(result);
@@ -308,21 +301,16 @@
                               // Update progress
                               lock (progressLock)
                               {
-                                 scansProcessed++;
-                                 if (scansProcessed % 100 == 0)
+                                 if (scansProcessedMS2 % 500 == 0)
                                  {
-                                    double percentComplete = (double)scansProcessed / totalScans * 100.0;
-                                    Console.Write("\r Progress: {0:F1}% ({1}/{2} scans)", percentComplete, scansProcessed, totalScans);
+                                    double percentComplete = (double)scansProcessedMS2 / totalScans * 100.0;
+                                    Console.Write("\r Progress: {0:F1}% ({1}/{2} scans)", percentComplete, scansProcessedMS2, totalScans);
                                  }
                               }
                            }
                            catch (Exception ex)
                            {
                               Console.WriteLine("\n Thread {0}: Error processing scan {1}: {2}", threadId, iScanNumber, ex.Message);
-                              lock (progressLock)
-                              {
-                                 scansProcessed++;
-                              }
                            }
                         }
                      }
@@ -352,7 +340,7 @@
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
 
                      // Create histograms
-                     int iMaxHistogramTime = 1000;
+                     int iMaxHistogramTime = 200;
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
@@ -456,16 +444,17 @@
                         line = string.Format("\nTotal elapsed time: {0:F2} minutes", elapsedGlobal.TotalMinutes);
                         rtsWriter.WriteLine(line);
 
-                        line = string.Format("Scans processed: {0}", scansProcessed);
+                        line = string.Format("Scans processed: {0}", scansProcessedMS2);
                         rtsWriter.WriteLine(line);
 
-                        line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessed);
+                        line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessedMS2);
                         rtsWriter.WriteLine(line);
 
                         line = string.Format("\ninitialize search elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
-                        line = string.Format("search elapsed time: {0:F2} s, avg per spectrum {1:F2} ms\n", watchGlobal.Elapsed.TotalSeconds, watchGlobal.Elapsed.TotalMilliseconds / scansProcessed);
+                        line = string.Format("search elapsed time: {0:F2} s, avg {1:F2} ms/spectrum ({2} spectra), {3:F1} Hz\n",
+                           watchGlobal.Elapsed.TotalSeconds, watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2, scansProcessedMS2, 1000.0 / (watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2));
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
@@ -742,7 +731,7 @@
                   iTmp = 3;
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("fragindex_min_ions_report", sTmp, iTmp);
-                  iTmp = 100;
+                  iTmp = 150;
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("fragindex_num_spectrumpeaks", sTmp, iTmp);
                   dTmp = 200.0;

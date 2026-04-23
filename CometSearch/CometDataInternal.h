@@ -143,7 +143,7 @@ struct Options
    bool bClipNtermAA;            // 0=leave peptide sequences as-is; 1=clip N-term amino acid from every peptide
    bool bMango;                  // 0=normal; 1=Mango x-link ms2 input
    bool bScaleFragmentNL;        // 0=no; 1=scale fragment NL for each modified residue contained in fragment
-   bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index file
+   bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index plain peptide file
    bool bCreatePeptideIndex;     // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
    bool bVerboseOutput;
    bool bExplicitDeltaCn;        // if set to 1, do not use sequence similarity logic
@@ -448,52 +448,52 @@ struct DBInfo
    }
 };
 
-// this duplicates PlainPeptideIndexStruct but with modsites and fixed peptide char string for simplified binary write/read
 struct DBIndex
 {
-   char szPeptide[MAX_PEPTIDE_LEN];
+   string sPeptide;                                      // peptide sequence
+   vector<char> pcVarModSites;                           // empty = unmodified; else [iLen+2] encoding var mods
+   comet_fileoffset_t lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
+   double dPepMass;                                      // MH+ pep mass
+   unsigned short siVarModProteinFilter;                 // bitwise representation of mmapProtein
    char cPrevAA;
    char cNextAA;
-   char pcVarModSites[MAX_PEPTIDE_LEN_P2];        // encodes 0 to VMODS-1 indicating which var mod at which position
-   comet_fileoffset_t lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
-   double dPepMass;                               // MH+ pep mass
-   unsigned short siVarModProteinFilter;          // bitwise representation of mmapProtein
 
    bool operator==(const DBIndex& rhs) const
    {
-      if (strcmp(szPeptide, rhs.szPeptide) != 0)
+      if (sPeptide != rhs.sPeptide)
          return false;
 
       if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
          return false;
 
-      int iLen = (int)strlen(szPeptide) + 2;
+      int iLen = (int)sPeptide.size() + 2;
       for (int i = 0; i < iLen; ++i)
       {
-         if (pcVarModSites[i] != rhs.pcVarModSites[i])
+         char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
+         char r = rhs.pcVarModSites.empty() ? 0 : rhs.pcVarModSites[i];
+         if (l != r)
             return false;
       }
-
-      // optionally compare others if meaningful
-      // e.g., siVarModProteinFilter or lIndexProteinFilePosition
 
       return true;
    }
 
    bool operator<(const DBIndex& rhs) const
    {
-      int cmp = strcmp(szPeptide, rhs.szPeptide);
+      int cmp = sPeptide.compare(rhs.sPeptide);
       if (cmp != 0)
          return cmp < 0;
 
       if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
          return dPepMass < rhs.dPepMass;
 
-      int iLen = (int)strlen(szPeptide) + 2;
+      int iLen = (int)sPeptide.size() + 2;
       for (int i = 0; i < iLen; ++i)
       {
-         if (pcVarModSites[i] != rhs.pcVarModSites[i])
-            return pcVarModSites[i] < rhs.pcVarModSites[i];
+         char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
+         char r = rhs.pcVarModSites.empty() ? 0 : rhs.pcVarModSites[i];
+         if (l != r)
+            return l < r;
       }
 
       // FINAL tie-breaker: lowest protein index first in order

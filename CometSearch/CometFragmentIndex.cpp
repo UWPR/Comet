@@ -672,7 +672,7 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       else
       {
          // each unique peptide will have the same list of matched proteins
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i-1).szPeptide))
+         if (g_pvDBIndex.at(i).sPeptide == g_pvDBIndex.at(i-1).sPeptide)
          {
             // store protein as peptides are the same
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
@@ -772,18 +772,18 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
    for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
    {
-      int iLen = (int)strlen((*it).szPeptide);
+      int iLen = (int)(*it).sPeptide.size();
       struct PlainPeptideIndexStruct sTmp;
 
       fwrite(&iLen, sizeof(int), 1, fp);
-      fwrite((*it).szPeptide, sizeof(char), iLen, fp);
+      fwrite((*it).sPeptide.c_str(), sizeof(char), iLen, fp);
       fwrite(&((*it).cPrevAA), sizeof(char), 1, fp); // write prev AA
       fwrite(&((*it).cNextAA), sizeof(char), 1, fp); // write next AA
       fwrite(&((*it).dPepMass), sizeof(double), 1, fp);
       fwrite(&((*it).siVarModProteinFilter), sizeof(unsigned short), 1, fp);
       fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
 
-      sTmp.sPeptide = (*it).szPeptide;
+      sTmp.sPeptide = (*it).sPeptide;
       sTmp.lIndexProteinFilePosition = (*it).lIndexProteinFilePosition;
       sTmp.dPepMass = (*it).dPepMass;
       sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;

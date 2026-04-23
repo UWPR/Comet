@@ -3092,7 +3092,7 @@ cleanup_results:
          {
             const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
             double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
-            cout << CometMassSpecUtils::ElapsedTime(tBeginTime) << " (" << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms per spectrum)" << endl;
+            cout << CometMassSpecUtils::ElapsedTime(tBeginTime) << " (" << iTotalSpectraSearched << " spectra searched, " << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms/spectrum, " << 1000.0 / dTimePerSpectra << " Hz)" << endl;
          }
 
          if (bSucceeded)

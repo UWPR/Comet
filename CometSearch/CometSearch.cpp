@@ -1434,6 +1434,8 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    bool* pbDuplFragment = new bool[g_staticParams.iArraySizeGlobal];
 
+   Query* pQuery = g_pvQuery.at(iWhichQuery);
+
 /*
    // print out fragment masses at each fragment index
    int x=0;
@@ -1461,13 +1463,13 @@ void CometSearch::SearchFragmentIndex(size_t iWhichQuery,
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
-   for (auto it2 = g_pvQuery.at(iWhichQuery)->vfRawFragmentPeakMass.begin();
-      it2 != g_pvQuery.at(iWhichQuery)->vfRawFragmentPeakMass.end(); ++it2)
+   for (auto it2 = pQuery->vfRawFragmentPeakMass.begin();
+      it2 != pQuery->vfRawFragmentPeakMass.end(); ++it2)
    {
       // We can consider higher charged fragments by simply assuming each fragment mass is
       // higher charged and convert to singly charged to look into the 1+ paXionfileOffsets[].
       // FIX: ideally deconvolute input spectrum to singly charged first
-      for (int iChg = 1; iChg <= g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiMaxFragCharge; ++iChg)
+      for (int iChg = 1; iChg <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++iChg)
       {
          uiFragmentMass = BIN((*it2) * iChg - (iChg - 1.0));
 
@@ -2517,7 +2519,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
                                       bool* pbDuplFragment,
                                       struct sDBEntry* dbe)
 {
-   int iLenPeptide = (int)strlen(sDBI.szPeptide);
+   int iLenPeptide = (int)sDBI.sPeptide.size();
    int iLenMinus1 = iLenPeptide - 1;
    int iStartPos;
    int iEndPos;
@@ -2537,11 +2539,14 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
 
    // Convert pcVarModSites (char) -> piVarModSites (int) element-by-element
    memset(piVarModSites, 0, sizeof(int) * MAX_PEPTIDE_LEN_P2);
-   for (int i = 0; i < iLenPeptide + 2; ++i)
+   if (!sDBI.pcVarModSites.empty())
    {
-      piVarModSites[i] = (int)sDBI.pcVarModSites[i];
-      if (piVarModSites[i] != 0)
-         iFoundVariableMod = 1;
+      for (int i = 0; i < iLenPeptide + 2; ++i)
+      {
+         piVarModSites[i] = (int)sDBI.pcVarModSites[i];
+         if (piVarModSites[i] != 0)
+            iFoundVariableMod = 1;
+      }
    }
 
    double dBion = g_staticParams.precalcMasses.dNtermProton;
@@ -2564,7 +2569,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    }
    iStartPos = iPos;
 
-   memcpy(szProtein + iPos, sDBI.szPeptide, iLenPeptide);
+   memcpy(szProtein + iPos, sDBI.sPeptide.c_str(), iLenPeptide);
    iPos += iLenPeptide;
    iEndPos = iPos - 1;
 
@@ -2619,26 +2624,29 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
          iPositionNLY[i] = -1;
       }
 
-      for (int i = 0; i < iLenMinus1; ++i)
+      if (!sDBI.pcVarModSites.empty())
       {
-         if (sDBI.pcVarModSites[i] > 0)
+         for (int i = 0; i < iLenMinus1; ++i)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+            if (sDBI.pcVarModSites[i] > 0)
             {
-               iPositionNLB[sDBI.pcVarModSites[i] - 1] = i;
-               break;
+               if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+               {
+                  iPositionNLB[sDBI.pcVarModSites[i] - 1] = i;
+                  break;
+               }
             }
          }
-      }
 
-      for (int i = iLenMinus1; i >= 0; --i)
-      {
-         if (sDBI.pcVarModSites[i] > 0)
+         for (int i = iLenMinus1; i >= 0; --i)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+            if (sDBI.pcVarModSites[i] > 0)
             {
-               iPositionNLY[sDBI.pcVarModSites[i] - 1] = i;
-               break;
+               if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+               {
+                  iPositionNLY[sDBI.pcVarModSites[i] - 1] = i;
+                  break;
+               }
             }
          }
       }
@@ -2649,7 +2657,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    {
       int iPosReverse = iLenMinus1 - i;
 
-      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[i]];
+      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.sPeptide[i]];
       if (piVarModSites[i] > 0)
       {
          dBion += g_staticParams.variableModParameters.varModList[piVarModSites[i] - 1].dVarModMass;
@@ -2662,7 +2670,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
          }
       }
 
-      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[iPosReverse]];
+      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.sPeptide[iPosReverse]];
       if (piVarModSites[iPosReverse] > 0)
       {
          dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iPosReverse] - 1].dVarModMass;
@@ -2842,20 +2850,20 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
          // Last residue stays the same:  ABCDEK -> EDCBAK
          for (int i = iLenPeptide - 2; i >= 0; --i)
          {
-            szDecoyPeptide[iLenPeptide - 2 - i] = sDBI.szPeptide[i];
+            szDecoyPeptide[iLenPeptide - 2 - i] = sDBI.sPeptide[i];
             piVarModSitesDecoy[iLenPeptide - 2 - i] = piVarModSites[i];
          }
-         szDecoyPeptide[iLenPeptide - 1] = sDBI.szPeptide[iLenPeptide - 1];
+         szDecoyPeptide[iLenPeptide - 1] = sDBI.sPeptide[iLenPeptide - 1];
          piVarModSitesDecoy[iLenPeptide - 1] = piVarModSites[iLenPeptide - 1];
       }
       else
       {
          // First residue stays the same:  ABCDEK -> AKEDCB
-         szDecoyPeptide[0] = sDBI.szPeptide[0];
+         szDecoyPeptide[0] = sDBI.sPeptide[0];
          piVarModSitesDecoy[0] = piVarModSites[0];
          for (int i = iLenPeptide - 1; i >= 1; --i)
          {
-            szDecoyPeptide[iLenPeptide - i] = sDBI.szPeptide[i];
+            szDecoyPeptide[iLenPeptide - i] = sDBI.sPeptide[i];
             piVarModSitesDecoy[iLenPeptide - i] = piVarModSites[i];
          }
       }
@@ -3068,7 +3076,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
    int ctIonSeries;
    int ctLen;
    int ctCharge;
-   int iLenPeptide = (int)strlen(sDBI.szPeptide);
+   int iLenPeptide = (int)sDBI.sPeptide.size();
    int iStartPos = 0;
    int iEndPos = iLenPeptide - 1;
    int iUnused = 0;
@@ -3095,26 +3103,29 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          iPositionNLY[i] = -1;     // default to less that first residue position
       }
 
-      for (i = 0; i < iEndPos; i++)
+      if (!sDBI.pcVarModSites.empty())
       {
-         if (sDBI.pcVarModSites[i] > 0)
+         for (i = 0; i < iEndPos; i++)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+            if (sDBI.pcVarModSites[i] > 0)
             {
-               iPositionNLB[sDBI.pcVarModSites[i] - 1] = i;
-               break;
+               if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+               {
+                  iPositionNLB[sDBI.pcVarModSites[i] - 1] = i;
+                  break;
+               }
             }
          }
-      }
 
-      for (i = iEndPos; i >= 0; i--)
-      {
-         if (sDBI.pcVarModSites[i] > 0)
+         for (i = iEndPos; i >= 0; i--)
          {
-            if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+            if (sDBI.pcVarModSites[i] > 0)
             {
-               iPositionNLY[sDBI.pcVarModSites[i] - 1] = i;
-               break;
+               if (g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[i] - 1].dNeutralLoss != 0.0)
+               {
+                  iPositionNLY[sDBI.pcVarModSites[i] - 1] = i;
+                  break;
+               }
             }
          }
       }
@@ -3137,8 +3148,12 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
 
          int iLen2 = iLenPeptide + 2;
-         for (int x = 0; x < iLen2; x++)
-            piVarModSites[x] = sDBI.pcVarModSites[x];
+         memset(piVarModSites, 0, sizeof(int) * iLen2);
+         if (!sDBI.pcVarModSites.empty())
+         {
+            for (int x = 0; x < iLen2; x++)
+               piVarModSites[x] = sDBI.pcVarModSites[x];
+         }
 
          // Calculate ion series just once to compare against all relevant query spectra.
          if (bFirstTimeThroughLoopForPeptide)
@@ -3174,20 +3189,20 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                iFoundVariableMod = 1;
             }
 
-            // Generate pdAAforward for sDBI.szPeptide
+            // Generate pdAAforward for sDBI.sPeptide
             for (int i = iStartPos; i < iEndPos; i++)
             {
                int iPos = i - iStartPos;
                int iPos2 = iEndPos - i + iStartPos;
 
-               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[i]];
+               dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.sPeptide[i]];
                if (piVarModSites[iPos] > 0)
                {
                   dBion += g_staticParams.variableModParameters.varModList[piVarModSites[iPos] - 1].dVarModMass;
                   iFoundVariableMod = 1;
                }
 
-               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.szPeptide[iPos2]];
+               dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sDBI.sPeptide[iPos2]];
                if (piVarModSites[iPos2] > 0)
                {
                   dYion += g_staticParams.variableModParameters.varModList[piVarModSites[iPos2] - 1].dVarModMass;
@@ -3350,11 +3365,11 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                   for (i = iEndPos - 1; i >= iStartPos; i--)
                   {
-                     szDecoyPeptide[iEndPos - i - 1] = sDBI.szPeptide[i - iStartPos];
+                     szDecoyPeptide[iEndPos - i - 1] = sDBI.sPeptide[i - iStartPos];
                      piVarModSitesDecoy[iEndPos - i - 1] = piVarModSites[i - iStartPos];
                   }
 
-                  szDecoyPeptide[iEndPos] = sDBI.szPeptide[iEndPos];  // last residue stays same
+                  szDecoyPeptide[iEndPos] = sDBI.sPeptide[iEndPos];  // last residue stays same
                   piVarModSitesDecoy[iLenPeptide - 1] = piVarModSites[iLenPeptide - 1];
                }
                else
@@ -3363,11 +3378,11 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                   for (i = iEndPos; i > iStartPos; i--)
                   {
-                     szDecoyPeptide[iEndPos - i + 1] = sDBI.szPeptide[i - iStartPos];
+                     szDecoyPeptide[iEndPos - i + 1] = sDBI.sPeptide[i - iStartPos];
                      piVarModSitesDecoy[iEndPos - i + 1] = piVarModSites[i - iStartPos];
                   }
 
-                  szDecoyPeptide[iStartPos] = sDBI.szPeptide[iStartPos];  // first residue stays same
+                  szDecoyPeptide[iStartPos] = sDBI.sPeptide[iStartPos];  // first residue stays same
                   piVarModSitesDecoy[iStartPos] = piVarModSites[iStartPos];
                }
                szDecoyPeptide[iEndPos - iStartPos + 1] = '\0';
@@ -3573,12 +3588,12 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          if (cPrevAA == '-')
          {
             iStartPos = 0;
-            strcpy(szProtein, sDBI.szPeptide);
+            strcpy(szProtein, sDBI.sPeptide.c_str());
          }
          else
          {
             iStartPos = 1;
-            sprintf(szProtein, "%c%s", cPrevAA, sDBI.szPeptide);
+            sprintf(szProtein, "%c%s", cPrevAA, sDBI.sPeptide.c_str());
          }
 
          if (cNextAA == '-')
@@ -3867,18 +3882,17 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                DBIndex sEntry;
                sEntry.dPepMass = dCalcPepMass;  //MH+ mass
 
-               strncpy(sEntry.szPeptide, szProteinSeq + iStartPos, iLenPeptide);
-               sEntry.szPeptide[iLenPeptide] = '\0';
+               sEntry.sPeptide.assign(szProteinSeq + iStartPos, iLenPeptide);
                sEntry.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
                sEntry.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1] ;
                sEntry.siVarModProteinFilter = siVarModProteinFilter;
 
                // little sanity check here to not include peptides with '*' in them
                // although mass check above should've caught these before
-               if (!strchr(sEntry.szPeptide, '*'))
+               if (sEntry.sPeptide.find('*') == string::npos)
                {
                   sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
-                  memset(sEntry.pcVarModSites, 0, sizeof(char) * (iLenPeptide + 2));
+                  sEntry.pcVarModSites.clear();  // empty = unmodified
 
                   if (g_staticParams.options.bCreateFragmentIndex
                      || (g_staticParams.options.bCreatePeptideIndex && dCalcPepMass >= g_massRange.dMinMass && dCalcPepMass <= g_massRange.dMaxMass))
@@ -8117,8 +8131,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
             // add to DBIndex vector
             DBIndex sDBTmp;
             sDBTmp.dPepMass = dCalcPepMass;  //MH+ mass
-            strncpy(sDBTmp.szPeptide, szProteinSeq + _varModInfo.iStartPos, iLenPeptide);
-            sDBTmp.szPeptide[iLenPeptide] = '\0';
+            sDBTmp.sPeptide.assign(szProteinSeq + _varModInfo.iStartPos, iLenPeptide);
 
             if (_varModInfo.iStartPos == 0)
                sDBTmp.cPrevAA = '-';
@@ -8132,10 +8145,9 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
 
             sDBTmp.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
 
-            memset(sDBTmp.pcVarModSites, 0, sizeof(sDBTmp.pcVarModSites));
-
+            sDBTmp.pcVarModSites.assign(iLen2, 0);
             for (int x = 0; x < iLen2; x++)  // +2 for n/c term mods
-               sDBTmp.pcVarModSites[x] = piVarModSites[x];
+               sDBTmp.pcVarModSites[x] = static_cast<char>(piVarModSites[x]);
 
             try
             {

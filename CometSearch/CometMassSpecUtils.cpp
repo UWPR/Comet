@@ -471,7 +471,7 @@ string CometMassSpecUtils::ElapsedTime(std::chrono::time_point<std::chrono::stea
 bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
                                              const DBIndex& rhs)
 {
-   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   if (lhs.sPeptide == rhs.sPeptide)
    {
       // peptides are same here so look at mass next
       if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
@@ -486,17 +486,18 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
       // FIX: if protein terminal mods are specified, address them
 
       // at this point, same peptide, same mass, same mods so return first protein
-      if (lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition)
-         return true;
-      else
-         return false;
+      if (lhs.lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)
+         return lhs.lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
+
+      // same peptide, mass, and protein position so compare flanking residues
+      if (lhs.cPrevAA != rhs.cPrevAA)
+         return lhs.cPrevAA < rhs.cPrevAA;
+
+      return lhs.cNextAA < rhs.cNextAA;
    }
 
    // peptides are different
-   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
-      return true;
-   else
-      return false;
+   return lhs.sPeptide < rhs.sPeptide;
 };
 
 
@@ -515,18 +516,16 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
 
    // at this point, peptides are same mass so next need to compare sequences
 
-   if (!strcmp(lhs.szPeptide, rhs.szPeptide))
+   if (lhs.sPeptide == rhs.sPeptide)
    {
       // same sequences and masses here so next look at mod state
-      for (unsigned int i = 0; i < strlen(lhs.szPeptide) + 2; ++i)
+      size_t iLen = lhs.sPeptide.size() + 2;
+      for (size_t i = 0; i < iLen; ++i)
       {
-         if (lhs.pcVarModSites[i] != rhs.pcVarModSites[i])
-         {
-            if (lhs.pcVarModSites[i] > rhs.pcVarModSites[i])
-               return true;
-            else
-               return false;
-         }
+         char l = lhs.pcVarModSites.empty()     ? 0 : lhs.pcVarModSites[i];
+         char r = rhs.pcVarModSites.empty()     ? 0 : rhs.pcVarModSites[i];
+         if (l != r)
+            return l > r;
       }
 
       // at this point, same peptide, same mass, same mods so return first protein
@@ -537,9 +536,6 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
    }
 
    // if here, peptide sequences are different (but w/same mass) so sort alphabetically
-   if (strcmp(lhs.szPeptide, rhs.szPeptide) < 0)
-      return true;
-   else
-      return false;
+   return lhs.sPeptide < rhs.sPeptide;
 
 }
