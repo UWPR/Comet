@@ -1,5 +1,7 @@
 ### Comet parameter: fragindex_num_spectrumpeaks
 
+- NOTE: this parameter is not implemented until version 2026.02.0.  Older
+  versions applied a fix 150 max number of spectrum peaks.
 - This parameter defines the number of mass/intensity pairs that would be
   queried against the fragment ion index.
 - Raw peaks are parsed and stored. The mass dimension is binned per the
