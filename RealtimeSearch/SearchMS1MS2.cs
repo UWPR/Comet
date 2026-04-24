@@ -145,7 +145,7 @@
                      }
 
                      // MS1 RT parameters
-                     double dMaxMS1RTDiff = 300.0;    // maximum allowed retention time difference between query and reference, in seconds
+                     double dMaxMS1RTDiff = 100.0;    // maximum allowed retention time difference between query and reference, in seconds
                      double dMaxQueryRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iLastScan);
 
                      int iPrintEveryScan = 1;
@@ -453,7 +453,7 @@
                         line = string.Format("\ninitialize search elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
-                        line = string.Format("search elapsed time: {0:F2} s, avg {1:F2} ms/spectrum ({2} spectra), {3:F1} Hz\n",
+                        line = string.Format("search elapsed time: {0:F2} s, avg {1:F2} ms/spectrum ({2} spectra), {3:F0} Hz\n",
                            watchGlobal.Elapsed.TotalSeconds, watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2, scansProcessedMS2, 1000.0 / (watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2));
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);

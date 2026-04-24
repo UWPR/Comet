@@ -186,21 +186,6 @@ private:
                    int iLenPeptide,
                    int *piVarModSites,
                    struct sDBEntry *dbe);
-   // Existing batch-path overload (indexes g_pvQuery)
-   static void XcorrScoreI(char *szProteinSeq,
-                           int iStartPos,
-                           int iEndPos,
-                           int iFoundVariableMod,
-                           double dCalcPepMass,
-                           bool bDecoyPep,
-                           size_t iWhichQuery,
-                           int iLenPeptide,
-                           int *piVarModSites,
-                           struct sDBEntry *dbe,
-                           unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2],
-                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
-                           int iNumMatchedFragmentIons);
-   // Task 1.2: Thread-local overload accepting Query* directly.
    static void XcorrScoreI(char *szProteinSeq,
                            int iStartPos,
                            int iEndPos,
@@ -243,18 +228,6 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
-   // Existing batch-path overload (indexes g_pvQuery)
-   static void StorePeptideI(size_t iWhichQuery,
-                             int iStartPos,
-                             int iEndPos,
-                             int iFoundVariableMod,
-                             char *szProteinSeq,
-                             double dCalcPepMass,
-                             double dXcorr,
-                             bool bStoreSeparateDecoy,
-                             int *piVarModSites,
-                             struct sDBEntry *dbe);
-   // Task 1.2: Thread-local overload accepting Query* directly.
    static void StorePeptideI(Query* pQuery,
                              int iStartPos,
                              int iEndPos,
@@ -298,12 +271,6 @@ private:
                        int iLenPeptide,
                        struct sDBEntry* dbe);
    
-   // Existing batch-path overload (indexes g_pvQuery)
-   static void SearchFragmentIndex(size_t iWhichQuery,
-                                   ThreadPool* tp);
-
-   // Thread-local overload: searches a caller-owned Query* with
-   // a per-call pbDuplFragment buffer. Does not access g_pvQuery.
    static void SearchFragmentIndex(Query* pQuery,
                                    bool* pbDuplFragment);
 
@@ -402,6 +369,8 @@ private:
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
    unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
    unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+
+   static int  AcquirePoolSlot();       // Spin-wait for a free slot; returns index or -1 on timeout
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads

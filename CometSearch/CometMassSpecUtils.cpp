@@ -460,9 +460,9 @@ string CometMassSpecUtils::ElapsedTime(std::chrono::time_point<std::chrono::stea
 
    string sReturn;
    if (minutes > 0)
-      sReturn = std::to_string(minutes) + " min " + std::to_string(seconds) + " sec";
+      sReturn = std::to_string(minutes) + "m:" + std::to_string(seconds) + "s";
    else
-      sReturn = std::to_string(seconds) + " sec";
+      sReturn = std::to_string(seconds) + "s";
 
    return sReturn;
 }

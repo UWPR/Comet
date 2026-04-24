@@ -160,7 +160,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // Sort the peptides by mass
 
-   cout <<  "   - storing peptide list and reserving memory ... "; fflush(stdout);
+   cout <<  "   - store peptide list and reserve memory ... "; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
    // stupid workaround for Windows/Visual Studio performance ... first calculate all
    // fragments to find size of each fragment on index vector
@@ -189,7 +189,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // now sort g_vFragmentPeptides by mass; this was filled in the above AddFragmentsThreadProc calls
    tStartTime = chrono::steady_clock::now();
-   cout << "   - sorting peptides by mass ... "; fflush(stdout);
+   cout << "   - sort peptides by mass ... "; fflush(stdout);
    sort(g_vFragmentPeptides.begin(), g_vFragmentPeptides.end(), [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
       {
          return a.dPepMass < b.dPepMass;
@@ -208,7 +208,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // now populate the fragment index vector
    tStartTime = chrono::steady_clock::now();
-   cout <<  "   - populating index ... "; fflush(stdout);
+   cout <<  "   - populate index ... "; fflush(stdout);
    for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
    {
       auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
