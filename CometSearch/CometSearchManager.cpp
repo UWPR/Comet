@@ -33,8 +33,8 @@
 #include "AScoreOptions.h"
 #include "AScoreFactory.h"
 
-
 #include <sstream>
+#include <cstdio>
 
 #ifdef _WIN32
 #pragma comment(lib, "psapi.lib")
@@ -3091,17 +3091,28 @@ cleanup_results:
                else
                   strOut = "";
 
+               char buf[128];
+
+               std::snprintf(buf, sizeof(buf), "%.2f", dTimePerSpectra);
                strOut += CometMassSpecUtils::ElapsedTime(tBeginTime) + ", " + std::to_string(iTotalSpectraSearched) + " spectra, "
-                  + std::format("{:.2f}", dTimePerSpectra) + " ms/spec ("
-                  + std::format("{:.0f}", 1000.0 / dTimePerSpectra) + "Hz)";
+                  + std::string(buf) + " ms/spec (";
+
+               std::snprintf(buf, sizeof(buf), "%.0f", 1000.0 / dTimePerSpectra);
+               strOut += std::string(buf) + "Hz)";
 
                size_t peakKB = GetPeakMemoryKB();
                if (peakKB > 0)
                {
                   if (peakKB >= 1024 * 1024)
-                     strOut += ", " + std::format("{:.1f}", (peakKB / (1024.0 * 1024.0))) + "GB peak";
+                  {
+                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / (1024.0 * 1024.0)));
+                     strOut += ", " + std::string(buf) + "GB peak";
+                  }
                   else
-                     strOut += ", " + std::format("{:.1f}", (peakKB / 1024.0)) + "MB peak";
+                  {
+                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / 1024.0));
+                     strOut += ", " + std::string(buf) + "MB peak";
+                  }
                }
                strOut += "\n";
                logout(strOut);
