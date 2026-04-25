@@ -15,6 +15,7 @@
 #include "Common.h"
 #include "CometSearch.h"
 #include "CometFragmentIndexReader.h"
+#include <unordered_map>
 
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
@@ -1489,7 +1490,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
-   std::map<comet_fileoffset_t, int> mPeptides;   // which peptide (fileoffset, and # matched fragments)
+   std::unordered_map<unsigned int, int> mPeptides;   // which peptide (index into g_vFragmentPeptides, and # matched fragments)
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
 
@@ -1527,7 +1528,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                unsigned int uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
                for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                {
-                  int iTmp = g_iFragmentIndex[uiBinBase + ix];
+                  unsigned int iTmp = g_iFragmentIndex[uiBinBase + ix];
                   double dCalcPepMass = g_vFragmentPeptides[iTmp].dPepMass;
 
                   if (dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus
@@ -1565,7 +1566,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
-   std::vector<std::pair<comet_fileoffset_t, int>> vPeptides;
+   std::vector<std::pair<unsigned int, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
       if (ix->second >= g_staticParams.options.iFragIndexMinIonsScore)
@@ -1582,7 +1583,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
-   sort(vPeptides.begin(), vPeptides.end(), [=](const std::pair<comet_fileoffset_t, int>& a, const std::pair<comet_fileoffset_t, int>& b) { return a.second > b.second; });
+   sort(vPeptides.begin(), vPeptides.end(), [](const std::pair<unsigned int, int>& a, const std::pair<unsigned int, int>& b) { return a.second > b.second; });
 
    int iLenPeptide;
    int iWhichIonSeries;

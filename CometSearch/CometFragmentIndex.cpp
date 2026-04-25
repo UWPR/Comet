@@ -467,8 +467,6 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       // Store the current peptide; iWhichFragmentPeptide references this peptide entry
       // for use in the g_iFragmentIndex fragment index.  As this is a global list of
       // peptides, need to lock when updating to avoid thread conflicts
-
-//      Threading::LockMutex(_vFragmentPeptidesMutex);
       if (g_vFragmentPeptides.size() >= UINT_MAX)
       {
          printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
@@ -476,7 +474,6 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       }
       // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
       g_vFragmentPeptides.push_back(sTmp);
-//      Threading::UnlockMutex(_vFragmentPeptidesMutex);
    }
 
 /*
@@ -828,15 +825,15 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    // now permute mods on the peptides
    PermuteIndexPeptideMods(g_vRawPeptides);
  
-   unsigned long ulSizeModSeqs = (unsigned long)MOD_SEQS.size();              // size of MOD_SEQS
-   unsigned long ulSizevRawPeptides = (unsigned long)g_vRawPeptides.size();   // size of g_vRawPeptides
-   unsigned long ulModNumSize = (unsigned long)MOD_NUMBERS.size();            // size of MOD_NUMBERS
+   uint64_t ulSizeModSeqs = (uint64_t)MOD_SEQS.size();              // size of MOD_SEQS
+   uint64_t ulSizevRawPeptides = (uint64_t)g_vRawPeptides.size();   // size of g_vRawPeptides
+   uint64_t ulModNumSize = (uint64_t)MOD_NUMBERS.size();            // size of MOD_NUMBERS
 
    comet_fileoffset_t clPermutationsFilePos = comet_ftell(fp);
 
-   fwrite(&ulSizeModSeqs, sizeof(unsigned long), 1, fp);
-   fwrite(&ulSizevRawPeptides, sizeof(unsigned long), 1, fp);
-   fwrite(&ulModNumSize, sizeof(unsigned long), 1, fp);
+   fwrite(&ulSizeModSeqs, sizeof(uint64_t), 1, fp);
+   fwrite(&ulSizevRawPeptides, sizeof(uint64_t), 1, fp);
+   fwrite(&ulModNumSize, sizeof(uint64_t), 1, fp);
    fwrite(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    fwrite(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
    fwrite(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);
@@ -894,6 +891,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       printf(" Error - cannot open index file %s to read\n", strIndexFile.c_str());
       exit(1);
    }
+   setvbuf(fp, NULL, _IOFBF, 32 * 1024 * 1024);
 
    bool bFoundStatic = false;
    bool bFoundVariable= false;
@@ -1096,6 +1094,8 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    comet_fileoffset_t clProteinsFilePos;      // file position of g_pvProteinsList
    comet_fileoffset_t clPermutationsFilePos;  // file position of permutations variables
 
+   comet_fseek(fp, 0, SEEK_END);
+   comet_fileoffset_t clFileSize = comet_ftell(fp);
    comet_fseek(fp, -clSizeCometFileOffset*3, SEEK_END);
    tTmp = fread(&clPeptidesFilePos, clSizeCometFileOffset, 1, fp);
    tTmp = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
@@ -1106,58 +1106,66 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    size_t tNumPeptides;
    tTmp = fread(&tNumPeptides, sizeof(size_t), 1, fp);  // read # of peptides
 
-   struct PlainPeptideIndexStruct sTmp;
-   int iLen;
-   char szPeptide[MAX_PEPTIDE_LEN];
-
-   g_vRawPeptides.clear();
-   for (size_t it = 0; it < tNumPeptides; ++it)
+   // Read entire raw peptides section in one shot, then parse from memory.
+   // This eliminates per-element fread lock overhead (~7 calls x 4M peptides).
    {
-      tTmp = fread(&iLen, sizeof(int), 1, fp);
-      tTmp = fread(szPeptide, sizeof(char), iLen, fp);
-      szPeptide[iLen] = '\0';
-      sTmp.sPeptide = szPeptide;
-      tTmp = fread(&(sTmp.cPrevAA), sizeof(char), 1, fp);
-      tTmp = fread(&(sTmp.cNextAA), sizeof(char), 1, fp);
-      tTmp = fread(&(sTmp.dPepMass), sizeof(double), 1, fp);
-      tTmp = fread(&(sTmp.siVarModProteinFilter), sizeof(unsigned short), 1, fp);
-      tTmp = fread(&(sTmp.lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
+      size_t pepSectionSize = (size_t)(clProteinsFilePos - clPeptidesFilePos) - sizeof(size_t);
+      vector<char> pepBuf(pepSectionSize);
+      fread(pepBuf.data(), 1, pepSectionSize, fp);
+      const char* p = pepBuf.data();
 
-      g_vRawPeptides.push_back(sTmp);
-   }
-
-   comet_fseek(fp, clProteinsFilePos, SEEK_SET);  // should be at this file position here anyways already
-
-   // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
-   size_t tSize;
-   tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
-   vector<comet_fileoffset_t> vTmp;
-
-   g_pvProteinsList.clear();
-   g_pvProteinsList.reserve(tSize);
-   for (size_t it = 0; it < tSize; ++it)
-   {
-      size_t tNumProteinOffsets;
-      tTmp = fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
-      
-      vTmp.clear();
-      for (size_t it2 = 0; it2 < tNumProteinOffsets; ++it2)
+      struct PlainPeptideIndexStruct sTmp;
+      g_vRawPeptides.clear();
+      g_vRawPeptides.reserve(tNumPeptides);
+      for (size_t it = 0; it < tNumPeptides; ++it)
       {
-         tTmp = fread(&clTmp, clSizeCometFileOffset, 1, fp);
-         vTmp.push_back(clTmp);
+         int iLen;
+         memcpy(&iLen, p, sizeof(int));                                     p += sizeof(int);
+         sTmp.sPeptide.assign(p, iLen);                                     p += iLen;
+         sTmp.cPrevAA = *p++;
+         sTmp.cNextAA = *p++;
+         memcpy(&sTmp.dPepMass, p, sizeof(double));                         p += sizeof(double);
+         memcpy(&sTmp.siVarModProteinFilter, p, sizeof(unsigned short));     p += sizeof(unsigned short);
+         memcpy(&sTmp.lIndexProteinFilePosition, p, clSizeCometFileOffset);  p += clSizeCometFileOffset;
+         g_vRawPeptides.push_back(std::move(sTmp));
       }
-      g_pvProteinsList.push_back(vTmp);
    }
 
-   comet_fseek(fp, clPermutationsFilePos, SEEK_SET);  // should be at this file position here anyways already
+   // Read entire proteins list section in one shot, then parse from memory.
+   comet_fseek(fp, clProteinsFilePos, SEEK_SET);
+   {
+      size_t protSectionSize = (size_t)(clPermutationsFilePos - clProteinsFilePos);
+      vector<char> protBuf(protSectionSize);
+      fread(protBuf.data(), 1, protSectionSize, fp);
+      const char* p = protBuf.data();
 
-   unsigned long ulSizeModSeqs;        // size of MOD_SEQS
-   unsigned long ulSizevRawPeptides;   // size of g_vRawPeptides
-   unsigned long ulModNumSize;         // size of MOD_NUMBERS
+      size_t tSize;
+      memcpy(&tSize, p, sizeof(comet_fileoffset_t));
+      p += sizeof(comet_fileoffset_t);
 
-   tTmp = fread(&ulSizeModSeqs, sizeof(unsigned long), 1, fp);
-   tTmp = fread(&ulSizevRawPeptides, sizeof(unsigned long), 1, fp);
-   tTmp = fread(&ulModNumSize, sizeof(unsigned long), 1, fp);
+      g_pvProteinsList.clear();
+      g_pvProteinsList.reserve(tSize);
+      for (size_t it = 0; it < tSize; ++it)
+      {
+         size_t tNumProteinOffsets;
+         memcpy(&tNumProteinOffsets, p, sizeof(comet_fileoffset_t));
+         p += sizeof(comet_fileoffset_t);
+
+         const comet_fileoffset_t* src = reinterpret_cast<const comet_fileoffset_t*>(p);
+         g_pvProteinsList.emplace_back(src, src + tNumProteinOffsets);
+         p += tNumProteinOffsets * sizeof(comet_fileoffset_t);
+      }
+   }
+
+   comet_fseek(fp, clPermutationsFilePos, SEEK_SET);
+
+   uint64_t ulSizeModSeqs;        // size of MOD_SEQS
+   uint64_t ulSizevRawPeptides;   // size of g_vRawPeptides
+   uint64_t ulModNumSize;         // size of MOD_NUMBERS
+
+   tTmp = fread(&ulSizeModSeqs, sizeof(uint64_t), 1, fp);
+   tTmp = fread(&ulSizevRawPeptides, sizeof(uint64_t), 1, fp);
+   tTmp = fread(&ulModNumSize, sizeof(uint64_t), 1, fp);
 
    MOD_SEQ_MOD_NUM_START = new int[ulSizeModSeqs];
    MOD_SEQ_MOD_NUM_CNT = new int[ulSizeModSeqs];
@@ -1165,29 +1173,36 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
 
    tTmp = fread(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    tTmp = fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
-   tTmp = fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);  //FIX, why??
+   tTmp = fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);
 
-   int iTmp;
-   char szTmp[MAX_PEPTIDE_LEN];
-   MOD_SEQS.clear();
-   for (unsigned long i = 0; i < ulSizeModSeqs; ++i)
+   // Read variable-length tail (MOD_SEQS + MOD_NUMBERS) in one shot.
    {
-      tTmp = fread(&iTmp, sizeof(int), 1, fp); // read length
-      tTmp = fread(szTmp, 1, iTmp, fp);
-      szTmp[iTmp]='\0';
-      MOD_SEQS.push_back(szTmp);
-   }
-   MOD_NUMBERS.clear();
-   for (unsigned long i = 0; i < ulModNumSize; ++i)
-   {
-      ModificationNumber sTmp;
-      tTmp = fread(&iTmp, sizeof(int), 1, fp); // read length
-      tTmp = fread(szTmp, 1, iTmp, fp);
-      szTmp[iTmp]='\0';
-      sTmp.modStringLen = iTmp;
-      sTmp.modifications = new char[iTmp];
-      memcpy(sTmp.modifications, szTmp, iTmp);
-      MOD_NUMBERS.push_back(sTmp);
+      comet_fileoffset_t clFooterPos = clFileSize - (comet_fileoffset_t)clSizeCometFileOffset * 3;
+      comet_fileoffset_t varDataStart = comet_ftell(fp);
+      size_t varDataSize = (size_t)(clFooterPos - varDataStart);
+      vector<char> varBuf(varDataSize);
+      fread(varBuf.data(), 1, varDataSize, fp);
+      const char* p = varBuf.data();
+
+      int iTmp;
+      MOD_SEQS.clear();
+      MOD_SEQS.reserve(ulSizeModSeqs);
+      for (uint64_t i = 0; i < ulSizeModSeqs; ++i)
+      {
+         memcpy(&iTmp, p, sizeof(int)); p += sizeof(int);
+         MOD_SEQS.emplace_back(p, iTmp); p += iTmp;
+      }
+
+      MOD_NUMBERS.clear();
+      MOD_NUMBERS.reserve(ulModNumSize);
+      for (uint64_t i = 0; i < ulModNumSize; ++i)
+      {
+         ModificationNumber mTmp;
+         memcpy(&mTmp.modStringLen, p, sizeof(int)); p += sizeof(int);
+         mTmp.modifications = new char[mTmp.modStringLen];
+         memcpy(mTmp.modifications, p, mTmp.modStringLen); p += mTmp.modStringLen;
+         MOD_NUMBERS.push_back(mTmp);
+      }
    }
 
    fclose(fp);
