@@ -941,10 +941,10 @@ compoundmods_file =                    # path to compound mods mass file (one ma
 #\n\
 fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
 fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
-fragindex_num_spectrumpeaks = 100      # number of peaks from spectrum to use for fragment ion index matching\n\
+fragindex_num_spectrumpeaks = 150      # number of peaks from spectrum to use for fragment ion index matching\n\
 fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
-fragindex_skipreadprecursors = 0       # 0=read precursors to limit fragment ion index, 1=skip reading precursors\n\n");
+fragindex_skipreadprecursors = 1       # 0=read precursors to limit fragment ion index, 1=skip reading precursors (default)\n\n");
    }
 
    fprintf(fp,

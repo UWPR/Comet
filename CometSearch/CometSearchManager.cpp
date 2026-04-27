@@ -33,10 +33,34 @@
 #include "AScoreOptions.h"
 #include "AScoreFactory.h"
 
-
 #include <sstream>
+#include <cstdio>
 
-#undef PERF_DEBUG
+#ifdef _WIN32
+#pragma comment(lib, "psapi.lib")
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
+
+// Returns peak resident set size for the process in KB, or 0 on failure.
+static size_t GetPeakMemoryKB()
+{
+#ifdef _WIN32
+   PROCESS_MEMORY_COUNTERS pmc = {};
+   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+      return pmc.PeakWorkingSetSize / 1024;
+#elif defined(__APPLE__)
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+      return (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes
+#else
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+      return (size_t)ru.ru_maxrss;           // Linux returns KB
+#endif
+   return 0;
+}
 
 extern comet_fileoffset_t clSizeCometFileOffset;
 
@@ -73,8 +97,8 @@ AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 // Fragment index globals - INITIALIZED ONCE, READ-ONLY DURING SEARCH
-unsigned int** g_iFragmentIndex;                            // stores fragment index; [BIN(fragmass)][which g_vFragmentPeptides entries]
-unsigned int* g_iCountFragmentIndex;                        // stores counts of fragment index; [BIN(fragmass)]
+unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
+unsigned int* g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
@@ -2199,18 +2223,6 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-#ifdef PERF_DEBUG
-   // print set search parameters
-   std::map<std::string, CometParam*> mapParams = GetParamsMap();
-   for (std::map<std::string, CometParam*>::iterator it = mapParams.begin(); it != mapParams.end(); ++it)
-   {
-      if (it->first != "[COMET_ENZYME_INFO]")
-      {
-         printf("OK parameter name=\"%s\" value=\"%s\"\n", it->first.c_str(), it->second->GetStringValue().c_str());
-      }
-   }
-#endif
-
    // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
    if (strlen(GITHUBSHA) > 0)
@@ -2386,7 +2398,7 @@ bool CometSearchManager::DoSearch()
 
       time_t tStartTime;
       time(&tStartTime);
-      strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tStartTime));
+      strftime(g_staticParams.szDate, 26, "%Y/%m/%d, %I:%M:%S %p", localtime(&tStartTime));
 
       if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
       {
@@ -2851,31 +2863,11 @@ bool CometSearchManager::DoSearch()
          while (!CometPreprocess::DoneProcessingAllSpectra()) // Loop through iMaxSpectraPerSearch
          {
             iBatchNum++;
-#ifdef PERF_DEBUG
-            time_t tTotalSearchStartTime;
-            time_t tTotalSearchEndTime;
-            time_t tLoadAndPreprocessSpectraStartTime;
-            time_t tLoadAndPreprocessSpectraEndTime;
-            time_t tRunSearchStartTime;
-            time_t tRunSearchEndTime;
-            time_t tPostAnalysisStartTime;
-            time_t tPostAnalysisEndTime;
 
-            char szTimeBuffer[32];
-            szTimeBuffer[0] = '\0';
-#endif
             // Load and preprocess all the spectra.
             if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
             {
                logout("   - Load spectra:");
-
-#ifdef PERF_DEBUG
-               time(&tLoadAndPreprocessSpectraStartTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraStartTime));
-               strOut = "\n >> Start LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + "\n";
-               logout(strOut);
-#endif
-
                fflush(stdout);
             }
 
@@ -2892,20 +2884,6 @@ bool CometSearchManager::DoSearch()
 
             iPercentStart = iPercentEnd;
             iPercentEnd = mstReader.getPercent();
-
-#ifdef PERF_DEBUG
-            if (!g_staticParams.options.bOutputSqtStream)
-            {
-               time(&tLoadAndPreprocessSpectraEndTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tLoadAndPreprocessSpectraEndTime));
-               strOut = "\n >> End LoadAndPreprocessSpectra:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut);
-               int iElapsedTime = (int)difftime(tLoadAndPreprocessSpectraEndTime, tLoadAndPreprocessSpectraStartTime);
-               strOut = "\n >> Time spent in LoadAndPreprocessSpectra:  " + iElapsedTime + string(" seconds\n");
-               logout(strOut);
-               fflush(stdout);
-            }
-#endif
 
             if (g_pvQuery.empty())
                continue;    //FIX make sure continue instead of break makes sense
@@ -2960,17 +2938,6 @@ bool CometSearchManager::DoSearch()
             else
                g_massRange.bNarrowMassRange = false;
 
-#ifdef PERF_DEBUG
-            if (!g_staticParams.options.bOutputSqtStream)
-            {
-               time(&tRunSearchStartTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchStartTime));
-               strOut = "\n >> Start RunSearch:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut);
-               fflush(stdout);
-            }
-#endif
-
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
                goto cleanup_results;
@@ -2985,27 +2952,6 @@ bool CometSearchManager::DoSearch()
 
             if (!bSucceeded)
                goto cleanup_results;
-
-#ifdef PERF_DEBUG
-            if (!g_staticParams.options.bOutputSqtStream)
-            {
-               time(&tRunSearchEndTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tRunSearchEndTime));
-               strOut = "\n >> End RunSearch:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut);
-
-               int iElapsedTime=(int)difftime(tRunSearchEndTime, tRunSearchStartTime);
-               strOut = "\n >> Time spent in RunSearch:  " + std::to_string(iElapsedTime) + string("seconds \n");
-               logout(strOut);
-
-               time(&tPostAnalysisStartTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisStartTime));
-               strOut = "\n >> Start PostAnalysis:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut);
-
-               fflush(stdout);
-            }
-#endif
 
             bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
             if (!bSucceeded)
@@ -3028,20 +2974,6 @@ bool CometSearchManager::DoSearch()
             if (!bSucceeded)
                goto cleanup_results;
 
-#ifdef PERF_DEBUG
-            if (g_bPerformDatabaseSearch && !g_staticParams.options.bOutputSqtStream)
-            {
-               time(&tPostAnalysisEndTime);
-               strftime(szTimeBuffer, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tPostAnalysisEndTime));
-               strOut = "\n >> End PostAnalysis:  " + string(szTimeBuffer) + string("\n");
-               logout(strOut);
-
-               int iElapsedTime=(int)difftime(tPostAnalysisEndTime, tPostAnalysisStartTime);
-               strOut = "\n >> Time spent in PostAnalysis:  " + std::to_string(iElapsedTime) + string("seconds \n");
-               logout(strOut);
-               fflush(stdout);
-            }
-#endif
             // Sort g_pvQuery vector by scan.
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
@@ -3086,13 +3018,6 @@ cleanup_results:
 
             if (!bSucceeded)
                break;
-         }
-
-         if (g_bPerformDatabaseSearch && g_staticParams.iDbType != DbType::FASTA_DB)
-         {
-            const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
-            double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
-            cout << CometMassSpecUtils::ElapsedTime(tBeginTime) << " (" << std::fixed << std::setprecision(2) << dTimePerSpectra << " ms per spectrum)" << endl;
          }
 
          if (bSucceeded)
@@ -3151,22 +3076,48 @@ cleanup_results:
                time(&tEndTime);
                int iElapsedTime = (int)difftime(tEndTime, tStartTime);
 
-               strftime(g_staticParams.szDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tEndTime));
+               strftime(g_staticParams.szDate, 26, "%Y/%m/%d, %I:%M:%S %p", localtime(&tEndTime));
                strOut = " Search end:    " + string(g_staticParams.szDate);
-
-               int hours, mins, secs;
-
-               hours = (int)(iElapsedTime/3600);
-               mins = (int)(iElapsedTime/60) - (hours*60);
-               secs = (int)(iElapsedTime%60);
-
-               if (hours)
-                  strOut += ", " + std::to_string(hours) + "h:" + std::to_string(mins) + "m:" + std::to_string(secs) + "s\n\n";
-               else
-                  strOut += ", " + std::to_string(mins) + "m:" + std::to_string(secs) + "s\n\n";
-
                logout(strOut);
             }
+
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
+               double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
+
+               if (g_staticParams.iDbType == DbType::FASTA_DB)
+                  strOut = ", ";
+               else
+                  strOut = "";
+
+               char buf[128];
+
+               std::snprintf(buf, sizeof(buf), "%.2f", dTimePerSpectra);
+               strOut += CometMassSpecUtils::ElapsedTime(tBeginTime) + ", " + std::to_string(iTotalSpectraSearched) + " spectra, "
+                  + std::string(buf) + " ms/spec (";
+
+               std::snprintf(buf, sizeof(buf), "%.0f", 1000.0 / dTimePerSpectra);
+               strOut += std::string(buf) + " Hz)";
+
+               size_t peakKB = GetPeakMemoryKB();
+               if (peakKB > 0)
+               {
+                  if (peakKB >= 1024 * 1024)
+                  {
+                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / (1024.0 * 1024.0)));
+                     strOut += ", " + std::string(buf) + "GB peak";
+                  }
+                  else
+                  {
+                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / 1024.0));
+                     strOut += ", " + std::string(buf) + "MB peak";
+                  }
+               }
+               strOut += "\n";
+               logout(strOut);
+            }
+
          }
 
          if (fpidx != NULL)
@@ -3280,15 +3231,8 @@ cleanup_results:
    {
       free(g_bIndexPrecursors);       // allocated in InitializeStaticParams
 
-      for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
-      {
-         if (g_iFragmentIndex[iMass] != NULL)
-         {
-            delete[] g_iFragmentIndex[iMass];
-         }
-      }
       delete[] g_iFragmentIndex;
-      delete[] g_iCountFragmentIndex;
+      delete[] g_iFragmentIndexOffset;
    }
 
    if (g_staticParams.iDbType != DbType::FASTA_DB) // for either index search
@@ -3566,18 +3510,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    if (!InitializeSingleSpectrumSearch())
       return false;
-
-#ifdef PERF_DEBUG
-   // print set search parameters
-   std::map<std::string, CometParam*> mapParams = GetParamsMap();
-   for (std::map<std::string, CometParam*>::iterator it = mapParams.begin(); it != mapParams.end(); ++it)
-   {
-      if (it->first != "[COMET_ENZYME_INFO]")
-      {
-         printf("OK parameter name=\"%s\" value=\"%s\"\n", it->first.c_str(), it->second->GetStringValue().c_str());
-      }
-   }
-#endif
 
    bool bSucceeded = true;
 

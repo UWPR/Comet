@@ -24,8 +24,8 @@ class FragmentIndexReader
 {
 public:
    FragmentIndexReader()
-      : m_iFragmentIndex(const_cast<const unsigned int* const*>(g_iFragmentIndex))
-      , m_iCountFragmentIndex(const_cast<const unsigned int*>(g_iCountFragmentIndex))
+      : m_iFragmentIndex(g_iFragmentIndex)
+      , m_iFragmentIndexOffset(g_iFragmentIndexOffset)
       , m_vFragmentPeptides(g_vFragmentPeptides)
       , m_vRawPeptides(g_vRawPeptides)
       , m_pvProteinsList(g_pvProteinsList)
@@ -35,12 +35,12 @@ public:
    // Const-only access methods
    inline unsigned int GetFragmentIndexEntry(unsigned int bin, size_t idx) const
    {
-      return m_iFragmentIndex[bin][idx];
+      return m_iFragmentIndex[m_iFragmentIndexOffset[bin] + idx];
    }
 
    inline unsigned int GetFragmentCount(unsigned int bin) const
    {
-      return m_iCountFragmentIndex[bin];
+      return m_iFragmentIndexOffset[bin + 1] - m_iFragmentIndexOffset[bin];
    }
 
    inline const FragmentPeptidesStruct& GetFragmentPeptide(size_t idx) const
@@ -60,8 +60,8 @@ public:
 
 private:
    // Const pointers prevent modification
-   const unsigned int* const* m_iFragmentIndex;
-   const unsigned int* m_iCountFragmentIndex;
+   const unsigned int* m_iFragmentIndex;
+   const unsigned int* m_iFragmentIndexOffset;
    const vector<struct FragmentPeptidesStruct>& m_vFragmentPeptides;
    const vector<PlainPeptideIndexStruct>& m_vRawPeptides;
    const vector<vector<comet_fileoffset_t>>& m_pvProteinsList;

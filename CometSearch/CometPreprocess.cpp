@@ -1399,7 +1399,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < g_staticParams.options.iFragIndexNumSpectrumPeaks)
          {
             pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
             iNumFragmentPeaks++;
@@ -2356,7 +2356,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
-   if (g_staticParams.iDbType != DbType::FASTA_DB && mstSpectrum.size() > FRAGINDEX_MAX_NUMPEAKS)
+   if (g_staticParams.iDbType != DbType::FASTA_DB && mstSpectrum.size() > g_staticParams.options.iFragIndexNumSpectrumPeaks)
    {
       // sorts spectrum in ascending order by intensity
       mstSpectrum.sortIntensity();
@@ -2376,7 +2376,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < FRAGINDEX_MAX_NUMPEAKS)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < g_staticParams.options.iFragIndexNumSpectrumPeaks)
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here. Note that peaks are sorted in

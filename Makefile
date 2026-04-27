@@ -29,19 +29,23 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH) -L$(ASCOREPRO)
 LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lascorepro -lm -lpthread
 ifdef MSYSTEM
-   LIBS += -lws2_32
+   LIBS += -lws2_32 -lpsapi
 endif
 
-comet.exe: $(OBJS)
-	cd $(MSTOOLKIT) && make all
-	cd $(ASCOREPRO) && make all
-	cd $(COMETSEARCH) && make
+LIBCOMETSEARCH = $(COMETSEARCH)/libcometsearch.a
+
+comet.exe: $(OBJS) $(LIBCOMETSEARCH)
+	cd $(MSTOOLKIT) && $(MAKE) all
+	cd $(ASCOREPRO) && $(MAKE) all
 
 ifeq ($(UNAME_S),Darwin)
 	${CXX} $(OBJS) -headerpad_max_install_names -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
 else
 	${CXX} $(OBJS) -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
 endif
+
+$(LIBCOMETSEARCH): $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp)
+	cd $(COMETSEARCH) && $(MAKE)
 
 Comet.o: Comet.cpp $(DEPS)
 	${CXX} ${CXXFLAGS} Comet.cpp -c

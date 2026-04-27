@@ -268,7 +268,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       {
          // each unique peptide, irregardless of mod state, will have the same list
          // of matched proteins
-         if (!strcmp(g_pvDBIndex.at(i).szPeptide, g_pvDBIndex.at(i - 1).szPeptide))
+         if (g_pvDBIndex.at(i).sPeptide == g_pvDBIndex.at(i - 1).sPeptide)
          {
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
@@ -438,9 +438,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
             lIndex[iPrevMass10] = comet_ftell(fptr);
       }
 
-      int iLen = (int)strlen((*it).szPeptide);
+      int iLen = (int)(*it).sPeptide.size();
       fwrite(&iLen, sizeof(int), 1, fptr);
-      fwrite((*it).szPeptide, sizeof(char), iLen, fptr);
+      fwrite((*it).sPeptide.c_str(), sizeof(char), iLen, fptr);
 
       fwrite(&((*it).cPrevAA), sizeof(char), 1, fptr);
       fwrite(&((*it).cNextAA), sizeof(char), 1, fptr);
@@ -448,10 +448,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
       int iLen2 = iLen + 2;
       unsigned char cNumMods = 0;
-      for (unsigned char x = 0; x < iLen2; x++)
+      if (!(*it).pcVarModSites.empty())
       {
-         if ((*it).pcVarModSites[x] != 0)
-            cNumMods++;
+         for (unsigned char x = 0; x < iLen2; x++)
+         {
+            if ((*it).pcVarModSites[x] != 0)
+               cNumMods++;
+         }
       }
       fwrite(&cNumMods, sizeof(unsigned char), 1, fptr);
 
@@ -518,9 +521,9 @@ bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
 
    tTmp = fread(&iLen, sizeof(int), 1, fp);
    if (tTmp != 1) return false;
-   tTmp = fread(sDBI->szPeptide, sizeof(char), iLen, fp);
+   sDBI->sPeptide.resize(iLen);
+   tTmp = fread(&sDBI->sPeptide[0], sizeof(char), iLen, fp);
    if (tTmp != (size_t)iLen) return false;
-   sDBI->szPeptide[iLen] = '\0';
 
    tTmp = fread(&(sDBI->cPrevAA), sizeof(char), 1, fp);
    if (tTmp != 1) return false;
@@ -531,10 +534,10 @@ bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
    tTmp = fread(&cNumMods, sizeof(unsigned char), 1, fp);  // read how many var mods are stored
    if (tTmp != 1) return false;
 
-   // Issue 3: Add parentheses for correct precedence: sizeof(unsigned char) * (iLen + 2)
-   memset(sDBI->pcVarModSites, 0, sizeof(unsigned char) * (iLen + 2));
+   sDBI->pcVarModSites.clear();
    if (cNumMods > 0)
    {
+      sDBI->pcVarModSites.assign(iLen + 2, 0);
       for (unsigned char x = 0; x < cNumMods; x++)
       {
          unsigned char cPosition;
