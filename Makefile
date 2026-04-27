@@ -29,7 +29,7 @@ DEPS = CometSearch/CometData.h CometSearch/CometDataInternal.h CometSearch/Comet
 LIBPATHS = -L$(MSTOOLKIT) -L$(COMETSEARCH) -L$(ASCOREPRO)
 LIBS = -lcometsearch -lmstoolkit -lmstoolkitextern -lascorepro -lm -lpthread
 ifdef MSYSTEM
-   LIBS += -lws2_32
+   LIBS += -lws2_32 -lpsapi
 endif
 
 LIBCOMETSEARCH = $(COMETSEARCH)/libcometsearch.a

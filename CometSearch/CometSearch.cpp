@@ -152,7 +152,9 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+      Threading::LockMutex(g_searchMemoryPoolMutex);
       _pbSearchMemoryPool[iSlot] = false;
+      Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -194,7 +196,9 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+      Threading::LockMutex(g_searchMemoryPoolMutex);
       _pbSearchMemoryPool[iSlot] = false;
+      Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
    else
    {
@@ -230,7 +234,9 @@ bool CometSearch::RunSearch(ThreadPool *tp)
          return false;
       }
       SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+      Threading::LockMutex(g_searchMemoryPoolMutex);
       _pbSearchMemoryPool[iSlot] = false;
+      Threading::UnlockMutex(g_searchMemoryPoolMutex);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -281,7 +287,9 @@ bool CometSearch::RunSearch(int iPercentStart,
                return;
             }
             SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+            Threading::LockMutex(g_searchMemoryPoolMutex);
             _pbSearchMemoryPool[iSlot] = false;
+            Threading::UnlockMutex(g_searchMemoryPoolMutex);
          });
       }
 
@@ -1583,7 +1591,11 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
-   sort(vPeptides.begin(), vPeptides.end(), [](const std::pair<unsigned int, int>& a, const std::pair<unsigned int, int>& b) { return a.second > b.second; });
+   sort(vPeptides.begin(), vPeptides.end(), [](const std::pair<unsigned int, int>& a, const std::pair<unsigned int, int>& b)
+   {
+      if (a.second != b.second) return a.second > b.second;
+      return a.first < b.first;  // tie-break by peptide index for deterministic output
+   });
 
    int iLenPeptide;
    int iWhichIonSeries;

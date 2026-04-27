@@ -1140,7 +1140,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       const char* p = protBuf.data();
 
       size_t tSize;
-      memcpy(&tSize, p, sizeof(comet_fileoffset_t));
+      memcpy(&tSize, p, sizeof(comet_fileoffset_t));  // written with clSizeCometFileOffset
       p += sizeof(comet_fileoffset_t);
 
       g_pvProteinsList.clear();
@@ -1148,11 +1148,12 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       for (size_t it = 0; it < tSize; ++it)
       {
          size_t tNumProteinOffsets;
-         memcpy(&tNumProteinOffsets, p, sizeof(comet_fileoffset_t));
-         p += sizeof(comet_fileoffset_t);
+         memcpy(&tNumProteinOffsets, p, sizeof(size_t));  // written with sizeof(size_t)
+         p += sizeof(size_t);
 
-         const comet_fileoffset_t* src = reinterpret_cast<const comet_fileoffset_t*>(p);
-         g_pvProteinsList.emplace_back(src, src + tNumProteinOffsets);
+         vector<comet_fileoffset_t> vTmp(tNumProteinOffsets);
+         memcpy(vTmp.data(), p, tNumProteinOffsets * sizeof(comet_fileoffset_t));
+         g_pvProteinsList.push_back(std::move(vTmp));
          p += tNumProteinOffsets * sizeof(comet_fileoffset_t);
       }
    }

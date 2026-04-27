@@ -447,14 +447,17 @@
                         line = string.Format("Scans processed: {0}", scansProcessedMS2);
                         rtsWriter.WriteLine(line);
 
-                        line = string.Format("Average time per scan: {0:F2} ms", elapsedGlobal.TotalMilliseconds / scansProcessedMS2);
+                        double dAvgTimePerScan = scansProcessedMS2 > 0 ? elapsedGlobal.TotalMilliseconds / scansProcessedMS2 : 0;
+                        double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
+
+                        line = string.Format("Average time per scan: {0:F2} ms", dAvgTimePerScan);
                         rtsWriter.WriteLine(line);
 
                         line = string.Format("\ninitialize search elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
                         line = string.Format("search elapsed time: {0:F2} s, avg {1:F2} ms/spectrum ({2} spectra), {3:F0} Hz\n",
-                           watchGlobal.Elapsed.TotalSeconds, watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2, scansProcessedMS2, 1000.0 / (watchGlobal.Elapsed.TotalMilliseconds / scansProcessedMS2));
+                           watchGlobal.Elapsed.TotalSeconds, dAvgTimePerScan, scansProcessedMS2, dHz);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 

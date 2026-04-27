@@ -3098,7 +3098,7 @@ cleanup_results:
                   + std::string(buf) + " ms/spec (";
 
                std::snprintf(buf, sizeof(buf), "%.0f", 1000.0 / dTimePerSpectra);
-               strOut += std::string(buf) + "Hz)";
+               strOut += std::string(buf) + " Hz)";
 
                size_t peakKB = GetPeakMemoryKB();
                if (peakKB > 0)
