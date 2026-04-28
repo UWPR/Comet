@@ -858,7 +858,18 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
    fclose(fp);
 
-   strOut = " - done. " + strIndexFile + " ... " + CometMassSpecUtils::ElapsedTime(tPlainPeptideIndexStartTime) + "\n\n";
+   strOut = " - created: " + strIndexFile + "\n";
+   strOut += " - done. (" + CometMassSpecUtils::ElapsedTime(tPlainPeptideIndexStartTime);
+
+   string strMemUse = CometMassSpecUtils::GetPeakMemory();
+   if (!strMemUse.empty())
+      strOut += ", " + strMemUse + ")";
+   else
+      strOut += ")";
+
+
+   strOut += "\n\n";
+
    logout(strOut);
    fflush(stdout);
 
@@ -1089,7 +1100,6 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       return false;
    }
 
-   comet_fileoffset_t clTmp;
    comet_fileoffset_t clPeptidesFilePos;      // file position of raw peptides
    comet_fileoffset_t clProteinsFilePos;      // file position of g_pvProteinsList
    comet_fileoffset_t clPermutationsFilePos;  // file position of permutations variables

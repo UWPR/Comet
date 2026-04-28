@@ -36,31 +36,6 @@
 #include <sstream>
 #include <cstdio>
 
-#ifdef _WIN32
-#pragma comment(lib, "psapi.lib")
-#include <psapi.h>
-#else
-#include <sys/resource.h>
-#endif
-
-// Returns peak resident set size for the process in KB, or 0 on failure.
-static size_t GetPeakMemoryKB()
-{
-#ifdef _WIN32
-   PROCESS_MEMORY_COUNTERS pmc = {};
-   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
-      return pmc.PeakWorkingSetSize / 1024;
-#elif defined(__APPLE__)
-   struct rusage ru;
-   if (getrusage(RUSAGE_SELF, &ru) == 0)
-      return (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes
-#else
-   struct rusage ru;
-   if (getrusage(RUSAGE_SELF, &ru) == 0)
-      return (size_t)ru.ru_maxrss;           // Linux returns KB
-#endif
-   return 0;
-}
 
 extern comet_fileoffset_t clSizeCometFileOffset;
 
@@ -3069,6 +3044,33 @@ cleanup_results:
                remove(sOutputDecoyMzIdentMLtmp.c_str());
             }
 
+            if (!g_staticParams.options.bOutputSqtStream)
+            {
+               const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
+               double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
+
+               if (g_staticParams.iDbType == DbType::FASTA_DB)
+                  strOut = "     - Run stats: ";
+               else
+                  strOut = "";
+
+               char buf[128];
+
+               std::snprintf(buf, sizeof(buf), "%.2f", dTimePerSpectra);
+               strOut += CometMassSpecUtils::ElapsedTime(tBeginTime) + " (" + std::to_string(iTotalSpectraSearched) + " spectra, "
+                  + std::string(buf) + "ms/spec, ";
+
+               std::snprintf(buf, sizeof(buf), "%.0f", 1000.0 / dTimePerSpectra);
+               strOut += std::string(buf) + "Hz";
+
+               if (g_staticParams.iDbType == DbType::FASTA_DB)
+                  strOut += ", " + CometMassSpecUtils::GetPeakMemory();
+
+               strOut += ")\n";
+
+               logout(strOut);
+            }
+
             if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
             {
                time_t tEndTime;
@@ -3077,47 +3079,9 @@ cleanup_results:
                int iElapsedTime = (int)difftime(tEndTime, tStartTime);
 
                strftime(g_staticParams.szDate, 26, "%Y/%m/%d, %I:%M:%S %p", localtime(&tEndTime));
-               strOut = " Search end:    " + string(g_staticParams.szDate);
+               strOut = " Search end:    " + string(g_staticParams.szDate) + "\n\n";
                logout(strOut);
             }
-
-            if (!g_staticParams.options.bOutputSqtStream)
-            {
-               const auto duration = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tBeginTime);
-               double dTimePerSpectra = (double)duration.count() / (double)iTotalSpectraSearched;
-
-               if (g_staticParams.iDbType == DbType::FASTA_DB)
-                  strOut = ", ";
-               else
-                  strOut = "";
-
-               char buf[128];
-
-               std::snprintf(buf, sizeof(buf), "%.2f", dTimePerSpectra);
-               strOut += CometMassSpecUtils::ElapsedTime(tBeginTime) + ", " + std::to_string(iTotalSpectraSearched) + " spectra, "
-                  + std::string(buf) + " ms/spec (";
-
-               std::snprintf(buf, sizeof(buf), "%.0f", 1000.0 / dTimePerSpectra);
-               strOut += std::string(buf) + " Hz)";
-
-               size_t peakKB = GetPeakMemoryKB();
-               if (peakKB > 0)
-               {
-                  if (peakKB >= 1024 * 1024)
-                  {
-                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / (1024.0 * 1024.0)));
-                     strOut += ", " + std::string(buf) + "GB peak";
-                  }
-                  else
-                  {
-                     std::snprintf(buf, sizeof(buf), "%.1f", (peakKB / 1024.0));
-                     strOut += ", " + std::string(buf) + "MB peak";
-                  }
-               }
-               strOut += "\n";
-               logout(strOut);
-            }
-
          }
 
          if (fpidx != NULL)
@@ -3236,7 +3200,19 @@ cleanup_results:
    }
 
    if (g_staticParams.iDbType != DbType::FASTA_DB) // for either index search
-      std::cout << " - done. (" << CometMassSpecUtils::ElapsedTime(tGlobalStartTime) << ")" << endl << endl;
+   {
+      strOut = " - done. (" + CometMassSpecUtils::ElapsedTime(tGlobalStartTime);
+
+      string strMemUse = CometMassSpecUtils::GetPeakMemory();
+      if (!strMemUse.empty())
+         strOut += ", " + strMemUse + ")";
+      else
+         strOut += ")";
+
+      strOut += "\n\n";
+
+      logout(strOut);
+   }
 
    if (g_staticParams.options.iPrintAScoreProScore)
       DeleteAScoreDllInterface(g_AScoreInterface);

@@ -20,6 +20,12 @@
 #ifndef _COMETMASSSPECUTILS_H_
 #define _COMETMASSSPECUTILS_H_
 
+#ifdef _WIN32
+#pragma comment(lib, "psapi.lib")
+#include <psapi.h>
+#else
+#include <sys/resource.h>
+#endif
 #include "CometDataInternal.h"
 
 const double Hydrogen_Mono = 1.007825035;
@@ -78,6 +84,9 @@ public:
 
    static bool DBICompareByMass(const DBIndex& lhs,
                                 const DBIndex& rhs);
+
+   static string GetPeakMemory();
+
 };
 
 #endif // _COMETMASSSPECUTILS_H_

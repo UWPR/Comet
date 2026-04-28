@@ -202,6 +202,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    logout(" Creating peptide index file: ");
    fflush(stdout);
 
+   auto tPeptideIndexStartTime = chrono::steady_clock::now();
+
    bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
 
    // these are used in call to RunSearch to generate peptides
@@ -501,7 +503,17 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       strNumPeps = std::to_string(tNumPeptides);
    }
 
-   string strOut = " - done. " + std::string(szIndexFile) + " (" + strNumPeps + " peptides)\n\n";
+   string strOut = " - created: " + std::string(szIndexFile) + " (" + strNumPeps + " peptides)\n";
+   strOut += " - done. (" + CometMassSpecUtils::ElapsedTime(tPeptideIndexStartTime);
+
+   string strMem = CometMassSpecUtils::GetPeakMemory();
+   if (!strMem.empty())
+      strOut += ", " + strMem + ")";
+   else
+      strOut += ")";
+
+   strOut += "\n\n";
+
    logout(strOut);
    fflush(stdout);
 

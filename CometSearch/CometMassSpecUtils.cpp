@@ -539,3 +539,49 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
    return lhs.sPeptide < rhs.sPeptide;
 
 }
+
+
+// Returns peak resident set size for the process in KB, or 0 on failure.
+string CometMassSpecUtils::GetPeakMemory()
+{
+   string strOut = "";
+   size_t peakMemoryKB = 0;
+
+#ifdef _WIN32
+   PROCESS_MEMORY_COUNTERS pmc = {};
+   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+   {
+      peakMemoryKB = pmc.PeakWorkingSetSize / 1024;
+   }
+#elif defined(__APPLE__)
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+   {
+      peakMemoryKB = return (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes
+   }
+#else
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+   {
+      peakMemoryKB = return (size_t)ru.ru_maxrss;           // Linux returns KB
+   }
+#endif
+
+   if (peakMemoryKB > 0)
+   {
+      char buf[128];
+
+      if (peakMemoryKB >= 1024 * 1024)
+      {
+         std::snprintf(buf, sizeof(buf), "%.1f", (peakMemoryKB / (1024.0 * 1024.0)));
+         strOut = std::string(buf) + "GB";
+      }
+      else
+      {
+         std::snprintf(buf, sizeof(buf), "%.0f", (peakMemoryKB / 1024.0));
+         strOut = std::string(buf) + "MB";
+      }
+   }
+   return strOut;
+}
+ 
