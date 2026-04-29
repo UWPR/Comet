@@ -557,13 +557,13 @@ string CometMassSpecUtils::GetPeakMemory()
    struct rusage ru;
    if (getrusage(RUSAGE_SELF, &ru) == 0)
    {
-      peakMemoryKB = return (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes
+      peakMemoryKB = (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes
    }
 #else
    struct rusage ru;
    if (getrusage(RUSAGE_SELF, &ru) == 0)
    {
-      peakMemoryKB = return (size_t)ru.ru_maxrss;           // Linux returns KB
+      peakMemoryKB = (size_t)ru.ru_maxrss;           // Linux returns KB
    }
 #endif
 
