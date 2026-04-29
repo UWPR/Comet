@@ -18,6 +18,7 @@
 
 #include <chrono>
 #include <string>
+#include <unordered_map>
 #include "CometData.h"
 #include "Threading.h"
 #include "AScoreOptions.h"
@@ -61,7 +62,7 @@ class CometSearchManager;
 #define NUM_ION_SERIES              7        // a,b,c,x,y,z,z1
 #define EXPECT_DECOY_SIZE           3000     // number of decoy entries in CometDecoys.h
 
-#define WIDTH_REFERENCE             512      // length of the protein accession field to store
+#define WIDTH_REFERENCE             256      // length of the protein accession field to store
 #define MAX_PROTEINS                50       // maximum number of proteins to return for each query; for index search only right now
 
 #define HISTO_SIZE                  152      // some number greater than 150
@@ -1056,6 +1057,9 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+extern unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // file offset -> protein name string; populated at index load
+
+extern std::condition_variable g_searchPoolCV;  // notified when a pool slot is released
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;

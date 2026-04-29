@@ -60,6 +60,8 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 
+unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
+std::condition_variable               g_searchPoolCV;            // signaled when a pool slot is released
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
@@ -3682,19 +3684,23 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          goto cleanup_results;
    }
 
-   // Step 5: Open .idx file for retrieving protein names
-   // Each concurrent call opens its own FILE* so there is no shared file pointer state.
+   // Step 5: Open database file for protein name retrieval.
+   // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
+   // g_pvProteinNameCache populated at init — no file I/O per spectrum.
+   // For FASTA_DB, we still need to open the file.
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
 #endif
-   if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+   if (g_staticParams.iDbType == DbType::FASTA_DB)
    {
-      string strErrorMsg = " Error - cannot read indexed database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
-         + "\" " + std::strerror(errno) + "\n.";
-      // Don't poison global state - just log and fail this query
-      logerr(strErrorMsg);
-      bSucceeded = false;
-      goto cleanup_results;
+      if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
+      {
+         string strErrorMsg = " Error - cannot read database file \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+            + "\" " + std::strerror(errno) + "\n.";
+         logerr(strErrorMsg);
+         bSucceeded = false;
+         goto cleanup_results;
+      }
    }
 
    // Step 6: Extract results from thread-local Query*
@@ -3722,9 +3728,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          // n-term variable mod
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide] != 0)
          {
-            std::stringstream ss;
-            ss << "n[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide] << "]";
-            eachStrReturnPeptide += ss.str();
+            char szMod[32];
+            snprintf(szMod, sizeof(szMod), "n[%.4f]", pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide]);
+            eachStrReturnPeptide += szMod;
          }
 
          for (int i = 0; i < pOutput[iWhichResult].usiLenPeptide; ++i)
@@ -3733,25 +3739,24 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
             if (pOutput[iWhichResult].piVarModSites[i] != 0)
             {
-               std::stringstream ss;
-               ss << "[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[i] << "]";
-               eachStrReturnPeptide += ss.str();
+               char szMod[32];
+               snprintf(szMod, sizeof(szMod), "[%.4f]", pOutput[iWhichResult].pdVarModSites[i]);
+               eachStrReturnPeptide += szMod;
             }
          }
 
          // c-term variable mod
          if (pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] != 0)
          {
-            std::stringstream ss;
-            ss << "c[" << std::fixed << std::setprecision(4) << pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide + 1] << "]";
-            eachStrReturnPeptide += ss.str();
+            char szMod[32];
+            snprintf(szMod, sizeof(szMod), "c[%.4f]", pOutput[iWhichResult].pdVarModSites[pOutput[iWhichResult].usiLenPeptide + 1]);
+            eachStrReturnPeptide += szMod;
          }
          eachStrReturnPeptide += "." + std::string(1, pOutput[iWhichResult].cNextAA);
 
-         // Protein name retrieval - done inline using pOutput directly instead of
-         // calling GetProteinNameString which indexes into g_pvQuery.
-         // This replicates the indexed-db path from GetProteinNameString.
-         char szProteinName[512];
+         // Protein name retrieval.
+         // Indexed DB (FI_DB, PI_DB): look up the in-memory cache built at init time.
+         // FASTA_DB: seek and read from the file handle opened above.
          int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
          std::vector<string> vProteinTargets;
@@ -3764,25 +3769,15 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
             for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
             {
-               comet_fseek(fp, *itProt, SEEK_SET);
-               if (fgets(szProteinName, 511, fp) == NULL)
-               {
-                  // error reading protein name; skip
-               }
-               szProteinName[500] = '\0';
+               auto cacheIt = g_pvProteinNameCache.find(*itProt);
+               if (cacheIt == g_pvProteinNameCache.end())
+                  continue;
 
-               // remove trailing newline/carriage return
-               while (strlen(szProteinName) > 0
-                  && (szProteinName[strlen(szProteinName) - 1] == '\n'
-                     || szProteinName[strlen(szProteinName) - 1] == '\r'))
-               {
-                  szProteinName[strlen(szProteinName) - 1] = '\0';
-               }
-
-               if (!strncmp(szProteinName, g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
-                  vProteinDecoys.push_back(szProteinName);
+               const string& sName = cacheIt->second;
+               if (!strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+                  vProteinDecoys.push_back(sName);
                else
-                  vProteinTargets.push_back(szProteinName);
+                  vProteinTargets.push_back(sName);
 
                iPrintDuplicateProteinCt++;
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -3791,7 +3786,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          }
          else
          {
-            // Non-indexed (FASTA) path
+            // Non-indexed (FASTA) path: read protein names from the open file handle
+            char szProteinName[WIDTH_REFERENCE];
             int iPrintDuplicateProteinCt = 0;
 
             if (pOutput[iWhichResult].pWhichProtein.size() > 0)
@@ -3799,11 +3795,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                for (auto itProt = pOutput[iWhichResult].pWhichProtein.begin(); itProt != pOutput[iWhichResult].pWhichProtein.end(); ++itProt)
                {
                   comet_fseek(fp, (*itProt).lWhichProtein, SEEK_SET);
-                  if (fgets(szProteinName, 511, fp) == NULL)
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fp) == NULL)
                   {
                      // error
                   }
-                  szProteinName[500] = '\0';
+                  szProteinName[WIDTH_REFERENCE - 1] = '\0';
                   while (strlen(szProteinName) > 0
                      && (szProteinName[strlen(szProteinName) - 1] == '\n'
                         || szProteinName[strlen(szProteinName) - 1] == '\r'))
@@ -3824,11 +3820,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                   if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                      break;
                   comet_fseek(fp, (*itProt).lWhichProtein, SEEK_SET);
-                  if (fgets(szProteinName, 511, fp) == NULL)
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fp) == NULL)
                   {
                      // error
                   }
-                  szProteinName[500] = '\0';
+                  szProteinName[WIDTH_REFERENCE - 1] = '\0';
                   while (strlen(szProteinName) > 0
                      && (szProteinName[strlen(szProteinName) - 1] == '\n'
                         || szProteinName[strlen(szProteinName) - 1] == '\r'))
@@ -4201,17 +4197,17 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 bool CometSearchManager::ReadProteinVarModFilterFile()
 {
    FILE* fp;
-   char szBuf[512];
+   char szBuf[WIDTH_REFERENCE];
 
    if ((fp = fopen(g_staticParams.variableModParameters.sProteinLModsListFile.c_str(), "r")) != NULL)
    {
       printf(" Protein variable modifications filter:\n");
 
-      while (fgets(szBuf, 512, fp))
+      while (fgets(szBuf, WIDTH_REFERENCE, fp))
       {
          if (strlen(szBuf) > 3)
          {
-            char szProtein[512];
+            char szProtein[WIDTH_REFERENCE];
             int iWhichMod;
 
             if (sscanf(szBuf, "%d %s", &iWhichMod, szProtein) == 2)

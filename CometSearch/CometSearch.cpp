@@ -92,43 +92,27 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 }
 
 
-// Spin-wait under g_searchMemoryPoolMutex until a free slot is found.
+// Block until a free pool slot is available, then claim it.
 // Returns the slot index (0..iNumThreads-1), or -1 on timeout.
 int CometSearch::AcquirePoolSlot()
 {
    int i = -1;
+   std::unique_lock<std::mutex> lock(g_searchMemoryPoolMutex);
 
-   Threading::LockMutex(g_searchMemoryPoolMutex);
-   auto tStartTime = std::chrono::high_resolution_clock::now();
-   const auto timeout_duration = std::chrono::seconds(240);
-
-   while (true)
-   {
-      for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
+   bool found = g_searchPoolCV.wait_for(lock, std::chrono::seconds(240), [&i]() {
+      for (int j = 0; j < g_staticParams.options.iNumThreads; ++j)
       {
-         if (_pbSearchMemoryPool[i] == false)
+         if (_pbSearchMemoryPool[j] == false)
          {
-            _pbSearchMemoryPool[i] = true;
-            break;
+            _pbSearchMemoryPool[j] = true;
+            i = j;
+            return true;
          }
       }
+      return false;
+   });
 
-      if (i < g_staticParams.options.iNumThreads)
-         break;
-
-      if (std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
-      {
-         i = -1;
-         break;
-      }
-
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
-      std::this_thread::yield();
-      Threading::LockMutex(g_searchMemoryPoolMutex);
-   }
-   Threading::UnlockMutex(g_searchMemoryPoolMutex);
-
-   return i;
+   return found ? i : -1;
 }
 
 
@@ -152,9 +136,8 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      Threading::LockMutex(g_searchMemoryPoolMutex);
-      _pbSearchMemoryPool[iSlot] = false;
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
+      g_searchPoolCV.notify_one();
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -196,9 +179,8 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      Threading::LockMutex(g_searchMemoryPoolMutex);
-      _pbSearchMemoryPool[iSlot] = false;
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
+      g_searchPoolCV.notify_one();
    }
    else
    {
@@ -234,9 +216,8 @@ bool CometSearch::RunSearch(ThreadPool *tp)
          return false;
       }
       SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-      Threading::LockMutex(g_searchMemoryPoolMutex);
-      _pbSearchMemoryPool[iSlot] = false;
-      Threading::UnlockMutex(g_searchMemoryPoolMutex);
+      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
+      g_searchPoolCV.notify_one();
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -287,9 +268,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                return;
             }
             SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-            Threading::LockMutex(g_searchMemoryPoolMutex);
-            _pbSearchMemoryPool[iSlot] = false;
-            Threading::UnlockMutex(g_searchMemoryPoolMutex);
+            { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
+            g_searchPoolCV.notify_one();
          });
       }
 
@@ -1275,43 +1255,28 @@ bool CometSearch::MapOBO(string strMod,
 void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
                                    ThreadPool* tp)
 {
-   int i;
+   int i = -1;
 
    // Grab available array from shared memory pool.
-
-   Threading::LockMutex(g_searchMemoryPoolMutex);
-   auto tStartTime = std::chrono::high_resolution_clock::now();
-   const auto timeout_duration = std::chrono::seconds(240);
-
-   while (true)
    {
-       for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
-       {
-           if (_pbSearchMemoryPool[i] == false)
-           {
-              _pbSearchMemoryPool[i] = true;
-              break;
-           }
-       }
-
-       if (i < g_staticParams.options.iNumThreads)
-       {
-           break;
-       }
-
-       if (std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
-       {
-           break;
-       }
-
-       // Release mutex and yield to allow other threads to release memory
-       Threading::UnlockMutex(g_searchMemoryPoolMutex);
-       std::this_thread::yield();
-       Threading::LockMutex(g_searchMemoryPoolMutex);
+      std::unique_lock<std::mutex> lock(g_searchMemoryPoolMutex);
+      bool found = g_searchPoolCV.wait_for(lock, std::chrono::seconds(240), [&i]() {
+         for (int j = 0; j < g_staticParams.options.iNumThreads; ++j)
+         {
+            if (_pbSearchMemoryPool[j] == false)
+            {
+               _pbSearchMemoryPool[j] = true;
+               i = j;
+               return true;
+            }
+         }
+         return false;
+      });
+      if (!found)
+         i = g_staticParams.options.iNumThreads;  // sentinel: timeout
    }
-   Threading::UnlockMutex(g_searchMemoryPoolMutex);
 
-   if (i == g_staticParams.options.iNumThreads)
+   if (i < 0 || i == g_staticParams.options.iNumThreads)
    {
       logerr(" Error - could not find available memory pool for MS2 search thread.\n");
       return;
@@ -1847,7 +1812,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          char cPrevAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cPrevAA;
          char cNextAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cNextAA;
-         char szProtein[MAX_PEPTIDE_LEN_P2];
+         char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
          if (cPrevAA == '-')
          {
             iStartPos = 0;
@@ -1872,6 +1837,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             }
             iEndPos = strlen(szProtein) - 2;
          }
+         szProtein[MAX_PEPTIDE_LEN_P2] = '\0';
 
          dbe.strName = "";
          dbe.strSeq = szProtein;
@@ -2199,7 +2165,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
    unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
 
-   char szProtein[MAX_PEPTIDE_LEN_P2];
+   char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
 
    // Convert pcVarModSites (char) -> piVarModSites (int) element-by-element
    memset(piVarModSites, 0, sizeof(int) * MAX_PEPTIDE_LEN_P2);
@@ -2702,7 +2668,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       }
 
       // Build decoy protein context string (reuse szProtein layout but with decoy peptide)
-      char szDecoyProtein[MAX_PEPTIDE_LEN_P2];
+      char szDecoyProtein[MAX_PEPTIDE_LEN_P2 + 1];
       int iDecoyStartPos, iDecoyEndPos;
       int iDecoyPos = 0;
 
@@ -3248,7 +3214,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
          char cPrevAA = sDBI.cPrevAA;
          char cNextAA = sDBI.cNextAA;
-         char szProtein[MAX_PEPTIDE_LEN_P2];
+         char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
          if (cPrevAA == '-')
          {
             iStartPos = 0;
@@ -3269,6 +3235,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             snprintf(szProtein, sizeof(szProtein), "%s%c", szProtein, cNextAA);
             iEndPos = strlen(szProtein) - 2;
          }
+         szProtein[MAX_PEPTIDE_LEN_P2] = '\0';
 
          _proteinInfo.iTmpProteinSeqLength = (int)strlen(szProtein);
 

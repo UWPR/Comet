@@ -1168,6 +1168,28 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
    }
 
+   // Build in-memory protein name cache: read each unique file offset once so
+   // the RTS path can look up protein names without per-spectrum file I/O.
+   {
+      char szProtBuf[WIDTH_REFERENCE];
+      g_pvProteinNameCache.clear();
+      for (const auto& vProts : g_pvProteinsList)
+      {
+         for (const comet_fileoffset_t lOffset : vProts)
+         {
+            if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+            {
+               comet_fseek(fp, lOffset, SEEK_SET);
+               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == (size_t)WIDTH_REFERENCE)
+               {
+                  szProtBuf[WIDTH_REFERENCE - 1] = '\0';
+                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
+               }
+            }
+         }
+      }
+   }
+
    comet_fseek(fp, clPermutationsFilePos, SEEK_SET);
 
    uint64_t ulSizeModSeqs;        // size of MOD_SEQS

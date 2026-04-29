@@ -292,7 +292,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
    // print DBSequence element
    std::vector<long>::iterator it;
-   char szProteinName[512];
+   char szProteinName[WIDTH_REFERENCE];
    string strProteinName;
    string strProteinSeq;
 
@@ -1250,7 +1250,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    double dPrevRT = 0;
    for (std::vector<MzidTmpStruct>::iterator itMzid = (*vMzid).begin(); itMzid < (*vMzid).end(); ++itMzid)
    {
-      char szProteinName[512];
+      char szProteinName[WIDTH_REFERENCE];
       string strProteinName;
       long lOffset;
 

@@ -171,6 +171,27 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
 
    // g_pvDBIndex is already sorted by mass from the .idx file
 
+   // Build in-memory protein name cache before closing the file.
+   {
+      char szProtBuf[WIDTH_REFERENCE];
+      g_pvProteinNameCache.clear();
+      for (const auto& vProts : g_pvProteinsList)
+      {
+         for (const comet_fileoffset_t lOffset : vProts)
+         {
+            if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+            {
+               comet_fseek(fp, lOffset, SEEK_SET);
+               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == (size_t)WIDTH_REFERENCE)
+               {
+                  szProtBuf[WIDTH_REFERENCE - 1] = '\0';
+                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
+               }
+            }
+         }
+      }
+   }
+
    delete[] lIndex;
    fclose(fp);
 

@@ -135,9 +135,12 @@ void CometMassSpecUtils::GetProteinName(FILE *fpdb,
                                         comet_fileoffset_t lFilePosition,
                                         char *szProteinName)
 {
+   char szFormat[20];
+   sprintf(szFormat, "%%%ds", WIDTH_REFERENCE - 1);
+
    comet_fseek(fpdb, lFilePosition, SEEK_SET);
-   iRet = fscanf(fpdb, "%511s", szProteinName);  // WIDTH_REFERENCE-1
-   szProteinName[511] = '\0';
+   iRet = fscanf(fpdb, szFormat, szProteinName);  // WIDTH_REFERENCE-1
+   szProteinName[WIDTH_REFERENCE - 1] = '\0';
 }
 
 
@@ -189,9 +192,12 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               vector<string>& vProteinTargets,  // the target protein names
                                               vector<string>& vProteinDecoys)   // the decoy protein names if applicable
 {
-   char szProteinName[512];
+   char szProteinName[WIDTH_REFERENCE];
 
    int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
+
+   char szFormat[20];
+   sprintf(szFormat, "%%%ds", WIDTH_REFERENCE - 1);  // return accession only, must be less than WIDTH_REFERENCE
 
    *uiNumTotProteins = 0;
 
@@ -227,15 +233,15 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             if (bReturnFullProteinString)
             {
-               if (fgets(szProteinName, 511, fpdb) == NULL)
+               if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
                {
                   // throw error
                }
             }
             else
-               iRet = fscanf(fpdb, "%500s", szProteinName);
+               iRet = fscanf(fpdb, szFormat, szProteinName);
 
-            szProteinName[500] = '\0';  // limit protein name strings to 500 chars
+            szProteinName[WIDTH_REFERENCE - 1] = '\0';
             vProteinTargets.push_back(szProteinName);
 
             iPrintDuplicateProteinCt++;
@@ -256,15 +262,15 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             if (bReturnFullProteinString)
             {
-               if (fgets(szProteinName, 511, fpdb) == NULL)
+               if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
                {
                   // throw error
                }
             }
             else
-               iRet = fscanf(fpdb, "%500s", szProteinName);
+               iRet = fscanf(fpdb, szFormat, szProteinName); // must be less than WIDTH_REFERENCE
 
-            szProteinName[500] = '\0';  // limit protein name strings to 500 chars
+            szProteinName[WIDTH_REFERENCE - 1] = '\0';
             vProteinDecoys.push_back(szProteinName);
 
             iPrintDuplicateProteinCt++;
@@ -298,14 +304,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
                {
-                  if (fgets(szProteinName, 511, fpdb) == NULL)
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
                   {
                      // throw error
                   }
                }
                else
-                  iRet = fscanf(fpdb, "%500s", szProteinName);
-               szProteinName[500] = '\0';  // limit protein name strings to 500 chars
+                  iRet = fscanf(fpdb, szFormat, szProteinName);
+               szProteinName[WIDTH_REFERENCE - 1] = '\0';
 
                // remove all terminating chars
                while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))
@@ -333,14 +339,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                comet_fseek(fpdb, (*it).lWhichProtein, SEEK_SET);
                if (bReturnFullProteinString)
                {
-                  if (fgets(szProteinName, 511, fpdb) == NULL)
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
                   {
                      // throw error
                   }
                }
                else
-                  iRet = fscanf(fpdb, "%500s", szProteinName);
-               szProteinName[500] = '\0';  // limit protein name strings to 500 chars
+                  iRet = fscanf(fpdb, szFormat, szProteinName);
+               szProteinName[WIDTH_REFERENCE - 1] = '\0';
 
                // remove all terminating chars
                while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))

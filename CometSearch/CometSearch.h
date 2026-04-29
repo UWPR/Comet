@@ -50,7 +50,8 @@ struct SearchThreadData
    {
       if (pbSearchMemoryPool)
       {
-         *pbSearchMemoryPool = false;
+         { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); *pbSearchMemoryPool = false; }
+         g_searchPoolCV.notify_one();
          pbSearchMemoryPool = nullptr;
       }
       dbEntry.vectorPeffMod.clear();

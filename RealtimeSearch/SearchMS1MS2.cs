@@ -161,6 +161,7 @@
                      var progressLock = new object();
                      int scansProcessedMS2 = 0;
                      int totalScans = iLastScan - iFirstScan + 1;
+                     double cumulativeElapsedMS2 = 0.0;  // cumulative ms spent inside DoSingleSpectrumSearchMultiResults only
 
                      // Initialize ONCE (before threading)
                      if (bPerformMS1Search)
@@ -284,15 +285,17 @@
                                     out List<ScoreWrapper> vScores);
 
                                  watch.Stop();
+                                 double elapsedThisSpec = watch.Elapsed.TotalMilliseconds;
+
                                  result.Peptides = vPeptide;
                                  result.Proteins = vProtein;
                                  result.Scores = vScores;
-                                 result.ElapsedMs = (int)watch.ElapsedMilliseconds;
-
+                                 result.ElapsedMs = (int)elapsedThisSpec;
 
                                  lock (progressLock)
                                  {
                                     scansProcessedMS2++;
+                                    cumulativeElapsedMS2 += elapsedThisSpec;
                                  }
                               }
 
@@ -340,7 +343,7 @@
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
 
                      // Create histograms
-                     int iMaxHistogramTime = 200;
+                     int iMaxHistogramTime = 50;
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
@@ -447,7 +450,8 @@
                         line = string.Format("Scans processed: {0}", scansProcessedMS2);
                         rtsWriter.WriteLine(line);
 
-                        double dAvgTimePerScan = scansProcessedMS2 > 0 ? elapsedGlobal.TotalMilliseconds / scansProcessedMS2 : 0;
+                        double dAvgTimePerScan = scansProcessedMS2 > 0 ? ((double)cumulativeElapsedMS2 / (double)scansProcessedMS2)/numThreads: 0;
+
                         double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
 
                         line = string.Format("Average time per scan: {0:F2} ms", dAvgTimePerScan);
