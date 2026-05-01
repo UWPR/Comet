@@ -115,6 +115,10 @@
                      }
 
                      Stopwatch watchGlobal = new Stopwatch();
+                     Stopwatch watchIndexCreate = new Stopwatch();
+                     Stopwatch watchSearchMS1 = new Stopwatch();
+                     Stopwatch watchSearchMS2 = new Stopwatch();
+
                      watchGlobal.Start();
 
                      rawFile.SelectInstrument(Device.MS, 1);
@@ -167,7 +171,6 @@
                      if (bPerformMS1Search)
                         globalSearchMgr.InitializeSingleSpectrumMS1Search(dMaxQueryRT);
 
-                     Stopwatch watchIndexCreate = new Stopwatch();
                      watchIndexCreate.Start();
                      if (bDatabaseSearch && bPerformMS2Search)
                         globalSearchMgr.InitializeSingleSpectrumSearch();
@@ -234,12 +237,15 @@
                               {
                                  int iMS1TopN = 1;
                                  watch.Restart();
+                                 watchSearchMS1.Start();
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
                                  globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
                                     pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
 
                                  watch.Stop();
+                                 watchSearchMS1.Stop();
+
                                  result.ScoresMS1 = vScores;
                                  result.ElapsedMs = (int)watch.ElapsedMilliseconds;
                               }
@@ -275,6 +281,8 @@
                                  }
 
                                  watch.Restart();
+                                 watchSearchMS2.Start();
+
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
                                  globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ,
@@ -285,6 +293,8 @@
                                     out List<ScoreWrapper> vScores);
 
                                  watch.Stop();
+                                 watchSearchMS2.Stop();
+
                                  double elapsedThisSpec = watch.Elapsed.TotalMilliseconds;
 
                                  result.Peptides = vPeptide;
@@ -306,8 +316,8 @@
                               {
                                  if (scansProcessedMS2 % 500 == 0)
                                  {
-                                    double percentComplete = (double)scansProcessedMS2 / totalScans * 100.0;
-                                    Console.Write("\r Progress: {0:F1}% ({1}/{2} scans)", percentComplete, scansProcessedMS2, totalScans);
+                                    double percentComplete = (double)iScanNumber / iLastScan * 100.0;
+                                    Console.Write("\r Progress: {0:F1}% ({1} MS2 scans of {2} total scans)", percentComplete, scansProcessedMS2, totalScans);
                                  }
                               }
                            }
@@ -417,7 +427,6 @@
                         for (int i = 0; i < iMaxHistogramTime; ++i)
                         {
                            string line1 = $"histogram\t{i}\t{piTimeSearchMS1[i]}\t{piTimeSearchMS2[i]}";
-                           Console.WriteLine(line1);
                            rtsWriter.WriteLine(line1);
 
                            iTot += piTimeSearchMS2[i];
@@ -444,26 +453,30 @@
                            iTot > 0 ? ((double)iAbove10ms / iTot) * 100.0 : 0);
                         rtsWriter.WriteLine(line);
 
-                        line = string.Format("\nTotal elapsed time: {0:F2} minutes", elapsedGlobal.TotalMinutes);
-                        rtsWriter.WriteLine(line);
-
-                        line = string.Format("Scans processed: {0}", scansProcessedMS2);
-                        rtsWriter.WriteLine(line);
-
                         double dAvgTimePerScan = scansProcessedMS2 > 0 ? ((double)cumulativeElapsedMS2 / (double)scansProcessedMS2)/numThreads: 0;
-
                         double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
 
-                        line = string.Format("Average time per scan: {0:F2} ms", dAvgTimePerScan);
-                        rtsWriter.WriteLine(line);
 
-                        line = string.Format("\ninitialize search elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
+                        line = string.Format("\n     total elapsed time: {0:F2} s", watchGlobal.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
-                        line = string.Format("search elapsed time: {0:F2} s, avg {1:F2} ms/spectrum ({2} spectra), {3:F0} Hz\n",
-                           watchGlobal.Elapsed.TotalSeconds, dAvgTimePerScan, scansProcessedMS2, dHz);
+                        
+                        line = string.Format("initialize elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
+
+                        line = string.Format("MS2 search elapsed time: {0:F2} s", watchSearchMS2.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+
+                        line = string.Format("    average search time: {0:F2} ms/spectrum ({1} spectra), {2:F0} Hz", dAvgTimePerScan, scansProcessedMS2, dHz);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+
+                        line = string.Format("MS1 search elapsed time: {0:F2} s", watchSearchMS1.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+
 
                      }
 
@@ -562,7 +575,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            iTmp = 100; // search time cutoff in milliseconds
+            iTmp = 200; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 
