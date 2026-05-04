@@ -38,7 +38,7 @@ public:
       return m_iFragmentIndex[m_iFragmentIndexOffset[bin] + idx];
    }
 
-   inline unsigned int GetFragmentCount(unsigned int bin) const
+   inline uint64_t GetFragmentCount(unsigned int bin) const
    {
       return m_iFragmentIndexOffset[bin + 1] - m_iFragmentIndexOffset[bin];
    }
@@ -61,7 +61,7 @@ public:
 private:
    // Const pointers prevent modification
    const unsigned int* m_iFragmentIndex;
-   const unsigned int* m_iFragmentIndexOffset;
+   const uint64_t*     m_iFragmentIndexOffset;
    const vector<struct FragmentPeptidesStruct>& m_vFragmentPeptides;
    const vector<PlainPeptideIndexStruct>& m_vRawPeptides;
    const vector<vector<comet_fileoffset_t>>& m_pvProteinsList;

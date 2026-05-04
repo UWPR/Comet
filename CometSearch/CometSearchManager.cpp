@@ -75,7 +75,7 @@ vector<vector<comet_fileoffset_t>> g_pvProteinsList;
 
 // Fragment index globals - INITIALIZED ONCE, READ-ONLY DURING SEARCH
 unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
-unsigned int* g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
+uint64_t*     g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers

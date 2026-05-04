@@ -1498,7 +1498,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                      pQuery->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
                }
 
-               unsigned int uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
+               uint64_t uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
                for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                {
                   unsigned int iTmp = g_iFragmentIndex[uiBinBase + ix];
@@ -4563,7 +4563,7 @@ size_t CometSearch::BinarySearchIndexMass(size_t start,
    // the array into two pieces.
    size_t middle = start + ((end - start) / 2);
 
-   unsigned int uiBinBase = g_iFragmentIndexOffset[*uiFragmentMass];
+   uint64_t uiBinBase = g_iFragmentIndexOffset[*uiFragmentMass];
    double dArrayMass = g_vFragmentPeptides[g_iFragmentIndex[uiBinBase + middle]].dPepMass;
 
    if (dArrayMass > dQueryMass)

@@ -39,7 +39,7 @@ Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
 
 // Temporary write-position array used only during the index fill pass.
 // Initialized to g_iFragmentIndexOffset[0..n-1] before filling, freed after.
-static unsigned int* s_iWritePos = nullptr;
+static uint64_t* s_iWritePos = nullptr;
 
 
 #ifdef _WIN32
@@ -73,7 +73,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
    // - modification mass
 
    // CSR layout: allocate offset array now (size+1 for sentinel); flat data allocated after counting.
-   g_iFragmentIndexOffset = new unsigned int[g_massRange.uiMaxFragmentArrayIndex + 1]();
+   g_iFragmentIndexOffset = new uint64_t[g_massRange.uiMaxFragmentArrayIndex + 1]();
 
    // generate the modified peptides to calculate the fragment index
    GenerateFragmentIndex(tp);
@@ -169,11 +169,13 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // Convert per-bin counts (stored in g_iFragmentIndexOffset[0..n-1] during count pass)
    // to CSR prefix-sum offsets, then allocate the single flat data array.
+   // Use uint64_t accumulator: non-enzymatic searches against large databases can
+   // exceed UINT_MAX total entries, silently corrupting the index with unsigned int.
    {
-      unsigned int uiTotal = 0;
+      uint64_t uiTotal = 0;
       for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
       {
-         unsigned int uiCnt = g_iFragmentIndexOffset[iMass];
+         uint64_t uiCnt = g_iFragmentIndexOffset[iMass];
          g_iFragmentIndexOffset[iMass] = uiTotal;
          uiTotal += uiCnt;
       }
@@ -182,8 +184,8 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    }
 
    // Initialize per-bin write positions as a copy of the base offsets.
-   s_iWritePos = new unsigned int[g_massRange.uiMaxFragmentArrayIndex];
-   memcpy(s_iWritePos, g_iFragmentIndexOffset, sizeof(unsigned int) * g_massRange.uiMaxFragmentArrayIndex);
+   s_iWritePos = new uint64_t[g_massRange.uiMaxFragmentArrayIndex];
+   memcpy(s_iWritePos, g_iFragmentIndexOffset, sizeof(uint64_t) * g_massRange.uiMaxFragmentArrayIndex);
 
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
