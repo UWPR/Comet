@@ -88,3 +88,4 @@ From `docs/CometCodingStyleGuidelines.md`:
 - Use `//` for inline comments (reserve `/* */` for commenting out blocks)
 - **Systems Hungarian Notation** for variable names (e.g., `iCount`, `dMass`, `szName`, `bFlag`, `p` prefix for pointers)
 - No trailing whitespace
+- All files should have Windows line endings

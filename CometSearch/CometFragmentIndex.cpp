@@ -566,6 +566,122 @@ if (!(iWhichPeptide%1000))
 }
 
 
+// Populate g_pvDBIndex and g_pvProteinsList from the FASTA database using the
+// fast per-thread PepGenTuple path (avoids heap-allocating one std::string per
+// peptide instance in g_pvDBIndex, which OOMs on 32 GB machines for no-enzyme
+// human proteome searches with ~900 M peptide instances).
+//
+// Pre-conditions:
+//   - CometSearch memory pool already allocated (AllocateMemory called)
+//   - g_pvProteinNames already populated (read by caller before this call)
+//   - g_massRange set
+//
+// Post-conditions:
+//   - g_pvDBIndex:     unique peptides, sorted by mass, lIndexProteinFilePosition
+//                      is an index into g_pvProteinsList
+//   - g_pvProteinsList: vector<vector<comet_fileoffset_t>>, one row per unique peptide
+//   - g_vvPepGenTuples: cleared (memory freed)
+bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
+{
+   int iNumThreads = g_staticParams.options.iNumThreads;
+   g_vvPepGenTuples.assign(iNumThreads, vector<PepGenTuple>());
+
+   g_staticParams.options.bCreateFragmentIndex = true;
+   g_staticParams.options.bFastPlainPeptideIdx = true;
+   g_staticParams.iDbType = DbType::FASTA_DB;
+
+   bool bSucceeded = CometSearch::RunSearch(0, 0, tp);
+
+   g_staticParams.options.bCreateFragmentIndex = false;
+   g_staticParams.options.bFastPlainPeptideIdx = false;
+   g_staticParams.iDbType = DbType::FI_DB;
+
+   if (!bSucceeded)
+      return false;
+
+   // Merge all per-thread buffers into one flat vector.
+   size_t iTotal = 0;
+   for (int i = 0; i < iNumThreads; ++i)
+      iTotal += g_vvPepGenTuples[i].size();
+
+   if (iTotal == 0)
+      return true;   // g_pvDBIndex stays empty; caller prints the "no peptides" error
+
+   vector<PepGenTuple> vAll;
+   vAll.reserve(iTotal);
+   for (int i = 0; i < iNumThreads; ++i)
+   {
+      vAll.insert(vAll.end(),
+                  make_move_iterator(g_vvPepGenTuples[i].begin()),
+                  make_move_iterator(g_vvPepGenTuples[i].end()));
+      vector<PepGenTuple>().swap(g_vvPepGenTuples[i]);
+   }
+   g_vvPepGenTuples.clear();
+
+   // Sort by (peptide, protein_offset) using plain strcmp — no I/L canonicalization.
+   // Protein-offset tie-breaker ensures the first-protein occurrence is processed first.
+   sort(vAll.begin(), vAll.end(), [](const PepGenTuple& a, const PepGenTuple& b) {
+      int c = strcmp(a.sPeptide, b.sPeptide);
+      if (c != 0) return c < 0;
+      return a.lProteinFileOffset < b.lProteinFileOffset;
+   });
+
+   // Walk sorted tuples: build g_pvProteinsList and g_pvDBIndex.
+   // Per-thread seenInProtein already guarantees each (peptide, protein) pair appears
+   // at most once, so no further protein-level dedup is needed beyond the sort.
+   long lProtCount = 0;
+   vector<comet_fileoffset_t> temp;
+
+   for (size_t i = 0; i < vAll.size(); ++i)
+   {
+      const PepGenTuple& t = vAll[i];
+      bool bNewPeptide = (i == 0) || (strcmp(t.sPeptide, vAll[i - 1].sPeptide) != 0);
+
+      if (bNewPeptide)
+      {
+         if (i > 0)
+         {
+            // Flush previous peptide's protein list.
+            sort(temp.begin(), temp.end());
+            temp.erase(unique(temp.begin(), temp.end()), temp.end());
+            g_pvProteinsList.push_back(temp);
+            lProtCount++;
+            temp.clear();
+         }
+
+         temp.push_back(t.lProteinFileOffset);
+
+         DBIndex dbi;
+         dbi.sPeptide.assign(t.sPeptide);
+         dbi.dPepMass              = t.dPepMass;
+         dbi.cPrevAA               = t.cPrevAA;
+         dbi.cNextAA               = t.cNextAA;
+         dbi.siVarModProteinFilter = t.siVarModProteinFilter;
+         dbi.lIndexProteinFilePosition = lProtCount;
+         dbi.pcVarModSites.clear();
+         g_pvDBIndex.push_back(dbi);
+      }
+      else
+      {
+         temp.push_back(t.lProteinFileOffset);
+      }
+   }
+
+   // Flush last peptide.
+   if (!vAll.empty())
+   {
+      sort(temp.begin(), temp.end());
+      temp.erase(unique(temp.begin(), temp.end()), temp.end());
+      g_pvProteinsList.push_back(temp);
+   }
+
+   // Sort by mass for the write step.
+   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
+
+   return true;
+}
+
+
 bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 {
    FILE *fp;
@@ -610,30 +726,19 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       g_massRange.bNarrowMassRange = false;
 
    if (bSucceeded)
-   {
-      g_staticParams.options.bCreateFragmentIndex = true;
-      g_staticParams.iDbType = DbType::FASTA_DB;
-
-      // this step calls RunSearch just to pull out all peptides
-      // to write into the .idx pepties/proteins file
-      bSucceeded = CometSearch::RunSearch(0, 0, tp);
-
-      g_staticParams.options.bCreateFragmentIndex = false;
-      g_staticParams.iDbType = DbType::FI_DB;
-   }
+      bSucceeded = GeneratePlainPeptideIndex(tp);
 
    if (bSwapIdxExtension)
       strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
 
    if (!bSucceeded)
    {
-      string strErrorMsg =  " Error performing RunSearch() to create indexed database.\n";
+      string strErrorMsg =  " Error in GeneratePlainPeptideIndex().\n";
       logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
 
-   // sanity check
    if (g_pvDBIndex.size() == 0)
    {
       string strErrorMsg = " Error - no peptides in index; check the input database file.\n";
@@ -641,66 +746,6 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
-
-   // remove duplicates
-   strOut = " - remove duplicate peptides\n";
-   logout(strOut);
-   fflush(stdout);
-
-   // first sort by peptide then protein file position
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByPeptide);
-
-   // At this point, need to create g_pvProteinsList protein file position vector of vectors to map each peptide
-   // to every protein. g_pvdbindex.at().lproteinfileposition is now reference to protein vector entry
-   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to g_pvproteinslist
-
-   // Create g_pvProteinsList.  This is a vector of vectors.  Each element is a vector list
-   // of duplicate proteins (generated as "temp") ... these are generated by looping
-   // through g_pvDBIndex and looking for consecutive, same peptides.  Once the "temp"
-   // vector is assigned the lIndexProteinFilePosition offset, the g_pvDBIndex entry is
-   // is assigned lProtCount to lIndexProteinFilePosition.  This is used later to look up
-   // the right vector element of duplicate proteins later.
-   long lProtCount = 0;
-   for (size_t i = 0; i < g_pvDBIndex.size(); ++i)
-   {
-      if (i == 0)
-      {
-         temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-         g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-      }
-      else
-      {
-         // each unique peptide will have the same list of matched proteins
-         if (g_pvDBIndex.at(i).sPeptide == g_pvDBIndex.at(i-1).sPeptide)
-         {
-            // store protein as peptides are the same
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         }
-         else
-         {
-            // different peptide so go ahead and push temp onto g_pvProteinsList
-            // and store current protein reference into new temp
-            sort(temp.begin(), temp.end());
-            temp.erase(unique(temp.begin(), temp.end()), temp.end() );
-            g_pvProteinsList.push_back(temp);
-
-            lProtCount++; // start new row in g_pvProteinsList
-            temp.clear();
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         }
-      }
-   }
-   // now at end of loop, push last temp onto g_pvProteinsList
-   sort(temp.begin(), temp.end());
-   temp.erase(unique(temp.begin(), temp.end()), temp.end() );
-   g_pvProteinsList.push_back(temp);
-
-   g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
-
-   // sort by mass;
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
 
    cout << " - write peptides/proteins to file" << endl;
 

@@ -27,6 +27,7 @@
 #include "CometStatus.h"
 #include "ThreadPool.h"
 #include <algorithm>
+#include <unordered_set>
 #include <bitset>
 #include <cstdio>
 #include <cstring>
@@ -375,6 +376,9 @@ private:
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
+
+   int _iSlot = -1;                     // pool slot index; set by SearchThreadProc before DoSearch
+   std::unordered_set<std::string> _seenInProtein;  // per-protein dedup for bFastPlainPeptideIdx
 };
 
 #endif // _COMETSEARCH_H_

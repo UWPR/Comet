@@ -353,7 +353,7 @@
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
 
                      // Create histograms
-                     int iMaxHistogramTime = 50;
+                     int iMaxHistogramTime = 300;
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
@@ -571,7 +571,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
+            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
@@ -607,7 +607,7 @@
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
-            iTmp = -1;  // 0=unused, -1=localize all mods; otherwise 1 for variable_mod01, 2 for variable_mod02, etc.
+            iTmp = 0;  // 0=unused, -1=localize all mods; otherwise 1 for variable_mod01, 2 for variable_mod02, etc.
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 

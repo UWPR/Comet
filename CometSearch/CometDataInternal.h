@@ -146,6 +146,7 @@ struct Options
    bool bScaleFragmentNL;        // 0=no; 1=scale fragment NL for each modified residue contained in fragment
    bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index plain peptide file
    bool bCreatePeptideIndex;     // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
+   bool bFastPlainPeptideIdx;    // 0=legacy RunSearch path; 1=use PepGenTuple per-thread buffers (avoids heap alloc)
    bool bVerboseOutput;
    bool bExplicitDeltaCn;        // if set to 1, do not use sequence similarity logic
    bool bPrintExpectScore;
@@ -207,6 +208,7 @@ struct Options
       bScaleFragmentNL = a.bScaleFragmentNL;
       bCreatePeptideIndex = a.bCreatePeptideIndex;
       bCreateFragmentIndex = a.bCreateFragmentIndex;
+      bFastPlainPeptideIdx = a.bFastPlainPeptideIdx;
       bVerboseOutput = a.bVerboseOutput;
       bExplicitDeltaCn = a.bExplicitDeltaCn;
       bPrintExpectScore = a.bPrintExpectScore;
@@ -501,6 +503,18 @@ struct DBIndex
       // to grab flanking residues from the first protein
       return lIndexProteinFilePosition < rhs.lIndexProteinFilePosition;
    }
+};
+
+// Compact fixed-size tuple used during plain-peptide index generation.
+// Replaces heap-heavy DBIndex entries during the per-thread collection phase.
+struct PepGenTuple
+{
+   char     sPeptide[MAX_PEPTIDE_LEN];   // original AA letters, null-terminated
+   double   dPepMass;                    // MH+ mass
+   comet_fileoffset_t lProteinFileOffset;// FASTA byte offset of the source protein
+   uint16_t siVarModProteinFilter;
+   char     cPrevAA;
+   char     cNextAA;
 };
 
 // This is used for fragment indexing; plain peptides are stored in index
@@ -985,6 +999,7 @@ struct StaticParams
       options.bScaleFragmentNL = false;
       options.bCreatePeptideIndex = false;
       options.bCreateFragmentIndex = false;
+      options.bFastPlainPeptideIdx = false;
       options.bVerboseOutput = false;
       options.iDecoySearch = 0;
       options.iNumThreads = 4;
@@ -1054,6 +1069,7 @@ struct StaticParams
 extern StaticParams    g_staticParams;
 
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
+extern vector<vector<PepGenTuple>> g_vvPepGenTuples;  // per-slot buffers for fast plain peptide index generation
 extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 
 extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;

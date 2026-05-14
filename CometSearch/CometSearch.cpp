@@ -1289,6 +1289,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
    // member arrays (_uiBinnedIonMasses, etc.) that would exhaust the 1 MB thread
    // stack in debug builds when combined with the deep DoSearch call chain.
    CometSearch* sqSearch = new CometSearch();
+   sqSearch->_iSlot = i;
    sqSearch->DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete sqSearch;
 
@@ -1300,6 +1301,9 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
 bool CometSearch::DoSearch(sDBEntry dbe,
                            bool *pbDuplFragment)
 {
+   if (g_staticParams.options.bFastPlainPeptideIdx)
+      _seenInProtein.clear();
+
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
    {
@@ -3507,40 +3511,63 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                && CheckEnzymeTermini(szProteinSeq, iStartPos, iEndPos)
                && dCalcPepMass < g_massRange.dMaxMass)
             {
-               Threading::LockMutex(g_pvDBIndexMutex);
-
-               // add to DBIndex vector
-               DBIndex sEntry;
-               sEntry.dPepMass = dCalcPepMass;  //MH+ mass
-
-               sEntry.sPeptide.assign(szProteinSeq + iStartPos, iLenPeptide);
-               sEntry.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
-               sEntry.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1] ;
-               sEntry.siVarModProteinFilter = siVarModProteinFilter;
-
-               // little sanity check here to not include peptides with '*' in them
-               // although mass check above should've caught these before
-               if (sEntry.sPeptide.find('*') == string::npos)
+               if (g_staticParams.options.bFastPlainPeptideIdx && g_staticParams.options.bCreateFragmentIndex)
                {
-                  sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
-                  sEntry.pcVarModSites.clear();  // empty = unmodified
-
-                  if (g_staticParams.options.bCreateFragmentIndex
-                     || (g_staticParams.options.bCreatePeptideIndex && dCalcPepMass >= g_massRange.dMinMass && dCalcPepMass <= g_massRange.dMaxMass))
+                  // Fast path: lock-free per-thread buffer with within-protein dedup.
+                  if (memchr(szProteinSeq + iStartPos, '*', iPepLen) == nullptr)
                   {
-                     try
+                     std::string sSeq(szProteinSeq + iStartPos, iPepLen);
+                     if (_seenInProtein.insert(sSeq).second)
                      {
-                        g_pvDBIndex.push_back(sEntry);
-                     }
-                     catch (const std::bad_alloc& e)
-                     {
-                        std::cerr << "Error with g_pvDBIndex.push_back().  Vector size: " << g_pvDBIndex.size() << " Capacity: " << g_pvDBIndex.capacity() << " Exception caught" << e.what() << std::endl;
-                        throw;
+                        PepGenTuple t;
+                        memcpy(t.sPeptide, szProteinSeq + iStartPos, iPepLen);
+                        t.sPeptide[iPepLen] = '\0';
+                        t.dPepMass = dCalcPepMass;
+                        t.lProteinFileOffset = _proteinInfo.lProteinFilePosition;
+                        t.siVarModProteinFilter = siVarModProteinFilter;
+                        t.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
+                        t.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
+                        g_vvPepGenTuples[_iSlot].push_back(t);
                      }
                   }
                }
+               else
+               {
+                  Threading::LockMutex(g_pvDBIndexMutex);
 
-               Threading::UnlockMutex(g_pvDBIndexMutex);
+                  // add to DBIndex vector
+                  DBIndex sEntry;
+                  sEntry.dPepMass = dCalcPepMass;  //MH+ mass
+
+                  sEntry.sPeptide.assign(szProteinSeq + iStartPos, iLenPeptide);
+                  sEntry.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
+                  sEntry.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1] ;
+                  sEntry.siVarModProteinFilter = siVarModProteinFilter;
+
+                  // little sanity check here to not include peptides with '*' in them
+                  // although mass check above should've caught these before
+                  if (sEntry.sPeptide.find('*') == string::npos)
+                  {
+                     sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
+                     sEntry.pcVarModSites.clear();  // empty = unmodified
+
+                     if (g_staticParams.options.bCreateFragmentIndex
+                        || (g_staticParams.options.bCreatePeptideIndex && dCalcPepMass >= g_massRange.dMinMass && dCalcPepMass <= g_massRange.dMaxMass))
+                     {
+                        try
+                        {
+                           g_pvDBIndex.push_back(sEntry);
+                        }
+                        catch (const std::bad_alloc& e)
+                        {
+                           std::cerr << "Error with g_pvDBIndex.push_back().  Vector size: " << g_pvDBIndex.size() << " Capacity: " << g_pvDBIndex.capacity() << " Exception caught" << e.what() << std::endl;
+                           throw;
+                        }
+                     }
+                  }
+
+                  Threading::UnlockMutex(g_pvDBIndexMutex);
+               }
             }
          }
          else if (!g_staticParams.variableModParameters.iRequireVarMod)
