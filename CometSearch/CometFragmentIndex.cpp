@@ -25,6 +25,7 @@
 #include <sstream>
 #include <bitset>
 #include <limits>
+#include <queue>
 
 
 vector<ModificationNumber> MOD_NUMBERS;
@@ -581,7 +582,7 @@ if (!(iWhichPeptide%1000))
 //                      is an index into g_pvProteinsList
 //   - g_pvProteinsList: vector<vector<comet_fileoffset_t>>, one row per unique peptide
 //   - g_vvvPepGenShort / g_vvvPepGenLong: cleared (memory freed)
-bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
+bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<size_t,size_t>>& slices)
 {
    int iNumThreads = g_staticParams.options.iNumThreads;
    const int iMinLen = g_staticParams.options.peptideLengthRange.iStart;
@@ -777,8 +778,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
    g_vvvPepGenShort.clear();
    g_vvvPepGenLong.clear();
 
-   // Sequential merge: fix up lIndexProteinFilePosition (local→global offset)
-   // then append each length's results to the global vectors.
+   // Sequential merge: fix up lIndexProteinFilePosition (local→global offset),
+   // append to global vectors, and record each non-empty length's slice boundary.
    // Long results first to match submission order, then short results.
    size_t iProtBase = 0;
    auto mergeResults = [&](vector<LenResult>& results)
@@ -790,8 +791,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          iProtBase += r.prots.size();
          for (auto& pv : r.prots)
             g_pvProteinsList.push_back(std::move(pv));
-         for (auto& dbi : r.dbIdx)
-            g_pvDBIndex.push_back(std::move(dbi));
+         if (!r.dbIdx.empty())
+         {
+            const size_t iStart = g_pvDBIndex.size();
+            const size_t iCount = r.dbIdx.size();
+            for (auto& dbi : r.dbIdx)
+               g_pvDBIndex.push_back(std::move(dbi));
+            slices.push_back({iStart, iCount});
+         }
       }
    };
 
@@ -801,9 +808,18 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
    if (g_pvDBIndex.empty())
       return true;   // caller prints the "no peptides" error
 
-   // Global mass sort — must be global because shorter peptides can outweigh
-   // longer ones (e.g., WWWWWWWW ~1506 Da > 25-Gly ~1443 Da).
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
+   // Parallel per-length mass sort: each slice is a disjoint range of g_pvDBIndex;
+   // tasks run concurrently with no data races.  Replaces the single global sort.
+   for (auto& [iStart, iCount] : slices)
+   {
+      tp->doJob([iStart, iCount]()
+      {
+         sort(g_pvDBIndex.begin() + iStart,
+              g_pvDBIndex.begin() + iStart + iCount,
+              CometMassSpecUtils::DBICompareByMass);
+      });
+   }
+   tp->wait_on_threads();
 
    return true;
 }
@@ -852,8 +868,9 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    else
       g_massRange.bNarrowMassRange = false;
 
+   vector<pair<size_t,size_t>> slices;   // {start, count} per per-length mass-sorted slice
    if (bSucceeded)
-      bSucceeded = GeneratePlainPeptideIndex(tp);
+      bSucceeded = GeneratePlainPeptideIndex(tp, slices);
 
    if (bSwapIdxExtension)
       strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
@@ -941,24 +958,47 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    size_t tNumPeptides = g_pvDBIndex.size();
    fwrite(&tNumPeptides, sizeof(size_t), 1, fp);  // write # of peptides
 
-   for (std::vector<DBIndex>::iterator it = g_pvDBIndex.begin(); it != g_pvDBIndex.end(); ++it)
+   // K-way min-heap merge over the per-length mass-sorted slices.
+   // Each slice is a contiguous run in g_pvDBIndex already sorted by mass;
+   // the heap merges them globally in O(N log K) where K = slices.size().
+   struct HeapEntry { size_t iSlice; size_t iPos; };
+   auto heapCmp = [&slices](const HeapEntry& a, const HeapEntry& b)
    {
-      int iLen = (int)(*it).sPeptide.size();
+      const DBIndex& da = g_pvDBIndex[slices[a.iSlice].first + a.iPos];
+      const DBIndex& db = g_pvDBIndex[slices[b.iSlice].first + b.iPos];
+      return CometMassSpecUtils::DBICompareByMass(db, da);  // reversed for min-heap
+   };
+   priority_queue<HeapEntry, vector<HeapEntry>, decltype(heapCmp)> heap(heapCmp);
+
+   for (size_t si = 0; si < slices.size(); ++si)
+      if (slices[si].second > 0)
+         heap.push({si, 0});
+
+   while (!heap.empty())
+   {
+      auto [iSlice, iPos] = heap.top();
+      heap.pop();
+      const DBIndex& entry = g_pvDBIndex[slices[iSlice].first + iPos];
+
+      int iLen = (int)entry.sPeptide.size();
       struct PlainPeptideIndexStruct sTmp;
 
       fwrite(&iLen, sizeof(int), 1, fp);
-      fwrite((*it).sPeptide.c_str(), sizeof(char), iLen, fp);
-      fwrite(&((*it).cPrevAA), sizeof(char), 1, fp); // write prev AA
-      fwrite(&((*it).cNextAA), sizeof(char), 1, fp); // write next AA
-      fwrite(&((*it).dPepMass), sizeof(double), 1, fp);
-      fwrite(&((*it).siVarModProteinFilter), sizeof(unsigned short), 1, fp);
-      fwrite(&((*it).lIndexProteinFilePosition), clSizeCometFileOffset, 1, fp);
+      fwrite(entry.sPeptide.c_str(), sizeof(char), iLen, fp);
+      fwrite(&entry.cPrevAA, sizeof(char), 1, fp);
+      fwrite(&entry.cNextAA, sizeof(char), 1, fp);
+      fwrite(&entry.dPepMass, sizeof(double), 1, fp);
+      fwrite(&entry.siVarModProteinFilter, sizeof(unsigned short), 1, fp);
+      fwrite(&entry.lIndexProteinFilePosition, clSizeCometFileOffset, 1, fp);
 
-      sTmp.sPeptide = (*it).sPeptide;
-      sTmp.lIndexProteinFilePosition = (*it).lIndexProteinFilePosition;
-      sTmp.dPepMass = (*it).dPepMass;
-      sTmp.siVarModProteinFilter = (*it).siVarModProteinFilter;
+      sTmp.sPeptide = entry.sPeptide;
+      sTmp.lIndexProteinFilePosition = entry.lIndexProteinFilePosition;
+      sTmp.dPepMass = entry.dPepMass;
+      sTmp.siVarModProteinFilter = entry.siVarModProteinFilter;
       g_vRawPeptides.push_back(sTmp);
+
+      if (iPos + 1 < slices[iSlice].second)
+         heap.push({iSlice, iPos + 1});
    }
 
    // Now write out: vector<vector<comet_fileoffset_t>> g_pvProteinsList
