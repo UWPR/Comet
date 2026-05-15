@@ -3530,27 +3530,36 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            t.siVarModProteinFilter = siVarModProteinFilter;
                            t.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
                            t.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
+                           // Record which positions were 'L' in the FASTA so the original
+                           // sequence can be reconstructed at merge time.
+                           t.uILMask = 0;
+                           if (bIL)
+                              for (int k = 0; k < iPepLen; ++k)
+                                 if ((szProteinSeq + iStartPos)[k] == 'L')
+                                    t.uILMask |= (uint16_t)(1u << k);
                            g_vvvPepGenShort[li][_iSlot].push_back(t);
                         }
                      }
                      else
                      {
-                        // Canonicalize L→I for long peptides when bTreatSameIL.
-                        const char* pSeq = szProteinSeq + iStartPos;
+                        // Build canonical form (L→I) for dedup; keep original for storage.
+                        const char* pOrig  = szProteinSeq + iStartPos;
+                        const char* pCanon = pOrig;
                         char szCanon[MAX_PEPTIDE_LEN];
                         if (bIL)
                         {
-                           memcpy(szCanon, pSeq, iPepLen);
+                           memcpy(szCanon, pOrig, iPepLen);
                            szCanon[iPepLen] = '\0';
                            for (int k = 0; k < iPepLen; ++k)
                               if (szCanon[k] == 'L') szCanon[k] = 'I';
-                           pSeq = szCanon;
+                           pCanon = szCanon;
                         }
-                        if (_seenLong.insert(std::string(pSeq, iPepLen)).second)
+                        if (_seenLong.insert(std::string(pCanon, iPepLen)).second)
                         {
                            int li = iPepLen - 13;
                            PepGenTuple t;
-                           memcpy(t.sPeptide, pSeq, iPepLen);
+                           // Store the FASTA original so the idx preserves the true sequence.
+                           memcpy(t.sPeptide, pOrig, iPepLen);
                            t.sPeptide[iPepLen]     = '\0';
                            t.dPepMass              = dCalcPepMass;
                            t.lProteinFileOffset    = _proteinInfo.lProteinFilePosition;

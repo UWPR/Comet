@@ -599,15 +599,16 @@ inline void UnpackPeptide(uint64_t key, int iLen, char* seq)
 }
 
 // Compact per-thread tuple for short peptides (len ≤ 12) during index generation.
-// 28 bytes packed vs. 71 bytes for PepGenTuple; sorts by integer comparison.
+// 32 bytes on 64-bit (8-byte alignment); uILMask occupies 2 of the 4 trailing pad bytes.
 struct PepGenTupleShort
 {
-   uint64_t           uPackedPep;            // 5-bit-encoded sequence, no length field
+   uint64_t           uPackedPep;            // canonical 5-bit-encoded sequence (L treated as I when bTreatSameIL)
    double             dPepMass;
    comet_fileoffset_t lProteinFileOffset;
    uint16_t           siVarModProteinFilter;
    char               cPrevAA;
    char               cNextAA;
+   uint16_t           uILMask;              // bitmask: bit k = 1 means position k was 'L' in FASTA original
 };
 
 // This is used for fragment indexing; plain peptides are stored in index
