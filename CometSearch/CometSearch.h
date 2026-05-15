@@ -378,7 +378,8 @@ private:
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 
    int _iSlot = -1;                     // pool slot index; set by SearchThreadProc before DoSearch
-   std::unordered_set<std::string> _seenInProtein;  // per-protein dedup for bFastPlainPeptideIdx
+   std::unordered_set<uint64_t>    _seenShort;  // per-protein dedup for len ≤ 12 (bFastPlainPeptideIdx)
+   std::unordered_set<std::string> _seenLong;   // per-protein dedup for len > 12 (bFastPlainPeptideIdx)
 };
 
 #endif // _COMETSEARCH_H_

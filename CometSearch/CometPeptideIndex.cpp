@@ -84,7 +84,7 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    // Footer is at the very end of the file:
    //   ... lEndOfPeptides(comet_fileoffset_t) clProteinsFilePos(comet_fileoffset_t)
    // Seek to end minus 2 * sizeof(comet_fileoffset_t) to read both values
-   comet_fseek(fp, -2 * (long)clSizeCometFileOffset, SEEK_END);
+   comet_fseek(fp, -2 * (comet_fileoffset_t)clSizeCometFileOffset, SEEK_END);
 
    comet_fileoffset_t lEndOfPeptides;
    comet_fileoffset_t clProteinsFilePos;
@@ -133,7 +133,7 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    for (size_t i = 0; i < tNumProteinEntries; ++i)
    {
       size_t tNumProteins;
-      tTmpRead = fread(&tNumProteins, sizeof(size_t), 1, fp);
+      tTmpRead = fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
 
       g_pvProteinsList[i].resize(tNumProteins);
       for (size_t j = 0; j < tNumProteins; ++j)
@@ -415,7 +415,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    for (auto it = pvProteinsListLocal.begin(); it != pvProteinsListLocal.end(); ++it)
    {
       tTmp = (*it).size();
-      fwrite(&tTmp, sizeof(size_t), 1, fptr);
+      fwrite(&tTmp, clSizeCometFileOffset, 1, fptr);
 
       for (size_t it2 = 0; it2 < tTmp; ++it2)
       {

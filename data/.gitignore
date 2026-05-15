@@ -1,0 +1,5 @@
+*.mzXML
+*.raw
+*.idx
+*.txt
+human.canonical*.fasta

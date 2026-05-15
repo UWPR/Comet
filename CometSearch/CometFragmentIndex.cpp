@@ -580,11 +580,22 @@ if (!(iWhichPeptide%1000))
 //   - g_pvDBIndex:     unique peptides, sorted by mass, lIndexProteinFilePosition
 //                      is an index into g_pvProteinsList
 //   - g_pvProteinsList: vector<vector<comet_fileoffset_t>>, one row per unique peptide
-//   - g_vvPepGenTuples: cleared (memory freed)
+//   - g_vvvPepGenShort / g_vvvPepGenLong: cleared (memory freed)
 bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 {
    int iNumThreads = g_staticParams.options.iNumThreads;
-   g_vvPepGenTuples.assign(iNumThreads, vector<PepGenTuple>());
+   const int iMinLen = g_staticParams.options.peptideLengthRange.iStart;
+   const int iMaxLen = g_staticParams.options.peptideLengthRange.iEnd;
+
+   // Short: lengths [iMinLen, min(12, iMaxLen)]; li = iPepLen - iMinLen (push site)
+   const int iShortMax  = (iMaxLen < 12) ? iMaxLen : 12;
+   const int nShortLens = (iMinLen <= iShortMax) ? (iShortMax - iMinLen + 1) : 0;
+
+   // Long: lengths [13, iMaxLen]; li = iPepLen - 13 (push site)
+   const int nLongLens  = (iMaxLen >= 13) ? (iMaxLen - 13 + 1) : 0;
+
+   g_vvvPepGenShort.assign(nShortLens, vector<vector<PepGenTupleShort>>(iNumThreads));
+   g_vvvPepGenLong.assign(nLongLens,   vector<vector<PepGenTuple>>(iNumThreads));
 
    g_staticParams.options.bCreateFragmentIndex = true;
    g_staticParams.options.bFastPlainPeptideIdx = true;
@@ -599,83 +610,134 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
    if (!bSucceeded)
       return false;
 
-   // Merge all per-thread buffers into one flat vector.
-   size_t iTotal = 0;
-   for (int i = 0; i < iNumThreads; ++i)
-      iTotal += g_vvPepGenTuples[i].size();
+   char szSeq[MAX_PEPTIDE_LEN + 1];
 
-   if (iTotal == 0)
-      return true;   // g_pvDBIndex stays empty; caller prints the "no peptides" error
-
-   vector<PepGenTuple> vAll;
-   vAll.reserve(iTotal);
-   for (int i = 0; i < iNumThreads; ++i)
+   // Sequential per-length processing for short peptides (len ≤ 12).
+   // Each length's sort buffer is freed before the next begins, keeping
+   // peak RAM to one length's worth of tuples plus the growing g_pvDBIndex.
+   for (int li = 0; li < nShortLens; ++li)
    {
-      vAll.insert(vAll.end(),
-                  make_move_iterator(g_vvPepGenTuples[i].begin()),
-                  make_move_iterator(g_vvPepGenTuples[i].end()));
-      vector<PepGenTuple>().swap(g_vvPepGenTuples[i]);
-   }
-   g_vvPepGenTuples.clear();
+      const int iLen = iMinLen + li;
 
-   // Sort by (peptide, protein_offset) using plain strcmp — no I/L canonicalization.
-   // Protein-offset tie-breaker ensures the first-protein occurrence is processed first.
-   sort(vAll.begin(), vAll.end(), [](const PepGenTuple& a, const PepGenTuple& b) {
-      int c = strcmp(a.sPeptide, b.sPeptide);
-      if (c != 0) return c < 0;
-      return a.lProteinFileOffset < b.lProteinFileOffset;
-   });
+      size_t iTotal = 0;
+      for (int s = 0; s < iNumThreads; ++s)
+         iTotal += g_vvvPepGenShort[li][s].size();
 
-   // Walk sorted tuples: build g_pvProteinsList and g_pvDBIndex.
-   // Per-thread seenInProtein already guarantees each (peptide, protein) pair appears
-   // at most once, so no further protein-level dedup is needed beyond the sort.
-   long lProtCount = 0;
-   vector<comet_fileoffset_t> temp;
+      if (iTotal == 0)
+         continue;
 
-   for (size_t i = 0; i < vAll.size(); ++i)
-   {
-      const PepGenTuple& t = vAll[i];
-      bool bNewPeptide = (i == 0) || (strcmp(t.sPeptide, vAll[i - 1].sPeptide) != 0);
-
-      if (bNewPeptide)
+      vector<PepGenTupleShort> buf;
+      buf.reserve(iTotal);
+      for (int s = 0; s < iNumThreads; ++s)
       {
-         if (i > 0)
+         auto& v = g_vvvPepGenShort[li][s];
+         buf.insert(buf.end(), make_move_iterator(v.begin()), make_move_iterator(v.end()));
+         vector<PepGenTupleShort>().swap(v);
+      }
+
+      // Integer sort — equivalent to lexicographic sort within a fixed length
+      sort(buf.begin(), buf.end(), [](const PepGenTupleShort& a, const PepGenTupleShort& b) {
+         if (a.uPackedPep != b.uPackedPep)
+            return a.uPackedPep < b.uPackedPep;
+         return a.lProteinFileOffset < b.lProteinFileOffset;
+      });
+
+      // Linear dedup: build g_pvDBIndex and g_pvProteinsList
+      vector<comet_fileoffset_t> prot;
+      for (size_t i = 0; i <= buf.size(); ++i)
+      {
+         bool bFlush = (i == buf.size()) ||
+                       (i > 0 && buf[i].uPackedPep != buf[i - 1].uPackedPep);
+         if (bFlush && i > 0)
          {
-            // Flush previous peptide's protein list.
-            sort(temp.begin(), temp.end());
-            temp.erase(unique(temp.begin(), temp.end()), temp.end());
-            g_pvProteinsList.push_back(temp);
-            lProtCount++;
-            temp.clear();
+            sort(prot.begin(), prot.end());
+            prot.erase(unique(prot.begin(), prot.end()), prot.end());
+            g_pvProteinsList.push_back(prot);
+            prot.clear();
+
+            DBIndex dbi;
+            UnpackPeptide(buf[i - 1].uPackedPep, iLen, szSeq);
+            dbi.sPeptide                  = szSeq;
+            dbi.dPepMass                  = buf[i - 1].dPepMass;
+            dbi.cPrevAA                   = buf[i - 1].cPrevAA;
+            dbi.cNextAA                   = buf[i - 1].cNextAA;
+            dbi.siVarModProteinFilter     = buf[i - 1].siVarModProteinFilter;
+            dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(g_pvProteinsList.size() - 1);
+            dbi.pcVarModSites.clear();
+            g_pvDBIndex.push_back(dbi);
          }
-
-         temp.push_back(t.lProteinFileOffset);
-
-         DBIndex dbi;
-         dbi.sPeptide.assign(t.sPeptide);
-         dbi.dPepMass              = t.dPepMass;
-         dbi.cPrevAA               = t.cPrevAA;
-         dbi.cNextAA               = t.cNextAA;
-         dbi.siVarModProteinFilter = t.siVarModProteinFilter;
-         dbi.lIndexProteinFilePosition = lProtCount;
-         dbi.pcVarModSites.clear();
-         g_pvDBIndex.push_back(dbi);
+         if (i < buf.size())
+            prot.push_back(buf[i].lProteinFileOffset);
       }
-      else
-      {
-         temp.push_back(t.lProteinFileOffset);
-      }
+
+      vector<PepGenTupleShort>().swap(buf);
    }
+   g_vvvPepGenShort.clear();
 
-   // Flush last peptide.
-   if (!vAll.empty())
+   // Sequential per-length processing for long peptides (len > 12).
+   // Fixed-length memcmp is auto-vectorized by the compiler.
+   for (int li = 0; li < nLongLens; ++li)
    {
-      sort(temp.begin(), temp.end());
-      temp.erase(unique(temp.begin(), temp.end()), temp.end());
-      g_pvProteinsList.push_back(temp);
-   }
+      const int iLen = 13 + li;
 
-   // Sort by mass for the write step.
+      size_t iTotal = 0;
+      for (int s = 0; s < iNumThreads; ++s)
+         iTotal += g_vvvPepGenLong[li][s].size();
+
+      if (iTotal == 0)
+         continue;
+
+      vector<PepGenTuple> buf;
+      buf.reserve(iTotal);
+      for (int s = 0; s < iNumThreads; ++s)
+      {
+         auto& v = g_vvvPepGenLong[li][s];
+         buf.insert(buf.end(), make_move_iterator(v.begin()), make_move_iterator(v.end()));
+         vector<PepGenTuple>().swap(v);
+      }
+
+      sort(buf.begin(), buf.end(), [iLen](const PepGenTuple& a, const PepGenTuple& b) {
+         int c = memcmp(a.sPeptide, b.sPeptide, iLen);
+         if (c != 0)
+            return c < 0;
+         return a.lProteinFileOffset < b.lProteinFileOffset;
+      });
+
+      vector<comet_fileoffset_t> prot;
+      for (size_t i = 0; i <= buf.size(); ++i)
+      {
+         bool bFlush = (i == buf.size()) ||
+                       (i > 0 && memcmp(buf[i].sPeptide, buf[i - 1].sPeptide, iLen) != 0);
+         if (bFlush && i > 0)
+         {
+            sort(prot.begin(), prot.end());
+            prot.erase(unique(prot.begin(), prot.end()), prot.end());
+            g_pvProteinsList.push_back(prot);
+            prot.clear();
+
+            DBIndex dbi;
+            dbi.sPeptide.assign(buf[i - 1].sPeptide, iLen);
+            dbi.dPepMass                  = buf[i - 1].dPepMass;
+            dbi.cPrevAA                   = buf[i - 1].cPrevAA;
+            dbi.cNextAA                   = buf[i - 1].cNextAA;
+            dbi.siVarModProteinFilter     = buf[i - 1].siVarModProteinFilter;
+            dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(g_pvProteinsList.size() - 1);
+            dbi.pcVarModSites.clear();
+            g_pvDBIndex.push_back(dbi);
+         }
+         if (i < buf.size())
+            prot.push_back(buf[i].lProteinFileOffset);
+      }
+
+      vector<PepGenTuple>().swap(buf);
+   }
+   g_vvvPepGenLong.clear();
+
+   if (g_pvDBIndex.empty())
+      return true;   // caller prints the "no peptides" error
+
+   // Global mass sort — must be global because shorter peptides can outweigh
+   // longer ones (e.g., WWWWWWWW ~1506 Da > 25-Gly ~1443 Da).
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByMass);
 
    return true;

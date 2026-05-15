@@ -1302,7 +1302,10 @@ bool CometSearch::DoSearch(sDBEntry dbe,
                            bool *pbDuplFragment)
 {
    if (g_staticParams.options.bFastPlainPeptideIdx)
-      _seenInProtein.clear();
+   {
+      _seenShort.clear();
+      _seenLong.clear();
+   }
 
    // Standard protein database search.
    if (g_staticParams.options.iWhichReadingFrame == 0)
@@ -1872,7 +1875,9 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
    FILE* fp;
    size_t tTmp;
 
+
    CometPostAnalysis cpa;
+
 
    if ((fp = fopen(g_staticParams.databaseInfo.szDatabase, "rb")) == NULL)
    {
@@ -2003,6 +2008,7 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
    struct DBIndex sDBI;
    sDBEntry dbe;
 
+
    while (lReadIndex[iStart10] == -1 && iStart10 < iEnd10)
       iStart10++;
 
@@ -2024,20 +2030,6 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
 
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
-/*
-      printf("OK index pep ");
-      for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
-      {
-         printf("%c", sDBI.szPeptide[x]);
-         if (sDBI.pcVarModSites[x] != 0)
-            printf("[%0.3f]", g_staticParams.variableModParameters.varModList[sDBI.pcVarModSites[x]-1].dVarModMass);
-      }
-      printf(", mass %f, ", sDBI.dPepMass); fflush(stdout);
-      for (unsigned int x=0; x<strlen(sDBI.szPeptide); x++)
-         printf("%d", sDBI.pcVarModSites[x]);
-      printf(", prot %ld\n", sDBI.lIndexProteinFilePosition);
-*/
-
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
@@ -2048,7 +2040,9 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
 
       // Do the search
       if (iWhichQuery != -1)
+      {
          AnalyzePeptideIndex(iWhichQuery, sDBI, _ppbDuplFragmentArr[0], &dbe);
+      }
 
       if (comet_ftell(fp) >= lEndOfStruct || sDBI.dPepMass > g_massRange.dMaxMass)
          break;
@@ -2775,7 +2769,8 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
       }
 
       // Mass tolerance check for particular query against this candidate peptide mass.
-      if (CheckMassMatch(iWhichQuery, sDBI.dPepMass))
+      bool bMassMatch = CheckMassMatch(iWhichQuery, sDBI.dPepMass);
+      if (bMassMatch)
       {
          char szDecoyPeptide[MAX_PEPTIDE_LEN];
          int piVarModSites[MAX_PEPTIDE_LEN_P2];  // forward mods, generated from sDBI.sVarModSites
@@ -3236,12 +3231,16 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          }
          else
          {
-            snprintf(szProtein, sizeof(szProtein), "%s%c", szProtein, cNextAA);
-            iEndPos = strlen(szProtein) - 2;
+            size_t iLen = strlen(szProtein);
+            szProtein[iLen] = cNextAA;
+            szProtein[iLen + 1] = '\0';
+            iEndPos = (int)iLen - 1;
          }
          szProtein[MAX_PEPTIDE_LEN_P2] = '\0';
 
          _proteinInfo.iTmpProteinSeqLength = (int)strlen(szProtein);
+         _proteinInfo.iPeffOrigResiduePosition = NO_PEFF_VARIANT;
+         _proteinInfo.iPeffNewResidueCount = 0;
 
          XcorrScore(szProtein, iUnused, iUnused, iStartPos, iEndPos, iFoundVariableMod,
             sDBI.dPepMass, false, iWhichQuery, iLenPeptide, piVarModSites, dbe);
@@ -3513,21 +3512,53 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
             {
                if (g_staticParams.options.bFastPlainPeptideIdx && g_staticParams.options.bCreateFragmentIndex)
                {
-                  // Fast path: lock-free per-thread buffer with within-protein dedup.
+                  // Per-length, per-thread buffer with within-protein dedup and I/L canonicalization.
                   if (memchr(szProteinSeq + iStartPos, '*', iPepLen) == nullptr)
                   {
-                     std::string sSeq(szProteinSeq + iStartPos, iPepLen);
-                     if (_seenInProtein.insert(sSeq).second)
+                     const int  iMinLen = g_staticParams.options.peptideLengthRange.iStart;
+                     const bool bIL     = g_staticParams.options.bTreatSameIL;
+                     if (iPepLen <= 12)
                      {
-                        PepGenTuple t;
-                        memcpy(t.sPeptide, szProteinSeq + iStartPos, iPepLen);
-                        t.sPeptide[iPepLen] = '\0';
-                        t.dPepMass = dCalcPepMass;
-                        t.lProteinFileOffset = _proteinInfo.lProteinFilePosition;
-                        t.siVarModProteinFilter = siVarModProteinFilter;
-                        t.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
-                        t.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
-                        g_vvPepGenTuples[_iSlot].push_back(t);
+                        uint64_t key = PackPeptide(szProteinSeq + iStartPos, iPepLen, bIL);
+                        if (_seenShort.insert(key).second)
+                        {
+                           int li = iPepLen - iMinLen;
+                           PepGenTupleShort t;
+                           t.uPackedPep            = key;
+                           t.dPepMass              = dCalcPepMass;
+                           t.lProteinFileOffset    = _proteinInfo.lProteinFilePosition;
+                           t.siVarModProteinFilter = siVarModProteinFilter;
+                           t.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
+                           t.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
+                           g_vvvPepGenShort[li][_iSlot].push_back(t);
+                        }
+                     }
+                     else
+                     {
+                        // Canonicalize L→I for long peptides when bTreatSameIL.
+                        const char* pSeq = szProteinSeq + iStartPos;
+                        char szCanon[MAX_PEPTIDE_LEN];
+                        if (bIL)
+                        {
+                           memcpy(szCanon, pSeq, iPepLen);
+                           szCanon[iPepLen] = '\0';
+                           for (int k = 0; k < iPepLen; ++k)
+                              if (szCanon[k] == 'L') szCanon[k] = 'I';
+                           pSeq = szCanon;
+                        }
+                        if (_seenLong.insert(std::string(pSeq, iPepLen)).second)
+                        {
+                           int li = iPepLen - 13;
+                           PepGenTuple t;
+                           memcpy(t.sPeptide, pSeq, iPepLen);
+                           t.sPeptide[iPepLen]     = '\0';
+                           t.dPepMass              = dCalcPepMass;
+                           t.lProteinFileOffset    = _proteinInfo.lProteinFilePosition;
+                           t.siVarModProteinFilter = siVarModProteinFilter;
+                           t.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
+                           t.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
+                           g_vvvPepGenLong[li][_iSlot].push_back(t);
+                        }
                      }
                   }
                }
@@ -5489,6 +5520,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
       }
 
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pResults[siLowestXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)
       {

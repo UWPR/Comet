@@ -49,8 +49,9 @@ std::vector<QueryMS1*>        g_pvQueryMS1;
 
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
-vector<DBIndex>               g_pvDBIndex;
-vector<vector<PepGenTuple>>   g_vvPepGenTuples;
+vector<DBIndex>                                  g_pvDBIndex;
+vector<vector<vector<PepGenTupleShort>>>         g_vvvPepGenShort;
+vector<vector<vector<PepGenTuple>>>              g_vvvPepGenLong;
 MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
 Mutex                         g_pvDBIndexMutex;

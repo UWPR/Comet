@@ -1201,36 +1201,36 @@ Tasks are ordered so each phase can be verified before the next begins.
 
 ### Phase 6 — Per-length data structures (`CometDataInternal.h` / `CometSearchManager.cpp`)
 
-- [ ] Add `kAA5bit[256]` and `k5bitAA[32]` encoding tables to `CometDataInternal.h`;
+- [x] Add `kAA5bit[256]` and `k5bitAA[32]` encoding tables to `CometDataInternal.h`;
       values must preserve amino acid sort order so that integer sort of packed uint64
       keys matches lexicographic sort of sequences within each length bucket
-- [ ] Implement `PackPeptide(seq, iLen, bTreatSameIL) → uint64_t` and
+- [x] Implement `PackPeptide(seq, iLen, bTreatSameIL) → uint64_t` and
       `UnpackPeptide(key, iLen, seq)` as inline helpers; `PackPeptide` maps L→I
       when `bTreatSameIL=true` so I/L variants produce identical uint64 keys
-- [ ] Add `struct PepGenTupleShort` to `CometDataInternal.h` (after `struct PepGenTuple`)
-- [ ] Declare 3D extern vectors in `CometDataInternal.h`:
+- [x] Add `struct PepGenTupleShort` to `CometDataInternal.h` (after `struct PepGenTuple`)
+- [x] Declare 3D extern vectors in `CometDataInternal.h`:
     ```cpp
     extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // [nShortLens][nThreads]
     extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // [nLongLens][nThreads]
     ```
-- [ ] Define both in `CometSearchManager.cpp`
+- [x] Define both in `CometSearchManager.cpp`
 
 ### Phase 7 — `DoSearch` push-site changes (`CometSearch.cpp`)
 
-- [ ] At the per-protein scope, replace the single `seenInProtein`
+- [x] At the per-protein scope, replace the single `seenInProtein`
       (`unordered_set<string>`) with:
     - `unordered_set<uint64_t> seenShort` — within-protein dedup for len ≤ 12
     - `unordered_set<string>   seenLong`  — within-protein dedup for len > 12
     - Both cleared at each protein boundary
-- [ ] At the push site branch on `iLen <= 12`:
-    - [ ] Short branch (`iLen` 8–12): call `PackPeptide(seq, iLen, bTreatSameIL)`;
+- [x] At the push site branch on `iLen <= 12`:
+    - [x] Short branch (`iLen` 8–12): call `PackPeptide(seq, iLen, bTreatSameIL)`;
           insert key into `seenShort`; if new, compute `li = iLen - iMinLen` and
           push `PepGenTupleShort` to `g_vvvPepGenShort[li][_iSlot]`
-    - [ ] Long branch (`iLen` 13–25): when `bTreatSameIL`, replace L→I in the
+    - [x] Long branch (`iLen` 13–25): when `bTreatSameIL`, replace L→I in the
           sequence string before inserting into `seenLong` and copying to
           `PepGenTuple.sPeptide`; compute `li = iLen - 13` and push `PepGenTuple`
           to `g_vvvPepGenLong[li][_iSlot]`
-- [ ] In `GeneratePlainPeptideIndex`, size both 3D arrays before `RunSearch`:
+- [x] In `GeneratePlainPeptideIndex`, size both 3D arrays before `RunSearch`:
     ```cpp
     g_vvvPepGenShort.assign(nShortLens, vector<vector<PepGenTupleShort>>(nThreads));
     g_vvvPepGenLong .assign(nLongLens,  vector<vector<PepGenTuple>>(nThreads));
@@ -1240,19 +1240,19 @@ Tasks are ordered so each phase can be verified before the next begins.
 
 Replace the existing single merge + sort + dedup pass with sequential per-length loops:
 
-- [ ] **Short loop** (lengths 8–12 in order):
-    - [ ] For each `li` in `[0, nShortLens)`: merge `g_vvvPepGenShort[li]` into a
+- [x] **Short loop** (lengths 8–12 in order):
+    - [x] For each `li` in `[0, nShortLens)`: merge `g_vvvPepGenShort[li]` into a
           local `vector<PepGenTupleShort> buf`; release per-thread sub-vectors
-    - [ ] Sort `buf` by `uPackedPep` (single `uint64_t` compare — vectorizable)
-    - [ ] Linear dedup: call `UnpackPeptide(key, iLen, szSeq)` at each new-peptide
+    - [x] Sort `buf` by `uPackedPep` (single `uint64_t` compare — vectorizable)
+    - [x] Linear dedup: call `UnpackPeptide(key, iLen, szSeq)` at each new-peptide
           boundary; push to `g_pvDBIndex` and `g_pvProteinsList`
-    - [ ] `vector<PepGenTupleShort>().swap(buf)` before advancing to next length
-- [ ] **Long loop** (lengths 13–25 in order):
-    - [ ] Same pattern with `g_vvvPepGenLong[li]` and `PepGenTuple`
-    - [ ] Sort comparator: `memcmp(a.sPeptide, b.sPeptide, iLen)` — fixed size per
+    - [x] `vector<PepGenTupleShort>().swap(buf)` before advancing to next length
+- [x] **Long loop** (lengths 13–25 in order):
+    - [x] Same pattern with `g_vvvPepGenLong[li]` and `PepGenTuple`
+    - [x] Sort comparator: `memcmp(a.sPeptide, b.sPeptide, iLen)` — fixed size per
           loop iteration, auto-vectorized by compiler
-    - [ ] Free each length's buffer before advancing
-- [ ] Confirm `WriteFIPlainPeptideIndex` global mass-sort operates correctly on
+    - [x] Free each length's buffer before advancing
+- [x] Confirm `WriteFIPlainPeptideIndex` global mass-sort operates correctly on
       the combined `g_pvDBIndex` (entries in length order, not yet mass order;
       a shorter peptide can be heavier than a longer one, so mass sort must be
       global — no cross-length mass ordering is guaranteed by the per-length loops)

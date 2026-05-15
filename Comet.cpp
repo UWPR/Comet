@@ -251,6 +251,7 @@ void LoadParameters(char* pszParamsFile,
    // Validate params file version
    strcpy(szVersion, "unknown");
    bValidParamsFile = false;
+   int iCount = 0;
    while (!feof(fp))
    {
       if (fgets(szParamBuf, SIZE_BUF, fp) != NULL)
@@ -271,6 +272,8 @@ void LoadParameters(char* pszParamsFile,
             }
          }
       }
+      if (iCount++ > 5)  // only check the first few lines for version info which should be on the first line
+         break;      
    }
 
    if (!bValidParamsFile)
