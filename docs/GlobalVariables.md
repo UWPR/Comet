@@ -16,13 +16,13 @@ All globals are defined in `CometSearch/CometSearchManager.cpp` (unless noted) a
 
 ## Spectrum batch containers
 
-Used only in the batch search path (`DoSearch` → `RunSearch`). The RTS paths do not touch these.
+Used only in the batch search path (`DoSearch` -> `RunSearch`). The RTS paths do not touch these.
 
 | Variable | Type | Thread-safe? | Notes |
 |----------|------|:------------:|-------|
 | `g_pvQuery` | `vector<Query*>` | Batch path only | One `Query*` per spectrum/charge combination for the current batch. Populated by `CometPreprocess`, consumed by `CometSearch` and `CometPostAnalysis`. Not safe for concurrent writes without `g_pvQueryMutex`. |
 | `g_pvQueryMS1` | `vector<QueryMS1*>` | Batch path only | Analogous to `g_pvQuery` for MS1 spectral library batch searches. |
-| `g_pvQueryMutex` | `Mutex` | — | Protects `g_pvQuery` insertions during batch preprocessing. |
+| `g_pvQueryMutex` | `Mutex` | -- | Protects `g_pvQuery` insertions during batch preprocessing. |
 | `g_pvInputFiles` | `vector<InputFileInfo*>` | Read-only after init | List of input files to search; set before `DoSearch()` begins. |
 
 ---
@@ -34,7 +34,7 @@ Populated during index build / load; treated as read-only during all searches. S
 | Variable | Type | Notes |
 |----------|------|-------|
 | `g_iFragmentIndex` | `unsigned int**` | 2D array: `[BIN(fragment mass)][entry index]`. Each row lists which entries in `g_vFragmentPeptides` contain that fragment mass bin. |
-| `g_iCountFragmentIndex` | `unsigned int*` | `[BIN(fragment mass)]` — count of entries in each row of `g_iFragmentIndex`. |
+| `g_iCountFragmentIndex` | `unsigned int*` | `[BIN(fragment mass)]` -- count of entries in each row of `g_iFragmentIndex`. |
 | `g_vFragmentPeptides` | `vector<FragmentPeptidesStruct>` | Mass-sorted list of all (peptide, mod-state) combinations. Each entry references a row in `g_vRawPeptides` via `iWhichPeptide`. |
 | `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | List of unique unmodified peptide sequences with protein file-position pointers. |
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
@@ -63,7 +63,7 @@ Populated during index build / load; treated as read-only during all searches. S
 | `g_pvDBIndex` | `vector<DBIndex>` | Peptide index entries (mass-sorted). Each entry holds peptide sequence, mass, var-mod encoding, and a protein file-position pointer. |
 | `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. |
 | `g_pvProteinsList` | `vector<vector<comet_fileoffset_t>>` | Maps index positions to lists of protein file offsets (for multi-protein peptides). |
-| `g_pvDIAWindows` | `vector<double>` | Flat list of DIA isolation window edges (start, end, start, end, …). Empty if not doing DIA. |
+| `g_pvDIAWindows` | `vector<double>` | Flat list of DIA isolation window edges (start, end, start, end, ...). Empty if not doing DIA. |
 
 ---
 
@@ -82,11 +82,11 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 
 | Variable | Notes |
 |----------|-------|
-| `MOD_NUMBERS` | `vector<ModificationNumber>` — precomputed modification number combinations. |
-| `MOD_SEQS` | `vector<string>` — unique modifiable sequences. |
-| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` — index into `MOD_NUMBERS` per modifiable sequence. |
-| `PEPTIDE_MOD_SEQ_IDXS` | `int*` — maps peptides to their modifiable sequence index. |
-| `MOD_NUM` | `int` — total number of distinct modification combinations. |
+| `MOD_NUMBERS` | `vector<ModificationNumber>` -- precomputed modification number combinations. |
+| `MOD_SEQS` | `vector<string>` -- unique modifiable sequences. |
+| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- index into `MOD_NUMBERS` per modifiable sequence. |
+| `PEPTIDE_MOD_SEQ_IDXS` | `int*` -- maps peptides to their modifiable sequence index. |
+| `MOD_NUM` | `int` -- total number of distinct modification combinations. |
 
 ---
 
@@ -146,7 +146,7 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 | `ionInformation` | `IonInfo` | Which ion series (a/b/c/x/y/z) are active; water/ammonia loss flag. |
 | `enzymeInformation` | `EnzymeInfo` | Enzyme cut rules, missed cleavage count, search/sample enzyme distinction. |
 | `databaseInfo` | `DBInfo` | FASTA path; `iTotalNumProteins` and `uliTotAACount` updated during batch scan. |
-| `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment — computed once at init. |
+| `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment -- computed once at init. |
 
 ---
 
@@ -160,7 +160,7 @@ Safe to read from any concurrent RTS thread (after init):
   g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
   g_massRange.iMaxFragmentCharge (after batch setup)
 
-Written per batch (batch path only — not touched by RTS):
+Written per batch (batch path only -- not touched by RTS):
   g_pvQuery, g_pvQueryMS1,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange,
   g_staticParams.databaseInfo.uliTotAACount
@@ -168,7 +168,7 @@ Written per batch (batch path only — not touched by RTS):
 Protected by mutex (safe to call from any thread):
   RetentionMatchHistory (g_ms1AlignerMutex)
 
-Always shared mutable — use sparingly from hot paths:
+Always shared mutable -- use sparingly from hot paths:
   g_cometStatus (SetError/IsCancel are mutex-protected internally)
 
 Atomic, checked with acquire/release ordering:

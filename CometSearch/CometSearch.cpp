@@ -3542,7 +3542,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                      }
                      else
                      {
-                        // Build canonical form (L→I) for dedup; keep original for storage.
+                        // Build canonical form (L->I) for dedup; keep original for storage.
                         const char* pOrig  = szProteinSeq + iStartPos;
                         const char* pCanon = pOrig;
                         char szCanon[MAX_PEPTIDE_LEN];

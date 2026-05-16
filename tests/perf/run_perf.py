@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet performance benchmarks — wall-clock time and peak memory across search modes.
+Comet performance benchmarks -- wall-clock time and peak memory across search modes.
 
 Runs the current build (and optionally baseline binaries) in three search modes:
   1. Regular FASTA search

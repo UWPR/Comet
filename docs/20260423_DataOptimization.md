@@ -46,7 +46,7 @@ This is an **O(1) random-access lookup** requiring two pointer dereferences: one
 
 ```
 iArraySizeGlobal = (int)((dPeptideMassHigh + dCushion) / dFragmentBinSize)
-  where dCushion = dInputTolerancePlus + 5.0  (≈ 8 Da for default 3 Da tolerance)
+  where dCushion = dInputTolerancePlus + 5.0  (~ 8 Da for default 3 Da tolerance)
 ```
 
 For `dPeptideMassHigh = 5000 Da` (default), `dCushion = 8 Da`:
@@ -67,7 +67,7 @@ For `dPeptideMassHigh = 5000 Da` (default), `dCushion = 8 Da`:
 | 0.02 Da | 250,400 | 2,505 | 19.6 KB | L2 |
 | 0.01 Da | 500,800 | 5,009 | 39.1 KB | L3 |
 
-The outer pointer array fits in L1 data cache (typically 32–64 KB) for bin sizes ≥ 0.10 Da.
+The outer pointer array fits in L1 data cache (typically 32-64 KB) for bin sizes >= 0.10 Da.
 
 ---
 
@@ -76,38 +76,38 @@ The outer pointer array fits in L1 data cache (typically 32–64 KB) for bin siz
 ### Fast-XCorr Preprocessing: The Nonzero Bin Multiplier
 
 The fast-XCorr preprocessing (applied once per spectrum in `CometPreprocess`) subtracts a
-`2 × iXcorrProcessingOffset + 1 = 151`-bin running average from each bin. Every spectrum peak
-at position P creates nonzero values at positions `[P-75, P+75]` — a 151-bin influence zone.
+`2 x iXcorrProcessingOffset + 1 = 151`-bin running average from each bin. Every spectrum peak
+at position P creates nonzero values at positions `[P-75, P+75]` -- a 151-bin influence zone.
 These values are all above `FLOAT_ZERO = 1e-6` and are retained in the sparse matrix.
 
 This is the dominant factor in the nonzero bin count:
 
 ```
-nnz ≈ min(N_peaks × 151,  0.85 × iArraySize)
+nnz ~ min(N_peaks x 151,  0.85 x iArraySize)
 ```
 
-The upper bound (0.85 × iArraySize) applies when halos from neighboring peaks overlap.
+The upper bound (0.85 x iArraySize) applies when halos from neighboring peaks overlap.
 Overlap is governed by the ratio of the 151-bin halo width to the average inter-peak spacing
 (`~100 Da / dFragmentBinSize` bins):
 
 | `dFragmentBinSize` | Avg inter-peak spacing (bins) | Halo overlap | nnz (N=300 peaks) |
 |---|---|---|---|
-| 1.0005 Da | ~100 | 1.51× — full overlap | ~4,250 (85% of array) |
-| 0.50 Da | ~200 | 0.76× — heavy | ~8,500 (85% of array) |
-| 0.20 Da | ~500 | 0.30× — moderate | ~21,300 (85% of array) |
-| 0.10 Da | ~1,000 | 0.15× — light | ~42,600 (85% of array) |
-| 0.05 Da | ~2,000 | 0.08× — minimal | ~45,300 (plateau) |
-| 0.02 Da | ~5,000 | 0.03× — isolated | ~45,300 (plateau) |
-| 0.01 Da | ~10,000 | 0.02× — isolated | ~45,300 (plateau) |
+| 1.0005 Da | ~100 | 1.51x -- full overlap | ~4,250 (85% of array) |
+| 0.50 Da | ~200 | 0.76x -- heavy | ~8,500 (85% of array) |
+| 0.20 Da | ~500 | 0.30x -- moderate | ~21,300 (85% of array) |
+| 0.10 Da | ~1,000 | 0.15x -- light | ~42,600 (85% of array) |
+| 0.05 Da | ~2,000 | 0.08x -- minimal | ~45,300 (plateau) |
+| 0.02 Da | ~5,000 | 0.03x -- isolated | ~45,300 (plateau) |
+| 0.01 Da | ~10,000 | 0.02x -- isolated | ~45,300 (plateau) |
 
-For bins ≤ 0.05 Da the nonzero count **plateaus at ~45,300** because peak halos no longer
+For bins <= 0.05 Da the nonzero count **plateaus at ~45,300** because peak halos no longer
 overlap. The spectrum array grows, but nnz does not.
 
 ### Leaf Block Utilization
 
-At coarse bin sizes (≥ 0.2 Da), heavy halo overlap means nearly every 100-bin chunk in the
+At coarse bin sizes (>= 0.2 Da), heavy halo overlap means nearly every 100-bin chunk in the
 array contains at least one nonzero value. Fill per active chunk is 85%+. At fine bin sizes
-(≤ 0.05 Da), only the ~600 chunks directly containing peak halos are allocated; each is ~75%
+(<= 0.05 Da), only the ~600 chunks directly containing peak halos are allocated; each is ~75%
 full (151 nonzero values distributed across 200 slots of a 2-chunk span).
 
 ### Memory Per Matrix (S=100, N=300 peaks)
@@ -124,7 +124,7 @@ full (151 nonzero values distributed across 200 slots of a 2-chunk span).
 
 Three matrices are allocated per `Query` (SpScore, FastXcorr, FastXcorrNL when
 `bUseWaterAmmoniaLoss` is true; two otherwise). For fine-bin searches with large batch sizes
-the per-spectrum overhead is **~750–1,160 KB** for all three matrices.
+the per-spectrum overhead is **~750-1,160 KB** for all three matrices.
 
 ---
 
@@ -132,14 +132,14 @@ the per-spectrum overhead is **~750–1,160 KB** for all three matrices.
 
 Two competing constraints govern the ideal chunk size S:
 
-**Goal A — Outer array in L1 cache (≤ 2 KB = 256 pointer slots):**
+**Goal A -- Outer array in L1 cache (<= 2 KB = 256 pointer slots):**
 ```
-S  ≥  iArraySize / 256
+S  >=  iArraySize / 256
 ```
 
-**Goal B — Leaf block fill ≥ 20% (justified allocation cost):**
+**Goal B -- Leaf block fill >= 20% (justified allocation cost):**
 ```
-S  ≤  halo_width / 0.20  =  151 / 0.20  =  755
+S  <=  halo_width / 0.20  =  151 / 0.20  =  755
 ```
 
 | `dFragmentBinSize` | `iArraySize` | S_min (Goal A) | S_max (Goal B) | Feasible? | Recommended S | Outer array | Fill/block |
@@ -149,12 +149,12 @@ S  ≤  halo_width / 0.20  =  151 / 0.20  =  755
 | 0.20 Da | 25,040 | 98 | 755 | Yes | **128** | 1.57 KB (L1) | >50% |
 | 0.10 Da | 50,080 | 196 | 755 | Yes | **256** | 1.57 KB (L1) | 59% |
 | 0.05 Da | 100,160 | 392 | 755 | Yes | **512** | 1.57 KB (L1) | 29% |
-| 0.02 Da | 250,400 | 979 | 755 | **No** | 100 † | 19.6 KB (L2) | 75% |
-| 0.01 Da | 500,800 | 1,957 | 755 | **No** | 100 † | 39.1 KB (L3) | 75% |
+| 0.02 Da | 250,400 | 979 | 755 | **No** | 100 * | 19.6 KB (L2) | 75% |
+| 0.01 Da | 500,800 | 1,957 | 755 | **No** | 100 * | 39.1 KB (L3) | 75% |
 
-† For bins ≤ 0.02 Da the two goals conflict. Choosing S=1024 to satisfy Goal A yields
-**only 14.7% fill** and causes each of ~300 active blocks to consume 4 KB each — 1.2 MB
-of leaf memory per matrix, 5× worse than S=100. Choosing S=100 keeps leaf blocks well-filled
+* For bins <= 0.02 Da the two goals conflict. Choosing S=1024 to satisfy Goal A yields
+**only 14.7% fill** and causes each of ~300 active blocks to consume 4 KB each -- 1.2 MB
+of leaf memory per matrix, 5x worse than S=100. Choosing S=100 keeps leaf blocks well-filled
 (75%) while accepting that the outer array lives in L2/L3. **S=100 is the memory-optimal
 choice when the two goals conflict.**
 
@@ -164,13 +164,13 @@ The outer array is **read-only during scoring** and is accessed once per theoret
 ion per peptide candidate. With thousands of peptide candidates scored per spectrum, the outer
 array warms up quickly and stays resident:
 
-- **L1 (≤ 4 KB):** negligible access latency; no measurable impact.
-- **L2 (4–32 KB, 0.05–0.10 Da range):** ~5 cycle penalty per miss; amortized over thousands
+- **L1 (<= 4 KB):** negligible access latency; no measurable impact.
+- **L2 (4-32 KB, 0.05-0.10 Da range):** ~5 cycle penalty per miss; amortized over thousands
   of peptides, impact is < 1% of total scoring time.
-- **L3 (32–64 KB, 0.01 Da):** ~40 cycle penalty per cold miss; again amortized and minor.
+- **L3 (32-64 KB, 0.01 Da):** ~40 cycle penalty per cold miss; again amortized and minor.
 
 The outer pointer array is never the performance bottleneck. The leaf block working set
-(240–350 KB for fine bins) fits comfortably in L2/L3 and stays warm across all peptide
+(240-350 KB for fine bins) fits comfortably in L2/L3 and stays warm across all peptide
 candidates for a given spectrum.
 
 ### Implication for the S=16 Suggestion
@@ -180,11 +180,11 @@ was evaluated for 1 Da bins. **It must not be applied universally:**
 
 | Metric | S=16, 1 Da bins | S=16, 0.01 Da bins |
 |---|---|---|
-| Outer array | 2.5 KB (L1 ✓) | 250 KB (L3 ✗) |
+| Outer array | 2.5 KB (L1 [x]) | 250 KB (L3 [x]) |
 | Active chunks | ~266 | ~2,830 |
 | Leaf memory | 17 KB | 181 KB |
 
-S=16 would increase the outer array at 0.01 Da from 39 KB to 250 KB — well into L3 territory
+S=16 would increase the outer array at 0.01 Da from 39 KB to 250 KB -- well into L3 territory
 and directly in the per-peptide scoring hot path. For a codebase that supports both 1 Da and
 0.02 Da bin modes, S=16 is a regression. S=100 is the better universal default.
 
@@ -207,10 +207,10 @@ Lookup: binary search over `indices` to find `bin`, return `values[pos]`.
 
 ### Memory Comparison
 
-At fine bin sizes (≤ 0.05 Da), nnz ≈ 45,300 (plateau):
+At fine bin sizes (<= 0.05 Da), nnz ~ 45,300 (plateau):
 
 ```
-COO memory = 45,300 × (4 + 4) = 362,400 bytes ≈ 353 KB  (constant)
+COO memory = 45,300 x (4 + 4) = 362,400 bytes ~ 353 KB  (constant)
 ```
 
 | `dFragmentBinSize` | Current S=100 (per matrix) | COO (per matrix) | Memory winner |
@@ -222,7 +222,7 @@ COO memory = 45,300 × (4 + 4) = 362,400 bytes ≈ 353 KB  (constant)
 | 0.02 Da | 365 KB | 353 KB | **COO** (+12 KB) |
 | 0.01 Da | 387 KB | 353 KB | **COO** (+34 KB) |
 
-**COO becomes smaller in memory at approximately `dFragmentBinSize ≈ 0.04 Da`**, where the
+**COO becomes smaller in memory at approximately `dFragmentBinSize ~ 0.04 Da`**, where the
 growing outer array tips the current format above the fixed COO footprint.
 
 The advantage is narrow: at 0.01 Da, COO saves ~34 KB per matrix = ~100 KB for all three
@@ -236,11 +236,11 @@ For a peptide with ~300 theoretical fragment ions, the per-peptide scoring cost 
 | Operation | Current format | COO binary search |
 |---|---|---|
 | Per-ion lookup | O(1): 2 pointer dereferences | O(log nnz): binary search |
-| Comparisons/ion | ~2 | log₂(45,300) ≈ **15.5** |
+| Comparisons/ion | ~2 | log2(45,300) ~ **15.5** |
 | Total for 300 ions | ~300 dereferences | **~4,640 comparisons** |
-| Relative cost | 1× | ~**15×** slower |
+| Relative cost | 1x | ~**15x** slower |
 
-Even after the working set (COO: 353 KB; current: 260–387 KB) warms into L2/L3 cache, the
+Even after the working set (COO: 353 KB; current: 260-387 KB) warms into L2/L3 cache, the
 binary search executes ~15 comparisons per ion lookup with unpredictable branch outcomes.
 The current format performs exactly two loads, both with predictable access patterns.
 
@@ -252,7 +252,7 @@ nnz too large for binary search to be competitive.
 
 | Crossover criterion | `dFragmentBinSize` threshold | Practical? |
 |---|---|---|
-| COO smaller in memory per matrix | ~0.04 Da | Yes — but margin is small |
+| COO smaller in memory per matrix | ~0.04 Da | Yes -- but margin is small |
 | COO smaller for 3 matrices combined | ~0.04 Da | ~100 KB savings at 0.01 Da |
 | COO better for scoring performance | **Never** | nnz always too large |
 
@@ -275,7 +275,7 @@ would be required:
 | `CometPreprocess.cpp` (`RtsScratch`) | Pool allocator is sized for `SPARSE_MATRIX_SIZE` leaf blocks; COO path would not use it |
 
 At minimum, every read site (scoring inner loop) would add a branch on `bUseCOO`. The
-scoring inner loop runs once per theoretical ion per peptide candidate — it is the single
+scoring inner loop runs once per theoretical ion per peptide candidate -- it is the single
 hottest loop in the search engine. Adding a branch there, even a predictable one, risks
 instruction cache pressure and complicates future SIMD vectorization.
 
@@ -285,9 +285,9 @@ instruction cache pressure and complicates future SIMD vectorization.
 |---|---|
 | Memory saving at 0.01 Da (3 matrices) | ~100 KB per Query |
 | Memory saving across 10,000-spectrum batch | ~1 GB |
-| Scoring performance penalty (COO path) | ~15× slower XcorrScore; effective only at bin sizes where it never wins |
+| Scoring performance penalty (COO path) | ~15x slower XcorrScore; effective only at bin sizes where it never wins |
 | Code complexity increase | ~6 files, ~4 new read paths, new data structure, new pool design |
-| Test surface expansion | All bin sizes × all search modes × RTS vs batch |
+| Test surface expansion | All bin sizes x all search modes x RTS vs batch |
 
 The memory savings at 0.01 Da are real but achievable through simpler means:
 - **Reduce `spectrum_batch_size`** to process fewer spectra concurrently.
@@ -296,7 +296,7 @@ The memory savings at 0.01 Da are real but achievable through simpler means:
   outer array without touching any read path.
 
 **Conclusion: dual data structure support is not recommended.** The performance disadvantage
-of COO is fundamental (15× per-lookup cost), the memory advantage is narrow (~4–9% at 0.01
+of COO is fundamental (15x per-lookup cost), the memory advantage is narrow (~4-9% at 0.01
 Da), and the implementation scope is large. The current chunked format remains the correct
 choice across all practical fragment bin sizes.
 
@@ -319,14 +319,14 @@ cache behavior without touching any read path:
 // In CometSearchManager, after dFragmentBinSize is finalized:
 // Pick the smallest power of 2 in [20, 512] that keeps the outer array in L1.
 // Fall back to 100 if no power-of-2 satisfies the constraint.
-static const int TARGET_OUTER_ENTRIES = 256;  // 256 × 8 = 2 KB
+static const int TARGET_OUTER_ENTRIES = 256;  // 256 x 8 = 2 KB
 int iOptS = 1;
 while (iOptS < g_staticParams.iArraySizeGlobal / TARGET_OUTER_ENTRIES)
     iOptS <<= 1;
 g_iSparseMatrixSize = std::clamp(iOptS, 32, 512);
 ```
 
-This keeps the outer array at ~2 KB (L1-resident) for all bin sizes ≥ 0.05 Da with no leaf
+This keeps the outer array at ~2 KB (L1-resident) for all bin sizes >= 0.05 Da with no leaf
 memory penalty. For 0.02 Da and 0.01 Da, the constraint cannot be satisfied without
 sacrificing fill, so the value clamps to 512 (partial benefit) or defaults to 100.
 
@@ -335,7 +335,7 @@ This optimization is **low risk** (no read path changes, single constant becomes
 
 ### Do Not Implement
 
-- COO / binary search as an alternative sparse format: performance regression of ~15× in the
+- COO / binary search as an alternative sparse format: performance regression of ~15x in the
   XcorrScore inner loop; memory savings insufficient to justify the implementation cost.
 - `SPARSE_MATRIX_SIZE = 16` universally: correct for 1 Da bins in isolation but increases the
   outer array to 250 KB at 0.01 Da, placing it firmly in L3.

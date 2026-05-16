@@ -29,7 +29,7 @@ struct Query  // CometDataInternal.h:861
 | Field | Purpose |
 |-------|---------|
 | `pfFastXcorrData[]` | Preprocessed intensity array for XCorr calculation. |
-| `pfFastXcorrDataNL[]` | Same with NH₃/H₂O neutral loss contributions. |
+| `pfFastXcorrDataNL[]` | Same with NH3/H2O neutral loss contributions. |
 | `pfSpScoreData[]` / `ppfSparseSpScoreData[][]` | Binned intensity for SP scoring. Sparse representation saves memory for large bin arrays. |
 | `iFastXcorrDataSize` / `iSpScoreData` | Array sizes for the above. |
 | `_pepMassInfo` | Experimental mass and tolerance window (see `PepMassInfo`). |
@@ -64,7 +64,7 @@ struct Results  // CometDataInternal.h:194
 | `iRankSp` / `iMatchedIons` / `iTotalIons` | `int` | SP rank and ion match counts. |
 | `szPeptide[MAX_PEPTIDE_LEN]` | `char[]` | Peptide sequence (no flanking AAs). |
 | `szPrevNextAA[2]` | `char[]` | `[0]` = preceding AA, `[1]` = following AA. |
-| `piVarModSites[MAX_PEPTIDE_LEN_P2]` | `int[]` | Per-position variable mod encoding. Values 1–9 map to `varModList[0–8]`. Values ≥ `COMPOUNDMODS_OFFSET` (100) encode compound mods. Indices `iLenPeptide` and `iLenPeptide+1` hold N/C-terminal mod codes. |
+| `piVarModSites[MAX_PEPTIDE_LEN_P2]` | `int[]` | Per-position variable mod encoding. Values 1-9 map to `varModList[0-8]`. Values >= `COMPOUNDMODS_OFFSET` (100) encode compound mods. Indices `iLenPeptide` and `iLenPeptide+1` hold N/C-terminal mod codes. |
 | `pdVarModSites[MAX_PEPTIDE_LEN_P2]` | `double[]` | Mass delta at each modified position. |
 | `lProteinFilePosition` | `comet_fileoffset_t` | File offset into the FASTA for the matched protein. |
 | `pWhichProtein` | `vector<ProteinEntryStruct>` | All proteins sharing this peptide (sorted by file offset). |
@@ -88,13 +88,13 @@ Contains nested sub-structs (all defined in `CometDataInternal.h`):
 | `options` | `Options` | ~40 integer/bool flags controlling output formats, decoy mode, charge limits, clipping, indexing, etc. |
 | `tolerances` | `ToleranceParams` | Precursor tolerance + units, fragment bin size + offset, isotope error mode. |
 | `massUtility` | `MassUtil` | `pdAAMassParent[128]` and `pdAAMassFragment[128]` look-up tables; mono vs. average flag. |
-| `precalcMasses` | `PrecalcMasses` | Pre-computed `dNtermProton`, `dCtermOH2Proton`, `dOH2ProtonCtermNterm`, BIN'd H₂O/NH₃ values. |
+| `precalcMasses` | `PrecalcMasses` | Pre-computed `dNtermProton`, `dCtermOH2Proton`, `dOH2ProtonCtermNterm`, BIN'd H2O/NH3 values. |
 | `staticModifications` | `StaticMod` | Per-AA static mod deltas (`pdStaticMods[128]`), peptide/protein terminal additions. |
 | `variableModParameters` | `VarModParams` | `varModList[VMODS]` (9 slots), mod symbol codes, max-per-peptide limit, compound mod list. |
 | `ionInformation` | `IonInfo` | Active ion series bitmask, water/ammonia loss flag, flanking peak mode. |
 | `enzymeInformation` | `EnzymeInfo` | Search enzyme, sample enzyme, 2nd enzyme, allowed missed cleavages, offset directions. |
 | `databaseInfo` | `DBInfo` | FASTA path; `iTotalNumProteins` and `uliTotAACount` updated during batch scan. |
-| `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment ion — computed once to turn division into multiplication. |
+| `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment ion -- computed once to turn division into multiplication. |
 | `tRealTimeStart` | `chrono::time_point` | Timestamp set at the start of each `DoSingleSpectrumSearch()` call; used to enforce `iMaxIndexRunTime`. |
 
 ---
@@ -110,7 +110,7 @@ struct VarModParams  // CometDataInternal.h:472   (all mod config)
 
 | Field | Purpose |
 |-------|---------|
-| `varModList[VMODS]` | Array of 9 `VarMods` entries. `VMODS = 9`, indexed 0–8. |
+| `varModList[VMODS]` | Array of 9 `VarMods` entries. `VMODS = 9`, indexed 0-8. |
 | `cModCode[VMODS]` | Output symbol for each mod: `*`, `#`, `@`, `^`, `~`, `$`, `%`, `!`, `+`. |
 | `bVarModSearch` | Set to `true` if any mod has a non-zero mass; gates the `WithVariableMods` code path. |
 | `iMaxVarModPerPeptide` | Total modified residues allowed per peptide across all mods. |
@@ -144,7 +144,7 @@ struct DBIndex  // CometDataInternal.h:377
 |-------|---------|
 | `szPeptide[MAX_PEPTIDE_LEN]` | Peptide amino acid sequence. |
 | `szPrevNextAA[2]` | Flanking residues (for enzyme termini check in index search). |
-| `pcVarModSites[MAX_PEPTIDE_LEN_P2]` | Compact mod-site encoding (0–9; same scheme as `piVarModSites`). |
+| `pcVarModSites[MAX_PEPTIDE_LEN_P2]` | Compact mod-site encoding (0-9; same scheme as `piVarModSites`). |
 | `dPepMass` | MH+ mass; the sort key. |
 | `lIndexProteinFilePosition` | Index into `g_pvProteinsList` mapping to a list of protein file offsets. |
 
@@ -157,7 +157,7 @@ Small structs embedded in each `Query`.
 ```cpp
 struct PepMassInfo  // CometDataInternal.h:219
 ```
-Stores the experimental MH+ mass (`dExpPepMass`) and the ± tolerance window (`dPeptideMassToleranceMinus` / `dPeptideMassTolerancePlus`) pre-computed for fast range checks.
+Stores the experimental MH+ mass (`dExpPepMass`) and the +/- tolerance window (`dPeptideMassToleranceMinus` / `dPeptideMassTolerancePlus`) pre-computed for fast range checks.
 
 ```cpp
 struct SpectrumInfoInternal  // CometDataInternal.h:228
@@ -201,7 +201,7 @@ These types cross the library boundary into `CometWrapper` and `RealtimeSearch`.
 
 | Type | Purpose |
 |------|---------|
-| `Scores` | XCorr, dCn, E-value, mass, matched/total ions — returned per search hit. |
+| `Scores` | XCorr, dCn, E-value, mass, matched/total ions -- returned per search hit. |
 | `Fragment` | Single fragment ion: mass, intensity, type, number, charge, neutral loss. |
 | `VarMods` | User-facing mod definition (same as internal `VarMods`; shared header). |
 | `EnzymeInfo` | Enzyme parameters surfaced to the wrapper layer. |

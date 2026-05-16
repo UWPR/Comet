@@ -18,7 +18,7 @@ make cclean   # Quick clean: only CometSearch and root object files
 ### Windows (Visual Studio)
 - Load `Comet.sln` in Visual Studio 2022 (build tools v143)
 - Set configuration to **Release / x64**
-- Right-click the **Comet** project → **Build**
+- Right-click the **Comet** project -> **Build**
 - Output: `x64/Release/Comet.exe`
 
 The build requires Thermo's MSFileReader to be installed first (Windows only).
@@ -46,13 +46,13 @@ docs/                       # Architecture docs, coding style, threading design 
 The codebase has three layers:
 
 1. **Native C++ core** (`CometSearch/`): The search engine library. Key classes:
-   - `CometSearchManager` — implements `ICometSearchManager`; top-level orchestrator
-   - `CometSearch` — fragment index querying, XCorr scoring, peptide matching
-   - `CometPreprocess` — spectrum preprocessing (binning, noise reduction)
-   - `CometPostAnalysis` — SP score, E-value, delta-Cn, AScorePro localization
-   - `CometFragmentIndex` / `CometPeptideIndex` — index building and lookup
-   - `CometSpecLib` — MS1 spectral library loading and search
-   - `CometAlignment` — MS1 RT alignment
+   - `CometSearchManager` -- implements `ICometSearchManager`; top-level orchestrator
+   - `CometSearch` -- fragment index querying, XCorr scoring, peptide matching
+   - `CometPreprocess` -- spectrum preprocessing (binning, noise reduction)
+   - `CometPostAnalysis` -- SP score, E-value, delta-Cn, AScorePro localization
+   - `CometFragmentIndex` / `CometPeptideIndex` -- index building and lookup
+   - `CometSpecLib` -- MS1 spectral library loading and search
+   - `CometAlignment` -- MS1 RT alignment
 
 2. **C++/CLI wrapper** (`CometWrapper/`): `CometSearchManagerWrapper` (ref class) marshals data between managed C# and native C++. `CometDataWrapper.h` defines managed wrapper types (`ScoreWrapper`, `FragmentWrapper`, etc.).
 
@@ -62,13 +62,13 @@ The codebase has three layers:
 
 | Global | Thread-safe? | Notes |
 |--------|-------------|-------|
-| `g_staticParams` | ✅ Read-only after init | All search parameters |
-| `g_iFragmentIndex`, `g_vFragmentPeptides`, `g_vRawPeptides` | ✅ Read-only after init | Fragment index |
-| `g_pvProteinNames`, `g_pvProteinsList` | ✅ Read-only after init | |
-| `g_vSpecLib` | ✅ Read-only after init | MS1 spectral library |
-| `g_pvQuery` | ❌ Shared mutable | Batch search path only |
-| `g_pvQueryMS1` | ❌ Shared mutable | Batch MS1 path only |
-| `g_cometStatus` | ❌ Shared mutable | Error reporting |
+| `g_staticParams` | [x] Read-only after init | All search parameters |
+| `g_iFragmentIndex`, `g_vFragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
+| `g_pvProteinNames`, `g_pvProteinsList` | [x] Read-only after init | |
+| `g_vSpecLib` | [x] Read-only after init | MS1 spectral library |
+| `g_pvQuery` | [ ] Shared mutable | Batch search path only |
+| `g_pvQueryMS1` | [ ] Shared mutable | Batch MS1 path only |
+| `g_cometStatus` | [ ] Shared mutable | Error reporting |
 
 ### Threading Model (RTS path)
 
@@ -89,3 +89,4 @@ From `docs/CometCodingStyleGuidelines.md`:
 - **Systems Hungarian Notation** for variable names (e.g., `iCount`, `dMass`, `szName`, `bFlag`, `p` prefix for pointers)
 - No trailing whitespace
 - All files should have Windows line endings
+- No non-ASCII characters allowed in the code or documentation

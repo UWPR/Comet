@@ -48,8 +48,8 @@ static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
 // Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
 // Each entry packs charge (high 16 bits) and decoy index (low 16 bits) into a uint32_t.
-// Entries within each bin are ordered by decoy index (ascending) — filled in outer-decoy-
-// loop order — enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
+// Entries within each bin are ordered by decoy index (ascending) -- filled in outer-decoy-
+// loop order -- enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
 // Storing charge allows GenerateXcorrDecoys to honour the per-query usiMaxFragCharge limit.
 static std::vector<int>      s_invIdx_start;   // size: iArraySizeGlobal + 2
 static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical

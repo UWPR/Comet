@@ -15,10 +15,10 @@ The original implementation built full Python dicts for 190M-peptide files
 
 This version uses two strategies in order:
   1. Binary-chunk comparison of the peptide and protein sections (O(16 MB)
-     memory, fastest — catches identical files in one pass).
+     memory, fastest -- catches identical files in one pass).
   2. Streaming semantic comparison if binary differs: records are parsed one
      at a time (O(buffer)); protein-list counts stored in array.array('I')
-     (4 bytes × N, ~760 MB for 190M lists vs ~5 GB for Python list).
+     (4 bytes x N, ~760 MB for 190M lists vs ~5 GB for Python list).
 """
 
 import array
@@ -62,7 +62,7 @@ def _open_idx(path):
 
 
 # ---------------------------------------------------------------------------
-# Strategy 1 — binary section comparison (O(16 MB) memory)
+# Strategy 1 -- binary section comparison (O(16 MB) memory)
 # ---------------------------------------------------------------------------
 
 def _sections_identical(fa, fb, start, end):
@@ -81,7 +81,7 @@ def _sections_identical(fa, fb, start, end):
 
 
 # ---------------------------------------------------------------------------
-# Strategy 2 — streaming semantic comparison
+# Strategy 2 -- streaming semantic comparison
 # ---------------------------------------------------------------------------
 
 class _PepReader:
@@ -230,7 +230,7 @@ def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
         failures += 1
     if flank_warn:
         warnings = flank_warn
-        print(f"WARN: {flank_warn:,} flanking-AA difference(s) (cPrevAA/cNextAA) — acceptable per design")
+        print(f"WARN: {flank_warn:,} flanking-AA difference(s) (cPrevAA/cNextAA) -- acceptable per design")
         for seq, po, no_, pn, nn in flank_ex:
             print(f"      {seq}: old={po}.{no_}  new={pn}.{nn}")
 
@@ -261,7 +261,7 @@ def compare(old_path, new_path, verbose=True):
 
     if failures:
         fo.close(); fn.close()
-        print("FAIL: structural header mismatch — aborting")
+        print("FAIL: structural header mismatch -- aborting")
         return failures
 
     # --- Strategy 1: binary section compare (O(16 MB) memory) ---
@@ -280,9 +280,9 @@ def compare(old_path, new_path, verbose=True):
     # --- Strategy 2: semantic streaming compare ---
     if verbose:
         if not pep_match:
-            print("Peptide sections differ — running semantic comparison ...")
+            print("Peptide sections differ -- running semantic comparison ...")
         if not prot_match:
-            print("Protein-list sections differ — running semantic comparison ...")
+            print("Protein-list sections differ -- running semantic comparison ...")
 
     failures, warnings = _semantic_compare(
         fo, fn,

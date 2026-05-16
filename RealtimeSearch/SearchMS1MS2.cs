@@ -1,4 +1,4 @@
-﻿namespace RealTimeSearch
+namespace RealTimeSearch
 {
    using System.Threading.Tasks;
    using System.Collections.Concurrent;
@@ -480,7 +480,7 @@
 
                      }
 
-                  } // end using rawFile — Dispose called automatically
+                  } // end using rawFile -- Dispose called automatically
                }
                catch (Exception rawSearchEx)
                {

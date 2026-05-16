@@ -624,7 +624,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    vector<LenResult> longResults(nLongLens);
    vector<LenResult> shortResults(nShortLens);
 
-   // Submit long lengths first — O(iLen) comparator makes them slower per
+   // Submit long lengths first -- O(iLen) comparator makes them slower per
    // element, so they should reach threads before the fast short sorts.
    for (int li = 0; li < nLongLens; ++li)
    {
@@ -703,7 +703,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
       });
    }
 
-   // Submit short lengths after longs — integer sort finishes quickly and
+   // Submit short lengths after longs -- integer sort finishes quickly and
    // fills in behind the heavier long-length tasks.
    for (int li = 0; li < nShortLens; ++li)
    {
@@ -778,7 +778,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_vvvPepGenShort.clear();
    g_vvvPepGenLong.clear();
 
-   // Sequential merge: fix up lIndexProteinFilePosition (local→global offset),
+   // Sequential merge: fix up lIndexProteinFilePosition (local->global offset),
    // append to global vectors, and record each non-empty length's slice boundary.
    // Long results first to match submission order, then short results.
    size_t iProtBase = 0;

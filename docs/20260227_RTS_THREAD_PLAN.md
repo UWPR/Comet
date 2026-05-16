@@ -14,7 +14,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 
 1. Each call pushed a `Query*` into the global `g_pvQuery` vector.
 2. `CometSearch::RunSearch(ThreadPool*)` hardcoded `iWhichQuery = 0` into `g_pvQuery`.
-3. `SearchFragmentIndex()` read `g_pvQuery.at(iWhichQuery)` — concurrent pushes broke indices.
+3. `SearchFragmentIndex()` read `g_pvQuery.at(iWhichQuery)` -- concurrent pushes broke indices.
 4. Post-analysis (`CalculateSP`, `CalculateEValue`) also indexed into `g_pvQuery[0]`.
 5. `CometSearch::_ppbDuplFragmentArr` is a static shared scratch buffer indexed by thread pool slot.
 
@@ -22,21 +22,21 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 
 | Global                     | Safe? | Notes                                      |
 |----------------------------|-------|--------------------------------------------|
-| `g_staticParams`           | ✅     | Set once in `InitializeSingleSpectrumSearch()` |
-| `g_iFragmentIndex`         | ✅     | Built once, never modified during search   |
-| `g_vFragmentPeptides`      | ✅     | Built once                                 |
-| `g_vRawPeptides`           | ✅     | Built once                                 |
-| `g_pvProteinNames`         | ✅     | Built once                                 |
-| `g_pvProteinsList`         | ✅     | Built once                                 |
-| `g_pvQuery`                | ❌     | **SHARED MUTABLE — the bottleneck**        |
-| `g_cometStatus`            | ❌     | Shared mutable error reporting             |
-| `_ppbDuplFragmentArr`      | ❌     | Static per-thread-pool-slot scratch arrays |
+| `g_staticParams`           | [x]     | Set once in `InitializeSingleSpectrumSearch()` |
+| `g_iFragmentIndex`         | [x]     | Built once, never modified during search   |
+| `g_vFragmentPeptides`      | [x]     | Built once                                 |
+| `g_vRawPeptides`           | [x]     | Built once                                 |
+| `g_pvProteinNames`         | [x]     | Built once                                 |
+| `g_pvProteinsList`         | [x]     | Built once                                 |
+| `g_pvQuery`                | [ ]     | **SHARED MUTABLE -- the bottleneck**        |
+| `g_cometStatus`            | [ ]     | Shared mutable error reporting             |
+| `_ppbDuplFragmentArr`      | [ ]     | Static per-thread-pool-slot scratch arrays |
 
 ---
 
 ## Task List
 
-### Phase 1: Core C++ Changes — Eliminate `g_pvQuery` Dependency
+### Phase 1: Core C++ Changes -- Eliminate `g_pvQuery` Dependency
 
 #### Task 1.1: Add `SearchFragmentIndex(Query*, bool*)` Overload
 - **File(s):** `CometSearch.h`, `CometSearch.cpp`
@@ -51,7 +51,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   - `pbDuplFragment` allocated per-call by the caller (`RunSearch(Query*)`).
   - `XcorrScoreI` calls pass `pQuery` instead of `iWhichQuery`.
   - Timeout checks use `pQuery->tSearchStart` instead of a parameter or global.
-- **Status:** ✅ Complete — `SearchFragmentIndex(Query*, bool*)` declared in
+- **Status:** [x] Complete -- `SearchFragmentIndex(Query*, bool*)` declared in
   `CometSearch.h` and implemented in `CometSearch.cpp`.
 
 #### Task 1.2: Add Thread-Local `XcorrScoreI` / `StorePeptideI` Overloads
@@ -61,10 +61,10 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   multiple threads on the batch path might score into the same query object, but the
   global `g_pvQueryMutex` is not used.
 - **Key changes:**
-  - `XcorrScoreI(Query* pQuery, ...)` — replace `g_pvQuery.at(iWhichQuery)` with `pQuery`.
-  - `StorePeptideI(Query* pQuery, ...)` — same replacement.
-  - `CheckMassMatch(Query* pQuery, double dCalcPepMass)` — accept `Query*` directly.
-- **Status:** ✅ Complete — `XcorrScoreI(Query*, ...)`, `StorePeptideI(Query*, ...)`, and
+  - `XcorrScoreI(Query* pQuery, ...)` -- replace `g_pvQuery.at(iWhichQuery)` with `pQuery`.
+  - `StorePeptideI(Query* pQuery, ...)` -- same replacement.
+  - `CheckMassMatch(Query* pQuery, double dCalcPepMass)` -- accept `Query*` directly.
+- **Status:** [x] Complete -- `XcorrScoreI(Query*, ...)`, `StorePeptideI(Query*, ...)`, and
   `CheckMassMatch(Query*, double)` overloads all declared in `CometSearch.h` and implemented
   in `CometSearch.cpp`.
 
@@ -79,7 +79,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Note on signature:** An earlier design passed `time_point tRealTimeStart` as a
   parameter; the final implementation stores it in `pQuery->tSearchStart` instead,
   keeping the call site cleaner and avoiding an extra parameter at every call level.
-- **Status:** ✅ Complete — `RunSearch(Query*)` declared in `CometSearch.h` and
+- **Status:** [x] Complete -- `RunSearch(Query*)` declared in `CometSearch.h` and
   implemented in `CometSearch.cpp`. Allocates per-call `pbDuplFragment[]`,
   dispatches to `SearchFragmentIndex(pQuery, pbDuplFragment)` or
   `SearchPeptideIndex(pQuery, pbDuplFragment)`, then frees the buffer.
@@ -89,7 +89,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Description:** Analogous to Task 1.1 but for peptide index (`.idx`) searches.
   Accepts `Query*` and a per-call `pbDuplFragment` buffer allocated by `RunSearch(Query*)`.
   Does not access `g_pvQuery`.
-- **Status:** ✅ Complete — `SearchPeptideIndex(Query*, bool*)` declared in `CometSearch.h`
+- **Status:** [x] Complete -- `SearchPeptideIndex(Query*, bool*)` declared in `CometSearch.h`
   and implemented in `CometSearch.cpp`. Called from `RunSearch(Query*)` when
   `g_staticParams.iDbType == DbType::PI_DB`.
 
@@ -109,7 +109,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   - Call post-analysis on the local `Query*`.
   - Extract results from `pQuery->_pResults[]`.
   - Each concurrent call opens its own `FILE* fp` for protein name retrieval.
-- **Status:** ✅ Complete — `DoSingleSpectrumSearchMultiResults` uses
+- **Status:** [x] Complete -- `DoSingleSpectrumSearchMultiResults` uses
   `PreprocessSingleSpectrumThreadLocal()` to create a caller-owned `Query*`, sets
   `pQuery->tSearchStart`, calls `CometSearch::RunSearch(pQuery)`, and runs thread-local
   post-analysis. No `g_pvQueryMutex` lock or `g_pvQuery` access remains on this path.
@@ -119,7 +119,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Description:** Add overloads of `CalculateSP`, `CalculateEValue`, `CalculateDeltaCn`,
   `AnalyzeSP`, and `CalculateAScorePro` that accept `Query*` directly instead of indexing
   `g_pvQuery`.
-- **Status:** ✅ Complete — `CalculateSP(Results*, Query*, int)`,
+- **Status:** [x] Complete -- `CalculateSP(Results*, Query*, int)`,
   `CalculateEValue(Query*, bool)`, `CalculateDeltaCn(Query*)`, `AnalyzeSP(Query*)`, and
   `CalculateAScorePro(Query*, AScoreDllInterface*)` overloads all declared in
   `CometPostAnalysis.h` and implemented in `CometPostAnalysis.cpp`. `CalculateAScorePro`
@@ -133,7 +133,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Description:** The new `RunSearch(Query*)` allocates `pbDuplFragment` on the heap
   per-call and passes it to `SearchFragmentIndex` / `SearchPeptideIndex`. Verify no
   static `_ppbDuplFragmentArr` is accessed on the RTS code path.
-- **Status:** ✅ Verified — `RunSearch(Query*)` in `CometSearch.cpp` allocates
+- **Status:** [x] Verified -- `RunSearch(Query*)` in `CometSearch.cpp` allocates
   `bool* pbDuplFragment = new bool[g_staticParams.iArraySizeGlobal]()` per-call and
   frees it after the search returns. The static `_ppbDuplFragmentArr` is only accessed
   on the batch path via `SearchForPeptides` called from `RunSearch(ThreadPool*)`.
@@ -145,24 +145,24 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Description:** The existing wrapper already pins managed arrays, creates local native
   vectors, and converts results per-call. No changes needed since threading happens at
   the C# level. Confirm the wrapper method calls the (now thread-safe) native method.
-- **Status:** ✅ Verified — `CometWrapper.cpp` pins arrays with `pin_ptr`, creates
+- **Status:** [x] Verified -- `CometWrapper.cpp` pins arrays with `pin_ptr`, creates
   stack-local `std::vector` containers, calls through the `ICometSearchManager` virtual
   interface (signature unchanged), and converts results to managed `List<>` objects.
   No shared mutable state exists in the wrapper layer.
 
 ### Phase 5: C# Caller
 
-#### Task 5.1: Fix `dAScoreScore` → `dAScorePro` in `SearchMS1MS2.cs`
+#### Task 5.1: Fix `dAScoreScore` -> `dAScorePro` in `SearchMS1MS2.cs`
 - **File(s):** `RealtimeSearch/SearchMS1MS2.cs`
 - **Description:** The C# code references `result.Scores[0].dAScoreScore` which should
   be `result.Scores[0].dAScorePro` to match the corrected `ScoreWrapper` property name.
-- **Status:** ✅ Complete — No `dAScoreScore` references exist in the codebase. The
+- **Status:** [x] Complete -- No `dAScoreScore` references exist in the codebase. The
   `ScoreWrapper` property is already named `dAScorePro` and all C# consumers use that name.
 
-#### Task 5.2: Fix `dAScoreScore` → `dAScorePro` in `CometDataWrapper.h`
+#### Task 5.2: Fix `dAScoreScore` -> `dAScorePro` in `CometDataWrapper.h`
 - **File(s):** `CometWrapper/CometDataWrapper.h`
 - **Description:** Rename property `dAScoreScore` to `dAScorePro` in `ScoreWrapper`.
-- **Status:** ✅ Complete — `ScoreWrapper` in `CometDataWrapper.h` already exposes
+- **Status:** [x] Complete -- `ScoreWrapper` in `CometDataWrapper.h` already exposes
   `property double dAScorePro` backed by `pScores->dAScorePro`. Also exposes
   `property String^ sAScoreProSiteScores`. No stale naming exists.
 
@@ -170,52 +170,52 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **File(s):** `CometWrapper/CometDataWrapper.h`
 - **Description:** Add default constructors and property setters to `ScoreWrapper` and
   `FragmentWrapper` if needed by the wrapper conversion code.
-- **Status:** ✅ Not needed — `CometWrapper.cpp` constructs `ScoreWrapper` and
+- **Status:** [x] Not needed -- `CometWrapper.cpp` constructs `ScoreWrapper` and
   `FragmentWrapper` via their existing copy-constructors. No default construction or
   property setting is required.
 
 ### Phase 6: Testing & Validation
 
-#### Task 6.1: Single-Threaded Correctness — Code Review
+#### Task 6.1: Single-Threaded Correctness -- Code Review
 - **Description:** Review the modified code path and verify structural correctness against
   the original serial implementation.
-- **Status:** ✅ Complete — Code review confirmed:
+- **Status:** [x] Complete -- Code review confirmed:
   - `Query` constructor properly initializes all fields.
-  - Thread-local path: `PreprocessSingleSpectrumThreadLocal()` → set `pQuery->tSearchStart`
-    → `CometSearch::RunSearch(pQuery)` → `CalculateSP/CalculateEValue/CalculateDeltaCn(Query*)`
-    → result extraction → `delete pQuery` — all use `pQuery->` throughout, never index `g_pvQuery`.
-  - E-value computation: `CalculateEValue(Query*)` → `GenerateXcorrDecoys(Query*)` uses
+  - Thread-local path: `PreprocessSingleSpectrumThreadLocal()` -> set `pQuery->tSearchStart`
+    -> `CometSearch::RunSearch(pQuery)` -> `CalculateSP/CalculateEValue/CalculateDeltaCn(Query*)`
+    -> result extraction -> `delete pQuery` -- all use `pQuery->` throughout, never index `g_pvQuery`.
+  - E-value computation: `CalculateEValue(Query*)` -> `GenerateXcorrDecoys(Query*)` uses
     only `pQuery->` fields and the read-only static `decoyIons[]` array. Deterministic.
   - All post-analysis `Query*` overloads use the same algorithmic logic as the original
     `int iWhichQuery` counterparts, just replacing `g_pvQuery.at(i)->` with `pQuery->`.
 
-#### Task 6.2: Multi-Threaded Safety — Code Review
+#### Task 6.2: Multi-Threaded Safety -- Code Review
 - **Description:** Review with N threads for data races, shared mutable state, and
   determinism.
-- **Status:** ✅ Complete — Two data races identified and fixed in Phase 7:
-  1. **`g_massRange` concurrent writes** — Fixed in Task 7.1 (writes removed from RTS path).
-  2. **`g_staticParams.tRealTimeStart` concurrent writes** — Fixed in Task 7.2
+- **Status:** [x] Complete -- Two data races identified and fixed in Phase 7:
+  1. **`g_massRange` concurrent writes** -- Fixed in Task 7.1 (writes removed from RTS path).
+  2. **`g_staticParams.tRealTimeStart` concurrent writes** -- Fixed in Task 7.2
      (moved to per-call `pQuery->tSearchStart`).
   - All other shared state (`g_staticParams`, `g_iFragmentIndex`, `g_vFragmentPeptides`,
     `g_vRawPeptides`, `g_pvProteinNames`, `g_pvProteinsList`, `decoyIons[]`) confirmed
-    read-only after initialization. ✅
+    read-only after initialization. [x]
   - `g_cometStatus` has unsynchronized reads/writes (pre-existing). Low impact on the
     RTS path: only `IsCancel()` is checked (not `IsError()`), preventing one thread's
     failure from cancelling all other concurrent searches.
   - Results are deterministic regardless of thread count: each thread operates on its
     own `Query*` with no cross-thread data dependencies.
 
-#### Task 6.3: Memory Leak Check — Code Review
+#### Task 6.3: Memory Leak Check -- Code Review
 - **Description:** Verify that per-call `Query` objects and `pbDuplFragment` arrays
   are properly freed after each search call.
-- **Status:** ✅ Complete — All allocations have matching deallocations:
-  - `Query* pQuery` — `delete pQuery` at `cleanup_results` label. Destructor frees
+- **Status:** [x] Complete -- All allocations have matching deallocations:
+  - `Query* pQuery` -- `delete pQuery` at `cleanup_results` label. Destructor frees
     `ppfSparseSpScoreData`, `ppfSparseFastXcorrData`, `ppfSparseFastXcorrDataNL`,
     `_pResults[]`, `_pDecoys[]`, and destroys `accessMutex`.
-  - `double* pdTmpSpectrum` — `delete[] pdTmpSpectrum` at `cleanup_results` label.
-  - `bool* pbDuplFragment` — allocated in `RunSearch(Query*)`, freed with
+  - `double* pdTmpSpectrum` -- `delete[] pdTmpSpectrum` at `cleanup_results` label.
+  - `bool* pbDuplFragment` -- allocated in `RunSearch(Query*)`, freed with
     `delete[]` after the search function returns. Not accessible outside `RunSearch`.
-  - `FILE* fp` — opened per-call for protein name retrieval; `fclose(fp)` is called
+  - `FILE* fp` -- opened per-call for protein name retrieval; `fclose(fp)` is called
     within the result extraction block before `cleanup_results`.
   - All early-exit `goto cleanup_results` paths reach the deallocation code.
 
@@ -227,7 +227,7 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   `DoSingleSpectrumSearchMultiResults`. The `SearchFragmentIndex(Query*, bool*)`
   and `SearchPeptideIndex(Query*, bool*)` overloads read mass range from
   `pQuery->_pepMassInfo` directly, never from `g_massRange`.
-- **Status:** ✅ Complete — `g_massRange.dMinMass`, `g_massRange.dMaxMass`, and
+- **Status:** [x] Complete -- `g_massRange.dMinMass`, `g_massRange.dMaxMass`, and
   `g_massRange.bNarrowMassRange` are not written in `DoSingleSpectrumSearchMultiResults`.
   `g_massRange` is only written during batch search and during `InitializeSingleSpectrumSearch`
   (`g_massRange.dMinMass/dMaxMass` set from `g_staticParams.options` and
@@ -242,10 +242,10 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   after preprocessing, before `RunSearch(pQuery)` is called. Timeout checks inside
   `SearchFragmentIndex` and `SearchPeptideIndex` read `pQuery->tSearchStart` instead.
 - **Note on design choice:** An earlier approach passed `time_point` as a parameter through
-  `RunSearch(Query*, time_point)` → `SearchFragmentIndex(Query*, bool*, time_point)`. The
+  `RunSearch(Query*, time_point)` -> `SearchFragmentIndex(Query*, bool*, time_point)`. The
   final implementation stores it in `pQuery->tSearchStart` instead, which avoids threading
   the parameter through every call level and keeps `Query` self-contained.
-- **Status:** ✅ Complete — `tSearchStart` field added to `struct Query` in
+- **Status:** [x] Complete -- `tSearchStart` field added to `struct Query` in
   `CometDataInternal.h`. Set in `DoSingleSpectrumSearchMultiResults` as
   `pQuery->tSearchStart = std::chrono::high_resolution_clock::now()` after preprocessing.
   `g_staticParams.tRealTimeStart` is no longer written or read on the RTS path.
@@ -259,11 +259,11 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   For `PI_DB`, the peptide index may not yet be loaded at first call (lazy loading via
   `ReadPeptideIndex()`); a double-checked lock on `g_pvDBIndexMutex` guards this one-time
   load safely under concurrent RTS calls.
-- **Status:** ✅ Complete — `DbType` enum defined; `g_staticParams.iDbType` set during
+- **Status:** [x] Complete -- `DbType` enum defined; `g_staticParams.iDbType` set during
   init. `RunSearch(Query*)` dispatches:
-  - `FI_DB` → `SearchFragmentIndex(pQuery, pbDuplFragment)` (fragment index built at init)
-  - `PI_DB` → double-checked lock → `ReadPeptideIndex()` if needed → `SearchPeptideIndex(pQuery, pbDuplFragment)`
-  - Other → error via `g_cometStatus.SetStatus()`
+  - `FI_DB` -> `SearchFragmentIndex(pQuery, pbDuplFragment)` (fragment index built at init)
+  - `PI_DB` -> double-checked lock -> `ReadPeptideIndex()` if needed -> `SearchPeptideIndex(pQuery, pbDuplFragment)`
+  - Other -> error via `g_cometStatus.SetStatus()`
 
 ---
 
@@ -271,39 +271,39 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 
 ```
 C# Task thread N
-  │
-  └─ DoSingleSpectrumSearchMultiResults(topN, charge, mz, peaks...)
-        │
-        ├─ Guard: singleSearchInitializationComplete.load(acquire)
-        ├─ Guard: g_cometStatus.IsCancel()  [not IsError() — avoids poisoning all threads]
-        │
-        ├─ pdTmpSpectrum = new double[iArraySizeGlobal]     ← per-call
-        ├─ pQuery = PreprocessSingleSpectrumThreadLocal(...)  ← per-call Query* on heap
-        │     does NOT touch g_pvQuery
-        ├─ pQuery->tSearchStart = now()                     ← per-call timeout clock
-        │
-        ├─ CometSearch::RunSearch(pQuery)
-        │     ├─ pbDuplFragment = new bool[iArraySizeGlobal]  ← per-call
-        │     ├─ if FI_DB:  SearchFragmentIndex(pQuery, pbDuplFragment)
-        │     │     reads g_iFragmentIndex / g_vFragmentPeptides  [READ-ONLY] ✅
-        │     │     XcorrScoreI(pQuery, ...)  → pQuery->_pResults only
-        │     │     timeout via pQuery->tSearchStart
-        │     ├─ if PI_DB:  [double-checked lock] ReadPeptideIndex() if needed
-        │     │             SearchPeptideIndex(pQuery, pbDuplFragment)
-        │     │     reads g_pvDBIndex  [READ-ONLY after load] ✅
-        │     └─ delete[] pbDuplFragment
-        │
-        ├─ CalculateSP(pQuery->_pResults, pQuery, N)        ← pQuery only
-        ├─ CalculateEValue(pQuery, false)                   ← pQuery only
-        ├─ CalculateDeltaCn(pQuery)                         ← pQuery only
-        ├─ CalculateAScorePro(pQuery, g_AScoreInterface)    ← conditional; g_AScoreInterface READ-ONLY ✅
-        │
-        ├─ fp = fopen(szDatabase, "rb")                     ← per-call FILE*
-        │     reads g_pvProteinsList  [READ-ONLY] ✅
-        ├─ extract results → output vectors
-        ├─ fclose(fp)
-        │
-        └─ cleanup_results:
+  |
+  +- DoSingleSpectrumSearchMultiResults(topN, charge, mz, peaks...)
+        |
+        +- Guard: singleSearchInitializationComplete.load(acquire)
+        +- Guard: g_cometStatus.IsCancel()  [not IsError() -- avoids poisoning all threads]
+        |
+        +- pdTmpSpectrum = new double[iArraySizeGlobal]     <- per-call
+        +- pQuery = PreprocessSingleSpectrumThreadLocal(...)  <- per-call Query* on heap
+        |     does NOT touch g_pvQuery
+        +- pQuery->tSearchStart = now()                     <- per-call timeout clock
+        |
+        +- CometSearch::RunSearch(pQuery)
+        |     +- pbDuplFragment = new bool[iArraySizeGlobal]  <- per-call
+        |     +- if FI_DB:  SearchFragmentIndex(pQuery, pbDuplFragment)
+        |     |     reads g_iFragmentIndex / g_vFragmentPeptides  [READ-ONLY] [x]
+        |     |     XcorrScoreI(pQuery, ...)  -> pQuery->_pResults only
+        |     |     timeout via pQuery->tSearchStart
+        |     +- if PI_DB:  [double-checked lock] ReadPeptideIndex() if needed
+        |     |             SearchPeptideIndex(pQuery, pbDuplFragment)
+        |     |     reads g_pvDBIndex  [READ-ONLY after load] [x]
+        |     +- delete[] pbDuplFragment
+        |
+        +- CalculateSP(pQuery->_pResults, pQuery, N)        <- pQuery only
+        +- CalculateEValue(pQuery, false)                   <- pQuery only
+        +- CalculateDeltaCn(pQuery)                         <- pQuery only
+        +- CalculateAScorePro(pQuery, g_AScoreInterface)    <- conditional; g_AScoreInterface READ-ONLY [x]
+        |
+        +- fp = fopen(szDatabase, "rb")                     <- per-call FILE*
+        |     reads g_pvProteinsList  [READ-ONLY] [x]
+        +- extract results -> output vectors
+        +- fclose(fp)
+        |
+        +- cleanup_results:
                delete pQuery
                delete[] pdTmpSpectrum
 ```

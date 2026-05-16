@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Comet regression tests — compare current build against baseline release binaries.
+Comet regression tests -- compare current build against baseline release binaries.
 
 Runs three search modes on real MS data and compares results + performance:
-  fasta  — regular FASTA database search
-  fi     — fragment ion index search  (index built fresh by each binary)
-  pi     — peptide index search       (index built fresh by each binary)
+  fasta  -- regular FASTA database search
+  fi     -- fragment ion index search  (index built fresh by each binary)
+  pi     -- peptide index search       (index built fresh by each binary)
 
 Comparison metrics per mode:
   - Wall-clock search time (seconds); index build time reported separately

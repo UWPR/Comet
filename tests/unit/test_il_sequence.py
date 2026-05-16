@@ -74,7 +74,7 @@ def build_index(comet, params_path, work_dir):
 def read_peptide_sequences(idx_path):
     """Parse the binary plain-peptide section and return list of sequence strings."""
     with open(idx_path, "rb") as fh:
-        # Footer: last 3 × int64 = clPeptidesFilePos, clProteinsFilePos, clPermutationsFilePos
+        # Footer: last 3 x int64 = clPeptidesFilePos, clProteinsFilePos, clPermutationsFilePos
         fh.seek(-24, 2)
         pep_pos, _, _ = struct.unpack("<qqq", fh.read(24))
 
@@ -142,7 +142,7 @@ def run_test():
         assert "ACIIVERPEPTIDER" in seqs_no, "FAIL: ACIIVERPEPTIDER missing when IL=0"
 
         n_no = len(seqs_no)
-        # Trypsin cleaves ACLIVERK→ACLIVER+K and ACIIVERK→ACIIVER+K, so there are
+        # Trypsin cleaves ACLIVERK->ACLIVER+K and ACIIVERK->ACIIVER+K, so there are
         # 3 canonical-equivalent pairs: ACLIVER/ACIIVER, ACLIVERK/ACIIVERK,
         # ACLIVERPEPTIDER/ACIIVERPEPTIDER.
         assert n_no == n_il + 3, (

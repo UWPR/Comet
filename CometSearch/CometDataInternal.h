@@ -509,7 +509,7 @@ struct DBIndex
 // Replaces heap-heavy DBIndex entries during the per-thread collection phase.
 struct PepGenTuple
 {
-   char     sPeptide[MAX_PEPTIDE_LEN];   // original AA letters (or L→I canonical), null-terminated
+   char     sPeptide[MAX_PEPTIDE_LEN];   // original AA letters (or L->I canonical), null-terminated
    double   dPepMass;                    // MH+ mass
    comet_fileoffset_t lProteinFileOffset;// FASTA byte offset of the source protein
    uint16_t siVarModProteinFilter;
@@ -569,7 +569,7 @@ static constexpr uint8_t kAA5bit[256] = {
    0,0,0,0,0
 };
 
-// Reverse map: 5-bit code → amino acid character.
+// Reverse map: 5-bit code -> amino acid character.
 // Code 8 always decodes to 'I' (canonical; L maps to code 8 when bTreatSameIL).
 static constexpr char k5bitAA[32] = {
    '\0','A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R',
@@ -598,7 +598,7 @@ inline void UnpackPeptide(uint64_t key, int iLen, char* seq)
    seq[iLen] = '\0';
 }
 
-// Compact per-thread tuple for short peptides (len ≤ 12) during index generation.
+// Compact per-thread tuple for short peptides (len <= 12) during index generation.
 // 32 bytes on 64-bit (8-byte alignment); uILMask occupies 2 of the 4 trailing pad bytes.
 struct PepGenTupleShort
 {
@@ -1165,7 +1165,7 @@ extern StaticParams    g_staticParams;
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 // Per-length, per-thread generation buffers.  Outer index = (iLen - iMinLen) for short,
 // (iLen - 13) for long.  Inner index = thread slot.
-extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths ≤ 12
+extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <= 12
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 

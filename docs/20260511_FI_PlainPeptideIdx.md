@@ -1,4 +1,4 @@
-# Building a Unique Peptide → Protein Index from a FASTA 
+# Building a Unique Peptide -> Protein Index from a FASTA 
 
 Current Comet calls the RunSearch() function which parses a FASTA file, generating peptides
 within the specified enzyme and mass constraints, and stores the peptides in g_pvDBIndex.
@@ -47,7 +47,7 @@ That would roughly double your runtime and massively increase I/O.
 
 Instead:
 
-# Generate peptide → immediately append protein ID
+# Generate peptide -> immediately append protein ID
 
 Conceptually:
 
@@ -63,7 +63,7 @@ The challenge is doing this without exploding RAM.
 
 For human proteins:
 
-Lengths 8–25 produce:
+Lengths 8-25 produce:
 
 - hundreds of millions to billions of peptide instances
 - but far fewer UNIQUE peptides
@@ -82,7 +82,7 @@ Typical rough scales:
 | 9 | fewer duplicates |
 | 12+ | mostly unique |
 
-By 15–25 aa, most peptides occur once.
+By 15-25 aa, most peptides occur once.
 
 This matters because:
 - short peptides dominate protein multiplicity
@@ -93,7 +93,7 @@ This matters because:
 # Best Data Structure
 
 # Hash Table:
-# peptide → protein set
+# peptide -> protein set
 
 But peptide representation matters enormously.
 
@@ -131,7 +131,7 @@ This is the real clever trick.
 
 ---
 
-# Length ≤ 12:
+# Length <= 12:
 # Fully Packed Integer Representation
 
 For peptides up to 12 AA:
@@ -379,7 +379,7 @@ This is probably near-optimal.
 
 ---
 
-# Lengths 8–12
+# Lengths 8-12
 
 Use:
 - exact uint64 packed peptide
@@ -390,7 +390,7 @@ Very fast.
 
 ---
 
-# Lengths 13–25
+# Lengths 13-25
 
 Since most are unique:
 - use sort-based streaming

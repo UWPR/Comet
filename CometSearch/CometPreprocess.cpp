@@ -100,7 +100,7 @@ struct RtsScratch
       pfSpScoreData        = new float[iSize];
 
       // Each spectrum uses at most (iSize/SPARSE_MATRIX_SIZE + 1) child blocks per
-      // sparse matrix; there are 3 matrices.  A 2× margin covers dense spectra.
+      // sparse matrix; there are 3 matrices.  A 2x margin covers dense spectra.
       iSparsePoolCapacity = 6 * (iSize / SPARSE_MATRIX_SIZE + 2);
       pSparseChildPool    = new float[(size_t)iSparsePoolCapacity * SPARSE_MATRIX_SIZE]();
 
@@ -1276,8 +1276,8 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // --- Scratch buffer setup ---
    //
    // RTS path  (bUseThreadLocalPool=true): use pre-allocated per-thread buffers.
-   //   - Zero only [0, iArraySize + iXcorrProcessingOffset) — the region actually
-   //     read/written — instead of the full iArraySizeGlobal.
+   //   - Zero only [0, iArraySize + iXcorrProcessingOffset) -- the region actually
+   //     read/written -- instead of the full iArraySizeGlobal.
    //
    // Batch path (bUseThreadLocalPool=false): allocate on heap as before.
 

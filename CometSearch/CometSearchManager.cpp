@@ -3688,7 +3688,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    // Step 5: Open database file for protein name retrieval.
    // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
-   // g_pvProteinNameCache populated at init — no file I/O per spectrum.
+   // g_pvProteinNameCache populated at init -- no file I/O per spectrum.
    // For FASTA_DB, we still need to open the file.
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
