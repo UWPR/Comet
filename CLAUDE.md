@@ -78,6 +78,97 @@ The real-time search (`DoSingleSpectrumSearchMultiResults` and `DoMS1SearchMulti
 - **MS1 RTS**: `PreprocessMS1SingleSpectrumThreadLocal()` creates a caller-owned `QueryMS1*`; `RunMS1Search(QueryMS1*, ...)` scores against read-only `g_vSpecLib`. No `g_pvQueryMS1` access. Reference library is loaded once in `InitializeSingleSpectrumMS1Search()`.
 - **Batch search**: Still uses `g_pvQuery` / `g_pvQueryMS1` with the original mutex-guarded path.
 
+## Testing
+
+### Unit and Integration Tests
+
+Tests live in `tests/unit/`. The runner is `run_tests.py`.
+
+```bash
+# Run all unit tests (T1-T7, T11-T16) -- fast, no large data required
+python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
+
+# Run a specific test by ID
+python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe t13
+
+# Run unit + integration tests (T17, T18) -- requires data/human.small.fasta
+python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe --integration
+```
+
+Always pass `--comet` as a full path; the default `../../comet.exe` only works when
+invoked from inside `tests/unit/`.
+
+### Test Data
+
+Small crafted FASTA files for T1-T16 live in `tests/unit/data/`. Pre-built `.idx`
+reference files are committed alongside them for byte-exact comparison tests.
+
+Integration tests (T17, T18) require `data/human.small.fasta` (not in repo -- must
+be present manually before running `--integration`).
+
+### Key Design Decisions in the Test Suite
+
+- **`no-enzyme + len_max > 13` will time out.** No-enzyme with `len_max=25` generates
+  a ~1.1 GB index and takes >300 s. Use `len_max=13` for integration tests; it covers
+  both the short path (len <= 12, 5-bit packed) and the long path (len > 12, plain
+  string) while building in ~110 s.
+
+- **T17 uses count-stability, not cross-version byte comparison.** The v2026.01.1
+  baseline has a known I/L long-path dedup bug (uses byte-exact `memcmp` instead of
+  canonical L==I comparison), producing ~8,102 extra entries when `equal_IL=1`. Even
+  with `equal_IL=0` there is an 8-peptide algorithmic difference from the flat-sort
+  vs per-length sort change. Cross-version byte-exact or count-exact comparison is
+  therefore unreliable; T17 verifies that the peptide count falls in [8,800,000,
+  9,100,000] for a no-enzyme len 8-13 build on human.small.fasta.
+
+- **T18** verifies determinism: two independent builds of the same FASTA produce
+  byte-identical `.idx` files.
+
+### compare_idx.py
+
+`tests/unit/compare_idx.py` structurally compares two plain-peptide `.idx` files.
+It checks header fields (peptide count, protein-list count, mass range) and then
+streams both files in parallel to compare every peptide entry. Aborts early if
+peptide counts differ. Useful for debugging index changes.
+
+```bash
+python tests/unit/compare_idx.py old.idx new.idx
+```
+
+## Benchmarking and FDR Analysis
+
+### tools/qvalue.py
+
+`tools/qvalue.py` computes q-values (FDR) from Comet tab-delimited output files for
+benchmarking search result quality using rank-1 PSMs only
+
+Each run always reports results for both xcorr (descending) and e-value (ascending)
+sorting side by side.
+
+```bash
+# Single file:
+python tools/qvalue.py results.txt
+
+# Compare two files side-by-side:
+python tools/qvalue.py results_a.txt results_b.txt
+
+# Also diff the specific passing PSMs between two files (shown per scoring method):
+python tools/qvalue.py --diff results_a.txt results_b.txt
+
+# Custom q-value threshold(s):
+python tools/qvalue.py --threshold 0.01 --threshold 0.05 results.txt
+```
+
+Output columns per file: q-value threshold | xcorr PSMs | xcorr cutoff | evalue PSMs | evalue cutoff.
+When multiple files are given, a summary table follows with all counts side by side.
+When `--diff` is used with two files, unique PSMs are listed for each scoring method
+separately, showing scan, charge, score, and modified peptide sequence.
+
+FDR formula:
+- Standard TDA: `FDR(i) = n_decoy(i) / n_target(i)`, no +1 correction, no 2x scaling
+- `q(i) = running minimum FDR from position i to the end`
+- Decoys identified by protein column starting with `DECOY_` or `rev_` (case-insensitive)
+
 ## Coding Style
 
 From `docs/CometCodingStyleGuidelines.md`:
@@ -88,5 +179,4 @@ From `docs/CometCodingStyleGuidelines.md`:
 - Use `//` for inline comments (reserve `/* */` for commenting out blocks)
 - **Systems Hungarian Notation** for variable names (e.g., `iCount`, `dMass`, `szName`, `bFlag`, `p` prefix for pointers)
 - No trailing whitespace
-- All files should have Windows line endings
 - No non-ASCII characters allowed in the code or documentation
