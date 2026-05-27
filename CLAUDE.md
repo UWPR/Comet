@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Comet is an open-source tandem mass spectrometry (MS/MS) sequence database search engine written in C/C++. It searches experimental MS/MS spectra against protein sequence databases to identify peptides.
 
+## Git Workflow
+
+**Do NOT run `git commit` or `git push` unless the user explicitly asks.**
+
+Make code changes, build, and run tests; then stop and report results.
+Wait for the user to say "commit" or "commit and push" before touching git history.
+
 ## Build Commands
 
 ### Linux / macOS

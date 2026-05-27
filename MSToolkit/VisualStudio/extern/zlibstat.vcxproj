@@ -159,12 +159,17 @@
   </Target>
   <!--
     CleanZlib runs as part of "Clean Solution".  It removes the unpacked
-    zlib-1.2.11 directory so that any Linux-generated ./configure artifacts
-    (in particular the Linux-specific zconf.h that includes <unistd.h>) are
-    swept away.  The next Build will re-extract a clean copy via UnpackZlib.
+    zlib-1.2.11 source directory AND the headers that Linux "make install"
+    copies into MSToolkit/include/ (zconf.h, zlib.h).  Those installed headers
+    shadow the Windows-safe copies in MSToolkit/include/extern/ and cause
+    "cannot open include file: 'unistd.h'" errors under MSVC.
+    Delete is a no-op when the files do not exist.
+    The next Build re-extracts a clean source tree via UnpackZlib, and MSVC
+    finds zconf.h / zlib.h from include/extern/ as intended.
     Workflow after a Linux make: Clean Solution, then Build Solution.
   -->
   <Target Name="CleanZlib" AfterTargets="Clean">
     <RemoveDir Directories="$(MSBuildProjectDirectory)\..\..\extern\zlib-1.2.11" />
+    <Delete Files="$(MSBuildProjectDirectory)\..\..\include\zconf.h;$(MSBuildProjectDirectory)\..\..\include\zlib.h" />
   </Target>
 </Project>

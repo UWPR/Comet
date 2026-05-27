@@ -144,11 +144,15 @@
   </Target>
   <!--
     CleanExpat mirrors CleanZlib in zlibstat.vcxproj.  A Linux "make" unpacks
-    expat-2.2.9.zip and runs ./configure, which writes Linux-specific headers
-    into extern/expat-2.2.9/.  VS "Clean Solution" removes the directory so
-    the next Build re-extracts a clean copy via UnpackExpat above.
+    expat-2.2.9.zip, runs ./configure, and runs "make install", which writes
+    Linux-specific headers into both extern/expat-2.2.9/ AND MSToolkit/include/
+    (expat.h, expat_config.h, expat_external.h).  Those installed headers
+    shadow the Windows-safe copies in MSToolkit/include/extern/.
+    Delete is a no-op when the files do not exist.
+    The next Build re-extracts a clean source tree via UnpackExpat.
   -->
   <Target Name="CleanExpat" AfterTargets="Clean">
     <RemoveDir Directories="$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9" />
+    <Delete Files="$(MSBuildProjectDirectory)\..\..\include\expat.h;$(MSBuildProjectDirectory)\..\..\include\expat_config.h;$(MSBuildProjectDirectory)\..\..\include\expat_external.h" />
   </Target>
 </Project>
