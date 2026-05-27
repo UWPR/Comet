@@ -157,4 +157,14 @@
     <Unzip SourceFiles="$(MSBuildProjectDirectory)\..\..\extern\zlib1211.zip"
            DestinationFolder="$(MSBuildProjectDirectory)\..\..\extern\" />
   </Target>
+  <!--
+    CleanZlib runs as part of "Clean Solution".  It removes the unpacked
+    zlib-1.2.11 directory so that any Linux-generated ./configure artifacts
+    (in particular the Linux-specific zconf.h that includes <unistd.h>) are
+    swept away.  The next Build will re-extract a clean copy via UnpackZlib.
+    Workflow after a Linux make: Clean Solution, then Build Solution.
+  -->
+  <Target Name="CleanZlib" AfterTargets="Clean">
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\..\..\extern\zlib-1.2.11" />
+  </Target>
 </Project>
