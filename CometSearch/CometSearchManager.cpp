@@ -566,7 +566,8 @@ static bool ValidatePeptideLengthRange()
 CometSearchManager::CometSearchManager() :
    singleSearchInitializationComplete(false),
    singleSearchMS1InitializationComplete(false),
-   staticParamsInitializationComplete(false)
+   staticParamsInitializationComplete(false),
+   m_bRTSIndexBuild(false)
 {
    // Initialize the mutexes we'll use to protect global data.
    Threading::InitMutex(&g_pvQueryMutex);
@@ -2153,8 +2154,13 @@ bool CometSearchManager::CreateFragmentIndex()
    // Override the Create Index flag to force it to create
    g_staticParams.options.bCreateFragmentIndex = true;
 
-   // The DoSearch will create the index and exit
-   return DoSearch();
+   // Signal DoSearch() that we are building the index for an RTS caller, so
+   // it must NOT call _exit(0) after writing the .idx file -- the caller
+   // (InitializeSingleSpectrumSearch) still needs to load and use the index.
+   m_bRTSIndexBuild = true;
+   bool bRet = DoSearch();
+   m_bRTSIndexBuild = false;
+   return bRet;
 }
 
 bool CometSearchManager::CreatePeptideIndex()
@@ -2164,8 +2170,10 @@ bool CometSearchManager::CreatePeptideIndex()
    // Override the Create Index flag to force it to create
    g_staticParams.options.bCreatePeptideIndex = true;
 
-   // The DoSearch will create the index and exit
-   return DoSearch();
+   m_bRTSIndexBuild = true;
+   bool bRet = DoSearch();
+   m_bRTSIndexBuild = false;
+   return bRet;
 }
 
 bool CometSearchManager::DoSearch()
@@ -2323,13 +2331,16 @@ bool CometSearchManager::DoSearch()
 
        CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
-       if (g_pvInputFiles.size() == 0)
+       if (g_pvInputFiles.size() == 0 && !m_bRTSIndexBuild)
        {
-          // Index-only run: the .idx file is written and fclose() has already
-          // been called.  Skip all C++ static-duration destructors -- the OS
-          // reclaims every page instantly.  Without this, ~80-90M individual
-          // free() calls for g_pvDBIndex vector<char> pcVarModSites members
-          // would add ~1-2 min of silent cleanup after the "done" message.
+          // Standalone index-only run: the .idx file is written and fclose()
+          // has already been called.  Skip all C++ static-duration destructors
+          // -- the OS reclaims every page instantly.  Without this, ~80-90M
+          // individual free() calls for g_pvDBIndex vector<char> pcVarModSites
+          // members would add ~1-2 min of cleanup after the "done" message.
+          // When called via CreateFragmentIndex/CreatePeptideIndex from
+          // InitializeSingleSpectrumSearch() (RTS path), m_bRTSIndexBuild is
+          // true and we skip _exit(0) so the caller can load and use the index.
           fflush(stdout);
           fflush(stderr);
           _exit(0);

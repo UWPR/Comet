@@ -115,6 +115,8 @@ private:
    std::atomic<bool> singleSearchInitializationComplete;
    std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;
+   bool m_bRTSIndexBuild;    // true when DoSearch() is called via CreateFragmentIndex/CreatePeptideIndex
+                              // from InitializeSingleSpectrumSearch(); suppresses _exit(0) in DoSearch()
    std::map<std::string, CometParam*> _mapStaticParams;
 };
 
