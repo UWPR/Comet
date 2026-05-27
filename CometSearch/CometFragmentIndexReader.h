@@ -53,7 +53,7 @@ public:
       return m_vRawPeptides[idx];
    }
 
-   inline const vector<comet_fileoffset_t>& GetProteinList(size_t idx) const
+   inline ProteinsListCSR::Row GetProteinList(size_t idx) const
    {
       return m_pvProteinsList[idx];
    }
@@ -64,7 +64,7 @@ private:
    const uint64_t*     m_iFragmentIndexOffset;
    const vector<struct FragmentPeptidesStruct>& m_vFragmentPeptides;
    const vector<PlainPeptideIndexStruct>& m_vRawPeptides;
-   const vector<vector<comet_fileoffset_t>>& m_pvProteinsList;
+   const ProteinsListCSR& m_pvProteinsList;
 
    // Delete copy/assignment to prevent misuse
    FragmentIndexReader(const FragmentIndexReader&) = delete;

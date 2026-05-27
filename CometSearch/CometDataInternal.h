@@ -1169,7 +1169,108 @@ extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <=
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
 
-extern vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+// Flat CSR-style storage for the per-peptide protein list.
+// Replaces vector<vector<comet_fileoffset_t>> to eliminate the ~190M
+// individual heap allocations (one per inner vector) that caused a
+// ~6-minute free-time tail when building an MHC .idx file.
+// External interface mirrors vector<vector<comet_fileoffset_t>> so
+// existing call sites need no changes.
+class ProteinsListCSR
+{
+public:
+   // Read-only proxy for a single row (one peptide's protein offsets).
+   struct Row
+   {
+      const comet_fileoffset_t* ptr;
+      size_t                    n;
+
+      size_t size()  const { return n; }
+      bool   empty() const { return n == 0; }
+
+      const comet_fileoffset_t& operator[](size_t j) const { return ptr[j]; }
+      comet_fileoffset_t        at(size_t j)          const { return ptr[j]; }
+
+      const comet_fileoffset_t* begin() const { return ptr; }
+      const comet_fileoffset_t* end()   const { return ptr + n; }
+   };
+
+   // Size / state
+   size_t size()  const { return m_off.empty() ? 0 : m_off.size() - 1; }
+   bool   empty() const { return size() == 0; }
+
+   // Modifiers
+   void clear()
+   {
+      vector<comet_fileoffset_t>().swap(m_flat);
+      vector<uint64_t>().swap(m_off);
+   }
+
+   void reserve(size_t n) { m_off.reserve(n + 1); }
+
+   void push_back(const vector<comet_fileoffset_t>& v)
+   {
+      if (m_off.empty()) m_off.push_back(0);
+      m_flat.insert(m_flat.end(), v.begin(), v.end());
+      m_off.push_back(m_flat.size());
+   }
+
+   void push_back(vector<comet_fileoffset_t>&& v)
+   {
+      if (m_off.empty()) m_off.push_back(0);
+      m_flat.insert(m_flat.end(), v.begin(), v.end());
+      m_off.push_back(m_flat.size());
+      vector<comet_fileoffset_t>().swap(v);  // release source buffer immediately
+   }
+
+   // Batch-append from pre-built flat storage.
+   // flat: all protein file offsets for this block, concatenated in row order
+   // cnt:  number of offsets per row (max value bounded by iMaxDuplicateProteins)
+   // Bulk-copies both arrays into m_flat/m_off with two insert() calls, then
+   // releases the source buffers.  Replaces N individual push_back(vector&&)
+   // calls, each of which required one heap free() -- this reduces N free()s
+   // to 2 (one for flat, one for cnt) regardless of how many rows are in the block.
+   void append_flat(vector<comet_fileoffset_t>& flat, vector<uint32_t>& cnt)
+   {
+      if (flat.empty())
+         return;
+      if (m_off.empty())
+         m_off.push_back(0);
+      m_flat.insert(m_flat.end(), flat.begin(), flat.end());
+      for (uint32_t n : cnt)
+         m_off.push_back(m_off.back() + n);
+      vector<comet_fileoffset_t>().swap(flat);
+      vector<uint32_t>().swap(cnt);
+   }
+
+   // Element access
+   Row operator[](size_t i) const
+   {
+      return {m_flat.data() + m_off[i],
+              static_cast<size_t>(m_off[i + 1] - m_off[i])};
+   }
+
+   Row at(size_t i) const { return (*this)[i]; }
+
+   // Range-based for -- yields Row values
+   struct Iterator
+   {
+      const ProteinsListCSR* self;
+      size_t                 i;
+
+      Row       operator*()  const { return (*self)[i]; }
+      Iterator& operator++()       { ++i; return *this; }
+      bool      operator!=(const Iterator& o) const { return i != o.i; }
+   };
+
+   Iterator begin() const { return {this, 0}; }
+   Iterator end()   const { return {this, size()}; }
+
+private:
+   vector<comet_fileoffset_t> m_flat;   // all protein offsets concatenated
+   vector<uint64_t>           m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
+};
+
+extern ProteinsListCSR g_pvProteinsList;
 extern unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // file offset -> protein name string; populated at index load
 
 extern std::condition_variable g_searchPoolCV;  // notified when a pool slot is released

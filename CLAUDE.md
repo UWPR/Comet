@@ -175,8 +175,38 @@ From `docs/CometCodingStyleGuidelines.md`:
 
 - **Allman brace style**: opening brace on its own line at the same indentation as the control structure
 - **3 spaces** per indentation level (no tabs)
-- **Windows-style line endings** (`\r\n`)
+- **Windows-style line endings (`\r\n`) — MANDATORY for every file in this repo.**
+  See the enforcement rules below.
 - Use `//` for inline comments (reserve `/* */` for commenting out blocks)
 - **Systems Hungarian Notation** for variable names (e.g., `iCount`, `dMass`, `szName`, `bFlag`, `p` prefix for pointers)
 - No trailing whitespace
 - No non-ASCII characters allowed in the code or documentation
+
+### Line-ending enforcement (CRLF)
+
+**Every source file — `.cpp`, `.h`, `.c`, `.cs`, `.py`, `.md`, `.txt`, `.params` — must
+use Windows CRLF (`\r\n`) line endings.  Unix LF (`\n`) is wrong for this repo.**
+
+Rules for Claude Code:
+
+1. **Editing existing files** (`Edit` tool): the tool preserves the file's existing line
+   endings, so edits to a CRLF file stay CRLF automatically.  No special action needed.
+
+2. **Writing a new file or fully replacing one** (`Write` tool): the content string passed
+   to `Write` must contain `\r\n` at every line break.  Plain `\n` produces a Unix-LF
+   file.  **Always verify after writing:**
+   ```bash
+   file <path>   # must show "CRLF line terminators"
+   ```
+   If the output shows only "ASCII text" (no CRLF mention), the file has Unix LF —
+   re-write it with correct line endings before proceeding.
+
+3. **After any session that creates or modifies files**, run a quick sanity check on the
+   touched files:
+   ```bash
+   file CometSearch/*.h CometSearch/*.cpp | grep -v CRLF
+   ```
+   Any line printed is a file with wrong line endings — fix it with `unix2dos <file>`.
+
+A `.gitattributes` file at the repo root enforces CRLF for all tracked source files
+at the git level, providing a second safety net.

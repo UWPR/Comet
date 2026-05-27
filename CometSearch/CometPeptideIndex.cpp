@@ -121,27 +121,24 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    // g_pvProteinsList file offsets that point into the .idx file protein name region.
    // We'll store them after reading the proteins list.
 
-   // --- Read proteins list (vector of vectors) from clProteinsFilePos ---
+   // --- Read proteins list (ProteinsListCSR) from clProteinsFilePos ---
    comet_fseek(fp, clProteinsFilePos, SEEK_SET);
 
    size_t tNumProteinEntries;
    tTmpRead = fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
 
    g_pvProteinsList.clear();
-   g_pvProteinsList.resize(tNumProteinEntries);
+   g_pvProteinsList.reserve(tNumProteinEntries);
 
    for (size_t i = 0; i < tNumProteinEntries; ++i)
    {
       size_t tNumProteins;
       tTmpRead = fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
 
-      g_pvProteinsList[i].resize(tNumProteins);
+      vector<comet_fileoffset_t> vTmp(tNumProteins);
       for (size_t j = 0; j < tNumProteins; ++j)
-      {
-         comet_fileoffset_t lProtFilePos;
-         tTmpRead = fread(&lProtFilePos, clSizeCometFileOffset, 1, fp);
-         g_pvProteinsList[i][j] = lProtFilePos;
-      }
+         tTmpRead = fread(&vTmp[j], clSizeCometFileOffset, 1, fp);
+      g_pvProteinsList.push_back(std::move(vTmp));
    }
 
    // The file position after reading the proteins list is where the peptides start.

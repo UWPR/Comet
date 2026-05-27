@@ -1,0 +1,37 @@
+# All source files in this repo use Windows CRLF line endings.
+# Git will normalise to CRLF on checkout and warn on commit if LF is found.
+
+# C / C++ source
+*.c     text eol=crlf
+*.cpp   text eol=crlf
+*.h     text eol=crlf
+
+# C# source and project files
+*.cs    text eol=crlf
+*.sln   text eol=crlf
+*.csproj text eol=crlf
+*.vcxproj text eol=crlf
+*.vcxproj.filters text eol=crlf
+*.rc    text eol=crlf
+
+# Python
+*.py    text eol=crlf
+
+# Docs / config
+*.md    text eol=crlf
+*.txt   text eol=crlf
+*.params text eol=crlf
+
+# Binary files -- no line-ending translation
+*.exe   binary
+*.dll   binary
+*.lib   binary
+*.a     binary
+*.o     binary
+*.obj   binary
+*.idx   binary
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.pptx  binary
+*.zip   binary

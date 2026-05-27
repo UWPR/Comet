@@ -35,6 +35,7 @@
 
 #include <sstream>
 #include <cstdio>
+#include <cstdlib>    // _exit()
 
 
 extern comet_fileoffset_t clSizeCometFileOffset;
@@ -73,7 +74,7 @@ AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 // protected with a mutex or made thread-local.
 AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
-vector<vector<comet_fileoffset_t>> g_pvProteinsList;
+ProteinsListCSR g_pvProteinsList;
 
 // Fragment index globals - INITIALIZED ONCE, READ-ONLY DURING SEARCH
 unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
@@ -2323,7 +2324,16 @@ bool CometSearchManager::DoSearch()
        CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
        if (g_pvInputFiles.size() == 0)
-          return bSucceeded;
+       {
+          // Index-only run: the .idx file is written and fclose() has already
+          // been called.  Skip all C++ static-duration destructors -- the OS
+          // reclaims every page instantly.  Without this, ~80-90M individual
+          // free() calls for DBIndex::sPeptide heap buffers would add ~2 min
+          // of silent cleanup after the "done" message.
+          fflush(stdout);
+          fflush(stderr);
+          _exit(0);
+       }
    }
 
    bool bBlankSearchFile = false;
