@@ -142,4 +142,13 @@
     <Unzip SourceFiles="$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9.zip"
            DestinationFolder="$(MSBuildProjectDirectory)\..\..\extern\" />
   </Target>
+  <!--
+    CleanExpat mirrors CleanZlib in zlibstat.vcxproj.  A Linux "make" unpacks
+    expat-2.2.9.zip and runs ./configure, which writes Linux-specific headers
+    into extern/expat-2.2.9/.  VS "Clean Solution" removes the directory so
+    the next Build re-extracts a clean copy via UnpackExpat above.
+  -->
+  <Target Name="CleanExpat" AfterTargets="Clean">
+    <RemoveDir Directories="$(MSBuildProjectDirectory)\..\..\extern\expat-2.2.9" />
+  </Target>
 </Project>
