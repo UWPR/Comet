@@ -477,7 +477,7 @@ string CometMassSpecUtils::ElapsedTime(std::chrono::time_point<std::chrono::stea
 bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
                                              const DBIndex& rhs)
 {
-   if (lhs.sPeptide == rhs.sPeptide)
+   if (strcmp(lhs.sPeptide, rhs.sPeptide) == 0)
    {
       // peptides are same here so look at mass next
       if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
@@ -503,7 +503,7 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
    }
 
    // peptides are different
-   return lhs.sPeptide < rhs.sPeptide;
+   return strcmp(lhs.sPeptide, rhs.sPeptide) < 0;
 };
 
 
@@ -522,10 +522,10 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
 
    // at this point, peptides are same mass so next need to compare sequences
 
-   if (lhs.sPeptide == rhs.sPeptide)
+   if (strcmp(lhs.sPeptide, rhs.sPeptide) == 0)
    {
       // same sequences and masses here so next look at mod state
-      size_t iLen = lhs.sPeptide.size() + 2;
+      size_t iLen = strlen(lhs.sPeptide) + 2;
       for (size_t i = 0; i < iLen; ++i)
       {
          char l = lhs.pcVarModSites.empty()     ? 0 : lhs.pcVarModSites[i];
@@ -542,7 +542,7 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
    }
 
    // if here, peptide sequences are different (but w/same mass) so sort alphabetically
-   return lhs.sPeptide < rhs.sPeptide;
+   return strcmp(lhs.sPeptide, rhs.sPeptide) < 0;
 
 }
 

@@ -690,7 +690,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
 
                const PepGenTuple& rep = buf[iRunStart];
                DBIndex dbi;
-               dbi.sPeptide.assign(rep.sPeptide, iLen);
+               memcpy(dbi.sPeptide, rep.sPeptide, iLen);
+               dbi.sPeptide[iLen] = '\0';
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
@@ -762,7 +763,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
                      if (mask & 1) szSeq[k] = 'L';
 
                DBIndex dbi;
-               dbi.sPeptide                  = szSeq;
+               strcpy(dbi.sPeptide, szSeq);
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
@@ -986,11 +987,11 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       heap.pop();
       const DBIndex& entry = g_pvDBIndex[slices[iSlice].first + iPos];
 
-      int iLen = (int)entry.sPeptide.size();
+      int iLen = (int)strlen(entry.sPeptide);
       struct PlainPeptideIndexStruct sTmp;
 
       fwrite(&iLen, sizeof(int), 1, fp);
-      fwrite(entry.sPeptide.c_str(), sizeof(char), iLen, fp);
+      fwrite(entry.sPeptide, sizeof(char), iLen, fp);
       fwrite(&entry.cPrevAA, sizeof(char), 1, fp);
       fwrite(&entry.cNextAA, sizeof(char), 1, fp);
       fwrite(&entry.dPepMass, sizeof(double), 1, fp);

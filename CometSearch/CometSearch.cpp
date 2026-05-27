@@ -2147,7 +2147,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
                                       bool* pbDuplFragment,
                                       struct sDBEntry* dbe)
 {
-   int iLenPeptide = (int)sDBI.sPeptide.size();
+   int iLenPeptide = (int)strlen(sDBI.sPeptide);
    int iLenMinus1 = iLenPeptide - 1;
    int iStartPos;
    int iEndPos;
@@ -2197,7 +2197,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    }
    iStartPos = iPos;
 
-   memcpy(szProtein + iPos, sDBI.sPeptide.c_str(), iLenPeptide);
+   memcpy(szProtein + iPos, sDBI.sPeptide, iLenPeptide);
    iPos += iLenPeptide;
    iEndPos = iPos - 1;
 
@@ -2704,7 +2704,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
    int ctIonSeries;
    int ctLen;
    int ctCharge;
-   int iLenPeptide = (int)sDBI.sPeptide.size();
+   int iLenPeptide = (int)strlen(sDBI.sPeptide);
    int iStartPos = 0;
    int iEndPos = iLenPeptide - 1;
    int iUnused = 0;
@@ -3217,12 +3217,12 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
          if (cPrevAA == '-')
          {
             iStartPos = 0;
-            strcpy(szProtein, sDBI.sPeptide.c_str());
+            strcpy(szProtein, sDBI.sPeptide);
          }
          else
          {
             iStartPos = 1;
-            snprintf(szProtein, sizeof(szProtein), "%c%s", cPrevAA, sDBI.sPeptide.c_str());
+            snprintf(szProtein, sizeof(szProtein), "%c%s", cPrevAA, sDBI.sPeptide);
          }
 
          if (cNextAA == '-')
@@ -3579,14 +3579,15 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                   DBIndex sEntry;
                   sEntry.dPepMass = dCalcPepMass;  //MH+ mass
 
-                  sEntry.sPeptide.assign(szProteinSeq + iStartPos, iLenPeptide);
+                  memcpy(sEntry.sPeptide, szProteinSeq + iStartPos, iLenPeptide);
+                  sEntry.sPeptide[iLenPeptide] = '\0';
                   sEntry.cPrevAA = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
                   sEntry.cNextAA = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1] ;
                   sEntry.siVarModProteinFilter = siVarModProteinFilter;
 
                   // little sanity check here to not include peptides with '*' in them
                   // although mass check above should've caught these before
-                  if (sEntry.sPeptide.find('*') == string::npos)
+                  if (strchr(sEntry.sPeptide, '*') == NULL)
                   {
                      sEntry.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
                      sEntry.pcVarModSites.clear();  // empty = unmodified
@@ -7570,7 +7571,8 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
             // add to DBIndex vector
             DBIndex sDBTmp;
             sDBTmp.dPepMass = dCalcPepMass;  //MH+ mass
-            sDBTmp.sPeptide.assign(szProteinSeq + _varModInfo.iStartPos, iLenPeptide);
+            memcpy(sDBTmp.sPeptide, szProteinSeq + _varModInfo.iStartPos, iLenPeptide);
+            sDBTmp.sPeptide[iLenPeptide] = '\0';
 
             if (_varModInfo.iStartPos == 0)
                sDBTmp.cPrevAA = '-';

@@ -2328,8 +2328,8 @@ bool CometSearchManager::DoSearch()
           // Index-only run: the .idx file is written and fclose() has already
           // been called.  Skip all C++ static-duration destructors -- the OS
           // reclaims every page instantly.  Without this, ~80-90M individual
-          // free() calls for DBIndex::sPeptide heap buffers would add ~2 min
-          // of silent cleanup after the "done" message.
+          // free() calls for g_pvDBIndex vector<char> pcVarModSites members
+          // would add ~1-2 min of silent cleanup after the "done" message.
           fflush(stdout);
           fflush(stderr);
           _exit(0);

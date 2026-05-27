@@ -288,7 +288,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       {
          // each unique peptide, irregardless of mod state, will have the same list
          // of matched proteins
-         if (g_pvDBIndex.at(i).sPeptide == g_pvDBIndex.at(i - 1).sPeptide)
+         if (strcmp(g_pvDBIndex.at(i).sPeptide, g_pvDBIndex.at(i - 1).sPeptide) == 0)
          {
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
@@ -458,9 +458,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
             lIndex[iPrevMass10] = comet_ftell(fptr);
       }
 
-      int iLen = (int)(*it).sPeptide.size();
+      int iLen = (int)strlen((*it).sPeptide);
       fwrite(&iLen, sizeof(int), 1, fptr);
-      fwrite((*it).sPeptide.c_str(), sizeof(char), iLen, fptr);
+      fwrite((*it).sPeptide, sizeof(char), iLen, fptr);
 
       fwrite(&((*it).cPrevAA), sizeof(char), 1, fptr);
       fwrite(&((*it).cNextAA), sizeof(char), 1, fptr);
@@ -551,9 +551,9 @@ bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
 
    tTmp = fread(&iLen, sizeof(int), 1, fp);
    if (tTmp != 1) return false;
-   sDBI->sPeptide.resize(iLen);
-   tTmp = fread(&sDBI->sPeptide[0], sizeof(char), iLen, fp);
+   tTmp = fread(sDBI->sPeptide, sizeof(char), iLen, fp);
    if (tTmp != (size_t)iLen) return false;
+   sDBI->sPeptide[iLen] = '\0';
 
    tTmp = fread(&(sDBI->cPrevAA), sizeof(char), 1, fp);
    if (tTmp != 1) return false;

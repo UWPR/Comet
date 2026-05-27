@@ -453,23 +453,23 @@ struct DBInfo
 
 struct DBIndex
 {
-   string sPeptide;                                      // peptide sequence
-   vector<char> pcVarModSites;                           // empty = unmodified; else [iLen+2] encoding var mods
-   comet_fileoffset_t lIndexProteinFilePosition;         // points to entry in g_pvProteinsList
-   double dPepMass;                                      // MH+ pep mass
-   unsigned short siVarModProteinFilter;                 // bitwise representation of mmapProtein
-   char cPrevAA;
-   char cNextAA;
+   vector<char>          pcVarModSites;                         // empty = unmodified; else [iLen+2] encoding var mods
+   comet_fileoffset_t    lIndexProteinFilePosition;             // points to entry in g_pvProteinsList
+   double                dPepMass;                              // MH+ pep mass
+   unsigned short        siVarModProteinFilter;                 // bitwise representation of mmapProtein
+   char                  cPrevAA;
+   char                  cNextAA;
+   char                  sPeptide[MAX_PEPTIDE_LEN];             // peptide sequence, null-terminated
 
    bool operator==(const DBIndex& rhs) const
    {
-      if (sPeptide != rhs.sPeptide)
+      if (strcmp(sPeptide, rhs.sPeptide) != 0)
          return false;
 
       if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
          return false;
 
-      int iLen = (int)sPeptide.size() + 2;
+      int iLen = (int)strlen(sPeptide) + 2;
       for (int i = 0; i < iLen; ++i)
       {
          char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
@@ -483,14 +483,14 @@ struct DBIndex
 
    bool operator<(const DBIndex& rhs) const
    {
-      int cmp = sPeptide.compare(rhs.sPeptide);
+      int cmp = strcmp(sPeptide, rhs.sPeptide);
       if (cmp != 0)
          return cmp < 0;
 
       if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
          return dPepMass < rhs.dPepMass;
 
-      int iLen = (int)sPeptide.size() + 2;
+      int iLen = (int)strlen(sPeptide) + 2;
       for (int i = 0; i < iLen; ++i)
       {
          char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
