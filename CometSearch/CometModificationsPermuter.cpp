@@ -282,7 +282,7 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
       //FIX: put restriction here for protein mod filter
-      string modifiableAas = getModifiableAas((*it).sPeptide, ALL_MODS);
+      string modifiableAas = getModifiableAas((*it).szPeptide, ALL_MODS);
 
       if (!modifiableAas.empty())
       {

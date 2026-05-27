@@ -1599,7 +1599,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
       {
          int iFoundVariableMod = 0;
 
-         strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).sPeptide.c_str());
+         strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).szPeptide);
          iLenPeptide = (int)strlen(szPeptide);
 
          ModificationNumber modNum;

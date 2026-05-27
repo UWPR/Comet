@@ -391,7 +391,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       char cCtermMod,
                                       bool bCountOnly)
 {
-   string sPeptide = g_vRawPeptides.at(iWhichPeptide).sPeptide;
+   string sPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
@@ -998,7 +998,7 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       fwrite(&entry.siVarModProteinFilter, sizeof(unsigned short), 1, fp);
       fwrite(&entry.lIndexProteinFilePosition, clSizeCometFileOffset, 1, fp);
 
-      sTmp.sPeptide = entry.sPeptide;
+      strcpy(sTmp.szPeptide, entry.sPeptide);
       sTmp.lIndexProteinFilePosition = entry.lIndexProteinFilePosition;
       sTmp.dPepMass = entry.dPepMass;
       sTmp.siVarModProteinFilter = entry.siVarModProteinFilter;
@@ -1096,13 +1096,11 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    // program exit when their destructors run after the "done" message.
    // Debug printfs show per-structure cost; remove once timings are understood.
    //
-   // g_vRawPeptides is freed first, before g_pvDBIndex, so that the allocator's
-   // size-class bins are clean (no ~90M freed DBIndex string slots) when the
-   // ~90M non-SSO sPeptide strings in g_vRawPeptides are released.  Freeing
-   // g_pvDBIndex first used to be fast because the old g_pvProteinsList inner-vector
-   // buffers (189M small live allocs) kept those bins warm; with the CSR flat layout
-   // those buffers no longer exist, so releasing g_pvDBIndex first leaves the bins
-   // fragmented and cold for the subsequent g_vRawPeptides free.
+   // Both g_vRawPeptides and g_pvDBIndex now use fixed-size char arrays for
+   // peptide sequences (szPeptide[MAX_PEPTIDE_LEN] and sPeptide[MAX_PEPTIDE_LEN]
+   // respectively), so neither has non-SSO string heap blocks to free.
+   // Destruction is O(n) for pcVarModSites in g_pvDBIndex but trivial for
+   // g_vRawPeptides; order no longer matters.
    {
       auto tClear = chrono::steady_clock::now();
       vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
@@ -1424,7 +1422,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       {
          int iLen;
          memcpy(&iLen, p, sizeof(int));                                     p += sizeof(int);
-         sTmp.sPeptide.assign(p, iLen);                                     p += iLen;
+         memcpy(sTmp.szPeptide, p, iLen);  sTmp.szPeptide[iLen] = '\0';       p += iLen;
          sTmp.cPrevAA = *p++;
          sTmp.cNextAA = *p++;
          memcpy(&sTmp.dPepMass, p, sizeof(double));                         p += sizeof(double);

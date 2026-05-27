@@ -615,19 +615,16 @@ struct PepGenTupleShort
 // file and read in to this data struct.  Same as DBIndex w/o pcVarModSites[]
 struct PlainPeptideIndexStruct
 {
-   string sPeptide;
-   char cPrevAA;
-   char cNextAA;
    comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
-   double dPepMass;                                 // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
-   unsigned short siVarModProteinFilter;            // bitwise representation of mmapProtein
+   double               dPepMass;                   // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
+   unsigned short       siVarModProteinFilter;      // bitwise representation of mmapProtein
+   char                 cPrevAA;
+   char                 cNextAA;
+   char                 szPeptide[MAX_PEPTIDE_LEN]; // peptide sequence, null-terminated
 
    bool operator==(const PlainPeptideIndexStruct &rhs) const
    {
-      if (!sPeptide.compare(rhs.sPeptide))
-         return true;
-      else
-         return false; // peptides are different
+      return strcmp(szPeptide, rhs.szPeptide) == 0;
    }
 };
 
