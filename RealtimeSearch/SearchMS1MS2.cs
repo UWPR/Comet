@@ -176,6 +176,8 @@ namespace RealTimeSearch
                         globalSearchMgr.InitializeSingleSpectrumSearch();
                      watchIndexCreate.Stop();
 
+                     Console.WriteLine();
+
                      // Populate scan queue
                      for (int i = iFirstScan; i <= iLastScan; ++i)
                         scanQueue.Enqueue(i);
@@ -436,18 +438,18 @@ namespace RealTimeSearch
                               iAbove10ms += piTimeSearchMS2[i];
                         }
 
-                        Console.WriteLine("\n5 Slowest MS2 Runs:");
-                        rtsWriter.WriteLine("\n5 Slowest MS2 Runs:");
-                        Console.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
-                        rtsWriter.WriteLine("Time(ms)\tScan\tPeptide\tXcorr");
+                        Console.WriteLine("\n 5 Slowest MS2 Runs:");
+                        rtsWriter.WriteLine("\n 5 Slowest MS2 Runs:");
+                        Console.WriteLine(" Time(ms)\tScan\tPeptide\tXcorr");
+                        rtsWriter.WriteLine(" Time(ms)\tScan\tPeptide\tXcorr");
                         foreach (var run in slowestRuns.OrderByDescending(x => x.TimeMs))
                         {
-                           string line1 = $"{run.TimeMs}\t{run.ScanNumber}\t{run.Peptide}\t{run.XCorr:F4}";
+                           string line1 = $" {run.TimeMs}\t{run.ScanNumber}\t{run.Peptide}\t{run.XCorr:F4}";
                            Console.WriteLine(line1);
                            rtsWriter.WriteLine(line1);
                         }
 
-                        string line = string.Format("\n<= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
+                        string line = string.Format("\n <= 5 ms: {0}, > 5 ms: {1} ({3:F3}%), > 10ms {2} ({4:F3}%)\n",
                            iTot - iAbove5ms, iAbove5ms, iAbove10ms,
                            iTot > 0 ? ((double)iAbove5ms / iTot) * 100.0 : 0,
                            iTot > 0 ? ((double)iAbove10ms / iTot) * 100.0 : 0);
@@ -456,27 +458,25 @@ namespace RealTimeSearch
                         double dAvgTimePerScan = scansProcessedMS2 > 0 ? ((double)cumulativeElapsedMS2 / (double)scansProcessedMS2)/numThreads: 0;
                         double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
 
-
-                        line = string.Format("\n     total elapsed time: {0:F2} s", watchGlobal.Elapsed.TotalSeconds);
-                        rtsWriter.WriteLine(line);
-                        Console.WriteLine(line);
-                        
-                        line = string.Format("initialize elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
+                        line = string.Format("\n initialize elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
-                        line = string.Format("MS2 search elapsed time: {0:F2} s", watchSearchMS2.Elapsed.TotalSeconds);
+                        line = string.Format( " MS2 search elapsed time: {0:F2} s", watchSearchMS2.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
-                        line = string.Format("    average search time: {0:F2} ms/spectrum ({1} spectra), {2:F0} Hz", dAvgTimePerScan, scansProcessedMS2, dHz);
+                        line = string.Format(" MS2 average search time: {0:F2} ms/spectrum ({1} spectra), {2:F0} Hz", dAvgTimePerScan, scansProcessedMS2, dHz);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
-                        line = string.Format("MS1 search elapsed time: {0:F2} s", watchSearchMS1.Elapsed.TotalSeconds);
+                        line = string.Format(" MS1 search elapsed time: {0:F2} s", watchSearchMS1.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
+                        line = string.Format("      total elapsed time: {0:F2} s", watchGlobal.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
 
                      }
 
@@ -494,7 +494,9 @@ namespace RealTimeSearch
             Console.WriteLine("No raw file exists at that path.");
          }
 
-         Console.WriteLine("{0} Done.{1}", Environment.NewLine, Environment.NewLine);
+         string sPeakMem = globalSearchMgr.GetPeakMemory();
+         string sMemSuffix = string.IsNullOrEmpty(sPeakMem) ? "" : $" ({sPeakMem})";
+         Console.WriteLine("{0} Done.{1}{2}", Environment.NewLine, sMemSuffix, Environment.NewLine);
          return;
       }
 
@@ -680,7 +682,7 @@ namespace RealTimeSearch
 
                   // digest length range
                   int iLengthMin = 8;
-                  int iLengthMax = 40;
+                  int iLengthMax = 25;
                   var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
                   string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
                   SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
@@ -696,8 +698,9 @@ namespace RealTimeSearch
 
                   // variable mods
                   VarModsWrapper varMods = new VarModsWrapper();
-                  sTmp = "15.9949 M 0 2 -1 0 0 0.0";
-                  varMods.set_VarModMass(15.9949);
+                  //sTmp = "15.9949 M 0 2 -1 0 0 0.0";
+                  sTmp = "0.00 M 0 2 -1 0 0 0.0";
+                  varMods.set_VarModMass(0.00);
                   varMods.set_VarModChar("M");
                   varMods.set_BinaryMod(0);
                   varMods.set_MaxNumVarModAAPerMod(2);
@@ -707,6 +710,7 @@ namespace RealTimeSearch
                   varMods.set_VarNeutralLoss(0.0);
                   SearchMgr.SetParam("variable_mod01", sTmp, varMods);
 
+                  /*
                   sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
                   varMods.set_VarModMass(79.9663);
                   varMods.set_VarModChar("STY");
@@ -717,6 +721,7 @@ namespace RealTimeSearch
                   varMods.set_WhichTerm(0);
                   varMods.set_VarNeutralLoss(97.976896);
                   SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+                  */
 
                   iTmp = 4;
                   sTmp = iTmp.ToString();
@@ -729,10 +734,10 @@ namespace RealTimeSearch
 
                   // enzyme settings
                   var enzymeInfo = new EnzymeInfoWrapper();
-                  string enzymeInfoString = "0. Cut_everywhere  0 0 0 \n1. Trypsin 1 KR P";
-                  enzymeInfo.set_SearchEnzymeName("Trypsin");
-                  enzymeInfo.set_SearchEnzymeBreakAA("KR");
-                  enzymeInfo.set_SearchEnzymeNoBreakAA("P");
+                  string enzymeInfoString = "0. Cut_everywhere  0 - -\n1. Trypsin 1 KR P";
+                  enzymeInfo.set_SearchEnzymeName("Cut_everywhere");
+                  enzymeInfo.set_SearchEnzymeBreakAA("-");
+                  enzymeInfo.set_SearchEnzymeNoBreakAA("-");
                   enzymeInfo.set_SearchEnzymeOffSet(1); // 0=cleave before; 1=cleave after
                   enzymeInfo.set_SearchEnzyme2Name("Cut_everywhere");
                   enzymeInfo.set_SearchEnzyme2BreakAA("-");

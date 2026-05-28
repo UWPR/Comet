@@ -2338,13 +2338,13 @@ bool CometSearchManager::DoSearch()
           // -- the OS reclaims every page instantly.  Without this, ~80-90M
           // individual free() calls for g_pvDBIndex vector<char> pcVarModSites
           // members would add ~1-2 min of cleanup after the "done" message.
-          // When called via CreateFragmentIndex/CreatePeptideIndex from
-          // InitializeSingleSpectrumSearch() (RTS path), m_bRTSIndexBuild is
-          // true and we skip _exit(0) so the caller can load and use the index.
           fflush(stdout);
           fflush(stderr);
           _exit(0);
        }
+
+       if (m_bRTSIndexBuild)
+          return bSucceeded;  // index written; caller (InitializeSingleSpectrumSearch) will load it
    }
 
    bool bBlankSearchFile = false;
@@ -3345,6 +3345,13 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       if (g_staticParams.options.bCreateFragmentIndex)
       {
          bSucceeded = CreateFragmentIndex();
+         if (!bSucceeded)
+            return false;
+
+         // DoSearch() (called inside CreateFragmentIndex) calls DeallocateMemory()
+         // after writing the .idx file. Re-allocate here so AcquirePoolSlot() has
+         // a valid _pbSearchMemoryPool when worker threads start searching.
+         bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
          if (!bSucceeded)
             return false;
       }

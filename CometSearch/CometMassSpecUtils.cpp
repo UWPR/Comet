@@ -547,10 +547,10 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
 }
 
 
-// Returns peak resident set size for the process in KB, or 0 on failure.
+// Returns peak resident set size for the process as a string, e.g. "2.4GB", or "0MB" on failure.
 string CometMassSpecUtils::GetPeakMemory()
 {
-   string strOut = "";
+   string strOut = "0MB";
    size_t peakMemoryKB = 0;
 
 #ifdef _WIN32
@@ -590,4 +590,9 @@ string CometMassSpecUtils::GetPeakMemory()
    }
    return strOut;
 }
- 
+
+// Plain free function usable from C++/CLI without pulling in CometDataInternal.h
+string GetPeakMemoryStr()
+{
+   return CometMassSpecUtils::GetPeakMemory();
+}

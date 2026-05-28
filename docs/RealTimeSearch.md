@@ -57,27 +57,42 @@ Uses a double-checked locking pattern with `std::atomic<bool> singleSearchInitia
 ```
 fast path: singleSearchInitializationComplete.load(acquire) -> return true if set
 slow path: mutex-guarded check + initialization
-  -> InitializeStaticParams()       populates g_staticParams
-  -> ValidateSequenceDatabaseFile() validates FASTA / index
-  -> ReadFragmentIndex()            loads g_iFragmentIndex, g_vFragmentPeptides, g_vRawPeptides
-  -> AllocateMemory()               preprocessing + search thread buffers
+  -> InitializeStaticParams()         populates g_staticParams; sets iDbType from .idx header
+                                      if .idx is absent, sets iDbType=FI_DB (will be built)
+  -> ValidateSequenceDatabaseFile()   validates FASTA / index; sets bCreateFragmentIndex=true
+                                      if .idx is absent but FASTA exists
+  -> CometPreprocess::AllocateMemory()  preprocessing thread buffers
+  -> CometSearch::AllocateMemory()      search thread pool (_pbSearchMemoryPool,
+                                        _ppbDuplFragmentArr) used by AcquirePoolSlot()
+  -> tp->fillPool()
+  -> if iDbType == FI_DB:
+       if bCreateFragmentIndex:
+         CreateFragmentIndex()         calls DoSearch() to scan FASTA and write .idx;
+                                       DoSearch() calls CometSearch::DeallocateMemory()
+                                       internally before returning
+         CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
+       ReadPlainPeptideIndex()         loads g_vRawPeptides from the .idx file
+       CreateFragmentIndex(tp)         builds g_iFragmentIndex in memory (CSR posting lists)
   -> singleSearchInitializationComplete.store(true, release)
 ```
 
 The `release` store ensures all threads that subsequently load the flag with `acquire` see a fully initialized `g_iFragmentIndex` and all other globals.
+
+**Note on the index-build path:** When the `.idx` file is absent, `CreateFragmentIndex()` calls `DoSearch()` with `m_bRTSIndexBuild=true`. `DoSearch()` writes the `.idx` file, calls `CometSearch::DeallocateMemory()` to free the large FASTA-parse memory, then returns early (skipping the spec-lib and batch-search logic that follows in `DoSearch()`). `InitializeSingleSpectrumSearch()` then re-allocates the search pool before proceeding to load the index.
 
 ### MS1 (`InitializeSingleSpectrumMS1Search`)
 
 Same double-checked pattern with `singleSearchMS1InitializationComplete`:
 
 ```
-  -> InitializeSingleSpectrumSearch()   ensures MS2 init is also complete
-  -> CometSpecLib::LoadSpecLib()        loads g_vSpecLib + g_vulSpecLibPrecursorIndex
-  -> CometAlignment::InitAlignment()   sets up RT aligner
+  -> InitializeStaticParams()
+  -> CometSpecLib::LoadSpecLibMS1Raw()  loads g_vSpecLib from the MS1 reference .raw file
   -> singleSearchMS1InitializationComplete.store(true, release)
 ```
 
-**Important:** `InitializeSingleSpectrumMS1Search()` must return before any thread calls `DoMS1SearchMultiResults()`. This is a precondition enforced by the C# caller, not by the C++ code itself.
+The C# caller invokes `InitializeSingleSpectrumMS1Search` and `InitializeSingleSpectrumSearch` as **separate, independent calls** (in that order). MS1 init does not call MS2 init internally.
+
+**Important:** Both init calls must complete before any thread calls `DoMS1SearchMultiResults()` or `DoSingleSpectrumSearchMultiResults()`. This ordering is enforced by the C# caller, not by the C++ code itself.
 
 `FinalizeSingleSpectrumSearch()` and `FinalizeSingleSpectrumMS1Search()` free allocated memory and reset the atomic flags. Call them when the search session ends.
 
@@ -239,11 +254,13 @@ The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, p
 **Shared pools (allocated once at init, reused across calls):**
 
 - `CometPreprocess::AllocateMemory(N)` -- per-thread preprocessing buffers for the batch path. The RTS thread-local path bypasses this pool and allocates directly.
-- `CometSearch::AllocateMemory(N)` -- per-thread search buffers. Each `CometSearch` instance constructed in `RunSearch(Query*, ...)` uses its own member arrays, not the shared pool.
+- `CometSearch::AllocateMemory(N)` -- allocates `_pbSearchMemoryPool[N]` and `_ppbDuplFragmentArr[N][]`, used by `AcquirePoolSlot()` to hand each concurrent call a dedicated duplicate-fragment scratch buffer. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
 
 ---
 
 ## Adding a new RTS entry point
+
+For a new **search or per-spectrum call** that routes through `ICometSearchManager`:
 
 1. Declare the method in `CometInterfaces.h` (`ICometSearchManager`).
 2. Implement in `CometSearchManager.cpp` using the thread-local pattern:
@@ -253,3 +270,9 @@ The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, p
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
 4. If new return types are needed, add wrapper structs to `CometDataWrapper.h` (and mirror in `CometData.h`).
 5. Call from `RealtimeSearch/SearchMS1MS2.cs`.
+
+For a **utility method** that does not route through `ICometSearchManager` (e.g. `GetPeakMemory()`):
+
+1. Implement as a free function in the relevant `CometSearch/*.cpp` file. Do **not** include headers that pull in `CometDataInternal.h` directly into the C++/CLI translation unit -- instead expose a plain free function wrapper (e.g. `GetPeakMemoryStr()`) and forward-declare it in `CometWrapper.cpp`.
+2. Declare and implement the managed method directly on `CometSearchManagerWrapper` in `CometWrapper.h` / `CometWrapper.cpp`.
+3. Call from `RealtimeSearch/SearchMS1MS2.cs`.

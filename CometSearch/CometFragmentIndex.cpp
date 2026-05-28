@@ -1104,52 +1104,52 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    {
       auto tClear = chrono::steady_clock::now();
       vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
-      printf("   - freed g_vRawPeptides:        %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed g_vRawPeptides:        %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       g_pvDBIndex.clear();   // DBIndex::sPeptide strings freed after g_vRawPeptides
                              // to keep the allocator bins warm for the string frees above
-      printf("   - freed g_pvDBIndex:            %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed g_pvDBIndex:            %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       g_pvProteinsList.clear();   // CSR flat layout: 2 free() calls instead of ~190M
-      printf("   - freed g_pvProteinsList:       %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed g_pvProteinsList:       %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       g_pvProteinNames.clear();
-      printf("   - freed g_pvProteinNames:       %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed g_pvProteinNames:       %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       vector<string>().swap(MOD_SEQS);
-      printf("   - freed MOD_SEQS:               %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed MOD_SEQS:               %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       vector<FragmentPeptidesStruct>().swap(g_vFragmentPeptides);
-      printf("   - freed g_vFragmentPeptides:    %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed g_vFragmentPeptides:    %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
       auto tClear = chrono::steady_clock::now();
       delete[] PEPTIDE_MOD_SEQ_IDXS;
       PEPTIDE_MOD_SEQ_IDXS = nullptr;
-      printf("   - freed PEPTIDE_MOD_SEQ_IDXS:  %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed PEPTIDE_MOD_SEQ_IDXS:  %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
@@ -1158,8 +1158,8 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
       MOD_SEQ_MOD_NUM_START = nullptr;
       delete[] MOD_SEQ_MOD_NUM_CNT;
       MOD_SEQ_MOD_NUM_CNT = nullptr;
-      printf("   - freed MOD_SEQ_MOD_NUM_START/CNT: %4lld ms\n",
-         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
+//      printf("   - freed MOD_SEQ_MOD_NUM_START/CNT: %4lld ms\n",
+//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    fflush(stdout);

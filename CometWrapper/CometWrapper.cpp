@@ -24,6 +24,12 @@
 #include <msclr/marshal_cppstd.h>
 
 #include "CometWrapper.h"
+
+// Forward declaration: avoids including CometMassSpecUtils.h (which drags in
+// CometDataInternal.h) into this C++/CLI translation unit, where
+// "using namespace System" makes Threading ambiguous.
+std::string GetPeakMemoryStr();
+
 using namespace CometWrapper;
 
 using namespace System::Runtime::InteropServices;
@@ -604,4 +610,10 @@ bool CometSearchManagerWrapper::ResetSearchStatus()
 
     _pSearchMgr->ResetSearchStatus();
     return true;
+}
+
+String^ CometSearchManagerWrapper::GetPeakMemory()
+{
+   std::string s = GetPeakMemoryStr();
+   return gcnew String(s.c_str());
 }

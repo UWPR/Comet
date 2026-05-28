@@ -85,6 +85,7 @@ namespace CometWrapper {
         bool CancelSearch();
         bool IsCancelSearch(bool% bCancel);
         bool ResetSearchStatus();
+        String^ GetPeakMemory();
 
     private:
         ICometSearchManager *_pSearchMgr;
