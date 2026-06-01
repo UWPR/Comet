@@ -85,7 +85,7 @@ extern string g_sCometVersion;   // version string including git hash
 #define cometbitcheck(byte, nbit) ((byte) &   (1<<(nbit)))
 
 using namespace MSToolkit;
-#define logout(szString) std::cerr << szString
+#define logout(szString) std::cout << szString
 #define logerr(szString) std::cerr << szString
 
 #endif // _COMMON_H_

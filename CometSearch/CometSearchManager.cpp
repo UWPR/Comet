@@ -3101,10 +3101,9 @@ cleanup_results:
                time_t tEndTime;
 
                time(&tEndTime);
-               int iElapsedTime = (int)difftime(tEndTime, tStartTime);
 
                strftime(g_staticParams.szDate, 26, "%Y/%m/%d, %I:%M:%S %p", localtime(&tEndTime));
-               strOut = " Search end:    " + string(g_staticParams.szDate) + "\n\n";
+               strOut = " Search end:    " + string(g_staticParams.szDate) + "(" + CometMassSpecUtils::ElapsedTime(tGlobalStartTime) + ", " + CometMassSpecUtils::GetPeakMemory() + ")\n\n";
                logout(strOut);
             }
          }
