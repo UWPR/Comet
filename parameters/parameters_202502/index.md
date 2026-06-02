@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2025.02.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">*</font> are new parameters.
-Entries marked with an <font color="red">**</font> are modified parameters.
+Entries marked with an <font color="red">\*</font> are new parameters.
+Entries marked with an <font color="red">\*\*</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -98,7 +98,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_duplicate_proteins](max_duplicate_proteins.html)
 - [max_fragment_charge](max_fragment_charge.html)
 - [max_index_runtime](max_index_runtime.html)
-- [min_precursor_charge](min_precursor_charge.html) <font color="red">*</font>
+- [min_precursor_charge](min_precursor_charge.html) <font color="red">\*</font>
 - [max_precursor_charge](max_precursor_charge.html)
 - [minimum_xcorr](minimum_xcorr.html)
 - [num_results](num_results.html)
@@ -107,7 +107,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [peff_verbose_output](peff_verbose_output.html)
 - [peptide_length_range](peptide_length_range.html)
 - [precursor_NL_ions](precursor_NL_ions.html)
-- [protein_modslist_file](protein_modslist_file.html)
 - [skip_researching](skip_researching.html)
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
@@ -132,7 +131,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)
-- [protein_modlist_file](protein_modlist_file.html)
+- [protein_modslist_file](protein_modslist_file.html)
 
 #### Static modifications
 

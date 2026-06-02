@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2024.01.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">*</font> are new parameters.
-Entries marked with an <font color="red">**</font> are modified parameters.
+Entries marked with an <font color="red">\*</font> are new parameters.
+Entries marked with an <font color="red">\*\*</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -26,13 +26,13 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Masses
 
-- [peptide_mass_tolerance_lower](peptide_mass_tolerance_lower.html) <font color="red">*</font>
-- [peptide_mass_tolerance_upper](peptide_mass_tolerance_upper.html) <font color="red">*</font>
+- [peptide_mass_tolerance_lower](peptide_mass_tolerance_lower.html) <font color="red">\*</font>
+- [peptide_mass_tolerance_upper](peptide_mass_tolerance_upper.html) <font color="red">\*</font>
 - [peptide_mass_units](peptide_mass_units.html)
 - [mass_type_parent](mass_type_parent.html)
 - [mass_type_fragment](mass_type_fragment.html)
 - [precursor_tolerance_type](precursor_tolerance_type.html)
-- [isotope_error](isotope_error.html) <font color="red">**</font>
+- [isotope_error](isotope_error.html) <font color="red">\*\*</font>
 
 #### Search enzyme
 
@@ -101,10 +101,10 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [text_file_extension](text_file_extension.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [old_mods_encoding](old_mods_encoding.html)
-- [export_additional_pepxml_scores](export_additional_pepxml_scores.html) <font color="red">*</font>
-- [resolve_fullpaths](resolve_fullpaths.html) <font color="red">*</font>
-- [pinfile_protein_delimiter](pinfile_protein_delimiter.html) <font color="red">*</font>
-- [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue <font color="red">*</font>
+- [export_additional_pepxml_scores](export_additional_pepxml_scores.html) <font color="red">\*</font>
+- [resolve_fullpaths](resolve_fullpaths.html) <font color="red">\*</font>
+- [pinfile_protein_delimiter](pinfile_protein_delimiter.html) <font color="red">\*</font>
+- [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue <font color="red">\*</font>
 
 #### Spectral processing
 
@@ -116,7 +116,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Variable modifications
 
-- [variable_mod01 thru variable_mod15](variable_modXX.html) <font color="red">*,**</font>
+- [variable_mod01 thru variable_mod15](variable_modXX.html) <font color="red">\*,\*\*</font>
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)

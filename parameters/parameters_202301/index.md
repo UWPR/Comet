@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2023.01.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">*</font> are new parameters.
-Entries marked with an <font color="red">**</font> are modified parameters.
+Entries marked with an <font color="red">\*</font> are new parameters.
+Entries marked with an <font color="red">\*\*</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -121,7 +121,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [variable_mod09](variable_mod09.html)
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
-- [scale_fragmentNL](scale_fragmentNL.html) <font color="red">*</font>
+- [scale_fragmentNL](scale_fragmentNL.html) <font color="red">\*</font>
 
 #### Static modifications
 

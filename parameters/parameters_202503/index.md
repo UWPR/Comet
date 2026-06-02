@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2025.02.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">*</font> are new parameters.
-Entries marked with an <font color="red">**</font> are modified parameters.
+Entries marked with an <font color="red">\*</font> are new parameters.
+Entries marked with an <font color="red">\*\*</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -111,8 +111,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [peptide_length_range](peptide_length_range.html)
 - [pinfile_protein_delimiter](pinfile_protein_delimiter.html)
 - [precursor_NL_ions](precursor_NL_ions.html)
-- [print_ascorepro_score](print_ascorepro_score.html) <font color="red">*</font>
-- [protein_modslist_file](protein_modslist_file.html)
+- [print_ascorepro_score](print_ascorepro_score.html) <font color="red">\*</font>
 - [resolve_fullpaths](resolve_fullpaths.html)
 - [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue
 - [skip_researching](skip_researching.html)
@@ -120,10 +119,10 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [text_file_extension](text_file_extension.html)
 
 ### MS1 real-time alignment
-- [ms1_bin_tol](ms1_bin_tol.html) <font color="red">*</font>
-- [ms1_bin_offset](ms1_bin_offset.html) <font color="red">*</font>
-- [ms1_mass_range](ms1_mass_range.html) <font color="red">*</font>
-- [retentiontime_tol](retentiontime_tol.html) <font color="red">*</font>
+- [ms1_bin_tol](ms1_bin_tol.html) <font color="red">\*</font>
+- [ms1_bin_offset](ms1_bin_offset.html) <font color="red">\*</font>
+- [ms1_mass_range](ms1_mass_range.html) <font color="red">\*</font>
+- [retentiontime_tol](retentiontime_tol.html) <font color="red">\*</font>
 
 #### Spectral processing
 
@@ -139,7 +138,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)
-- [protein_modlist_file](protein_modlist_file.html)
+- [protein_modslist_file](protein_modslist_file.html)
 
 #### Static modifications
 

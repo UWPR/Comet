@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2021.02.?.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">*</font> are new parameters.
-Entries marked with an <font color="red">**</font> are modified parameters.
+Entries marked with an <font color="red">\*</font> are new parameters.
+Entries marked with an <font color="red">\*\*</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
