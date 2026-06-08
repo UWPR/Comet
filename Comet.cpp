@@ -927,9 +927,6 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 
    if (iPrintParams == 2)
    {
-      fprintf(fp, "\nspectral_library_name = /some/path/speclib.file\n");
-      fprintf(fp, "spectral_library_ms_level = 1\n\n");
-
       fprintf(fp,
 "#\n\
 # PEFF - PSI Extended FASTA Format\n\
@@ -937,17 +934,9 @@ num_threads = 0                        # 0=poll CPU to set num threads; else spe
 peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PSI-MOD, 2=PEFF Unimod\n\
 peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 \n\
-compoundmods_file =                    # path to compound mods mass file (one mass per line)\n\
-\n\
-#\n\
-# fragment ion index; limited to 5 variable mods and up to 5 modified residues per mod\n\
-#\n\
-fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
-fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
-fragindex_num_spectrumpeaks = 150      # number of peaks from spectrum to use for fragment ion index matching\n\
-fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
-fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
-fragindex_skipreadprecursors = 1       # 0=read precursors to limit fragment ion index, 1=skip reading precursors (default)\n\n");
+compoundmods_file =                    # path to compound mods mass file, one mass per line, for multi-mod search on 'J' residues\n\
+spectral_library_name = /some/path/speclib.file\n\
+spectral_library_ms_level = 1\n\n");
    }
 
    fprintf(fp,
@@ -1016,7 +1005,6 @@ require_variable_mod = 0\n");
 "\n\
 #\n\
 # fragment ions\n\
-#\n\
 # ion trap ms/ms:  1.0005 tolerance, 0.4 offset (mono masses), theoretical_fragment_ions = 1\n\
 # high res ms/ms:    0.02 tolerance, 0.0 offset (mono masses), theoretical_fragment_ions = 0, spectrum_batch_size = 15000\n\
 #\n\
@@ -1031,6 +1019,16 @@ use_Y_ions = 1\n\
 use_Z_ions = 0\n\
 use_Z1_ions = 0\n\
 use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral loss peaks\n\
+\n\
+#\n\
+# fragment ion index; limited to 5 variable mods and up to 5 modified residues per mod\n\
+#\n\
+fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
+fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
+fragindex_num_spectrumpeaks = 150      # number of peaks from spectrum to use for fragment ion index matching\n\
+fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
+fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
+fragindex_skipreadprecursors = 1       # 0=read precursors to limit fragment ion index, 1=skip reading precursors (default)\n\
 \n\
 #\n\
 # output\n\
