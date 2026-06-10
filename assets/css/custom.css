@@ -28,7 +28,7 @@ body {
   color: var(--color-text);
   line-height: 1.6;
   margin: 0;
-  animation: fadeIn 0.3s ease-in;
+  animation: fadeIn 0.1s ease-in;
 }
 
 h1, h2, h3 {
