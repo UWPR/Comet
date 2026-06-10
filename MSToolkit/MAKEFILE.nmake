@@ -39,6 +39,8 @@ core: $(MSTOOLKIT_SRCDIR)\*.cpp
 	
 clean:
 	del $(BUILD_DIR)\*.obj
+	-del $(BUILD_DIR)\MSToolkit.lib
+	-del $(BUILD_DIR)\MSToolkitExtern.lib
 
 
 # -- Expat --------------------------------------------

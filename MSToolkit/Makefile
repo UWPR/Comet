@@ -73,7 +73,7 @@ realclean : expat-realclean zlib-realclean mstoolkit-realclean mzparser-realclea
 EXPAT_VER := expat-2.2.9
 EXPAT_ZIP := $(EXPAT_VER).zip
 EXPAT_SRC := $(BUILD_EXT)/$(EXPAT_VER)
-EXPAT_DST := include/extern/expat_config.h $(BUILD_DIR)/libexpat.a
+EXPAT_DST := include/expat_config.h $(BUILD_DIR)/libexpat.a
 EXPAT_DSO := $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlparse.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmlrole.o $(BUILD_EXT)/$(EXPAT_VER)/lib/.libs/xmltok.o
 EXPAT_STAMP := $(BUILD_DIR)/.expat_installed
 
@@ -219,10 +219,10 @@ endif
 
 
 lib-clean :
-	rm -rf libmstoolkit.a
+	rm -rf libmstoolkit.a mstoolkit.mri
 
 lib-realclean : lib-clean
-	rm -rf libmstoolkit.a
+	rm -rf libmstoolkit.a mstoolkit.mri
 
 
 # -- External Libraries  ----------------------------------------------------------
@@ -250,10 +250,10 @@ else
 endif
 
 libextern-clean :
-	rm -rf libmstoolkitextern.a
+	rm -rf libmstoolkitextern.a mstoolkitextern.mri
 
 libextern-realclean : libextern-clean
-	rm -rf libmstoolkitextern.a
+	rm -rf libmstoolkitextern.a mstoolkitextern.mri
 	
 
 # -- cleanup  ----------------------------------------------------------
@@ -262,4 +262,4 @@ libextern-realclean : libextern-clean
 .PHONY : rc
 
 rc:
-	rm -rf $(BUILD_DIR) $(BUILD_LIC)
+	rm -rf $(BUILD_DIR) $(BUILD_LIC) mstoolkitlite.mri
