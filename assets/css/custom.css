@@ -1,7 +1,7 @@
 /* === Modern Cayman Overrides for Comet === */
 
 /* Import modern font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap');
 
 /* CSS Variables for theme colors */
 :root {
@@ -22,7 +22,7 @@
 
 /* Global reset tweaks */
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'IBM Plex Sans', sans-serif;
   font-size: clamp(1rem, 2vw, 1.1rem);
   background-color: var(--color-bg);
   color: var(--color-text);
