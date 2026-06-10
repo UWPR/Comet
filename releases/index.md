@@ -1,5 +1,6 @@
 ### Comet Releases
 
+- [Release 2026.02, 2026/06/10](/Comet/releases/release_202602.html)
 - [Release 2026.01, 2026/02/03, last revised 2026/03/16](/Comet/releases/release_202601.html)
 - [Release 2025.03, 2025/11/12](/Comet/releases/release_202503.html)
 - [Release 2025.02, 2025/06/05](/Comet/releases/release_202502.html)
@@ -28,7 +29,6 @@
 <img src="/Comet/images/cometlogo_1.png" alt="Comet logo" style="float:right" height="120">
 Comet is currently supported within the following software projects:
 
-- [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [PatternLab](http://www.patternlabforproteomics.org)
 - [Crux](https://crux.ms)
 - [OpenMS](https://www.openms.de)
@@ -40,8 +40,9 @@ Comet is currently supported within the following software projects:
 - [Philosopher](https://philosopher.nesvilab.org)
 - [PAW pipeline](https://github.com/pwilmart/PAW_pipeline/)
 - [SearchGUI](https://compomics.github.io/projects/searchgui.html) and [PeptideShaker](https://compomics.github.io/projects/peptide-shaker.html)
+- [Trans-Proteomic Pipeline (TPP)](http://tools.proteomecenter.org/wiki/index.php?title=Software:TPP)
 - [Bruker Daltonics Integrated Proteomics Pipeline (IP2)](https://web.archive.org/web/20240916033043/https://www.manula.com/manuals/ip2/ip2/1/en/topic/7-2-comet-search-engine)
-- [Thermo Fischer Scientific Real-Time Search](https://brjac.com.br/artigos/omics-edition/brjac-29-ThermoSci-Report-Eclipse.pdf) and as a Proteome Discoverer node as of PD 3.0.
+- [Thermo Fisher Scientific Real-Time Search](https://brjac.com.br/artigos/omics-edition/brjac-29-ThermoSci-Report-Eclipse.pdf) and as a Proteome Discoverer node as of PD 3.0.
 
 Comet is a free, open source tool distributed under the
 [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0)

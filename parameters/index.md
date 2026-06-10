@@ -1,5 +1,6 @@
 ### Comet Parameters
 
+- [Comet version 2026.02](/Comet/parameters/parameters_202602)
 - [Comet version 2026.01](/Comet/parameters/parameters_202601)
 - [Comet version 2025.03](/Comet/parameters/parameters_202503)
 - [Comet version 2025.02](/Comet/parameters/parameters_202502)
@@ -21,4 +22,4 @@
 - [Comet version 2014.01](http://comet-ms.sourceforge.net/parameters/parameters_201401/) (on old SourceForge site)
 - [Comet version 2013.02](http://comet-ms.sourceforge.net/parameters/parameters_201302/) (on old SourceForge site)
 - [Comet version 2013.01](http://comet-ms.sourceforge.net/parameters/parameters_201301/) (on old SourceForge site)
-- [Comet version 2012.01](http://comet-ms.sourceforge.net/parameters/parameters_201901/) (on old SourceForge site)
+- [Comet version 2012.01](http://comet-ms.sourceforge.net/parameters/parameters_201201/) (on old SourceForge site)

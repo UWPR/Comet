@@ -5,7 +5,7 @@ align an acquisition run against a reference run using MS1 scans.
 
 Alignment is performed by scoring each query MS1 scan against the reference MS1 scans
 using a unit vector dot product (that's also referred to as cosine similarity score).
-The range of reference MS1 scans is limited by those within the retentime time tolerance
+The range of reference MS1 scans is limited by those within the retention time tolerance
 specified.  Alignment of runs of different linear gradient lengths is supported although
 now that I'm writing this documentation, I think I may need to add another parameter to
 allow the user to specify the RTS query's gradient length to support this. I guess I need to
@@ -22,7 +22,7 @@ Smaller ms1_bin_tol values can be used for more sensitive matching (which I've f
 be unnecessary) but at the expense of longer query times.
 
 To mitigate local noise in the retention time alignment, Comet keeps a history of the 250
-most recent retention time matches.  A linear regresssion of the retention time matches is
+most recent retention time matches.  A linear regression of the retention time matches is
 performed with outlier detection.  See CometAlignment.cpp for details.
 
 Real-time MS1 alignment queries can be performed alongside real-time MS/MS searches.  The
@@ -31,7 +31,7 @@ can be run by calling DoMS1SearchMultiResult() for MS1 scans and DoSingleSpectru
 for MS/MS scans in the CometWrapper interface.
 
 
-### MS1 alignment specific paramters
+### MS1 alignment specific parameters
 - [retentiontime_tol](https://uwpr.github.io/Comet/parameters/parameters_202503/retentiontime_tol.html)
 - [ms1_bin_tol](https://uwpr.github.io/Comet/parameters/parameters_202503/ms1_bin_tol.html)
 - [ms1_bin_offset](https://uwpr.github.io/Comet/parameters/parameters_202503/ms1_bin_offset.html)

@@ -1,4 +1,4 @@
-### Notes 2024/11/12: AScorePro integration in Comet
+### Notes 2025/11/12: AScorePro integration in Comet
 
 As of Comet release v2025.03 rev. 0, the AScorePro site localization algorithm has
 been integrated into the program.  Comet's AScorePro code is based on translating
@@ -21,7 +21,7 @@ to all modifications in a peptide.
 
 ### Application of AScorePro both real-time and standard (offline) searches
 
-- Controlled by the [print_ascore_pro](https://uwpr.github.io/Comet/parameters/parameters_202503/print_ascorepro_score.html) search parameter.
+- Controlled by the [print_ascorepro_score](https://uwpr.github.io/Comet/parameters/parameters_202503/print_ascorepro_score.html) search parameter.
 - Applies to top hit only.
 - Replace Comet’s top hit peptide with AScorePro localized peptide only if AScorePro MOB score is 13 or greater.
   - This means it’s possible that the 2nd or lower peptide in the output list can be the same as the new/replaced top hit.
