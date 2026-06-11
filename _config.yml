@@ -1,3 +1,9 @@
 theme: jekyll-theme-cayman
 title: Comet MS/MS
 google_analytics: G-P9930NNV9P
+exclude:
+  - tests/
+  - data/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock
