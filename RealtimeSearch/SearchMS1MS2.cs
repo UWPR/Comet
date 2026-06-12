@@ -330,26 +330,32 @@ namespace RealTimeSearch
                         }
                      }
 
-                     // Launch worker threads
-                     Task[] tasks = new Task[numThreads];
-                     for (int i = 0; i < numThreads; ++i)
+                     TimeSpan elapsedGlobal = TimeSpan.Zero;
+                     try
                      {
-                        int threadId = i;
-                        tasks[i] = Task.Run(() => ProcessScans(threadId));
+                        // Launch worker threads
+                        Task[] tasks = new Task[numThreads];
+                        for (int i = 0; i < numThreads; ++i)
+                        {
+                           int threadId = i;
+                           tasks[i] = Task.Run(() => ProcessScans(threadId));
+                        }
+
+                        // Wait for all threads to complete
+                        Task.WaitAll(tasks);
+                        Console.WriteLine(); // newline after progress
+
+                        watchGlobal.Stop();
+                        elapsedGlobal = watchGlobal.Elapsed;
                      }
-
-                     // Wait for all threads to complete
-                     Task.WaitAll(tasks);
-                     Console.WriteLine(); // newline after progress
-
-                     watchGlobal.Stop();
-                     TimeSpan elapsedGlobal = watchGlobal.Elapsed;
-
-                     // Cleanup ONCE
-                     if (bPerformMS2Search)
-                        globalSearchMgr.FinalizeSingleSpectrumSearch();
-                     if (bPerformMS1Search)
-                        globalSearchMgr.FinalizeSingleSpectrumMS1Search();
+                     finally
+                     {
+                        // Cleanup ONCE -- in finally so resources are freed even on exception
+                        if (bDatabaseSearch && bPerformMS2Search)
+                           globalSearchMgr.FinalizeSingleSpectrumSearch();
+                        if (bPerformMS1Search)
+                           globalSearchMgr.FinalizeSingleSpectrumMS1Search();
+                     }
 
                      // Process and display results
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
