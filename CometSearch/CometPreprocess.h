@@ -106,6 +106,20 @@ public:
 
    static double GetMassCushion(double dMass);
 
+   // Fused FI_DB batch path: preprocess + search + post-analysis for one spectrum
+   // in a single pass using thread-local scratch buffers.  iSlot is this worker's
+   // pre-assigned _ppbDuplFragmentArr index.
+   static void FusedSearchSpectrum(Spectrum spec, int iSlot);
+
+   // Fused FI_DB batch path: read spectra into a vector then dispatch
+   // FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
+   // AllocateResultsMem + RunSearch + PostAnalysis for the FI_DB case.
+   static bool FusedLoadAndSearchSpectra(MSReader& mstReader,
+                                          int iFirstScan,
+                                          int iLastScan,
+                                          int iAnalysisType,
+                                          ThreadPool* tp);
+
    // Returns the thread-local raw-data buffer used by PreprocessSingleSpectrumThreadLocal.
    // The buffer is sized to g_staticParams.iArraySizeGlobal and its content after a
    // PreprocessSingleSpectrumThreadLocal call holds the binned sqrt-intensity spectrum

@@ -2864,117 +2864,149 @@ bool CometSearchManager::DoSearch()
          {
             iBatchNum++;
 
-            // Load and preprocess all the spectra.
-            if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
+            // Fused FI_DB path: read + preprocess + search + post-analysis per spectrum
+            // in one pass using per-thread scratch buffers and a lock-free dispatch loop.
+            // Excludes Mango and spectral-library paths which rely on legacy ordering.
+            bool bFusedFIDB = (g_staticParams.iDbType == DbType::FI_DB
+                               && g_bPerformDatabaseSearch
+                               && !g_staticParams.options.bMango
+                               && !g_bPerformSpecLibSearch);
+
+            if (bFusedFIDB)
             {
-               logout("   - Load spectra:");
-               fflush(stdout);
-            }
+               // IMPORTANT: From this point onwards, because we've loaded some
+               // spectra, we MUST "goto cleanup_results" before exiting the loop,
+               // or we will create a memory leak!
+               g_cometStatus.SetStatusMsg(string("Running fused FI_DB search..."));
 
-            g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
+               bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
 
-            // IMPORTANT: From this point onwards, because we've loaded some
-            // spectra, we MUST "goto cleanup_results" before exiting the loop,
-            // or we will create a memory leak!
+               if (!bSucceeded)
+                  goto cleanup_results;
 
-            bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
+               iPercentStart = iPercentEnd;
+               iPercentEnd = mstReader.getPercent();
 
-            if (!bSucceeded)
-               goto cleanup_results;
+               if (g_pvQuery.empty())
+                  continue;
 
-            iPercentStart = iPercentEnd;
-            iPercentEnd = mstReader.getPercent();
-
-            if (g_pvQuery.empty())
-               continue;    //FIX make sure continue instead of break makes sense
-            else            // possible no spectrum in batch passes filters; do not want to break in that case;
                iTotalSpectraSearched += (int)g_pvQuery.size();
-
-            bSucceeded = AllocateResultsMem();
-
-            if (!bSucceeded)
-               goto cleanup_results;
-
-            { // need strStatusMsg in it's own scope due to goto statement above
-               string strStatusMsg = " " + std::to_string(g_pvQuery.size()) + string("\n");
+            }
+            else
+            {
+               // Legacy three-sweep path: LoadAndPreprocess -> AllocateResults ->
+               // sort-by-mass -> RunSearch -> PostAnalysis.
                if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
                {
-                  logout(strStatusMsg);
+                  logout("   - Load spectra:");
+                  fflush(stdout);
                }
-               g_cometStatus.SetStatusMsg(strStatusMsg);
-            }
 
-            if (g_staticParams.options.bMango)
-            {
-               int iCurrentScanNumber = 0;       // used to track multiple Mango precursors from same scan number
-               int iMangoIndex=0;
+               g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
 
-               // sort back to original spectrum order in MS2 scan in order to associate pairs
-               // based on sequential order of precursors for each scan
-               std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
+               // IMPORTANT: From this point onwards, because we've loaded some
+               // spectra, we MUST "goto cleanup_results" before exiting the loop,
+               // or we will create a memory leak!
 
-               for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
-               {
-                  if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
+               bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
+
+               if (!bSucceeded)
+                  goto cleanup_results;
+
+               iPercentStart = iPercentEnd;
+               iPercentEnd = mstReader.getPercent();
+
+               if (g_pvQuery.empty())
+                  continue;    //FIX make sure continue instead of break makes sense
+               else            // possible no spectrum in batch passes filters; do not want to break in that case;
+                  iTotalSpectraSearched += (int)g_pvQuery.size();
+
+               bSucceeded = AllocateResultsMem();
+
+               if (!bSucceeded)
+                  goto cleanup_results;
+
+               { // need strStatusMsg in it's own scope due to goto statement above
+                  string strStatusMsg = " " + std::to_string(g_pvQuery.size()) + string("\n");
+                  if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
                   {
-                     iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
-                     iMangoIndex = 0;
+                     logout(strStatusMsg);
                   }
-                  else
-                     iMangoIndex++;
-
-                  sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c", (int)iMangoIndex/2, (iMangoIndex % 2)?'B':'A');
+                  g_cometStatus.SetStatusMsg(strStatusMsg);
                }
+
+               if (g_staticParams.options.bMango)
+               {
+                  int iCurrentScanNumber = 0;       // used to track multiple Mango precursors from same scan number
+                  int iMangoIndex=0;
+
+                  // sort back to original spectrum order in MS2 scan in order to associate pairs
+                  // based on sequential order of precursors for each scan
+                  std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
+
+                  for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+                  {
+                     if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
+                     {
+                        iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
+                        iMangoIndex = 0;
+                     }
+                     else
+                        iMangoIndex++;
+
+                     sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c", (int)iMangoIndex/2, (iMangoIndex % 2)?'B':'A');
+                  }
+               }
+
+               // Sort g_pvQuery vector by dExpPepMass.
+               std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+
+               g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+               g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+
+               if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
+                  g_massRange.bNarrowMassRange = true;
+               else
+                  g_massRange.bNarrowMassRange = false;
+
+               bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+               if (!bSucceeded)
+                  goto cleanup_results;
+
+               g_cometStatus.SetStatusMsg(string("Running search..."));
+
+               // Now that spectra are loaded to memory and sorted, do search.
+               if (g_bPerformDatabaseSearch)
+                  bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+               if (g_bPerformSpecLibSearch)
+                  bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
+
+               if (!bSucceeded)
+                  goto cleanup_results;
+
+               bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+               if (!bSucceeded)
+                  goto cleanup_results;
+
+               if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
+               {
+                  logout("     - Post analysis:");
+                  fflush(stdout);
+               }
+
+               if (g_bPerformDatabaseSearch)
+               {
+                  g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
+
+                  // Sort each entry by xcorr, calculate E-values, etc.
+                  bSucceeded = CometPostAnalysis::PostAnalysis(tp);
+               }
+
+               if (!bSucceeded)
+                  goto cleanup_results;
             }
 
-            // Sort g_pvQuery vector by dExpPepMass.
-            std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
-
-            g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-            g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-            if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
-               g_massRange.bNarrowMassRange = true;
-            else
-               g_massRange.bNarrowMassRange = false;
-
-            bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-            if (!bSucceeded)
-               goto cleanup_results;
-
-            g_cometStatus.SetStatusMsg(string("Running search..."));
-
-            // Now that spectra are loaded to memory and sorted, do search.
-            if (g_bPerformDatabaseSearch)
-               bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
-            if (g_bPerformSpecLibSearch)
-               bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
-
-            if (!bSucceeded)
-               goto cleanup_results;
-
-            bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-            if (!bSucceeded)
-               goto cleanup_results;
-
-            if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
-            {
-               logout("     - Post analysis:");
-               fflush(stdout);
-            }
-
-            if (g_bPerformDatabaseSearch)
-            {
-               g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
-
-               // Sort each entry by xcorr, calculate E-values, etc.
-               bSucceeded = CometPostAnalysis::PostAnalysis(tp);
-            }
-
-            if (!bSucceeded)
-               goto cleanup_results;
-
-            // Sort g_pvQuery vector by scan.
+            // Sort g_pvQuery vector by scan (shared by both paths).
             std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
 
             if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)

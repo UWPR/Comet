@@ -18,7 +18,10 @@
 #include "CometPreprocess.h"
 #include "CometStatus.h"
 #include "CometMassSpecUtils.h"
+#include "CometSearch.h"
+#include "CometPostAnalysis.h"
 #include <string.h>
+#include <atomic>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -2878,4 +2881,459 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
    }
 
    return pQueryMS1;
+}
+
+
+// Fused FI_DB batch worker: preprocess + RunSearch + post-analysis for one spectrum.
+// Uses per-thread g_rtsScratch scratch buffers (no shared batch pool contention).
+// iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
+void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot)
+{
+   int iScanNumber = spec.getScanNumber();
+   int iSpectrumCharge = 0;
+
+   g_rtsScratch.EnsureInitialized();
+
+   for (int i = 0; i < spec.sizeMZ(); ++i)
+   {
+      double dMZ = 0.0;
+      vector<pair<int,double>> vChargeStates;
+
+      if (spec.sizeMZ() == spec.sizeZ())
+         iSpectrumCharge = spec.atZ(i).z;
+      else if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
+         iSpectrumCharge = spec.atZ(i).z;
+      else if (spec.sizeMZ() > spec.sizeZ())
+         iSpectrumCharge = 0;
+      else
+      {
+         iSpectrumCharge = 0;
+         printf(" Warning, scan %d has %d precursors and %d precursor charges\n",
+                iScanNumber, spec.sizeMZ(), spec.sizeZ());
+      }
+
+      dMZ = spec.getMonoMZ(i);
+
+      if (g_staticParams.options.bCorrectMass && spec.sizeMZ() == 1)
+      {
+         double dSelectionLower = spec.getSelWindowLower();
+         double dSelectedMZ = spec.getMZ(i);
+
+         if (dMZ > 0.1 && dSelectionLower > 0.1 && dMZ + 0.1 < dSelectionLower)
+            dMZ = dSelectedMZ;
+      }
+
+      if (dMZ == 0.0)
+         dMZ = spec.getMZ(i);
+
+      if (dMZ == 0.0 && iSpectrumCharge != 0)
+         dMZ = spec.atZ(i).mh / iSpectrumCharge;
+
+      if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
+      {
+         if (g_staticParams.options.iOverrideCharge == 1)
+         {
+            for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+               vChargeStates.push_back(make_pair(z, dMZ));
+         }
+         else if (g_staticParams.options.iOverrideCharge == 2)
+         {
+            for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+            {
+               if (z == iSpectrumCharge)
+                  vChargeStates.push_back(make_pair(z, dMZ));
+            }
+         }
+         else if (g_staticParams.options.iOverrideCharge == 3)
+         {
+            if (iSpectrumCharge > 0)
+            {
+               vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+            }
+            else
+            {
+               double dSumBelow = 0.0;
+               double dSumTotal = 0.0;
+
+               for (int ii = 0; ii < spec.size(); ++ii)
+               {
+                  dSumTotal += spec.at(ii).intensity;
+                  if (spec.at(ii).mz < spec.getMZ())
+                     dSumBelow += spec.at(ii).intensity;
+               }
+
+               if (isEqual(dSumTotal, 0.0) || ((dSumBelow / dSumTotal) > 0.95))
+                  vChargeStates.push_back(make_pair(1, dMZ));
+               else
+               {
+                  for (int z = g_staticParams.options.iStartCharge; z <= g_staticParams.options.iEndCharge; ++z)
+                     vChargeStates.push_back(make_pair(z, dMZ));
+               }
+            }
+         }
+      }
+      else
+      {
+         if (iSpectrumCharge > 0)
+         {
+            vChargeStates.push_back(make_pair(iSpectrumCharge, dMZ));
+
+            if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
+            {
+               for (int ii = 1; ii < spec.sizeZ(); ++ii)
+               {
+                  vChargeStates.push_back(make_pair(spec.atZ(ii).z,
+                     (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z));
+               }
+            }
+         }
+         else
+         {
+            double dSumBelow = 0.0;
+            double dSumTotal = 0.0;
+
+            for (int ii = 0; ii < spec.size(); ++ii)
+            {
+               dSumTotal += spec.at(ii).intensity;
+               if (spec.at(ii).mz < spec.getMZ())
+                  dSumBelow += spec.at(ii).intensity;
+            }
+
+            if (isEqual(dSumTotal, 0.0) || ((dSumBelow / dSumTotal) > 0.95))
+               vChargeStates.push_back(make_pair(1, dMZ));
+            else
+            {
+               vChargeStates.push_back(make_pair(2, dMZ));
+               vChargeStates.push_back(make_pair(3, dMZ));
+            }
+         }
+      }
+
+      for (auto iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
+      {
+         int iPrecursorCharge = (*iter).first;
+         double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+
+         if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
+                  || (dMass >= g_staticParams.options.dPeptideMassLow
+                     && dMass <= g_staticParams.options.dPeptideMassHigh))
+               && iPrecursorCharge <= g_staticParams.options.iMaxPrecursorCharge
+               && iPrecursorCharge >= g_staticParams.options.iMinPrecursorCharge)
+         {
+            Query* pScoring = new Query();
+
+            pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(), iter);
+            pScoring->_pepMassInfo.dExpPepMass = dMass;
+            pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
+            pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;
+            pScoring->_spectrumInfoInternal.iScanNumber = iScanNumber;
+            pScoring->_spectrumInfoInternal.fRTime = (float)(60.0 * spec.getRTime());
+            pScoring->_spectrumInfoInternal.szNativeID[0] = '\0';
+
+            if (iPrecursorCharge == 1)
+               pScoring->_spectrumInfoInternal.usiMaxFragCharge = 1;
+            else
+            {
+               pScoring->_spectrumInfoInternal.usiMaxFragCharge = iPrecursorCharge - 1;
+               if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_staticParams.options.iMaxFragmentCharge)
+                  pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
+            }
+
+            double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
+            pScoring->_spectrumInfoInternal.iArraySize =
+               (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
+
+            if (!AdjustMassTol(pScoring))
+            {
+               delete pScoring;
+               continue;
+            }
+
+            try
+            {
+               pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
+            }
+            catch (std::bad_alloc& ba)
+            {
+               string strErrorMsg = " Error - new(_pResults[]). bad_alloc: " + std::string(ba.what()) + "\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               delete pScoring;
+               return;
+            }
+
+            if (g_staticParams.options.iDecoySearch == 2)
+            {
+               try
+               {
+                  pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  string strErrorMsg = " Error - new(_pDecoys[]). bad_alloc: " + std::string(ba.what()) + "\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  delete pScoring;
+                  return;
+               }
+            }
+
+            pScoring->iMatchPeptideCount = 0;
+            pScoring->iDecoyMatchPeptideCount = 0;
+
+            for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+            {
+               pScoring->_pResults[j].dPepMass = 0.0;
+               pScoring->_pResults[j].dExpect = 999;
+               pScoring->_pResults[j].fScoreSp = 0.0;
+               pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+               pScoring->_pResults[j].fAScorePro = 0.0;
+               pScoring->_pResults[j].usiLenPeptide = 0;
+               pScoring->_pResults[j].usiRankSp = 0;
+               pScoring->_pResults[j].usiMatchedIons = 0;
+               pScoring->_pResults[j].usiTotalIons = 0;
+               pScoring->_pResults[j].szPeptide[0] = '\0';
+               pScoring->_pResults[j].sAScoreProSiteScores.clear();
+               pScoring->_pResults[j].pWhichProtein.clear();
+               pScoring->_pResults[j].sPeffOrigResidues.clear();
+               pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+               memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
+
+               if (g_staticParams.options.iDecoySearch)
+                  pScoring->_pResults[j].pWhichDecoyProtein.clear();
+
+               if (g_staticParams.options.iDecoySearch == 2)
+               {
+                  pScoring->_pDecoys[j].dPepMass = 0.0;
+                  pScoring->_pDecoys[j].dExpect = 999;
+                  pScoring->_pDecoys[j].fScoreSp = 0.0;
+                  pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+                  pScoring->_pDecoys[j].fAScorePro = 0.0;
+                  pScoring->_pDecoys[j].usiLenPeptide = 0;
+                  pScoring->_pDecoys[j].usiRankSp = 0;
+                  pScoring->_pDecoys[j].usiMatchedIons = 0;
+                  pScoring->_pDecoys[j].usiTotalIons = 0;
+                  pScoring->_pDecoys[j].szPeptide[0] = '\0';
+                  pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
+                  pScoring->_pDecoys[j].pWhichProtein.clear();
+                  pScoring->_pDecoys[j].sPeffOrigResidues.clear();
+                  pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+               }
+            }
+
+            // Preprocess using thread-local scratch buffers; Preprocess() memsets
+            // them before use so they are safe to share across charge states.
+            if (!Preprocess(pScoring, spec,
+                            g_rtsScratch.pdTmpRawData,
+                            g_rtsScratch.pdTmpFastXcorrData,
+                            g_rtsScratch.pdTmpCorrelationData,
+                            g_rtsScratch.pfFastXcorrData,
+                            g_rtsScratch.pfFastXcorrDataNL,
+                            g_rtsScratch.pfSpScoreData))
+            {
+               delete pScoring;
+               continue;
+            }
+
+            CometSearch::RunSearch(pScoring, iSlot);
+
+            // Batch post-analysis sequence (matches PostAnalysisThreadProc).
+            CometPostAnalysis::AnalyzeSP(pScoring);
+
+            if (g_staticParams.options.bPrintExpectScore
+                  || g_staticParams.options.bOutputPepXMLFile
+                  || g_staticParams.options.bOutputPercolatorFile
+                  || g_staticParams.options.bOutputTxtFile)
+            {
+               if (pScoring->iMatchPeptideCount > 0 || pScoring->iDecoyMatchPeptideCount > 0)
+                  CometPostAnalysis::CalculateEValue(pScoring, false);
+            }
+
+            CometPostAnalysis::CalculateDeltaCn(pScoring);
+
+            if ((g_staticParams.options.iPrintAScoreProScore == -1 || g_staticParams.options.iPrintAScoreProScore > 0)
+               && pScoring->_pResults[0].cHasVariableMod == HasVariableModType_AScorePro)
+            {
+               bool bHasTerminalVariableMod = false;
+
+               if (pScoring->_pResults[0].piVarModSites[pScoring->_pResults[0].usiLenPeptide] != 0
+                  || pScoring->_pResults[0].piVarModSites[pScoring->_pResults[0].usiLenPeptide + 1] != 0)
+               {
+                  bHasTerminalVariableMod = true;
+               }
+
+               if (!bHasTerminalVariableMod)
+                  CometPostAnalysis::CalculateAScorePro(pScoring, g_AScoreInterface);
+            }
+
+            pScoring->vfRawFragmentPeakMass.clear();
+            pScoring->vfRawFragmentPeakMass.shrink_to_fit();
+
+            Threading::LockMutex(g_pvQueryMutex);
+            g_pvQuery.push_back(pScoring);
+            Threading::UnlockMutex(g_pvQueryMutex);
+         }
+      }
+   }
+}
+
+
+// Fused FI_DB batch loader: reads spectra into a local vector then dispatches
+// FusedSearchSpectrum workers via the thread pool.  On return g_pvQuery holds
+// fully scored and post-analysed Query* objects ready for output.
+bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
+                                                  int iFirstScan,
+                                                  int iLastScan,
+                                                  int iAnalysisType,
+                                                  ThreadPool* tp)
+{
+   int iFileLastScan = -1;
+   int iScanNumber = 0;
+   int iTotalScans = 0;
+   int iNumSpectraLoaded = 0;
+   int iTmpCount = 0;
+   Spectrum mstSpectrum;
+
+   g_massRange.usiMaxFragmentCharge = 0;
+   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
+   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
+
+   Threading::InitMutex(&_maxChargeMutex);
+
+   std::vector<Spectrum> vSpectra;
+
+   while (true)
+   {
+      if (_bFirstScan)
+      {
+         PreloadIons(mstReader, mstSpectrum, false, 0);
+         _bFirstScan = false;
+      }
+      else
+      {
+         PreloadIons(mstReader, mstSpectrum, true);
+      }
+
+      if (iFileLastScan == -1)
+         iFileLastScan = mstReader.getLastScan();
+
+      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+
+      iScanNumber = mstSpectrum.getScanNumber();
+
+      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      {
+         g_staticParams.bSkipToStartScan = false;
+
+         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         {
+            iFirstScan++;
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+         }
+      }
+
+      if (iScanNumber != 0)
+      {
+         int iNumClearedPeaks = 0;
+         iTmpCount = iScanNumber;
+
+         if (iLastScan != 0 && iScanNumber > iLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+         if (iFirstScan != 0 && iLastScan != 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
+            continue;
+         if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
+            continue;
+
+         if (g_staticParams.options.clearMzRange.dEnd > 0.0
+               && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
+         {
+            int ip = 0;
+            while (true)
+            {
+               if (ip >= mstSpectrum.size() || mstSpectrum.at(ip).mz > g_staticParams.options.clearMzRange.dEnd)
+                  break;
+               if (mstSpectrum.at(ip).mz >= g_staticParams.options.clearMzRange.dStart
+                     && mstSpectrum.at(ip).mz <= g_staticParams.options.clearMzRange.dEnd)
+               {
+                  mstSpectrum.at(ip).intensity = 0.0;
+                  iNumClearedPeaks++;
+               }
+               ip++;
+            }
+         }
+
+         if (mstSpectrum.size() - iNumClearedPeaks >= g_staticParams.options.iMinPeaks)
+         {
+            if (iAnalysisType == AnalysisType_SpecificScanRange && iLastScan > 0 && iScanNumber > iLastScan)
+            {
+               _bDoneProcessingAllSpectra = true;
+               break;
+            }
+
+            if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
+            {
+               vSpectra.push_back(mstSpectrum);
+               iNumSpectraLoaded++;
+            }
+         }
+
+         iTotalScans++;
+      }
+      else if (IsValidInputType(g_staticParams.inputFile.iInputType))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+      else
+      {
+         iTmpCount++;
+         if (iTmpCount > iFileLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+      }
+
+      Threading::LockMutex(g_pvQueryMutex);
+      if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                    mstReader.getLastScan(), iNumSpectraLoaded, 0))
+      {
+         Threading::UnlockMutex(g_pvQueryMutex);
+         break;
+      }
+      Threading::UnlockMutex(g_pvQueryMutex);
+   }
+
+   Threading::DestroyMutex(_maxChargeMutex);
+
+   if (!g_cometStatus.IsError() && !g_cometStatus.IsCancel() && !vSpectra.empty())
+   {
+      std::atomic<size_t> ctr(0);
+      const size_t n = vSpectra.size();
+      const int iNumSlots = g_staticParams.options.iNumThreads;
+
+      for (int t = 0; t < iNumSlots; ++t)
+      {
+         tp->doJob([&vSpectra, &ctr, n, t]() {
+            size_t i;
+            while ((i = ctr.fetch_add(1, std::memory_order_relaxed)) < n)
+               FusedSearchSpectrum(vSpectra[i], t);
+         });
+      }
+
+      tp->wait_on_threads();
+   }
+
+   return !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 }
