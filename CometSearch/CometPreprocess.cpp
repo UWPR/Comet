@@ -92,9 +92,10 @@ struct RtsScratch
       delete[] pfSpScoreData;
       delete[] pSparseChildPool;
 
-      pdTmpRawData         = new double[iSize];
-      pdTmpFastXcorrData   = new double[iSize];
-      pdTmpCorrelationData = new double[iSize];
+      const int iXcorrPad = g_staticParams.iXcorrProcessingOffset;
+      pdTmpRawData         = new double[iSize + iXcorrPad];
+      pdTmpFastXcorrData   = new double[iSize + iXcorrPad];
+      pdTmpCorrelationData = new double[iSize + iXcorrPad];
       pfFastXcorrData      = new float[iSize];
       pfFastXcorrDataNL    = new float[iSize];
       pfSpScoreData        = new float[iSize];
