@@ -22,6 +22,10 @@
 #include "CometPostAnalysis.h"
 #include <string.h>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <queue>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -136,6 +140,65 @@ struct RtsScratch
 };
 
 thread_local RtsScratch g_rtsScratch;
+
+
+// ---------------------------------------------------------------------------
+// Bounded producer/consumer queue used by FusedLoadAndSearchSpectra.
+//
+// The calling thread (producer) pushes spectra one at a time as they are read
+// from the raw file; iNumThreads consumer workers pop and call
+// FusedSearchSpectrum concurrently.  The bound (maxDepth) prevents the
+// producer from reading unboundedly ahead, keeping peak spectrum-buffer RAM
+// at O(iNumThreads) regardless of file size.
+// ---------------------------------------------------------------------------
+struct BoundedSpectrumQueue
+{
+   std::queue<Spectrum>     q;
+   std::mutex               mtx;
+   std::condition_variable  cvNotFull;
+   std::condition_variable  cvNotEmpty;
+   size_t                   maxDepth;
+   bool                     bDone = false;
+
+   explicit BoundedSpectrumQueue(size_t depth) : maxDepth(depth) {}
+
+   // Producer. Blocks when the queue is full.
+   void push(Spectrum&& spec)
+   {
+      std::unique_lock<std::mutex> lk(mtx);
+      cvNotFull.wait(lk, [&]{ return q.size() < maxDepth || bDone; });
+      if (!bDone)
+      {
+         q.push(std::move(spec));
+         cvNotEmpty.notify_one();
+      }
+   }
+
+   // Consumer. Blocks when the queue is empty.
+   // Returns false when the queue is both done and empty (exit signal).
+   bool pop(Spectrum& spec)
+   {
+      std::unique_lock<std::mutex> lk(mtx);
+      cvNotEmpty.wait(lk, [&]{ return !q.empty() || bDone; });
+      if (q.empty())
+         return false;
+      spec = std::move(q.front());
+      q.pop();
+      cvNotFull.notify_one();
+      return true;
+   }
+
+   // Producer calls this after the read loop ends (normal or early exit).
+   // Wakes all blocked consumers so they can drain and exit.
+   void finish()
+   {
+      std::unique_lock<std::mutex> lk(mtx);
+      bDone = true;
+      cvNotEmpty.notify_all();
+      cvNotFull.notify_all();
+   }
+};
+
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (FastXcorr).
 CometPreprocess::CometPreprocess()
@@ -3200,7 +3263,20 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
 
    Threading::InitMutex(&_maxChargeMutex);
 
-   std::vector<Spectrum> vSpectra;
+   // Launch consumer workers BEFORE the read loop so the first pushed
+   // spectrum is consumed immediately with no dead time.
+   const int iNumSlots = g_staticParams.options.iNumThreads;
+   BoundedSpectrumQueue queue(static_cast<size_t>(iNumSlots) * 4);
+
+   for (int t = 0; t < iNumSlots; ++t)
+   {
+      tp->doJob([&queue, t]()
+      {
+         Spectrum spec;
+         while (queue.pop(spec))
+            FusedSearchSpectrum(std::move(spec), t);
+      });
+   }
 
    while (true)
    {
@@ -3283,7 +3359,7 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
-               vSpectra.push_back(mstSpectrum);
+               queue.push(std::move(mstSpectrum));
                iNumSpectraLoaded++;
             }
          }
@@ -3317,23 +3393,12 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
 
    Threading::DestroyMutex(_maxChargeMutex);
 
-   if (!g_cometStatus.IsError() && !g_cometStatus.IsCancel() && !vSpectra.empty())
-   {
-      std::atomic<size_t> ctr(0);
-      const size_t n = vSpectra.size();
-      const int iNumSlots = g_staticParams.options.iNumThreads;
-
-      for (int t = 0; t < iNumSlots; ++t)
-      {
-         tp->doJob([&vSpectra, &ctr, n, t]() {
-            size_t i;
-            while ((i = ctr.fetch_add(1, std::memory_order_relaxed)) < n)
-               FusedSearchSpectrum(vSpectra[i], t);
-         });
-      }
-
-      tp->wait_on_threads();
-   }
+   // Signal consumers that no more spectra are coming, then wait for them
+   // to drain the queue and finish.  finish() is called unconditionally so
+   // that consumers exit cleanly whether the read loop ended normally or via
+   // an early break (error/cancel/batch-size limit).
+   queue.finish();
+   tp->wait_on_threads();
 
    return !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 }
