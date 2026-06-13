@@ -15,6 +15,7 @@
 #include "Common.h"
 #include "CometSearch.h"
 #include "CometFragmentIndexReader.h"
+#include "threading/SearchMemoryPool.h"
 #include <unordered_map>
 
 
@@ -22,6 +23,12 @@
 
 bool* CometSearch::_pbSearchMemoryPool = nullptr;
 bool** CometSearch::_ppbDuplFragmentArr = nullptr;
+
+// Module-local pool instance.  Owns the same scratch arrays as the
+// legacy _pbSearchMemoryPool/_ppbDuplFragmentArr statics above.
+// Both representations are kept in sync during the transition:
+// AllocateMemory populates both; AcquirePoolSlot/releaseSlot use s_pool.
+static SearchMemoryPool s_pool;
 
 extern comet_fileoffset_t clSizeCometFileOffset;
 
@@ -44,31 +51,34 @@ CometSearch::~CometSearch()
 
 bool CometSearch::AllocateMemory(int maxNumThreads)
 {
-   if (g_bCometSearchMemoryAllocated)  // already allocated
+   if (g_bCometSearchMemoryAllocated)
       return true;
 
+   if (!s_pool.allocate(maxNumThreads, g_staticParams.iArraySizeGlobal))
+      return false;
+
+   // _pbSearchMemoryPool is the slot-availability array used by SearchThreadProc
+   // (FASTA_DB batch path).  Allocate it separately; it is distinct from the
+   // scratch arrays owned by s_pool.
    try
    {
       _pbSearchMemoryPool = new bool[maxNumThreads]();
-      _ppbDuplFragmentArr = new bool* [maxNumThreads];
-
+      _ppbDuplFragmentArr = new bool*[maxNumThreads];
       for (int i = 0; i < maxNumThreads; ++i)
-         _ppbDuplFragmentArr[i] = new bool[g_staticParams.iArraySizeGlobal]();
-
-      g_bCometSearchMemoryAllocated = true;
-
-      return true;
+         _ppbDuplFragmentArr[i] = s_pool.duplFragmentArr(i);
    }
    catch (const std::bad_alloc& ba)
    {
-      string strErrorMsg = " Error - memory allocation failed. bad_alloc: " + std::string(ba.what()) + ".\n";
+      string strErrorMsg = " Error - AllocateMemory alias arrays failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
-
+      s_pool.deallocate();
       g_bCometSearchMemoryAllocated = false;
-
       return false;
    }
+
+   g_bCometSearchMemoryAllocated = true;
+   return true;
 }
 
 
@@ -77,17 +87,16 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
    if (!g_bCometSearchMemoryAllocated)
       return true;
 
-   delete [] _pbSearchMemoryPool;
+   s_pool.deallocate();
 
-   for (int i = 0; i < maxNumThreads; ++i)
-   {
-      delete [] _ppbDuplFragmentArr[i];
-   }
-
-   delete [] _ppbDuplFragmentArr;
+   delete[] _pbSearchMemoryPool;
+   // _ppbDuplFragmentArr holds pointers into s_pool's scratch arrays; those
+   // are already freed by s_pool.deallocate().  Only free the alias array itself.
+   delete[] _ppbDuplFragmentArr;
+   _pbSearchMemoryPool = nullptr;
+   _ppbDuplFragmentArr = nullptr;
 
    g_bCometSearchMemoryAllocated = false;
-
    return true;
 }
 
@@ -96,23 +105,7 @@ bool CometSearch::DeallocateMemory(int maxNumThreads)
 // Returns the slot index (0..iNumThreads-1), or -1 on timeout.
 int CometSearch::AcquirePoolSlot()
 {
-   int i = -1;
-   std::unique_lock<std::mutex> lock(g_searchMemoryPoolMutex);
-
-   bool found = g_searchPoolCV.wait_for(lock, std::chrono::seconds(240), [&i]() {
-      for (int j = 0; j < g_staticParams.options.iNumThreads; ++j)
-      {
-         if (_pbSearchMemoryPool[j] == false)
-         {
-            _pbSearchMemoryPool[j] = true;
-            i = j;
-            return true;
-         }
-      }
-      return false;
-   });
-
-   return found ? i : -1;
+   return s_pool.acquireSlot();
 }
 
 
@@ -136,8 +129,7 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
-      g_searchPoolCV.notify_one();
+      s_pool.releaseSlot(iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -179,8 +171,7 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
-      g_searchPoolCV.notify_one();
+      s_pool.releaseSlot(iSlot);
    }
    else
    {
@@ -224,8 +215,7 @@ bool CometSearch::RunSearch(ThreadPool *tp)
          return false;
       }
       SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-      { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
-      g_searchPoolCV.notify_one();
+      s_pool.releaseSlot(iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -276,8 +266,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                return;
             }
             SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-            { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); _pbSearchMemoryPool[iSlot] = false; }
-            g_searchPoolCV.notify_one();
+            s_pool.releaseSlot(iSlot);
          });
       }
 

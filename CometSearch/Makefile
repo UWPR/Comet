@@ -27,7 +27,10 @@ COMETSEARCH_SRC = Threading CometInterfaces CometSearch CometPreprocess CometPos
 					CometWriteSqt CometWritePepXML CometWriteMzIdentML CometWritePercolator CometWriteTxt CometSearchManager \
 					CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometSpecLib CometAlignment
 
-COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC)))
+THREADING_SRC = threading/SearchMemoryPool
+
+COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC))) \
+                  $(addprefix $(OBJDIR)/, $(addsuffix .o, $(THREADING_SRC)))
 
 all: libcometsearch.a
 
@@ -56,6 +59,10 @@ $(OBJDIR)/CometPreprocess.o: CometPreprocess.cpp Common.h CometData.h CometDataI
 
 $(OBJDIR)/CometMassSpecUtils.o: CometMassSpecUtils.cpp Common.h CometData.h CometDataInternal.h CometSearch.h CometSearchManager.h CometMassSpecUtils.h CometInterfaces.h BS_thread_pool.hpp | $(OBJDIR)
 	${CXX} ${CXXFLAGS} ${DEPFLAGS} CometMassSpecUtils.cpp -c -o $@
+
+$(OBJDIR)/threading/%.o: threading/%.cpp threading/%.h | $(OBJDIR)
+	@mkdir -p $(OBJDIR)/threading
+	${CXX} ${CXXFLAGS} -I. $< -c -o $@
 
 clean:
 	rm -rf $(OBJDIR) *.a

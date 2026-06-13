@@ -23,6 +23,12 @@
 #include "CometWritePepXML.h"
 #include "CometWriteMzIdentML.h"
 #include "CometWritePercolator.h"
+#include "output/IResultWriter.h"
+#include "output/SqtWriter.h"
+#include "output/TxtWriter.h"
+#include "output/PepXmlWriter.h"
+#include "output/MzIdentMlWriter.h"
+#include "output/PercolatorWriter.h"
 #include "CometDataInternal.h"
 #include "CometSearchManager.h"
 #include "CometStatus.h"
@@ -2418,320 +2424,55 @@ bool CometSearchManager::DoSearch()
                                                                         // 4=scan range,
                                                                         // 5=entire file
 
-      // For SQT & pepXML output file, check if they can be written to before doing anything else.
-      FILE *fpout_sqt=NULL;
-      FILE *fpoutd_sqt=NULL;
-      FILE *fpout_pepxml=NULL;
-      FILE *fpoutd_pepxml=NULL;
-      FILE *fpout_mzidentml=NULL;
-      FILE *fpoutd_mzidentml=NULL;
-      FILE *fpout_mzidentmltmp=NULL;
-      FILE *fpoutd_mzidentmltmp=NULL;
-      FILE *fpout_percolator=NULL;
-      FILE *fpout_txt=NULL;
-      FILE *fpoutd_txt=NULL;
+      // Phase 3: writer factory -- builds vector<IResultWriter> from options.
+      // Each writer owns its file handle(s); open() opens + writes format header,
+      // write() outputs one batch, close() writes footer + fcloses.
+      WriterOpenCtx woctx;
+      woctx.szBaseName     = g_staticParams.inputFile.szBaseName;
+      woctx.szOutputSuffix = g_staticParams.szOutputSuffix;
+      woctx.szTxtFileExt   = g_staticParams.szTxtFileExt;
+      woctx.bEntireFile    = (iAnalysisType == AnalysisType_EntireFile);
+      woctx.iFirstScan     = iFirstScan;
+      woctx.iLastScan      = iLastScan;
+      woctx.iDecoySearch   = g_staticParams.options.iDecoySearch;
+      woctx.pMgr           = this;
 
-      std::string sOutputSQT;
-      std::string sOutputDecoySQT;
-      std::string sOutputPepXML;
-      std::string sOutputDecoyPepXML;
-      std::string sOutputMzIdentML;
-      std::string sOutputDecoyMzIdentML;
-      std::string sOutputMzIdentMLtmp;         // temporary file used to hold mzIdentML output before finalizing
-      std::string sOutputDecoyMzIdentMLtmp;    // temporary file used to hold decoy mzIdentML output before finalizing
-      std::string sOutputPercolator;
-      std::string sOutputTxt;
-      std::string sOutputDecoyTxt;
+      std::vector<std::unique_ptr<IResultWriter>> vWriters;
 
-      if (g_staticParams.options.bOutputSqtFile)
-      {
-         if (iAnalysisType == AnalysisType_EntireFile)
-         {
-            sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".sqt";
-
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-            {
-               sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.sqt";
-            }
-#endif
-         }
-         else
-         {
-            sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".sqt";
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputSQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.sqt";
-#endif
-         }
-
-         if ((fpout_sqt = fopen(sOutputSQT.c_str(), "w")) == NULL)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputSQT + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-
-         CometWriteSqt::PrintSqtHeader(fpout_sqt, *this);
-
-         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
-         {
-            if (iAnalysisType == AnalysisType_EntireFile)
-               sOutputDecoySQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.sqt";
-            else
-               sOutputDecoySQT = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.sqt";
-
-            if ((fpoutd_sqt = fopen(sOutputDecoySQT.c_str(), "w")) == NULL)
-            {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoySQT + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-
-            CometWriteSqt::PrintSqtHeader(fpoutd_sqt, *this);
-         }
-      }
-
-      if (bSucceeded && g_staticParams.options.bOutputTxtFile)
-      {
-         if (iAnalysisType == AnalysisType_EntireFile)
-         {
-            sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + "." + g_staticParams.szTxtFileExt;
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target." + g_staticParams.szTxtFileExt;
-#endif
-         }
-         else
-         {
-            sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + "." + g_staticParams.szTxtFileExt;
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target." + g_staticParams.szTxtFileExt;
-#endif
-         }
-
-         if ((fpout_txt = fopen(sOutputTxt.c_str(), "w")) == NULL)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputTxt + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-
-         CometWriteTxt::PrintTxtHeader(fpout_txt);
-         fflush(fpout_txt);
-
-         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
-         {
-            if (iAnalysisType == AnalysisType_EntireFile)
-               sOutputDecoyTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy." + g_staticParams.szTxtFileExt;
-            else
-               sOutputDecoyTxt = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy." + g_staticParams.szTxtFileExt;
-
-            fpoutd_txt = fopen(sOutputDecoyTxt.c_str(), "w");
-            if (!fpoutd_txt)
-            {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyTxt + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-
-            CometWriteTxt::PrintTxtHeader(fpoutd_txt);
-         }
-      }
-
+      // PepXML, mzIdentML, Percolator, Txt first; SQT last (WriteSqt modifies szMod).
       if (bSucceeded && g_staticParams.options.bOutputPepXMLFile)
       {
-         if (iAnalysisType == AnalysisType_EntireFile)
-         {
-            sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".pep.xml";
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.pep.xml";
-#endif
-         }
-         else
-         {
-            sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".pep.xml";
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.pep.xml";
-#endif
-         }
-
-         fpout_pepxml = fopen(sOutputPepXML.c_str(), "w");
-         if (!fpout_pepxml)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputPepXML + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-
-         if (bSucceeded)
-            bSucceeded = CometWritePepXML::WritePepXMLHeader(fpout_pepxml, *this);
-
-         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
-         {
-            if (iAnalysisType == AnalysisType_EntireFile)
-               sOutputDecoyPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.pep.xml";
-            else
-               sOutputDecoyPepXML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.pep.xml";
-
-            fpoutd_pepxml = fopen(sOutputDecoyPepXML.c_str(), "w");
-            if (!fpoutd_pepxml)
-            {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyPepXML + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-
-            if (bSucceeded)
-               bSucceeded = CometWritePepXML::WritePepXMLHeader(fpoutd_pepxml, *this);
-         }
+         auto pw = std::make_unique<PepXmlWriter>();
+         if (!pw->open(woctx)) bSucceeded = false;
+         else vWriters.push_back(std::move(pw));
       }
 
       if (bSucceeded && g_staticParams.options.iOutputMzIdentMLFile)
       {
-         if (iAnalysisType == AnalysisType_EntireFile)
-         {
-            sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".mzid";
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".target.mzid";
-#endif
-         }
-         else
-         {
-            sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".mzid";
-#ifdef CRUX
-            if (g_staticParams.options.iDecoySearch == 2)
-               sOutputMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".target.mzid";
-#endif
-         }
-
-         fpout_mzidentml = fopen(sOutputMzIdentML.c_str(), "w");
-         if (!fpout_mzidentml)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputMzIdentML + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-
-         sOutputMzIdentMLtmp = sOutputMzIdentML + ".XXXXXX";
-#ifdef _WIN32
-         errno_t err = _mktemp_s(&sOutputMzIdentMLtmp[0], sOutputMzIdentMLtmp.size() + 1);
-         if (err != 0)
-         {
-            string strErrorMsg = " Error - cannot create temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-#else
-         int iRet = mkstemp(&sOutputMzIdentMLtmp[0]);
-         if (iRet == -1)
-         {
-            string strErrorMsg = " Error - cannot create temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-#endif
-
-         fpout_mzidentmltmp = fopen(sOutputMzIdentMLtmp.c_str(), "w");
-         if (!fpout_mzidentmltmp)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputMzIdentMLtmp + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
-
-         if (bSucceeded && (g_staticParams.options.iDecoySearch == 2))
-         {
-            if (iAnalysisType == AnalysisType_EntireFile)
-               sOutputDecoyMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".decoy.mzid";
-            else
-               sOutputDecoyMzIdentML = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-               "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".decoy.mzid";
-
-            fpoutd_mzidentml = fopen(sOutputDecoyMzIdentML.c_str(), "w");
-            if (!fpoutd_mzidentml)
-            {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentML + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-
-            sOutputDecoyMzIdentMLtmp = sOutputDecoyMzIdentML + ".XXXXXX";
-#ifdef _WIN32
-            errno_t err = _mktemp_s(&sOutputDecoyMzIdentMLtmp[0], sOutputDecoyMzIdentMLtmp.size() + 1);
-            if (err != 0)
-            {
-               string strErrorMsg = " Error - cannot create temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-#else
-            int iRet = mkstemp(&sOutputDecoyMzIdentMLtmp[0]);
-            if (iRet == -1)
-            {
-               string strErrorMsg = " Error - cannot create temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-#endif
-            fpoutd_mzidentmltmp = fopen(sOutputDecoyMzIdentMLtmp.c_str(), "w");
-            if (!fpoutd_mzidentmltmp)
-            {
-               string strErrorMsg = " Error - cannot write to decoy file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               bSucceeded = false;
-            }
-         }
+         auto pw = std::make_unique<MzIdentMlWriter>(this);
+         if (!pw->open(woctx)) bSucceeded = false;
+         else vWriters.push_back(std::move(pw));
       }
 
       if (bSucceeded && g_staticParams.options.bOutputPercolatorFile)
       {
-         if (iAnalysisType == AnalysisType_EntireFile)
-            sOutputPercolator = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix + ".pin";
-         else
-            sOutputPercolator = std::string(g_staticParams.inputFile.szBaseName) + g_staticParams.szOutputSuffix +
-            "." + std::to_string(iFirstScan) + "-" + std::to_string(iLastScan) + ".pin";
+         auto pw = std::make_unique<PercolatorWriter>();
+         if (!pw->open(woctx)) bSucceeded = false;
+         else vWriters.push_back(std::move(pw));
+      }
 
-         fpout_percolator = fopen(sOutputPercolator.c_str(), "w");
-         if (!fpout_percolator)
-         {
-            string strErrorMsg = " Error - cannot write to file \"" + sOutputPercolator + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            bSucceeded = false;
-         }
+      if (bSucceeded && g_staticParams.options.bOutputTxtFile)
+      {
+         auto pw = std::make_unique<TxtWriter>();
+         if (!pw->open(woctx)) bSucceeded = false;
+         else vWriters.push_back(std::move(pw));
+      }
 
-         if (bSucceeded)
-            CometWritePercolator::WritePercolatorHeader(fpout_percolator);
+      if (bSucceeded && (g_staticParams.options.bOutputSqtFile || g_staticParams.options.bOutputSqtStream))
+      {
+         auto pw = std::make_unique<SqtWriter>();
+         if (!pw->open(woctx)) bSucceeded = false;
+         else vWriters.push_back(std::move(pw));
       }
 
       int iTotalSpectraSearched = 0;
@@ -3015,29 +2756,22 @@ bool CometSearchManager::DoSearch()
                fflush(stdout);
             }
 
-            if (g_staticParams.options.bOutputPepXMLFile)
-               CometWritePepXML::WritePepXML(fpout_pepxml, fpoutd_pepxml, fpdb, iTotalSpectraSearched - (int)g_pvQuery.size());
-
-            // For mzid output, dump psms as tab-delimited text first then collate results to
-            // mzid file at very end due to requirements of this format.
-            if (g_staticParams.options.iOutputMzIdentMLFile)
-               CometWriteMzIdentML::WriteMzIdentMLTmp(fpout_mzidentmltmp, fpoutd_mzidentmltmp, iBatchNum);
-
-            if (g_staticParams.options.bOutputPercolatorFile)
+            // Phase 3: per-batch write via polymorphic writer loop.
+            // Insertion order guarantees SQT writes last (destroys szMod).
             {
-               bSucceeded = CometWritePercolator::WritePercolator(fpout_percolator, fpdb);
-               if (!bSucceeded)
-                  goto cleanup_results;
+               WriterWriteCtx wwctx;
+               wwctx.fpdb        = fpdb;
+               wwctx.iScanOffset = iTotalSpectraSearched - (int)g_pvQuery.size();
+               wwctx.iBatchNum   = iBatchNum;
+               for (auto& pw : vWriters)
+               {
+                  if (!pw->write(wwctx))
+                  {
+                     bSucceeded = false;
+                     goto cleanup_results;
+                  }
+               }
             }
-
-            if (g_staticParams.options.bOutputTxtFile)
-            {
-               CometWriteTxt::WriteTxt(fpout_txt, fpoutd_txt, fpdb);
-            }
-
-            // Write SQT last as I destroy the g_staticParams.szMod string during that process
-            if (g_staticParams.options.bOutputSqtStream || g_staticParams.options.bOutputSqtFile)
-               CometWriteSqt::WriteSqt(fpout_sqt, fpoutd_sqt, fpdb);
 
 cleanup_results:
 
@@ -3056,50 +2790,6 @@ cleanup_results:
          {
             if (iTotalSpectraSearched == 0)
                logout(" Warning - no spectra searched.\n");
-
-            if (NULL != fpout_pepxml)
-               CometWritePepXML::WritePepXMLEndTags(fpout_pepxml);
-
-            if (NULL != fpoutd_pepxml)
-               CometWritePepXML::WritePepXMLEndTags(fpoutd_pepxml);
-
-            if (NULL != fpout_mzidentml)
-            {
-               fclose(fpout_mzidentmltmp); // close for writing and re-open for reading
-
-               if ((fpout_mzidentmltmp = fopen(sOutputMzIdentMLtmp.c_str(), "r")) == NULL)
-               {
-                  string strErrorMsg = " Error - cannot read temporary file \"" + sOutputMzIdentMLtmp + "\".\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  bSucceeded = false;
-               }
-
-               // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpout_mzidentml, fpdb, sOutputMzIdentMLtmp.c_str(), *this);
-
-               fclose(fpout_mzidentmltmp);
-               remove(sOutputMzIdentMLtmp.c_str());
-            }
-
-            if (NULL != fpoutd_mzidentml)
-            {
-               fclose(fpoutd_mzidentmltmp); // close for writing and re-open for reading
-
-               if ((fpoutd_mzidentmltmp = fopen(sOutputDecoyMzIdentMLtmp.c_str(), "r")) == NULL)
-               {
-                  string strErrorMsg = " Error - cannot read temporary file \"" + sOutputDecoyMzIdentMLtmp + "\".\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  bSucceeded = false;
-               }
-
-               // now read tmp file and write mzIdentML
-               CometWriteMzIdentML::WriteMzIdentML(fpoutd_mzidentml, fpdb, sOutputDecoyMzIdentMLtmp.c_str(), *this);
-
-               fclose(fpoutd_mzidentmltmp);
-               remove(sOutputDecoyMzIdentMLtmp.c_str());
-            }
 
             if (!g_staticParams.options.bOutputSqtStream)
             {
@@ -3152,90 +2842,12 @@ cleanup_results:
       // Deallocate search memory
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 
-      if (NULL != fpout_pepxml)
+      // Phase 3: finalize, fclose, and optionally remove files on empty search.
       {
-         fclose(fpout_pepxml);
-         fpout_pepxml = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputPepXML.c_str());
-      }
-
-      if (NULL != fpoutd_pepxml)
-      {
-         fclose(fpoutd_pepxml);
-         fpoutd_pepxml = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputDecoyPepXML.c_str());
-      }
-
-      if (NULL != fpout_mzidentml)
-      {
-         fclose(fpout_mzidentml);
-         fpout_mzidentml = NULL;
-         if (iTotalSpectraSearched == 0)
-         {
-            remove(sOutputMzIdentML.c_str());
-            remove(sOutputMzIdentMLtmp.c_str());
-         }
-      }
-
-      if (NULL != fpoutd_mzidentml)
-      {
-         fclose(fpoutd_mzidentml);
-         fpoutd_mzidentml = NULL;
-         if (iTotalSpectraSearched == 0)
-         {
-            remove(sOutputDecoyMzIdentML.c_str());
-            remove(sOutputDecoyMzIdentMLtmp.c_str());
-         }
-      }
-
-      if (NULL != fpout_percolator)
-      {
-         fclose(fpout_percolator);
-         fpout_percolator = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputPercolator.c_str());
-      }
-
-      if (NULL != fpout_sqt)
-      {
-         fclose(fpout_sqt);
-         fpout_sqt = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputSQT.c_str());
-      }
-
-      if (NULL != fpoutd_sqt)
-      {
-         fclose(fpoutd_sqt);
-         fpoutd_sqt = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputDecoySQT.c_str());
-      }
-
-      if (NULL != fpoutd_sqt)
-      {
-         fclose(fpoutd_sqt);
-         fpoutd_sqt = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputDecoySQT.c_str());
-      }
-
-      if (NULL != fpout_txt)
-      {
-         fclose(fpout_txt);
-         fpout_txt = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputTxt.c_str());
-      }
-
-      if (NULL != fpoutd_txt)
-      {
-         fclose(fpoutd_txt);
-         fpoutd_txt = NULL;
-         if (iTotalSpectraSearched == 0)
-            remove(sOutputDecoyTxt.c_str());
+         bool bEmpty = (iTotalSpectraSearched == 0);
+         for (auto& pw : vWriters)
+            pw->close(bSucceeded, bEmpty);
+         vWriters.clear();
       }
 
       if (iTotalSpectraSearched == 0)
