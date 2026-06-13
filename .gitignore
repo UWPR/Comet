@@ -8,9 +8,10 @@ MSToolkit/extern/expat-2.2.9/
 # ignore dynamically generated files
 MSToolkit/include/expat.h
 MSToolkit/include/expat_external.h
-MSToolkit/include/zconf.h
 MSToolkit/include/zlib.h
 MSToolkit/*.mri
+# zconf.h is tracked: it needs a !defined(_WIN32) guard added to the
+# configure-generated Z_HAVE_UNISTD_H block (see commit message for details)
 
 .DS_Store
 .idea

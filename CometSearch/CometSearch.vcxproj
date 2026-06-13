@@ -47,7 +47,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <FloatingPointModel>Fast</FloatingPointModel>
       <PreprocessorDefinitions>WIN32;WIN64;_WIN64;_MBCS;_CRT_SECURE_NO_DEPRECATE;_NOSQLITE;NOMINMAX;_HAS_STD_BYTE=0;RTS_TIMING_OFF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -64,7 +64,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);..\MSToolkit\include;..\MSToolkit\include\extern;..\AScorePro\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
@@ -116,6 +116,23 @@
     <ClInclude Include="OSSpecificThreading.h" />
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
+    <ClInclude Include="core\Constants.h" />
+    <ClInclude Include="core\Params.h" />
+    <ClInclude Include="core\Types.h" />
+    <ClInclude Include="output\IResultWriter.h" />
+    <ClInclude Include="output\MzIdentMlWriter.h" />
+    <ClInclude Include="output\PepXmlWriter.h" />
+    <ClInclude Include="output\PercolatorWriter.h" />
+    <ClInclude Include="output\SqtWriter.h" />
+    <ClInclude Include="output\TxtWriter.h" />
+    <ClInclude Include="threading\SearchMemoryPool.h" />
+    <ClInclude Include="search\SearchSession.h" />
+    <ClInclude Include="search\SearchUtils.h" />
+    <ClInclude Include="search\ISearchStrategy.h" />
+    <ClInclude Include="search\FastaStrategy.h" />
+    <ClInclude Include="search\FiStrategy.h" />
+    <ClInclude Include="search\PiStrategy.h" />
+    <ClInclude Include="search\Pipeline.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CombinatoricsUtils.cpp" />
@@ -136,6 +153,11 @@
     <ClCompile Include="CometWriteSqt.cpp" />
     <ClCompile Include="CometWriteTxt.cpp" />
     <ClCompile Include="Threading.cpp" />
+    <ClCompile Include="threading\SearchMemoryPool.cpp" />
+    <ClCompile Include="search\FastaStrategy.cpp" />
+    <ClCompile Include="search\FiStrategy.cpp" />
+    <ClCompile Include="search\PiStrategy.cpp" />
+    <ClCompile Include="search\Pipeline.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
