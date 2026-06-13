@@ -21,7 +21,6 @@
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
 #include <string.h>
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -3241,9 +3240,9 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot)
 }
 
 
-// Fused FI_DB batch loader: reads spectra into a local vector then dispatches
-// FusedSearchSpectrum workers via the thread pool.  On return g_pvQuery holds
-// fully scored and post-analysed Query* objects ready for output.
+// Fused FI_DB batch loader: streams spectra from the raw file through a
+// bounded producer/consumer queue into FusedSearchSpectrum workers.  On return
+// g_pvQuery holds fully scored and post-analysed Query* objects ready for output.
 bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
                                                   int iFirstScan,
                                                   int iLastScan,

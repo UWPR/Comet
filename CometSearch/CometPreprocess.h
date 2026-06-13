@@ -111,8 +111,8 @@ public:
    // pre-assigned _ppbDuplFragmentArr index.
    static void FusedSearchSpectrum(Spectrum spec, int iSlot);
 
-   // Fused FI_DB batch path: read spectra into a vector then dispatch
-   // FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
+   // Fused FI_DB batch path: stream spectra through a bounded producer/consumer
+   // queue into FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
    // AllocateResultsMem + RunSearch + PostAnalysis for the FI_DB case.
    static bool FusedLoadAndSearchSpectra(MSReader& mstReader,
                                           int iFirstScan,
