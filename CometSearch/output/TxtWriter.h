@@ -54,7 +54,7 @@ public:
 
    bool write(const WriterWriteCtx& ctx) override
    {
-      CometWriteTxt::WriteTxt(_fpout, _fpoutd, ctx.fpdb);
+      CometWriteTxt::WriteTxt(_fpout, _fpoutd, ctx.fpdb, *ctx.pQueries);
       return true;
    }
 

@@ -38,6 +38,7 @@
 #include "CometAlignment.h"
 #include "AScoreOptions.h"
 #include "AScoreFactory.h"
+#include "search/SearchSession.h"
 
 #include <sstream>
 #include <cstdio>
@@ -45,14 +46,6 @@
 
 
 extern comet_fileoffset_t clSizeCometFileOffset;
-
-std::vector<Query*>           g_pvQuery;
-
-// g_pvQueryMS1: BATCH PATH ONLY - used by RunMS1Search(ThreadPool*,...) and
-// PreprocessMS1SingleSpectrum(). The single-spectrum MS1 search path
-// (DoMS1SearchMultiResults) uses thread-local QueryMS1* objects and never
-// reads or writes this vector. Do not access from concurrent search threads.
-std::vector<QueryMS1*>        g_pvQueryMS1;
 
 std::vector<InputFileInfo *>  g_pvInputFiles;
 StaticParams                  g_staticParams;
@@ -258,10 +251,10 @@ static void SetMSLevelFilter(MSReader &mstReader)
    mstReader.setFilter(msLevel);
 }
 
-// Allocate memory for the _pResults struct for each g_pvQuery entry.
-static bool AllocateResultsMem()
+// Allocate memory for the _pResults struct for each query entry.
+static bool AllocateResultsMem(std::vector<Query*>& queries)
 {
-   for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+   for (std::vector<Query*>::iterator it = queries.begin(); it != queries.end(); ++it)
    {
       Query* pQuery = *it;
 
@@ -339,11 +332,11 @@ static bool AllocateResultsMem()
    return true;
 }
 
-// Allocate memory for the _pSpecLibResults struct for each g_pvQueryMS1 entry.
+// Allocate memory for the _pSpecLibResults struct for each session.queriesMS1 entry.
 static bool AllocateResultsMemMS1()
 {
 /*
-   for (std::vector<QueryMS1*>::iterator it = g_pvQueryMS1.begin(); it != g_pvQueryMS1.end(); ++it)
+   for (std::vector<QueryMS1*>::iterator it = session.queriesMS1.begin(); it != session.queriesMS1.end(); ++it)
    {
       QueryMS1* pQueryMS1 = *it;
 
@@ -603,7 +596,7 @@ CometSearchManager::CometSearchManager() :
 
 CometSearchManager::~CometSearchManager()
 {
-   // Destroy the mutex we used to protect g_pvQuery.
+   // Destroy the mutex we used to protect g_pvQueryMutex.
    Threading::DestroyMutex(g_pvQueryMutex);
 
    // Destroy the mutex we used to protect g_pvDBIndex.
@@ -2402,6 +2395,8 @@ bool CometSearchManager::DoSearch()
       if (!bSucceeded)
          break;
 
+      SearchSession session(g_staticParams);
+
       time_t tStartTime;
       time(&tStartTime);
       strftime(g_staticParams.szDate, 26, "%Y/%m/%d, %I:%M:%S %p", localtime(&tStartTime));
@@ -2435,6 +2430,7 @@ bool CometSearchManager::DoSearch()
       woctx.iFirstScan     = iFirstScan;
       woctx.iLastScan      = iLastScan;
       woctx.iDecoySearch   = g_staticParams.options.iDecoySearch;
+      woctx.bIdxNoFasta    = g_bIdxNoFasta;
       woctx.pMgr           = this;
 
       std::vector<std::unique_ptr<IResultWriter>> vWriters;
@@ -2620,7 +2616,7 @@ bool CometSearchManager::DoSearch()
                // or we will create a memory leak!
                g_cometStatus.SetStatusMsg(string("Running fused FI_DB search..."));
 
-               bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
+               bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
 
                if (!bSucceeded)
                   goto cleanup_results;
@@ -2628,10 +2624,10 @@ bool CometSearchManager::DoSearch()
                iPercentStart = iPercentEnd;
                iPercentEnd = mstReader.getPercent();
 
-               if (g_pvQuery.empty())
+               if (session.queries.empty())
                   continue;
 
-               iTotalSpectraSearched += (int)g_pvQuery.size();
+               iTotalSpectraSearched += (int)session.queries.size();
             }
             else
             {
@@ -2649,7 +2645,7 @@ bool CometSearchManager::DoSearch()
                // spectra, we MUST "goto cleanup_results" before exiting the loop,
                // or we will create a memory leak!
 
-               bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp);
+               bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
 
                if (!bSucceeded)
                   goto cleanup_results;
@@ -2657,18 +2653,18 @@ bool CometSearchManager::DoSearch()
                iPercentStart = iPercentEnd;
                iPercentEnd = mstReader.getPercent();
 
-               if (g_pvQuery.empty())
+               if (session.queries.empty())
                   continue;    //FIX make sure continue instead of break makes sense
                else            // possible no spectrum in batch passes filters; do not want to break in that case;
-                  iTotalSpectraSearched += (int)g_pvQuery.size();
+                  iTotalSpectraSearched += (int)session.queries.size();
 
-               bSucceeded = AllocateResultsMem();
+               bSucceeded = AllocateResultsMem(session.queries);
 
                if (!bSucceeded)
                   goto cleanup_results;
 
                { // need strStatusMsg in it's own scope due to goto statement above
-                  string strStatusMsg = " " + std::to_string(g_pvQuery.size()) + string("\n");
+                  string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
                   if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
                   {
                      logout(strStatusMsg);
@@ -2683,9 +2679,9 @@ bool CometSearchManager::DoSearch()
 
                   // sort back to original spectrum order in MS2 scan in order to associate pairs
                   // based on sequential order of precursors for each scan
-                  std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByMangoIndex);
+                  std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
 
-                  for (std::vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+                  for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
                   {
                      if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
                      {
@@ -2699,11 +2695,11 @@ bool CometSearchManager::DoSearch()
                   }
                }
 
-               // Sort g_pvQuery vector by dExpPepMass.
-               std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByPeptideMass);
+               // Sort session.queries vector by dExpPepMass.
+               std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
 
-               g_massRange.dMinMass = g_pvQuery.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-               g_massRange.dMaxMass = g_pvQuery.at(g_pvQuery.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
+               g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+               g_massRange.dMaxMass = session.queries.at(session.queries.size()-1)->_pepMassInfo.dPeptideMassTolerancePlus;
 
                if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
                   g_massRange.bNarrowMassRange = true;
@@ -2718,9 +2714,9 @@ bool CometSearchManager::DoSearch()
 
                // Now that spectra are loaded to memory and sorted, do search.
                if (g_bPerformDatabaseSearch)
-                  bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp);
+                  bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp, session.queries);
                if (g_bPerformSpecLibSearch)
-                  bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp);
+                  bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp, session.queries);
 
                if (!bSucceeded)
                   goto cleanup_results;
@@ -2740,15 +2736,15 @@ bool CometSearchManager::DoSearch()
                   g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
 
                   // Sort each entry by xcorr, calculate E-values, etc.
-                  bSucceeded = CometPostAnalysis::PostAnalysis(tp);
+                  bSucceeded = CometPostAnalysis::PostAnalysis(tp, session.queries);
                }
 
                if (!bSucceeded)
                   goto cleanup_results;
             }
 
-            // Sort g_pvQuery vector by scan (shared by both paths).
-            std::sort(g_pvQuery.begin(), g_pvQuery.end(), compareByScanNumber);
+            // Sort session.queries vector by scan (shared by both paths).
+            std::sort(session.queries.begin(), session.queries.end(), compareByScanNumber);
 
             if (!g_staticParams.options.bOutputSqtStream && g_staticParams.iDbType == DbType::FASTA_DB)
             {
@@ -2761,8 +2757,9 @@ bool CometSearchManager::DoSearch()
             {
                WriterWriteCtx wwctx;
                wwctx.fpdb        = fpdb;
-               wwctx.iScanOffset = iTotalSpectraSearched - (int)g_pvQuery.size();
+               wwctx.iScanOffset = iTotalSpectraSearched - (int)session.queries.size();
                wwctx.iBatchNum   = iBatchNum;
+               wwctx.pQueries    = &session.queries;
                for (auto& pw : vWriters)
                {
                   if (!pw->write(wwctx))
@@ -2777,10 +2774,10 @@ cleanup_results:
 
             // Deleting each Query object in the vector calls its destructor, which
             // frees the spectral memory (see definition for Query in CometDataInternal.h).
-            for (auto it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+            for (auto it = session.queries.begin(); it != session.queries.end(); ++it)
                delete (*it);
 
-            g_pvQuery.clear();
+            session.queries.clear();
 
             if (!bSucceeded)
                break;
@@ -3186,7 +3183,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // the binned sqrt-intensity spectrum needed for fragment-ion matching below.
    double* pdTmpSpectrum = CometPreprocess::GetRtsRawDataBuffer();
 
-   // Step 1: Preprocess into a thread-local Query* (does NOT touch g_pvQuery)
+   // Step 1: Preprocess into a thread-local Query* (does NOT touch session.queries)
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
 #endif
@@ -3227,7 +3224,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
    // Step 3: Run the fragment index search on the thread-local Query*
    // This uses the new RunSearch(Query*) overload that allocates its own
-   // pbDuplFragment and never touches g_pvQuery or _ppbDuplFragmentArr.
+   // pbDuplFragment and never touches session.queries or _ppbDuplFragmentArr.
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
 #endif
@@ -3270,7 +3267,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
 
-   // Step 4: Post-analysis using Query* overloads (no g_pvQuery access)
+   // Step 4: Post-analysis using Query* overloads (no session.queries access)
    if (pQuery->iMatchPeptideCount > 0)
    {
       if (g_staticParams.options.iMaxIndexRunTime > 0)

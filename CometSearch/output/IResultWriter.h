@@ -17,8 +17,10 @@
 
 #include <cstdio>
 #include <string>
+#include <vector>
 
 class CometSearchManager;
+struct Query;
 
 // Parameters passed to each writer's open() method.
 struct WriterOpenCtx
@@ -30,6 +32,7 @@ struct WriterOpenCtx
    int         iFirstScan;
    int         iLastScan;
    int         iDecoySearch;     // 0=off, 1=concat, 2=separate
+   bool        bIdxNoFasta;      // .idx DB with no companion .fasta (mzIdentML)
    CometSearchManager* pMgr;     // for format headers that need ICometSearchManager
 };
 
@@ -37,8 +40,9 @@ struct WriterOpenCtx
 struct WriterWriteCtx
 {
    FILE* fpdb;
-   int   iScanOffset;    // iTotalSpectraSearched - g_pvQuery.size(); pepXML only
+   int   iScanOffset;    // iTotalSpectraSearched - queries.size(); pepXML only
    int   iBatchNum;      // mzIdentML only
+   const std::vector<Query*>* pQueries;  // batch query results for this write call
 };
 
 class IResultWriter

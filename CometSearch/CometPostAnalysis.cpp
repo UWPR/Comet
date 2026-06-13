@@ -176,18 +176,18 @@ CometPostAnalysis::~CometPostAnalysis()
 }
 
 
-bool CometPostAnalysis::PostAnalysis(ThreadPool* tp)
+bool CometPostAnalysis::PostAnalysis(ThreadPool* tp, const vector<Query*>& queries)
 {
    bool bSucceeded = true;
 
    //Reuse existing ThreadPool
    ThreadPool *pPostAnalysisThreadPool = tp;
 
-   for (int i=0; i<(int)g_pvQuery.size(); ++i)
+   for (int i=0; i<(int)queries.size(); ++i)
    {
-      if (g_pvQuery.at(i)->iMatchPeptideCount > 0 || g_pvQuery.at(i)->iDecoyMatchPeptideCount > 0)
+      if (queries.at(i)->iMatchPeptideCount > 0 || queries.at(i)->iDecoyMatchPeptideCount > 0)
       {
-         PostAnalysisThreadData* pThreadData = new PostAnalysisThreadData(i);
+         PostAnalysisThreadData* pThreadData = new PostAnalysisThreadData(i, &queries);
 
          pPostAnalysisThreadPool->doJob(std::bind(PostAnalysisThreadProc, pThreadData, pPostAnalysisThreadPool));
 
@@ -223,7 +223,7 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
    (void)tp; // suppress unused parameter warning
 
    int iQueryIndex = pThreadData->iQueryIndex;
-   Query* pQuery = g_pvQuery.at(iQueryIndex);
+   Query* pQuery = pThreadData->pQueries->at(iQueryIndex);
 
    AnalyzeSP(pQuery);
 

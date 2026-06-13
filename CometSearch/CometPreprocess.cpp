@@ -646,7 +646,8 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                                                int iFirstScan,
                                                int iLastScan,
                                                int iAnalysisType,
-                                               ThreadPool* tp)
+                                               ThreadPool* tp,
+                                               SearchSession& session)
 {
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iScanNumber = 0;
@@ -761,15 +762,16 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
-               // add this hack when 1 thread is specified otherwise g_pvQuery.size() returns 0
+               // add this hack when 1 thread is specified otherwise session.queries.size() returns 0
                if (g_staticParams.options.iNumThreads == 1)
                   pPreprocessThreadPool->wait_on_threads();
 
-               Threading::LockMutex(g_pvQueryMutex);
-               // this needed because processing can add multiple spectra at a time
-               iNumSpectraLoaded = (int)g_pvQuery.size();
-               iNumSpectraLoaded++;
-               Threading::UnlockMutex(g_pvQueryMutex);
+               {
+                  std::lock_guard<std::mutex> lk(session.queriesMutex);
+                  // this needed because processing can add multiple spectra at a time
+                  iNumSpectraLoaded = (int)session.queries.size();
+                  iNumSpectraLoaded++;
+               }
 
                pPreprocessThreadPool->wait_for_available_thread();
 
@@ -778,6 +780,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                //run filter here.
 
                PreprocessThreadData *pPreprocessThreadData = new PreprocessThreadData(mstSpectrum, iAnalysisType, iFileLastScan);
+               pPreprocessThreadData->pSession = &session;
 
                pPreprocessThreadPool->doJob(std::bind(PreprocessThreadProc, pPreprocessThreadData, pPreprocessThreadPool));
             }
@@ -804,22 +807,18 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          }
       }
 
-      Threading::LockMutex(g_pvQueryMutex);
-
-      if (CheckExit(iAnalysisType,
-                    iScanNumber,
-                    iTotalScans,
-                    iLastScan,
-                    mstReader.getLastScan(),
-                    iNumSpectraLoaded,
-                    0))
       {
-         Threading::UnlockMutex(g_pvQueryMutex);
-         break;
-      }
-      else
-      {
-         Threading::UnlockMutex(g_pvQueryMutex);
+         std::lock_guard<std::mutex> lk(session.queriesMutex);
+         if (CheckExit(iAnalysisType,
+                       iScanNumber,
+                       iTotalScans,
+                       iLastScan,
+                       mstReader.getLastScan(),
+                       iNumSpectraLoaded,
+                       0))
+         {
+            break;
+         }
       }
 
    }
@@ -882,7 +881,8 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
          ppdTmpCorrelationDataArr[i],
          ppfFastXcorrData[i],
          ppfFastXcorrDataNL[i],
-         ppfSpScoreData[i]);
+         ppfSpScoreData[i],
+         pPreprocessThreadData->pSession);
 
    delete pPreprocessThreadData;
    pPreprocessThreadData = NULL;
@@ -1866,23 +1866,22 @@ double* CometPreprocess::GetRtsRawDataBuffer()
 }
 
 
-// Original public entry point: builds Query* via Core, then pushes into g_pvQuery.
-// Preserves backward compatibility with existing callers.
+// Original public entry point: builds Query* via Core, then pushes into session.queries.
 bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
                                                double dMZ,
                                                double *pdMass,
                                                double *pdInten,
                                                int iNumPeaks,
-                                               double *pdTmpSpectrum)
+                                               double *pdTmpSpectrum,
+                                               SearchSession& session)
 {
    Query* pScoring = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
 
    if (pScoring == nullptr)
       return false;
 
-   Threading::LockMutex(g_pvQueryMutex);
-   g_pvQuery.push_back(pScoring);
-   Threading::UnlockMutex(g_pvQueryMutex);
+   std::lock_guard<std::mutex> lk(session.queriesMutex);
+   session.queries.push_back(pScoring);
 
    return true;
 }
@@ -2023,7 +2022,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpCorrelationData,
                                          float *pfFastXcorrData,
                                          float *pfFastXcorrDataNL,
-                                         float *pfSpScoreData)
+                                         float *pfSpScoreData,
+                                         SearchSession* pSession)
 {
    int iScanNumber = spec.getScanNumber();
    int iSpectrumCharge = 0;
@@ -2236,9 +2236,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                return false;
             }
 
-            Threading::LockMutex(g_pvQueryMutex);
-            g_pvQuery.push_back(pScoring);
-            Threading::UnlockMutex(g_pvQueryMutex);
+            std::lock_guard<std::mutex> lk(pSession->queriesMutex);
+            pSession->queries.push_back(pScoring);
          }
       }
    }
@@ -2804,7 +2803,8 @@ bool CometPreprocess::IsValidInputType(int inputType)
 
 bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
                                                   double* pdInten,
-                                                  int iNumPeaks)
+                                                  int iNumPeaks,
+                                                  SearchSession& session)
 {
    QueryMS1* pScoringMS1 = new QueryMS1();
 
@@ -2866,7 +2866,8 @@ bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
 
    pScoringMS1->iArraySizeMS1 = iArraySizeMS1;
 
-   g_pvQueryMS1.push_back(pScoringMS1);
+   std::lock_guard<std::mutex> lk(session.queriesMutex);
+   session.ms1Queries.push_back(pScoringMS1);
 
    return true;
 }
@@ -2949,7 +2950,7 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
 // Fused FI_DB batch worker: preprocess + RunSearch + post-analysis for one spectrum.
 // Uses per-thread g_rtsScratch scratch buffers (no shared batch pool contention).
 // iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
-void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot)
+void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot, SearchSession& session)
 {
    int iScanNumber = spec.getScanNumber();
    int iSpectrumCharge = 0;
@@ -3231,9 +3232,8 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot)
             pScoring->vfRawFragmentPeakMass.clear();
             pScoring->vfRawFragmentPeakMass.shrink_to_fit();
 
-            Threading::LockMutex(g_pvQueryMutex);
-            g_pvQuery.push_back(pScoring);
-            Threading::UnlockMutex(g_pvQueryMutex);
+            std::lock_guard<std::mutex> lk(session.queriesMutex);
+            session.queries.push_back(pScoring);
          }
       }
    }
@@ -3247,7 +3247,8 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
                                                   int iFirstScan,
                                                   int iLastScan,
                                                   int iAnalysisType,
-                                                  ThreadPool* tp)
+                                                  ThreadPool* tp,
+                                                  SearchSession& session)
 {
    int iFileLastScan = -1;
    int iScanNumber = 0;
@@ -3269,11 +3270,11 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
 
    for (int t = 0; t < iNumSlots; ++t)
    {
-      tp->doJob([&queue, t]()
+      tp->doJob([&queue, t, &session]()
       {
          Spectrum spec;
          while (queue.pop(spec))
-            FusedSearchSpectrum(std::move(spec), t);
+            FusedSearchSpectrum(std::move(spec), t, session);
       });
    }
 
@@ -3380,14 +3381,14 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
          }
       }
 
-      Threading::LockMutex(g_pvQueryMutex);
-      if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                    mstReader.getLastScan(), iNumSpectraLoaded, 0))
       {
-         Threading::UnlockMutex(g_pvQueryMutex);
-         break;
+         std::lock_guard<std::mutex> lk(session.queriesMutex);
+         if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                       mstReader.getLastScan(), iNumSpectraLoaded, 0))
+         {
+            break;
+         }
       }
-      Threading::UnlockMutex(g_pvQueryMutex);
    }
 
    Threading::DestroyMutex(_maxChargeMutex);

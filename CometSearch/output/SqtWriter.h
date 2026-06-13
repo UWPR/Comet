@@ -53,7 +53,7 @@ public:
 
    bool write(const WriterWriteCtx& ctx) override
    {
-      CometWriteSqt::WriteSqt(_fpout, _fpoutd, ctx.fpdb);
+      CometWriteSqt::WriteSqt(_fpout, _fpoutd, ctx.fpdb, *ctx.pQueries);
       return true;
    }
 

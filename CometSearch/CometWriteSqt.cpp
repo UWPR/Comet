@@ -31,22 +31,23 @@ CometWriteSqt::~CometWriteSqt()
 
 void CometWriteSqt::WriteSqt(FILE *fpout,
                              FILE *fpoutd,
-                             FILE *fpdb)
+                             FILE *fpdb,
+                             const vector<Query*>& queries)
 {
    int i;
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 1, fpout, fpdb);
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 2, fpoutd, fpdb);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 1, fpout, fpdb, queries);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 2, fpoutd, fpdb, queries);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 0, fpout, fpdb);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 0, fpout, fpdb, queries);
    }
 }
 
@@ -164,13 +165,14 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
 void CometWriteSqt::PrintResults(int iWhichQuery,
                                  int iPrintTargetDecoy,
                                  FILE *fpout,
-                                 FILE *fpdb)
+                                 FILE *fpdb,
+                                 const vector<Query*>& queries)
 {
    int  i,
         iNumPrintLines;
    std::ostringstream oss;
 
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = queries.at(iWhichQuery);
 
    Results *pOutput;
 
@@ -212,7 +214,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
    for (i=0; i<iNumPrintLines; ++i)
    {
       if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintSqtLine(iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy);
+         PrintSqtLine(iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy, queries);
    }
 }
 
@@ -222,7 +224,8 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
                                  Results *pOutput,
                                  FILE *fpout,
                                  FILE *fpdb,
-                                 int iPrintTargetDecoy)
+                                 int iPrintTargetDecoy,
+                                 const vector<Query*>& queries)
 {
    int i;
    std::ostringstream oss;
@@ -325,7 +328,7 @@ void CometWriteSqt::PrintSqtLine(int iWhichQuery,
    bool bReturnFulProteinString = false;
 
    CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy,
-      bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+      bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys, queries);
 
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
    {

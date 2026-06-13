@@ -37,22 +37,23 @@ CometWritePepXML::~CometWritePepXML()
 void CometWritePepXML::WritePepXML(FILE *fpout,
                                    FILE *fpoutd,
                                    FILE *fpdb,
-                                   int iNumSpectraSearched)
+                                   int iNumSpectraSearched,
+                                   const vector<Query*>& queries)
 {
    int i;
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i = 0; i < (int)g_pvQuery.size(); ++i)
-         PrintResults(i, 1, fpout, fpdb, iNumSpectraSearched);
-      for (i = 0; i < (int)g_pvQuery.size(); ++i)
-         PrintResults(i, 2, fpoutd, fpdb, iNumSpectraSearched);
+      for (i = 0; i < (int)queries.size(); ++i)
+         PrintResults(i, 1, fpout, fpdb, iNumSpectraSearched, queries);
+      for (i = 0; i < (int)queries.size(); ++i)
+         PrintResults(i, 2, fpoutd, fpdb, iNumSpectraSearched, queries);
    }
    else
    {
-      for (i = 0; i < (int)g_pvQuery.size(); ++i)
-         PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched);
+      for (i = 0; i < (int)queries.size(); ++i)
+         PrintResults(i, 0, fpout, fpdb, iNumSpectraSearched, queries);
    }
 }
 
@@ -416,14 +417,15 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
                                     int iPrintTargetDecoy,
                                     FILE *fpout,
                                     FILE *fpdb,
-                                    int iNumSpectraSearched)
+                                    int iNumSpectraSearched,
+                                    const vector<Query*>& queries)
 {
    int  i,
         iNumPrintLines,
         iMinLength;
    char *pStr;
 
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = queries.at(iWhichQuery);
 
    // look for either \ or / separator so valid for Windows or Linux
    if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '\\')) == NULL
@@ -500,7 +502,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
       if (pOutput[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
-         PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, fpdb);
+         PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, fpdb, queries);
    }
 
    fprintf(fpout, "  </search_result>\n");
@@ -513,14 +515,15 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
                                             int iPrintTargetDecoy,
                                             Results *pOutput,
                                             FILE *fpout,
-                                            FILE *fpdb)
+                                            FILE *fpdb,
+                                            const vector<Query*>& queries)
 {
    int  i;
    int iNTT;
    int iNMC;
    unsigned int uiNumTotProteins = 0;
 
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = queries.at(iWhichQuery);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNTT, &iNMC);
 
@@ -529,7 +532,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
    std::vector<string>::iterator it;
 
    bool bReturnFulProteinString = false;
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys, queries);
 
    fprintf(fpout, "   <search_hit hit_rank=\"%d\"", pOutput[iWhichResult].usiRankXcorr);
    fprintf(fpout, " peptide=\"%s\"", pOutput[iWhichResult].szPeptide);

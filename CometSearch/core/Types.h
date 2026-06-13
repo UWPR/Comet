@@ -580,14 +580,11 @@ extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index fi
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
 extern bool g_bSpecLibRead;             // set to true if spectral library file is read
 
-extern bool g_bPerformSpecLibSearch;    // set to true if doing spectral library search
-extern bool g_bPerformDatabaseSearch;   // set to true if doing database search
+// g_bPerformSpecLibSearch, g_bPerformDatabaseSearch, g_bIdxNoFasta moved to SearchSession
+// (Phase 4: batch path only -- see search/SearchSession.h)
 
 extern bool g_bCometPreprocessMemoryAllocated;    // set to true when memory has been allocated
 extern bool g_bCometSearchMemoryAllocated;        // set to true when memory has been allocated
-
-extern bool g_bIdxNoFasta;   // set to true when .idx file being search but corresponding .fasta not present
-                             // used in mzid output to skip sequence retrieval
 
 // Query stores information for peptide scoring and results
 // This struct is allocated for each spectrum/charge combination
@@ -806,8 +803,8 @@ struct QueryMS1
    }
 };
 
-extern vector<Query*>          g_pvQuery;
-extern vector<QueryMS1*>       g_pvQueryMS1;
+// g_pvQuery and g_pvQueryMS1 moved to SearchSession.queries / SearchSession.ms1Queries
+// (Phase 4: batch path only -- see search/SearchSession.h)
 extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_pvDBIndexMutex;

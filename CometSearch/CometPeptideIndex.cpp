@@ -235,7 +235,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 
    if (bSucceeded)
    {
-      bSucceeded = CometSearch::RunSearch(0, 0, tp);
+      vector<Query*> emptyQueries;
+      bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
    }
 
    if (!bSucceeded)

@@ -24,15 +24,18 @@
 struct PostAnalysisThreadData
 {
    int iQueryIndex;
+   const vector<Query*>* pQueries;
 
    PostAnalysisThreadData()
    {
       iQueryIndex = -1;
+      pQueries = nullptr;
    }
 
-   PostAnalysisThreadData(int iQueryIndex_in)
+   PostAnalysisThreadData(int iQueryIndex_in, const vector<Query*>* pQueries_in)
    {
       iQueryIndex = iQueryIndex_in;
+      pQueries = pQueries_in;
    }
 };
 
@@ -41,7 +44,7 @@ class CometPostAnalysis
 public:
    CometPostAnalysis();
    ~CometPostAnalysis();
-   static bool PostAnalysis(ThreadPool* tp);
+   static bool PostAnalysis(ThreadPool* tp, const vector<Query*>& queries);
    static void PostAnalysisThreadProc(PostAnalysisThreadData* pThreadData,
                                       ThreadPool* tp);
    // Query*-based overloads, the only versions now

@@ -61,7 +61,8 @@ public:
                                     bool bReturnFullProteinString,   // 0 = return accession only, 1 = return full description line
                                     unsigned int *iNumTotProteins,   // matched protein count
                                     vector<string>& vProteinTargets,  // the target protein names
-                                    vector<string>& vProteinDecoys);  // the decoy protein names if applicable
+                                    vector<string>& vProteinDecoys,   // the decoy protein names if applicable
+                                    const vector<Query*>& queries);
 
    static string GetField(std::string *s,
                           unsigned int n,

@@ -40,22 +40,23 @@ CometWriteMzIdentML::~CometWriteMzIdentML()
 
 void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
                                             FILE *fpoutd,
-                                            int iBatchNum)
+                                            int iBatchNum,
+                                            const vector<Query*>& queries)
 {
    int i;
 
    // Print temporary results in tab-delimited file
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintTmpPSM(i, 1, iBatchNum, fpout);
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintTmpPSM(i, 2, iBatchNum, fpoutd);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintTmpPSM(i, 1, iBatchNum, fpout, queries);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintTmpPSM(i, 2, iBatchNum, fpoutd, queries);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintTmpPSM(i, 0, iBatchNum, fpout);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintTmpPSM(i, 0, iBatchNum, fpout, queries);
    }
 }
 
@@ -63,12 +64,13 @@ void CometWriteMzIdentML::WriteMzIdentMLTmp(FILE *fpout,
 void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
                                          FILE *fpdb,
                                          string sTmpFile,
-                                         CometSearchManager &searchMgr)
+                                         CometSearchManager &searchMgr,
+                                         bool bIdxNoFasta)
 {
    WriteMzIdentMLHeader(fpout);
 
    // now loop through sTmpFile file, wr
-   ParseTmpFile(fpout, fpdb, sTmpFile, searchMgr);
+   ParseTmpFile(fpout, fpdb, sTmpFile, searchMgr, bIdxNoFasta);
 
    fprintf(fpout, "</MzIdentML>\n");
 }
@@ -112,7 +114,8 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                                        FILE *fpdb,
                                        string sTmpFile,
-                                       CometSearchManager &searchMgr)
+                                       CometSearchManager &searchMgr,
+                                       bool bIdxNoFasta)
 {
    std::vector<MzidTmpStruct> vMzidTmp; // vector to store entire tmp output
    std::vector<long> vProteinTargets;   // store vector of target protein file offsets
@@ -314,7 +317,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB\"", strProteinName.c_str(), strProteinName.c_str());
 
-         if (bPrintSequences && !g_bIdxNoFasta)
+         if (bPrintSequences && !bIdxNoFasta)
          {
             CometMassSpecUtils::GetProteinSequence(fpdb, *it, strProteinSeq);
             if (strProteinSeq.size() > 0)
@@ -1373,12 +1376,13 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
                                       int iPrintTargetDecoy,
                                       int iBatchNum,
-                                      FILE *fpout)
+                                      FILE *fpout,
+                                      const vector<Query*>& queries)
 {
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
+   if ((iPrintTargetDecoy != 2 && queries.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && queries.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
-      Query* pQuery = g_pvQuery.at(iWhichQuery);
+      Query* pQuery = queries.at(iWhichQuery);
 
       Results *pOutput;
       int iNumPrintLines;

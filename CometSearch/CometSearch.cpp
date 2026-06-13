@@ -194,7 +194,7 @@ bool CometSearch::RunSearch(Query* pQuery, int iSlot)
 
 
 // called by DoSingleSpectrumSearchMultiResults
-bool CometSearch::RunSearch(ThreadPool *tp)
+bool CometSearch::RunSearch(ThreadPool *tp, vector<Query*>& queries)
 {
    CometSearch sqSearch;
    size_t iWhichQuery = 0;
@@ -214,12 +214,12 @@ bool CometSearch::RunSearch(ThreadPool *tp)
          logerr(" Error - could not acquire memory pool slot for single-query FI search.\n");
          return false;
       }
-      SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+      SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
       s_pool.releaseSlot(iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
-      sqSearch.SearchPeptideIndex(tp);
+      sqSearch.SearchPeptideIndex(tp, queries);
    }
    else
    {
@@ -235,7 +235,8 @@ bool CometSearch::RunSearch(ThreadPool *tp)
 
 bool CometSearch::RunSearch(int iPercentStart,
                             int iPercentEnd,
-                            ThreadPool* tp)
+                            ThreadPool* tp,
+                            vector<Query*>& queries)
 {
    bool bSucceeded = true;
 
@@ -254,18 +255,18 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       ThreadPool* pSearchThreadPool = tp;
 
-      size_t iEnd = g_pvQuery.size();
+      size_t iEnd = queries.size();
 
       for (size_t iWhichQuery = 0; iWhichQuery < iEnd; ++iWhichQuery)
       {
-         pSearchThreadPool->doJob([iWhichQuery]() {
+         pSearchThreadPool->doJob([iWhichQuery, &queries]() {
             int iSlot = AcquirePoolSlot();
             if (iSlot < 0)
             {
                logerr(" Error - could not acquire memory pool slot for batch FI search thread.\n");
                return;
             }
-            SearchFragmentIndex(g_pvQuery.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+            SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
             s_pool.releaseSlot(iSlot);
          });
       }
@@ -287,7 +288,7 @@ bool CometSearch::RunSearch(int iPercentStart,
    else if (g_staticParams.iDbType == DbType::PI_DB)
    {
       CometSearch* sqSearch = new CometSearch();
-      sqSearch->SearchPeptideIndex(tp);
+      sqSearch->SearchPeptideIndex(tp, queries);
       delete sqSearch;
       return bSucceeded;
    }
@@ -925,6 +926,7 @@ bool CometSearch::RunSearch(int iPercentStart,
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
             SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
+            pSearchThreadData->pQueries = &queries;
 
             pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
 
@@ -1002,14 +1004,15 @@ bool CometSearch::RunSpecLibSearch(ThreadPool* tp)
 
 bool CometSearch::RunSpecLibSearch(int iPercentStart,
                                    int iPercentEnd,
-                                   ThreadPool* tp)
+                                   ThreadPool* tp,
+                                   vector<Query*>& queries)
 {
    // to fill g_vulSpecLibPrecursorIndex, set
    // binmin = BINPREC(expmass - tol)
    // binmax = BINPREC(expmass + tol)
    // then for (i=binmin; i<=binmax; ++i) {g_vulSpecLibPrecursorIndex[i].push_back(entry)}
 
-   for (vector<Query*>::iterator it = g_pvQuery.begin(); it != g_pvQuery.end(); ++it)
+   for (vector<Query*>::iterator it = queries.begin(); it != queries.end(); ++it)
    {
       int iBinExpMass = BINPREC((*it)->_pepMassInfo.dExpPepMass);
 
@@ -1036,16 +1039,18 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
                                double dRT,
                                double dMaxMS1RTDiff,
                                const double dMaxSpecLibRT,
-                               const double dMaxQueryRT)
+                               const double dMaxQueryRT,
+                               vector<QueryMS1*>& ms1Queries)
 {
    ThreadPool* pRunMS1SearchThreadPool = tp;
 
-   for (size_t iWhichMS1Query = 0; iWhichMS1Query < g_pvQueryMS1.size(); ++iWhichMS1Query)
+   for (size_t iWhichMS1Query = 0; iWhichMS1Query < ms1Queries.size(); ++iWhichMS1Query)
    {
+      QueryMS1* pMS1Query = ms1Queries.at(iWhichMS1Query);
       // for each query, thread the search by segmenting the library
       for (int iWhichThread = 0; iWhichThread < g_staticParams.options.iNumThreads; ++iWhichThread)
       {
-         pRunMS1SearchThreadPool->doJob(std::bind(SearchMS1Library, iWhichMS1Query, iWhichThread, dRT,
+         pRunMS1SearchThreadPool->doJob(std::bind(SearchMS1Library, pMS1Query, iWhichThread, dRT,
             dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, pRunMS1SearchThreadPool));
       }
    }
@@ -1287,6 +1292,7 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
    // stack in debug builds when combined with the deep DoSearch call chain.
    CometSearch* sqSearch = new CometSearch();
    sqSearch->_iSlot = i;
+   sqSearch->_pQueries = pSearchThreadData->pQueries;
    sqSearch->DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i]);
    delete sqSearch;
 
@@ -1866,7 +1872,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 }
 
 
-bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
+bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
 {
    comet_fileoffset_t lEndOfStruct;
    FILE* fp;
@@ -2030,9 +2036,9 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp)
       if (sDBI.dPepMass > g_massRange.dMaxMass)
          break;
 
-      int iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), sDBI.dPepMass);
+      int iWhichQuery = BinarySearchMass(0, (int)queries.size(), sDBI.dPepMass);
 
-      while (iWhichQuery > 0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
+      while (iWhichQuery > 0 && queries.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= sDBI.dPepMass)
          iWhichQuery--;
 
       // Do the search
@@ -2757,9 +2763,9 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
    }
 
    // Compare calculated fragment ions against all matching query spectra.
-   while (iWhichQuery < (int)g_pvQuery.size())
+   while (iWhichQuery < (int)_pQueries->size())
    {
-      if (sDBI.dPepMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+      if (sDBI.dPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
       {
          // If calculated mass is smaller than low mass range.
          break;
@@ -2899,7 +2905,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
             {
-               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                   int iVal = BIN(dNLMass);
@@ -2970,7 +2976,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
             // Precursor NL peaks added here
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
             {
-               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                   int iVal = BIN(dNLMass);
@@ -3122,7 +3128,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -3193,7 +3199,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
                // Precursor NL peaks added here
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ctNL++)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -3255,7 +3261,7 @@ void CometSearch::AnalyzePeptideIndex(int iWhichQuery,
 }
 
 
-void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
+void CometSearch::SearchMS1Library(QueryMS1* pMS1Query,
                                    const int iWhichThread,
                                    const double dRT,
                                    const double dMaxMS1RTDiff,
@@ -3265,12 +3271,12 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
 {
    unsigned int iStart = BINPREC(g_staticParams.options.dMS1MinMass);
 
-   // Given iWhichMS1Query, this search will run through a subset of the library entries
+   // Given pMS1Query, this search will run through a subset of the library entries
    for (size_t iWhichMS1LibEntry = iWhichThread; iWhichMS1LibEntry < g_vSpecLib.size(); iWhichMS1LibEntry += g_staticParams.options.iNumThreads)
    {
       double dScore = 0.0;
 
-      unsigned int uiArrayLimit = g_pvQueryMS1.at(iWhichMS1Query)->iArraySizeMS1;
+      unsigned int uiArrayLimit = pMS1Query->iArraySizeMS1;
       if (uiArrayLimit > g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1)
          uiArrayLimit = g_vSpecLib.at(iWhichMS1LibEntry).uiArraySizeMS1;
 
@@ -3278,18 +3284,18 @@ void CometSearch::SearchMS1Library(size_t iWhichMS1Query,
       {
          for (unsigned int i = iStart; i < uiArrayLimit; ++i)
          {
-            dScore += g_pvQueryMS1.at(iWhichMS1Query)->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
+            dScore += pMS1Query->pfFastXcorrData[i] * g_vSpecLib.at(iWhichMS1LibEntry).pfUnitVector[i];
          }
 
-         if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
+         if (dScore > pMS1Query->_pSpecLibResultsMS1.fDotProduct)
          {
             Threading::LockMutex(g_pvQueryMutex);
-            if (dScore > g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct)
+            if (dScore > pMS1Query->_pSpecLibResultsMS1.fDotProduct)
             {
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fDotProduct = (float)dScore;
+               pMS1Query->_pSpecLibResultsMS1.fDotProduct = (float)dScore;
                // scale back to reference RT
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.fRTime = (float)(g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT);
-               g_pvQueryMS1.at(iWhichMS1Query)->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
+               pMS1Query->_pSpecLibResultsMS1.fRTime = (float)(g_vSpecLib.at(iWhichMS1LibEntry).fRTime * dMaxSpecLibRT / dMaxQueryRT);
+               pMS1Query->_pSpecLibResultsMS1.iWhichSpecLib = g_vSpecLib.at(iWhichMS1LibEntry).iLibEntry;
             }
             Threading::UnlockMutex(g_pvQueryMutex);
          }
@@ -3747,9 +3753,9 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                bool bFirstTimeThroughLoopForPeptide = true;
 
                // Compare calculated fragment ions against all matching query spectra.
-               while (iWhichQuery < (int)g_pvQuery.size())
+               while (iWhichQuery < (int)_pQueries->size())
                {
-                  if (dCalcPepMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+                  if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
                   {
                      // If calculated mass is smaller than low mass range.
                      break;
@@ -3816,7 +3822,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3856,7 +3862,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Precursor NL peaks added here
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3968,7 +3974,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
 
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -4009,7 +4015,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Precursor NL peaks added here
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -4322,11 +4328,11 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
       // proper enzyme termini, check if within mass tolerance of any given entry.
 
       // Do a binary search on list of input queries to find matching mass.
-      int iPos = BinarySearchMass(0, (int)g_pvQuery.size(), dCalcPepMass);
+      int iPos = BinarySearchMass(0, (int)_pQueries->size(), dCalcPepMass);
 
       // Seek back to first peptide entry that matches mass tolerance in case binary
       // search doesn't hit the first entry.
-      while (iPos > 0 && g_pvQuery.at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+      while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
          iPos--;
 
       if (iPos != -1)
@@ -4384,11 +4390,11 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
             // of any entry.  If so, simply return true here and will repeat the PEFF permutations later.
 
             // Do a binary search on list of input queries to find matching mass.
-            int iPos = BinarySearchMass(0, (int)g_pvQuery.size(), dCalcPepMass + dMassAddition);
+            int iPos = BinarySearchMass(0, (int)_pQueries->size(), dCalcPepMass + dMassAddition);
 
             // Seek back to first peptide entry that matches mass tolerance in case binary
             // search doesn't hit the first entry.
-            while (iPos > 0 && g_pvQuery.at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+            while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
                iPos--;
 
             if (iPos != -1)
@@ -4593,18 +4599,18 @@ int CometSearch::BinarySearchMass(int start,
                                   double dCalcPepMass) const
 {
    auto it = std::lower_bound(
-      g_pvQuery.begin() + start,
-      g_pvQuery.begin() + end,
+      _pQueries->begin() + start,
+      _pQueries->begin() + end,
       dCalcPepMass,
       [](const Query* query, double mass) {
          return query->_pepMassInfo.dPeptideMassTolerancePlus < mass;
       });
 
-   if (it != g_pvQuery.begin() + end
+   if (it != _pQueries->begin() + end
       && (*it)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
       && dCalcPepMass <= (*it)->_pepMassInfo.dPeptideMassTolerancePlus)
    {
-      return static_cast<int>(std::distance(g_pvQuery.begin(), it));
+      return static_cast<int>(std::distance(_pQueries->begin(), it));
    }
 
    return -1;
@@ -4657,7 +4663,7 @@ size_t CometSearch::BinarySearchIndexMass(size_t start,
 bool CometSearch::CheckMassMatch(size_t iWhichQuery,
                                  double dCalcPepMass)
 {
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = _pQueries->at(iWhichQuery);
 
    int iMassOffsetsSize = (int)g_staticParams.vectorMassOffsets.size();
 
@@ -5044,7 +5050,7 @@ void CometSearch::XcorrScore(char* szProteinSeq,
 
    int iWhichIonSeries;
    bool bUseWaterAmmoniaNLPeaks = false;
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = _pQueries->at(iWhichQuery);
 
    float** ppSparseFastXcorrData;              // use this if bSparseMatrix
 
@@ -5124,7 +5130,7 @@ void CometSearch::XcorrScore(char* szProteinSeq,
    ppSparseFastXcorrData = pQuery->ppfSparseFastXcorrData;
    for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
    {
-      for (int ctZ = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctZ >= 1; --ctZ)
+      for (int ctZ = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctZ >= 1; --ctZ)
       {
          bin = *(*(*p_uiBinnedPrecursorNL + ctNL) + ctZ);
 
@@ -5221,7 +5227,7 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
    int i;
    int iLenPeptide;
    int iLenPeptide2;
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = _pQueries->at(iWhichQuery);
 
    if (dXcorr < g_staticParams.options.dMinimumXcorr)
       return;
@@ -5670,7 +5676,7 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
    int iLenPeptide = iEndPos - iStartPos + 1;
    int iLenProteinMinus1 = (int)strlen(szProteinSeq) - 1;
    int bIsDuplicate = 0;
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = _pQueries->at(iWhichQuery);
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {
@@ -7515,11 +7521,11 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
                      // Need to check if mass is ok
 
                      // Do a binary search on list of input queries to find matching mass.
-                     iWhichQuery = BinarySearchMass(0, (int)g_pvQuery.size(), dTmpCalcPepMass);
+                     iWhichQuery = BinarySearchMass(0, (int)_pQueries->size(), dTmpCalcPepMass);
 
                      // Seek back to first peptide entry that matches mass tolerance in case binary
                      // search doesn't hit the first entry.
-                     while (iWhichQuery > 0 && g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+                     while (iWhichQuery > 0 && _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
                         iWhichQuery--;
 
                      // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
@@ -7644,9 +7650,9 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
    // Compare calculated fragment ions against all matching query spectra
 
-   while (iWhichQuery < (int)g_pvQuery.size())
+   while (iWhichQuery < (int)_pQueries->size())
    {
-      if (dCalcPepMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+      if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
       {
          // if calculated mass is smaller than low mass range, it
          // means we reached candidate peptides that are too big
@@ -7850,7 +7856,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
             // initialize precursorNL
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                   int iVal = BIN(dNLMass);
@@ -7933,7 +7939,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
             // Precursor NL peaks added here
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
 
@@ -8186,7 +8192,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
                // initialize precursorNL for decoy
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -8258,7 +8264,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
                // Precursor NL peaks added here
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge = g_pvQuery.at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -8871,9 +8877,9 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
 
          bool bFirstTime = true;
 
-         while (iWhichQuery < (int)g_pvQuery.size())
+         while (iWhichQuery < (int)_pQueries->size())
          {
-            if (dModMass < g_pvQuery.at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+            if (dModMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
                break;
 
             if (CheckMassMatch(iWhichQuery, dModMass))

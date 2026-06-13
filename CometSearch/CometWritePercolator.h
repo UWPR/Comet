@@ -24,7 +24,8 @@ public:
    ~CometWritePercolator();
    static void WritePercolatorHeader(FILE *fpout);
    static bool WritePercolator(FILE *fpout,
-                               FILE *fpdb);
+                               FILE *fpdb,
+                               const vector<Query*>& queries);
 
 
 private:
@@ -32,14 +33,16 @@ private:
                             FILE *fpOut,
                             FILE *fpdb,
                             int iPrintTargetDecoy,
-                            int iLenDecoyPrefix);
+                            int iLenDecoyPrefix,
+                            const vector<Query*>& queries);
    static void PrintPercolatorSearchHit(int iWhichQuery,
                                     int iWhichResult,
                                     int iPrintTargetDecoy,
                                     Results *pOutput,
                                     FILE *fpOut,
                                     vector<string> vProteinTargets,
-                                    vector<string> vProteinDecoys);
+                                    vector<string> vProteinDecoys,
+                                    const vector<Query*>& queries);
    static void CalcNTTNMC(Results *pOutput,
                           int iWhichQuery,
                           int *iNterm,

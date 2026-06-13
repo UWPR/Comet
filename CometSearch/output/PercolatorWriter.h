@@ -44,7 +44,7 @@ public:
 
    bool write(const WriterWriteCtx& ctx) override
    {
-      return CometWritePercolator::WritePercolator(_fpout, ctx.fpdb);
+      return CometWritePercolator::WritePercolator(_fpout, ctx.fpdb, *ctx.pQueries);
    }
 
    void close(bool /*bSucceeded*/, bool bEmpty) override

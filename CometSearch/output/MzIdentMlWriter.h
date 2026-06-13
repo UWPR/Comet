@@ -27,6 +27,7 @@ public:
 
    bool open(const WriterOpenCtx& ctx) override
    {
+      _bIdxNoFasta = ctx.bIdxNoFasta;
       BuildNames(ctx, ".mzid", ".decoy.mzid", ".target.mzid", _sTarget, _sDecoy);
 
       _fpout = fopen(_sTarget.c_str(), "w");
@@ -55,7 +56,7 @@ public:
    bool write(const WriterWriteCtx& ctx) override
    {
       _fpdb = ctx.fpdb;   // remember for close()
-      CometWriteMzIdentML::WriteMzIdentMLTmp(_fpoutTmp, _fpoutdTmp, ctx.iBatchNum);
+      CometWriteMzIdentML::WriteMzIdentMLTmp(_fpoutTmp, _fpoutdTmp, ctx.iBatchNum, *ctx.pQueries);
       return true;
    }
 
@@ -73,12 +74,13 @@ public:
    }
 
 private:
-   CometSearchManager* _pMgr     = nullptr;
-   FILE*               _fpout    = nullptr;
-   FILE*               _fpoutd   = nullptr;
-   FILE*               _fpoutTmp  = nullptr;
-   FILE*               _fpoutdTmp = nullptr;
-   FILE*               _fpdb     = nullptr;
+   CometSearchManager* _pMgr       = nullptr;
+   FILE*               _fpout      = nullptr;
+   FILE*               _fpoutd     = nullptr;
+   FILE*               _fpoutTmp   = nullptr;
+   FILE*               _fpoutdTmp  = nullptr;
+   FILE*               _fpdb       = nullptr;
+   bool                _bIdxNoFasta = false;
    std::string _sTarget, _sDecoy, _sTgtTmp, _sDecTmp;
 
    bool OpenTmp(const std::string& sBase, std::string& sTmp, FILE*& fp)
@@ -114,7 +116,7 @@ private:
          fpTmp = fopen(sTmp.c_str(), "r");
          if (fpTmp)
          {
-            CometWriteMzIdentML::WriteMzIdentML(fpFinal, _fpdb, sTmp, *_pMgr);
+            CometWriteMzIdentML::WriteMzIdentML(fpFinal, _fpdb, sTmp, *_pMgr, _bIdxNoFasta);
             fclose(fpTmp); fpTmp = nullptr;
             if (!bEmpty) remove(sTmp.c_str());
          }

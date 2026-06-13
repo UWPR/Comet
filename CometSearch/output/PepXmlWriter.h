@@ -52,7 +52,7 @@ public:
 
    bool write(const WriterWriteCtx& ctx) override
    {
-      CometWritePepXML::WritePepXML(_fpout, _fpoutd, ctx.fpdb, ctx.iScanOffset);
+      CometWritePepXML::WritePepXML(_fpout, _fpoutd, ctx.fpdb, ctx.iScanOffset, *ctx.pQueries);
       return true;
    }
 

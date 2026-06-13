@@ -602,7 +602,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_staticParams.options.bFastPlainPeptideIdx = true;
    g_staticParams.iDbType = DbType::FASTA_DB;
 
-   bool bSucceeded = CometSearch::RunSearch(0, 0, tp);
+   vector<Query*> emptyQueries;
+   bool bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
 
    g_staticParams.options.bCreateFragmentIndex = false;
    g_staticParams.options.bFastPlainPeptideIdx = false;
