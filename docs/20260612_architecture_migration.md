@@ -7,6 +7,22 @@ Behavior is unchanged at every step; each phase is independently compilable and 
 
 ---
 
+## Status (as of 2026-06-13)
+
+| Phase | Description | State | Commit |
+|-------|-------------|-------|--------|
+| 1 | Split `CometDataInternal.h` | **Complete** | `4337ee8d` |
+| 2 | Extract `SearchMemoryPool` | **Complete** | `4337ee8d` |
+| 3 | Extract `IResultWriter` | **Complete** | `4337ee8d` |
+| 4 | Introduce `SearchSession` | **Complete** | `00e0655f` |
+| 5 | Extract `ISearchStrategy` + `Pipeline` | **Complete** | uncommitted |
+| 6+ | Further decomposition (index/, spectrum/, scoring/) | Planned | — |
+
+All phases verified: 17/17 unit tests pass; HeLa FI_DB batch parity confirmed at
+each phase boundary (zero PSM diff at 1 % and 5 % FDR, xcorr and e-value).
+
+---
+
 ## Background
 
 The codebase has six structural pathologies that this plan addresses in order of
@@ -103,6 +119,8 @@ CometSearch/
 ---
 
 ## Phase 1 — Split `CometDataInternal.h`
+
+**Status**: Complete — committed `4337ee8d`
 
 **Effort**: ~1 day  **Risk**: Low (mechanical split, no logic changes)
 
@@ -222,6 +240,8 @@ python3 tests/unit/run_tests.py --comet comet.exe  # all 17 must pass
 ---
 
 ## Phase 2 — Extract `SearchMemoryPool`
+
+**Status**: Complete — committed `4337ee8d`
 
 **Effort**: ~1 day  **Risk**: Low (self-contained, well-tested at runtime)
 
@@ -376,6 +396,8 @@ python3 tests/unit/run_tests.py --comet comet.exe   # all 17 must pass
 
 ## Phase 3 — Extract `IResultWriter`
 
+**Status**: Complete — committed `4337ee8d`
+
 **Effort**: ~2 days  **Risk**: Medium (touches writer internals)
 
 ### Problem
@@ -523,6 +545,8 @@ python3 tests/unit/run_tests.py --comet comet.exe
 
 ## Phase 4 — Introduce `SearchSession`
 
+**Status**: Complete — committed `00e0655f`
+
 **Effort**: ~3 days  **Risk**: Medium-high (many call sites)
 
 ### Problem
@@ -655,6 +679,8 @@ python3 tests/unit/run_tests.py --comet comet.exe
 ---
 
 ## Phase 5 — Extract `ISearchStrategy` and `Pipeline`
+
+**Status**: Complete — uncommitted (working tree on `batch_FI_optimization`)
 
 **Effort**: ~1 week  **Risk**: High (most invasive refactor)
 
@@ -848,6 +874,54 @@ python3 tests/unit/run_tests.py --comet comet.exe   # all 17 must pass
 # run integration test (T17/T18) against human.small.fasta
 # confirm RTS path still compiles and executes via RealtimeSearch.exe smoke test
 ```
+
+### Actual implementation notes
+
+The interface as built is more fine-grained than the plan above. The plan had a
+single `execute(file, session, pool, tp)` per file; the actual `ISearchStrategy`
+splits the per-file work into four methods so the common per-file loop (MSReader
+setup, writer open/close, batch while-loop, timing) can live in `Pipeline::run()`
+without duplication across three strategies:
+
+```cpp
+virtual bool initialize(SearchSession& session, ThreadPool* tp) = 0;
+virtual bool openFiles(const std::string& szDatabase,
+                       FILE*& fpfasta, FILE*& fpidx, FILE*& fpdb,
+                       SearchSession& session) = 0;
+virtual bool executeBatch(MSToolkit::MSReader& mstReader,
+                          int iFirstScan, int iLastScan, int iAnalysisType,
+                          int& iPercentStart, int& iPercentEnd,
+                          ThreadPool* tp, SearchSession& session) = 0;
+virtual void closeFiles(FILE* fpfasta, FILE* fpidx) = 0;
+virtual void finalize() = 0;
+virtual bool isIndexBased() const = 0;
+```
+
+`iPercentStart`/`iPercentEnd` are passed by reference so each strategy can update
+them after `LoadAndPreprocessSpectra` but before calling `RunSearch`, preserving
+the exact progress-reporting semantics of the original code.
+
+A `search/SearchUtils.h` header was added to hold utility functions extracted
+from `CometSearchManager.cpp` statics (`GetInputType`, `UpdateInputFile`,
+`SetMSLevelFilter`, `AllocateResultsMem`, `compareByPeptideMass`,
+`compareByMangoIndex`, `compareByScanNumber`). These are inline functions
+shared by all three strategy `.cpp` files without circular includes.
+
+The early-return index-build paths (`bCreateFragmentIndex`, `bCreatePeptideIndex`)
+remain in `DoSearch()` as early returns before `makeStrategy()` is called, rather
+than being absorbed into strategy `initialize()`. This avoids adding "are we
+done?" signaling between strategy and pipeline for what is conceptually a
+separate, one-shot operation.
+
+### Results
+
+- Build: clean on Linux (gcc, c++20), no new errors
+- Unit tests: 17/17 pass
+- HeLa FI_DB parity: `20250520_Hela_60min_06.mzXML` vs `human.canonical.target-decoy.fasta.idx`,
+  trypsin + phospho + oxidation, 49,747 spectra  
+  Pre-Phase5 (commit `00e0655f`): 16,559 xcorr PSMs @ 1% FDR, 18,458 evalue PSMs @ 1%  
+  Phase5 (working tree):          16,559 xcorr PSMs @ 1% FDR, 18,458 evalue PSMs @ 1%  
+  Diff: **zero unique PSMs** at 1% and 5% FDR for both xcorr and evalue sorting
 
 ---
 
