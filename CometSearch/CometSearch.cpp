@@ -194,6 +194,14 @@ bool CometSearch::RunSearch(Query* pQuery)
 }
 
 
+// Fused batch FI_DB path: use a pre-assigned pool slot, skipping AcquirePoolSlot.
+bool CometSearch::RunSearch(Query* pQuery, int iSlot)
+{
+   SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+   return true;
+}
+
+
 // called by DoSingleSpectrumSearchMultiResults
 bool CometSearch::RunSearch(ThreadPool *tp)
 {

@@ -1469,13 +1469,16 @@ struct Query
       delete[] ppfSparseFastXcorrData;
       ppfSparseFastXcorrData = NULL;
 
-      _pResults->pWhichProtein.clear();
-      if (g_staticParams.options.iDecoySearch == 1)
-         _pResults->pWhichDecoyProtein.clear();
-      delete[] _pResults;
-      _pResults = NULL;
+      if (_pResults != NULL)
+      {
+         _pResults->pWhichProtein.clear();
+         if (g_staticParams.options.iDecoySearch == 1)
+            _pResults->pWhichDecoyProtein.clear();
+         delete[] _pResults;
+         _pResults = NULL;
+      }
 
-      if (g_staticParams.options.iDecoySearch == 2)
+      if (g_staticParams.options.iDecoySearch == 2 && _pDecoys != NULL)
       {
          _pDecoys->pWhichDecoyProtein.clear();
          delete[] _pDecoys;
