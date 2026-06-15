@@ -82,7 +82,7 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
 }
 
 
-bool CometSearch::DeallocateMemory(int maxNumThreads)
+bool CometSearch::DeallocateMemory(int /*maxNumThreads*/)
 {
    if (!g_bCometSearchMemoryAllocated)
       return true;
@@ -994,7 +994,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 }
 
 
-bool CometSearch::RunSpecLibSearch(ThreadPool* tp)
+bool CometSearch::RunSpecLibSearch(ThreadPool* /*tp*/)
 {
    printf("OK in RunSpecLib\n");
 
@@ -1002,9 +1002,9 @@ bool CometSearch::RunSpecLibSearch(ThreadPool* tp)
 }
 
 
-bool CometSearch::RunSpecLibSearch(int iPercentStart,
-                                   int iPercentEnd,
-                                   ThreadPool* tp,
+bool CometSearch::RunSpecLibSearch(int /*iPercentStart*/,
+                                   int /*iPercentEnd*/,
+                                   ThreadPool* /*tp*/,
                                    vector<Query*>& queries)
 {
    // to fill g_vulSpecLibPrecursorIndex, set
@@ -1064,7 +1064,7 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
 // the read-only g_vSpecLib entries within the RT window. Populates the output
 // scores vector with up to topN best matches. Zero shared mutable state.
 bool CometSearch::RunMS1Search(QueryMS1* pQueryMS1,
-                               const int topN,
+                               const int /*topN*/,
                                double dRT,
                                double dMaxMS1RTDiff,
                                const double dMaxSpecLibRT,
@@ -1255,7 +1255,7 @@ bool CometSearch::MapOBO(string strMod,
 
 
 void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
-                                   ThreadPool* tp)
+                                   ThreadPool* /*tp*/)
 {
    int i = -1;
 
@@ -1872,11 +1872,10 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 }
 
 
-bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
+bool CometSearch::SearchPeptideIndex(ThreadPool* /*tp*/, vector<Query*>& queries)
 {
    comet_fileoffset_t lEndOfStruct;
    FILE* fp;
-   size_t tTmp;
 
 
    CometPostAnalysis cpa;
@@ -1924,15 +1923,15 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
    comet_fileoffset_t clProteinsFilePos;
 
    comet_fseek(fp, -clSizeCometFileOffset * 2, SEEK_END);
-   tTmp = fread(&lEndOfStruct, clSizeCometFileOffset, 1, fp);
-   tTmp = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
+   (void)fread(&lEndOfStruct, clSizeCometFileOffset, 1, fp);
+   (void)fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
 
    if (!g_bPeptideIndexRead)
    {
       // now read in: vector<vector<comet_fileoffset_t>> g_pvProteinsList
       comet_fseek(fp, clProteinsFilePos, SEEK_SET);
       size_t tSize;
-      tTmp = fread(&tSize, clSizeCometFileOffset, 1, fp);
+      (void)fread(&tSize, clSizeCometFileOffset, 1, fp);
       vector<comet_fileoffset_t> vTmp;
 
       g_pvProteinsList.clear();
@@ -1940,12 +1939,12 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
       for (size_t it = 0; it < tSize; ++it)
       {
          size_t tNumProteinOffsets;
-         tTmp = fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
+         (void)fread(&tNumProteinOffsets, clSizeCometFileOffset, 1, fp);
 
          vTmp.clear();
          for (size_t it2 = 0; it2 < tNumProteinOffsets; ++it2)
          {
-            tTmp = fread(&clTmp, clSizeCometFileOffset, 1, fp);
+            (void)fread(&clTmp, clSizeCometFileOffset, 1, fp);
             vTmp.push_back(clTmp);
          }
          g_pvProteinsList.push_back(vTmp);
@@ -1964,9 +1963,9 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
    // seek to index
    comet_fseek(fp, lEndOfStruct, SEEK_SET);
 
-   tTmp = fread(&iMinMass, sizeof(int), 1, fp);
-   tTmp = fread(&iMaxMass, sizeof(int), 1, fp);
-   tTmp = fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
+   (void)fread(&iMinMass, sizeof(int), 1, fp);
+   (void)fread(&iMaxMass, sizeof(int), 1, fp);
+   (void)fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
 
    // sanity checks
    if (iMinMass < 0 || iMinMass > 20000 || iMaxMass < 0 || iMaxMass > 20000)
@@ -1983,7 +1982,7 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
    for (int i = 0; i < iMaxPeptideMass10; ++i)
       lReadIndex[i] = -1;
 
-   tTmp = fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fp);
+   (void)fread(lReadIndex, sizeof(comet_fileoffset_t), iMaxPeptideMass10, fp);
 
    int iStart = (int)(g_massRange.dMinMass - 0.5);  // smallest mass/index start
    int iEnd = (int)(g_massRange.dMaxMass + 0.5);  // largest mass/index end
@@ -2028,8 +2027,6 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
    // only use of dbe here is to store the protein position; used for backwards
    // compatibility with standard search in StorePeptide
    dbe.lProteinFilePosition = sDBI.lIndexProteinFilePosition;
-
-   ThreadPool* pSearchThreadPool = tp;
 
    while ((int)(sDBI.dPepMass * 10) <= iEnd10)
    {
@@ -3267,7 +3264,7 @@ void CometSearch::SearchMS1Library(QueryMS1* pMS1Query,
                                    const double dMaxMS1RTDiff,
                                    const double dMaxSpecLibRT,
                                    const double dMaxQueryRT,
-                                   ThreadPool* tp)
+                                   ThreadPool* /*tp*/)
 {
    unsigned int iStart = BINPREC(g_staticParams.options.dMS1MinMass);
 
@@ -8639,7 +8636,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
                                 char* szProteinSeq,
                                 double dCalcPepMass,
                                 double dXcorr,
-                                bool bDecoyPep,
+                                bool /*bDecoyPep*/,
                                 int* piVarModSites,
                                 struct sDBEntry* dbe)
 {

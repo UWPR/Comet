@@ -151,37 +151,6 @@ static std::string GetHostName()
    return {};
 }
 
-// Allocate memory for the _pSpecLibResults struct for each session.queriesMS1 entry.
-static bool AllocateResultsMemMS1()
-{
-/*
-   for (std::vector<QueryMS1*>::iterator it = session.queriesMS1.begin(); it != session.queriesMS1.end(); ++it)
-   {
-      QueryMS1* pQueryMS1 = *it;
-
-      try
-      {
-         pQueryMS1->_pSpecLibResultsMS1 = new SpecLibResultsMS1[g_staticParams.options.iNumStored];
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg = " Error - new(_pSpecLibResults[]). bad_alloc: " + std::string(ba.what()) + "\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-      for (int j=0; j<g_staticParams.options.iNumStored; ++j)
-      {
-         pQueryMS1->_pSpecLibResultsMS1[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-         pQueryMS1->_pSpecLibResultsMS1[j].fCn = 0;
-         pQueryMS1->_pSpecLibResultsMS1[j].fRTime = 0;
-      }
-
-   }
-*/
-   return true;
-}
-
 static bool ValidateOutputFormat()
 {
    if (!g_staticParams.options.bOutputSqtStream

@@ -88,25 +88,24 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
 
    comet_fileoffset_t lEndOfPeptides;
    comet_fileoffset_t clProteinsFilePos;
-   size_t tTmpRead;
-   tTmpRead = fread(&lEndOfPeptides, clSizeCometFileOffset, 1, fp);
-   tTmpRead = fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
+   (void)fread(&lEndOfPeptides, clSizeCometFileOffset, 1, fp);
+   (void)fread(&clProteinsFilePos, clSizeCometFileOffset, 1, fp);
 
    // --- Read the mass index and peptide count from lEndOfPeptides position ---
    comet_fseek(fp, lEndOfPeptides, SEEK_SET);
 
    int iMinMass, iMaxMass;
    uint64_t tNumPeptides;
-   tTmpRead = fread(&iMinMass, sizeof(int), 1, fp);
-   tTmpRead = fread(&iMaxMass, sizeof(int), 1, fp);
-   tTmpRead = fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
+   (void)fread(&iMinMass, sizeof(int), 1, fp);
+   (void)fread(&iMaxMass, sizeof(int), 1, fp);
+   (void)fread(&tNumPeptides, sizeof(uint64_t), 1, fp);
 
    int iMaxPeptideMass10 = iMaxMass * 10;
 
    // Read the mass index array: lIndex[0..iMaxPeptideMass10-1]
    // Each entry is a file offset to the first peptide at that 0.1 Da mass bin
    comet_fileoffset_t* lIndex = new comet_fileoffset_t[iMaxPeptideMass10];
-   tTmpRead = fread(lIndex, clSizeCometFileOffset, iMaxPeptideMass10, fp);
+   (void)fread(lIndex, clSizeCometFileOffset, iMaxPeptideMass10, fp);
 
    // --- Read protein names ---
    // Protein names are stored between end-of-header and clProteinsFilePos
@@ -125,7 +124,7 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    comet_fseek(fp, clProteinsFilePos, SEEK_SET);
 
    size_t tNumProteinEntries;
-   tTmpRead = fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
+   (void)fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
 
    g_pvProteinsList.clear();
    g_pvProteinsList.reserve(tNumProteinEntries);
@@ -133,11 +132,11 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    for (size_t i = 0; i < tNumProteinEntries; ++i)
    {
       size_t tNumProteins;
-      tTmpRead = fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
+      (void)fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
 
       vector<comet_fileoffset_t> vTmp(tNumProteins);
       for (size_t j = 0; j < tNumProteins; ++j)
-         tTmpRead = fread(&vTmp[j], clSizeCometFileOffset, 1, fp);
+         (void)fread(&vTmp[j], clSizeCometFileOffset, 1, fp);
       g_pvProteinsList.push_back(std::move(vTmp));
    }
 

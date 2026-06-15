@@ -21,7 +21,7 @@
 #include "CometSearchManager.h"
 #include "MSReader.h"
 
-bool FastaStrategy::initialize(SearchSession& session, ThreadPool* tp)
+bool FastaStrategy::initialize(SearchSession& session, ThreadPool* /*tp*/)
 {
    // Read protein variable-mod filter file (FASTA-only feature).
    if (session.bPerformDatabaseSearch

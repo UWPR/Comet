@@ -52,7 +52,7 @@ void Threading::UnlockMutex(Mutex& mutex)
     mutex.unlock();
 }
 
-void Threading::DestroyMutex(Mutex& mutex)
+void Threading::DestroyMutex(Mutex& /*mutex*/)
 {
     // std::mutex destructor handles cleanup automatically
     // Ensure mutex is unlocked before destruction

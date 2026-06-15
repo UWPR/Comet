@@ -221,7 +221,7 @@ struct DBIndex
    vector<char>          pcVarModSites;                         // empty = unmodified; else [iLen+2] encoding var mods
    comet_fileoffset_t    lIndexProteinFilePosition;             // points to entry in g_pvProteinsList
    double                dPepMass;                              // MH+ pep mass
-   unsigned short        siVarModProteinFilter;                 // bitwise representation of mmapProtein
+   unsigned short        siVarModProteinFilter = 0;             // bitwise representation of mmapProtein
    char                  cPrevAA;
    char                  cNextAA;
    char                  sPeptide[MAX_PEPTIDE_LEN];             // peptide sequence, null-terminated

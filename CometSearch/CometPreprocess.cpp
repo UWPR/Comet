@@ -835,7 +835,7 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
 
 void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
-                                           ThreadPool* tp)
+                                           ThreadPool* /*tp*/)
 {
    // This returns false if it fails, but the errors are already logged
    // so no need to check the return value here.
@@ -890,7 +890,7 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
 
 
 void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
-                                              ThreadPool* tp,
+                                              ThreadPool* /*tp*/,
                                               const double dMaxQueryRT,
                                               const double dMaxSpecLibRT)
 {
