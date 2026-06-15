@@ -1,6 +1,6 @@
 # Global Variables Reference
 
-All globals are defined in `CometSearch/CometSearchManager.cpp` (unless noted) and declared `extern` in `CometSearch/CometDataInternal.h`.
+All globals are defined in `CometSearch/CometSearchManager.cpp` (unless noted) and declared `extern` in `CometSearch/CometDataInternal.h` or `CometSearch/core/Types.h`.
 
 ---
 
@@ -16,13 +16,13 @@ All globals are defined in `CometSearch/CometSearchManager.cpp` (unless noted) a
 
 ## Spectrum batch containers
 
-Used only in the batch search path (`DoSearch` -> `RunSearch`). The RTS paths do not touch these.
+Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The RTS paths do not touch these. Batch-path query lists and per-run flags were moved from bare globals into `SearchSession` (defined in `search/SearchSession.h`) as part of the Phase 4-5 architecture migration.
 
-| Variable | Type | Thread-safe? | Notes |
-|----------|------|:------------:|-------|
-| `g_pvQuery` | `vector<Query*>` | Batch path only | One `Query*` per spectrum/charge combination for the current batch. Populated by `CometPreprocess`, consumed by `CometSearch` and `CometPostAnalysis`. Not safe for concurrent writes without `g_pvQueryMutex`. |
-| `g_pvQueryMS1` | `vector<QueryMS1*>` | Batch path only | Analogous to `g_pvQuery` for MS1 spectral library batch searches. |
-| `g_pvQueryMutex` | `Mutex` | -- | Protects `g_pvQuery` insertions during batch preprocessing. |
+| Variable | Type / Location | Thread-safe? | Notes |
+|----------|----------------|:------------:|-------|
+| `SearchSession::queries` | `vector<Query*>` | Guarded by `queriesMutex` | One `Query*` per spectrum/charge combination for the current batch. Populated by `CometPreprocess`, consumed by `CometSearch` and `CometPostAnalysis`. Replaces the former global `g_pvQuery`. |
+| `SearchSession::ms1Queries` | `vector<QueryMS1*>` | Guarded by `queriesMutex` | Analogous to `queries` for MS1 spectral library batch searches. Replaces the former global `g_pvQueryMS1`. |
+| `SearchSession::queriesMutex` | `std::mutex` | -- | Protects `queries` / `ms1Queries` insertions during batch preprocessing. Replaces the former `g_pvQueryMutex`. |
 | `g_pvInputFiles` | `vector<InputFileInfo*>` | Read-only after init | List of input files to search; set before `DoSearch()` begins. |
 
 ---
@@ -31,15 +31,16 @@ Used only in the batch search path (`DoSearch` -> `RunSearch`). The RTS paths do
 
 Populated during index build / load; treated as read-only during all searches. Safe for concurrent reads from RTS threads.
 
+The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fragment mass bin `b`, the entries in `g_vFragmentPeptides` are at positions `g_iFragmentIndexOffset[b]` through `g_iFragmentIndexOffset[b+1] - 1` (half-open interval), and the values stored there are indices into `g_vFragmentPeptides`.
+
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_iFragmentIndex` | `unsigned int**` | 2D array: `[BIN(fragment mass)][entry index]`. Each row lists which entries in `g_vFragmentPeptides` contain that fragment mass bin. |
-| `g_iCountFragmentIndex` | `unsigned int*` | `[BIN(fragment mass)]` -- count of entries in each row of `g_iFragmentIndex`. |
+| `g_iFragmentIndex` | `unsigned int*` | Flat CSR data array. Each element is an index into `g_vFragmentPeptides`. Entries for bin `b` span `[g_iFragmentIndexOffset[b], g_iFragmentIndexOffset[b+1])`. |
+| `g_iFragmentIndexOffset` | `uint64_t*` | CSR offset array; length = (max bin + 1) + 1. Must be 64-bit -- the total entry count can exceed UINT_MAX for large databases with many variable mods. |
 | `g_vFragmentPeptides` | `vector<FragmentPeptidesStruct>` | Mass-sorted list of all (peptide, mod-state) combinations. Each entry references a row in `g_vRawPeptides` via `iWhichPeptide`. |
 | `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | List of unique unmodified peptide sequences with protein file-position pointers. |
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
 | `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` once the peptide index has been fully loaded. Checked with `acquire` ordering before RTS searches begin. |
-| `g_bPlainPeptideIndexRead` | `bool` | Set to `true` if the plain peptide index was read and a fragment index was generated from it. |
 
 ---
 
@@ -49,9 +50,6 @@ Populated during index build / load; treated as read-only during all searches. S
 |----------|------|-------|
 | `g_vSpecLib` | `vector<SpecLibStruct>` | In-memory spectral library entries. Each entry holds peaks, charge, RT, and a unit-vector representation for dot-product scoring. |
 | `g_vulSpecLibPrecursorIndex` | `vector<vector<unsigned int>>` | Mass index into `g_vSpecLib`; maps precursor mass bins to library entry indices for fast lookup. |
-| `g_bSpecLibRead` | `bool` | Set to `true` once the spectral library is fully loaded. |
-| `g_bPerformSpecLibSearch` | `bool` | `true` if MS1 speclib search is active for this run. |
-| `g_bPerformDatabaseSearch` | `bool` | `true` if FASTA/index database search is active for this run. |
 | `RetentionMatchHistory` | `std::deque<RetentionMatch>` | Rolling window of (query RT, reference RT) pairs used by the MS1 RT aligner. Protected by `g_ms1AlignerMutex`. |
 
 ---
@@ -60,9 +58,10 @@ Populated during index build / load; treated as read-only during all searches. S
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_pvDBIndex` | `vector<DBIndex>` | Peptide index entries (mass-sorted). Each entry holds peptide sequence, mass, var-mod encoding, and a protein file-position pointer. |
-| `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. |
-| `g_pvProteinsList` | `vector<vector<comet_fileoffset_t>>` | Maps index positions to lists of protein file offsets (for multi-protein peptides). |
+| `g_pvDBIndex` | `vector<DBIndex>` | Peptide index entries used during index build. Each entry holds peptide sequence, mass, var-mod encoding, and a protein file-position pointer. |
+| `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. Used for FASTA searches and legacy index paths. |
+| `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein file offsets (for multi-protein peptides). `ProteinsListCSR` is a CSR-layout replacement for `vector<vector<comet_fileoffset_t>>`; exposes the same `operator[]`/`size()`/range-for interface but uses only two heap allocations total. |
+| `g_pvProteinNameCache` | `unordered_map<comet_fileoffset_t, string>` | Protein name lookup cache for index-based searches. Populated at index load time from the protein name blocks in the `.idx` file. Maps protein file-position offsets to accession strings. ~7 MB for a human target-decoy database. Allows O(1) protein name resolution during RTS without file I/O. |
 | `g_pvDIAWindows` | `vector<double>` | Flat list of DIA isolation window edges (start, end, start, end, ...). Empty if not doing DIA. |
 
 ---
@@ -87,6 +86,7 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 | `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- index into `MOD_NUMBERS` per modifiable sequence. |
 | `PEPTIDE_MOD_SEQ_IDXS` | `int*` -- maps peptides to their modifiable sequence index. |
 | `MOD_NUM` | `int` -- total number of distinct modification combinations. |
+| `g_vvvPepGenShort` / `g_vvvPepGenLong` | Per-thread peptide generation scratch buffers; populated during index build and reused across peptides to avoid repeated allocation. |
 
 ---
 
@@ -94,7 +94,6 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_pvQueryMutex` | `Mutex` | Protects `g_pvQuery` insertions during batch preprocessing. |
 | `g_pvDBIndexMutex` | `Mutex` | Protects database index reads where concurrent access is possible. |
 | `g_preprocessMemoryPoolMutex` | `Mutex` | Protects the shared preprocessing memory pool. |
 | `g_searchMemoryPoolMutex` | `Mutex` | Protects the shared search memory pool. |
@@ -119,7 +118,6 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 |----------|-------|
 | `g_bCometPreprocessMemoryAllocated` | `true` when `CometPreprocess::AllocateMemory()` has been called. |
 | `g_bCometSearchMemoryAllocated` | `true` when `CometSearch::AllocateMemory()` has been called. |
-| `g_bIdxNoFasta` | `true` when searching a `.idx` file without the corresponding `.fasta` present. |
 
 ---
 
@@ -154,14 +152,14 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 
 ```
 Safe to read from any concurrent RTS thread (after init):
-  g_staticParams, g_iFragmentIndex, g_iCountFragmentIndex,
+  g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
   g_vFragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
-  g_vSpecLib, g_vulSpecLibPrecursorIndex, g_pvDIAWindows,
+  g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex, g_pvDIAWindows,
   g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
   g_massRange.iMaxFragmentCharge (after batch setup)
 
 Written per batch (batch path only -- not touched by RTS):
-  g_pvQuery, g_pvQueryMS1,
+  SearchSession::queries, SearchSession::ms1Queries,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange,
   g_staticParams.databaseInfo.uliTotAACount
 
