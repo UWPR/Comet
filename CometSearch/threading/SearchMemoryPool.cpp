@@ -26,7 +26,7 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
    try
    {
       _inUse = new bool[nSlots]();
-      _pool  = new bool*[nSlots];
+      _pool  = new bool*[nSlots]();   // value-init to nullptr so partial allocs are safe to delete[]
       for (int i = 0; i < nSlots; ++i)
          _pool[i] = new bool[iArraySize]();
       _nSlots    = nSlots;
@@ -35,6 +35,16 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
    }
    catch (const std::bad_alloc& ba)
    {
+      // Free whatever was allocated before the throw.
+      if (_pool)
+      {
+         for (int k = 0; k < nSlots; ++k)
+            delete[] _pool[k];   // safe: unset slots are nullptr after value-init above
+         delete[] _pool;
+         _pool = nullptr;
+      }
+      delete[] _inUse;
+      _inUse = nullptr;
       std::string strErrorMsg = " Error - SearchMemoryPool::allocate failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);

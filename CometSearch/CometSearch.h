@@ -39,23 +39,16 @@
 struct SearchThreadData
 {
    sDBEntry dbEntry;
-   bool* pbSearchMemoryPool;
    ThreadPool* tp;
    const vector<Query*>* pQueries;  // batch query list; set before dispatch
 
    SearchThreadData() = default;
    SearchThreadData(const sDBEntry& dbEntry_in)
-      : dbEntry(dbEntry_in), pbSearchMemoryPool(nullptr), tp(nullptr), pQueries(nullptr) {
+      : dbEntry(dbEntry_in), tp(nullptr), pQueries(nullptr) {
    }
 
    ~SearchThreadData()
    {
-      if (pbSearchMemoryPool)
-      {
-         { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); *pbSearchMemoryPool = false; }
-         g_searchPoolCV.notify_one();
-         pbSearchMemoryPool = nullptr;
-      }
       dbEntry.vectorPeffMod.clear();
       dbEntry.vectorPeffVariantSimple.clear();
    }
@@ -111,7 +104,7 @@ public:
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
 
-   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment);
+   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment, const vector<Query*>& queries);
 
    // Performance: Mark as const where possible
    bool CheckEnzymeTermini(const char* szProteinSeq,
@@ -383,7 +376,6 @@ private:
 
    static int  AcquirePoolSlot();       // Spin-wait for a free slot; returns index or -1 on timeout
 
-   static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 
    int _iSlot = -1;                     // pool slot index; set by SearchThreadProc before DoSearch

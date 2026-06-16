@@ -20,6 +20,7 @@
 #include <vector>
 
 class CometSearchManager;
+class CometStatus;
 struct Query;
 
 // Parameters passed to each writer's open() method.
@@ -34,6 +35,7 @@ struct WriterOpenCtx
    int         iDecoySearch;     // 0=off, 1=concat, 2=separate
    bool        bIdxNoFasta;      // .idx DB with no companion .fasta (mzIdentML)
    CometSearchManager* pMgr;     // for format headers that need ICometSearchManager
+   CometStatus* pStatus = nullptr; // session error/cancel state (always set by Pipeline)
 };
 
 // Parameters passed to each writer's write() method (per-batch).
@@ -61,6 +63,31 @@ public:
    // Write format footer (if any), close file(s), and optionally remove
    // them (bEmpty = iTotalSpectraSearched == 0).
    virtual void close(bool bSucceeded, bool bEmpty) = 0;
+
+protected:
+   // Shared output-filename builder used by all format writers.
+   static void BuildNames(const WriterOpenCtx& ctx,
+                          const char* ext,
+                          const char* extDecoy,
+                          std::string& sTarget,
+                          std::string& sDecoy,
+                          const char* extTargetCrux = nullptr)
+   {
+      std::string base = std::string(ctx.szBaseName) + ctx.szOutputSuffix;
+      std::string range;
+      if (!ctx.bEntireFile)
+         range = "." + std::to_string(ctx.iFirstScan) + "-" + std::to_string(ctx.iLastScan);
+#ifdef CRUX
+      if (ctx.iDecoySearch == 2)
+         { sTarget = base + range + (extTargetCrux ? extTargetCrux : ext); sDecoy = base + range + extDecoy; }
+      else
+         sTarget = base + range + ext;
+#else
+      (void)extTargetCrux;
+      sTarget = base + range + ext;
+      if (ctx.iDecoySearch == 2) sDecoy = base + range + extDecoy;
+#endif
+   }
 };
 
 #endif // _IRESULTWRITER_H_

@@ -552,8 +552,6 @@ private:
 extern ProteinsListCSR g_pvProteinsList;
 extern std::unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // file offset -> protein name string; populated at index load
 
-extern std::condition_variable g_searchPoolCV;  // notified when a pool slot is released
-
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
@@ -809,7 +807,6 @@ extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_pvDBIndexMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
-extern Mutex                   g_searchMemoryPoolMutex;
 extern Mutex                   g_dbIndexMutex;
 extern Mutex                   g_vSpecLibMutex;
 

@@ -21,32 +21,8 @@
 #include "CometSearchManager.h"
 #include "MSReader.h"
 
-bool FastaStrategy::initialize(SearchSession& session, ThreadPool* /*tp*/)
+bool FastaStrategy::initialize(SearchSession& /*session*/, ThreadPool* /*tp*/)
 {
-   // Read protein variable-mod filter file (FASTA-only feature).
-   if (session.bPerformDatabaseSearch
-         && g_staticParams.variableModParameters.sProteinLModsListFile.length() > 0)
-   {
-      bool bVarModUsed = false;
-      for (int iMod = 0; iMod < VMODS; ++iMod)
-      {
-         if (g_staticParams.variableModParameters.varModList[iMod].dVarModMass != 0.0)
-         {
-            bVarModUsed = true;
-            break;
-         }
-      }
-
-      if (bVarModUsed)
-      {
-         // ReadProteinVarModFilterFile() is a private member of CometSearchManager;
-         // it is called from DoSearch() before pipeline.run() for the FASTA path.
-         // This initialize() is called AFTER that call, so the filter is already loaded.
-         // Nothing to do here.  (The call is retained in DoSearch() for the FASTA path
-         // only, which is handled before makeStrategy() is invoked.)
-      }
-   }
-
    if (!CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads))
       return false;
 
@@ -70,7 +46,7 @@ bool FastaStrategy::openFiles(const std::string& szDatabase,
    if ((fpfasta = fopen(szDatabase.c_str(), "r")) == nullptr)
    {
       string strErrorMsg = " Error (1b) - cannot read sequence database file \"" + szDatabase + "\".\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      session.statusRef.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
    }
@@ -92,7 +68,7 @@ bool FastaStrategy::executeBatch(MSToolkit::MSReader& mstReader,
       fflush(stdout);
    }
 
-   g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
+   session.statusRef.SetStatusMsg(string("Loading and processing input spectra"));
 
    bool bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(
          mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
@@ -114,73 +90,10 @@ bool FastaStrategy::executeBatch(MSToolkit::MSReader& mstReader,
       string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
       if (!g_staticParams.options.bOutputSqtStream)
          logout(strStatusMsg);
-      g_cometStatus.SetStatusMsg(strStatusMsg);
+      session.statusRef.SetStatusMsg(strStatusMsg);
    }
 
-   if (g_staticParams.options.bMango)
-   {
-      int iCurrentScanNumber = 0;
-      int iMangoIndex = 0;
-
-      std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
-
-      for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
-      {
-         if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
-         {
-            iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
-            iMangoIndex = 0;
-         }
-         else
-         {
-            iMangoIndex++;
-         }
-         sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c",
-                 (int)iMangoIndex / 2, (iMangoIndex % 2) ? 'B' : 'A');
-      }
-   }
-
-   std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
-
-   g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
-      g_massRange.bNarrowMassRange = true;
-   else
-      g_massRange.bNarrowMassRange = false;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   if (!bSucceeded)
-      return false;
-
-   g_cometStatus.SetStatusMsg(string("Running search..."));
-
-   if (session.bPerformDatabaseSearch)
-      bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp, session.queries);
-   if (bSucceeded && session.bPerformSpecLibSearch)
-      bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp, session.queries);
-
-   if (!bSucceeded)
-      return false;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   if (!bSucceeded)
-      return false;
-
-   if (!g_staticParams.options.bOutputSqtStream)
-   {
-      logout("     - Post analysis:");
-      fflush(stdout);
-   }
-
-   if (session.bPerformDatabaseSearch)
-   {
-      g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
-      bSucceeded = CometPostAnalysis::PostAnalysis(tp, session.queries);
-   }
-
-   return bSucceeded;
+   return RunSearchAndPostAnalysis(iPercentStart, iPercentEnd, tp, session, true);
 }
 
 void FastaStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)

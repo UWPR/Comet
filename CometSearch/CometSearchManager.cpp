@@ -62,14 +62,12 @@ MassRange                     g_massRange;
 Mutex                         g_pvQueryMutex;
 Mutex                         g_pvDBIndexMutex;
 Mutex                         g_preprocessMemoryPoolMutex;
-Mutex                         g_searchMemoryPoolMutex;
 Mutex                         g_ms1AlignerMutex;
 CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 
 unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
-std::condition_variable               g_searchPoolCV;            // signaled when a pool slot is released
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
@@ -347,9 +345,6 @@ CometSearchManager::CometSearchManager() :
    // Initialize the mutex we'll use to protect the preprocess memory pool
    Threading::InitMutex(&g_preprocessMemoryPoolMutex);
 
-   // Initialize the mutex we'll use to protect the search memory pool
-   Threading::InitMutex(&g_searchMemoryPoolMutex);
-
    // Initialize the mutex we'll use to protect the MS1 RT aligner
    Threading::InitMutex(&g_ms1AlignerMutex);
 
@@ -374,9 +369,6 @@ CometSearchManager::~CometSearchManager()
 
    // Destroy the mutex we used to protect the preprocess memory pool
    Threading::DestroyMutex(g_preprocessMemoryPoolMutex);
-
-   // Destroy the mutex we used to protect the search memory pool
-   Threading::DestroyMutex(g_searchMemoryPoolMutex);
 
    // Destroy the mutex we used to protect the MS1 RT aligner
    Threading::DestroyMutex(g_ms1AlignerMutex);
@@ -2130,7 +2122,7 @@ bool CometSearchManager::DoSearch()
       CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
 
    // Build search session with run-level flags.
-   SearchSession session(g_staticParams);
+   SearchSession session(g_staticParams, g_cometStatus);
    session.bPerformDatabaseSearch = g_bPerformDatabaseSearch;
    session.bPerformSpecLibSearch  = g_bPerformSpecLibSearch;
 

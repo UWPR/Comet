@@ -21,6 +21,7 @@
 #ifndef _SEARCHMEMORYPOOL_H_
 #define _SEARCHMEMORYPOOL_H_
 
+#include <cassert>
 #include <condition_variable>
 #include <mutex>
 
@@ -44,7 +45,7 @@ public:
    void releaseSlot(int slot);
 
    // Returns the duplicate-fragment scratch array for a claimed slot.
-   bool* duplFragmentArr(int slot) const { return _pool[slot]; }
+   bool* duplFragmentArr(int slot) const { assert(slot >= 0 && slot < _nSlots); return _pool[slot]; }
 
    bool isAllocated() const { return _allocated; }
    int  slotCount()   const { return _nSlots; }

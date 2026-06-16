@@ -25,17 +25,14 @@ class PercolatorWriter : public IResultWriter
 public:
    bool open(const WriterOpenCtx& ctx) override
    {
-      std::string base = std::string(ctx.szBaseName) + ctx.szOutputSuffix;
-      std::string range;
-      if (!ctx.bEntireFile)
-         range = "." + std::to_string(ctx.iFirstScan) + "-" + std::to_string(ctx.iLastScan);
-      _sPath = base + range + ".pin";
+      std::string sUnused;
+      BuildNames(ctx, ".pin", ".pin", _sPath, sUnused, ".pin");
 
       _fpout = fopen(_sPath.c_str(), "w");
       if (!_fpout)
       {
          std::string msg = " Error - cannot write to file \"" + _sPath + "\".\n";
-         g_cometStatus.SetStatus(CometResult_Failed, msg); logerr(msg);
+         ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
       CometWritePercolator::WritePercolatorHeader(_fpout);

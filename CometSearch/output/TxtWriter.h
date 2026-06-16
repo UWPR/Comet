@@ -28,12 +28,12 @@ public:
       std::string ext       = std::string(".")        + ctx.szTxtFileExt;
       std::string extDecoy  = std::string(".decoy.")  + ctx.szTxtFileExt;
       std::string extTarget = std::string(".target.") + ctx.szTxtFileExt;
-      BuildNames(ctx, ext.c_str(), extDecoy.c_str(), extTarget.c_str(), _sTarget, _sDecoy);
+      BuildNames(ctx, ext.c_str(), extDecoy.c_str(), _sTarget, _sDecoy, extTarget.c_str());
 
       if ((_fpout = fopen(_sTarget.c_str(), "w")) == NULL)
       {
          std::string msg = " Error - cannot write to file \"" + _sTarget + "\".\n";
-         g_cometStatus.SetStatus(CometResult_Failed, msg); logerr(msg);
+         ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
       CometWriteTxt::PrintTxtHeader(_fpout);
@@ -44,7 +44,7 @@ public:
          if ((_fpoutd = fopen(_sDecoy.c_str(), "w")) == NULL)
          {
             std::string msg = " Error - cannot write to decoy file \"" + _sDecoy + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, msg); logerr(msg);
+            ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
             return false;
          }
          CometWriteTxt::PrintTxtHeader(_fpoutd);
@@ -78,28 +78,6 @@ private:
    std::string _sTarget;
    std::string _sDecoy;
 
-   static void BuildNames(const WriterOpenCtx& ctx,
-                          const char* ext,
-                          const char* extDecoy,
-                          const char* extTargetCrux,
-                          std::string& sTarget,
-                          std::string& sDecoy)
-   {
-      std::string base = std::string(ctx.szBaseName) + ctx.szOutputSuffix;
-      std::string range;
-      if (!ctx.bEntireFile)
-         range = "." + std::to_string(ctx.iFirstScan) + "-" + std::to_string(ctx.iLastScan);
-#ifdef CRUX
-      if (ctx.iDecoySearch == 2)
-         { sTarget = base + range + extTargetCrux; sDecoy = base + range + extDecoy; }
-      else
-         sTarget = base + range + ext;
-#else
-      (void)extTargetCrux;
-      sTarget = base + range + ext;
-      if (ctx.iDecoySearch == 2) sDecoy = base + range + extDecoy;
-#endif
-   }
 };
 
 #endif // _TXTWRITER_H_

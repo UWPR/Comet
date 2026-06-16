@@ -16,6 +16,8 @@
 
 #include "Common.h"
 #include "CometDataInternal.h"
+#include "CometSearch.h"
+#include "CometPostAnalysis.h"
 
 // Shared inline utilities used by Pipeline and strategy classes.
 // All functions operate on globals (g_staticParams, g_cometStatus, etc.)
@@ -168,6 +170,7 @@ inline static bool AllocateResultsMem(std::vector<Query*>& queries)
 
       pQuery->iMatchPeptideCount = 0;
       pQuery->iDecoyMatchPeptideCount = 0;
+      memset(pQuery->iXcorrHistogram, 0, sizeof(pQuery->iXcorrHistogram));
 
       for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
       {
@@ -185,7 +188,6 @@ inline static bool AllocateResultsMem(std::vector<Query*>& queries)
          pQuery->_pResults[j].pWhichProtein.clear();
          pQuery->_pResults[j].sPeffOrigResidues.clear();
          pQuery->_pResults[j].iPeffOrigResiduePosition = -9;
-         memset(pQuery->iXcorrHistogram, 0, sizeof(pQuery->iXcorrHistogram));
 
          if (g_staticParams.options.iDecoySearch)
             pQuery->_pResults[j].pWhichDecoyProtein.clear();
@@ -231,4 +233,76 @@ inline static bool compareByScanNumber(Query const* a, Query const* b)
    if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
       return (a->_spectrumInfoInternal.usiChargeState < b->_spectrumInfoInternal.usiChargeState);
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
+}
+
+// -----------------------------------------------------------------------
+// RunSearchAndPostAnalysis: shared batch-search body used by all strategies.
+// Handles optional Mango reindexing, mass-range setup, RunSearch, and
+// PostAnalysis.  Set bLogPrePostAnalysis=true for FASTA-path verbose output.
+// Called after LoadAndPreprocessSpectra + AllocateResultsMem succeed.
+// -----------------------------------------------------------------------
+inline static bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
+                                            ThreadPool* tp, SearchSession& session,
+                                            bool bLogPrePostAnalysis = false)
+{
+   if (g_staticParams.options.bMango)
+   {
+      int iCurrentScanNumber = 0;
+      int iMangoIndex = 0;
+
+      std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
+
+      for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
+      {
+         if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
+         {
+            iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
+            iMangoIndex = 0;
+         }
+         else
+         {
+            iMangoIndex++;
+         }
+         sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c",
+                 (int)iMangoIndex / 2, (iMangoIndex % 2) ? 'B' : 'A');
+      }
+   }
+
+   std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
+
+   g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
+   g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
+   g_massRange.bNarrowMassRange = (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass);
+
+   bool bSucceeded = !session.statusRef.IsError() && !session.statusRef.IsCancel();
+   if (!bSucceeded)
+      return false;
+
+   session.statusRef.SetStatusMsg(string("Running search..."));
+
+   if (session.bPerformDatabaseSearch)
+      bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp, session.queries);
+   if (bSucceeded && session.bPerformSpecLibSearch)
+      bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp, session.queries);
+
+   if (!bSucceeded)
+      return false;
+
+   bSucceeded = !session.statusRef.IsError() && !session.statusRef.IsCancel();
+   if (!bSucceeded)
+      return false;
+
+   if (bLogPrePostAnalysis && !g_staticParams.options.bOutputSqtStream)
+   {
+      logout("     - Post analysis:");
+      fflush(stdout);
+   }
+
+   if (session.bPerformDatabaseSearch)
+   {
+      session.statusRef.SetStatusMsg(string("Performing post-search analysis ..."));
+      bSucceeded = CometPostAnalysis::PostAnalysis(tp, session.queries);
+   }
+
+   return bSucceeded;
 }

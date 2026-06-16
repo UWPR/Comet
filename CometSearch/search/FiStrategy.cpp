@@ -101,7 +101,7 @@ bool FiStrategy::openFiles(const std::string& szDatabase,
    if ((fpidx = fopen(sTmpDB.c_str(), "r")) == nullptr)
    {
       string strErrorMsg = " Error (1a) - cannot read .idx file \"" + sTmpDB + "\".\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      session.statusRef.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
    }
@@ -132,7 +132,7 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
 
    if (bFused)
    {
-      g_cometStatus.SetStatusMsg(string("Running fused FI_DB search..."));
+      session.statusRef.SetStatusMsg(string("Running fused FI_DB search..."));
 
       bool bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(
             mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
@@ -145,7 +145,7 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
 
    // Legacy three-sweep path: LoadAndPreprocess -> AllocateResults ->
    // sort-by-mass -> RunSearch -> PostAnalysis.
-   g_cometStatus.SetStatusMsg(string("Loading and processing input spectra"));
+   session.statusRef.SetStatusMsg(string("Loading and processing input spectra"));
 
    bool bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(
          mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
@@ -165,67 +165,10 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
 
    {
       string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
-      g_cometStatus.SetStatusMsg(strStatusMsg);
+      session.statusRef.SetStatusMsg(strStatusMsg);
    }
 
-   if (g_staticParams.options.bMango)
-   {
-      int iCurrentScanNumber = 0;
-      int iMangoIndex = 0;
-
-      std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
-
-      for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
-      {
-         if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
-         {
-            iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
-            iMangoIndex = 0;
-         }
-         else
-         {
-            iMangoIndex++;
-         }
-         sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c",
-                 (int)iMangoIndex / 2, (iMangoIndex % 2) ? 'B' : 'A');
-      }
-   }
-
-   std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
-
-   g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
-
-   if (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass)
-      g_massRange.bNarrowMassRange = true;
-   else
-      g_massRange.bNarrowMassRange = false;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   if (!bSucceeded)
-      return false;
-
-   g_cometStatus.SetStatusMsg(string("Running search..."));
-
-   if (session.bPerformDatabaseSearch)
-      bSucceeded = CometSearch::RunSearch(iPercentStart, iPercentEnd, tp, session.queries);
-   if (bSucceeded && session.bPerformSpecLibSearch)
-      bSucceeded = CometSearch::RunSpecLibSearch(iPercentStart, iPercentEnd, tp, session.queries);
-
-   if (!bSucceeded)
-      return false;
-
-   bSucceeded = !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
-   if (!bSucceeded)
-      return false;
-
-   if (session.bPerformDatabaseSearch)
-   {
-      g_cometStatus.SetStatusMsg(string("Performing post-search analysis ..."));
-      bSucceeded = CometPostAnalysis::PostAnalysis(tp, session.queries);
-   }
-
-   return bSucceeded;
+   return RunSearchAndPostAnalysis(iPercentStart, iPercentEnd, tp, session);
 }
 
 void FiStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)

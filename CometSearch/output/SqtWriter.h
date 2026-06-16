@@ -27,12 +27,12 @@ public:
    {
       if (g_staticParams.options.bOutputSqtFile)
       {
-         BuildNames(ctx, ".sqt", ".decoy.sqt", ".target.sqt", _sTarget, _sDecoy);
+         BuildNames(ctx, ".sqt", ".decoy.sqt", _sTarget, _sDecoy, ".target.sqt");
 
          if ((_fpout = fopen(_sTarget.c_str(), "w")) == NULL)
          {
             std::string msg = " Error - cannot write to file \"" + _sTarget + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, msg); logerr(msg);
+            ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
             return false;
          }
          CometWriteSqt::PrintSqtHeader(_fpout, *ctx.pMgr);
@@ -42,7 +42,7 @@ public:
             if ((_fpoutd = fopen(_sDecoy.c_str(), "w")) == NULL)
             {
                std::string msg = " Error - cannot write to decoy file \"" + _sDecoy + "\".\n";
-               g_cometStatus.SetStatus(CometResult_Failed, msg); logerr(msg);
+               ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
                return false;
             }
             CometWriteSqt::PrintSqtHeader(_fpoutd, *ctx.pMgr);
@@ -77,28 +77,6 @@ private:
    std::string _sTarget;
    std::string _sDecoy;
 
-   static void BuildNames(const WriterOpenCtx& ctx,
-                          const char* ext,
-                          const char* extDecoy,
-                          const char* extTargetCrux,
-                          std::string& sTarget,
-                          std::string& sDecoy)
-   {
-      std::string base = std::string(ctx.szBaseName) + ctx.szOutputSuffix;
-      std::string range;
-      if (!ctx.bEntireFile)
-         range = "." + std::to_string(ctx.iFirstScan) + "-" + std::to_string(ctx.iLastScan);
-#ifdef CRUX
-      if (ctx.iDecoySearch == 2)
-         { sTarget = base + range + extTargetCrux; sDecoy = base + range + extDecoy; }
-      else
-         sTarget = base + range + ext;
-#else
-      (void)extTargetCrux;
-      sTarget = base + range + ext;
-      if (ctx.iDecoySearch == 2) sDecoy = base + range + extDecoy;
-#endif
-   }
 };
 
 #endif // _SQTWRITER_H_

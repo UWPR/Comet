@@ -35,7 +35,10 @@ bool Pipeline::run(SearchSession&                     session,
    auto tGlobalStart = chrono::steady_clock::now();
 
    if (!_strategy->initialize(session, &tp))
+   {
+      _strategy->finalize();
       return false;
+   }
 
    bool bSucceeded      = true;
    int  iTotalAllFiles  = 0;   // spectra searched across all files (for blank-file check)
@@ -96,6 +99,7 @@ bool Pipeline::run(SearchSession&                     session,
       woctx.iDecoySearch   = g_staticParams.options.iDecoySearch;
       woctx.bIdxNoFasta    = session.bIdxNoFasta;
       woctx.pMgr           = _pMgr;
+      woctx.pStatus        = &session.statusRef;
 
       for (auto& pw : _writers)
       {
@@ -108,6 +112,7 @@ bool Pipeline::run(SearchSession&                     session,
 
       if (!bSucceeded)
       {
+         for (auto& pw : _writers) pw->close(false, false);
          _strategy->closeFiles(fpfasta, fpidx);
          break;
       }
@@ -128,6 +133,12 @@ bool Pipeline::run(SearchSession&                     session,
       int  iTotalSpectraSearched = 0;
       int  iBatchNum             = 0;
 
+      auto cleanupBatch = [&]()
+      {
+         for (auto* q : session.queries) delete q;
+         session.queries.clear();
+      };
+
       while (!CometPreprocess::DoneProcessingAllSpectra())
       {
          iBatchNum++;
@@ -138,7 +149,10 @@ bool Pipeline::run(SearchSession&                     session,
                                               &tp, session);
 
          if (!bSucceeded)
-            goto cleanup_results;
+         {
+            cleanupBatch();
+            break;
+         }
 
          if (session.queries.empty())
             continue;
@@ -167,15 +181,12 @@ bool Pipeline::run(SearchSession&                     session,
                if (!pw->write(wwctx))
                {
                   bSucceeded = false;
-                  goto cleanup_results;
+                  break;
                }
             }
          }
 
-cleanup_results:
-         for (auto it = session.queries.begin(); it != session.queries.end(); ++it)
-            delete (*it);
-         session.queries.clear();
+         cleanupBatch();
 
          if (!bSucceeded)
             break;

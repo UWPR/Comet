@@ -21,10 +21,17 @@
 // here — they are large, initialised once, and shared read-only across all threads.
 //
 // Phase 4 migration note:
-//   g_pvQueryMutex, g_bPlainPeptideIndexRead, g_bSpecLibRead, and g_cometStatus
-//   remain as globals because they are also accessed from the RTS path
-//   (InitializeSingleSpectrumSearch / DoSingleSpectrumSearchMultiResults), which
-//   does not use SearchSession.  Full removal is deferred to Phase 5.
+//   g_pvQueryMutex, g_bPlainPeptideIndexRead, and g_bSpecLibRead remain as globals
+//   because they are also accessed from the RTS path (InitializeSingleSpectrumSearch /
+//   DoSingleSpectrumSearchMultiResults), which does not use SearchSession.
+//   SearchSession does not shadow these globals; all code reads the globals directly.
+//   Full removal is deferred to Phase 5.
+//
+//   g_cometStatus is exposed here as statusRef: a reference to the process-wide
+//   singleton.  Pipeline and strategy code use session.statusRef so they are not
+//   coupled to the global name; deep core files (CometSearch.cpp, CometPreprocess.cpp,
+//   etc.) still reference g_cometStatus directly because they have no SearchSession
+//   in scope.  Both spellings touch the same object.
 
 #ifndef _SEARCHSESSION_H_
 #define _SEARCHSESSION_H_
@@ -50,18 +57,15 @@ struct SearchSession
    // Mutex protecting queries and ms1Queries during parallel spectrum loading.
    std::mutex             queriesMutex;
 
-   // Run-time flags (replace the five batch-path-only globals).
+   // Run-time flags (replace the batch-path-only globals).
    bool bPerformDatabaseSearch = false;
    bool bPerformSpecLibSearch  = false;
    bool bIdxNoFasta            = false;
-   bool bPlainPeptideIndexRead = false;
-   bool bSpecLibRead           = false;
 
-   // Error / cancel state for this run.
-   // g_cometStatus remains as a global for the RTS path (Phase 5 will unify).
-   CometStatus status;
+   // Reference to the process-wide status singleton (g_cometStatus).
+   CometStatus& statusRef;
 
-   explicit SearchSession(const StaticParams& p) : params(p) {}
+   explicit SearchSession(const StaticParams& p, CometStatus& st) : params(p), statusRef(st) {}
    SearchSession(const SearchSession&)            = delete;
    SearchSession& operator=(const SearchSession&) = delete;
 };

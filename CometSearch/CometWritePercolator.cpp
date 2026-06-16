@@ -178,8 +178,8 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     int iPrintTargetDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
-                                                    vector<string> vProteinTargets,
-                                                    vector<string> vProteinDecoys,
+                                                    const vector<string>& vProteinTargets,
+                                                    const vector<string>& vProteinDecoys,
                                                     const vector<Query*>& queries)
 {
    int iNterm;
@@ -275,7 +275,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%c.%s.%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
 
-   std::vector<string>::iterator it;
+   std::vector<string>::const_iterator it;
 
    bool bPrintTab = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins
