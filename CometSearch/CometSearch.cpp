@@ -16,6 +16,7 @@
 #include "CometSearch.h"
 #include "CometFragmentIndexReader.h"
 #include "threading/SearchMemoryPool.h"
+#include <atomic>
 #include <unordered_map>
 
 
@@ -124,8 +125,8 @@ bool CometSearch::RunSearch(Query* pQuery)
          logerr(" Error - could not acquire memory pool slot for thread-local FI search.\n");
          return false;
       }
+      SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
       SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      s_pool.releaseSlot(iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -166,8 +167,8 @@ bool CometSearch::RunSearch(Query* pQuery)
          logerr(" Error - could not acquire memory pool slot for thread-local PI search.\n");
          return false;
       }
+      SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
       SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
-      s_pool.releaseSlot(iSlot);
    }
    else
    {
@@ -210,8 +211,8 @@ bool CometSearch::RunSearch(ThreadPool *tp, vector<Query*>& queries)
          logerr(" Error - could not acquire memory pool slot for single-query FI search.\n");
          return false;
       }
+      SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
       SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-      s_pool.releaseSlot(iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -252,22 +253,31 @@ bool CometSearch::RunSearch(int iPercentStart,
       ThreadPool* pSearchThreadPool = tp;
 
       size_t iEnd = queries.size();
+      std::atomic<bool> bAllSlotsAcquired(true);
 
       for (size_t iWhichQuery = 0; iWhichQuery < iEnd; ++iWhichQuery)
       {
-         pSearchThreadPool->doJob([iWhichQuery, &queries]() {
+         pSearchThreadPool->doJob([iWhichQuery, &queries, &bAllSlotsAcquired]() {
             int iSlot = AcquirePoolSlot();
             if (iSlot < 0)
             {
                logerr(" Error - could not acquire memory pool slot for batch FI search thread.\n");
+               bAllSlotsAcquired = false;
                return;
             }
+            SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
             SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-            s_pool.releaseSlot(iSlot);
          });
       }
 
       pSearchThreadPool->wait_on_threads();
+
+      if (!bAllSlotsAcquired)
+      {
+         string strErrorMsg = " Error - one or more batch FI search queries could not acquire a memory pool slot.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         bSucceeded = false;
+      }
 
       if (!g_staticParams.options.bOutputSqtStream && !(g_staticParams.databaseInfo.iTotalNumProteins % 500))
       {
@@ -921,8 +931,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 
             // Now search sequence entry; add threading here so that
             // each protein sequence is passed to a separate thread.
-            SearchThreadData *pSearchThreadData = new SearchThreadData(dbe);
-            pSearchThreadData->pQueries = &queries;
+            SearchThreadData *pSearchThreadData = new SearchThreadData(dbe, &queries);
 
             pSearchThreadPool->doJob(std::bind(SearchThreadProc, pSearchThreadData, pSearchThreadPool));
 
@@ -1261,6 +1270,8 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
       return;
    }
 
+   SearchMemoryPoolSlotGuard guard{s_pool, i};
+
    // Heap-allocate to avoid thread stack overflow: CometSearch has ~295 KB of
    // member arrays (_uiBinnedIonMasses, etc.) that would exhaust the 1 MB thread
    // stack in debug builds when combined with the deep DoSearch call chain.
@@ -1268,7 +1279,6 @@ void CometSearch::SearchThreadProc(SearchThreadData *pSearchThreadData,
    sqSearch->_iSlot = i;
    sqSearch->DoSearch(pSearchThreadData->dbEntry, _ppbDuplFragmentArr[i], *pSearchThreadData->pQueries);
    delete sqSearch;
-   s_pool.releaseSlot(i);
 
    delete pSearchThreadData;
    pSearchThreadData = NULL;

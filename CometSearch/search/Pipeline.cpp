@@ -137,6 +137,8 @@ bool Pipeline::run(SearchSession&                     session,
       {
          for (auto* q : session.queries) delete q;
          session.queries.clear();
+         for (auto* q : session.ms1Queries) delete q;
+         session.ms1Queries.clear();
       };
 
       while (!CometPreprocess::DoneProcessingAllSpectra())

@@ -77,30 +77,8 @@ bool PiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
                               int& iPercentStart, int& iPercentEnd,
                               ThreadPool* tp, SearchSession& session)
 {
-   session.statusRef.SetStatusMsg(string("Loading and processing input spectra"));
-
-   bool bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(
-         mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
-
-   iPercentStart = iPercentEnd;
-   iPercentEnd   = mstReader.getPercent();
-
-   if (!bSucceeded)
-      return false;
-
-   if (session.queries.empty())
-      return true;
-
-   bSucceeded = AllocateResultsMem(session.queries);
-   if (!bSucceeded)
-      return false;
-
-   {
-      string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
-      session.statusRef.SetStatusMsg(strStatusMsg);
-   }
-
-   return RunSearchAndPostAnalysis(iPercentStart, iPercentEnd, tp, session);
+   return executeBatchLegacy(mstReader, iFirstScan, iLastScan, iAnalysisType,
+                             iPercentStart, iPercentEnd, tp, session, false);
 }
 
 void PiStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)

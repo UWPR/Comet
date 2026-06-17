@@ -62,38 +62,8 @@ bool FastaStrategy::executeBatch(MSToolkit::MSReader& mstReader,
                                  int& iPercentStart, int& iPercentEnd,
                                  ThreadPool* tp, SearchSession& session)
 {
-   if (!g_staticParams.options.bOutputSqtStream)
-   {
-      logout("   - Load spectra:");
-      fflush(stdout);
-   }
-
-   session.statusRef.SetStatusMsg(string("Loading and processing input spectra"));
-
-   bool bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(
-         mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
-
-   iPercentStart = iPercentEnd;
-   iPercentEnd   = mstReader.getPercent();
-
-   if (!bSucceeded)
-      return false;
-
-   if (session.queries.empty())
-      return true;
-
-   bSucceeded = AllocateResultsMem(session.queries);
-   if (!bSucceeded)
-      return false;
-
-   {
-      string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
-      if (!g_staticParams.options.bOutputSqtStream)
-         logout(strStatusMsg);
-      session.statusRef.SetStatusMsg(strStatusMsg);
-   }
-
-   return RunSearchAndPostAnalysis(iPercentStart, iPercentEnd, tp, session, true);
+   return executeBatchLegacy(mstReader, iFirstScan, iLastScan, iAnalysisType,
+                             iPercentStart, iPercentEnd, tp, session, true);
 }
 
 void FastaStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)

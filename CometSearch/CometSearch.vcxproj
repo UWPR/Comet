@@ -154,6 +154,7 @@
     <ClCompile Include="CometWriteTxt.cpp" />
     <ClCompile Include="Threading.cpp" />
     <ClCompile Include="threading\SearchMemoryPool.cpp" />
+    <ClCompile Include="search\SearchUtils.cpp" />
     <ClCompile Include="search\FastaStrategy.cpp" />
     <ClCompile Include="search\FiStrategy.cpp" />
     <ClCompile Include="search\PiStrategy.cpp" />

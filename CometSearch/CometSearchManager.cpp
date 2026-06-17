@@ -2122,7 +2122,7 @@ bool CometSearchManager::DoSearch()
       CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
 
    // Build search session with run-level flags.
-   SearchSession session(g_staticParams, g_cometStatus);
+   SearchSession session(g_cometStatus);
    session.bPerformDatabaseSearch = g_bPerformDatabaseSearch;
    session.bPerformSpecLibSearch  = g_bPerformSpecLibSearch;
 

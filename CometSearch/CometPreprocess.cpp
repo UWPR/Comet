@@ -3253,7 +3253,6 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    int iFileLastScan = -1;
    int iScanNumber = 0;
    int iTotalScans = 0;
-   int iNumSpectraLoaded = 0;
    int iTmpCount = 0;
    Spectrum mstSpectrum;
 
@@ -3360,7 +3359,6 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
             if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
             {
                queue.push(std::move(mstSpectrum));
-               iNumSpectraLoaded++;
             }
          }
 
@@ -3384,7 +3382,7 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
       {
          std::lock_guard<std::mutex> lk(session.queriesMutex);
          if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                       mstReader.getLastScan(), iNumSpectraLoaded, 0))
+                       mstReader.getLastScan(), (int)session.queries.size(), 0))
          {
             break;
          }

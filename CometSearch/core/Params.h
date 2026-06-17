@@ -95,72 +95,7 @@ struct Options
    char szActivationMethod[24];  // mzXML only
    string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
 
-   Options& operator=(Options& a)
-   {
-      iNumPeptideOutputLines = a.iNumPeptideOutputLines;
-      iWhichReadingFrame = a.iWhichReadingFrame;
-      iEnzymeTermini = a.iEnzymeTermini;
-      iNumStored = a.iNumStored;
-      iMaxDuplicateProteins = a.iMaxDuplicateProteins;
-      iSpectrumBatchSize = a.iSpectrumBatchSize;
-      iStartCharge = a.iStartCharge;
-      iEndCharge = a.iEndCharge;
-      iMaxFragmentCharge = a.iMaxFragmentCharge;
-      iMinPrecursorCharge = a.iMinPrecursorCharge;
-      iMaxPrecursorCharge = a.iMaxPrecursorCharge ;
-      iMSLevel = a.iMSLevel;
-      iMinPeaks = a.iMinPeaks;
-      iRemovePrecursor = a.iRemovePrecursor;
-      iDecoySearch = a.iDecoySearch;
-      iNumThreads = a.iNumThreads;
-      bResolveFullPaths = a.bResolveFullPaths;
-      bOutputSqtStream = a.bOutputSqtStream;
-      bOutputSqtFile = a.bOutputSqtFile;
-      bOutputTxtFile = a.bOutputTxtFile;
-      bOutputPepXMLFile = a.bOutputPepXMLFile;
-      iOutputMzIdentMLFile = a.iOutputMzIdentMLFile;
-      bOutputPercolatorFile = a.bOutputPercolatorFile;
-      bClipNtermMet = a.bClipNtermMet;
-      bClipNtermAA = a.bClipNtermAA;
-      bMango = a.bMango;
-      bScaleFragmentNL = a.bScaleFragmentNL;
-      bCreatePeptideIndex = a.bCreatePeptideIndex;
-      bCreateFragmentIndex = a.bCreateFragmentIndex;
-      bFastPlainPeptideIdx = a.bFastPlainPeptideIdx;
-      bVerboseOutput = a.bVerboseOutput;
-      bExplicitDeltaCn = a.bExplicitDeltaCn;
-      bPrintExpectScore = a.bPrintExpectScore;
-      iPrintAScoreProScore = a.iPrintAScoreProScore;
-      bExportAdditionalScoresPepXML = a.bExportAdditionalScoresPepXML;
-      iOverrideCharge = a.iOverrideCharge;
-      bCorrectMass = a.bCorrectMass;
-      bTreatSameIL = a.bTreatSameIL;
-      iMaxIndexRunTime = a.iMaxIndexRunTime;
-      lMaxIterations = a.lMaxIterations;
-      dMinIntensity = a.dMinIntensity;
-      dMinPercentageIntensity = a.dMinPercentageIntensity;
-      dRemovePrecursorTol = a.dRemovePrecursorTol;
-      dPeptideMassLow = a.dPeptideMassLow;
-      dPeptideMassHigh = a.dPeptideMassHigh;
-      dMinimumXcorr = a.dMinimumXcorr;
-      scanRange = a.scanRange;
-      peptideLengthRange = a.peptideLengthRange;
-      clearMzRange = a.clearMzRange;
-      strcpy(szActivationMethod, a.szActivationMethod);
-      sPinProteinDelimiter = a.sPinProteinDelimiter;
-
-      dFragIndexMinMass = a.dFragIndexMinMass;
-      dFragIndexMaxMass = a.dFragIndexMaxMass;
-      iFragIndexMinIonsScore = a.iFragIndexMinIonsScore;    
-      iFragIndexMinIonsReport = a.iFragIndexMinIonsReport ;  
-      iFragIndexNumSpectrumPeaks = a.iFragIndexNumSpectrumPeaks;
-      iFragIndexSkipReadPrecursors = a.iFragIndexSkipReadPrecursors;
-
-      dMS1MinMass = a.dMS1MinMass;
-      dMS1MaxMass = a.dMS1MaxMass;
-
-      return *this;
-   }
+   Options& operator=(const Options&) = default;
 };
 
 // The minimum and maximum mass range of all peptides to consider
@@ -183,15 +118,7 @@ struct DBInfo
    int    iTotalNumProteins;
    unsigned long int uliTotAACount;
 
-   DBInfo& operator=(DBInfo& a)
-   {
-      strcpy(szDatabase, a.szDatabase);
-      strcpy(szFileName, a.szFileName);
-      iTotalNumProteins = a.iTotalNumProteins;
-      uliTotAACount = a.uliTotAACount;
-
-      return *this;
-   }
+   DBInfo& operator=(const DBInfo&) = default;
 };
 
 struct SpecLibInfo      // why a struct for just a string???
@@ -213,20 +140,7 @@ struct StaticMod
    double dAddNterminusProtein;
    double pdStaticMods[SIZE_MASS];
 
-   StaticMod& operator=(StaticMod& a)
-   {
-      dAddCterminusPeptide = a.dAddCterminusPeptide;
-      dAddNterminusPeptide = a.dAddNterminusPeptide;
-      dAddCterminusProtein = a.dAddCterminusProtein;
-      dAddNterminusProtein = a.dAddNterminusProtein;
-
-      for (int i = 0; i < SIZE_MASS; ++i)
-      {
-         pdStaticMods[i] = a.pdStaticMods[i];
-      }
-
-      return *this;
-   }
+   StaticMod& operator=(const StaticMod&) = default;
 };
 
 struct PrecalcMasses
@@ -237,16 +151,7 @@ struct PrecalcMasses
    int    iMinus17;              // BIN'd value of mass(NH3)
    int    iMinus18;              // BIN'd value of mass(H2O)
 
-   PrecalcMasses& operator=(PrecalcMasses& a)
-   {
-      dNtermProton = a.dNtermProton;
-      dCtermOH2Proton = a.dCtermOH2Proton;
-      dOH2ProtonCtermNterm = a.dOH2ProtonCtermNterm;
-      iMinus17 = a.iMinus17;
-      iMinus18 = a.iMinus18;
-
-      return *this;
-   }
+   PrecalcMasses& operator=(const PrecalcMasses&) = default;
 };
 
 struct VarModParams
@@ -254,7 +159,7 @@ struct VarModParams
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bVarTermModSearch;        // set to true if any n-term/c-term variable mods are specified
    bool    bVarProteinNTermMod;      // set to true if a protein n-term variable mod specified
-   bool    bVarProteinCTermMod;      // set to true if a protein c-term variable mod specified 
+   bool    bVarProteinCTermMod;      // set to true if a protein c-term variable mod specified
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRareVarModPresent;       // set to true if any of iRequireThisMod == -1
@@ -270,32 +175,7 @@ struct VarModParams
    vector<double> vdCompoundMasses;               // sorted, deduplicated list of masses read from sCompoundModsFile
    unsigned int   uiNumCompoundMasses;            // vdCompoundMasses.size(); 0 when feature is disabled
 
-   VarModParams& operator=(VarModParams& a)
-   {
-      bVarModSearch = a.bVarModSearch;
-      bVarTermModSearch = a.bVarTermModSearch;
-      bVarProteinNTermMod = a.bVarProteinNTermMod;
-      bVarProteinCTermMod = a.bVarProteinCTermMod;
-      bBinaryModSearch = a.bBinaryModSearch;
-      bUseFragmentNeutralLoss = a.bUseFragmentNeutralLoss;
-      bRareVarModPresent = a.bRareVarModPresent;
-      bVarModProteinFilter = a.bVarModProteinFilter;
-      iRequireVarMod = a.iRequireVarMod;
-      iMaxVarModPerPeptide = a.iMaxVarModPerPeptide;
-      iMaxPermutations = a.iMaxPermutations;
-
-      for (int i = 0; i < VMODS; ++i)
-      {
-         varModList[i] = a.varModList[i];
-         cModCode[i] = a.cModCode[i];
-      }
-
-      sCompoundModsFile = a.sCompoundModsFile;
-      vdCompoundMasses = a.vdCompoundMasses;
-      uiNumCompoundMasses = a.uiNumCompoundMasses;
-
-      return *this;
-   }
+   VarModParams& operator=(const VarModParams&) = default;
 };
 
 struct MassUtil
@@ -313,27 +193,7 @@ struct MassUtil
    double pdAAMassFragment[SIZE_MASS];
    double pdAAMassUser[SIZE_MASS];       // user defined default amino acid masses
 
-   MassUtil& operator=(MassUtil& a)
-   {
-      bMonoMassesParent = a.bMonoMassesParent;
-      bMonoMassesFragment = a.bMonoMassesFragment;
-      dCO = a.dCO;
-      dNH3 = a.dNH3;
-      dNH2 = a.dNH2;
-      dH2O = a.dH2O;
-      dCOminusH2 = a.dCOminusH2;
-      dOH2fragment = a.dOH2fragment;
-      dOH2parent = a.dOH2parent;
-
-      for (int i = 0; i < SIZE_MASS; ++i)
-      {
-         pdAAMassParent[i] = a.pdAAMassParent[i];
-         pdAAMassFragment[i] = a.pdAAMassFragment[i];
-         pdAAMassUser[i] = a.pdAAMassUser[i];
-      }
-
-      return *this;
-   }
+   MassUtil& operator=(const MassUtil&) = default;
 };
 
 struct ToleranceParams
@@ -348,20 +208,7 @@ struct ToleranceParams
    double dMS1BinSize;
    double dMS1BinStartOffset;
 
-   ToleranceParams& operator=(ToleranceParams& a)
-   {
-      iMassToleranceUnits = a.iMassToleranceUnits;
-      iMassToleranceType = a.iMassToleranceType;
-      iIsotopeError = a.iIsotopeError;
-      dInputToleranceMinus = a.dInputToleranceMinus;
-      dInputTolerancePlus = a.dInputTolerancePlus;
-      dFragmentBinSize = a.dFragmentBinSize;
-      dFragmentBinStartOffset = a.dFragmentBinStartOffset;
-      dMS1BinSize = a.dMS1BinSize;
-      dMS1BinStartOffset = a.dMS1BinStartOffset;
-
-      return *this;
-   }
+   ToleranceParams& operator=(const ToleranceParams&) = default;
 };
 
 struct IonInfo
@@ -372,20 +219,7 @@ struct IonInfo
    int iTheoreticalFragmentIons;
    int iIonVal[NUM_ION_SERIES];
 
-   IonInfo& operator=(IonInfo& a)
-   {
-      iNumIonSeriesUsed = a.iNumIonSeriesUsed;
-      bUseWaterAmmoniaLoss = a.bUseWaterAmmoniaLoss;
-      iTheoreticalFragmentIons = a.iTheoreticalFragmentIons;
-
-      for (int i = 0; i < NUM_ION_SERIES; ++i)
-      {
-         piSelectedIonSeries[i] = a.piSelectedIonSeries[i];
-         iIonVal[i] = a.iIonVal[i];
-      }
-
-      return *this;
-   }
+   IonInfo& operator=(const IonInfo&) = default;
 };
 
 // static user params, won't change per thread - can make global!
@@ -430,37 +264,7 @@ struct StaticParams
        RestoreDefaults();
    }
 
-   StaticParams& operator=(StaticParams& a)
-   {
-       sHostName = a.sHostName;
-       strcpy(szMod, a.szMod);
-       strcpy(szDecoyPrefix, a.szDecoyPrefix);
-       strcpy(szOutputSuffix, a.szOutputSuffix);
-       strcpy(szTxtFileExt, a.szTxtFileExt);
-       vectorMassOffsets = a.vectorMassOffsets;
-       precursorNLIons= a.precursorNLIons;
-       iPrecursorNLSize = a.iPrecursorNLSize;
-       iOldModsEncoding = a.iOldModsEncoding;
-       iElapseTime = a.iElapseTime;
-       strcpy(szDate, a.szDate);
-       options = a.options;
-       databaseInfo = a.databaseInfo;
-       speclibInfo = a.speclibInfo;
-       inputFile = a.inputFile;
-       bPrintDuplReferences = a.bPrintDuplReferences;
-       variableModParameters = a.variableModParameters;
-       tolerances = a.tolerances;
-       staticModifications = a.staticModifications;
-       precalcMasses = a.precalcMasses;
-       enzymeInformation = a.enzymeInformation;
-       massUtility = a.massUtility;
-       dInverseBinWidth = a.dInverseBinWidth;
-       iArraySizeGlobal = a.iArraySizeGlobal;
-       dOneMinusBinOffset = a.dOneMinusBinOffset;
-       iXcorrProcessingOffset = a.iXcorrProcessingOffset;
-       ionInformation = a.ionInformation;
-       return *this;
-   }
+   StaticParams& operator=(const StaticParams&) = default;
 
    void RestoreDefaults()
    {

@@ -40,11 +40,10 @@ struct SearchThreadData
 {
    sDBEntry dbEntry;
    ThreadPool* tp;
-   const vector<Query*>* pQueries;  // batch query list; set before dispatch
+   const vector<Query*>* pQueries;
 
-   SearchThreadData() = default;
-   SearchThreadData(const sDBEntry& dbEntry_in)
-      : dbEntry(dbEntry_in), tp(nullptr), pQueries(nullptr) {
+   SearchThreadData(const sDBEntry& dbEntry_in, const vector<Query*>* pQueries_in)
+      : dbEntry(dbEntry_in), tp(nullptr), pQueries(pQueries_in) {
    }
 
    ~SearchThreadData()

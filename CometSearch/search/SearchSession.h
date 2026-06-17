@@ -17,8 +17,8 @@
 // Passed by reference to pipeline functions that read or write per-run state.
 //
 // Read-only index globals (g_iFragmentIndex, g_vFragmentPeptides, g_vRawPeptides,
-// g_vSpecLib, g_pvProteinsList, g_pvProteinNameCache, g_pvDBIndex, …) are NOT moved
-// here — they are large, initialised once, and shared read-only across all threads.
+// g_vSpecLib, g_pvProteinsList, g_pvProteinNameCache, g_pvDBIndex, ...) are NOT moved
+// here -- they are large, initialised once, and shared read-only across all threads.
 //
 // Phase 4 migration note:
 //   g_pvQueryMutex, g_bPlainPeptideIndexRead, and g_bSpecLibRead remain as globals
@@ -44,9 +44,6 @@
 
 struct SearchSession
 {
-   // Run parameters — set once before the file loop, then read-only.
-   const StaticParams& params;
-
    // Per-batch MS2 result accumulator.
    // Guarded by queriesMutex in the batch path.
    std::vector<Query*>    queries;
@@ -65,7 +62,7 @@ struct SearchSession
    // Reference to the process-wide status singleton (g_cometStatus).
    CometStatus& statusRef;
 
-   explicit SearchSession(const StaticParams& p, CometStatus& st) : params(p), statusRef(st) {}
+   explicit SearchSession(CometStatus& st) : statusRef(st) {}
    SearchSession(const SearchSession&)            = delete;
    SearchSession& operator=(const SearchSession&) = delete;
 };

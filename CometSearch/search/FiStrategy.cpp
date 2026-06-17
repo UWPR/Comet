@@ -145,30 +145,8 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
 
    // Legacy three-sweep path: LoadAndPreprocess -> AllocateResults ->
    // sort-by-mass -> RunSearch -> PostAnalysis.
-   session.statusRef.SetStatusMsg(string("Loading and processing input spectra"));
-
-   bool bSucceeded = CometPreprocess::LoadAndPreprocessSpectra(
-         mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
-
-   iPercentStart = iPercentEnd;
-   iPercentEnd   = mstReader.getPercent();
-
-   if (!bSucceeded)
-      return false;
-
-   if (session.queries.empty())
-      return true;   // no spectra in this batch; caller will continue to next
-
-   bSucceeded = AllocateResultsMem(session.queries);
-   if (!bSucceeded)
-      return false;
-
-   {
-      string strStatusMsg = " " + std::to_string(session.queries.size()) + string("\n");
-      session.statusRef.SetStatusMsg(strStatusMsg);
-   }
-
-   return RunSearchAndPostAnalysis(iPercentStart, iPercentEnd, tp, session);
+   return executeBatchLegacy(mstReader, iFirstScan, iLastScan, iAnalysisType,
+                             iPercentStart, iPercentEnd, tp, session, false);
 }
 
 void FiStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)

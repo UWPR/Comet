@@ -29,7 +29,7 @@ COMETSEARCH_SRC = Threading CometInterfaces CometSearch CometPreprocess CometPos
 
 THREADING_SRC = threading/SearchMemoryPool
 
-SEARCH_SRC = search/FiStrategy search/FastaStrategy search/PiStrategy search/Pipeline
+SEARCH_SRC = search/SearchUtils search/FiStrategy search/FastaStrategy search/PiStrategy search/Pipeline
 
 COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC))) \
                   $(addprefix $(OBJDIR)/, $(addsuffix .o, $(THREADING_SRC))) \

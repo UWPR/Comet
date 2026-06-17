@@ -62,4 +62,15 @@ private:
    std::condition_variable _cv;
 };
 
+// RAII guard for a slot acquired via SearchMemoryPool::acquireSlot().  Releases the
+// slot on scope exit (normal return or exception unwind) so a throw out of the
+// search body never leaks the slot and stalls the next acquireSlot() caller for up
+// to 240 s.  Construct only after checking the acquired slot is >= 0.
+struct SearchMemoryPoolSlotGuard
+{
+   SearchMemoryPool& pool;
+   int               slot;
+   ~SearchMemoryPoolSlotGuard() { if (slot >= 0) pool.releaseSlot(slot); }
+};
+
 #endif // _SEARCHMEMORYPOOL_H_
