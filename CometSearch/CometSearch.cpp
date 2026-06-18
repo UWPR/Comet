@@ -190,46 +190,6 @@ bool CometSearch::RunSearch(Query* pQuery, int iSlot)
 }
 
 
-// called by DoSingleSpectrumSearchMultiResults
-bool CometSearch::RunSearch(ThreadPool *tp, vector<Query*>& queries)
-{
-   CometSearch sqSearch;
-   size_t iWhichQuery = 0;
-
-   if (g_staticParams.iDbType == DbType::FI_DB)       // fragment ion index
-   {
-      if (!g_bPlainPeptideIndexRead)
-      {
-         CometFragmentIndex sqFI;
-         sqFI.ReadPlainPeptideIndex();
-         sqFI.CreateFragmentIndex(tp);
-      }
-
-      int iSlot = AcquirePoolSlot();
-      if (iSlot < 0)
-      {
-         logerr(" Error - could not acquire memory pool slot for single-query FI search.\n");
-         return false;
-      }
-      SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
-      SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
-   }
-   else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
-   {
-      sqSearch.SearchPeptideIndex(tp, queries);
-   }
-   else
-   {
-      string strErrorMsg = " Error - index search but iDbType = " + std::to_string(static_cast<int>(g_staticParams.iDbType)) + "\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
-      return false;
-   }
-
-   return true;
-}
-
-
 bool CometSearch::RunSearch(int iPercentStart,
                             int iPercentEnd,
                             ThreadPool* tp,
@@ -239,16 +199,13 @@ bool CometSearch::RunSearch(int iPercentStart,
 
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      CometFragmentIndex* sqFI = new CometFragmentIndex();
-      CometSearch* sqSearch = new CometSearch();
+      CometFragmentIndex sqFI;
 
       if (!g_bPlainPeptideIndexRead)
       {
-         sqFI->ReadPlainPeptideIndex();
-         sqFI->CreateFragmentIndex(tp);
+         sqFI.ReadPlainPeptideIndex();
+         sqFI.CreateFragmentIndex(tp);
       }
-
-      delete sqFI;
 
       ThreadPool* pSearchThreadPool = tp;
 
@@ -288,14 +245,12 @@ bool CometSearch::RunSearch(int iPercentStart,
          logout("\b\b\b\b");
       }
 
-      delete sqSearch;
       return bSucceeded;
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)
    {
-      CometSearch* sqSearch = new CometSearch();
-      sqSearch->SearchPeptideIndex(tp, queries);
-      delete sqSearch;
+      CometSearch sqSearch;
+      sqSearch.SearchPeptideIndex(tp, queries);
       return bSucceeded;
    }
    else

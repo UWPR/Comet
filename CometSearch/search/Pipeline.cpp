@@ -109,7 +109,7 @@ bool Pipeline::run(SearchSession&                     session,
       }
 
       // Open writers (after openFiles so session.bIdxNoFasta is correctly set).
-      WriterOpenCtx woctx;
+      WriterOpenCtx woctx(session.statusRef);
       woctx.szBaseName     = g_staticParams.inputFile.szBaseName;
       woctx.szOutputSuffix = g_staticParams.szOutputSuffix;
       woctx.szTxtFileExt   = g_staticParams.szTxtFileExt;
@@ -119,7 +119,6 @@ bool Pipeline::run(SearchSession&                     session,
       woctx.iDecoySearch   = g_staticParams.options.iDecoySearch;
       woctx.bIdxNoFasta    = session.bIdxNoFasta;
       woctx.pMgr           = _pMgr;
-      woctx.pStatus        = &session.statusRef;
 
       for (auto& pw : _writers)
       {

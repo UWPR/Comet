@@ -162,6 +162,15 @@ void FiStrategy::finalize()
       free(g_bIndexPrecursors);
       delete[] g_iFragmentIndex;
       delete[] g_iFragmentIndexOffset;
+
+      // Reset so a subsequent DoSearch() in the same process (batch run after an
+      // RTS session, or a second batch run) rebuilds the index instead of reusing
+      // these now-freed pointers; g_bPlainPeptideIndexRead gates that rebuild in
+      // FiStrategy::initialize() and is otherwise never reset to false.
+      g_bIndexPrecursors       = nullptr;
+      g_iFragmentIndex         = nullptr;
+      g_iFragmentIndexOffset   = nullptr;
+      g_bPlainPeptideIndexRead = false;
    }
 
    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);

@@ -68,8 +68,6 @@ public:
                          int iPercentEnd,
                          ThreadPool* tp,
                          vector<Query*>& queries);
-   static bool RunSearch(ThreadPool* tp,
-                         vector<Query*>& queries);
 
    // Task 1.3: Thread-local overload: searches a caller-owned Query* without
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.

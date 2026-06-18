@@ -25,10 +25,12 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
 
    try
    {
-      _inUse = new bool[nSlots]();
       _pool  = new bool*[nSlots]();   // value-init to nullptr so partial allocs are safe to delete[]
       for (int i = 0; i < nSlots; ++i)
          _pool[i] = new bool[iArraySize]();
+      _freeSlots.reserve(nSlots);
+      for (int i = 0; i < nSlots; ++i)
+         _freeSlots.push_back(i);
       _nSlots    = nSlots;
       _allocated = true;
       return true;
@@ -43,8 +45,7 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
          delete[] _pool;
          _pool = nullptr;
       }
-      delete[] _inUse;
-      _inUse = nullptr;
+      _freeSlots.clear();
       std::string strErrorMsg = " Error - SearchMemoryPool::allocate failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
@@ -56,12 +57,11 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
 
 void SearchMemoryPool::_deallocate(int nSlots)
 {
-   delete[] _inUse;
    for (int i = 0; i < nSlots; ++i)
       delete[] _pool[i];
    delete[] _pool;
-   _inUse     = nullptr;
    _pool      = nullptr;
+   _freeSlots.clear();
    _allocated = false;
 }
 
@@ -75,26 +75,18 @@ void SearchMemoryPool::deallocate()
 
 int SearchMemoryPool::acquireSlot()
 {
-   int i = -1;
    std::unique_lock<std::mutex> lock(_mutex);
-   bool found = _cv.wait_for(lock, std::chrono::seconds(240), [&i, this]() {
-      for (int j = 0; j < _nSlots; ++j)
-      {
-         if (!_inUse[j])
-         {
-            _inUse[j] = true;
-            i = j;
-            return true;
-         }
-      }
-      return false;
-   });
-   return found ? i : -1;
+   bool found = _cv.wait_for(lock, std::chrono::seconds(240), [this]() { return !_freeSlots.empty(); });
+   if (!found)
+      return -1;
+   int slot = _freeSlots.back();
+   _freeSlots.pop_back();
+   return slot;
 }
 
 
 void SearchMemoryPool::releaseSlot(int slot)
 {
-   { std::lock_guard<std::mutex> lk(_mutex); _inUse[slot] = false; }
+   { std::lock_guard<std::mutex> lk(_mutex); _freeSlots.push_back(slot); }
    _cv.notify_one();
 }

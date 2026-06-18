@@ -26,16 +26,23 @@ struct Query;
 // Parameters passed to each writer's open() method.
 struct WriterOpenCtx
 {
-   const char* szBaseName;
-   const char* szOutputSuffix;
-   const char* szTxtFileExt;     // TxtWriter only
-   bool        bEntireFile;      // true => no scan-range suffix on output name
-   int         iFirstScan;
-   int         iLastScan;
-   int         iDecoySearch;     // 0=off, 1=concat, 2=separate
-   bool        bIdxNoFasta;      // .idx DB with no companion .fasta (mzIdentML)
-   CometSearchManager* pMgr;     // for format headers that need ICometSearchManager
-   CometStatus* pStatus = nullptr; // session error/cancel state (always set by Pipeline)
+   // pStatus is required: every writer's open() dereferences it unconditionally on
+   // the file-open-failure path with no null check, so making it constructor-only
+   // (rather than a default-nullptr field set later like the rest of this struct)
+   // turns "forgot to set pStatus" from a runtime null-pointer crash into a compile
+   // error at the construction site.
+   explicit WriterOpenCtx(CometStatus& status) : pStatus(&status) {}
+
+   const char* szBaseName       = nullptr;
+   const char* szOutputSuffix   = nullptr;
+   const char* szTxtFileExt     = nullptr;     // TxtWriter only
+   bool        bEntireFile      = false;       // true => no scan-range suffix on output name
+   int         iFirstScan       = 0;
+   int         iLastScan        = 0;
+   int         iDecoySearch     = 0;            // 0=off, 1=concat, 2=separate
+   bool        bIdxNoFasta      = false;        // .idx DB with no companion .fasta (mzIdentML)
+   CometSearchManager* pMgr     = nullptr;       // for format headers that need ICometSearchManager
+   CometStatus* const  pStatus;                  // session error/cancel state; never null, set once above
 };
 
 // Parameters passed to each writer's write() method (per-batch).
@@ -56,7 +63,7 @@ public:
    // Returns false on error.
    virtual bool open(const WriterOpenCtx& ctx) = 0;
 
-   // Write all results in g_pvQuery for one batch.
+   // Write all results in ctx.pQueries (the current batch's session.queries) for one batch.
    // Returns false on error.
    virtual bool write(const WriterWriteCtx& ctx) = 0;
 

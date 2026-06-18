@@ -24,6 +24,7 @@
 #include <cassert>
 #include <condition_variable>
 #include <mutex>
+#include <vector>
 
 class SearchMemoryPool
 {
@@ -54,10 +55,13 @@ private:
    void _deallocate(int nSlots);
 
    int    _nSlots    = 0;
-   bool*  _inUse     = nullptr;   // [_nSlots]: true = slot claimed by a thread
    bool** _pool      = nullptr;   // [_nSlots][iArraySize]: scratch buffers
    bool   _allocated = false;
 
+   // Stack of currently-free slot indices.  A slot's presence here (rather than a
+   // separate bool[] scanned linearly) is the sole source of truth for "is free",
+   // so acquire/release are O(1) instead of O(nSlots) regardless of pool size.
+   std::vector<int>        _freeSlots;
    std::mutex              _mutex;
    std::condition_variable _cv;
 };
