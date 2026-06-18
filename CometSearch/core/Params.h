@@ -94,8 +94,6 @@ struct Options
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
    string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
-
-   Options& operator=(const Options&) = default;
 };
 
 // The minimum and maximum mass range of all peptides to consider
@@ -117,8 +115,6 @@ struct DBInfo
    char   szFileName[SIZE_FILE];
    int    iTotalNumProteins;
    unsigned long int uliTotAACount;
-
-   DBInfo& operator=(const DBInfo&) = default;
 };
 
 struct SpecLibInfo      // why a struct for just a string???
@@ -139,8 +135,6 @@ struct StaticMod
    double dAddCterminusProtein;
    double dAddNterminusProtein;
    double pdStaticMods[SIZE_MASS];
-
-   StaticMod& operator=(const StaticMod&) = default;
 };
 
 struct PrecalcMasses
@@ -150,8 +144,6 @@ struct PrecalcMasses
    double dOH2ProtonCtermNterm;  // dOH2parent + PROTON_MASS + dAddCterminusPeptide + dAddNterminusPeptide
    int    iMinus17;              // BIN'd value of mass(NH3)
    int    iMinus18;              // BIN'd value of mass(H2O)
-
-   PrecalcMasses& operator=(const PrecalcMasses&) = default;
 };
 
 struct VarModParams
@@ -174,8 +166,6 @@ struct VarModParams
    string         sCompoundModsFile;              // path to compound mods mass file; empty = disabled
    vector<double> vdCompoundMasses;               // sorted, deduplicated list of masses read from sCompoundModsFile
    unsigned int   uiNumCompoundMasses;            // vdCompoundMasses.size(); 0 when feature is disabled
-
-   VarModParams& operator=(const VarModParams&) = default;
 };
 
 struct MassUtil
@@ -192,8 +182,6 @@ struct MassUtil
    double pdAAMassParent[SIZE_MASS];
    double pdAAMassFragment[SIZE_MASS];
    double pdAAMassUser[SIZE_MASS];       // user defined default amino acid masses
-
-   MassUtil& operator=(const MassUtil&) = default;
 };
 
 struct ToleranceParams
@@ -207,8 +195,6 @@ struct ToleranceParams
    double dFragmentBinStartOffset;
    double dMS1BinSize;
    double dMS1BinStartOffset;
-
-   ToleranceParams& operator=(const ToleranceParams&) = default;
 };
 
 struct IonInfo
@@ -218,8 +204,6 @@ struct IonInfo
    bool bUseWaterAmmoniaLoss;    // ammonia, water loss
    int iTheoreticalFragmentIons;
    int iIonVal[NUM_ION_SERIES];
-
-   IonInfo& operator=(const IonInfo&) = default;
 };
 
 // static user params, won't change per thread - can make global!
@@ -263,8 +247,6 @@ struct StaticParams
    {
        RestoreDefaults();
    }
-
-   StaticParams& operator=(const StaticParams&) = default;
 
    void RestoreDefaults()
    {

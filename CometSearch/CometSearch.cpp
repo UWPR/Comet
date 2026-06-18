@@ -1864,6 +1864,11 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* /*tp*/, vector<Query*>& queries
    comet_fileoffset_t lEndOfStruct;
    FILE* fp;
 
+   // BinarySearchMass() and AnalyzePeptideIndex() read the query list through
+   // _pQueries rather than a parameter (mirroring CometSearch::DoSearch()); without
+   // this assignment _pQueries stays nullptr on a freshly constructed CometSearch
+   // instance and the first dereference below segfaults.
+   _pQueries = &queries;
 
    CometPostAnalysis cpa;
 

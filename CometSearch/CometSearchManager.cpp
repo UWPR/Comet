@@ -2106,17 +2106,8 @@ bool CometSearchManager::DoSearch()
           return bSucceeded;  // index written; caller (InitializeSingleSpectrumSearch) will load it
    }
 
-   // AScore initialization (once for entire DoSearch run)
-   if (g_staticParams.options.iPrintAScoreProScore)
-   {
-      SetAScoreOptions(g_AScoreOptions);
-      g_AScoreInterface = CreateAScoreDllInterface();
-      if (!g_AScoreInterface)
-      {
-         std::cerr << "Failed to create AScore interface." << std::endl;
-         return false;
-      }
-   }
+   // AScore initialization happens inside Pipeline::run(), after the strategy has
+   // loaded its database/index -- see the comment there for why the ordering matters.
 
    if (g_bPerformSpecLibSearch)
       CometSpecLib::LoadSpecLib(g_staticParams.speclibInfo.strSpecLibFile);
@@ -2150,9 +2141,6 @@ bool CometSearchManager::DoSearch()
 
    Pipeline pipeline(std::move(pStrategy), std::move(vWriters), this);
    bSucceeded = pipeline.run(session, g_pvInputFiles, *tp);
-
-   if (g_staticParams.options.iPrintAScoreProScore)
-      DeleteAScoreDllInterface(g_AScoreInterface);
 
    return bSucceeded;
 }

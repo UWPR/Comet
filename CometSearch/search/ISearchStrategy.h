@@ -67,7 +67,11 @@ public:
    // Frees memory pools and (for FI_DB) the fragment index arrays.
    virtual void finalize() = 0;
 
-   // Returns true for index-based searches (FI_DB, PI_DB).
-   // Pipeline uses this to select progress-message style.
+   // Returns true for index-based searches (FI_DB, PI_DB), false for FASTA_DB.
+   // Pipeline::run() is the only consumer, and uses it solely to choose between the
+   // compact index-style progress line ("- searching ... done") and the verbose
+   // FASTA-style per-file banners ("Search start:"/"Search end:", "done" per batch).
+   // This flag carries no other semantics -- it must not be used to gate actual
+   // search behavior; that belongs in the strategy's own initialize()/executeBatch().
    virtual bool isIndexBased() const = 0;
 };

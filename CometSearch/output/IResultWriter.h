@@ -62,6 +62,12 @@ public:
 
    // Write format footer (if any), close file(s), and optionally remove
    // them (bEmpty = iTotalSpectraSearched == 0).
+   //
+   // Contract: must be safe to call even if open() was never called, or returned
+   // false partway through. Pipeline::run() calls close(false, false) on every
+   // writer in the vector -- including ones after the one whose open() failed --
+   // when any writer's open() fails, so implementations must null-check their file
+   // handles before touching them.
    virtual void close(bool bSucceeded, bool bEmpty) = 0;
 
 protected:

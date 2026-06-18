@@ -62,8 +62,9 @@ slow path: mutex-guarded check + initialization
   -> ValidateSequenceDatabaseFile()   validates FASTA / index; sets bCreateFragmentIndex=true
                                       if .idx is absent but FASTA exists
   -> CometPreprocess::AllocateMemory()  preprocessing thread buffers
-  -> CometSearch::AllocateMemory()      search thread pool (_pbSearchMemoryPool,
-                                        _ppbDuplFragmentArr) used by AcquirePoolSlot()
+  -> CometSearch::AllocateMemory()      search thread pool (s_pool, a SearchMemoryPool
+                                        instance; aliased into _ppbDuplFragmentArr)
+                                        used by AcquirePoolSlot()
   -> tp->fillPool()
   -> if iDbType == FI_DB:
        if bCreateFragmentIndex:
@@ -258,7 +259,8 @@ The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, p
 **Shared pools (allocated once at init, reused across calls):**
 
 - `CometPreprocess::AllocateMemory(N)` -- per-thread preprocessing buffers for the batch path. The RTS thread-local path bypasses this pool and allocates directly.
-- `CometSearch::AllocateMemory(N)` -- allocates `_pbSearchMemoryPool[N]` and `_ppbDuplFragmentArr[N][]`, used by `AcquirePoolSlot()` to hand each concurrent call a dedicated duplicate-fragment scratch buffer. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal)` (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
 ---
 

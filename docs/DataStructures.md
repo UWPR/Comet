@@ -239,16 +239,15 @@ struct SearchSession  // search/SearchSession.h
 
 | Field | Purpose |
 |-------|---------|
-| `params` | `const StaticParams&` -- read-only reference to `g_staticParams`. |
 | `queries` | `vector<Query*>` -- per-batch MS2 query accumulator (replaces global `g_pvQuery` for the batch path). Protected by `queriesMutex`. |
 | `ms1Queries` | `vector<QueryMS1*>` -- per-batch MS1 query accumulator (replaces global `g_pvQueryMS1`). |
 | `queriesMutex` | `std::mutex` -- guards `queries` and `ms1Queries` during parallel spectrum loading. |
 | `bPerformDatabaseSearch` | Replaces the former global `g_bPerformDatabaseSearch`. |
 | `bPerformSpecLibSearch` | Replaces the former global `g_bPerformSpecLibSearch`. |
 | `bIdxNoFasta` | Replaces the former global `g_bIdxNoFasta`. |
-| `bPlainPeptideIndexRead` | Local copy of index-read state for this run. |
-| `bSpecLibRead` | Local copy of speclib-read state for this run. |
-| `status` | Per-run `CometStatus`; `g_cometStatus` remains as a global for the RTS path. |
+| `statusRef` | `CometStatus&` -- a **reference** to the process-wide singleton `g_cometStatus`, not a per-run copy. Pipeline and strategy code use `session.statusRef` so they are not coupled to the global name, but both spellings touch the same object. |
+
+`SearchSession` has no `params` member -- code reads `g_staticParams` directly throughout; an earlier draft carried a `const StaticParams& params` field but it was unused and removed. There is also no `bPlainPeptideIndexRead` / `bSpecLibRead` member: `g_bPlainPeptideIndexRead`, `g_bSpecLibRead`, and `g_pvQueryMutex` remain plain globals rather than `SearchSession` fields, specifically because the RTS path (which never constructs a `SearchSession`) also reads/writes them -- see the header comment in `search/SearchSession.h` and the `g_pvQueryMutex` entry in `docs/GlobalVariables.md`.
 
 `SearchSession` is non-copyable. The RTS paths (`DoSingleSpectrumSearchMultiResults`, `DoMS1SearchMultiResults`) do **not** use `SearchSession`; they use per-call `Query*`/`QueryMS1*` objects directly.
 
@@ -272,7 +271,7 @@ class Pipeline         // search/Pipeline.h
 | `executeBatch(mstReader, firstScan, lastScan, analysisType, iPercentStart, iPercentEnd, tp, session)` | Once per batch | Preprocess + search + post-analysis for one spectrum batch; fills `session.queries`. |
 | `closeFiles(fpfasta, fpidx)` | Once per file | Close file handles. |
 | `finalize()` | Once after all files | Free memory pools and index arrays. |
-| `isIndexBased()` | Any time | `true` for `FiStrategy`/`PiStrategy`; selects progress-message style in `Pipeline`. |
+| `isIndexBased()` | Any time | `true` for `FiStrategy`/`PiStrategy`. `Pipeline::run()` is the only consumer, and uses it solely to choose between the compact index-style progress line and the verbose FASTA-style per-file banners -- it carries no other semantics and must not be used to gate search behavior. |
 
 **Concrete strategies:**
 
@@ -282,7 +281,11 @@ class Pipeline         // search/Pipeline.h
 | `FastaStrategy` | `search/FastaStrategy.cpp` | `FASTA_DB` | Classic three-sweep (load -> allocate -> RunSearch -> PostAnalysis). |
 | `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Three-sweep like FASTA but against the plain peptide index; no Mango block. |
 
-**IResultWriter** (`output/IResultWriter.h`) is the parallel output abstraction. Each format (`TxtWriter`, `PepXmlWriter`, `SqtWriter`, `PercolatorWriter`, `MzIdentMlWriter`) implements `open()`, `write()`, `close()`. `Pipeline` holds a `vector<unique_ptr<IResultWriter>>` and calls them around the batch loop.
+**AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering matters: for `FI_DB`, `FiStrategy::initialize()` calls `ReadPlainPeptideIndex()`, which overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header -- `SetAScoreOptions()` must run after that overwrite, not before, or it configures AScore from stale/default mod values. (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate, already-correctly-ordered AScore setup and is not affected by this.)
+
+**`_pQueries` discipline (PI_DB):** `CometSearch::BinarySearchMass()` and the `AnalyzePeptideIndex(int iWhichQuery, ...)` overload read the query list through the `CometSearch` member `_pQueries` rather than a parameter -- mirroring `CometSearch::DoSearch()` (the FASTA path), which sets `_pQueries = &queries` at entry. `CometSearch::SearchPeptideIndex(ThreadPool*, vector<Query*>&)` (the PI_DB batch path, called from a freshly constructed `CometSearch` instance in `RunSearch()`) must do the same at its own entry; omitting it leaves `_pQueries` `nullptr` and crashes on the first call into `BinarySearchMass()`. Any new code path that calls into these two functions needs the same assignment first.
+
+**IResultWriter** (`output/IResultWriter.h`) is the parallel output abstraction. Each format (`TxtWriter`, `PepXmlWriter`, `SqtWriter`, `PercolatorWriter`, `MzIdentMlWriter`) implements `open()`, `write()`, `close()`. `Pipeline` holds a `vector<unique_ptr<IResultWriter>>` and calls them around the batch loop. `close()` must be safe to call even if `open()` was never invoked or returned false: when one writer's `open()` fails, `Pipeline::run()` calls `close(false, false)` on every writer in the vector, including ones after the failed one.
 
 ---
 

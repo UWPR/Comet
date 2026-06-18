@@ -96,10 +96,14 @@ Used by the variable mod permutation engine (`CometModificationsPermuter`).
 |----------|------|-------|
 | `g_pvDBIndexMutex` | `Mutex` | Protects database index reads where concurrent access is possible. |
 | `g_preprocessMemoryPoolMutex` | `Mutex` | Protects the shared preprocessing memory pool. |
-| `g_searchMemoryPoolMutex` | `Mutex` | Protects the shared search memory pool. |
+| `g_pvQueryMutex` | `Mutex` | Protects `g_vSpecLib` load/access (`CometSpecLib.cpp`, `CometPreprocess.cpp`). Name is a holdover from before the architecture migration, when it also guarded the now-removed `g_pvQuery` global; it was repurposed rather than renamed. Remains a global (not a `SearchSession` member) because it is also used by the RTS path -- see `search/SearchSession.h`'s header comment. |
 | `g_ms1AlignerMutex` | `Mutex` | Protects `RetentionMatchHistory` updates in `DoMS1SearchMultiResults`. |
-| `g_vSpecLibMutex` | `Mutex` | Protects speclib access where needed. |
-| `g_dbIndexMutex` | `Mutex` | Protects DB index access where needed. |
+
+**Note:** `g_searchMemoryPoolMutex` and the paired `g_searchPoolCV` condition variable were removed during the architecture migration; the search memory pool's locking is now encapsulated inside the `SearchMemoryPool` class (see below) instead of living as bare globals.
+
+### SearchMemoryPool (`threading/SearchMemoryPool.h`)
+
+Not a global variable, but the direct replacement for the old `_pbSearchMemoryPool` static array, `g_searchMemoryPoolMutex`, and `g_searchPoolCV` trio, so it is documented here for anyone updating this table. `CometSearch.cpp` holds a single file-static instance, `s_pool`, owning its own `std::mutex` and `std::condition_variable`. `CometSearch::AllocateMemory(N)` calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal)`; `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the returned slot in a `SearchMemoryPoolSlotGuard` (RAII; releases on scope exit, including exception unwind) so a throw out of a search body cannot leak a slot and stall the next `acquireSlot()` caller for up to 240 s.
 
 ---
 

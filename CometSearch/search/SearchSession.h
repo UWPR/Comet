@@ -20,18 +20,22 @@
 // g_vSpecLib, g_pvProteinsList, g_pvProteinNameCache, g_pvDBIndex, ...) are NOT moved
 // here -- they are large, initialised once, and shared read-only across all threads.
 //
-// Phase 4 migration note:
-//   g_pvQueryMutex, g_bPlainPeptideIndexRead, and g_bSpecLibRead remain as globals
-//   because they are also accessed from the RTS path (InitializeSingleSpectrumSearch /
-//   DoSingleSpectrumSearchMultiResults), which does not use SearchSession.
-//   SearchSession does not shadow these globals; all code reads the globals directly.
-//   Full removal is deferred to Phase 5.
+// g_pvQueryMutex, g_bPlainPeptideIndexRead, and g_bSpecLibRead remain as globals,
+// not SearchSession members, and this is permanent rather than a pending migration
+// step: they are also read/written by the RTS path (InitializeSingleSpectrumSearch /
+// DoSingleSpectrumSearchMultiResults), which is intentionally not moved into the
+// strategy/Pipeline pattern (see docs/20260612_architecture_migration.md, "RTS path" --
+// the RTS entry points are wrapper-compatibility-sensitive and out of scope for the
+// migration). Since a single process can serve both RTS and batch requests, this
+// once-per-process init state must stay process-global so both paths observe the same
+// value; it cannot move into a per-batch-run SearchSession. SearchSession does not
+// shadow these globals; all code reads the globals directly.
 //
-//   g_cometStatus is exposed here as statusRef: a reference to the process-wide
-//   singleton.  Pipeline and strategy code use session.statusRef so they are not
-//   coupled to the global name; deep core files (CometSearch.cpp, CometPreprocess.cpp,
-//   etc.) still reference g_cometStatus directly because they have no SearchSession
-//   in scope.  Both spellings touch the same object.
+// g_cometStatus is exposed here as statusRef: a reference to the process-wide
+// singleton. Pipeline and strategy code use session.statusRef so they are not
+// coupled to the global name; deep core files (CometSearch.cpp, CometPreprocess.cpp,
+// etc.) still reference g_cometStatus directly because they have no SearchSession
+// in scope. Both spellings touch the same object.
 
 #ifndef _SEARCHSESSION_H_
 #define _SEARCHSESSION_H_

@@ -18,6 +18,7 @@
 #include "CometPreprocess.h"
 #include "CometMassSpecUtils.h"
 #include "MSReader.h"
+#include "AScoreFactory.h"
 
 Pipeline::Pipeline(std::unique_ptr<ISearchStrategy>            strategy,
                    std::vector<std::unique_ptr<IResultWriter>> writers,
@@ -38,6 +39,25 @@ bool Pipeline::run(SearchSession&                     session,
    {
       _strategy->finalize();
       return false;
+   }
+
+   // AScore initialization happens here -- after the strategy has loaded its
+   // database/index -- rather than earlier in DoSearch(), because FI_DB's
+   // ReadPlainPeptideIndex() (called from FiStrategy::initialize() above) overwrites
+   // g_staticParams.variableModParameters.varModList[] from the .idx file's
+   // VariableMod: header. SetAScoreOptions() reads those same fields to build its
+   // differential-mod list, so it must run after the index load, not before, or it
+   // configures AScore from stale/default mod values.
+   if (g_staticParams.options.iPrintAScoreProScore)
+   {
+      _pMgr->SetAScoreOptions(g_AScoreOptions);
+      g_AScoreInterface = CreateAScoreDllInterface();
+      if (!g_AScoreInterface)
+      {
+         std::cerr << "Failed to create AScore interface." << std::endl;
+         _strategy->finalize();
+         return false;
+      }
    }
 
    bool bSucceeded      = true;
@@ -260,6 +280,9 @@ bool Pipeline::run(SearchSession&                     session,
    }
 
    _strategy->finalize();
+
+   if (g_staticParams.options.iPrintAScoreProScore)
+      DeleteAScoreDllInterface(g_AScoreInterface);
 
    // Print overall "done" banner for index-based searches.
    if (_strategy->isIndexBased())
