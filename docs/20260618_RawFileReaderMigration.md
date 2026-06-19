@@ -205,21 +205,33 @@ portability:
    longer a dependency.
 
 ### Phase 3 — Modernize `RealtimeSearch.csproj` and delete dead code
-1. Replace the `HintPath` DLL references (`RealtimeSearch/RealtimeSearch.csproj:64-75`) with
-   NuGet `PackageReference`s to the same packages now referenced from the Phase 2 `.vcxproj`, so
-   both consumers track one Thermo library version.
+1. **Done (2026-06-18).** Replaced the `HintPath` DLL references
+   (`RealtimeSearch/RealtimeSearch.csproj:64-75`) with NuGet `PackageReference`s
+   (`ThermoFisher.CommonCore.{BackgroundSubtraction,Data,MassPrecisionEstimator,RawFileReader}`,
+   version `5.0.0.93`) and deleted the now-unused `RealtimeSearch/DLLs/` folder. Since these
+   packages aren't published on nuget.org (confirmed: `api.nuget.org` 404s for them), the `.nupkg`
+   files were pulled from Thermo's official `thermofisherlsms/RawFileReader` GitHub repo
+   (`Libs/Net471`, matching this project's `v4.7.2` target) and committed to a local feed at
+   `RealtimeSearch/ThermoNuGet/`, registered via `RealtimeSearch/nuget.config`. `nuget.config`
+   does not clear the default sources, since `RawFileReader`'s own dependency on `OpenMcdf`
+   resolves from nuget.org normally. Verified with `dotnet restore` — all four packages and their
+   transitive dependencies (`OpenMcdf`, `OpenMcdf.Extensions`) resolve cleanly. This was done
+   ahead of Phases 0-2 (RTS already used RawFileReader .NET directly, so it didn't depend on
+   the `RAWReader`/`MSReader` rewrite); Phase 2 item 2 should point its `.vcxproj` `<Reference>`
+   entries at this same local feed/version once it happens, to keep both consumers on one
+   version as originally intended.
 2. Delete `CometWrapper/MSFileReaderWrapper.{h,cpp}` (dead, COM-based, unused).
 
 ---
 
 ## 6. Summary
 
-| Phase | Outcome | Platform |
-|---|---|---|
-| 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) |
-| 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows |
-| 2 | Build system updated; COM redistributable dependency removed | Windows |
-| 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) |
+| Phase | Outcome | Platform | Status |
+|---|---|---|---|
+| 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) | Not started |
+| 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows | Not started |
+| 2 | Build system updated; COM redistributable dependency removed | Windows | Not started |
+| 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) | Item 1 done (2026-06-18); item 2 (delete `MSFileReaderWrapper`) pending |
 
 Linux and macOS are unchanged by this migration: `.raw` is not supported; users supply mzML/mzXML
 input, optionally pre-converted from `.raw` with an external tool (ThermoRawFileParser,

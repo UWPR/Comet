@@ -61,18 +61,12 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="ThermoFisher.CommonCore.BackgroundSubtraction">
-      <HintPath>DLLs\ThermoFisher.CommonCore.BackgroundSubtraction.dll</HintPath>
-    </Reference>
-    <Reference Include="ThermoFisher.CommonCore.Data">
-      <HintPath>DLLs\ThermoFisher.CommonCore.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="ThermoFisher.CommonCore.MassPrecisionEstimator">
-      <HintPath>DLLs\ThermoFisher.CommonCore.MassPrecisionEstimator.dll</HintPath>
-    </Reference>
-    <Reference Include="ThermoFisher.CommonCore.RawFileReader">
-      <HintPath>DLLs\ThermoFisher.CommonCore.RawFileReader.dll</HintPath>
-    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ThermoFisher.CommonCore.BackgroundSubtraction" Version="5.0.0.93" />
+    <PackageReference Include="ThermoFisher.CommonCore.Data" Version="5.0.0.93" />
+    <PackageReference Include="ThermoFisher.CommonCore.MassPrecisionEstimator" Version="5.0.0.93" />
+    <PackageReference Include="ThermoFisher.CommonCore.RawFileReader" Version="5.0.0.93" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\Resources.Designer.cs">
