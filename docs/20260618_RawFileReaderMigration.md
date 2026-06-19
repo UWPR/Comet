@@ -168,21 +168,42 @@ portability:
 ## 5. Proposed migration plan
 
 ### Phase 0 — Spike (Windows only, no production code changes)
-1. Build a throwaway `/clr`-enabled `.cpp` inside a copy of the MSToolkit project (or a minimal
-   standalone VS project) and reference the `ThermoFisher.CommonCore.RawFileReader`/`.Data`
-   assemblies from a native `.vcxproj` for the first time in this codebase — confirm the
-   reference/restore mechanics work the same way they do in `RealtimeSearch.csproj` today.
-2. Open a real `.raw` file end to end through `IRawDataPlus`, and confirm marshaling a managed
-   `double[]` (from `GetCentroidStream`) into a native buffer works without leaks, mirroring the
-   SAFEARRAY-copy pattern already in `RAWReader.cpp` (~lines 724-727).
-3. Confirm `/clr`-compiling `RAWReader.cpp` alongside the rest of MSToolkit's plain-native `.cpp`
-   files in the same static library builds and links cleanly (MSVC supports per-file `/clr`
-   overrides, but this codebase hasn't exercised that combination before).
-4. Field-parity check: cross-reference every value `RAWReader::readRawFile()` extracts today
-   (scan number, RT, centroid/profile flag, TIC, base peak, precursor isolation m/z, monoisotopic
-   m/z from trailer, charge state, MS level — `MSToolkit/src/MSToolkit/RAWReader.cpp` lines
-   ~545-727) against the equivalent `IRawDataPlus` calls, using `SearchMS1MS2.cs` as the existing
-   working reference for those calls.
+
+**Done (2026-06-18).** Spike code lives in `spike/RawFileReaderSpike/` (the new, `/clr`-based
+path) and `spike/LegacyRawReaderSpike/` (the existing COM-based path, built for side-by-side
+comparison); see `spike/README.md` for how to rebuild/rerun. Both were run against a real
+production `.raw` file (`20170103_HelaQC_01.raw`, 56,152 scans). Findings per item:
+
+1. **Reference mechanics: does NOT carry over from csproj to vcxproj as hoped.** `PackageReference`
+   restore for a native `.vcxproj` resolves the project's framework as `native,Version=v0.0`
+   regardless of `CLRSupport=true`, which NuGet considers incompatible with these
+   netstandard2.0-only packages (`NU1202`). The working fallback: a plain `<Reference HintPath>`
+   pointing at the package already extracted into the global NuGet cache by restoring
+   `RealtimeSearch.csproj` (`%userprofile%\.nuget\packages\thermofisher.commoncore.*\5.0.0.93\lib\netstandard2.0\*.dll`).
+   This means the real `RAWReader.cpp` rewrite (Phase 2) needs `<Reference>`/`HintPath` entries in
+   the `.vcxproj`, not `<PackageReference>` -- the doc's Phase 2 item 2 is updated below to match.
+   A handful of `C4691` warnings appear (managed types resolving against the current translation
+   unit instead of the unreferenced `netstandard` forwarding assembly) -- benign; the code compiles
+   and runs correctly.
+2. **Marshaling a managed `double[]` into a native buffer: works, no leak in the marshal itself.**
+   `GetCentroidStream(...)->Masses`/`->Intensities` copied element-by-element into
+   `std::vector<double>` and passed to a plain-native function, exactly mirroring the SAFEARRAY
+   copy pattern in `RAWReader.cpp` (~lines 724-727). A 130,000-iteration stress loop
+   (`RawFileReaderSpike.exe <path> --stress`) showed process working set climbing from ~133 MB to
+   a plateau at ~400 MB exactly once every one of the file's 56,152 scans had been visited once,
+   then staying flat for 70,000+ further reps -- a one-time, file-size-bounded internal cache
+   inside RawFileReader itself, not an unbounded leak. Re-running against a single repeated scan
+   number (`--stress samescan`) confirmed working set is flat from the very first rep. Managed
+   heap size (`GC::GetTotalMemory`) stayed in the same ~35-40 MB band throughout both runs.
+3. **Mixing `/clr` and plain-native `.cpp` in one project: works cleanly.** `NativeUtils.cpp`
+   (`CompileAsManaged=false` override) compiled and linked into the same binary as the
+   `/clr`-enabled `Main.cpp` with no special handling beyond the per-file MSBuild property.
+4. **Field parity: matches the legacy COM path almost exactly.** Ran both spikes against the same
+   four scans (1, 1000, 2000, 5000) of the same file. Scan number, centroid flag, MS level,
+   polarity, TIC, base peak m/z/intensity, precursor isolation m/z, charge state, peak count, and
+   every individual peak m/z/intensity matched exactly. RT and base-peak-intensity differed only at
+   the ~1e-6 relative level (legacy `Spectrum` stores these as `float`; RawFileReader returns
+   `double`) -- a precision choice for Phase 1 to make deliberately, not a parity bug.
 
 ### Phase 1 — Rewrite `RAWReader` against RawFileReader .NET
 1. Replace the `#import "libid:..."` COM block and `IXRawfile*Ptr` members in
@@ -196,8 +217,10 @@ portability:
 ### Phase 2 — Build system changes (Windows only)
 1. Enable `/clr` for `RAWReader.cpp` (and any header that doesn't tolerate it, isolating into its
    own translation unit if needed — confirmed feasible in Phase 0).
-2. Add `<Reference>` entries for `ThermoFisher.CommonCore.RawFileReader`/`.Data` to the relevant
-   `.vcxproj`, replacing the COM `#import` GUID.
+2. Add `<Reference>`/`HintPath` entries (not `<PackageReference>` -- confirmed incompatible with
+   native `.vcxproj` restore in Phase 0 item 1) for `ThermoFisher.CommonCore.RawFileReader`/`.Data`
+   to the relevant `.vcxproj`, pointing at the same package version already vendored for
+   `RealtimeSearch.csproj`, replacing the COM `#import` GUID.
 3. Update the comment at `MSToolkit/Makefile:138-143` — `RAWReader.cpp` is still excluded from
    Linux/macOS builds, now because `.raw` support is Windows-only by decision, not because COM is
    Windows-only by limitation. No functional Makefile change needed.
@@ -228,7 +251,7 @@ portability:
 
 | Phase | Outcome | Platform | Status |
 |---|---|---|---|
-| 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) | Not started |
+| 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) | Done (2026-06-18); see findings above and `spike/` |
 | 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows | Not started |
 | 2 | Build system updated; COM redistributable dependency removed | Windows | Not started |
 | 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) | Item 1 done (2026-06-18); item 2 (delete `MSFileReaderWrapper`) pending |
