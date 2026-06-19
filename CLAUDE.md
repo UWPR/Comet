@@ -28,7 +28,8 @@ make cclean   # Quick clean: only CometSearch and root object files
 - Right-click the **Comet** project -> **Build**
 - Output: `x64/Release/Comet.exe`
 
-The build requires Thermo's MSFileReader to be installed first (Windows only).
+`.raw` file reading uses Thermo's RawFileReader .NET library via a `/clr` (C++/CLI) build in
+`MSToolkit` -- no separate Thermo software installation is required (Windows only).
 
 ### CometSearch library only
 ```bash

@@ -7,8 +7,8 @@ migration doc; this README just covers how to rebuild/rerun them.
 ## LegacyRawReaderSpike
 
 Plain native console app (no `/clr`) linking the existing `MSToolkit.lib`/`MSToolkitExtern.lib`
-(built via `Comet.sln`) to read a `.raw` file through the current COM-based `RAWReader`/`MSReader`
-path, printing the same fields `RawFileReaderSpike` prints, for side-by-side diffing.
+(built via `Comet.sln`) to read a `.raw` file through the production `RAWReader`/`MSReader` path,
+printing the same fields `RawFileReaderSpike` prints, for side-by-side diffing.
 
 ```
 cd spike/LegacyRawReaderSpike
@@ -17,7 +17,11 @@ LegacyRawReaderSpike.exe <path-to-raw> [scanNum ...]
 ```
 
 Requires `x64\Release\MSToolkit.lib`/`MSToolkitExtern.lib` to already exist (build `Comet.sln`
-first) and MSFileReader COM to be installed/registered on the machine.
+first). At Phase 0 this compared the COM-based path against `RawFileReaderSpike` (hence the name);
+since Phase 1 rewrote `RAWReader.cpp` against RawFileReader .NET, this now exercises the same
+production code `RawFileReaderSpike` validates in isolation, and no longer requires MSFileReader
+COM to be installed/registered -- it needs the `ThermoFisher.CommonCore.*`/`OpenMcdf` DLLs copied
+next to the built `.exe` instead (see `RawFileReaderSpike` below for where to get them).
 
 ## RawFileReaderSpike
 

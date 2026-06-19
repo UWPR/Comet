@@ -279,11 +279,14 @@ production `.raw` file (`20170103_HelaQC_01.raw`, 56,152 scans). Findings per it
    `$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.*\5.0.0.93\...` — the same package
    version vendored for `RealtimeSearch.csproj` (Phase 3 item 1), populated into the global NuGet
    cache by restoring that project at least once.
-3. Update the comment at `MSToolkit/Makefile:138-143` — `RAWReader.cpp` is still excluded from
-   Linux/macOS builds, now because `.raw` support is Windows-only by decision, not because COM is
-   Windows-only by limitation. No functional Makefile change needed.
-4. Drop the MSFileReader COM redistributable from Windows build/install documentation — it's no
-   longer a dependency.
+3. **Done (2026-06-19).** Updated the comment at `MSToolkit/Makefile:136-140` to say
+   `RAWReader.cpp` is excluded from Linux/macOS builds because `.raw` support is Windows-only by
+   decision (it needs a `/clr` build, MSVC/Windows-only), not because of any Linux-specific
+   limitation in RawFileReader .NET itself. No functional Makefile change.
+4. **Done (2026-06-19).** Dropped the MSFileReader COM install step from `README.md` and
+   `CLAUDE.md`'s Windows build instructions, and updated `MSToolkit/README.md`'s file-format list
+   and `spike/README.md` (the `LegacyRawReaderSpike` harness no longer needs COM registered, since
+   it now links the rewritten `MSToolkit.lib`).
 
 ### Phase 1/2 side fix — dead `main()` in `mzMLReader.cpp`
 **Done (2026-06-19).** `MSToolkit/src/mzParser/mzMLReader.cpp` had an unguarded, dead standalone
@@ -311,7 +314,10 @@ than deleting it, since it predates this migration and isn't otherwise in scope 
    the `RAWReader`/`MSReader` rewrite); Phase 2 item 2 should point its `.vcxproj` `<Reference>`
    entries at this same local feed/version once it happens, to keep both consumers on one
    version as originally intended.
-2. Delete `CometWrapper/MSFileReaderWrapper.{h,cpp}` (dead, COM-based, unused).
+2. **Done (2026-06-19).** Deleted `CometWrapper/MSFileReaderWrapper.{h,cpp}` (dead, COM-based,
+   unused — nothing referenced its `MSFileReaderWrapper`/`Peak_T_Wrapper` types) and removed their
+   entries from `CometWrapper.vcxproj`/`.vcxproj.filters`. Full `Comet.sln` Release|x64 rebuild
+   verified clean.
 
 ---
 
@@ -321,8 +327,8 @@ than deleting it, since it predates this migration and isn't otherwise in scope 
 |---|---|---|---|
 | 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) | Done (2026-06-18); see findings above and `spike/` |
 | 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows | Done (2026-06-19); see findings above |
-| 2 | Build system updated; COM redistributable dependency removed | Windows | Items 1-2 done (2026-06-19); items 3-4 (Makefile comment, install docs) pending |
-| 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) | Item 1 done (2026-06-18); item 2 (delete `MSFileReaderWrapper`) pending |
+| 2 | Build system updated; COM redistributable dependency removed | Windows | Done (2026-06-19) |
+| 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) | Done (2026-06-19) |
 
 Linux and macOS are unchanged by this migration: `.raw` is not supported; users supply mzML/mzXML
 input, optionally pre-converted from `.raw` with an external tool (ThermoRawFileParser,

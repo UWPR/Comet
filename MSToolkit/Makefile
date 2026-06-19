@@ -135,8 +135,10 @@ zlib-realclean : zlib-clean
 
 # -- MSToolkit  ---------------------------------------------------------------
 #
-# The core MSToolkit files, but skip RAWReader on Linux systems
-#
+# The core MSToolkit files, but skip RAWReader on Linux systems. RAWReader.cpp reads Thermo .raw
+# files via RawFileReader .NET through a /clr (C++/CLI) build, which only exists on MSVC/Windows --
+# .raw support is Windows-only by decision (see docs/20260618_RawFileReaderMigration.md), not
+# because of any Linux-specific limitation in the underlying RawFileReader .NET library itself.
 #
 MSTOOLKIT_SRCDIR = $(BUILD_SRC)/MSToolkit/
 MSTOOLKIT_DSTDIR = $(BUILD_DIR)/
