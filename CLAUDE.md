@@ -224,8 +224,25 @@ at the git level, providing a second safety net.
 ### Code Review Protocol (Copilot Mode)
 When requested to perform a code review, always execute the following multi-step workflow before writing your feedback:
 1. **Tooling Check:** Run the project's respective testing commands to gather concrete diagnostic data.
-2. **Analysis:** Review the uncommitted files, staged changes, or the specified branch diff.
+2. **Analysis:** Review the uncommitted files, staged changes, or the specified branch diff against every category in the
+   **Bug Category Checklist** below. Walk every changed hunk through the full list -- don't skip a category just because
+   it seems unlikely; confirm it doesn't apply rather than omitting it silently.
 3. **Report Generation:** Structure the review using the exact template below.
+
+#### Bug Category Checklist
+- **Bounds & UB:** pointer arithmetic, array indexing, or string suffix/substring checks performed without first
+  validating length (e.g. `buf + len - N` when `len < N` is possible).
+- **Resource & memory safety:** leaks, double-free, use-after-free, missing RAII, unchecked `new`/`malloc` failures.
+- **Concurrency:** data races, missing locks/`lock_guard`s, thread-unsafe access to globals marked "Shared mutable" in
+  the Key Globals table above.
+- **Dead/unreachable code:** unused functions, stub overloads that silently no-op, unreachable branches -- flag these
+  as future-refactor risk even when currently harmless (e.g. an unused overload that could resolve incorrectly later).
+- **Performance/memory efficiency:** loading an entire file/buffer into memory where streaming would suffice, O(n^2)
+  patterns, unnecessary copies in hot paths.
+- **Error handling:** unchecked return values, swallowed exceptions, missing validation at system boundaries (file
+  I/O, user params, external APIs).
+- **API contract changes:** signature or default-value changes that could silently break existing callers.
+- **Test coverage:** new logic paths or edge cases introduced without a corresponding test.
 
 ## Code Review Template
 Provide feedback using this exact format:
