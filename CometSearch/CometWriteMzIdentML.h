@@ -53,12 +53,14 @@ public:
 
    static void WriteMzIdentMLTmp(FILE *fpout,
                                  FILE *fpoutd,
-                                 int iBatchNum);
+                                 int iBatchNum,
+                                 const vector<Query*>& queries);
 
    static void WriteMzIdentML(FILE *fpout,
                               FILE *fpdb,
                               string sTmpFile,
-                              CometSearchManager &searchMgr);
+                              CometSearchManager &searchMgr,
+                              bool bIdxNoFasta);
 
 private:
 
@@ -67,7 +69,8 @@ private:
    static void PrintTmpPSM(int iWhichQuery,
                            int iPrintTargetDecoy,
                            int iBatchNum,
-                           FILE *fpOut);
+                           FILE *fpOut,
+                           const vector<Query*>& queries);
 
    static void WriteMods(FILE *fpout,
                          CometSearchManager &searchMgr);
@@ -103,7 +106,8 @@ private:
    static bool ParseTmpFile(FILE *fpout,
                             FILE *fpdb,
                             string ssTmpFile,
-                            CometSearchManager &searchMgr);
+                            CometSearchManager &searchMgr,
+                            bool bIdxNoFasta);
 };
 
 #endif

@@ -1,0 +1,20 @@
+H	CreationDate	synthetic
+H	Comment	T19 AScore+FI_DB regression fixture: peptide ACDEFGS[+79.966331]K, charge 2+
+H	Comment	b/y ions (singly charged) computed from monoisotopic residue masses;
+H	Comment	phospho (+79.966331) applied to S at position 7 (1-based).
+S	1	1	468.662069
+Z	2	936.316862
+72.044386	100.0
+147.112801	105.0
+175.053576	120.0
+290.080516	110.0
+314.111162	135.0
+371.132622	118.0
+419.123106	130.0
+518.201032	122.0
+566.191516	125.0
+623.212976	115.0
+647.243622	128.0
+762.270562	132.0
+790.211337	140.0
+865.279752	138.0

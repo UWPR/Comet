@@ -917,6 +917,330 @@ def test_t18(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T19 -- AScore + FI_DB regression (docs/20260617_codereview3.md issue 2a)
+# ---------------------------------------------------------------------------
+#
+# CometSearchManager::SetAScoreOptions() reads g_staticParams.variableModParameters.
+# varModList[] to configure AScorePro's differential-mod list. For an FI_DB (.idx)
+# search, FiStrategy::initialize() loads the index and overwrites that same
+# varModList[] from the .idx file's "VariableMod:" header line. If AScore were
+# configured *before* that overwrite, it would be left with whatever (possibly blank)
+# variable_mod01 the search-time params declared instead of the index's actual mod --
+# see the ordering comment in CometSearch/search/Pipeline.cpp. This test builds an
+# FI_DB index with a real variable mod, then searches it with print_ascorepro_score
+# enabled but a deliberately blank variable_mod01 in the search-time params (the
+# common real-world case, since FI_DB search params don't need to redeclare mods
+# already baked into the index), and checks that AScorePro actually ran rather than
+# being silently skipped.
+#
+# Fixture peptide: ACDEFGS[+79.966331]K (charge 2+), the only candidate in the index
+# within the configured mass range, with a single phospho-acceptor S so localization
+# is unambiguous. tests/unit/data/t19_ascore_fidb.ms2 contains the matching singly
+# charged b/y ions, precomputed from monoisotopic residue masses.
+
+T19_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 0
+num_threads = 4
+print_ascorepro_score = {ascorepro}
+peptide_mass_tolerance_upper = 20.0
+peptide_mass_tolerance_lower = -20.0
+peptide_mass_units = 2
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 0
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 0
+variable_mod01 = {mod1}
+variable_mod02 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 1
+require_variable_mod = 0
+fragment_bin_tol = 0.02
+fragment_bin_offset = 0.0
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 1
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 2000.0
+peptide_length_range = 8 8
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = DECOY_
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 10
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+1.  Trypsin                1      KR          P
+2.  Trypsin/P              1      KR          -
+""")
+
+
+def _run_t19_step(comet_exe, args, timeout=120):
+    """Run comet_exe with args, return (returncode, combined stdout+stderr)."""
+    result = subprocess.run(
+        [str(comet_exe)] + args, capture_output=True, text=True, timeout=timeout,
+    )
+    return result.returncode, result.stdout + result.stderr
+
+
+@register("t19")
+def test_t19(comet_exe):
+    """T19: AScore + FI_DB regression -- AScore must use the .idx file's variable mod,
+    not the search-time params' (blank) mod, for FI_DB searches."""
+    failures = []
+
+    fasta = DATA_DIR / "t19_ascore_fidb.fasta"
+    ms2   = DATA_DIR / "t19_ascore_fidb.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    # Step 1: build an FI_DB index with a real phospho-S mod baked into its header.
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T19_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 0.0",
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    # Step 2: search the index with print_ascorepro_score enabled but a blank
+    # variable_mod01 in the search-time params.
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T19_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx),
+        ascorepro=1, mod1="0.0 X 0 3 -1 0 0 0.0",
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        header = lines[1].split("\t")             # line 0 is the CometVersion/.../database line
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDEFGSK",
+              f"plain_peptide: expected ACDEFGSK, got {row.get('plain_peptide')!r}", failures)
+        check("7_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected to contain 7_V_79.966331, got "
+              f"{row.get('modifications')!r}", failures)
+
+        ascorepro = float(row.get("ascorepro", "0") or "0")
+        check(ascorepro > 0.0,
+              f"ascorepro: expected > 0 (AScore must run using the .idx file's mod, "
+              f"not the search-time params' blank mod), got {ascorepro}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T20 -- PI_DB batch search regression (_pQueries never assigned)
+# ---------------------------------------------------------------------------
+#
+# CometSearch::BinarySearchMass() and AnalyzePeptideIndex() read the query list
+# through the _pQueries member (mirroring CometSearch::DoSearch(), the FASTA path,
+# which sets _pQueries = &queries at entry) rather than through a parameter. The
+# batch PI_DB path, CometSearch::SearchPeptideIndex(ThreadPool*, vector<Query*>&),
+# never set _pQueries, so it stayed nullptr on the freshly constructed CometSearch
+# instance RunSearch() uses for PI_DB, and the first dereference inside
+# BinarySearchMass() segfaulted -- silently, with only the "- searching ..." progress
+# message printed and no error text, exactly as reported against the VS-built
+# Windows binary. This test reuses T19's phospho fixture but builds a PI_DB (plain
+# peptide) index instead of an FI_DB (fragment ion) index, to cover the code path
+# that crashed.
+
+@register("t20")
+def test_t20(comet_exe):
+    """T20: PI_DB batch search regression -- a peptide-index (-j) search must
+    complete and score correctly, not crash on the first scored candidate."""
+    failures = []
+
+    fasta = DATA_DIR / "t19_ascore_fidb.fasta"
+    ms2   = DATA_DIR / "t19_ascore_fidb.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    # Step 1: build a PI_DB (peptide index) with a real phospho-S mod baked into
+    # its header. "-j" selects create_peptide_index, unlike T19's "-i"
+    # (create_fragment_index).
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T19_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 0.0",
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    # Step 2: search the PI_DB index. This is the call sequence that previously
+    # segfaulted inside CometSearch::BinarySearchMass() before any output was
+    # written, so a non-crashing exit with the expected PSM is the regression check.
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T19_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx),
+        ascorepro=1, mod1="0.0 X 0 3 -1 0 0 0.0",
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search exited rc={rc} (expected 0, i.e. no crash):\n{out}")
+            return failures
+        check(True, "search exited cleanly (rc=0)", failures)
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        header = lines[1].split("\t")             # line 0 is the CometVersion/.../database line
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDEFGSK",
+              f"plain_peptide: expected ACDEFGSK, got {row.get('plain_peptide')!r}", failures)
+        check("7_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected to contain 7_V_79.966331, got "
+              f"{row.get('modifications')!r}", failures)
+
+        ascorepro = float(row.get("ascorepro", "0") or "0")
+        check(ascorepro > 0.0,
+              f"ascorepro: expected > 0, got {ascorepro}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 

@@ -32,22 +32,23 @@ CometWritePercolator::~CometWritePercolator()
 
 
 bool CometWritePercolator::WritePercolator(FILE *fpout,
-                                           FILE *fpdb)
+                                           FILE *fpdb,
+                                           const vector<Query*>& queries)
 {
    int i;
    int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
    // Print results.
-   for (i=0; i<(int)g_pvQuery.size(); ++i)
+   for (i=0; i<(int)queries.size(); ++i)
    {
-      if (g_pvQuery.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (queries.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
-         PrintResults(i, fpout, fpdb, 0, iLenDecoyPrefix);  // print search hit (could be decoy if g_staticParams.options.iDecoySearch=1)
+         PrintResults(i, fpout, fpdb, 0, iLenDecoyPrefix, queries);
       }
 
-      if (g_staticParams.options.iDecoySearch == 2 && g_pvQuery.at(i)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (g_staticParams.options.iDecoySearch == 2 && queries.at(i)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr)
       {
-         PrintResults(i, fpout, fpdb, 2, iLenDecoyPrefix);  // print decoy hit
+         PrintResults(i, fpout, fpdb, 2, iLenDecoyPrefix, queries);
       }
    }
 
@@ -89,11 +90,12 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
                                         FILE *fpout,
                                         FILE *fpdb,
                                         int iPrintTargetDecoy,
-                                        int iLenDecoyPrefix)
+                                        int iLenDecoyPrefix,
+                                        const vector<Query*>& queries)
 {
    int  iNumPrintLines;
 
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = queries.at(iWhichQuery);
 
    Results *pOutput;
 
@@ -127,7 +129,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
       unsigned int uiNumTotProteins = 0;  // unused in pin
       bool bReturnFulProteinString = false;
-      CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys);
+      CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, &uiNumTotProteins, vProteinTargets, vProteinDecoys, queries);
 
       if (g_staticParams.options.iDecoySearch) // using Comet's internal decoys
       {
@@ -164,7 +166,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
       fprintf(fpout, "%0.6f\t", pQuery->_pepMassInfo.dExpPepMass);  //ExpMass
       fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].dPepMass);  //CalcMass
 
-      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, vProteinTargets, vProteinDecoys);
+      PrintPercolatorSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, vProteinTargets, vProteinDecoys, queries);
    }
 
    return true;
@@ -176,15 +178,15 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
                                                     int iPrintTargetDecoy,
                                                     Results *pOutput,
                                                     FILE *fpout,
-
-                                                    vector<string> vProteinTargets,
-                                                    vector<string> vProteinDecoys)
+                                                    const vector<string>& vProteinTargets,
+                                                    const vector<string>& vProteinDecoys,
+                                                    const vector<Query*>& queries)
 {
    int iNterm;
    int iCterm;
    int iNMC;
 
-   Query* pQuery = g_pvQuery.at(iWhichQuery);
+   Query* pQuery = queries.at(iWhichQuery);
 
    CalcNTTNMC(pOutput, iWhichResult, &iNterm, &iCterm, &iNMC);
 
@@ -273,7 +275,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    else
       fprintf(fpout, "%c.%s.%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].szPeptide, pOutput[iWhichResult].cNextAA);
 
-   std::vector<string>::iterator it;
+   std::vector<string>::const_iterator it;
 
    bool bPrintTab = false;
    if (iPrintTargetDecoy != 2)  // if not decoy only, print target proteins

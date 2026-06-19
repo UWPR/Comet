@@ -217,3 +217,22 @@ Rules for Claude Code:
 
 A `.gitattributes` file at the repo root enforces CRLF for all tracked source files
 at the git level, providing a second safety net.
+
+
+## Development Workflows
+
+### Code Review Protocol (Copilot Mode)
+When requested to perform a code review, always execute the following multi-step workflow before writing your feedback:
+1. **Tooling Check:** Run the project's respective testing commands to gather concrete diagnostic data.
+2. **Analysis:** Review the uncommitted files, staged changes, or the specified branch diff.
+3. **Report Generation:** Structure the review using the exact template below.
+
+## Code Review Template
+Provide feedback using this exact format:
+1. **Summary:** A 1-2 sentence overview of the changes.
+2. **Critical Issues:** Bugs, security vulnerabilities, or breaking changes. Provide the file path, exact line numbers, and the core issue.
+3. **Code Quality & Maintainability:** Poor practices, anti-patterns, or missing tests.
+4. **Actionable Improvements:** Specific refactoring suggestions accompanied by concise code snippets.
+
+*Constraint:* Keep critiques technical, objective, and ranked by severity. Avoid generic praise.
+

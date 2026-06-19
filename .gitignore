@@ -5,12 +5,6 @@ MSToolkit/extern/expat-2.2.9/
 # user-specific Claude Code settings
 .claude/settings.local.json
 
-# ignore dynamically generated files
-MSToolkit/include/expat.h
-MSToolkit/include/expat_external.h
-MSToolkit/include/zconf.h
-MSToolkit/include/zlib.h
-MSToolkit/*.mri
 
 .DS_Store
 .idea

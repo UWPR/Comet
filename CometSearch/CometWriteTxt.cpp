@@ -31,22 +31,23 @@ CometWriteTxt::~CometWriteTxt()
 
 void CometWriteTxt::WriteTxt(FILE *fpout,
                              FILE *fpoutd,
-                             FILE *fpdb)
+                             FILE *fpdb,
+                             const vector<Query*>& queries)
 {
    int i;
 
    // Print out the separate decoy hits.
    if (g_staticParams.options.iDecoySearch == 2)
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 1, fpout, fpdb);
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 2, fpoutd, fpdb);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 1, fpout, fpdb, queries);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 2, fpoutd, fpdb, queries);
    }
    else
    {
-      for (i=0; i<(int)g_pvQuery.size(); ++i)
-         PrintResults(i, 0, fpout, fpdb);
+      for (i=0; i<(int)queries.size(); ++i)
+         PrintResults(i, 0, fpout, fpdb, queries);
    }
 }
 
@@ -115,13 +116,14 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
 void CometWriteTxt::PrintResults(int iWhichQuery,
                                  int iPrintTargetDecoy,
                                  FILE *fpout,
-                                 FILE *fpdb)  //fpdb is file pointer for either FASTA or .idx file
+                                 FILE *fpdb,
+                                 const vector<Query*>& queries)  //fpdb is file pointer for either FASTA or .idx file
 {
 #ifdef CRUX
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
+   if ((iPrintTargetDecoy != 2 && queries.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && queries.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
-      Query* pQuery = g_pvQuery.at(iWhichQuery);
+      Query* pQuery = queries.at(iWhichQuery);
 
       int charge = pQuery->_spectrumInfoInternal.usiChargeState;
       double spectrum_neutral_mass = pQuery->_pepMassInfo.dExpPepMass - PROTON_MASS;
@@ -211,7 +213,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
          unsigned int uiNumTotProteins = 0;
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, queries);
 
          // Cleavage type
          fprintf(fpout, "\t%c%c\t", pOutput[iWhichResult].cPrevAA, pOutput[iWhichResult].cNextAA);
@@ -227,10 +229,10 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    }
 
 #else
-   if ((iPrintTargetDecoy != 2 && g_pvQuery.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
-         || (iPrintTargetDecoy == 2 && g_pvQuery.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
+   if ((iPrintTargetDecoy != 2 && queries.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+         || (iPrintTargetDecoy == 2 && queries.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
    {
-      Query* pQuery = g_pvQuery.at(iWhichQuery);
+      Query* pQuery = queries.at(iWhichQuery);
 
       Results *pOutput;
       int iNumPrintLines;
@@ -377,7 +379,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          unsigned int uiNumTotProteins = 0;
 
          // print protein list
-         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins);
+         PrintProteins(fpout, fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, &uiNumTotProteins, queries);
 
          fprintf(fpout, "\t%u\t", uiNumTotProteins);
 
@@ -409,7 +411,8 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
                                   int iWhichQuery,
                                   int iWhichResult,
                                   int iPrintTargetDecoy,
-                                  unsigned int *uiNumTotProteins)
+                                  unsigned int *uiNumTotProteins,
+                                  const vector<Query*>& queries)
 {
    std::vector<string> vProteinTargets;  // store vector of target protein names
    std::vector<string> vProteinDecoys;   // store vector of decoy protein names
@@ -417,7 +420,7 @@ void CometWriteTxt::PrintProteins(FILE *fpout,
 
    bool bReturnFulProteinString = false;
 
-   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, uiNumTotProteins, vProteinTargets, vProteinDecoys);
+   CometMassSpecUtils::GetProteinNameString(fpdb, iWhichQuery, iWhichResult, iPrintTargetDecoy, bReturnFulProteinString, uiNumTotProteins, vProteinTargets, vProteinDecoys, queries);
 
    bool bPrintComma = false;
 

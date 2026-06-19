@@ -85,7 +85,7 @@ public:
    ICometSearchManager *GetCometSearchManager();
    void ReleaseCometSearchManager();
 
-   static ThreadPool* _tp;
+   [[maybe_unused]] static ThreadPool* _tp;
 }
 
 #endif // _COMETINTERFACES_H_

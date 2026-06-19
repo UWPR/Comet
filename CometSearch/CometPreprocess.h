@@ -17,6 +17,7 @@
 #define _COMETPREPROCESS_H_
 
 #include "ThreadPool.h"
+#include "search/SearchSession.h"
 
 struct PreprocessThreadData
 {
@@ -24,16 +25,17 @@ struct PreprocessThreadData
    int iAnalysisType;
    int iFileLastScan;
    bool *pbMemoryPool;  //MH: Manages active memory pool
+   SearchSession* pSession;
 
    PreprocessThreadData()
-      : mstSpectrum(), iAnalysisType(0), iFileLastScan(0), pbMemoryPool(nullptr)
+      : mstSpectrum(), iAnalysisType(0), iFileLastScan(0), pbMemoryPool(nullptr), pSession(nullptr)
    {
    }
 
    PreprocessThreadData(Spectrum& spec_in,
                         int iAnalysisType_in,
                         int iFileLastScan_in)
-      : mstSpectrum(spec_in), iAnalysisType(iAnalysisType_in), iFileLastScan(iFileLastScan_in), pbMemoryPool(nullptr)
+      : mstSpectrum(spec_in), iAnalysisType(iAnalysisType_in), iFileLastScan(iFileLastScan_in), pbMemoryPool(nullptr), pSession(nullptr)
    {
    }
 
@@ -69,7 +71,8 @@ public:
                                         int iFirstScan,
                                         int iLastScan,
                                         int iAnalysisType,
-                                        ThreadPool* tp);
+                                        ThreadPool* tp,
+                                        SearchSession& session);
    static void PreprocessThreadProc(PreprocessThreadData *pPreprocessThreadData,
                                     ThreadPool* tp);
    static void PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessThreadDataMS1,
@@ -84,7 +87,8 @@ public:
                                         double *pdMass,
                                         double *pdInten,
                                         int iNumPeaks,
-                                        double *pdTmpSpectrum);
+                                        double *pdTmpSpectrum,
+                                        SearchSession& session);
 
    // Thread-local version: returns Query* without touching g_pvQuery.
    // Caller owns the returned Query* and must delete it when done.
@@ -97,7 +101,8 @@ public:
 
    static bool PreprocessMS1SingleSpectrum(double* pdMass,
                                            double* pdInten,
-                                           int iNumPeaks);
+                                           int iNumPeaks,
+                                           SearchSession& session);
    // Thread-local version: returns QueryMS1* without touching g_pvQueryMS1.
    // Caller owns the returned QueryMS1* and must delete it when done.
    static QueryMS1* PreprocessMS1SingleSpectrumThreadLocal(double* pdMass,
@@ -109,7 +114,7 @@ public:
    // Fused FI_DB batch path: preprocess + search + post-analysis for one spectrum
    // in a single pass using thread-local scratch buffers.  iSlot is this worker's
    // pre-assigned _ppbDuplFragmentArr index.
-   static void FusedSearchSpectrum(Spectrum spec, int iSlot);
+   static void FusedSearchSpectrum(Spectrum spec, int iSlot, SearchSession& session);
 
    // Fused FI_DB batch path: stream spectra through a bounded producer/consumer
    // queue into FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
@@ -118,7 +123,8 @@ public:
                                           int iFirstScan,
                                           int iLastScan,
                                           int iAnalysisType,
-                                          ThreadPool* tp);
+                                          ThreadPool* tp,
+                                          SearchSession& session);
 
    // Returns the thread-local raw-data buffer used by PreprocessSingleSpectrumThreadLocal.
    // The buffer is sized to g_staticParams.iArraySizeGlobal and its content after a
@@ -149,7 +155,8 @@ private:
                                   double *pdTmpCorrelationData,
                                   float *pfFastXcorrData,
                                   float *pfFastXcorrDataNL,
-                                  float *pfSpScoreData);
+                                  float *pfSpScoreData,
+                                  SearchSession* pSession);
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
    static bool Preprocess(struct Query *pScoring,

@@ -190,7 +190,8 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               bool bReturnFullProteinString,   // 0 = return accession only, 1 = return full description line
                                               unsigned int *uiNumTotProteins,   // matched protein count
                                               vector<string>& vProteinTargets,  // the target protein names
-                                              vector<string>& vProteinDecoys)   // the decoy protein names if applicable
+                                              vector<string>& vProteinDecoys,   // the decoy protein names if applicable
+                                              const vector<Query*>& queries)
 {
    char szProteinName[WIDTH_REFERENCE];
 
@@ -209,9 +210,9 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       Results* pOutput;
 
       if (iPrintTargetDecoy != 2)
-         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+         pOutput = queries.at(iWhichQuery)->_pResults;
       else
-         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+         pOutput = queries.at(iWhichQuery)->_pDecoys;
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
@@ -284,9 +285,9 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       Results* pOutput;
 
       if (iPrintTargetDecoy != 2)
-         pOutput = g_pvQuery.at(iWhichQuery)->_pResults;
+         pOutput = queries.at(iWhichQuery)->_pResults;
       else
-         pOutput = g_pvQuery.at(iWhichQuery)->_pDecoys;
+         pOutput = queries.at(iWhichQuery)->_pDecoys;
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 

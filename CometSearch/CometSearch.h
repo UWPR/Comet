@@ -39,22 +39,15 @@
 struct SearchThreadData
 {
    sDBEntry dbEntry;
-   bool* pbSearchMemoryPool;
    ThreadPool* tp;
+   const vector<Query*>* pQueries;
 
-   SearchThreadData() = default;
-   SearchThreadData(const sDBEntry& dbEntry_in)
-      : dbEntry(dbEntry_in), pbSearchMemoryPool(nullptr), tp(nullptr) {
+   SearchThreadData(const sDBEntry& dbEntry_in, const vector<Query*>* pQueries_in)
+      : dbEntry(dbEntry_in), tp(nullptr), pQueries(pQueries_in) {
    }
 
    ~SearchThreadData()
    {
-      if (pbSearchMemoryPool)
-      {
-         { std::lock_guard<std::mutex> lk(g_searchMemoryPoolMutex); *pbSearchMemoryPool = false; }
-         g_searchPoolCV.notify_one();
-         pbSearchMemoryPool = nullptr;
-      }
       dbEntry.vectorPeffMod.clear();
       dbEntry.vectorPeffVariantSimple.clear();
    }
@@ -73,8 +66,8 @@ public:
 
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
-                         ThreadPool* tp);
-   static bool RunSearch(ThreadPool* tp);
+                         ThreadPool* tp,
+                         vector<Query*>& queries);
 
    // Task 1.3: Thread-local overload: searches a caller-owned Query* without
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
@@ -86,13 +79,14 @@ public:
 
    static bool RunSpecLibSearch(int iPercentStart,
                                 int iPercentEnd,
-                                ThreadPool* tp);
-   static bool RunSpecLibSearch(ThreadPool* tp);
+                                ThreadPool* tp,
+                                vector<Query*>& queries);
    static bool RunMS1Search(ThreadPool* tp,
                             double dRT,
                             double dMaxMS1RTDiff,
                             const double dMaxSpecLibRT,
-                            const double dMaxQueryRT);
+                            const double dMaxQueryRT,
+                            vector<QueryMS1*>& ms1Queries);
    // Thread-local overload: searches a caller-owned QueryMS1* against read-only g_vSpecLib.
    // No global mutable state accessed.
    static bool RunMS1Search(QueryMS1* pQueryMS1,
@@ -106,7 +100,7 @@ public:
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
 
-   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment);
+   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment, const vector<Query*>& queries);
 
    // Performance: Mark as const where possible
    bool CheckEnzymeTermini(const char* szProteinSeq,
@@ -120,13 +114,13 @@ public:
    int BinarySearchMass(int start,
                         int end,
                         double dCalcPepMass) const;
-   static bool CheckMassMatch(size_t iWhichQuery,
-                              double dCalcPepMass);
+   bool CheckMassMatch(size_t iWhichQuery,
+                       double dCalcPepMass);
    // Task 1.2: Thread-local overload accepting Query* directly.
    static bool CheckMassMatch(Query* pQuery,
                               double dCalcPepMass);
 
-   bool SearchPeptideIndex(ThreadPool* tp);
+   bool SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries);
 
    struct ProteinInfo
    {
@@ -311,7 +305,7 @@ private:
    bool TranslateNA2AA(int* frame,
                        int iDirection,
                        char* sDNASequence);
-   static void SearchMS1Library(size_t iWhichMS1Query,
+   static void SearchMS1Library(QueryMS1* pMS1Query,
                                 const int iWhichThread,
                                 const double dRT,
                                 const double dMaxMS1RTDiff,
@@ -378,10 +372,10 @@ private:
 
    static int  AcquirePoolSlot();       // Spin-wait for a free slot; returns index or -1 on timeout
 
-   static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
 
    int _iSlot = -1;                     // pool slot index; set by SearchThreadProc before DoSearch
+   const vector<Query*>* _pQueries = nullptr;  // batch query list; set before FASTA/PI search
    std::unordered_set<uint64_t>    _seenShort;  // per-protein dedup for len <= 12 (bFastPlainPeptideIdx)
    std::unordered_set<std::string> _seenLong;   // per-protein dedup for len > 12 (bFastPlainPeptideIdx)
 };

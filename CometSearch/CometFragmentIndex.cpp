@@ -244,7 +244,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
 
 void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
-                                                ThreadPool *tp)
+                                                ThreadPool* /*tp*/)
 {
    size_t iWhichFragmentPeptide = 0;  // unused here for counting only
 
@@ -602,7 +602,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_staticParams.options.bFastPlainPeptideIdx = true;
    g_staticParams.iDbType = DbType::FASTA_DB;
 
-   bool bSucceeded = CometSearch::RunSearch(0, 0, tp);
+   vector<Query*> emptyQueries;
+   bool bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
 
    g_staticParams.options.bCreateFragmentIndex = false;
    g_staticParams.options.bFastPlainPeptideIdx = false;
@@ -1102,64 +1103,40 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    // Destruction is O(n) for pcVarModSites in g_pvDBIndex but trivial for
    // g_vRawPeptides; order no longer matters.
    {
-      auto tClear = chrono::steady_clock::now();
       vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
-//      printf("   - freed g_vRawPeptides:        %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       g_pvDBIndex.clear();   // DBIndex::sPeptide strings freed after g_vRawPeptides
                              // to keep the allocator bins warm for the string frees above
-//      printf("   - freed g_pvDBIndex:            %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       g_pvProteinsList.clear();   // CSR flat layout: 2 free() calls instead of ~190M
-//      printf("   - freed g_pvProteinsList:       %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       g_pvProteinNames.clear();
-//      printf("   - freed g_pvProteinNames:       %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       vector<string>().swap(MOD_SEQS);
-//      printf("   - freed MOD_SEQS:               %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       vector<FragmentPeptidesStruct>().swap(g_vFragmentPeptides);
-//      printf("   - freed g_vFragmentPeptides:    %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       delete[] PEPTIDE_MOD_SEQ_IDXS;
       PEPTIDE_MOD_SEQ_IDXS = nullptr;
-//      printf("   - freed PEPTIDE_MOD_SEQ_IDXS:  %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    {
-      auto tClear = chrono::steady_clock::now();
       delete[] MOD_SEQ_MOD_NUM_START;
       MOD_SEQ_MOD_NUM_START = nullptr;
       delete[] MOD_SEQ_MOD_NUM_CNT;
       MOD_SEQ_MOD_NUM_CNT = nullptr;
-//      printf("   - freed MOD_SEQ_MOD_NUM_START/CNT: %4lld ms\n",
-//         (long long)chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - tClear).count());
    }
 
    fflush(stdout);
@@ -1412,7 +1389,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    {
       size_t pepSectionSize = (size_t)(clProteinsFilePos - clPeptidesFilePos) - sizeof(size_t);
       vector<char> pepBuf(pepSectionSize);
-      fread(pepBuf.data(), 1, pepSectionSize, fp);
+      (void)fread(pepBuf.data(), 1, pepSectionSize, fp);
       const char* p = pepBuf.data();
 
       struct PlainPeptideIndexStruct sTmp;
@@ -1437,7 +1414,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
    {
       size_t protSectionSize = (size_t)(clPermutationsFilePos - clProteinsFilePos);
       vector<char> protBuf(protSectionSize);
-      fread(protBuf.data(), 1, protSectionSize, fp);
+      (void)fread(protBuf.data(), 1, protSectionSize, fp);
       const char* p = protBuf.data();
 
       size_t tSize;
@@ -1505,7 +1482,7 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       comet_fileoffset_t varDataStart = comet_ftell(fp);
       size_t varDataSize = (size_t)(clFooterPos - varDataStart);
       vector<char> varBuf(varDataSize);
-      fread(varBuf.data(), 1, varDataSize, fp);
+      (void)fread(varBuf.data(), 1, varDataSize, fp);
       const char* p = varBuf.data();
 
       int iTmp;

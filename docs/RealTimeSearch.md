@@ -2,7 +2,7 @@
 
 Comet supports two search modes:
 
-- **Batch search**: `DoSearch()` -- reads a file, processes spectra in configurable batches, writes result files.
+- **Batch search**: `DoSearch()` -- reads a file, processes spectra in configurable batches, writes result files. `DoSearch()` is orchestrated by a `Pipeline` that owns one concrete `ISearchStrategy` (`FiStrategy`, `FastaStrategy`, or `PiStrategy`) and a set of `IResultWriter` implementations. All mutable batch-run state (query lists, per-run flags) lives in a `SearchSession` struct passed by reference through the pipeline.
 - **Real-time search (RTS)**: called per-spectrum by an external C# application; returns results synchronously within the same call. Designed for concurrent calls from multiple threads.
 
 This document covers the RTS path. The design history and task-by-task implementation record are in `docs/20260227_RTS_THREAD_PLAN.md` (MS2) and `docs/20260228_MS1_THREAD_PLAN.md` (MS1).
@@ -62,8 +62,9 @@ slow path: mutex-guarded check + initialization
   -> ValidateSequenceDatabaseFile()   validates FASTA / index; sets bCreateFragmentIndex=true
                                       if .idx is absent but FASTA exists
   -> CometPreprocess::AllocateMemory()  preprocessing thread buffers
-  -> CometSearch::AllocateMemory()      search thread pool (_pbSearchMemoryPool,
-                                        _ppbDuplFragmentArr) used by AcquirePoolSlot()
+  -> CometSearch::AllocateMemory()      search thread pool (s_pool, a SearchMemoryPool
+                                        instance; aliased into _ppbDuplFragmentArr)
+                                        used by AcquirePoolSlot()
   -> tp->fillPool()
   -> if iDbType == FI_DB:
        if bCreateFragmentIndex:
@@ -72,11 +73,12 @@ slow path: mutex-guarded check + initialization
                                        internally before returning
          CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
        ReadPlainPeptideIndex()         loads g_vRawPeptides from the .idx file
-       CreateFragmentIndex(tp)         builds g_iFragmentIndex in memory (CSR posting lists)
+       CreateFragmentIndex(tp)         builds g_iFragmentIndex / g_iFragmentIndexOffset
+                                       in memory (CSR posting lists)
   -> singleSearchInitializationComplete.store(true, release)
 ```
 
-The `release` store ensures all threads that subsequently load the flag with `acquire` see a fully initialized `g_iFragmentIndex` and all other globals.
+The `release` store ensures all threads that subsequently load the flag with `acquire` see a fully initialized `g_iFragmentIndex`, `g_iFragmentIndexOffset`, `g_pvProteinNameCache`, and all other globals.
 
 **Note on the index-build path:** When the `.idx` file is absent, `CreateFragmentIndex()` calls `DoSearch()` with `m_bRTSIndexBuild=true`. `DoSearch()` writes the `.idx` file, calls `CometSearch::DeallocateMemory()` to free the large FASTA-parse memory, then returns early (skipping the spec-lib and batch-search logic that follows in `DoSearch()`). `InitializeSingleSpectrumSearch()` then re-allocates the search pool before proceeding to load the index.
 
@@ -113,7 +115,7 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   +- CometPreprocess::PreprocessSingleSpectrumThreadLocal(charge, mz, masses, intensities)
   |     -> allocates caller-owned Query* on the heap
   |     -> fills it with binned spectrum data
-  |     -> does NOT touch g_pvQuery
+  |     -> does NOT touch SearchSession::queries
   |     -> returns nullptr on failure (caller checks and returns false)
   |
   +- pdTmpSpectrum = new double[iArraySize]          <- per-call allocation
@@ -121,7 +123,8 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   +- CometSearch::RunSearch(pQuery, tRealTimeStart)
   |     -> allocates per-call bool* pbDuplFragment[]
   |     -> SearchFragmentIndex(pQuery, pbDuplFragment, tRealTimeStart)
-  |           reads g_iFragmentIndex / g_vFragmentPeptides (READ-ONLY) [x]
+  |           reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
+  |           reads g_vFragmentPeptides (READ-ONLY) [x]
   |           XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
   |           CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
   |           timeout checked against local tRealTimeStart
@@ -133,6 +136,7 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   +- CometPostAnalysis::CalculateAScorePro(pQuery, g_AScoreInterface)
   |
   +- sort _pResults by XCorr, extract top topN hits into output vectors
+  |     protein names resolved via g_pvProteinNameCache.find(offset) [READ-ONLY, O(1)] [x]
   |
   +- cleanup_results:
        delete pQuery          (destructor frees sparse arrays, _pResults[], accessMutex)
@@ -149,7 +153,7 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, charge, mz, masses, intensities, nPeaks, 
   |
   +- CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(charge, mz, masses, intensities)
   |     -> allocates caller-owned QueryMS1* on the heap
-  |     -> does NOT touch g_pvQueryMS1
+  |     -> does NOT touch SearchSession::ms1Queries
   |
   +- CometSpecLib::RunMS1Search(pQueryMS1, ...)
   |     reads g_vSpecLib / g_vulSpecLibPrecursorIndex (READ-ONLY) [x]
@@ -171,11 +175,12 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, charge, mz, masses, intensities, nPeaks, 
 | State | RTS path | Notes |
 |-------|:--------:|-------|
 | `g_staticParams` | Read-only [x] | Set once at init; never written during search. |
-| `g_iFragmentIndex` / `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | Loaded at init; never modified. |
+| `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
+| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | Loaded at init; never modified. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
-| `g_pvProteinNames` / `g_pvProteinsList` | Read-only [x] | Loaded at init. |
+| `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |
-| `g_pvQuery` / `g_pvQueryMS1` | Not touched [x] | RTS path uses per-call `Query*` / `QueryMS1*`. |
+| `SearchSession::queries` / `SearchSession::ms1Queries` | Not touched [x] | `SearchSession` is batch-path only. RTS path uses per-call `Query*` / `QueryMS1*`. |
 | `g_massRange` | Not written [x] | Mass limits derived from per-call `Query*._pepMassInfo`. |
 | `tRealTimeStart` | Per-call local [x] | Each call has its own `chrono::time_point`. |
 | `Query*` / `QueryMS1*` | Per-call heap [x] | Each call allocates and owns its object; freed at end. |
@@ -254,7 +259,8 @@ The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, p
 **Shared pools (allocated once at init, reused across calls):**
 
 - `CometPreprocess::AllocateMemory(N)` -- per-thread preprocessing buffers for the batch path. The RTS thread-local path bypasses this pool and allocates directly.
-- `CometSearch::AllocateMemory(N)` -- allocates `_pbSearchMemoryPool[N]` and `_ppbDuplFragmentArr[N][]`, used by `AcquirePoolSlot()` to hand each concurrent call a dedicated duplicate-fragment scratch buffer. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal)` (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
 ---
 
@@ -266,7 +272,7 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
 2. Implement in `CometSearchManager.cpp` using the thread-local pattern:
    - Use `PreprocessSingleSpectrumThreadLocal()` (not `PreprocessSingleSpectrum()`).
    - Call `CometSearch::RunSearch(pQuery, tRealTimeStart)` (not `RunSearch(ThreadPool*)`).
-   - Never write `g_pvQuery`, `g_massRange`, or `g_staticParams` from within the call.
+   - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
 4. If new return types are needed, add wrapper structs to `CometDataWrapper.h` (and mirror in `CometData.h`).
 5. Call from `RealtimeSearch/SearchMS1MS2.cs`.

@@ -110,7 +110,7 @@ bool CometSpecLib::LoadSpecLib(string strSpecLibFile)
 }
 
 
-bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
+bool CometSpecLib::ReadSpecLibSqlite(string /*strSpecLibFile*/)
 {
 
    printf(" Error - sqlite/.db files as spectral libraries are not supported yet.\n");
@@ -192,7 +192,7 @@ bool CometSpecLib::ReadSpecLibSqlite(string strSpecLibFile)
 }
 
 
-bool CometSpecLib::ReadSpecLibRaw(string strSpecLibFile)
+bool CometSpecLib::ReadSpecLibRaw(string /*strSpecLibFile*/)
 {
    printf(" Error - raw files as spectral libraries are not supported yet.\n");
    exit(1);
@@ -556,7 +556,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    ThreadPool* pLoadSpecThreadPool = tp;
 
    bool bFirstScan = true;
-   bool bDoneProcessingAllSpectra = false;
 
    printf(" - loading MS1 scan (%d, mass range %0.1lf - %0.1lf): ",
       iFileLastScan, g_staticParams.options.dMS1MinMass, g_staticParams.options.dMS1MaxMass);
@@ -602,7 +601,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
       if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
       {
-         bDoneProcessingAllSpectra = true;
          break;
       }
 
@@ -621,7 +619,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
          if (iScanNumber > iFileLastScan)
          {
-            bDoneProcessingAllSpectra = true;
             break;
          }
 
@@ -629,7 +626,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
          {
             if (iScanNumber > iFileLastScan)
             {
-               bDoneProcessingAllSpectra = true;
                break;
             }
 
@@ -648,7 +644,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
       }
       else if (CometPreprocess::IsValidInputType(iSpecLibInputType))
       {
-         bDoneProcessingAllSpectra = true;
          break;
       }
       else
@@ -657,7 +652,6 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
 
          if (iTmpCount > iFileLastScan)
          {
-            bDoneProcessingAllSpectra = true;
             break;
          }
       }
@@ -729,7 +723,7 @@ double CometSpecLib::ScoreSpecLib(Query *pQuery,
 // SpecLib entries that are matched to that "bin". This allows a mass query to walk through
 // and score against all entries in the vector.
 void CometSpecLib::SetSpecLibPrecursorIndex(double dNeutralMass,
-                                            int iSpecLibCharge,
+                                            int /*iSpecLibCharge*/,
                                             size_t iWhichSpecLib)
 {
    double dProtonatedMass = dNeutralMass + PROTON_MASS;

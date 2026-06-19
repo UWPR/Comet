@@ -24,7 +24,8 @@ public:
    ~CometWriteTxt();
    static void WriteTxt(FILE *fpout,
                         FILE *fpoutd,
-                        FILE *fpdb);
+                        FILE *fpdb,
+                        const vector<Query*>& queries);
 
    static void PrintTxtHeader(FILE *fpout);
    static void PrintModifications(FILE *fpout,
@@ -35,13 +36,15 @@ public:
                              int iWhichQuery,
                              int iWhichResult,
                              int iPrintTargetDecoy,
-                             unsigned int *uiNumTotProteins);
+                             unsigned int *uiNumTotProteins,
+                             const vector<Query*>& queries);
 
 private:
    static void PrintResults(int iWhichQuery,
                             int iPrintTargetDecoy,
                             FILE *fpOut,
-                            FILE *fpdb);
+                            FILE *fpdb,
+                            const vector<Query*>& queries);
 };
 
 #endif

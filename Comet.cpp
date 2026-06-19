@@ -692,7 +692,7 @@ void LoadParameters(char* pszParamsFile,
             enzymeInformation.szSampleEnzymeBreakAA,
             enzymeInformation.szSampleEnzymeNoBreakAA);
       }
-      fgets(szParamBuf, SIZE_BUF, fp);
+      (void)fgets(szParamBuf, SIZE_BUF, fp);
    }
    fclose(fp);
 

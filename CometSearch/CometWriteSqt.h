@@ -25,7 +25,8 @@ public:
 
    static void WriteSqt(FILE *fpout,
                         FILE *fpoutd,
-                        FILE *fpdb);
+                        FILE *fpdb,
+                        const vector<Query*>& queries);
 
    static void PrintSqtHeader(FILE *fpout,
                               CometSearchManager &searchMgr);
@@ -34,13 +35,15 @@ private:
    static void PrintResults(int iWhichQuery,
                             int iPrintTargetDecoy,
                             FILE *fpOut,
-                            FILE *fpdb);
+                            FILE *fpdb,
+                            const vector<Query*>& queries);
    static void PrintSqtLine(int iWhichQuery,
                             int iWhichResult,
                             Results *pOutput,
                             FILE *fpOut,
                             FILE *fpdb,
-                            int iPrintTargetDecoy);
+                            int iPrintTargetDecoy,
+                            const vector<Query*>& queries);
 };
 
 #endif
