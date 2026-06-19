@@ -52,18 +52,17 @@ namespace {
     }
   }
 
-  // RawFileReader has no structured per-scan equivalent of legacy's filter-derived activation
-  // method, supplemental-activation flag, or compensation voltage -- IScanEventBase::Activation/
-  // SupplementalActivation/CompensationVoltage are *filter-matching rule* settings (their type is
-  // TriState/CompensationVoltageType, "is this filter criterion on/off/any"), not the actual
-  // per-scan value. So, exactly as the COM-era evaluateFilter() did, get these (plus the same
-  // handful of scan types MSOrderType alone can't distinguish: multiplexed MS2, zoom/ultra-zoom,
-  // SRM) by tokenizing the human-readable scan event string -- its format is unchanged regardless
-  // of which Thermo API reads it. Same left-to-right precedence as legacy (a "msx" token wins over
-  // a later "ms2"/"ms3" token; "u" wins over a later "Z"; "sa" must appear before the "<mz>@<act>"
-  // token it modifies). Also collects the precursor m/z value(s) embedded in "<mz>@<act>" tokens,
-  // needed only for the MSX/SRM fallback paths (MS1/MS2/MS3 get precursor info from GetReaction()).
-  MSSpectrumType EvaluateScanTokens(int msOrderLevel, String^ eventStr, vector<double>& atTokenMZs, double& cv, MSActivation& act){
+  // RawFileReader has no structured per-scan equivalent of legacy's filter-derived compensation
+  // voltage or the handful of scan types MSOrderType alone can't distinguish (multiplexed MS2,
+  // zoom/ultra-zoom, SRM) -- IScanEventBase::CompensationVoltage is a *filter-matching rule*
+  // setting (its type is CompensationVoltageType, "is this filter criterion on/off/any"), not the
+  // actual per-scan value. So, exactly as the COM-era evaluateFilter() did, get these by
+  // tokenizing the human-readable scan event string -- its format is unchanged regardless of
+  // which Thermo API reads it. Same left-to-right precedence as legacy (a "msx" token wins over a
+  // later "ms2"/"ms3" token; "u" wins over a later "Z"). Also collects the precursor m/z value(s)
+  // embedded in "<mz>@<act>" tokens, needed only for the MSX/SRM fallback paths (MS1/MS2/MS3 get
+  // precursor info, and activation method, from GetReaction() -- see MapActivation() below).
+  MSSpectrumType EvaluateScanTokens(int msOrderLevel, String^ eventStr, vector<double>& atTokenMZs, double& cv){
     MSSpectrumType mst = Unspecified;
     switch(msOrderLevel){
       case 1: mst=MS1; break;
@@ -74,8 +73,6 @@ namespace {
 
     atTokenMZs.clear();
     cv=0;
-    act=mstNA;
-    bool bSA=false;
 
     string filterStr = msclr::interop::marshal_as<std::string>(eventStr);
     char cStr[1024];
@@ -95,8 +92,6 @@ namespace {
         if(mst!=MSX) mst=MS2;
       } else if(strcmp(tok,"ms3")==0){
         if(mst!=MSX) mst=MS3;
-      } else if(strcmp(tok,"sa")==0){
-        bSA=true;
       } else if(strcmp(tok,"SRM")==0){
         mst=SRM;
       } else if(strcmp(tok,"u")==0){
@@ -107,15 +102,31 @@ namespace {
         string tStr=tok;
         size_t stop=tStr.find('@');
         atTokenMZs.push_back(atof(tStr.substr(0,stop).c_str()));
-        string actStr=tStr.substr(stop+1,3);
-        if(actStr=="cid") act=mstCID;
-        else if(actStr=="etd") act = bSA ? mstETDSA : mstETD;
-        else if(actStr=="hcd") act=mstHCD;
-        else act=mstNA;
       }
       tok=strtok_r(NULL," \n",&nextTok);
     }
     return mst;
+  }
+
+  // IReaction::ActivationType/MultipleActivation are genuine per-scan values (unlike
+  // IScanEventBase::SupplementalActivation, a filter-matching rule) -- confirmed against real
+  // HCD scans during this rewrite. This covers every activation method Thermo instruments
+  // actually report, including ECD/PQD/IRMPD that the legacy COM filter-string parser (and this
+  // file's own first pass) never recognized, since that only ever matched the "cid"/"etd"/"hcd"
+  // 3-letter codes appearing in the human-readable filter string. Surface-induced dissociation
+  // (mstSID) has no Thermo ActivationType value at all -- it isn't a technique Thermo instruments
+  // perform/report, so it can't be detected from .raw data by any means.
+  MSActivation MapActivation(IReaction^ reaction){
+    switch(reaction->ActivationType){
+      case ActivationType::CollisionInducedDissociation: return mstCID;
+      case ActivationType::HigherEnergyCollisionalDissociation: return mstHCD;
+      case ActivationType::ElectronCaptureDissociation: return mstECD;
+      case ActivationType::PQD: return mstPQD;
+      case ActivationType::MultiPhotonDissociation: return mstIRMPD;
+      case ActivationType::ElectronTransferDissociation:
+        return reaction->MultipleActivation ? mstETDSA : mstETD;
+      default: return mstNA;
+    }
   }
 
   struct TrailerFields {
@@ -347,7 +358,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   MSSpectrumType MSn;
   int msLevel;
   double cv;
-  MSActivation act;
+  MSActivation act=mstNA;
 
 	//Rather than grab the next scan number, get the next scan based on a user-filter (if supplied).
   //if the filter was set, make sure we pass the filter
@@ -356,7 +367,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     IScanEvent^ peekEvent = rawFile->GetScanEventForScanNumber((int)rawCurSpec);
     msLevel = MsOrderToLevel(peekEvent->MSOrder);
     String^ eventStr = rawFile->GetScanEventStringForScanNumber((int)rawCurSpec);
-    MSn = EvaluateScanTokens(msLevel, eventStr, atTokenMZs, cv, act);
+    MSn = EvaluateScanTokens(msLevel, eventStr, atTokenMZs, cv);
 
     //check for spectrum filter (string)
     if(strlen(rawUserFilter)>0){
@@ -436,6 +447,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     //call, which indexed by MS order the same way.
     IReaction^ reaction = scanEvent->GetReaction(msLevel-2);
     preInfo.dIsoMZ = reaction->PrecursorMass;
+    act = MapActivation(reaction);
 
     //Correct precursor mono mass if it is more than 5 13C atoms away from isolation mass
     if (preInfo.dMonoMZ > 0 && preInfo.charge>0){

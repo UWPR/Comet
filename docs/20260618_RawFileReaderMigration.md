@@ -235,12 +235,27 @@ production `.raw` file (`20170103_HelaQC_01.raw`, 56,152 scans). Findings per it
    - **`IScanEventBase.SupplementalActivation`/`.CompensationVoltage` are filter-matching rule
      settings** (`TriState`/`CompensationVoltageType`: on/off/any), **not the per-scan value** —
      despite reading like per-scan booleans/doubles. There is no structured per-scan replacement
-     for the legacy COM filter string's `"sa"` token or `"cv=..."` token. The faithful fix was to
-     keep tokenizing the human-readable string from `GetScanEventStringForScanNumber()` exactly as
-     the old `evaluateFilter()` tokenized the COM filter string (same left-to-right precedence
-     rules), since the token format itself is unchanged across both Thermo APIs. This single
-     `EvaluateScanTokens()` function now also resolves MSX/zoom-scan/SRM classification and the
-     `<mz>@<act>` precursor-m/z fallback, mirroring `evaluateFilter()` one-for-one.
+     for the legacy COM filter string's `"cv=..."` token, so `EvaluateScanTokens()` keeps
+     tokenizing the human-readable string from `GetScanEventStringForScanNumber()` exactly as the
+     old `evaluateFilter()` tokenized the COM filter string (same left-to-right precedence rules)
+     for compensation voltage and for MSX/zoom-scan/SRM classification, since the token format
+     itself is unchanged across both Thermo APIs.
+   - **Activation method does have a genuine structured per-scan equivalent, despite the above** —
+     `IReaction.ActivationType`/`IReaction.MultipleActivation` (the same `IReaction` object already
+     fetched via `scanEvent->GetReaction(msLevel-2)` for precursor mass) are real per-scan values,
+     not filter rules; confirmed by comparing `ActivationType` against 4 known-HCD scans, where it
+     matched the legacy/token-derived `"hcd"` exactly every time. This is a strict improvement over
+     the initial implementation (which used `EvaluateScanTokens()`'s `"<mz>@<act>"` 3-letter-code
+     parsing for this too, mirroring `evaluateFilter()`'s `cid`/`etd`/`hcd`-only matching): the
+     `ActivationType` enum also covers `ElectronCaptureDissociation` (ECD), `PQD`, and
+     `MultiPhotonDissociation` (IRMPD) — none of which the filter-string 3-letter code ever
+     recognized, in either the legacy COM parser or this rewrite's first pass — so switching to
+     `MapActivation(IReaction^)` (`RAWReader.cpp`) added ECD/PQD/IRMPD support for `.raw` for the
+     first time. `mstSID` remains permanently undetectable from `.raw` data: there is no `SID`
+     value anywhere in Thermo's `ActivationType` enum, because surface-induced dissociation isn't
+     a Thermo instrument capability — it's a non-standard scan event a particular research lab
+     implemented locally, with no representation in Thermo's own scan/filter vocabulary to read
+     back, regardless of API.
    - **`ScanStatistics.IsCentroidScan` and `SpectrumPacketType` are not reliable predictors of
      whether a usable centroid stream exists.** A scan reporting `IsCentroidScan=false` (i.e.
      profile) on this Orbitrap file still had a valid, populated centroid stream — confirmed by
