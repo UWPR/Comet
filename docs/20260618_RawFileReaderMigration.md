@@ -206,26 +206,94 @@ production `.raw` file (`20170103_HelaQC_01.raw`, 56,152 scans). Findings per it
    `double`) -- a precision choice for Phase 1 to make deliberately, not a parity bug.
 
 ### Phase 1 — Rewrite `RAWReader` against RawFileReader .NET
-1. Replace the `#import "libid:..."` COM block and `IXRawfile*Ptr` members in
-   `MSToolkit/include/RAWReader.h` with an `IRawDataPlus^` member populated via
-   `RawFileReaderAdapter::FileFactory()`.
-2. Re-implement each extraction point in `MSToolkit/src/MSToolkit/RAWReader.cpp` per the mapping
-   table in §3.
-3. Keep `RAWReader`'s and `MSReader`'s public method signatures unchanged so
-   `CometSearch/CometPreprocess.cpp` requires no changes.
+**Done (2026-06-19).**
+
+1. `MSToolkit/include/RAWReader.h`: removed the `#import "libid:..."` COM block and
+   `XRawfile::IXRawfilePtr m_Raw` member. The replacement is a PIMPL: `RAWReaderImpl* pImpl`, where
+   `RAWReaderImpl` is only forward-declared in the header and fully defined inside
+   `RAWReader.cpp`. This is required, not just a style choice — `MSReader.h` (`MSReader.cpp:`
+   `RAWReader cRAW;`) embeds `RAWReader` **by value**, and `MSReader.h` is included by plain-native,
+   non-`/clr` code throughout `MSToolkit`/`CometSearch`. If `RAWReader.h` itself referenced a
+   managed handle type (`IRawDataPlus^`), every translation unit that includes it transitively
+   would need to compile `/clr`, which is not acceptable for the rest of the codebase. Dead
+   declared-but-never-defined methods identified during the read-through
+   (`lookupRT`, `setAverageRaw`, `setLabel`, `setRawFilterExact`, `calcPepMass`) were left alone —
+   out of scope for a like-for-like rewrite.
+2. `MSToolkit/src/MSToolkit/RAWReader.cpp`: full rewrite against
+   `ThermoFisher::CommonCore::RawFileReader`. Key findings that shaped the implementation,
+   none of which were knowable from the API surface alone — all confirmed against real
+   production `.raw` files (`data/20250520_Hela_60min_06.raw`, via the Phase 0
+   `spike/LegacyRawReaderSpike` harness rebuilt against the new lib):
+   - **A plain native struct cannot hold a `^` tracking handle as a member** (`error C3265`).
+     `RAWReaderImpl` (and any other native-side holder of a managed handle) must use
+     `gcroot<T>` from `<vcclr.h>`, not a bare `T^` field. `gcnew`/`delete` on the handle still
+     work as expected through `gcroot`; only direct member storage needs the wrapper.
+   - **`cli::array<T>^` must be written out in full** when `using namespace std;` is in scope —
+     bare `array<T>^` is ambiguous with `std::array` and silently resolves to the wrong one in
+     some contexts (compiles fine for one declaration, fails with "too few template arguments"
+     for another in the same file), which is more confusing than an outright error.
+   - **`IScanEventBase.SupplementalActivation`/`.CompensationVoltage` are filter-matching rule
+     settings** (`TriState`/`CompensationVoltageType`: on/off/any), **not the per-scan value** —
+     despite reading like per-scan booleans/doubles. There is no structured per-scan replacement
+     for the legacy COM filter string's `"sa"` token or `"cv=..."` token. The faithful fix was to
+     keep tokenizing the human-readable string from `GetScanEventStringForScanNumber()` exactly as
+     the old `evaluateFilter()` tokenized the COM filter string (same left-to-right precedence
+     rules), since the token format itself is unchanged across both Thermo APIs. This single
+     `EvaluateScanTokens()` function now also resolves MSX/zoom-scan/SRM classification and the
+     `<mz>@<act>` precursor-m/z fallback, mirroring `evaluateFilter()` one-for-one.
+   - **`ScanStatistics.IsCentroidScan` and `SpectrumPacketType` are not reliable predictors of
+     whether a usable centroid stream exists.** A scan reporting `IsCentroidScan=false` (i.e.
+     profile) on this Orbitrap file still had a valid, populated centroid stream — confirmed by
+     comparing `GetSegmentedScanFromScanNumber()` (returned real m/z positions but all-zero
+     intensities for that scan) against `GetCentroidStream()` (returned correct non-zero
+     intensities for the same scan, byte-for-byte matching the independent Phase 0
+     `RawFileReaderSpike` harness's output). The implemented rule: always try
+     `GetCentroidStream()` first; fall back to `GetSegmentedScanFromScanNumber()` (profile) only
+     if it throws or returns zero peaks. `Spectrum::setCentroidStatus()` now reflects which path
+     was actually used, not the scan's nominal `IsCentroidScan` flag.
+   - Field-for-field output (RT, TIC, BPI/BPM, MS level, charge, isolation/mono m/z, SPS masses,
+     ion injection time, peak m/z + intensity) was spot-checked against real MS1 and MS2 scans
+     (1, 100, 5000, 30005) of the same file and looks correct; MSX/SRM/zoom-scan paths could not be
+     exercised (no such scans available in the test files) and rely on the token-mirroring logic
+     above for correctness.
+3. `RAWReader`'s and `MSReader`'s public method signatures are unchanged; `CometSearch/CometPreprocess.cpp`
+   required no changes.
 
 ### Phase 2 — Build system changes (Windows only)
-1. Enable `/clr` for `RAWReader.cpp` (and any header that doesn't tolerate it, isolating into its
-   own translation unit if needed — confirmed feasible in Phase 0).
-2. Add `<Reference>`/`HintPath` entries (not `<PackageReference>` -- confirmed incompatible with
-   native `.vcxproj` restore in Phase 0 item 1) for `ThermoFisher.CommonCore.RawFileReader`/`.Data`
-   to the relevant `.vcxproj`, pointing at the same package version already vendored for
-   `RealtimeSearch.csproj`, replacing the COM `#import` GUID.
+1. **Done (2026-06-19).** `MSToolkit/VisualStudio/MSToolkit.vcxproj`: project-level
+   `<CLRSupport>true</CLRSupport>` + `<ExceptionHandling>Async</ExceptionHandling>` (both
+   Debug/Release), with every file **except** `RAWReader.cpp` opted back out via a per-file
+   `<CompileAsManaged>false</CompileAsManaged>` override. The reverse (project default = native,
+   opt `RAWReader.cpp` *in* per-file) does not fully work — MSBuild emits `warning MSB8077` and
+   the compile fails with `error C1107: could not find assembly 'mscorlib.dll'`, because the
+   project-level CLR build infrastructure (assembly search paths, etc.) only gets wired up when
+   `CLRSupport` is set at the project level. `/clr` also requires
+   `ExceptionHandling=Async` project-wide (`/EHa`); the project's previous implicit default
+   conflicted with `/clr` (`error D8016`). No changes needed to `CometSearch.vcxproj`/`Comet.vcxproj`
+   — linking the now-mixed-mode `MSToolkit.lib` into the plain-native `Comet.exe` (and
+   `CometWrapper.dll`/`RealtimeSearch.exe`) worked with no `RuntimeLibrary`/CLR-related changes
+   needed there; full `Comet.sln` Release|x64 build verified clean.
+2. **Done (2026-06-19).** Added `<Reference>`/`HintPath` entries (not `<PackageReference>` —
+   confirmed incompatible with native `.vcxproj` restore in Phase 0 item 1) for
+   `ThermoFisher.CommonCore.RawFileReader`/`.Data` to `MSToolkit.vcxproj`, pointing at
+   `$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.*\5.0.0.93\...` — the same package
+   version vendored for `RealtimeSearch.csproj` (Phase 3 item 1), populated into the global NuGet
+   cache by restoring that project at least once.
 3. Update the comment at `MSToolkit/Makefile:138-143` — `RAWReader.cpp` is still excluded from
    Linux/macOS builds, now because `.raw` support is Windows-only by decision, not because COM is
    Windows-only by limitation. No functional Makefile change needed.
 4. Drop the MSFileReader COM redistributable from Windows build/install documentation — it's no
    longer a dependency.
+
+### Phase 1/2 side fix — dead `main()` in `mzMLReader.cpp`
+**Done (2026-06-19).** `MSToolkit/src/mzParser/mzMLReader.cpp` had an unguarded, dead standalone
+test `int main(int argc, char* argv[])` (interactive mzML browser, unrelated to this migration).
+It was harmless under normal linking (never pulled from the archive, since nothing referenced it
+and the consuming `.exe` always defines its own `main`), but once `MSToolkit.lib` contains a
+`/clr`/`/GL`-tagged object, MSVC's linker restarts the link with `/LTCG`, which pulls in more
+archive members than a normal link and surfaced `LNK2005: main already defined`. Fixed by guarding
+the dead code with `#ifdef MZMLREADER_STANDALONE_MAIN` (never defined by any build target) rather
+than deleting it, since it predates this migration and isn't otherwise in scope here.
 
 ### Phase 3 — Modernize `RealtimeSearch.csproj` and delete dead code
 1. **Done (2026-06-18).** Replaced the `HintPath` DLL references
@@ -252,8 +320,8 @@ production `.raw` file (`20170103_HelaQC_01.raw`, 56,152 scans). Findings per it
 | Phase | Outcome | Platform | Status |
 |---|---|---|---|
 | 0 | Validated `/clr` + RawFileReader marshaling approach | Windows (spike) | Done (2026-06-18); see findings above and `spike/` |
-| 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows | Not started |
-| 2 | Build system updated; COM redistributable dependency removed | Windows | Not started |
+| 1 | `RAWReader` reimplemented against RawFileReader .NET | Windows | Done (2026-06-19); see findings above |
+| 2 | Build system updated; COM redistributable dependency removed | Windows | Items 1-2 done (2026-06-19); items 3-4 (Makefile comment, install docs) pending |
 | 3 | `RealtimeSearch` on NuGet-based Thermo deps; dead COM wrapper removed | Windows (hygiene only) | Item 1 done (2026-06-18); item 2 (delete `MSFileReaderWrapper`) pending |
 
 Linux and macOS are unchanged by this migration: `.raw` is not supported; users supply mzML/mzXML
@@ -285,3 +353,12 @@ Recorded here in case cross-platform `.raw` support becomes a goal again later:
   and calls managed code directly, with no separate process): the most complete cross-platform
   answer, but with the most build-system, deployment-footprint (conflicts with Comet's `-static`
   Linux build), and memory-safety overhead of the options considered.
+  - **DNNE** (.NET Native Exports) was also considered as a way to package this. Its "hosted"
+    mode just auto-generates the native C-export shim around `hostfxr` described above -- same
+    mechanism, same tradeoffs, just less hand-written boilerplate. Its "AOT" mode (compiling
+    straight to native code with no CLR present at runtime) is a genuinely different idea, but
+    doesn't change the conclusion: NativeAOT compiles from your own source/IL at publish time, so
+    it can't retroactively AOT-compile a third-party precompiled `netstandard2.0` assembly with no
+    source available. `ThermoFisher.CommonCore.RawFileReader` is closed-source, vendor-shipped IL
+    with no stated AOT compatibility (it predates NativeAOT going mainstream) -- same closed-source
+    wall that rules out the other options above.

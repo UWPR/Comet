@@ -26,11 +26,6 @@ limitations under the License.
 #include <vector>
 #include <string>
 
-#include <objbase.h>
-
-#import "libid:F0C5F3E3-4F2A-443E-A74D-0AABE3237494" rename_namespace("XRawfile") rename("value", "xValue")
-//#import "libid:5FE970A2-29C3-11D3-811D-00104B304896" rename_namespace("XRawfile") rename("value", "xValue")
-
 namespace MSToolkit {
 
 typedef struct rawPrecursorInfo{
@@ -51,6 +46,13 @@ typedef struct rawPrecursorInfo{
     parScanNum = 0;
   }
 } rawPrecursorInfo;
+
+// Opaque PIMPL handle: the real member is a managed ThermoFisher::CommonCore RawFileReader
+// handle, but that can only appear in code compiled with /clr. This header is included by
+// plain-native translation units across MSToolkit/CometSearch, so the managed type is confined
+// to RAWReaderImpl's definition inside RAWReader.cpp (the only file in this library compiled
+// with /clr).
+struct RAWReaderImpl;
 
 class RAWReader {
 public:
@@ -74,7 +76,7 @@ public:
   void setMSLevelFilter(std::vector<MSSpectrumType>* v);
   void setRawFilter(char* c);
   void setRawFilterExact(bool b);
-	
+
 
 private:
 
@@ -95,20 +97,16 @@ private:
 	long rawAvgCutoff;
 	long rawCurSpec;
 	long rawTotSpec;
-  
-  XRawfile::IXRawfilePtr m_Raw;
+
+  RAWReaderImpl* pImpl;
 
   std::vector<MSSpectrumType>* msLevelFilter;
 
 	//Private Functions
-  int							calcChargeState(double precursormz, double highmass, VARIANT* varMassList, long nArraySize);
+  int							calcChargeState(double precursormz, double highmass, const double* masses, const double* intensities, long nArraySize);
   double					calcPepMass(int chargestate, double precursormz);
-  MSSpectrumType	evaluateFilter(long scan, char* chFilter, std::vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act);
-  double          evaluateTrailerDouble(const char* id);
-  int             evaluateTrailerInt(const char* id);
-  std::string     evaluateTrailerString(const char* id);
 	bool						initRaw();
-  
+
 
 };
 

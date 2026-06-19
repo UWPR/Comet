@@ -16,6 +16,8 @@
     <ProjectGuid>{c0bd6ac1-1126-476e-938f-7e351b36cde2}</ProjectGuid>
     <RootNamespace>MSToolkit</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <!-- Needed for RAWReader.cpp's per-file /clr compilation (ThermoFisher.CommonCore.RawFileReader). -->
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -23,6 +25,10 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <!-- Project-wide default so RAWReader.cpp's /clr compile gets the CLR build infrastructure
+         it needs (assembly resolution, etc.); every other file opts back out per-file below.
+         See docs/20260618_RawFileReaderMigration.md. -->
+    <CLRSupport>true</CLRSupport>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -30,6 +36,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <CLRSupport>true</CLRSupport>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -59,6 +66,7 @@
       <AdditionalOptions>$(PreDef)</AdditionalOptions>
       <AdditionalIncludeDirectories>..\include;..\include\extern;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -81,6 +89,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -89,26 +98,83 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <!-- Project-level CLRSupport (above) defaults every file to /clr; only RAWReader.cpp (which
+       talks to RawFileReader .NET) actually needs that, so every other file explicitly opts
+       back out to plain native compilation. See docs/20260618_RawFileReaderMigration.md. -->
   <ItemGroup>
-    <ClCompile Include="..\src\MSToolkit\MSObject.cpp" />
-    <ClCompile Include="..\src\MSToolkit\MSReader.cpp" />
+    <ClCompile Include="..\src\MSToolkit\MSObject.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\MSToolkit\MSReader.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
     <ClCompile Include="..\src\MSToolkit\RAWReader.cpp" />
-    <ClCompile Include="..\src\MSToolkit\Spectrum.cpp" />
-    <ClCompile Include="..\src\mzParser\BasicChromatogram.cpp" />
-    <ClCompile Include="..\src\mzParser\BasicSpectrum.cpp" />
-    <ClCompile Include="..\src\mzParser\Czran.cpp" />
-    <ClCompile Include="..\src\mzParser\MSNumpress.cpp" />
-    <ClCompile Include="..\src\mzParser\mz5handler.cpp" />
-    <ClCompile Include="..\src\mzParser\mzMLReader.cpp" />
-    <ClCompile Include="..\src\mzParser\mzParser.cpp" />
-    <ClCompile Include="..\src\mzParser\mzpMz5Config.cpp" />
-    <ClCompile Include="..\src\mzParser\mzpMz5Structs.cpp" />
-    <ClCompile Include="..\src\mzParser\mzp_base64.cpp" />
-    <ClCompile Include="..\src\mzParser\PWIZface.cpp" />
-    <ClCompile Include="..\src\mzParser\RAMPface.cpp" />
-    <ClCompile Include="..\src\mzParser\saxhandler.cpp" />
-    <ClCompile Include="..\src\mzParser\saxmzmlhandler.cpp" />
-    <ClCompile Include="..\src\mzParser\saxmzxmlhandler.cpp" />
+    <ClCompile Include="..\src\MSToolkit\Spectrum.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\BasicChromatogram.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\BasicSpectrum.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\Czran.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\MSNumpress.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mz5handler.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzMLReader.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzParser.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzpMz5Config.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzpMz5Structs.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\mzp_base64.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\PWIZface.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\RAMPface.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxhandler.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxmzmlhandler.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="..\src\mzParser\saxmzxmlhandler.cpp">
+      <CompileAsManaged>false</CompileAsManaged>
+    </ClCompile>
+  </ItemGroup>
+  <!-- PackageReference does not work for managed assembly references from a native .vcxproj
+       (NuGet resolves the project's framework as "native,Version=v0.0", incompatible with these
+       netstandard2.0-only packages, error NU1202; see Phase 0 in docs/20260618_RawFileReaderMigration.md).
+       Reference/HintPath against the package already restored into the global NuGet cache by
+       RealtimeSearch.csproj is the working approach. -->
+  <PropertyGroup>
+    <ThermoNuGetCache>$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.</ThermoNuGetCache>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="ThermoFisher.CommonCore.Data">
+      <HintPath>$(ThermoNuGetCache)data\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ThermoFisher.CommonCore.RawFileReader">
+      <HintPath>$(ThermoNuGetCache)rawfilereader\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.RawFileReader.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\MSNumpress.hpp" />

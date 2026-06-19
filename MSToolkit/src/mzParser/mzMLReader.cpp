@@ -12,6 +12,9 @@ Version 1.1, March 14, 2012.
 using namespace std;
 using namespace mzParser;
 
+// Dead standalone interactive test harness, never built into MSToolkit.lib (no target defines
+// MZMLREADER_STANDALONE_MAIN). Left guarded rather than deleted since it predates this guard.
+#ifdef MZMLREADER_STANDALONE_MAIN
 int main(int argc, char* argv[]){
 
 	if(argc!=2) {
@@ -111,3 +114,4 @@ int main(int argc, char* argv[]){
 
 	return 0;
 }
+#endif
