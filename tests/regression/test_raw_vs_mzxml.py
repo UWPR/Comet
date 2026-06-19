@@ -105,22 +105,32 @@ def count_sqt_spectra(path: Path) -> int:
 def count_pepxml_spectra(path: Path) -> int:
     if not path.exists():
         return 0
-    text = path.read_text(encoding="utf-8", errors="replace")
-    return text.count("<spectrum_query ")
+    n = 0
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            n += line.count("<spectrum_query ")
+    return n
 
 
 def count_mzid_results(path: Path) -> int:
     if not path.exists():
         return 0
-    text = path.read_text(encoding="utf-8", errors="replace")
-    return len(re.findall(r"<SpectrumIdentificationResult id=", text))
+    n = 0
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            n += len(re.findall(r"<SpectrumIdentificationResult id=", line))
+    return n
 
 
 def count_pin_rows(path: Path) -> int:
     if not path.exists():
         return 0
-    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    return max(0, len(lines) - 1)   # minus header line
+    n = 0
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        next(fh, None)   # skip header line
+        for _ in fh:
+            n += 1
+    return n
 
 
 RECORD_COUNTERS = {

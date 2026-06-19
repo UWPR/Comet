@@ -44,6 +44,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 $(OBJDIR)/%.o: %.cpp %.h Common.h CometDataInternal.h BS_thread_pool.hpp | $(OBJDIR)
+	@mkdir -p $(dir $@)
 	${CXX} ${CXXFLAGS} $< -c -o $@
 
 # Add specific dependency rules for object files that require multiple headers

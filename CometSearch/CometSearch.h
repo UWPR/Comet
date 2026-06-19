@@ -81,7 +81,6 @@ public:
                                 int iPercentEnd,
                                 ThreadPool* tp,
                                 vector<Query*>& queries);
-   static bool RunSpecLibSearch(ThreadPool* tp);
    static bool RunMS1Search(ThreadPool* tp,
                             double dRT,
                             double dMaxMS1RTDiff,

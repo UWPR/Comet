@@ -954,14 +954,6 @@ bool CometSearch::RunSearch(int iPercentStart,
 }
 
 
-bool CometSearch::RunSpecLibSearch(ThreadPool* /*tp*/)
-{
-   //printf("OK in RunSpecLib\n");
-
-   return true;
-}
-
-
 bool CometSearch::RunSpecLibSearch(int /*iPercentStart*/,
                                    int /*iPercentEnd*/,
                                    ThreadPool* /*tp*/,

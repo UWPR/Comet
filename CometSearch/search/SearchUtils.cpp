@@ -14,27 +14,35 @@
 
 #include "SearchUtils.h"
 
+static bool HasSuffixIgnoreCase(const char* pszFileName, int iLen, const char* pszSuffix)
+{
+   int iSuffixLen = (int)strlen(pszSuffix);
+
+   return iLen >= iSuffixLen && !STRCMP_IGNORE_CASE(pszFileName + iLen - iSuffixLen, pszSuffix);
+}
+
+
 static InputType GetInputType(const char* pszFileName)
 {
    int iLen = (int)strlen(pszFileName);
 
-   if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 6, ".mzXML")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".mzML")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 9, ".mzXML.gz")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 8, ".mzML.gz"))
+   if (HasSuffixIgnoreCase(pszFileName, iLen, ".mzXML")
+         || HasSuffixIgnoreCase(pszFileName, iLen, ".mzML")
+         || HasSuffixIgnoreCase(pszFileName, iLen, ".mzXML.gz")
+         || HasSuffixIgnoreCase(pszFileName, iLen, ".mzML.gz"))
    {
       return InputType_MZXML;
    }
-   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".raw"))
+   else if (HasSuffixIgnoreCase(pszFileName, iLen, ".raw"))
    {
       return InputType_RAW;
    }
-   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".ms2")
-         || !STRCMP_IGNORE_CASE(pszFileName + iLen - 5, ".cms2"))
+   else if (HasSuffixIgnoreCase(pszFileName, iLen, ".ms2")
+         || HasSuffixIgnoreCase(pszFileName, iLen, ".cms2"))
    {
       return InputType_MS2;
    }
-   else if (!STRCMP_IGNORE_CASE(pszFileName + iLen - 4, ".mgf"))
+   else if (HasSuffixIgnoreCase(pszFileName, iLen, ".mgf"))
    {
       return InputType_MGF;
    }
@@ -83,8 +91,8 @@ bool UpdateInputFile(InputFileInfo* pFileInfo)
       if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
          *pStr = '\0';
 
-      if (!STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 9, ".mzXML.gz")
-            || !STRCMP_IGNORE_CASE(g_staticParams.inputFile.szFileName + iLen - 8, ".mzML.gz"))
+      if (HasSuffixIgnoreCase(g_staticParams.inputFile.szFileName, iLen, ".mzXML.gz")
+            || HasSuffixIgnoreCase(g_staticParams.inputFile.szFileName, iLen, ".mzML.gz"))
       {
          if ((pStr = strrchr(g_staticParams.inputFile.szBaseName, '.')))
             *pStr = '\0';
