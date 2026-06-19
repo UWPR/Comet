@@ -78,6 +78,7 @@ class Spectrum {
   double          getBPM();
   int             getCentroidStatus();
   int				      getCharge();
+  bool            getPositiveScan();
   double          getCompensationVoltage();
   double          getConversionA();
   double          getConversionB();
@@ -115,6 +116,7 @@ class Spectrum {
   void            setBPM(double);
   void            setCentroidStatus(int);
   void			    	setCharge(int);
+  void            setPositiveScan(bool);
   void            setCompensationVoltage(double);
   void            setConversionA(double);
   void            setConversionB(double);
@@ -171,6 +173,7 @@ class Spectrum {
   std::vector<double>   *vIonMobility;
   std::vector<ZState>   *vZ;         //presumed charge states and M+H; M can be monoisotopic or selected.
   int		           charge;
+  bool                 positiveScan;
   float		         rTime;
   int		           scanNumber;
   int              scanNumber2;

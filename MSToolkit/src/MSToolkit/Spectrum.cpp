@@ -25,6 +25,7 @@ Spectrum::Spectrum(){
 
   rTime=0;
   charge=0;
+  positiveScan = true;
   scanNumber=0;
   scanNumber2=0;
   msLevel = 2;
@@ -82,6 +83,7 @@ Spectrum::Spectrum(const Spectrum& s){
 
   rTime = s.rTime;
   charge = s.charge;
+  positiveScan = s.positiveScan;
   scanNumber = s.scanNumber;
   scanNumber2 = s.scanNumber2;
   msLevel = s.msLevel;
@@ -163,6 +165,7 @@ Spectrum& Spectrum::operator=(const Spectrum& s){
     userParams = new vector<MSUserParam>(*s.userParams);
     rTime = s.rTime;
     charge = s.charge;
+    positiveScan = s.positiveScan;
     scanNumber = s.scanNumber;
     scanNumber2 = s.scanNumber2;
     msLevel = s.msLevel;
@@ -349,7 +352,8 @@ void Spectrum::clear(){
   scanNumber2 = 0;
 	rTime = 0;
 	charge = 0;
-	msLevel = 0;
+    positiveScan = true;
+    msLevel = 0;
   convA = 0;
   convB = 0;
   TIC = 0;
@@ -464,6 +468,9 @@ int Spectrum::getCharge(){
   return charge;
 }
 
+bool Spectrum::getPositiveScan(){
+  return positiveScan;
+}
 double Spectrum::getCompensationVoltage(){
   return compensationVoltage;
 }
@@ -615,6 +622,10 @@ void Spectrum::setCentroidStatus(int i){
 
 void Spectrum::setCharge(int i){
   charge=i;
+}
+
+void Spectrum::setPositiveScan(bool p){
+  positiveScan = p;
 }
 
 void Spectrum::setCompensationVoltage(double d){

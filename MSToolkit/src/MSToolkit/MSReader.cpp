@@ -1403,6 +1403,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	s.setScanNumber(scanHeader.acquisitionNum);
 	s.setScanNumber(scanHeader.acquisitionNum,true);
 	s.setRTime((float)scanHeader.retentionTime/60.0f);
+  s.setPositiveScan(scanHeader.positiveScan);
   s.setCompensationVoltage(scanHeader.compensationVoltage);
   s.setInverseReducedIonMobility(scanHeader.inverseReducedIonMobility);
   s.setIonInjectionTime((float)scanHeader.ionInjectionTime);

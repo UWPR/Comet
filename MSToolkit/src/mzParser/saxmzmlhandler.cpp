@@ -538,6 +538,9 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name,"positive scan") || !strcmp(accession,"MS:1000130")) {
     spec->setPositiveScan(true);
 
+  } else if(!strcmp(name,"negative scan") || !strcmp(accession,"MS:1000129")) {
+    spec->setPositiveScan(false);
+
   } else if(!strcmp(name,"possible charge state") || !strcmp(accession,"MS:1000633")) {
     m_precursorIon.possibleCharges.push_back(atoi(value));
 
