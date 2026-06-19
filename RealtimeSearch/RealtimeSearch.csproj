@@ -63,10 +63,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="ThermoFisher.CommonCore.BackgroundSubtraction" Version="5.0.0.93" />
-    <PackageReference Include="ThermoFisher.CommonCore.Data" Version="5.0.0.93" />
-    <PackageReference Include="ThermoFisher.CommonCore.MassPrecisionEstimator" Version="5.0.0.93" />
-    <PackageReference Include="ThermoFisher.CommonCore.RawFileReader" Version="5.0.0.93" />
+    <PackageReference Include="ThermoFisher.CommonCore.BackgroundSubtraction" Version="[5.0.0.93]" />
+    <PackageReference Include="ThermoFisher.CommonCore.Data" Version="[5.0.0.93]" />
+    <PackageReference Include="ThermoFisher.CommonCore.MassPrecisionEstimator" Version="[5.0.0.93]" />
+    <PackageReference Include="ThermoFisher.CommonCore.RawFileReader" Version="[5.0.0.93]" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\Resources.Designer.cs">
