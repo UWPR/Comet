@@ -106,6 +106,7 @@ private:
   int							calcChargeState(double precursormz, double highmass, const double* masses, const double* intensities, long nArraySize);
   double					calcPepMass(int chargestate, double precursormz);
 	bool						initRaw();
+  bool						readRawFileImpl(const char* c, Spectrum& s, int scNum);
 
 
 };

@@ -26,6 +26,7 @@ using namespace ThermoFisher::CommonCore::Data::Business;
 using namespace ThermoFisher::CommonCore::Data::FilterEnums;
 using namespace ThermoFisher::CommonCore::Data::Interfaces;
 using namespace ThermoFisher::CommonCore::RawFileReader;
+using namespace System::Runtime::InteropServices;
 
 namespace MSToolkit {
   // The real managed handle. Only ever touched from this /clr-compiled file; RAWReader.h (seen
@@ -242,7 +243,7 @@ int RAWReader::calcChargeState(double precursormz, double highmass, const double
 	if(!bFound) {
 		return 1;
 	}
-	if(iStart = 0) iStart++;
+	if(iStart == 0) iStart++;
 
 	for(i=iStart;i<nArraySize;i++) dRightSum = dRightSum + intensities[i];
 
@@ -291,7 +292,23 @@ bool RAWReader::initRaw(){
   return true;
 }
 
+// Thin exception boundary around readRawFileImpl(). RawFileReader is closed-source code
+// reading arbitrary, sometimes malformed or edge-case .raw files -- a genuine system
+// boundary. Any RawFileReader call inside readRawFileImpl (FileFactory,
+// GetScanEventForScanNumber, GetTrailerExtraInformation, GetReaction, Scan::FromFile, ...) can
+// throw on a corrupted or unusual file/scan; without this wrapper that exception would
+// propagate uncaught into plain-native callers (MSReader.cpp, CometPreprocess.cpp) that have no
+// way to catch a managed exception, most likely crashing the whole process mid-batch-search.
 bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
+  try{
+    return readRawFileImpl(c, s, scNum);
+  } catch(Exception^ ex){
+    cerr << "Error reading raw file: " << msclr::interop::marshal_as<std::string>(ex->Message) << endl;
+    return false;
+  }
+}
+
+bool RAWReader::readRawFileImpl(const char *c, Spectrum &s, int scNum){
 
 	bool bNewFile=false;
 
@@ -334,6 +351,7 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
       IRawDataPlus^ rf = RawFileReaderAdapter::FileFactory(gcnew String(c));
       if(!rf->IsOpen || rf->IsError){
         cerr << "Cannot open " << c << endl;
+        delete rf;
         return false;
       }
       rf->SelectInstrument(Device::MS, 1);
@@ -460,41 +478,31 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   //this codebase -- the averaged-scan path it would select here was already unreachable before
   //this rewrite, so it isn't reimplemented against RawFileReader's AverageScans() API; this just
   //falls through to the normal single-scan retrieval, same as rawAvg==false.
-  // GetCentroidStream gives the instrument's saved centroid peaks (the representation Comet's
-  // correlation scoring actually wants); this is available for FT/Orbitrap scans regardless of
-  // whether the scan's *primary* stored format is profile (IsCentroidScan/SpectrumPacketType are
+  // Scan::FromFile()'s PreferredMasses/PreferredIntensities give the instrument's saved centroid
+  // peaks when present (the representation Comet's correlation scoring actually wants) and fall
+  // back to the profile SegmentedScan internally when not, with HasCentroidStream reporting which
+  // path was used -- all without throwing for the routine "no centroid stream" case. This replaces
+  // an earlier GetCentroidStream()/GetSegmentedScanFromScanNumber() pairing that relied on a
+  // try/catch around GetCentroidStream() to detect the no-centroid-stream case, which meant every
+  // profile-only scan (e.g. true profile-only data from non-FT instruments) paid the cost of a
+  // thrown-and-caught .NET exception just to discover that (IsCentroidScan/SpectrumPacketType are
   // not reliable predictors of centroid-stream availability in practice -- confirmed against real
-  // data during Phase 0/1 validation). Scans with no saved centroid stream at all (e.g. true
-  // profile-only data from non-FT instruments) throw, and fall back to the profile SegmentedScan.
-  cli::array<double>^ peakMasses;
-  cli::array<double>^ peakIntensities;
-  int numPeaks;
-  bool gotCentroid=false;
-  try{
-    CentroidStream^ centroid = rawFile->GetCentroidStream((int)rawCurSpec, false);
-    if(centroid->Length>0){
-      peakMasses = centroid->Masses;
-      peakIntensities = centroid->Intensities;
-      numPeaks = centroid->Length;
-      gotCentroid=true;
-    }
-  } catch(Exception^){
-    //no centroid stream for this scan; fall through to the profile path below
-  }
-  if(!gotCentroid){
-    SegmentedScan^ segScan = rawFile->GetSegmentedScanFromScanNumber((int)rawCurSpec, stats);
-    peakMasses = segScan->Positions;
-    peakIntensities = segScan->Intensities;
-    numPeaks = segScan->PositionCount;
-  }
-  bool bCentroid = gotCentroid;
+  // data during Phase 0/1 validation, independently of which API is used to fetch the peaks).
+  Scan^ scanObj = Scan::FromFile(rawFile, (int)rawCurSpec);
+  scanObj->PreferCentroids = true;
+  bool bCentroid = scanObj->HasCentroidStream;
+  cli::array<double>^ peakMasses = scanObj->PreferredMasses;
+  cli::array<double>^ peakIntensities = scanObj->PreferredIntensities;
+  int numPeaks = peakMasses->Length;
 
   //Marshal the managed peak arrays into native buffers once, up front (mirrors the SAFEARRAY
   //copy the COM path used to do), so the rest of this function works with plain native data.
+  //Marshal::Copy does a bulk copy rather than a per-element managed-array-indexed loop -- worth
+  //the difference here since a dense profile-fallback MS1 scan can be tens of thousands of points.
   vector<double> masses(numPeaks), intensities(numPeaks);
-  for(int p=0; p<numPeaks; p++){
-    masses[p]=peakMasses[p];
-    intensities[p]=peakIntensities[p];
+  if(numPeaks>0){
+    Marshal::Copy(peakMasses, 0, IntPtr(masses.data()), numPeaks);
+    Marshal::Copy(peakIntensities, 0, IntPtr(intensities.data()), numPeaks);
   }
 
 	//Handle MS2 and MS3 files differently to create Z-lines

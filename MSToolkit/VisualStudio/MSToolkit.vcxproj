@@ -165,14 +165,17 @@
        RealtimeSearch.csproj is the working approach. -->
   <PropertyGroup>
     <ThermoNuGetCache>$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.</ThermoNuGetCache>
+    <!-- Single source of truth for the package version below. Keep in sync with the
+         PackageReference versions in RealtimeSearch.csproj when bumping. -->
+    <ThermoVersion>5.0.0.93</ThermoVersion>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ThermoFisher.CommonCore.Data">
-      <HintPath>$(ThermoNuGetCache)data\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll</HintPath>
+      <HintPath>$(ThermoNuGetCache)data\$(ThermoVersion)\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="ThermoFisher.CommonCore.RawFileReader">
-      <HintPath>$(ThermoNuGetCache)rawfilereader\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.RawFileReader.dll</HintPath>
+      <HintPath>$(ThermoNuGetCache)rawfilereader\$(ThermoVersion)\lib\netstandard2.0\ThermoFisher.CommonCore.RawFileReader.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>
