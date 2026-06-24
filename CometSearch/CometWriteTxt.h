@@ -1,4 +1,4 @@
-// Copyright 2023 Jimmy Eng
+// Copyright 2012-2026 Jimmy Eng
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
