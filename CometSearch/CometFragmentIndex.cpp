@@ -1235,10 +1235,17 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
          char delims[] = " ";
          int x=65;
 
-         // FIX:  hack here for setting static mods; need to reset masses ... fix later
+         // Reset BOTH mass arrays to bare (unmodified) residue masses before
+         // adding the static mods stored in the .idx header.  This prevents
+         // double-application when InitializeStaticParams() has already added
+         // static mods to pdAAMassParent.
          CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassFragment,
             g_staticParams.massUtility.bMonoMassesFragment,
             &g_staticParams.massUtility.dOH2fragment);
+
+         CometMassSpecUtils::AssignMass(g_staticParams.massUtility.pdAAMassParent,
+            g_staticParams.massUtility.bMonoMassesParent,
+            &g_staticParams.massUtility.dOH2parent);
 
          bFoundStatic = true;
          tok=strtok(szBuf+11, delims);
