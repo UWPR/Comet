@@ -34,6 +34,9 @@ endif
 
 LIBCOMETSEARCH = $(COMETSEARCH)/libcometsearch.a
 
+UNITTEST_BIN = tests/unit/test_comet_internal
+UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp
+
 comet.exe: $(OBJS) $(LIBCOMETSEARCH)
 	cd $(MSTOOLKIT) && $(MAKE) all
 	cd $(ASCOREPRO) && $(MAKE) all
@@ -50,10 +53,19 @@ $(LIBCOMETSEARCH): $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEA
 Comet.o: Comet.cpp $(DEPS)
 	${CXX} ${CXXFLAGS} Comet.cpp -c
 
+# Dependency-free unit tests (tests/unit/MiniTest.h -- no gtest, no CMake).
+# Builds a standalone binary linked directly against libcometsearch and
+# its dependencies, then runs it.
+unittest: $(LIBCOMETSEARCH)
+	cd $(MSTOOLKIT) && $(MAKE) all
+	cd $(ASCOREPRO) && $(MAKE) all
+	${CXX} ${CXXFLAGS} $(UNITTEST_SRC) -o $(UNITTEST_BIN) $(LIBPATHS) $(LIBS)
+	$(UNITTEST_BIN)
+
 clean:
-	rm -f *.o ${EXECNAME}
+	rm -f *.o ${EXECNAME} $(UNITTEST_BIN)
 	cd $(MSTOOLKIT) ; make realclean ; cd ../CometSearch ; make clean ; cd ../$(ASCOREPRO) ; make clean
 
 cclean:
-	rm -f *.o ${EXECNAME}
+	rm -f *.o ${EXECNAME} $(UNITTEST_BIN)
 	cd CometSearch ; make clean

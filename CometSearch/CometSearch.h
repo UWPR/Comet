@@ -312,9 +312,14 @@ private:
                                 const double dMaxSpecLibRT,
                                 const double dMaxQueryRT,
                                 ThreadPool* tp);
+protected:
+   // protected (rather than private) so unit tests can exercise codon
+   // translation via a thin public wrapper in a derived test fixture.
    char GetAA(int i,
               int iDirection,
               char* sDNASequence);
+
+private:
 
    struct VarModStat
    {
