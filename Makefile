@@ -38,7 +38,6 @@ UNITTEST_BIN = tests/unit/test_comet_internal
 UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp
 
 comet.exe: $(OBJS) $(LIBCOMETSEARCH)
-	cd $(MSTOOLKIT) && $(MAKE) all
 	cd $(ASCOREPRO) && $(MAKE) all
 
 ifeq ($(UNAME_S),Darwin)
@@ -47,17 +46,23 @@ else
 	${CXX} $(OBJS) -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
 endif
 
+# MSToolkit's build extracts/builds expat and zlib under MSToolkit/extern/,
+# whose generated headers Comet.cpp and CometSearch both #include (via
+# MSReader.h/mzParser.h) -- it must run before either compiles, not just
+# before the final comet.exe link, or a from-scratch checkout fails with
+# "expat.h: No such file or directory".
 $(LIBCOMETSEARCH): $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp)
+	cd $(MSTOOLKIT) && $(MAKE) all
 	cd $(COMETSEARCH) && $(MAKE)
 
 Comet.o: Comet.cpp $(DEPS)
+	cd $(MSTOOLKIT) && $(MAKE) all
 	${CXX} ${CXXFLAGS} Comet.cpp -c
 
 # Dependency-free unit tests (tests/unit/MiniTest.h -- no gtest, no CMake).
 # Builds a standalone binary linked directly against libcometsearch and
 # its dependencies, then runs it.
 unittest: $(LIBCOMETSEARCH)
-	cd $(MSTOOLKIT) && $(MAKE) all
 	cd $(ASCOREPRO) && $(MAKE) all
 	${CXX} ${CXXFLAGS} $(UNITTEST_SRC) -o $(UNITTEST_BIN) $(LIBPATHS) $(LIBS)
 	$(UNITTEST_BIN)
