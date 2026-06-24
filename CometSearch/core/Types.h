@@ -673,6 +673,14 @@ struct Query
 
       bSparseFromPool = false;
 
+      // Set by CometPreprocess::Preprocess (or its long/MS1-path siblings)
+      // once the spectrum's array size is known; must start at 0 here so the
+      // destructor's delete loops below are no-ops if a Query is destroyed
+      // before preprocessing ever runs (early-exit/error paths) -- otherwise
+      // they read these as garbage and walk off the end of a NULL array.
+      iSpScoreData = 0;
+      iFastXcorrDataSize = 0;
+
       ppfSparseSpScoreData = NULL;
       ppfSparseFastXcorrData = NULL;
       ppfSparseFastXcorrDataNL = NULL;          // ppfSparseFastXcorrData with NH3, H2O contributions
