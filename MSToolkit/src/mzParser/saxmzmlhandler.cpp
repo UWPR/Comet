@@ -1248,13 +1248,28 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
          bThermoFile = true;
 
       if (strstr(chunk, "<spectrum ")){
-        long scanNum;
+        long scanNum = -1;
         bool bSuccessfullyReadScan = false;
+        bool bParsedScanNum = false;
         do{
-          // now need to look for "index="
-          if ((pStr = strstr(chunk, "index=\"")) != NULL){
-            sscanf(pStr+7, "%ld", &scanNum);
-            bSuccessfullyReadScan = true;
+          // Only parse index= from the <spectrum ...> opening tag line to avoid
+          // picking up index= attributes from chromatogram or other elements that
+          // may appear on the same line as </spectrum> in compact mzML files.
+          if (!bParsedScanNum && strstr(chunk, "<spectrum ") != NULL){
+            if ((pStr = strstr(chunk, "index=\"")) != NULL){
+              sscanf(pStr+7, "%ld", &scanNum);
+              bSuccessfullyReadScan = true;
+            }
+            // Extract the id= attribute for m_mIndex population.
+            // Use " id=\"" (with leading space) to avoid false matches on sub-attributes.
+            char* pId = strstr(chunk, " id=\"");
+            if (pId != NULL){
+              char* idStart = pId + 5;
+              char* idEnd = strchr(idStart, '"');
+              if (idEnd != NULL)
+                curIndex.idRef = string(idStart, idEnd - idStart);
+            }
+            bParsedScanNum = true;
           }
 
           if ((pStr = strstr(chunk, "</spectrum>")) != NULL){
@@ -1262,9 +1277,9 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
               if (bThermoFile)  // start scan count at 1 instead of 0
                  scanNum += 1;
               curIndex.scanNum = scanNum;
-              curIndex.idRef = "";
               curIndex.offset = lOffset;
               m_vIndex.push_back(curIndex);
+              m_mIndex.insert(pair<string, size_t>(curIndex.idRef, curIndex.scanNum));
               break;
             }
             else{
@@ -1277,6 +1292,7 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
       }
       lOffset = ftell(f);  // position of file pointer before fgets in loop
     }
+    fclose(f);
   } else {
     readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
   }
