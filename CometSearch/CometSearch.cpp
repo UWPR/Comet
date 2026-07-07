@@ -1014,9 +1014,8 @@ bool CometSearch::RunMS1Search(ThreadPool* tp,
 
 // Thread-local RunMS1Search overload: compares a caller-owned QueryMS1* against
 // the read-only g_vSpecLib entries within the RT window. Populates the output
-// scores vector with up to topN best matches. Zero shared mutable state.
+// scores vector with the top match. Zero shared mutable state.
 bool CometSearch::RunMS1Search(QueryMS1* pQueryMS1,
-                               const int /*topN*/,
                                double dRT,
                                double dMaxMS1RTDiff,
                                const double dMaxSpecLibRT,
@@ -1068,7 +1067,7 @@ bool CometSearch::RunMS1Search(QueryMS1* pQueryMS1,
       }
    }
 
-   // For topN=1, just return the single best match
+   // Only return the single best match
    if (iBestLibIdx >= 0)
    {
       CometScoresMS1 result;
@@ -8606,8 +8605,16 @@ void CometSearch::StorePeptideI(Query* pQuery,
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].sPeffOrigResidues.clear();
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].iPeffNewResidueCount = 0;
 
-      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichProtein.clear();
+      // store protein
+      struct ProteinEntryStruct pTmpDecoy;
+
+      pTmpDecoy.lWhichProtein = dbe->lProteinFilePosition;
+      pTmpDecoy.iStartResidue = iStartPos + 1;  // 1 based position
+      pTmpDecoy.cPrevAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cPrevAA;
+      pTmpDecoy.cNextAA = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cNextAA;
+
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.clear();
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmpDecoy);
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
@@ -8628,7 +8635,15 @@ void CometSearch::StorePeptideI(Query* pQuery,
             {
                iVal = pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[i];
 
-               if (iVal > 0)
+               if (iVal >= COMPOUNDMODS_OFFSET)
+               {
+                  pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] =
+                     g_staticParams.variableModParameters.vdCompoundMasses.at(iVal - COMPOUNDMODS_OFFSET);
+
+                  if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
+                     pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
+               }
+               else if (iVal > 0)
                {
                   pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 
@@ -8706,8 +8721,22 @@ void CometSearch::StorePeptideI(Query* pQuery,
       pQuery->_pResults[siLowestXcorrScoreIndex].sPeffOrigResidues.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].iPeffNewResidueCount = 0;
 
+      // store protein
+      struct ProteinEntryStruct pTmp;
+
+      pTmp.lWhichProtein = dbe->lProteinFilePosition;
+      pTmp.iStartResidue = iStartPos + 1;  // 1 based position
+      pTmp.cPrevAA = pQuery->_pResults[siLowestXcorrScoreIndex].cPrevAA;
+      pTmp.cNextAA = pQuery->_pResults[siLowestXcorrScoreIndex].cNextAA;
+
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.clear();
       pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.clear();
+
+      if (bDecoyPep)
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichDecoyProtein.push_back(pTmp);
+      else
+         pQuery->_pResults[siLowestXcorrScoreIndex].pWhichProtein.push_back(pTmp);
+
       pQuery->_pResults[siLowestXcorrScoreIndex].lProteinFilePosition = dbe->lProteinFilePosition;
 
       pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_None;
@@ -8723,20 +8752,20 @@ void CometSearch::StorePeptideI(Query* pQuery,
          {
             memcpy(pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites, piVarModSites, iSizepiVarModSites);
 
-            for (int i = 0; i < iLenPeptide + 2; ++i)
-            {
-               if (piVarModSites[i] > 0)
-                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[piVarModSites[i] - 1].dVarModMass;
-               else
-                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = 0.0;
-            }
-
             int iVal;
             for (int i = 0; i < iLenPeptide + 2; ++i)
             {
                iVal = pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[i];
 
-               if (iVal > 0)
+               if (iVal >= COMPOUNDMODS_OFFSET)
+               {
+                  pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] =
+                     g_staticParams.variableModParameters.vdCompoundMasses.at(iVal - COMPOUNDMODS_OFFSET);
+
+                  if (pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod == HasVariableModType_None)
+                     pQuery->_pResults[siLowestXcorrScoreIndex].cHasVariableMod = HasVariableModType_True;
+               }
+               else if (iVal > 0)
                {
                   pQuery->_pResults[siLowestXcorrScoreIndex].pdVarModSites[i] = g_staticParams.variableModParameters.varModList[iVal - 1].dVarModMass;
 

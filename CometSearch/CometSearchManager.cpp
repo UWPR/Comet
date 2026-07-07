@@ -2304,14 +2304,9 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          return false;
       }
 
-      // Allocate search memory (pbDuplFragment arrays) needed by RunSearch(Query*)
-      if (!CometSearch::AllocateMemory(g_staticParams.options.iNumThreads))
-      {
-         string strErrorMsg = " Error - AllocateMemory failed for peptide index search.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
+      // Search memory (pbDuplFragment arrays) is already allocated by the
+      // unconditional CometSearch::AllocateMemory() call earlier in this function;
+      // nothing deallocates it on the PI_DB path before here.
 
       g_bPeptideIndexRead = true;
    }
@@ -2333,6 +2328,9 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
    {
       // Deallocate search memory
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+
+      // Deallocate preprocessing memory allocated in InitializeSingleSpectrumSearch()
+      CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
 
       if (g_staticParams.options.iPrintAScoreProScore)
          DeleteAScoreDllInterface(g_AScoreInterface);
@@ -2389,8 +2387,10 @@ void CometSearchManager::FinalizeSingleSpectrumMS1Search()
 {
    if (singleSearchMS1InitializationComplete.load(std::memory_order_acquire))
    {
-      // Deallocate search memory
-      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      // MS1 init (InitializeSingleSpectrumMS1Search) never allocates the CometSearch
+      // pool -- it only loads g_vSpecLib. Do not deallocate it here; that pool belongs
+      // to the independent MS2 lifecycle (InitializeSingleSpectrumSearch /
+      // FinalizeSingleSpectrumSearch) and may still be in use by MS2 search threads.
       singleSearchMS1InitializationComplete.store(false, std::memory_order_release);
    }
 }
@@ -3086,7 +3086,7 @@ bool CometSearchManager::DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
 
    // Task 2.2: Run search using thread-local overload - reads only g_vSpecLib (immutable).
    vector<CometScoresMS1> localScores;
-   bool bSucceeded = CometSearch::RunMS1Search(pQueryMS1, topN, dQueryRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, localScores);
+   bool bSucceeded = CometSearch::RunMS1Search(pQueryMS1, dQueryRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, localScores);
 
    if (bSucceeded && !localScores.empty())
    {

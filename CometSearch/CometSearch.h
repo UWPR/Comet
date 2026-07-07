@@ -90,7 +90,6 @@ public:
    // Thread-local overload: searches a caller-owned QueryMS1* against read-only g_vSpecLib.
    // No global mutable state accessed.
    static bool RunMS1Search(QueryMS1* pQueryMS1,
-                            const int topN,
                             double dRT,
                             double dMaxMS1RTDiff,
                             const double dMaxSpecLibRT,
