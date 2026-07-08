@@ -250,18 +250,11 @@ static Query* MakeQuery(double dLow, double dHigh)
 class BinarySearchMassFixture : public minitest::Test
 {
 protected:
-   std::vector<Query*> queries;
    CometSearch cs;
 
    void SetUp()
    {
       SetupMinimalStaticParams();
-   }
-
-   void TearDown()
-   {
-      for (auto* q : queries) delete q;
-      queries.clear();
    }
 };
 

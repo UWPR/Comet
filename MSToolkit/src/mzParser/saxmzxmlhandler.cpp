@@ -703,6 +703,7 @@ bool mzpSAXMzxmlHandler::generateIndexOffset() {
         } while (fgets(chunk, CHUNK, f));
       }
     }
+    fclose(f);
   } else {
     readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
   }

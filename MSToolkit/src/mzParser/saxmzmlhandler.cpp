@@ -1275,6 +1275,7 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
         bool bSuccessfullyReadScan = false;  // index= has been parsed
         bool bParsedId = false;              // id= has been parsed
         bool bInOpeningTag = true;           // still inside the <spectrum ...> opening tag
+        curIndex.idRef.clear();              // reset; curIndex is reused, so id must not carry over
         do{
           // The <spectrum ...> opening tag may legally span multiple lines, so keep looking
           // for index=/id= across lines until the tag-closing '>' is seen. Bound each line's
@@ -1291,16 +1292,19 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
               sscanf(pStr+7, "%ld", &scanNum);
               bSuccessfullyReadScan = true;
             }
-            // Extract the id= attribute for m_mIndex population.
-            // Use " id=\"" (with leading space) to avoid false matches on sub-attributes.
+            // Extract the id= attribute for m_mIndex population. Accept id=" whose name is
+            // preceded by XML whitespace (or the start of a continuation line) so tab/newline
+            // separators work, while never false-matching a sub-attribute ending in "...id".
             if (!bParsedId){
-              char* pId = strstr(pScanStart, " id=\"");
-              if (pId != NULL){
-                char* idStart = pId + 5;
-                char* idEnd = strchr(idStart, '"');
-                if (idEnd != NULL){
-                  curIndex.idRef = string(idStart, idEnd - idStart);
-                  bParsedId = true;
+              for (char* pId = strstr(pScanStart, "id=\""); pId != NULL; pId = strstr(pId + 4, "id=\"")){
+                if (pId == pScanStart || *(pId - 1) == ' ' || *(pId - 1) == '\t' || *(pId - 1) == '\r' || *(pId - 1) == '\n'){
+                  char* idStart = pId + 4;
+                  char* idEnd = strchr(idStart, '"');
+                  if (idEnd != NULL){
+                    curIndex.idRef = string(idStart, idEnd - idStart);
+                    bParsedId = true;
+                  }
+                  break;
                 }
               }
             }
@@ -1315,7 +1319,10 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
               curIndex.scanNum = scanNum;
               curIndex.offset = lSpecOffset;
               m_vIndex.push_back(curIndex);
-              m_mIndex.insert(pair<string, size_t>(curIndex.idRef, curIndex.scanNum));
+              // Only map id -> scan when this spectrum's id= was actually parsed; curIndex is
+              // reused, so an unparsed id would otherwise insert a stale idRef from a prior scan.
+              if (bParsedId)
+                m_mIndex.insert(pair<string, size_t>(curIndex.idRef, curIndex.scanNum));
               break;
             }
             else{
