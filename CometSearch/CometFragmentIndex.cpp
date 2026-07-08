@@ -1443,22 +1443,50 @@ bool CometFragmentIndex::ReadPlainPeptideIndex(void)
       }
    }
 
-   // Build in-memory protein name cache: read each unique file offset once so
-   // the RTS path can look up protein names without per-spectrum file I/O.
+   // Build in-memory protein name cache so the RTS path can look up protein
+   // names without per-spectrum file I/O.  WriteFIPlainPeptideIndex stores the
+   // names as one contiguous block of fixed WIDTH_REFERENCE-byte records ending
+   // exactly at clPeptidesFilePos, and every offset in g_pvProteinsList points
+   // into that block.  Read the whole block in one sequential fread and slice
+   // each name out of memory instead of doing a scattered fseek+fread per unique
+   // offset (thousands of random reads collapse to a single streaming read).
    {
-      char szProtBuf[WIDTH_REFERENCE];
       g_pvProteinNameCache.clear();
+
+      // Block base is the smallest referenced offset; [clNameBlockStart,
+      // clPeptidesFilePos) then covers every referenced name.
+      comet_fileoffset_t clNameBlockStart = clPeptidesFilePos;
+      bool bAnyOffset = false;
       for (const auto& vProts : g_pvProteinsList)
       {
          for (const comet_fileoffset_t lOffset : vProts)
          {
-            if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+            if (lOffset < clNameBlockStart)
+               clNameBlockStart = lOffset;
+            bAnyOffset = true;
+         }
+      }
+
+      if (bAnyOffset && clNameBlockStart < clPeptidesFilePos)
+      {
+         size_t tNameBlockSize = (size_t)(clPeptidesFilePos - clNameBlockStart);
+         vector<char> vNameBuf(tNameBlockSize);
+         comet_fseek(fp, clNameBlockStart, SEEK_SET);
+         if (fread(vNameBuf.data(), 1, tNameBlockSize, fp) == tNameBlockSize)
+         {
+            for (const auto& vProts : g_pvProteinsList)
             {
-               comet_fseek(fp, lOffset, SEEK_SET);
-               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == (size_t)WIDTH_REFERENCE)
+               for (const comet_fileoffset_t lOffset : vProts)
                {
-                  szProtBuf[WIDTH_REFERENCE - 1] = '\0';
-                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
+                  if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+                  {
+                     size_t tRel = (size_t)(lOffset - clNameBlockStart);
+                     if (tRel + WIDTH_REFERENCE <= tNameBlockSize)
+                     {
+                        const char* pName = vNameBuf.data() + tRel;
+                        g_pvProteinNameCache.emplace(lOffset, string(pName, strnlen(pName, WIDTH_REFERENCE - 1)));
+                     }
+                  }
                }
             }
          }
