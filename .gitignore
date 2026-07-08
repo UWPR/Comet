@@ -11,6 +11,9 @@ MSToolkit/extern/expat-2.2.9/
 *.log
 tmp/
 
+# NuGet repo-local restore folder (globalPackagesFolder in nuget.config)
+/packages/
+
 # Created by https://www.toptal.com/developers/gitignore/api/c++
 # Edit at https://www.toptal.com/developers/gitignore?templates=c++
 

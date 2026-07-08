@@ -161,10 +161,12 @@
   <!-- PackageReference does not work for managed assembly references from a native .vcxproj
        (NuGet resolves the project's framework as "native,Version=v0.0", incompatible with these
        netstandard2.0-only packages, error NU1202; see Phase 0 in docs/20260618_RawFileReaderMigration.md).
-       Reference/HintPath against the package already restored into the global NuGet cache by
-       RealtimeSearch.csproj is the working approach. -->
+       Reference/HintPath against the package already restored by RealtimeSearch.csproj is
+       the working approach. The packages restore into $(SolutionDir)packages (repo-local,
+       set via globalPackagesFolder in nuget.config) rather than the per-user global cache;
+       see the note there for why. -->
   <PropertyGroup>
-    <ThermoNuGetCache>$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.</ThermoNuGetCache>
+    <ThermoNuGetCache>$(SolutionDir)packages\thermofisher.commoncore.</ThermoNuGetCache>
     <!-- Single source of truth for the package version below. Keep in sync with the
          PackageReference versions in RealtimeSearch.csproj when bumping. -->
     <ThermoVersion>5.0.0.93</ThermoVersion>
