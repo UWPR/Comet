@@ -1,0 +1,9 @@
+bin/
+obj/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.tlh
+*.tli
+*.metagen

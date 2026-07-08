@@ -15,17 +15,159 @@ limitations under the License.
 */
 #ifndef _NO_THERMORAW
 #include "RAWReader.h"
+#include <msclr/marshal_cppstd.h>
+#include <vcclr.h>
+#include <cstdio>
 
 using namespace std;
-using namespace XRawfile;
 using namespace MSToolkit;
+using namespace System;
+using namespace System::Globalization;
+using namespace ThermoFisher::CommonCore::Data::Business;
+using namespace ThermoFisher::CommonCore::Data::FilterEnums;
+using namespace ThermoFisher::CommonCore::Data::Interfaces;
+using namespace ThermoFisher::CommonCore::RawFileReader;
+using namespace System::Runtime::InteropServices;
+
+namespace MSToolkit {
+  // The real managed handle. Only ever touched from this /clr-compiled file; RAWReader.h (seen
+  // by plain-native translation units throughout MSToolkit/CometSearch) only ever sees the
+  // opaque forward declaration. A plain native struct can't hold a '^' tracking handle directly
+  // (C2365/C3265) -- gcroot<T> is vcclr.h's wrapper for exactly this: a managed handle stored as
+  // a member of an unmanaged type.
+  struct RAWReaderImpl {
+    gcroot<IRawDataPlus^> rawFile;
+    RAWReaderImpl() : rawFile(nullptr) {}
+  };
+}
+
+namespace {
+
+  int MsOrderToLevel(MSOrderType order){
+    switch(order){
+      case MSOrderType::Ms:  return 1;
+      case MSOrderType::Ms2: return 2;
+      case MSOrderType::Ms3: return 3;
+      case MSOrderType::Ms4: return 4;
+      case MSOrderType::Ms5: return 5;
+      default: return 0;
+    }
+  }
+
+  // RawFileReader has no structured per-scan equivalent of legacy's filter-derived compensation
+  // voltage or the handful of scan types MSOrderType alone can't distinguish (multiplexed MS2,
+  // zoom/ultra-zoom, SRM) -- IScanEventBase::CompensationVoltage is a *filter-matching rule*
+  // setting (its type is CompensationVoltageType, "is this filter criterion on/off/any"), not the
+  // actual per-scan value. So, exactly as the COM-era evaluateFilter() did, get these by
+  // tokenizing the human-readable scan event string -- its format is unchanged regardless of
+  // which Thermo API reads it. Same left-to-right precedence as legacy (a "msx" token wins over a
+  // later "ms2"/"ms3" token; "u" wins over a later "Z"). Also collects the precursor m/z value(s)
+  // embedded in "<mz>@<act>" tokens, needed only for the MSX/SRM fallback paths (MS1/MS2/MS3 get
+  // precursor info, and activation method, from GetReaction() -- see MapActivation() below).
+  MSSpectrumType EvaluateScanTokens(int msOrderLevel, String^ eventStr, vector<double>& atTokenMZs, double& cv){
+    MSSpectrumType mst = Unspecified;
+    switch(msOrderLevel){
+      case 1: mst=MS1; break;
+      case 2: mst=MS2; break;
+      case 3: mst=MS3; break;
+      default: break;
+    }
+
+    atTokenMZs.clear();
+    cv=0;
+
+    string filterStr = msclr::interop::marshal_as<std::string>(eventStr);
+    char cStr[1024];
+    strncpy(cStr, filterStr.c_str(), sizeof(cStr)-1);
+    cStr[sizeof(cStr)-1]='\0';
+
+    char* nextTok;
+    char* tok = strtok_r(cStr," \n",&nextTok);
+    while(tok!=NULL){
+      if(strlen(tok)>2 && tok[0]=='c' && tok[1]=='v'){
+        cv=atof(tok+3);
+      } else if(strcmp(tok,"ms")==0){
+        mst=MS1;
+      } else if(strcmp(tok,"msx")==0){
+        mst=MSX;
+      } else if(strcmp(tok,"ms2")==0){
+        if(mst!=MSX) mst=MS2;
+      } else if(strcmp(tok,"ms3")==0){
+        if(mst!=MSX) mst=MS3;
+      } else if(strcmp(tok,"SRM")==0){
+        mst=SRM;
+      } else if(strcmp(tok,"u")==0){
+        mst=UZS;
+      } else if(strcmp(tok,"Z")==0){
+        if(mst!=UZS) mst=ZS;
+      } else if(strchr(tok,'@')!=NULL){
+        string tStr=tok;
+        size_t stop=tStr.find('@');
+        atTokenMZs.push_back(atof(tStr.substr(0,stop).c_str()));
+      }
+      tok=strtok_r(NULL," \n",&nextTok);
+    }
+    return mst;
+  }
+
+  // IReaction::ActivationType/MultipleActivation are genuine per-scan values (unlike
+  // IScanEventBase::SupplementalActivation, a filter-matching rule) -- confirmed against real
+  // HCD scans during this rewrite. This covers every activation method Thermo instruments
+  // actually report, including ECD/PQD/IRMPD that the legacy COM filter-string parser (and this
+  // file's own first pass) never recognized, since that only ever matched the "cid"/"etd"/"hcd"
+  // 3-letter codes appearing in the human-readable filter string. Surface-induced dissociation
+  // (mstSID) has no Thermo ActivationType value at all -- it isn't a technique Thermo instruments
+  // perform/report, so it can't be detected from .raw data by any means.
+  MSActivation MapActivation(IReaction^ reaction){
+    switch(reaction->ActivationType){
+      case ActivationType::CollisionInducedDissociation: return mstCID;
+      case ActivationType::HigherEnergyCollisionalDissociation: return mstHCD;
+      case ActivationType::ElectronCaptureDissociation: return mstECD;
+      case ActivationType::PQD: return mstPQD;
+      case ActivationType::MultiPhotonDissociation: return mstIRMPD;
+      case ActivationType::ElectronTransferDissociation:
+        return reaction->MultipleActivation ? mstETDSA : mstETD;
+      default: return mstNA;
+    }
+  }
+
+  struct TrailerFields {
+    int parScanNum;
+    int charge;
+    double monoMz;
+    double ionInjectionTimeMs;
+    string spsMasses;
+    bool hasSpsMasses;
+    string scanDescription;
+    bool hasScanDescription;
+    TrailerFields() : parScanNum(0), charge(0), monoMz(0.0), ionInjectionTimeMs(0.0), hasSpsMasses(false), hasScanDescription(false) {}
+  };
+
+  TrailerFields ReadTrailerFields(IRawDataPlus^ rawFile, int scanNum){
+    TrailerFields f;
+    LogEntry^ trailer = rawFile->GetTrailerExtraInformation(scanNum);
+    for(int i=0; i<trailer->Length; i++){
+      String^ label = trailer->Labels[i];
+      String^ value = trailer->Values[i];
+      double d; int n;
+      if(label=="Master Scan Number:"){ if(Int32::TryParse(value, n)) f.parScanNum=n; }
+      else if(label=="Charge State:"){ if(Int32::TryParse(value, n)) f.charge=n; }
+      else if(label=="Monoisotopic M/Z:"){ if(Double::TryParse(value, NumberStyles::Float, CultureInfo::InvariantCulture, d)) f.monoMz=d; }
+      else if(label=="Ion Injection Time (ms):"){ if(Double::TryParse(value, NumberStyles::Float, CultureInfo::InvariantCulture, d)) f.ionInjectionTimeMs=d; }
+      else if(label=="SPS Masses:"){ f.spsMasses=msclr::interop::marshal_as<std::string>(value); f.hasSpsMasses=true; }
+      else if(label=="Scan Description:"){ f.scanDescription=msclr::interop::marshal_as<std::string>(value); f.hasScanDescription=true; }
+    }
+    return f;
+  }
+
+} //anonymous namespace
 
 // ==========================
 // Constructors & Destructors
 // ==========================
 RAWReader::RAWReader(){
 
-  CoInitialize( NULL );
+  pImpl = new RAWReaderImpl();
 	bRaw = initRaw();
   rawCurSpec=0;
   rawTotSpec=0;
@@ -45,16 +187,17 @@ RAWReader::RAWReader(){
 
 RAWReader::~RAWReader(){
 
-  if(bRaw){
-    if(rawFileOpen) m_Raw->Close();
-    m_Raw.Release();
-    m_Raw=NULL;
+  if(rawFileOpen){
+    IRawDataPlus^ rf = pImpl->rawFile;
+    delete rf;
   }
+  delete pImpl;
+  pImpl=NULL;
 	msLevelFilter=NULL;
 
 }
 
-int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* varMassList, long nArraySize) {
+int RAWReader::calcChargeState(double precursormz, double highmass, const double* masses, const double* intensities, long nArraySize) {
 // Assumes spectrum is +1 or +2.  Figures out charge by
 // seeing if signal is present above the parent mass
 // indicating +2 (by taking ratio above/below precursor)
@@ -68,17 +211,13 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
 	dLeftSum = 0.00001;
 	dRightSum = 0.00001;
 
-	DataPeak* pDataPeaks = NULL;
-	SAFEARRAY FAR* psa = varMassList->parray;
-	SafeArrayAccessData( psa, (void**)(&pDataPeaks) );
-
 //-------------
 // calc charge
 //-------------
 	bFound=false;
 	i=0;
 	while(i<nArraySize && !bFound){
-    if(pDataPeaks[i].dMass < precursormz - 20){
+    if(masses[i] < precursormz - 20){
 			//do nothing
 		} else {
 			bFound = true;
@@ -88,12 +227,12 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
 	}
 	if(!bFound) iStart = nArraySize;
 
-	for(i=0;i<iStart;i++)	dLeftSum = dLeftSum + pDataPeaks[i].dIntensity;
+	for(i=0;i<iStart;i++)	dLeftSum = dLeftSum + intensities[i];
 
 	bFound=false;
 	i=0;
 	while(i<nArraySize && !bFound){
-    if(pDataPeaks[i].dMass < precursormz + 20){
+    if(masses[i] < precursormz + 20){
 			//do nothing
 		} else {
       bFound = true;
@@ -103,14 +242,11 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
 	}
 
 	if(!bFound) {
-		SafeArrayUnaccessData( psa );
-		psa = NULL;
-		pDataPeaks = NULL;
 		return 1;
 	}
-	if(iStart = 0) iStart++;
+	if(iStart == 0) iStart++;
 
-	for(i=iStart;i<nArraySize;i++) dRightSum = dRightSum + pDataPeaks[i].dIntensity;
+	for(i=iStart;i<nArraySize;i++) dRightSum = dRightSum + intensities[i];
 
 	if(precursormz * 2 < highmass){
     CorrectionFactor = 1;
@@ -120,188 +256,14 @@ int RAWReader::calcChargeState(double precursormz, double highmass, VARIANT* var
 	}
 
 	if(dLeftSum > 0 && (dRightSum / dLeftSum) < (0.2 * CorrectionFactor)){
-		SafeArrayUnaccessData( psa );
-		psa=NULL;
-		pDataPeaks=NULL;
 		return 1;
 	} else {
-		SafeArrayUnaccessData( psa );
-		psa=NULL;
-		pDataPeaks=NULL;
     return 0;  //Set charge to 0 to indicate that both +2 and +3 spectra should be created
 	}
 
   //When all else fails, return 0
   return 0;
 }
-
-MSSpectrumType RAWReader::evaluateFilter(long scan, char* chFilter, vector<double>& MZs, bool& bCentroid, double& cv, MSActivation& act) {
-
-  BSTR Filter = NULL;
-	char cStr[256];
-	string tStr;
-	string mzVal;
-	int stop;
-  bool bSA=false;
-
-	//For non-ATL and non-MFC conversions
-	int sl;
-
-  //Initialize raw values to default
-	MZs.clear();
-  cv=0;
-
-  m_Raw->GetFilterForScanNum(scan, &Filter);
-	sl = SysStringLen(Filter)+1;
-	WideCharToMultiByte(CP_ACP,0,Filter,-1,chFilter,sl,NULL,NULL);
-	SysFreeString(Filter);
-
-	strcpy(cStr,chFilter);
-	MSSpectrumType mst=Unspecified;
-	char* tok;
-  char* nextTok;
-	tok=strtok_r(cStr," \n",&nextTok);
-	while(tok!=NULL){
-
-		if(strcmp(tok,"c")==0){
-      bCentroid=true;
-		} else if(strlen(tok)>2 && tok[0]=='c' && tok[1]=='v'){
-      cv=atof(tok+3);
-		} else if(strcmp(tok,"d")==0){
-    } else if(strcmp(tok,"E")==0){ //enhanced 
-		} else if(strcmp(tok,"ESI")==0){
-		} else if(strcmp(tok,"FTMS")==0){
-		} else if(strcmp(tok,"Full")==0){
-		} else if(strcmp(tok,"ITMS")==0){
-		} else if(strcmp(tok,"lock")==0){
-		} else if(strcmp(tok,"ms")==0){
-			mst=MS1;
-		} else if(strcmp(tok,"msx")==0){
-			mst=MSX;
-		} else if(strcmp(tok,"ms2")==0){
-			if(mst!=MSX) mst=MS2;
-		} else if(strcmp(tok,"ms3")==0){
-			if(mst!=MSX) mst=MS3;
-		} else if(strcmp(tok,"NSI")==0){
-		} else if(strcmp(tok,"p")==0){
-      bCentroid=false;
-    } else if(strcmp(tok,"r")==0){ //appears in fusion data, no documentation
-    } else if(strcmp(tok,"sa")==0){
-      bSA=true;
-		} else if(strncmp(tok,"sid",3)==0){
-		} else if(strcmp(tok,"SRM")==0){
-			mst=SRM;
-    } else if(strcmp(tok,"t")==0){ //turbo scan 
-		} else if(strcmp(tok,"u")==0){
-			mst=UZS;
-		} else if(strcmp(tok,"w")==0){ //wideband activation?
-		} else if(strcmp(tok,"Z")==0){
-			if(mst!=UZS) mst=ZS;
-		} else if(strcmp(tok,"+")==0){
-		} else if(strcmp(tok,"-")==0){
-		} else if(strchr(tok,'@')!=NULL){
-			tStr=tok;
-			stop=(int)tStr.find("@");
-			mzVal=tStr.substr(0,stop);
-			MZs.push_back(atof(&mzVal[0]));
-      mzVal=tStr.substr(stop+1,3);
-      if(mzVal.compare("cid")==0){
-        act=mstCID;
-      } else if(mzVal.compare("etd")==0){
-        if(bSA) act=mstETDSA;
-        else act=mstETD;
-      } else if(mzVal.compare("hcd")==0){
-        act=mstHCD;
-      } else {
-        cout << "Unknown activation method: " << &mzVal[0] << endl;
-        act=mstNA;
-      }
-
-		} else if(strchr(tok,'[')!=NULL){
-		} else {
-			cout << "Unknown token: " << tok << endl;
-		}
-
-		tok=strtok_r(NULL," \n",&nextTok);
-	}
-
-	return mst;
-
-}
-
-double RAWReader::evaluateTrailerDouble(const char* str){
-  VARIANT v;
-  BSTR bs;
-  int sl;
-  double ret;
-
-  VariantInit(&v);
-  sl = lstrlenA(str);
-  bs = SysAllocStringLen(NULL, sl);
-  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
-  m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
-  SysFreeString(bs);
-  if (v.vt == VT_R4) ret = (double)v.fltVal;
-  else if (v.vt == VT_R8) ret = (double)v.dblVal;
-  else ret=0;
-
-  VariantClear(&v);
-  return ret;
-}
-
-int RAWReader::evaluateTrailerInt(const char* str){
-  VARIANT v;
-  BSTR bs;
-  int sl;
-  int ret;
-
-  VariantInit(&v);
-  sl = lstrlenA(str);
-  bs = SysAllocStringLen(NULL, sl);
-  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
-  m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
-  SysFreeString(bs);
-  if (v.vt == VT_I2) ret = (int)v.iVal;
-  else if (v.vt == VT_I4) ret = (int)v.lVal;
-  else if (v.vt == VT_I1) ret = (int)v.cVal;
-  else if (v.vt == VT_UI4) ret = (int)v.ulVal;
-  else if (v.vt == VT_UI2) ret = (int)v.uiVal;
-  else if (v.vt == VT_UI1) ret = (int)v.bVal;
-  else if (v.vt == VT_INT) ret = (int)v.intVal;
-  else if (v.vt == VT_UINT) ret = (int)v.uintVal;
-  else ret = 0;
-
-  VariantClear(&v);
-  return ret;
-}
-
-string RAWReader::evaluateTrailerString(const char* str) {
-  VARIANT v;
-  BSTR bs;
-  int sl;
-  string ret;
-  long lRet;
-
-  VariantInit(&v);
-  sl = lstrlenA(str);
-  bs = SysAllocStringLen(NULL, sl);
-  MultiByteToWideChar(CP_ACP, 0, str, sl, bs, sl);
-  lRet=m_Raw->GetTrailerExtraValueForScanNum(rawCurSpec, bs, &v);
-  if(v.vt==VT_BSTR) {
-    int wslen = SysStringLen(v.bstrVal);
-    int len = WideCharToMultiByte(CP_ACP, 0, v.bstrVal, wslen, NULL, 0, NULL, NULL);
-    ret.resize(len,'\0');
-    WideCharToMultiByte(CP_ACP, 0, v.bstrVal, wslen,&ret[0], len, NULL, NULL);
-  }
-  SysFreeString(bs);
-  VariantClear(&v);
-  return ret;
-}
-
-//REMOVED 2024.09.06
-//void RAWReader::getInstrument(char* str){
-//  strcpy(str,rawInstrument);
-//}
 
 void RAWReader::getInstrument(string& str) {
   str=rawInstrument;
@@ -310,11 +272,6 @@ void RAWReader::getInstrument(string& str) {
 long RAWReader::getLastScanNumber(){
 	return rawCurSpec;
 }
-
-//REMOVED 2024.09.06
-//void RAWReader::getManufacturer(char* str){
-//  strcpy(str,rawManufacturer);
-//}
 
 void RAWReader::getManufacturer(string& str) {
   str=rawManufacturer;
@@ -329,108 +286,32 @@ bool RAWReader::getStatus(){
 }
 
 bool RAWReader::initRaw(){
-
-	int raw=0;
-
-	IXRawfile2Ptr m_Raw2;
-	IXRawfile3Ptr m_Raw3;
-	IXRawfile4Ptr m_Raw4;
-	IXRawfile5Ptr m_Raw5;
-
-	//Example of Xcalibur/Foundation first
-	//if(FAILED(m_Raw5.CreateInstance("XRawfile.XRawfile.1"))){'
-
-	//Try MSFileReader - using ProteoWizard strategy
-  if(FAILED(m_Raw5.CreateInstance("MSFileReader.XRawfile.1"))){
-		if(FAILED(m_Raw4.CreateInstance("MSFileReader.XRawfile.1"))){
-			if(FAILED(m_Raw3.CreateInstance("MSFileReader.XRawfile.1"))){
-				if(FAILED(m_Raw2.CreateInstance("MSFileReader.XRawfile.1"))){
-					if(FAILED(m_Raw.CreateInstance("MSFileReader.XRawfile.1"))){
-            raw=0;
-						//cout << "Cannot load Thermo MSFileReader. Cannot read .RAW files." << endl;
-					} else {
-						raw=1;
-					}
-				} else {
-					m_Raw=m_Raw2;
-					raw=2;
-				}
-			} else {
-				m_Raw=m_Raw3;
-				raw=3;
-			}
-		} else {
-			m_Raw=m_Raw4;
-			raw=4;
-		}
-	} else {
-		m_Raw=m_Raw5;
-		raw=5;
-	}
-	
-	if(raw>0) return true;
-	return false;
+  //RawFileReader .NET has no separate-install/COM-registration step (unlike the old MSFileReader
+  //COM library this replaces) -- the managed assemblies are referenced directly by the build, so
+  //there is nothing to probe for here. Kept returning true for interface compatibility with
+  //getStatus(), which callers use to check "can this build read .raw files at all".
+  return true;
 }
 
+// Thin exception boundary around readRawFileImpl(). RawFileReader is closed-source code
+// reading arbitrary, sometimes malformed or edge-case .raw files -- a genuine system
+// boundary. Any RawFileReader call inside readRawFileImpl (FileFactory,
+// GetScanEventForScanNumber, GetTrailerExtraInformation, GetReaction, Scan::FromFile, ...) can
+// throw on a corrupted or unusual file/scan; without this wrapper that exception would
+// propagate uncaught into plain-native callers (MSReader.cpp, CometPreprocess.cpp) that have no
+// way to catch a managed exception, most likely crashing the whole process mid-batch-search.
 bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
+  try{
+    return readRawFileImpl(c, s, scNum);
+  } catch(Exception^ ex){
+    cerr << "Error reading raw file: " << msclr::interop::marshal_as<std::string>(ex->Message) << endl;
+    return false;
+  }
+}
 
-	//General purpose function members
-	bool bCheckNext;
-  bool bNewFile;
+bool RAWReader::readRawFileImpl(const char *c, Spectrum &s, int scNum){
 
-	char chFilter[256];
-  char curFilter[256];
-	
-	double dRTime;
-	double highmass=0.0;
-	double pm1;
-	double pw;
-
-	long i;
-  long j;
-	long lArraySize=0;
-  long ret;
-
-	vector<double> MZs;
-
-	DataPeak* pDataPeaks = NULL;
-  HRESULT lRet;
-	MSSpectrumType MSn;
-	SAFEARRAY FAR* psa;
-  TCHAR pth[MAX_PATH];
-  VARIANT varMassList;
-	VARIANT varPeakFlags;
-
-  //Members for gathering averaged scans
-	int charge;
-  int sl;
-	int widthCount;
-	
-	long FirstBkg1=0;
-	long FirstBkg2=0;
-  long LastBkg1=0;
-  long LastBkg2=0;
-	long lowerBound;
-  long upperBound;
-    
-  BSTR rawFilter=NULL;
-  BSTR testStr;
-
-	//Additional members for Scan Information
-  bool bCentroid;
-
-  double cv;    //Compensation Voltage
-  double BPI;   //Base peak intensity
-	double BPM;   //Base peak mass
-	double td;    //temp double value
-	double TIC;
-  float IIT;    //ion injection time
-
-	long tl;      //temp long value
-  MSActivation act;
-  string SPS;
-  string ScanDescription;
-
+	bool bNewFile=false;
 
   if(!bRaw) return false;
 
@@ -445,9 +326,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     else rawCurSpec++;
     if(rawCurSpec<1) return false;
     if(rawCurSpec>rawTotSpec) return false;
-    bNewFile=false;
   } else {
-	
+
     //check if requested file is already open
     if(rawFileOpen) {
       if(strcmp(c,rawCurrentFile)==0){
@@ -456,10 +336,11 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
         else rawCurSpec++;
         if (rawCurSpec<1) return false;
         if(rawCurSpec>rawTotSpec) return false;
-        bNewFile=false;
       } else {
         //new file requested, so close the existing one
-        lRet = m_Raw->Close();
+        IRawDataPlus^ oldRf = pImpl->rawFile;
+        delete oldRf;
+        pImpl->rawFile=nullptr;
         rawFileOpen=false;
         bNewFile=true;
       }
@@ -468,23 +349,22 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     }
 
     if(bNewFile){
-      MultiByteToWideChar(CP_ACP,0,c,-1,(LPWSTR)pth,MAX_PATH);
-      lRet = m_Raw->Open((LPWSTR)pth);
-		  if(lRet != ERROR_SUCCESS) {
-			  cerr << "Cannot open " << c << endl;
-			  return false;
-		  }
-	    else lRet = m_Raw->SetCurrentController(0,1);
+      IRawDataPlus^ rf = RawFileReaderAdapter::FileFactory(gcnew String(c));
+      if(!rf->IsOpen || rf->IsError){
+        cerr << "Cannot open " << c << endl;
+        delete rf;
+        return false;
+      }
+      rf->SelectInstrument(Device::MS, 1);
+      pImpl->rawFile = rf;
       rawFileOpen=true;
-      m_Raw->GetNumSpectra(&rawTotSpec);
-      testStr=NULL;
-      m_Raw->GetInstModel(&testStr);
-      sl = SysStringLen(testStr)+1;
-	    WideCharToMultiByte(CP_ACP,0,testStr,-1,rawInstrument,sl,NULL,NULL);
-      SysFreeString(testStr);
-      strcpy(rawCurrentFile,c);
+      rawTotSpec = rf->RunHeaderEx->LastSpectrum;
+      //Bounded copies into the fixed 256-char buffers; snprintf always null-terminates,
+      //so an over-long instrument model or file path is truncated rather than overflowing.
+      snprintf(rawInstrument, sizeof(rawInstrument), "%s", msclr::interop::marshal_as<std::string>(rf->GetInstrumentData()->Model).c_str());
+      snprintf(rawCurrentFile, sizeof(rawCurrentFile), "%s", c);
 
-		  //if scan number is requested, grab it
+			//if scan number is requested, grab it
       if(scNum<0) return false;
       if(scNum>0) rawCurSpec=scNum;
       else rawCurSpec=1;
@@ -492,27 +372,32 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     }
   }
 
-	//Initialize members
-	strcpy(chFilter,"");
-  strcpy(curFilter,"");
-	VariantInit(&varMassList);
-	VariantInit(&varPeakFlags);
+  IRawDataPlus^ rawFile = pImpl->rawFile;
 
   rawPrecursorInfo preInfo;
+  vector<double> atTokenMZs;
+  MSSpectrumType MSn;
+  int msLevel;
+  double cv;
+  MSActivation act=mstNA;
 
 	//Rather than grab the next scan number, get the next scan based on a user-filter (if supplied).
   //if the filter was set, make sure we pass the filter
   while(true){
 
-	  MSn = evaluateFilter(rawCurSpec, curFilter, MZs, bCentroid,cv,act);
+    IScanEvent^ peekEvent = rawFile->GetScanEventForScanNumber((int)rawCurSpec);
+    msLevel = MsOrderToLevel(peekEvent->MSOrder);
+    String^ eventStr = rawFile->GetScanEventStringForScanNumber((int)rawCurSpec);
+    MSn = EvaluateScanTokens(msLevel, eventStr, atTokenMZs, cv);
 
     //check for spectrum filter (string)
     if(strlen(rawUserFilter)>0){
-      bCheckNext=false;
+      bool bCheckNext=false;
+      string curFilter = msclr::interop::marshal_as<std::string>(eventStr);
       if(rawUserFilterExact) {
-        if(strcmp(curFilter,rawUserFilter)!=0) bCheckNext=true;
+        if(curFilter.compare(rawUserFilter)!=0) bCheckNext=true;
       } else {
-        if(strstr(curFilter,rawUserFilter)==NULL) bCheckNext=true;
+        if(curFilter.find(rawUserFilter)==string::npos) bCheckNext=true;
       }
 
       //if string doesn't match, get next scan until it does match or EOF
@@ -538,102 +423,89 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     }
   }
 
+  IScanEvent^ scanEvent = rawFile->GetScanEventForScanNumber((int)rawCurSpec);
+  ScanStatistics^ stats = rawFile->GetScanStatsForScanNumber((int)rawCurSpec);
+  double dRTime = rawFile->RetentionTimeFromScanNumber((int)rawCurSpec);
+
   //Get basic spectrum metadata. It will be replaced/supplemented later, if available
   preInfo.clear();
-  long nChannels=0;
-  long nPackets=0;
-  m_Raw->GetScanHeaderInfoForScanNum(rawCurSpec, &nPackets, &td, &td, &td, &TIC, &BPM, &BPI, &nChannels, &tl, &td);
-  //cout << "Channels: " << nChannels << endl;
-  //cout << "Packets: " << nPackets << endl;
-  m_Raw->RTFromScanNum(rawCurSpec, &dRTime);
-  preInfo.parScanNum = evaluateTrailerInt("Master Scan Number:");
-  preInfo.charge = evaluateTrailerInt("Charge State:");
-  preInfo.dMonoMZ = evaluateTrailerDouble("Monoisotopic M/Z:");
-  IIT = (float)evaluateTrailerDouble("Ion Injection Time (ms):");
-  SPS = evaluateTrailerString("SPS Masses:");
-  ScanDescription = evaluateTrailerString("Scan Description:");
+  if(msLevel>=2){
+    TrailerFields trailer = ReadTrailerFields(rawFile, (int)rawCurSpec);
+    preInfo.parScanNum = trailer.parScanNum;
+    preInfo.charge = trailer.charge;
+    preInfo.dMonoMZ = trailer.monoMz;
+    float IIT = (float)trailer.ionInjectionTimeMs;
 
-  size_t a=0;
-  string tStr;
-  while(a<SPS.size()){
-    if(SPS[a]==','){
-      if(!tStr.empty()) {
-        double spsd=atof(tStr.c_str());
-        if(spsd>0) s.addSPS(spsd);  
-        tStr.clear();
+    if(trailer.hasSpsMasses){
+      string SPS = trailer.spsMasses;
+      size_t a=0;
+      string tStr;
+      while(a<SPS.size()){
+        if(SPS[a]==','){
+          if(!tStr.empty()) {
+            double spsd=atof(tStr.c_str());
+            if(spsd>0) s.addSPS(spsd);
+            tStr.clear();
+          }
+          a++;
+          continue;
+        }
+        tStr+=SPS[a++];
       }
-      a++;
-      continue;
+      if (!tStr.empty()) {
+        double spsd = atof(tStr.c_str());
+        if (spsd > 0) s.addSPS(spsd);
+      }
     }
-    tStr+=SPS[a++];
-  }
-  if (!tStr.empty()) {
-    double spsd = atof(tStr.c_str());
-    if (spsd > 0) s.addSPS(spsd);
-  }
 
-  //Get more sig digits for isolation mass
-  if (raw > 3 && (MSn==MS2 || MSn==MS3)){
-    IXRawfile4Ptr raw4 = (IXRawfile4Ptr)m_Raw;
-    if (MSn==MS2) tl=2;
-    else tl=3;
-    ret = raw4->GetPrecursorMassForScanNum(rawCurSpec,tl,&td);
-    if (ret == 0) preInfo.dIsoMZ = td;
-    raw4=NULL;
+    if(trailer.hasScanDescription)
+      s.setScanDescription(trailer.scanDescription);
+
+    s.setIonInjectionTime(IIT);
+
+    //Immediate precursor transition: reaction(0) is the MS1->MS2 isolation, reaction(1) is the
+    //MS2->MS3 isolation, etc. -- mirrors the legacy GetPrecursorMassForScanNum(scan, msLevel, ...)
+    //call, which indexed by MS order the same way.
+    IReaction^ reaction = scanEvent->GetReaction(msLevel-2);
+    preInfo.dIsoMZ = reaction->PrecursorMass;
+    act = MapActivation(reaction);
 
     //Correct precursor mono mass if it is more than 5 13C atoms away from isolation mass
     if (preInfo.dMonoMZ > 0 && preInfo.charge>0){
-      td = preInfo.dIsoMZ-preInfo.dMonoMZ;
+      double td = preInfo.dIsoMZ-preInfo.dMonoMZ;
       if (td>5.01675/preInfo.charge) preInfo.dMonoMZ=preInfo.dIsoMZ;
     }
-
   }
 
-  //Get the peaks
-	//Average raw files if requested by user
-  if(rawAvg){
-    widthCount=0;
-    lowerBound=0;
-    upperBound=0;
-    for(i=rawCurSpec-1;i>0;i--){
-      evaluateFilter(i, chFilter, MZs, bCentroid,cv,act);
-      if(strcmp(curFilter,chFilter)==0){
-        widthCount++;
-        if(widthCount==rawAvgWidth) {
-          lowerBound=i;
-          break;
-        }
-      }
-    }
-    if(lowerBound==0) lowerBound=rawCurSpec; //this will have "edge" effects
+  //Get the peaks. setAverageRaw() (which would set rawAvg=true) is never called anywhere in
+  //this codebase -- the averaged-scan path it would select here was already unreachable before
+  //this rewrite, so it isn't reimplemented against RawFileReader's AverageScans() API; this just
+  //falls through to the normal single-scan retrieval, same as rawAvg==false.
+  // Scan::FromFile()'s PreferredMasses/PreferredIntensities give the instrument's saved centroid
+  // peaks when present (the representation Comet's correlation scoring actually wants) and fall
+  // back to the profile SegmentedScan internally when not, with HasCentroidStream reporting which
+  // path was used -- all without throwing for the routine "no centroid stream" case. This replaces
+  // an earlier GetCentroidStream()/GetSegmentedScanFromScanNumber() pairing that relied on a
+  // try/catch around GetCentroidStream() to detect the no-centroid-stream case, which meant every
+  // profile-only scan (e.g. true profile-only data from non-FT instruments) paid the cost of a
+  // thrown-and-caught .NET exception just to discover that (IsCentroidScan/SpectrumPacketType are
+  // not reliable predictors of centroid-stream availability in practice -- confirmed against real
+  // data during Phase 0/1 validation, independently of which API is used to fetch the peaks).
+  Scan^ scanObj = Scan::FromFile(rawFile, (int)rawCurSpec);
+  scanObj->PreferCentroids = true;
+  bool bCentroid = scanObj->HasCentroidStream;
+  cli::array<double>^ peakMasses = scanObj->PreferredMasses;
+  cli::array<double>^ peakIntensities = scanObj->PreferredIntensities;
+  int numPeaks = peakMasses->Length;
 
-    widthCount=0;
-    for(i=rawCurSpec+1;i<rawTotSpec;i++){
-      evaluateFilter(i, chFilter, MZs, bCentroid,cv,act);
-      if(strcmp(curFilter,chFilter)==0){
-        widthCount++;
-        if(widthCount==rawAvgWidth) {
-          upperBound=i;
-          break;
-        }
-      }
-    }
-    if(upperBound==0) upperBound=rawCurSpec; //this will have "edge" effects
-
-    m_Raw->GetFilterForScanNum(i, &rawFilter);
-    j=m_Raw->GetAverageMassList(&lowerBound, &upperBound, &FirstBkg1, &LastBkg1, &FirstBkg2, &LastBkg2,
-      rawFilter, 1, rawAvgCutoff, 0, FALSE, &pw, &varMassList, &varPeakFlags, &lArraySize );
-    SysFreeString(rawFilter);
-    rawFilter=NULL;
-
-  } else {
-
-		//Get regular spectrum data
-		sl=lstrlenA("");
-    testStr = SysAllocStringLen(NULL,sl);
-		MultiByteToWideChar(CP_ACP,0,"",sl,testStr,sl);
-		j=m_Raw->GetMassListFromScanNum(&rawCurSpec,testStr,0,0,0,FALSE,&pw,&varMassList,&varPeakFlags,&lArraySize);
-		SysFreeString(testStr);
+  //Marshal the managed peak arrays into native buffers once, up front (mirrors the SAFEARRAY
+  //copy the COM path used to do), so the rest of this function works with plain native data.
+  //Marshal::Copy does a bulk copy rather than a per-element managed-array-indexed loop -- worth
+  //the difference here since a dense profile-fallback MS1 scan can be tens of thousands of points.
+  vector<double> masses(numPeaks), intensities(numPeaks);
+  if(numPeaks>0){
+    Marshal::Copy(peakMasses, 0, IntPtr(masses.data()), numPeaks);
+    Marshal::Copy(peakIntensities, 0, IntPtr(intensities.data()), numPeaks);
   }
 
 	//Handle MS2 and MS3 files differently to create Z-lines
@@ -648,32 +520,36 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
     s.addPrecursor(pi);
 
 		//if charge state is assigned to spectrum, add Z-lines.
-    if (preInfo.dIsoMZ>0.01) MZs[0]=preInfo.dIsoMZ;  //overwrite isolation mass if we have more sig figs.
-		if(preInfo.charge>0){ //if(Charge.iVal>0){
-			if(preInfo.dMonoMZ>0.01) { //if(MonoMZ.dblVal>0.01) {
-				//pm1 = MonoMZ.dblVal * Charge.iVal - ((Charge.iVal-1)*1.007276466);
+    double isoMz = preInfo.dIsoMZ;
+    double pm1;
+		if(preInfo.charge>0){
+			if(preInfo.dMonoMZ>0.01) {
         pm1 = preInfo.dMonoMZ * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
-        s.addMZ(MZs[0], preInfo.dMonoMZ);
+        s.addMZ(isoMz, preInfo.dMonoMZ);
 			}	else {
-        pm1 = MZs[0] * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
-        s.addMZ(MZs[0]);
+        pm1 = isoMz * preInfo.charge - ((preInfo.charge - 1)*1.007276466);
+        s.addMZ(isoMz);
 			}
       s.addZState(preInfo.charge, pm1);
       s.setCharge(preInfo.charge);
     } else {
-      s.addMZ(preInfo.dIsoMZ); //s.setMZ(MZs[0]);
-      charge = calcChargeState(MZs[0], highmass, &varMassList, lArraySize);
+      s.addMZ(isoMz);
+      //Pass the highest observed m/z as the high mass; calcChargeState uses it to decide
+      //whether the isolation window could hold a >+1 precursor (masses[] is ascending m/z).
+      //A zero here would force CorrectionFactor negative and defeat the +1/unknown test.
+      double dHighMass = (numPeaks>0) ? masses[numPeaks-1] : 0.0;
+      int charge = calcChargeState(isoMz, dHighMass, masses.data(), intensities.data(), (long)numPeaks);
 
       //Charge greater than 0 means the charge state is known
       if(charge>0){
-        pm1 = MZs[0]*charge - ((charge-1)*1.007276466);
+        pm1 = isoMz*charge - ((charge-1)*1.007276466);
   	    s.addZState(charge,pm1);
 
       //Charge of 0 means unknown charge state, therefore, compute +2 and +3 states.
       } else {
-        pm1 = MZs[0]*2 - 1.007276466;
+        pm1 = isoMz*2 - 1.007276466;
         s.addZState(2,pm1);
-        pm1 = MZs[0]*3 - 2*1.007276466;
+        pm1 = isoMz*3 - 2*1.007276466;
         s.addZState(3,pm1);
       }
 
@@ -682,9 +558,9 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
   } //endif MS2 and MS3
 
 	if(MSn==MSX){
-		for(i=0;i<(int)MZs.size();i++){
-			if(i==0) s.setMZ(MZs[i],0);
-			else s.addMZ(MZs[i],0);
+		for(size_t i=0;i<atTokenMZs.size();i++){
+			if(i==0) s.setMZ(atTokenMZs[i],0);
+			else s.addMZ(atTokenMZs[i],0);
 		}
 		s.setCharge(0);
 	}
@@ -692,28 +568,19 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 	//Set basic scan info
   if(bCentroid) s.setCentroidStatus(1);
   else s.setCentroidStatus(0);
-  s.setRawFilter(curFilter);
   s.setActivationMethod(act);
 	s.setScanNumber((int)rawCurSpec);
   s.setScanNumber((int)rawCurSpec,true);
 	s.setRTime((float)dRTime);
 	s.setFileType(MSn);
-  s.setBPI((float)BPI);
-  s.setBPM(BPM);
+  s.setBPI((float)stats->BasePeakIntensity);
+  s.setBPM(stats->BasePeakMass);
   s.setCompensationVoltage(cv);
-  s.setScanDescription(ScanDescription);
-//  s.setConversionA(ConversionA.dblVal);  //Deprecating Conversion values
-//  s.setConversionB(ConversionB.dblVal);
-//	s.setConversionC(ConversionC.dblVal);
-//  s.setConversionD(ConversionD.dblVal);
-//	s.setConversionE(ConversionE.dblVal);
-//  s.setConversionI(ConversionI.dblVal);
-  s.setTIC(TIC);
-  s.setIonInjectionTime(IIT);
+  s.setTIC(stats->TIC);
   string ts="scan=";
   ts+=to_string(rawCurSpec);
   s.setNativeID(ts.c_str());
-	if(MSn==SRM) s.setMZ(MZs[0]);
+	if(MSn==SRM && atTokenMZs.size()>0) s.setMZ(atTokenMZs[0]);
   switch(MSn){
     case MS1: s.setMsLevel(1); break;
     case MS2: s.setMsLevel(2); break;
@@ -721,14 +588,8 @@ bool RAWReader::readRawFile(const char *c, Spectrum &s, int scNum){
 		case MSX: s.setMsLevel(2); break;
     default: s.setMsLevel(0); break;
   }
-	psa = varMassList.parray;
-  SafeArrayAccessData( psa, (void**)(&pDataPeaks) );
-  for(j=0;j<lArraySize;j++)	s.add(pDataPeaks[j].dMass,(float)pDataPeaks[j].dIntensity);
-  SafeArrayUnaccessData( psa );
 
-  //Clean up memory
-	VariantClear(&varMassList);
-	VariantClear(&varPeakFlags);
+  for(int p=0; p<numPeaks; p++) s.add(masses[p],(float)intensities[p]);
 
   return true;
 

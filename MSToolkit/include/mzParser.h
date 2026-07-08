@@ -1423,6 +1423,7 @@ struct ScanHeaderStruct {
   char   scanDescription[SCANTYPE_LENGTH]; //specific to Thermo instruments. Currently parsed from userParams in mzML...
         
   bool   centroid; //true if spectrum is centroided
+  bool   positiveScan; //true if positive mode or unknown, false if negative
   bool   ionMobility; //true if spectrum contains ion mobility data
   bool   possibleChargesArray[CHARGEARRAY_LENGTH]; /* NOTE: does NOT include "precursorCharge" information; only from "possibleCharges" */
    

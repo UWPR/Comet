@@ -644,14 +644,30 @@ bool mzpSAXMzxmlHandler::load(const char* fileName){
   return true;
 }
 
+//Return a pointer to a "<scan" opening tag within s, or NULL if none is present.
+//The element name must be followed by a tag delimiter (whitespace or '>') so this never
+//false-matches other "<scan..."-prefixed elements, and it also lets the opening tag begin
+//at end-of-line (e.g. "<scan\n num=...").
+static char* findScanTag(char* s) {
+  char* p = s;
+  while ((p = strstr(p, "<scan")) != NULL) {
+    char c = *(p + 5);  // char immediately after "<scan" (5 chars)
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '>') return p;
+    p += 5;
+  }
+  return NULL;
+}
+
 //Parse file from top to bottom to generate index offset if not present
 bool mzpSAXMzxmlHandler::generateIndexOffset() {
   char chunk[CHUNK];
   int readBytes;
-  long lOffset = 0;
 
   if(!m_bGZCompression){
-    FILE* f=fopen(&m_strFileName[0],"r");
+    // Binary mode: mzpftell() must return a true physical byte offset for the offset
+    // arithmetic below. In text mode on Windows, ftell is a magic cookie (unreliable for
+    // arithmetic, and wrong on LF-only files). The reader seeks these offsets with _fseeki64.
+    FILE* f=fopen(&m_strFileName[0],"rb");
     char *pStr;
 
     if (f==NULL){
@@ -661,25 +677,33 @@ bool mzpSAXMzxmlHandler::generateIndexOffset() {
 
     bool bReadingFirstSpectrum = true;
 
-    while (fgets(chunk, CHUNK, f)){
-      if (strstr(chunk, "<scan")){
+    for(;;){
+      f_off lLineStart = mzpftell(f);  // 64-bit byte offset of the line we are about to read
+      if(!fgets(chunk, CHUNK, f)) break;
+
+      char* pScanTag = findScanTag(chunk);
+      if (pScanTag){
+        // Exact byte offset of the '<' in this "<scan" tag so the reader can seek straight to it.
+        // The opening tag may span multiple lines and be indented; num= (below) may itself be on
+        // a later line, but the offset is fixed here at detection so that does not matter.
+        f_off lScanOffset = lLineStart + (pScanTag - chunk);
         long scanNum;
         bool bSuccessfullyReadScan = false;
         do{
-          // "<scan" and "num=" can be on different lines
+          // "<scan" and num= can be on different lines
           if ((pStr = strstr(chunk, " num=\"")) != NULL){
             sscanf(pStr+6, "%ld", &scanNum);
             bSuccessfullyReadScan = true;
             curIndex.scanNum = scanNum;
             curIndex.idRef = "";
-            curIndex.offset = lOffset;
+            curIndex.offset = lScanOffset;
             m_vIndex.push_back(curIndex);
             break;
           }
         } while (fgets(chunk, CHUNK, f));
       }
-      lOffset = ftell(f);  // position of file pointer before fgets in loop
     }
+    fclose(f);
   } else {
     readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
   }

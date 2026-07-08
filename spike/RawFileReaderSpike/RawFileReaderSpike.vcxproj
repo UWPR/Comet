@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A1B2C3D4-1111-2222-3333-444455556666}</ProjectGuid>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <Keyword>ManagedCProj</Keyword>
+    <RootNamespace>RawFileReaderSpike</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CLRSupport>true</CLRSupport>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(ProjectDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)obj\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <!--
+    Phase 0 finding (docs/20260618_RawFileReaderMigration.md): NuGet's PackageReference
+    restore for a native .vcxproj resolves the project's framework as "native,Version=v0.0"
+    regardless of CLRSupport=true, which is incompatible with these netstandard2.0-only
+    packages (NU1202). PackageReference does NOT carry over from csproj to vcxproj the way
+    Phase 0 item 1 hoped to confirm; a plain Reference/HintPath against the package
+    already restored into the global NuGet cache (via RealtimeSearch.csproj) is the working
+    fallback for native/C++-CLI projects.
+  -->
+  <PropertyGroup>
+    <ThermoNuGetCache>$(USERPROFILE)\.nuget\packages\thermofisher.commoncore.</ThermoNuGetCache>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;WIN64;_WIN64;NDEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="NativeUtils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="NativeUtils.cpp">
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="ThermoFisher.CommonCore.BackgroundSubtraction">
+      <HintPath>$(ThermoNuGetCache)backgroundsubtraction\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.BackgroundSubtraction.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ThermoFisher.CommonCore.Data">
+      <HintPath>$(ThermoNuGetCache)data\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ThermoFisher.CommonCore.MassPrecisionEstimator">
+      <HintPath>$(ThermoNuGetCache)massprecisionestimator\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.MassPrecisionEstimator.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="ThermoFisher.CommonCore.RawFileReader">
+      <HintPath>$(ThermoNuGetCache)rawfilereader\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.RawFileReader.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

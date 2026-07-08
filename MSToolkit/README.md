@@ -16,7 +16,7 @@ The MSToolkit is a light-weight C++ library for reading, [sometimes] writing\*, 
   * *bms2* _read/write_
   * *cms1* _read/write_
   * *cms2* _read/write_
-  * *RAW* Thermo proprietary file format (Windows only, requires Xcalibur/MSFileReader) _read-only_
+  * *RAW* Thermo proprietary file format (Windows only, via Thermo RawFileReader .NET) _read-only_
     
 
 ### Simple Interface

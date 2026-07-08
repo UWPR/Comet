@@ -1,4 +1,4 @@
-// Copyright 2023 Jimmy Eng
+// Copyright 2012-2026 Jimmy Eng
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -90,7 +90,6 @@ public:
    // Thread-local overload: searches a caller-owned QueryMS1* against read-only g_vSpecLib.
    // No global mutable state accessed.
    static bool RunMS1Search(QueryMS1* pQueryMS1,
-                            const int topN,
                             double dRT,
                             double dMaxMS1RTDiff,
                             const double dMaxSpecLibRT,
@@ -312,9 +311,14 @@ private:
                                 const double dMaxSpecLibRT,
                                 const double dMaxQueryRT,
                                 ThreadPool* tp);
+protected:
+   // protected (rather than private) so unit tests can exercise codon
+   // translation via a thin public wrapper in a derived test fixture.
    char GetAA(int i,
               int iDirection,
               char* sDNASequence);
+
+private:
 
    struct VarModStat
    {

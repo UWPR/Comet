@@ -538,6 +538,9 @@ void mzpSAXMzmlHandler::processCVParam(const char* name, const char* accession, 
   } else if(!strcmp(name,"positive scan") || !strcmp(accession,"MS:1000130")) {
     spec->setPositiveScan(true);
 
+  } else if(!strcmp(name,"negative scan") || !strcmp(accession,"MS:1000129")) {
+    spec->setPositiveScan(false);
+
   } else if(!strcmp(name,"possible charge state") || !strcmp(accession,"MS:1000633")) {
     m_precursorIon.possibleCharges.push_back(atoi(value));
 
@@ -1218,15 +1221,31 @@ void mzpSAXMzmlHandler::readHDFIndex(){
 }
 #endif
 
+//Return a pointer to a "<spectrum" opening tag within s, or NULL if none is present.
+//The element name must be followed by a tag delimiter (whitespace or '>') so this never
+//false-matches "<spectrumList". Matching on the delimiter rather than a hard-coded trailing
+//space also lets the opening tag begin with a newline (e.g. "<spectrum\n  index=...").
+static char* findSpectrumTag(char* s) {
+  char* p = s;
+  while ((p = strstr(p, "<spectrum")) != NULL) {
+    char c = *(p + 9);  // char immediately after "<spectrum" (9 chars)
+    if (c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '>') return p;
+    p += 9;
+  }
+  return NULL;
+}
+
 //Parse file from top to bottom to generate index offset if not present.
 //If scan is present in native ID string, use it. Otherwise report spectrum index as scan number.
 bool mzpSAXMzmlHandler::generateIndexOffset() {
   char chunk[CHUNK];
   int readBytes;
-  long lOffset = 0;
 
   if(!m_bGZCompression){
-    FILE* f=fopen(&m_strFileName[0],"r");
+    // Binary mode: mzpftell() must return a true physical byte offset for the offset
+    // arithmetic below. In text mode on Windows, ftell is a magic cookie (unreliable for
+    // arithmetic, and wrong on LF-only files). The reader seeks these offsets with _fseeki64.
+    FILE* f=fopen(&m_strFileName[0],"rb");
     char *pStr;
 
     if (f==NULL){
@@ -1237,21 +1256,60 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
     bool bReadingFirstSpectrum = true;
     bool bThermoFile = false;
 
-    while (fgets(chunk, CHUNK, f)){
+    for(;;){
+      f_off lLineStart = mzpftell(f);  // 64-bit byte offset of the line we are about to read
+      if(!fgets(chunk, CHUNK, f)) break;
 
       // Treat thermo files differently. Always report scan 'index' value which start at 0
       // except for Thermo files where historically we're used to starting at scan 1.
       if (strstr(chunk, "MS:1000768"))
          bThermoFile = true;
 
-      if (strstr(chunk, "<spectrum ")){
-        long scanNum;
-        bool bSuccessfullyReadScan = false;
+      char* pSpecTag = findSpectrumTag(chunk);
+      if (pSpecTag){
+        // Exact byte offset of the '<' in this "<spectrum" tag so the reader can seek
+        // straight to it. lLineStart is the start of the line; adding the tag's position
+        // within the chunk handles indentation and an opening tag that begins mid-line.
+        f_off lSpecOffset = lLineStart + (pSpecTag - chunk);
+        long scanNum = -1;
+        bool bSuccessfullyReadScan = false;  // index= has been parsed
+        bool bParsedId = false;              // id= has been parsed
+        bool bInOpeningTag = true;           // still inside the <spectrum ...> opening tag
+        curIndex.idRef.clear();              // reset; curIndex is reused, so id must not carry over
         do{
-          // now need to look for "index="
-          if ((pStr = strstr(chunk, "index=\"")) != NULL){
-            sscanf(pStr+7, "%ld", &scanNum);
-            bSuccessfullyReadScan = true;
+          // The <spectrum ...> opening tag may legally span multiple lines, so keep looking
+          // for index=/id= across lines until the tag-closing '>' is seen. Bound each line's
+          // search to the opening tag (up to that '>') so we never pick up index=/id= from
+          // binary data or from other elements that share the </spectrum> line in compact mzML.
+          if (bInOpeningTag){
+            char* pScanStart = findSpectrumTag(chunk);
+            if (pScanStart == NULL) pScanStart = chunk;   // continuation line: whole line is inside the tag
+            char* pTagEnd = strchr(pScanStart, '>');       // NULL if the opening tag continues past this line
+            char cSaved = '\0';
+            if (pTagEnd != NULL){ cSaved = *pTagEnd; *pTagEnd = '\0'; }  // limit the search to the opening tag
+
+            if (!bSuccessfullyReadScan && (pStr = strstr(pScanStart, "index=\"")) != NULL){
+              sscanf(pStr+7, "%ld", &scanNum);
+              bSuccessfullyReadScan = true;
+            }
+            // Extract the id= attribute for m_mIndex population. Accept id=" whose name is
+            // preceded by XML whitespace (or the start of a continuation line) so tab/newline
+            // separators work, while never false-matching a sub-attribute ending in "...id".
+            if (!bParsedId){
+              for (char* pId = strstr(pScanStart, "id=\""); pId != NULL; pId = strstr(pId + 4, "id=\"")){
+                if (pId == pScanStart || *(pId - 1) == ' ' || *(pId - 1) == '\t' || *(pId - 1) == '\r' || *(pId - 1) == '\n'){
+                  char* idStart = pId + 4;
+                  char* idEnd = strchr(idStart, '"');
+                  if (idEnd != NULL){
+                    curIndex.idRef = string(idStart, idEnd - idStart);
+                    bParsedId = true;
+                  }
+                  break;
+                }
+              }
+            }
+
+            if (pTagEnd != NULL){ *pTagEnd = cSaved; bInOpeningTag = false; }  // restore char; opening tag ends here
           }
 
           if ((pStr = strstr(chunk, "</spectrum>")) != NULL){
@@ -1259,9 +1317,12 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
               if (bThermoFile)  // start scan count at 1 instead of 0
                  scanNum += 1;
               curIndex.scanNum = scanNum;
-              curIndex.idRef = "";
-              curIndex.offset = lOffset;
+              curIndex.offset = lSpecOffset;
               m_vIndex.push_back(curIndex);
+              // Only map id -> scan when this spectrum's id= was actually parsed; curIndex is
+              // reused, so an unparsed id would otherwise insert a stale idRef from a prior scan.
+              if (bParsedId)
+                m_mIndex.insert(pair<string, size_t>(curIndex.idRef, curIndex.scanNum));
               break;
             }
             else{
@@ -1272,8 +1333,8 @@ bool mzpSAXMzmlHandler::generateIndexOffset() {
           bReadingFirstSpectrum = false;
         } while (fgets(chunk, CHUNK, f));
       }
-      lOffset = ftell(f);  // position of file pointer before fgets in loop
     }
+    fclose(f);
   } else {
     readBytes = gzObj.extract(fptr, gzObj.getfilesize()-200, (unsigned char*)chunk, CHUNK);
   }

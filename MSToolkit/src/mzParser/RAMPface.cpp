@@ -581,6 +581,7 @@ void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct Sc
   scanHeader->basePeakIntensity=pFI->bs->getBasePeakIntensity();
   scanHeader->basePeakMZ=pFI->bs->getBasePeakMZ();
   scanHeader->centroid=pFI->bs->getCentroid();
+  scanHeader->positiveScan=pFI->bs->getPositiveScan();
   scanHeader->collisionEnergy=pFI->bs->getCollisionEnergy();
   scanHeader->compensationVoltage=pFI->bs->getCompensationVoltage();																		
   scanHeader->highMZ=pFI->bs->getHighMZ();

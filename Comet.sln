@@ -42,6 +42,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libexpat", "MSToolkit\Visua
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AScorePro", "AScorePro\AScorePro.vcxproj", "{10D8ACD6-ECE9-4305-8E31-85EEB14DB22B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CometUnitTests", "tests\unit\CometUnitTests.vcxproj", "{211225BA-1BDF-4019-9F21-57A441823901}"
+	ProjectSection(ProjectDependencies) = postProject
+		{10D8ACD6-ECE9-4305-8E31-85EEB14DB22B} = {10D8ACD6-ECE9-4305-8E31-85EEB14DB22B}
+		{745DEC58-EBB3-47A9-A9B8-4C6627C01BF8} = {745DEC58-EBB3-47A9-A9B8-4C6627C01BF8}
+		{887C017B-8E91-4CCE-85C6-4D36D4033F1B} = {887C017B-8E91-4CCE-85C6-4D36D4033F1B}
+		{C0BD6AC1-1126-476E-938F-7E351B36CDE2} = {C0BD6AC1-1126-476E-938F-7E351B36CDE2}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -80,6 +88,10 @@ Global
 		{10D8ACD6-ECE9-4305-8E31-85EEB14DB22B}.Debug|x64.Build.0 = Debug|x64
 		{10D8ACD6-ECE9-4305-8E31-85EEB14DB22B}.Release|x64.ActiveCfg = Release|x64
 		{10D8ACD6-ECE9-4305-8E31-85EEB14DB22B}.Release|x64.Build.0 = Release|x64
+		{211225BA-1BDF-4019-9F21-57A441823901}.Debug|x64.ActiveCfg = Debug|x64
+		{211225BA-1BDF-4019-9F21-57A441823901}.Debug|x64.Build.0 = Debug|x64
+		{211225BA-1BDF-4019-9F21-57A441823901}.Release|x64.ActiveCfg = Release|x64
+		{211225BA-1BDF-4019-9F21-57A441823901}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

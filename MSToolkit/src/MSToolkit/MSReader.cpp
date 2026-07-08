@@ -704,6 +704,7 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
       s.setRTime((float)(atof(tokens[1].c_str()) / 60.0));
     } else if (tokens[0].compare("TITLE")==0) {
       for(size_t a=2;a<tokens.size();a++) tokens[1]+='='+tokens[a];
+      if(tokens[1].size()>255) tokens[1].resize(255);
       s.setNativeID(tokens[1].c_str());
     } else if(isdigit(tokens[0][0])){
       strcpy(str, tokens[0].c_str());
@@ -1403,6 +1404,7 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	s.setScanNumber(scanHeader.acquisitionNum);
 	s.setScanNumber(scanHeader.acquisitionNum,true);
 	s.setRTime((float)scanHeader.retentionTime/60.0f);
+  s.setPositiveScan(scanHeader.positiveScan);
   s.setCompensationVoltage(scanHeader.compensationVoltage);
   s.setInverseReducedIonMobility(scanHeader.inverseReducedIonMobility);
   s.setIonInjectionTime((float)scanHeader.ionInjectionTime);
