@@ -17,6 +17,7 @@ limitations under the License.
 #include "RAWReader.h"
 #include <msclr/marshal_cppstd.h>
 #include <vcclr.h>
+#include <cstdio>
 
 using namespace std;
 using namespace MSToolkit;
@@ -358,8 +359,10 @@ bool RAWReader::readRawFileImpl(const char *c, Spectrum &s, int scNum){
       pImpl->rawFile = rf;
       rawFileOpen=true;
       rawTotSpec = rf->RunHeaderEx->LastSpectrum;
-      strcpy(rawInstrument, msclr::interop::marshal_as<std::string>(rf->GetInstrumentData()->Model).c_str());
-      strcpy(rawCurrentFile,c);
+      //Bounded copies into the fixed 256-char buffers; snprintf always null-terminates,
+      //so an over-long instrument model or file path is truncated rather than overflowing.
+      snprintf(rawInstrument, sizeof(rawInstrument), "%s", msclr::interop::marshal_as<std::string>(rf->GetInstrumentData()->Model).c_str());
+      snprintf(rawCurrentFile, sizeof(rawCurrentFile), "%s", c);
 
 			//if scan number is requested, grab it
       if(scNum<0) return false;
@@ -531,7 +534,11 @@ bool RAWReader::readRawFileImpl(const char *c, Spectrum &s, int scNum){
       s.setCharge(preInfo.charge);
     } else {
       s.addMZ(isoMz);
-      int charge = calcChargeState(isoMz, 0.0, masses.data(), intensities.data(), (long)numPeaks);
+      //Pass the highest observed m/z as the high mass; calcChargeState uses it to decide
+      //whether the isolation window could hold a >+1 precursor (masses[] is ascending m/z).
+      //A zero here would force CorrectionFactor negative and defeat the +1/unknown test.
+      double dHighMass = (numPeaks>0) ? masses[numPeaks-1] : 0.0;
+      int charge = calcChargeState(isoMz, dHighMass, masses.data(), intensities.data(), (long)numPeaks);
 
       //Charge greater than 0 means the charge state is known
       if(charge>0){
