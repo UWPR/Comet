@@ -43,6 +43,10 @@ jobs:
         dir CometSearch
         type CometSearch\\githubsha.h
 
+    - name: Restore NuGet packages
+      run: |
+        msbuild Comet.sln -t:Restore -p:Configuration=Release -p:Platform=x64 -p:RestoreConfigFile=nuget.config
+
     - name: Build Comet
       run: |
         msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143 -tv:Current
