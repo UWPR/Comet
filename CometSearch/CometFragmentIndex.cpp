@@ -20,6 +20,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometModificationsPermuter.h"
 
+#include <cmath>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -417,9 +418,11 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
 
    // first calculate peptide mass as that's needed in fragment loop
    j = 0;
+   double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
    for (int i = 0; i <= iEndPos; ++i)
    {
       dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
+      dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
@@ -431,6 +434,33 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
             }
             j++;
          }
+      }
+   }
+
+   // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
+   // recomputed here from sPeptide (a NUL-terminated string reconstructed from the
+   // stored szPeptide char[]) must match the authoritative unmodified mass that was
+   // computed directly from the protein sequence at digestion time and stored
+   // independently on the raw-peptide entry (CometSearch.cpp:3446-3488). A large
+   // divergence means szPeptide was truncated/corrupted after storage -- exactly how
+   // the 'U'/B/J/O/X/Z packing-table bug in core/Types.h manifested (see
+   // docs/20260709_sprankjitter.md) -- rather than a benign mono/avg mass-type or
+   // protein-terminal-mod difference, which is at most a few Da for realistic
+   // peptide lengths. Non-fatal: logs and continues so a batch build doesn't abort
+   // over a single bad entry.
+   if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
+   {
+      constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
+      double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
+      double dDelta = fabs(dResidueOnlyMass - dStoredMass);
+      if (dDelta > MASS_CHECK_TOL)
+      {
+         logerr(" Warning - AddFragments mass mismatch for peptide '" + sPeptide
+            + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
+            + "): recomputed mass " + std::to_string(dResidueOnlyMass)
+            + " vs stored " + std::to_string(dStoredMass)
+            + ", delta " + std::to_string(dDelta)
+            + ". Possible truncated/corrupted peptide string.\n");
       }
    }
 
