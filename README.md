@@ -29,14 +29,14 @@ Comet integrates:
 
 ### Reading Thermo .raw files on Windows
 
-`comet.win64.exe` reads Thermo `.raw` files directly using Thermo's RawFileReader .NET library.
-This requires three DLLs to be present in the **same directory as `Comet.exe`**:
+As of Comet release v2026.02 rev. 1, `comet.win64.exe` reads Thermo `.raw` files
+directly using Thermo's RawFileReader .NET library. This requires two DLLs to
+be present in the **same directory as `Comet.exe`**:
 
 - `ThermoFisher.CommonCore.Data.dll`
 - `ThermoFisher.CommonCore.RawFileReader.dll`
-- `OpenMcdf.dll`
 
-No installation or registration step is needed -- just place the three files next to `Comet.exe`
+No installation or registration step is needed -- just place the two files next to `Comet.exe`
 (or in the same folder you run Comet from). This is a deliberate improvement over the older
 MSFileReader COM library Comet used previously, which required a separate installer that
 registered COM components in the Windows registry.
@@ -44,7 +44,10 @@ registered COM components in the Windows registry.
 These DLLs can be obtained from Thermo's official
 [thermofisherlsms/RawFileReader](https://github.com/thermofisherlsms/RawFileReader) GitHub repo
 (the `Libs/Net471` folder matches the .NET Framework version Comet is built against). Comet has
-been built and tested against version `5.0.0.93`.
+been built and tested against version `5.0.0.93`. These two DLLs are also
+available as release assets in this repository.
 
 `.raw` support is Windows-only. mzXML, mzML, and mgf/ms1/ms2-family inputs work on every platform
 without any of the above and require no additional files.
+
+RawFileReader reading tool. Copyright © 2016 by Thermo Fisher Scientific, Inc. All rights reserved.

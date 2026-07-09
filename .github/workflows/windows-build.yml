@@ -61,6 +61,8 @@ jobs:
         if not exist release mkdir release
         copy x64\Release\comet.exe release\comet.win64.exe
         copy x64\Release\CometWrapper.dll release\
+        copy x64\Release\ThermoFisher.CommonCore.Data.dll release\
+        copy x64\Release\ThermoFisher.CommonCore.RawFileReader.dll release\
         copy README.md release\README.md
 
     - name: Upload build artificats
