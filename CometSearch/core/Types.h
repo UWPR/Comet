@@ -284,9 +284,18 @@ struct PepGenTuple
 
 // ---------------------------------------------------------------------------
 // 5-bit amino acid encoding for per-length short-peptide key packing.
-// AAs are mapped in ASCII sort order (A=1, C=2, ..., Y=20) so that sorting
-// packed uint64 keys is equivalent to lexicographic sort of sequences within
-// a given peptide length.
+// The 20 standard AAs are mapped in ASCII sort order (A=1, C=2, ..., Y=20)
+// so that sorting packed uint64 keys is equivalent to lexicographic sort of
+// sequences within a given peptide length. Non-standard/ambiguous one-letter
+// codes (B, J, O, U, X, Z) get their own distinct codes 21-26, appended after
+// the standard set rather than interleaved in ASCII order -- ordering is only
+// used to group identical sequences together before dedup (final index order
+// is by mass, not by this key), so exact lexicographic placement of these six
+// doesn't matter. Code 0 is reserved as the "unset/pad" value read for slots
+// beyond a short peptide's length; every mapped residue below MUST be nonzero,
+// or UnpackPeptide() will decode it as the pad sentinel ('\0') and silently
+// truncate the reconstructed string at that position (this happened for 'U',
+// see docs/20260709_sprankjitter.md).
 // ---------------------------------------------------------------------------
 static constexpr uint8_t kAA5bit[256] = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,   //   0-15
@@ -295,7 +304,7 @@ static constexpr uint8_t kAA5bit[256] = {
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,   //  48-63
    0,                                   //  64 '@'
    1,                                   //  65 'A'
-   0,                                   //  66 'B'
+  21,                                   //  66 'B'
    2,                                   //  67 'C'
    3,                                   //  68 'D'
    4,                                   //  69 'E'
@@ -303,23 +312,23 @@ static constexpr uint8_t kAA5bit[256] = {
    6,                                   //  71 'G'
    7,                                   //  72 'H'
    8,                                   //  73 'I'  (canonical for I/L when bTreatSameIL)
-   0,                                   //  74 'J'
+  22,                                   //  74 'J'
    9,                                   //  75 'K'
   10,                                   //  76 'L'  (remapped to 8 when bTreatSameIL)
   11,                                   //  77 'M'
   12,                                   //  78 'N'
-   0,                                   //  79 'O'
+  23,                                   //  79 'O'
   13,                                   //  80 'P'
   14,                                   //  81 'Q'
   15,                                   //  82 'R'
   16,                                   //  83 'S'
   17,                                   //  84 'T'
-   0,                                   //  85 'U'
+  24,                                   //  85 'U'
   18,                                   //  86 'V'
   19,                                   //  87 'W'
-   0,                                   //  88 'X'
+  25,                                   //  88 'X'
   20,                                   //  89 'Y'
-   0,                                   //  90 'Z'
+  26,                                   //  90 'Z'
    // 91-255: all zeros
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -336,9 +345,10 @@ static constexpr uint8_t kAA5bit[256] = {
 
 // Reverse map: 5-bit code -> amino acid character.
 // Code 8 always decodes to 'I' (canonical; L maps to code 8 when bTreatSameIL).
+// Codes 21-26 decode the non-standard/ambiguous residues B/J/O/U/X/Z.
 static constexpr char k5bitAA[32] = {
    '\0','A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R',
-   'S', 'T','V','W','Y','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'
+   'S', 'T','V','W','Y','B','J','O','U','X','Z','\0','\0','\0','\0','\0'
 };
 
 // Pack up to 12 amino acids into a uint64 key (5 bits each, 60 bits total).
