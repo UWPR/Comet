@@ -17,6 +17,22 @@ Show only errors and C4-level warnings:
 ... 2>&1 | Where-Object { $_ -match "error|warning C4" }
 ```
 
+## Building from WSL (Bash tool)
+
+`MSBuild.exe` is directly invocable from the Bash tool in a WSL session on this machine (no
+`powershell.exe`/`cmd.exe` wrapper needed) — Windows interop lets WSL bash exec `.exe` paths
+under `/mnt/c/...` directly:
+
+```bash
+"/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" \
+  "/mnt/c/Work/Comet-master/Comet.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+```
+
+Use forward-slash `/mnt/c/...` paths (not `C:\...`) when invoking from bash. This means a WSL-based
+Claude Code session can build and verify the Windows/VS side of a change directly, not just the
+Linux `make` build — don't assume Windows-only code (e.g. `/clr` files, `CometWrapper`,
+`RealtimeSearch`) is unverifiable just because the working shell is bash.
+
 ## After building: copy the wrapper DLL
 
 CometWrapper.dll must be manually copied after each build for RealtimeSearch.exe to pick it up:

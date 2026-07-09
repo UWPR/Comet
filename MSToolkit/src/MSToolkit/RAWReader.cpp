@@ -167,7 +167,9 @@ namespace {
 // ==========================
 RAWReader::RAWReader(){
 
-  pImpl = new RAWReaderImpl();
+  //pImpl is allocated lazily (see readRawFileImpl) -- only once a .raw file is actually opened --
+  //rather than here unconditionally. See the comment on closeRawFileHandle() below for why.
+  pImpl = NULL;
 	bRaw = initRaw();
   rawCurSpec=0;
   rawTotSpec=0;
@@ -187,14 +189,26 @@ RAWReader::RAWReader(){
 
 RAWReader::~RAWReader(){
 
-  if(rawFileOpen){
-    IRawDataPlus^ rf = pImpl->rawFile;
-    delete rf;
+  if(pImpl){
+    if(rawFileOpen) closeRawFileHandle();
+    delete pImpl;
+    pImpl=NULL;
   }
-  delete pImpl;
-  pImpl=NULL;
 	msLevelFilter=NULL;
 
+}
+
+// Isolated out of ~RAWReader() so that IRawDataPlus^ is only ever referenced by IL that actually
+// gets JIT-compiled when a .raw file was opened. The JIT resolves every type named anywhere in a
+// method's body -- including inside a branch that never executes -- the first time that method is
+// called, so an IRawDataPlus^ reference sitting directly in ~RAWReader() would force-load
+// ThermoFisher.CommonCore.Data.dll on destruction of *every* RAWReader, even for a search that
+// never touched a .raw file (~RAWReader() runs unconditionally once per search). Combined with the
+// lazy pImpl allocation in readRawFileImpl(), this method (and thus the Thermo type) is only ever
+// JIT-compiled when a .raw file was genuinely opened.
+void RAWReader::closeRawFileHandle(){
+  IRawDataPlus^ rf = pImpl->rawFile;
+  delete rf;
 }
 
 int RAWReader::calcChargeState(double precursormz, double highmass, const double* masses, const double* intensities, long nArraySize) {
@@ -314,6 +328,10 @@ bool RAWReader::readRawFileImpl(const char *c, Spectrum &s, int scNum){
 	bool bNewFile=false;
 
   if(!bRaw) return false;
+
+  //Lazily allocate pImpl here, the first time a .raw file is actually read (see the constructor
+  //and closeRawFileHandle() for why this isn't done unconditionally in the constructor).
+  if(!pImpl) pImpl = new RAWReaderImpl();
 
 	//Clear spectrum object
   s.clear();
