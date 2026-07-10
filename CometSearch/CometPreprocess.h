@@ -20,6 +20,10 @@
 #include "search/SearchSession.h"
 #include <atomic>
 
+// Defined file-local in CometPreprocess.cpp; only referenced here by
+// reference, so a forward declaration is sufficient.
+struct BoundedSpectrumQueue;
+
 struct PreprocessThreadData
 {
    Spectrum mstSpectrum;
@@ -165,6 +169,15 @@ private:
                                   SearchSession* pSession);
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
+
+   // Shared by both the synchronous and readahead producer loops in
+   // FusedLoadAndSearchSpectra so a future filter change (clearMzRange,
+   // iMinPeaks, activation method) cannot land in only one of the two call
+   // sites and silently diverge between them.  Mutates mstSpectrum in place
+   // (clearMzRange zeroes cleared-range intensities) and moves it into queue
+   // if it survives all three filters.  Returns true iff enqueued.
+   static bool FilterAndEnqueueSpectrum(Spectrum& mstSpectrum,
+                                        BoundedSpectrumQueue& queue);
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,

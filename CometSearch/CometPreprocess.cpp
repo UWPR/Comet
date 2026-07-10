@@ -26,6 +26,8 @@
 #include <mutex>
 #include <queue>
 #include <atomic>
+#include <thread>
+#include <memory>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -198,6 +200,98 @@ struct BoundedSpectrumQueue
       cvNotFull.notify_all();
    }
 };
+
+
+// Mutates mstSpectrum in place (clearMzRange zeroes cleared-range intensities)
+// and moves it into queue if it survives all three filters.  Returns true iff
+// the spectrum was enqueued.  This is the ONLY copy of this filter sequence;
+// both the synchronous and readahead loops in FusedLoadAndSearchSpectra call
+// it so they cannot drift apart on a future filter change.
+bool CometPreprocess::FilterAndEnqueueSpectrum(Spectrum& mstSpectrum, BoundedSpectrumQueue& queue)
+{
+   int iNumClearedPeaks = 0;
+
+   if (g_staticParams.options.clearMzRange.dEnd > 0.0
+         && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
+   {
+      int ip = 0;
+      while (true)
+      {
+         if (ip >= mstSpectrum.size() || mstSpectrum.at(ip).mz > g_staticParams.options.clearMzRange.dEnd)
+            break;
+         if (mstSpectrum.at(ip).mz >= g_staticParams.options.clearMzRange.dStart
+               && mstSpectrum.at(ip).mz <= g_staticParams.options.clearMzRange.dEnd)
+         {
+            mstSpectrum.at(ip).intensity = 0.0;
+            iNumClearedPeaks++;
+         }
+         ip++;
+      }
+   }
+
+   if (mstSpectrum.size() - iNumClearedPeaks < g_staticParams.options.iMinPeaks)
+      return false;
+
+   if (!CometPreprocess::CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
+      return false;
+
+   queue.push(std::move(mstSpectrum));
+   return true;
+}
+
+
+// ---------------------------------------------------------------------------
+// Single-thread spectrum readahead (EntireFile, spectrum_batch_size==0, mzML/
+// mzXML only).  One dedicated thread is the ONLY code that touches mstReader
+// while readahead is active, satisfying MSReader's single-handle thread-safety
+// rule.  Parsed spectra are buffered in readyRing so a slow file read never
+// stalls hand-off of an already-parsed spectrum to an idle search worker.
+// ---------------------------------------------------------------------------
+struct SpectrumReadahead
+{
+   BoundedSpectrumQueue readyRing;
+   std::thread          ioThread;
+   std::atomic<int>     iSnapshotLastScan{-1};
+   std::atomic<bool>    bStop{false};
+
+   explicit SpectrumReadahead(size_t depth) : readyRing(depth) {}
+
+   // Producer loop calls this instead of PreloadIons.  false => no more spectra.
+   bool next(Spectrum& out) { return readyRing.pop(out); }
+
+   void requestStopAndJoin()
+   {
+      bStop.store(true, std::memory_order_relaxed);
+      readyRing.finish();                       // unblock a full-queue push()
+      if (ioThread.joinable()) ioThread.join();
+   }
+};
+
+// Runs on the dedicated reader thread.  bFirstRead honors the cross-batch
+// _bFirstScan state captured by the caller before this thread was spawned.
+static void ReadaheadLoop(MSReader& mstReader, SpectrumReadahead& ra, bool bFirstRead)
+{
+   Spectrum spec;
+
+   if (bFirstRead)
+      CometPreprocess::PreloadIons(mstReader, spec, false, 0);   // opens the file
+   else
+      CometPreprocess::PreloadIons(mstReader, spec, true);
+
+   ra.iSnapshotLastScan.store(mstReader.getLastScan(), std::memory_order_relaxed);
+
+   while (!ra.bStop.load(std::memory_order_relaxed))
+   {
+      if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+         break;
+      if (spec.getScanNumber() == 0)            // EOF for a valid input type
+         break;
+      ra.readyRing.push(std::move(spec));        // move parsed spectrum to consumer
+      CometPreprocess::PreloadIons(mstReader, spec, true);
+   }
+
+   ra.readyRing.finish();
+}
 
 
 // Generate data for both sp scoring (pfSpScoreData) and xcorr analysis (FastXcorr).
@@ -3293,121 +3387,167 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
       });
    }
 
-   while (true)
+   // Readahead is only provably correct for pure sequential EntireFile
+   // streaming of a single batch on the mzML/mzXML family: EntireFile means
+   // iFirstScan/iLastScan are always 0 (Comet.cpp only sets them on the
+   // SpecificScan/SpecificScanRange branches), so the scan-range and
+   // bSkipToStartScan seek branches below never fire; iSpectrumBatchSize==0
+   // means this call reads the whole file so the reader thread's lifetime
+   // nests cleanly inside it; InputType_MZXML excludes RAW, whose Thermo
+   // path runs managed /clr code that a plain std::thread cannot safely
+   // drive.
+   const bool bUseReadahead =
+         (iAnalysisType == AnalysisType_EntireFile)
+      && (g_staticParams.options.iSpectrumBatchSize == 0)
+      && (g_staticParams.inputFile.iInputType == InputType_MZXML);
+
+   // Modest fixed depth: one reader cannot usefully run far ahead, and this
+   // bounds extra in-flight Spectrum RAM independently of thread count.
+   const size_t iReadDepth = 16;
+   std::unique_ptr<SpectrumReadahead> pRA;
+
+   if (bUseReadahead)
    {
-      if (_bFirstScan)
+      bool bFirstRead = _bFirstScan;
+      _bFirstScan = false;                       // reader thread now owns the reads
+      pRA.reset(new SpectrumReadahead(iReadDepth));
+      pRA->ioThread = std::thread(ReadaheadLoop, std::ref(mstReader), std::ref(*pRA), bFirstRead);
+   }
+
+   if (bUseReadahead)
+   {
+      iFileLastScan = pRA->iSnapshotLastScan.load(std::memory_order_relaxed);
+      bool bAborted = false;
+
+      while (pRA->next(mstSpectrum))              // false at EOF/error/stop
       {
-         PreloadIons(mstReader, mstSpectrum, false, 0);
-         _bFirstScan = false;
-      }
-      else
-      {
-         PreloadIons(mstReader, mstSpectrum, true);
-      }
-
-      if (iFileLastScan == -1)
-         iFileLastScan = mstReader.getLastScan();
-
-      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
-      {
-         _bDoneProcessingAllSpectra = true;
-         break;
-      }
-
-      iScanNumber = mstSpectrum.getScanNumber();
-
-      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
-      {
-         g_staticParams.bSkipToStartScan = false;
-
-         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
-         iScanNumber = mstSpectrum.getScanNumber();
-
-         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
          {
-            iFirstScan++;
-            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
-            iScanNumber = mstSpectrum.getScanNumber();
+            bAborted = true;
+            break;
          }
+
+         // mstSpectrum.getScanNumber() is guaranteed != 0 here: EOF is
+         // consumed by the reader thread and surfaces only as next()
+         // returning false, above.
+         FilterAndEnqueueSpectrum(mstSpectrum, queue);
+
+         iTotalScans++;
+
+         // Same defensive safety net as CheckExit's third branch (see the
+         // synchronous loop below): bail out if the producer has consumed
+         // more matching-level spectra than the file's own scan index
+         // reports.  Unreachable in practice -- readMZPFile's own EOF bound
+         // already prevents it -- but free to keep given iTotalScans and
+         // iFileLastScan are already in hand.
+         if (iTotalScans > iFileLastScan)
+            break;
       }
 
-      if (iScanNumber != 0)
+      // Mirror CheckExit: error/cancel return true WITHOUT setting
+      // _bDoneProcessingAllSpectra (see below); only a clean EOF or the
+      // safety net above means EntireFile is actually done.
+      if (!bAborted)
+         _bDoneProcessingAllSpectra = true;
+   }
+   else
+   {
+      while (true)
       {
-         int iNumClearedPeaks = 0;
-         iTmpCount = iScanNumber;
+         if (_bFirstScan)
+         {
+            PreloadIons(mstReader, mstSpectrum, false, 0);
+            _bFirstScan = false;
+         }
+         else
+         {
+            PreloadIons(mstReader, mstSpectrum, true);
+         }
 
-         if (iLastScan != 0 && iScanNumber > iLastScan)
+         if (iFileLastScan == -1)
+            iFileLastScan = mstReader.getLastScan();
+
+         if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
          {
             _bDoneProcessingAllSpectra = true;
             break;
          }
-         if (iFirstScan != 0 && iLastScan != 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
-            continue;
-         if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
-            continue;
 
-         if (g_staticParams.options.clearMzRange.dEnd > 0.0
-               && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
          {
-            int ip = 0;
-            while (true)
+            g_staticParams.bSkipToStartScan = false;
+
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+
+            while (iScanNumber == 0 && iFirstScan < iLastScan)
             {
-               if (ip >= mstSpectrum.size() || mstSpectrum.at(ip).mz > g_staticParams.options.clearMzRange.dEnd)
-                  break;
-               if (mstSpectrum.at(ip).mz >= g_staticParams.options.clearMzRange.dStart
-                     && mstSpectrum.at(ip).mz <= g_staticParams.options.clearMzRange.dEnd)
-               {
-                  mstSpectrum.at(ip).intensity = 0.0;
-                  iNumClearedPeaks++;
-               }
-               ip++;
+               iFirstScan++;
+               PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+               iScanNumber = mstSpectrum.getScanNumber();
             }
          }
 
-         if (mstSpectrum.size() - iNumClearedPeaks >= g_staticParams.options.iMinPeaks)
+         if (iScanNumber != 0)
          {
+            iTmpCount = iScanNumber;
+
+            if (iLastScan != 0 && iScanNumber > iLastScan)
+            {
+               _bDoneProcessingAllSpectra = true;
+               break;
+            }
+            if (iFirstScan != 0 && iLastScan != 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
+               continue;
+            if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
+               continue;
+
+            // Unreachable as true here: the iLastScan!=0 && iScanNumber>iLastScan
+            // check above already breaks out for any analysis type before this
+            // point is reached. Kept only to preserve the exact pre-existing
+            // control flow rather than removing dead code as a side effect of
+            // this refactor.
             if (iAnalysisType == AnalysisType_SpecificScanRange && iLastScan > 0 && iScanNumber > iLastScan)
             {
                _bDoneProcessingAllSpectra = true;
                break;
             }
 
-            if (CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
-            {
-               queue.push(std::move(mstSpectrum));
-            }
-         }
+            FilterAndEnqueueSpectrum(mstSpectrum, queue);
 
-         iTotalScans++;
-      }
-      else if (IsValidInputType(g_staticParams.inputFile.iInputType))
-      {
-         _bDoneProcessingAllSpectra = true;
-         break;
-      }
-      else
-      {
-         iTmpCount++;
-         if (iTmpCount > iFileLastScan)
+            iTotalScans++;
+         }
+         else if (IsValidInputType(g_staticParams.inputFile.iInputType))
          {
             _bDoneProcessingAllSpectra = true;
             break;
          }
-      }
-
-      // No lock: when iSpectrumBatchSize == 0 (the common case) CheckExit ignores
-      // the count entirely, so pass 0.  When the batch-size cap is active, read the
-      // lock-free running total.  This value is inherently approximate under
-      // concurrency (the old locked read was too -- workers appended while the
-      // producer held the lock), so relaxed ordering preserves existing behavior.
-      {
-         int iLoaded = (g_staticParams.options.iSpectrumBatchSize != 0)
-                          ? (int)aQueryCount.load(std::memory_order_relaxed)
-                          : 0;
-         if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                       mstReader.getLastScan(), iLoaded, 0))
+         else
          {
-            break;
+            iTmpCount++;
+            if (iTmpCount > iFileLastScan)
+            {
+               _bDoneProcessingAllSpectra = true;
+               break;
+            }
+         }
+
+         // No lock: when iSpectrumBatchSize == 0 (the common case) CheckExit ignores
+         // the count entirely, so pass 0.  When the batch-size cap is active, read the
+         // lock-free running total.  This value is inherently approximate under
+         // concurrency (the old locked read was too -- workers appended while the
+         // producer held the lock), so relaxed ordering preserves existing behavior.
+         {
+            int iLoaded = (g_staticParams.options.iSpectrumBatchSize != 0)
+                             ? (int)aQueryCount.load(std::memory_order_relaxed)
+                             : 0;
+            if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                          mstReader.getLastScan(), iLoaded, 0))
+            {
+               break;
+            }
          }
       }
    }
@@ -3420,6 +3560,12 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // an early break (error/cancel/batch-size limit).
    queue.finish();
    tp->wait_on_threads();
+
+   // requestStopAndJoin() sets stop + finish() (both idempotent) then joins,
+   // so it is correct whether the reader already exited on EOF or is still
+   // blocked on a full readyRing.push().
+   if (pRA)
+      pRA->requestStopAndJoin();
 
    // All workers are now joined; their per-slot vectors are complete and no longer
    // mutated.  Concatenate into session.queries (ownership of the raw Query* moves
