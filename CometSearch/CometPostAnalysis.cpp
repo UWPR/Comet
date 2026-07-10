@@ -989,9 +989,12 @@ bool CometPostAnalysis::ProteinEntryCmp(const struct ProteinEntryStruct& a,
 bool CometPostAnalysis::SortFnSp(const Results& a,
    const Results& b)
 {
-   if (a.fScoreSp > b.fScoreSp)
-      return true;
-   else if (a.fScoreSp == b.fScoreSp)
+   // isEqual (not raw >) must be checked first: usiRankSp assignment groups
+   // consecutive entries via isEqual, so the sort's own notion of "tied" has
+   // to match or near-tied-but-not-bitwise-identical scores would be ordered
+   // by the tiny float delta instead of falling through to the deterministic
+   // peptide/mod-state tie-break, making sp_rank order-dependent across runs.
+   if (isEqual(a.fScoreSp, b.fScoreSp))
    {
       int iCmp = strcmp(a.szPeptide, b.szPeptide);
 
@@ -1010,6 +1013,8 @@ bool CometPostAnalysis::SortFnSp(const Results& a,
          }
       }
    }
+   else if (a.fScoreSp > b.fScoreSp)
+      return true;
 
    return false;
 }
@@ -1018,9 +1023,10 @@ bool CometPostAnalysis::SortFnSp(const Results& a,
 bool CometPostAnalysis::SortFnXcorr(const Results& a,
    const Results& b)
 {
-   if (a.fXcorr > b.fXcorr)
-      return true;
-   else if (a.fXcorr == b.fXcorr)
+   // isEqual (not raw >) must be checked first; see SortFnSp for why -- the
+   // usiRankXcorr assignment groups consecutive entries via isEqual, so the
+   // sort has to use the same tie definition or ranks become order-dependent.
+   if (isEqual(a.fXcorr, b.fXcorr))
    {
       int iCmp = strcmp(a.szPeptide, b.szPeptide);
 
@@ -1039,6 +1045,8 @@ bool CometPostAnalysis::SortFnXcorr(const Results& a,
          }
       }
    }
+   else if (a.fXcorr > b.fXcorr)
+      return true;
 
    return false;
 }

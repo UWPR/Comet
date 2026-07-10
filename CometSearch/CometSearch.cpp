@@ -5220,6 +5220,59 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
          }
       }
 
+      // See the matching check in the target branch below for why this is needed:
+      // without it, a candidate merely tying the current worst score unconditionally
+      // evicted it regardless of tie-break preference, making the survivor of a
+      // multi-way tie depend on arrival order among the DB-scanning worker threads.
+      //
+      // Compare at float precision (matching what actually gets stored, fXcorr) rather
+      // than double: comparing the full-precision double dXcorr against a float widened
+      // back to double is NOT the same as comparing the value that will be stored, and
+      // a value that is genuinely tied once both sides are floats can register as
+      // "less than" purely from the double/float round-trip -- silently rejecting a
+      // tied candidate before it ever reaches the sequence tie-break below.
+      {
+      float fIncomingXcorr = (float)dXcorr;
+
+      if (fIncomingXcorr < pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+      {
+         return;
+      }
+      else if (fIncomingXcorr == pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+      {
+         char szIncomingPeptide[MAX_PEPTIDE_LEN];
+         memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
+         szIncomingPeptide[iLenPeptide] = '\0';
+
+         int iCmp = strcmp(szIncomingPeptide, pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide);
+
+         if (iCmp > 0)
+         {
+            return;  // incoming has the less-preferred (higher) sequence at the same score
+         }
+         else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+         {
+            bool bIncomingPreferred = false;
+
+            for (int x = 0; x < iLenPeptide + 2; ++x)
+            {
+               if (piVarModSites[x] < pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x])
+               {
+                  bIncomingPreferred = true;
+                  break;
+               }
+               else if (piVarModSites[x] > pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x])
+               {
+                  break;
+               }
+            }
+
+            if (!bIncomingPreferred)
+               return;
+         }
+      }
+      }
+
       pQuery->iDecoyMatchPeptideCount++;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiLenPeptide = iLenPeptide;
 
@@ -5427,6 +5480,62 @@ void CometSearch::StorePeptide(size_t iWhichQuery,
                }
             }
          }
+      }
+
+      // Only replace the identified worst slot if the incoming candidate is actually
+      // preferred under the same (score, then sequence, then mod state) rule used above
+      // to pick that slot. Without this check, a candidate that merely ties the current
+      // worst score unconditionally evicted it regardless of tie-break preference, so the
+      // survivor of a multi-way tie depended on arrival order among the worker threads
+      // scanning different DB chunks -- making the top-iNumStored membership (and every
+      // Sp/Xcorr rank below it) vary from run to run for spectra with tied low candidates.
+      //
+      // Compare at float precision (matching what actually gets stored, fXcorr) rather
+      // than double: comparing the full-precision double dXcorr against a float widened
+      // back to double is NOT the same as comparing the value that will be stored, and
+      // a value that is genuinely tied once both sides are floats can register as
+      // "less than" purely from the double/float round-trip -- silently rejecting a
+      // tied candidate before it ever reaches the sequence tie-break below.
+      {
+      float fIncomingXcorr = (float)dXcorr;
+
+      if (fIncomingXcorr < pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+      {
+         return;
+      }
+      else if (fIncomingXcorr == pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+      {
+         char szIncomingPeptide[MAX_PEPTIDE_LEN];
+         memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
+         szIncomingPeptide[iLenPeptide] = '\0';
+
+         int iCmp = strcmp(szIncomingPeptide, pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide);
+
+         if (iCmp > 0)
+         {
+            return;  // incoming has the less-preferred (higher) sequence at the same score
+         }
+         else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+         {
+            bool bIncomingPreferred = false;
+
+            for (int x = 0; x < iLenPeptide + 2; ++x)
+            {
+               if (piVarModSites[x] < pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x])
+               {
+                  bIncomingPreferred = true;
+                  break;
+               }
+               else if (piVarModSites[x] > pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x])
+               {
+                  break;
+               }
+            }
+
+            if (!bIncomingPreferred)
+               return;
+         }
+      }
       }
 
       pQuery->iMatchPeptideCount++;
