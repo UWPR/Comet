@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
+#include <atomic>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -2950,7 +2951,10 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
 // Fused FI_DB batch worker: preprocess + RunSearch + post-analysis for one spectrum.
 // Uses per-thread g_rtsScratch scratch buffers (no shared batch pool contention).
 // iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
-void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot, SearchSession& session)
+void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
+                                          int iSlot,
+                                          std::vector<Query*>& outQueries,
+                                          std::atomic<size_t>& outCount)
 {
    int iScanNumber = spec.getScanNumber();
    int iSpectrumCharge = 0;
@@ -3232,8 +3236,8 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec, int iSlot, SearchSessio
             pScoring->vfRawFragmentPeakMass.clear();
             pScoring->vfRawFragmentPeakMass.shrink_to_fit();
 
-            std::lock_guard<std::mutex> lk(session.queriesMutex);
-            session.queries.push_back(pScoring);
+            outQueries.push_back(pScoring);
+            outCount.fetch_add(1, std::memory_order_relaxed);
          }
       }
    }
@@ -3265,15 +3269,27 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // Launch consumer workers BEFORE the read loop so the first pushed
    // spectrum is consumed immediately with no dead time.
    const int iNumSlots = g_staticParams.options.iNumThreads;
+
+   // Per-worker result vectors: each worker owns vSlotQueries[t] exclusively,
+   // so no lock is needed on the append hot path.  alignas(64) prevents false
+   // sharing of adjacent vector control blocks (ptr/size/capacity) during the
+   // concurrent push_back storm.
+   struct alignas(64) SlotVec { std::vector<Query*> v; };
+   std::vector<SlotVec> vSlotQueries(iNumSlots);
+
+   // Running count of accumulated Query* across all workers.  Only read by the
+   // producer, and only when iSpectrumBatchSize != 0 (batch-size cap feature).
+   std::atomic<size_t> aQueryCount{0};
+
    BoundedSpectrumQueue queue(static_cast<size_t>(iNumSlots) * 4);
 
    for (int t = 0; t < iNumSlots; ++t)
    {
-      tp->doJob([&queue, t, &session]()
+      tp->doJob([&queue, t, &vSlotQueries, &aQueryCount]()
       {
          Spectrum spec;
          while (queue.pop(spec))
-            FusedSearchSpectrum(std::move(spec), t, session);
+            FusedSearchSpectrum(std::move(spec), t, vSlotQueries[t].v, aQueryCount);
       });
    }
 
@@ -3379,10 +3395,17 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
          }
       }
 
+      // No lock: when iSpectrumBatchSize == 0 (the common case) CheckExit ignores
+      // the count entirely, so pass 0.  When the batch-size cap is active, read the
+      // lock-free running total.  This value is inherently approximate under
+      // concurrency (the old locked read was too -- workers appended while the
+      // producer held the lock), so relaxed ordering preserves existing behavior.
       {
-         std::lock_guard<std::mutex> lk(session.queriesMutex);
+         int iLoaded = (g_staticParams.options.iSpectrumBatchSize != 0)
+                          ? (int)aQueryCount.load(std::memory_order_relaxed)
+                          : 0;
          if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                       mstReader.getLastScan(), (int)session.queries.size(), 0))
+                       mstReader.getLastScan(), iLoaded, 0))
          {
             break;
          }
@@ -3397,6 +3420,21 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // an early break (error/cancel/batch-size limit).
    queue.finish();
    tp->wait_on_threads();
+
+   // All workers are now joined; their per-slot vectors are complete and no longer
+   // mutated.  Concatenate into session.queries (ownership of the raw Query* moves
+   // by value; they are freed later in Pipeline cleanupBatch).  Push order is
+   // irrelevant: Pipeline.cpp sorts by scan number before writing.
+   size_t iTotalQueries = 0;
+   for (auto& slot : vSlotQueries)
+      iTotalQueries += slot.v.size();
+
+   session.queries.reserve(session.queries.size() + iTotalQueries);
+   for (auto& slot : vSlotQueries)
+   {
+      session.queries.insert(session.queries.end(), slot.v.begin(), slot.v.end());
+      slot.v.clear();
+   }
 
    return !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
 }

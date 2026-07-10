@@ -49,13 +49,18 @@
 struct SearchSession
 {
    // Per-batch MS2 result accumulator.
-   // Guarded by queriesMutex in the batch path.
+   // On the fused FI_DB batch path (FusedLoadAndSearchSpectra), workers append to
+   // their own per-slot vectors lock-free and this is filled by a single serial
+   // concatenation after the thread-pool join -- not mutex-guarded there.  Other
+   // batch paths (LoadAndPreprocessSpectra, PreprocessSingleSpectrum, etc.) still
+   // guard direct pushes to this vector with queriesMutex.
    std::vector<Query*>    queries;
 
    // Per-batch MS1 result accumulator (batch path only).
    std::vector<QueryMS1*> ms1Queries;
 
-   // Mutex protecting queries and ms1Queries during parallel spectrum loading.
+   // Mutex protecting queries and ms1Queries during parallel spectrum loading on
+   // the non-fused batch paths.
    std::mutex             queriesMutex;
 
    // Run-time flags (replace the batch-path-only globals).

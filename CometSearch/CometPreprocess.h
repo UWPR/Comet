@@ -18,6 +18,7 @@
 
 #include "ThreadPool.h"
 #include "search/SearchSession.h"
+#include <atomic>
 
 struct PreprocessThreadData
 {
@@ -113,8 +114,13 @@ public:
 
    // Fused FI_DB batch path: preprocess + search + post-analysis for one spectrum
    // in a single pass using thread-local scratch buffers.  iSlot is this worker's
-   // pre-assigned _ppbDuplFragmentArr index.
-   static void FusedSearchSpectrum(Spectrum spec, int iSlot, SearchSession& session);
+   // pre-assigned _ppbDuplFragmentArr index.  outQueries is this worker's own
+   // result vector (no lock needed); outCount is a shared running total bumped
+   // with relaxed ordering for the CheckExit batch-size-cap read.
+   static void FusedSearchSpectrum(Spectrum spec,
+                                   int iSlot,
+                                   std::vector<Query*>& outQueries,
+                                   std::atomic<size_t>& outCount);
 
    // Fused FI_DB batch path: stream spectra through a bounded producer/consumer
    // queue into FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
