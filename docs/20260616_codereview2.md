@@ -1,4 +1,4 @@
-# Code Review — architecture_update (Follow-Up)
+# Code Review -- architecture_update (Follow-Up)
 
 **Date:** 2026-06-16
 **Reviewer:** Claude Code (claude-sonnet-4-6)

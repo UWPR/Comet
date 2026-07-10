@@ -1,7 +1,9 @@
 # Asynchronous spectrum readahead for FusedLoadAndSearchSpectra
 
 Date: 2026-07-07
-Status: proposed
+Status: implemented (commit d2c6f54d, 2026-07-10). A/B validated byte-identical
+against a full-proteome FI_DB index (human.canonical.fasta, 3.76M peptides)
+and a real 51,816-spectrum Hela mzXML at spectrum_batch_size=0.
 Scope: `CometSearch/CometPreprocess.cpp` (file-local additions + the fused loop),
 2 new include lines, and one new private static method declaration in
 `CometPreprocess.h` (the shared filter helper, Step 2 -- it must be a class
@@ -537,3 +539,28 @@ read-bound and points to Section 8.
   one place -- `CometPreprocess::FilterAndEnqueueSpectrum` (Step 2b) -- called
   from both the synchronous and readahead loops, so a future filter change
   cannot land in only one of the two call sites and silently diverge.
+
+## 10. Post-implementation note
+
+All line numbers in Sections 1-4 above are the pre-implementation baseline
+this design was written against; the actual patch landed close to the
+pseudocode but the file grew (~230 lines), so every downstream line number
+shifted. As merged (commit d2c6f54d), the key symbols live at:
+
+- `CometPreprocess::FilterAndEnqueueSpectrum` -- CometPreprocess.cpp:210
+- `struct SpectrumReadahead` -- CometPreprocess.cpp:250
+- `ReadaheadLoop` -- CometPreprocess.cpp:272
+- `CometPreprocess::FusedLoadAndSearchSpectra` -- CometPreprocess.cpp:3344
+- `bUseReadahead` gate -- CometPreprocess.cpp:3399
+- `pRA->requestStopAndJoin()` -- CometPreprocess.cpp:3568
+
+Two deviations from the plan as originally written here, both decided during
+implementation and not reflected in the Section 3-5 prose above: the
+`AnalysisType_SpecificScanRange` recheck in the synchronous loop was proven
+dead code at its original position (the unconditional `iLastScan != 0 &&
+iScanNumber > iLastScan` check earlier in the same block already subsumes it)
+and was left in place rather than deleted, since removing pre-existing dead
+code was out of scope for this change. `BoundedSpectrumQueue` stayed file-local
+to the .cpp, forward-declared with `struct BoundedSpectrumQueue;` in the header
+for the `FilterAndEnqueueSpectrum` signature, rather than being relocated into
+the header as Step 2b's "mechanical detail" note left open.

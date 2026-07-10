@@ -48,14 +48,24 @@ I/O and compute overlap; peak spectrum RAM drops from ~320 MB to a few hundred K
   Each consumer lambda captures its own `t` at launch time -- same as the current
   `fetch_add` dispatch.  The `_ppbDuplFragmentArr` lifetime is the full batch,
   not per-spectrum.  This is unchanged.
-- `CheckExit` / `g_pvQueryMutex` are called on the producer thread inside the
-  read loop.  This is unchanged; only the producer runs the loop.
+- `CheckExit` is called on the producer thread inside the read loop.  This is
+  unchanged; only the producer runs the loop.
 - `_bDoneProcessingAllSpectra` is set by the read loop before the function
   returns.  The outer `CometSearchManager` batch while loop reads it after
   `FusedLoadAndSearchSpectra` returns.  This is unchanged.
 - `g_pvQuery` is pushed under `g_pvQueryMutex` inside `FusedSearchSpectrum`.
   Multiple consumer threads already do this in the current implementation;
   no change needed.
+  **(2026-07-10 correction: superseded by later work, no longer how results
+  are collected.)** `g_pvQuery` no longer exists anywhere in the codebase --
+  it was removed by the later `SearchSession` migration. Current
+  `FusedSearchSpectrum` (`CometPreprocess.cpp:3048`) takes a caller-owned
+  per-worker `vector<Query*>& outQueries` and appends to it lock-free (see
+  commit `c639d8be`, "Remove queriesMutex contention from fused batch search
+  hot path"); there is no global and no mutex on this path at all. Relatedly,
+  `g_pvQueryMutex` still exists today but now guards `g_vSpecLib` access
+  (`CometSpecLib.cpp`/`CometPreprocess.cpp`), not query pushes -- see
+  `docs/GlobalVariables.md`.
 - PSM output is sorted by scan number (`compareByScanNumber`) in
   `CometSearchManager` after `FusedLoadAndSearchSpectra` returns.  Consumer
   execution order therefore does not need to match read order; only the sort

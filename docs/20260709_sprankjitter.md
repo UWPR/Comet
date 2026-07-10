@@ -389,3 +389,12 @@ real masses (1111/1224 Da) are nowhere near the query's ~831 Da precursor.
   bits covers 32 values; only 21 are currently used, so there is room),
   plus `AddFragments()` should trust the stored peptide length/mass rather
   than re-deriving both from a NUL-terminated C string.
+
+**Resolved (2026-07-09, same day as this writeup):** both fixes landed --
+commit `9f171942` ("Fix 5-bit peptide packing collision for non-standard
+residue codes") gives `B`, `J`, `O`, `U`, `X`, `Z` their own distinct codes
+21-26 in `kAA5bit`/`k5bitAA` (`core/Types.h:290-299`, whose own comment now
+cites this doc), and commit `c920b7bc` ("Harden AddFragments against silent
+peptide-string truncation") addressed the second half. This section is no
+longer open work; treat it as the record of what was found and fixed, not a
+pending TODO.

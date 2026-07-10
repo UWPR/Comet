@@ -16,10 +16,34 @@ Behavior is unchanged at every step; each phase is independently compilable and 
 | 3 | Extract `IResultWriter` | **Complete** | `4337ee8d` |
 | 4 | Introduce `SearchSession` | **Complete** | `00e0655f` |
 | 5 | Extract `ISearchStrategy` + `Pipeline` | **Complete** | uncommitted |
-| 6+ | Further decomposition (index/, spectrum/, scoring/) | Planned | — |
+| 6+ | Further decomposition (index/, spectrum/, scoring/) | Planned | -- |
 
 All phases verified: 17/17 unit tests pass; HeLa FI_DB batch parity confirmed at
 each phase boundary (zero PSM diff at 1 % and 5 % FDR, xcorr and e-value).
+
+**Correction (2026-07-10):** Phase 4's "Complete" status and its "Globals
+replaced by SearchSession" list (below) overstate what actually landed. Of the
+nine globals listed as replaced, only `g_pvQuery` and `g_pvQueryMS1` were
+actually removed. The other seven --  `g_pvQueryMutex`, `g_bPerformDatabaseSearch`,
+`g_bPerformSpecLibSearch`, `g_bIdxNoFasta`, `g_bPlainPeptideIndexRead`,
+`g_bSpecLibRead`, `g_cometStatus` -- are still live globals in current code
+(`CometSearchManager.cpp`), written directly and then *copied into* the
+corresponding `SearchSession` field rather than replaced by it. This turned
+out to be the correct call, not an abandoned migration step: `search/SearchSession.h`'s
+own header comment now documents that `g_pvQueryMutex`, `g_bPlainPeptideIndexRead`,
+`g_bSpecLibRead`, and `g_cometStatus` must remain process-global because the RTS
+path (`InitializeSingleSpectrumSearch`/`DoSingleSpectrumSearchMultiResults`)
+reads and writes them outside of any `SearchSession`, and a single process can
+serve both RTS and batch requests. See `docs/GlobalVariables.md` for the
+current, accurate per-global thread-safety table. Also: `g_bCometSearchMemoryAllocated`,
+listed under Phase 2 below as retired, is likewise still a live global.
+
+Separately, the commit hashes cited throughout this doc (`4337ee8d`, `00e0655f`)
+are unreachable from any branch today (`git branch --contains` finds nothing
+for either) -- they were presumably rewritten/squashed at some point. The
+actual commit where this work landed on `master` is `45cfa421` ("code cleanup
+and reorg (#116)"). Once those objects are garbage-collected, `git show
+4337ee8d` will fail; use `45cfa421` instead.
 
 ---
 
@@ -28,7 +52,7 @@ each phase boundary (zero PSM diff at 1 % and 5 % FDR, xcorr and e-value).
 The codebase has six structural pathologies that this plan addresses in order of
 increasing invasiveness:
 
-1. `CometDataInternal.h` (1,554 lines) is a monolith — constants, parameter structs,
+1. `CometDataInternal.h` (1,554 lines) is a monolith -- constants, parameter structs,
    result structs, index structs, and scoring structs all in one file. A one-line
    change rebuilds every translation unit.
 
@@ -61,94 +85,94 @@ increasing invasiveness:
 
 ```
 CometSearch/
-├── core/
-│   ├── Constants.h              # All compile-time constants (split from CometDataInternal.h)
-│   ├── Types.h                  # Results, Query, PepMassInfo, scoring data structs
-│   └── Params.h                 # StaticParams and all sub-structs
-│
-├── params/
-│   ├── ParamLoader.h/.cpp       # File/map -> StaticParams  (from CometSearchManager lines 625-1862)
-│   └── ParamValidator.h/.cpp    # ValidateOutputFormat, ValidateScanRange, etc.
-│
-├── index/
-│   ├── ISearchIndex.h           # Abstract interface: Load(), GetType(), IsLoaded()
-│   ├── fragment/
-│   │   ├── FragmentIndex.h/.cpp         # Runtime state + query
-│   │   └── FragmentIndexBuilder.h/.cpp  # WriteFIPlainPeptideIndex
-│   ├── peptide/
-│   │   ├── PeptideIndex.h/.cpp
-│   │   └── PeptideIndexBuilder.h/.cpp
-│   └── speclib/
-│       ├── SpecLib.h/.cpp
-│       └── Alignment.h/.cpp
-│
-├── spectrum/
-│   ├── ISpectrumSource.h        # Interface: next(Spectrum&)->bool, scanCount(), seekTo()
-│   ├── MSReaderSource.h/.cpp    # MSReader-backed implementation
-│   ├── Preprocessor.h/.cpp      # Binning, xcorr prep -- pure computation, no I/O
-│   └── BoundedQueue.h           # BoundedSpectrumQueue (moved from CometPreprocess.cpp)
-│
-├── scoring/
-│   ├── XcorrScorer.h/.cpp       # SearchFragmentIndex, XcorrScore
-│   ├── SpScorer.h/.cpp          # CalculateSP
-│   └── EValueScorer.h/.cpp      # CalculateEValue, CalculateDeltaCn
-│
-├── search/
-│   ├── SearchSession.h          # Owns mutable run state (replaces g_pvQuery etc.)
-│   ├── ISearchStrategy.h        # Pure virtual: initialize / execute / finalize
-│   ├── FastaStrategy.h/.cpp     # FASTA_DB path
-│   ├── FiStrategy.h/.cpp        # FI_DB batch + RTS paths
-│   ├── PiStrategy.h/.cpp        # PI_DB path
-│   └── Pipeline.h/.cpp          # Selects strategy, drives per-file loop
-│
-├── output/
-│   ├── IResultWriter.h          # Pure virtual: write(results, params)
-│   ├── TxtWriter.h/.cpp
-│   ├── SqtWriter.h/.cpp
-│   ├── PepXmlWriter.h/.cpp
-│   ├── MzIdentMlWriter.h/.cpp
-│   └── PercolatorWriter.h/.cpp
-│
-├── threading/
-│   ├── ThreadPool.h             # Unchanged
-│   └── SearchMemoryPool.h/.cpp  # Extracted from CometSearch statics
-│
-└── SearchManager.h/.cpp         # Thin ICometSearchManager impl -- delegates to Pipeline
++-- core/
+|   +-- Constants.h              # All compile-time constants (split from CometDataInternal.h)
+|   +-- Types.h                  # Results, Query, PepMassInfo, scoring data structs
+|   `-- Params.h                 # StaticParams and all sub-structs
+|
++-- params/
+|   +-- ParamLoader.h/.cpp       # File/map -> StaticParams  (from CometSearchManager lines 625-1862)
+|   `-- ParamValidator.h/.cpp    # ValidateOutputFormat, ValidateScanRange, etc.
+|
++-- index/
+|   +-- ISearchIndex.h           # Abstract interface: Load(), GetType(), IsLoaded()
+|   +-- fragment/
+|   |   +-- FragmentIndex.h/.cpp         # Runtime state + query
+|   |   `-- FragmentIndexBuilder.h/.cpp  # WriteFIPlainPeptideIndex
+|   +-- peptide/
+|   |   +-- PeptideIndex.h/.cpp
+|   |   `-- PeptideIndexBuilder.h/.cpp
+|   `-- speclib/
+|       +-- SpecLib.h/.cpp
+|       `-- Alignment.h/.cpp
+|
++-- spectrum/
+|   +-- ISpectrumSource.h        # Interface: next(Spectrum&)->bool, scanCount(), seekTo()
+|   +-- MSReaderSource.h/.cpp    # MSReader-backed implementation
+|   +-- Preprocessor.h/.cpp      # Binning, xcorr prep -- pure computation, no I/O
+|   `-- BoundedQueue.h           # BoundedSpectrumQueue (moved from CometPreprocess.cpp)
+|
++-- scoring/
+|   +-- XcorrScorer.h/.cpp       # SearchFragmentIndex, XcorrScore
+|   +-- SpScorer.h/.cpp          # CalculateSP
+|   `-- EValueScorer.h/.cpp      # CalculateEValue, CalculateDeltaCn
+|
++-- search/
+|   +-- SearchSession.h          # Owns mutable run state (replaces g_pvQuery etc.)
+|   +-- ISearchStrategy.h        # Pure virtual: initialize / execute / finalize
+|   +-- FastaStrategy.h/.cpp     # FASTA_DB path
+|   +-- FiStrategy.h/.cpp        # FI_DB batch + RTS paths
+|   +-- PiStrategy.h/.cpp        # PI_DB path
+|   `-- Pipeline.h/.cpp          # Selects strategy, drives per-file loop
+|
++-- output/
+|   +-- IResultWriter.h          # Pure virtual: write(results, params)
+|   +-- TxtWriter.h/.cpp
+|   +-- SqtWriter.h/.cpp
+|   +-- PepXmlWriter.h/.cpp
+|   +-- MzIdentMlWriter.h/.cpp
+|   `-- PercolatorWriter.h/.cpp
+|
++-- threading/
+|   +-- ThreadPool.h             # Unchanged
+|   `-- SearchMemoryPool.h/.cpp  # Extracted from CometSearch statics
+|
+`-- SearchManager.h/.cpp         # Thin ICometSearchManager impl -- delegates to Pipeline
 ```
 
 ---
 
-## Phase 1 — Split `CometDataInternal.h`
+## Phase 1 -- Split `CometDataInternal.h`
 
-**Status**: Complete — committed `4337ee8d`
+**Status**: Complete -- committed `4337ee8d`
 
 **Effort**: ~1 day  **Risk**: Low (mechanical split, no logic changes)
 
 ### Problem
 
 `CometDataInternal.h` is included by every `.cpp` in the library. It contains:
-- Physical/algorithmic constants (`#define` macros, lines 33–114)
+- Physical/algorithmic constants (`#define` macros, lines 33-114)
 - Fourteen parameter sub-structs (`Options`, `ToleranceParams`, `IonInfo`,
   `MassUtil`, `VarModParams`, `StaticMod`, `PrecalcMasses`, `DBInfo`,
-  `SpecLibInfo`, `PEFFInfo`, `EnzymeInfo`, `MassRange`, lines 116–980)
-- `StaticParams` aggregate (lines 890–1172)
+  `SpecLibInfo`, `PEFFInfo`, `EnzymeInfo`, `MassRange`, lines 116-980)
+- `StaticParams` aggregate (lines 890-1172)
 - Result/query structs (`Results`, `Query`, `QueryMS1`, `PepMassInfo`,
-  `SpectrumInfoInternal`, `PreprocessStruct`, `SpecLibResults`, lines 248–1490)
+  `SpectrumInfoInternal`, `PreprocessStruct`, `SpecLibResults`, lines 248-1490)
 - Index-related structs (`PlainPeptideIndexStruct`, `FragmentPeptidesStruct`,
   `DBIndex`, `PepGenTuple`, `PepGenTupleShort`, `IndexProteinStruct`,
-  `ProteinsListCSR`, lines 454–1277)
+  `ProteinsListCSR`, lines 454-1277)
 - PEFF structs (`PeffModStruct`, `PeffVariantSimpleStruct`,
   `PeffVariantComplexStruct`, `PeffPositionStruct`, `PeffSearchStruct`,
-  lines 340–424)
+  lines 340-424)
 - Scoring/output structs (`MatchedIonsStruct`, `IonSeriesStruct`,
-  `ModificationNumber`, lines 1278–1555)
+  `ModificationNumber`, lines 1278-1555)
 - `DbType` enum (line 882)
 
 ### Action
 
 Create `CometSearch/core/` and split into three headers:
 
-**`core/Constants.h`** — all `#define` constants replaced with `constexpr`:
+**`core/Constants.h`** -- all `#define` constants replaced with `constexpr`:
 
 ```
 Source lines in CometDataInternal.h: 33-114
@@ -169,7 +193,7 @@ Contents:
 Change: #define -> constexpr int/double. DbType moves here from line 882.
 ```
 
-**`core/Params.h`** — all parameter structs that StaticParams aggregates:
+**`core/Params.h`** -- all parameter structs that StaticParams aggregates:
 
 ```
 Source lines in CometDataInternal.h: 116-246 (Options)
@@ -188,7 +212,7 @@ Also includes: EnzymeInfo (from CometData.h -- leave in place, just #include it)
 Depends on: core/Constants.h, CometData.h
 ```
 
-**`core/Types.h`** — runtime data structs (per-spectrum, per-query):
+**`core/Types.h`** -- runtime data structs (per-spectrum, per-query):
 
 ```
 Source lines in CometDataInternal.h:
@@ -239,9 +263,9 @@ python3 tests/unit/run_tests.py --comet comet.exe  # all 17 must pass
 
 ---
 
-## Phase 2 — Extract `SearchMemoryPool`
+## Phase 2 -- Extract `SearchMemoryPool`
 
-**Status**: Complete — committed `4337ee8d`
+**Status**: Complete -- committed `4337ee8d`
 
 **Effort**: ~1 day  **Risk**: Low (self-contained, well-tested at runtime)
 
@@ -381,8 +405,10 @@ CometPreprocess.cpp FusedLoadAndSearchSpectra: pool.duplFragmentArr(t) replaces
                                                _ppbDuplFragmentArr[t]
 ```
 
-Globals retired after this phase: `g_searchMemoryPoolMutex`, `g_searchPoolCV`,
-`g_bCometSearchMemoryAllocated`.
+Globals retired after this phase: `g_searchMemoryPoolMutex`, `g_searchPoolCV`.
+(`g_bCometSearchMemoryAllocated` was also listed here originally, but it is
+still a live global today (`CometSearchManager.cpp:97`), used by `CometSearch.cpp`
+to gate allocation -- it was not actually retired.)
 
 ### Verification
 
@@ -394,16 +420,16 @@ python3 tests/unit/run_tests.py --comet comet.exe   # all 17 must pass
 
 ---
 
-## Phase 3 — Extract `IResultWriter`
+## Phase 3 -- Extract `IResultWriter`
 
-**Status**: Complete — committed `4337ee8d`
+**Status**: Complete -- committed `4337ee8d`
 
 **Effort**: ~2 days  **Risk**: Medium (touches writer internals)
 
 ### Problem
 
 Five writer classes are dispatched from `DoSearch()` via 300+ lines of sequential
-`if (bOutputXxx)` blocks (lines 2446–2900 in `CometSearchManager.cpp`). Each
+`if (bOutputXxx)` blocks (lines 2446-2900 in `CometSearchManager.cpp`). Each
 writer reads `g_pvQuery` and `g_staticParams` directly. There is no shared
 interface, so the dispatch cannot be driven polymorphically.
 
@@ -439,6 +465,25 @@ public:
    virtual void close(const StaticParams& params) = 0;
 };
 ```
+
+### Actual implementation notes
+
+The interface as built takes context structs rather than the `(baseName, params)`
+/ `(results, params)` / `(params)` signatures sketched above -- searching for
+those exact signatures in `output/IResultWriter.h` will not find them:
+
+```cpp
+virtual bool open(const WriterOpenCtx& ctx) = 0;    // szBaseName, iFirstScan/iLastScan,
+                                                      // iDecoySearch, bIdxNoFasta, pMgr, pStatus, ...
+virtual bool write(const WriterWriteCtx& ctx) = 0;   // fpdb, iScanOffset, iBatchNum, pQueries
+virtual void close(bool bSucceeded, bool bEmpty) = 0; // no StaticParams param at all
+```
+
+`close()` additionally has a documented contract the plan doesn't mention: it
+must be safe to call even if `open()` was never called or returned false
+partway through, because `Pipeline::run()` calls `close(false, false)` on
+*every* writer in the vector -- including ones after the one whose `open()`
+failed -- so each implementation must null-check its own file handles.
 
 ### Writer refactoring
 
@@ -543,9 +588,9 @@ python3 tests/unit/run_tests.py --comet comet.exe
 
 ---
 
-## Phase 4 — Introduce `SearchSession`
+## Phase 4 -- Introduce `SearchSession`
 
-**Status**: Complete — committed `00e0655f`
+**Status**: Complete -- committed `00e0655f`
 
 **Effort**: ~3 days  **Risk**: Medium-high (many call sites)
 
@@ -600,7 +645,7 @@ struct SearchSession
 };
 ```
 
-### Globals replaced by SearchSession
+### Globals replaced by SearchSession (as planned -- see actual outcome below)
 
 ```
 Global (CometSearchManager.cpp)        -> SearchSession member
@@ -615,6 +660,11 @@ g_bPlainPeptideIndexRead               -> session.bPlainPeptideIndexRead
 g_bSpecLibRead                         -> session.bSpecLibRead
 g_cometStatus                          -> session.status
 ```
+
+**As actually shipped:** only `g_pvQuery` and `g_pvQueryMS1` were removed. The
+other seven globals above are still defined and written directly today, with
+their values additionally copied into the matching `SearchSession` field --
+see the correction note in the Status section above and `docs/GlobalVariables.md`.
 
 ### Globals intentionally NOT moved (pragmatic globals)
 
@@ -678,9 +728,9 @@ python3 tests/unit/run_tests.py --comet comet.exe
 
 ---
 
-## Phase 5 — Extract `ISearchStrategy` and `Pipeline`
+## Phase 5 -- Extract `ISearchStrategy` and `Pipeline`
 
-**Status**: Complete — uncommitted (working tree on `batch_FI_optimization`)
+**Status**: Complete -- uncommitted (working tree on `batch_FI_optimization`)
 
 **Effort**: ~1 week  **Risk**: High (most invasive refactor)
 
@@ -739,7 +789,7 @@ public:
 
 ### Strategy implementations
 
-**`search/FiStrategy.h/.cpp`** — FI_DB batch path
+**`search/FiStrategy.h/.cpp`** -- FI_DB batch path
 
 ```
 initialize():
@@ -756,7 +806,7 @@ finalize():
   CometSearch::DeallocateMemory(), CometPreprocess::DeallocateMemory().
 ```
 
-**`search/FastaStrategy.h/.cpp`** — FASTA_DB path
+**`search/FastaStrategy.h/.cpp`** -- FASTA_DB path
 
 ```
 initialize():
@@ -773,7 +823,7 @@ finalize():
   DeallocateMemory().
 ```
 
-**`search/PiStrategy.h/.cpp`** — PI_DB path
+**`search/PiStrategy.h/.cpp`** -- PI_DB path
 
 ```
 initialize():

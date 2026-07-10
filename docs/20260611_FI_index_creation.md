@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-11  
 **Database:** `human.canonical.fasta` (canonical human proteome)  
-**Params:** `comet.params` — no enzyme, peptide length 8–25, no variable mods  
+**Params:** `comet.params` -- no enzyme, peptide length 8-25, no variable mods  
 **Command:** `comet.exe -i -Dhuman.canonical.fasta`  
 **Working directory:** `20260422-MHC/`
 
@@ -14,14 +14,14 @@
 |--------|------------|------------|
 | Run time | 5m 11s | 2m 22s |
 | Memory (peak) | *(not reported)* | 44.1 GB |
-| Plain peptides | 189,892,915 | ~1.897×10⁸ |
+| Plain peptides | 189,892,915 | ~1.897x10^8 |
 | `.idx` file size | 11.574 GB | 11.558 GB |
 
 ---
 
 ## Observations
 
-**Speed:** v2026.02.0 is ~2.2× faster (5m11s → 2m22s). The v2026.01.1 output includes a separate
+**Speed:** v2026.02.0 is ~2.2x faster (5m11s -> 2m22s). The v2026.01.1 output includes a separate
 `- remove duplicate peptides` step that is absent in v2026.02.0, indicating deduplication was folded
 into the parse step or otherwise restructured.
 

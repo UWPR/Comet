@@ -46,9 +46,16 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   The existing `SearchFragmentIndex(size_t, ThreadPool*)` remains unchanged for batch search.
   Timeout checking uses `pQuery->tSearchStart` (see Task 7.2) instead of the global
   `g_staticParams.tRealTimeStart`.
+  **(2026-07-10 correction: batch and RTS were later unified onto the single
+  `SearchFragmentIndex(Query*, bool*)` overload -- `CometSearch.h` today declares
+  only that one overload, no separate `size_t` version; the batch path
+  (`RunSearch(int,int,ThreadPool*,vector<Query*>&)`, `CometSearch.cpp:226`) also
+  calls `SearchFragmentIndex(queries.at(iWhichQuery), ...)`.)**
 - **Key changes:**
   - Replace `g_pvQuery.at(iWhichQuery)->` with `pQuery->` throughout.
   - `pbDuplFragment` allocated per-call by the caller (`RunSearch(Query*)`).
+    **(2026-07-10 correction: this changed after this task shipped -- see
+    Task 1.3's status note below.)**
   - `XcorrScoreI` calls pass `pQuery` instead of `iWhichQuery`.
   - Timeout checks use `pQuery->tSearchStart` instead of a parameter or global.
 - **Status:** [x] Complete -- `SearchFragmentIndex(Query*, bool*)` declared in
@@ -80,9 +87,17 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   parameter; the final implementation stores it in `pQuery->tSearchStart` instead,
   keeping the call site cleaner and avoiding an extra parameter at every call level.
 - **Status:** [x] Complete -- `RunSearch(Query*)` declared in `CometSearch.h` and
-  implemented in `CometSearch.cpp`. Allocates per-call `pbDuplFragment[]`,
-  dispatches to `SearchFragmentIndex(pQuery, pbDuplFragment)` or
-  `SearchPeptideIndex(pQuery, pbDuplFragment)`, then frees the buffer.
+  implemented in `CometSearch.cpp`. Originally allocated a fresh per-call
+  `pbDuplFragment[]` as described above; **(2026-07-10 correction: no longer
+  true)** current `RunSearch(Query*)` instead calls `AcquirePoolSlot()` to
+  reserve one slot of the shared `SearchMemoryPool` (guarded by a
+  `SearchMemoryPoolSlotGuard` released on scope exit) and dispatches to
+  `SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])` or
+  `SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot])` -- i.e. it reuses a
+  pool-slot scratch array rather than heap-allocating and freeing a fresh one
+  per call. This is the same `_ppbDuplFragmentArr` this doc's own "What Is
+  Already Thread-Safe" table flags as unsafe shared mutable state (see below),
+  made safe here by the per-slot reservation.
 
 #### Task 1.4: Add Thread-Local `SearchPeptideIndex(Query*, bool*)` Overload
 - **File(s):** `CometSearch.h`, `CometSearch.cpp`
@@ -109,6 +124,10 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
   - Call post-analysis on the local `Query*`.
   - Extract results from `pQuery->_pResults[]`.
   - Each concurrent call opens its own `FILE* fp` for protein name retrieval.
+    **(2026-07-10 correction: now only true for FASTA_DB. FI_DB/PI_DB --
+    what RTS actually uses -- resolve protein names from the in-memory
+    `g_pvProteinNameCache` populated at init instead, with fopen skipped
+    entirely; see the architecture diagram note below.)**
 - **Status:** [x] Complete -- `DoSingleSpectrumSearchMultiResults` uses
   `PreprocessSingleSpectrumThreadLocal()` to create a caller-owned `Query*`, sets
   `pQuery->tSearchStart`, calls `CometSearch::RunSearch(pQuery)`, and runs thread-local
@@ -133,10 +152,15 @@ Inside the native C++, every call serialized on `g_pvQueryMutex` because:
 - **Description:** The new `RunSearch(Query*)` allocates `pbDuplFragment` on the heap
   per-call and passes it to `SearchFragmentIndex` / `SearchPeptideIndex`. Verify no
   static `_ppbDuplFragmentArr` is accessed on the RTS code path.
-- **Status:** [x] Verified -- `RunSearch(Query*)` in `CometSearch.cpp` allocates
-  `bool* pbDuplFragment = new bool[g_staticParams.iArraySizeGlobal]()` per-call and
-  frees it after the search returns. The static `_ppbDuplFragmentArr` is only accessed
-  on the batch path via `SearchForPeptides` called from `RunSearch(ThreadPool*)`.
+- **Status:** [x] Verified at the time -- `RunSearch(Query*)` in `CometSearch.cpp`
+  originally allocated `bool* pbDuplFragment = new bool[g_staticParams.iArraySizeGlobal]()`
+  per-call and freed it after the search returned, with `_ppbDuplFragmentArr`
+  accessed only on the batch path. **(2026-07-10 correction: no longer true.)**
+  `RunSearch(Query*)` was later changed to reuse `_ppbDuplFragmentArr[iSlot]`
+  via a pool-slot reservation (`AcquirePoolSlot()`/`SearchMemoryPoolSlotGuard`)
+  instead of a fresh per-call heap allocation -- see Task 1.3's status note
+  above. The RTS path now does access the same static array the batch path
+  uses, made safe by each concurrent caller holding its own reserved slot.
 
 ### Phase 4: Wrapper Layer
 
@@ -277,13 +301,18 @@ C# Task thread N
         +- Guard: singleSearchInitializationComplete.load(acquire)
         +- Guard: g_cometStatus.IsCancel()  [not IsError() -- avoids poisoning all threads]
         |
-        +- pdTmpSpectrum = new double[iArraySizeGlobal]     <- per-call
+        +- pdTmpSpectrum = new double[iArraySizeGlobal]     <- per-call, ORIGINAL design
+        |     (2026-07-10: superseded -- now CometPreprocess::GetRtsRawDataBuffer(),
+        |      a thread-local buffer from a per-thread RtsScratch pool, not new[]/delete[])
         +- pQuery = PreprocessSingleSpectrumThreadLocal(...)  <- per-call Query* on heap
         |     does NOT touch g_pvQuery
         +- pQuery->tSearchStart = now()                     <- per-call timeout clock
         |
         +- CometSearch::RunSearch(pQuery)
-        |     +- pbDuplFragment = new bool[iArraySizeGlobal]  <- per-call
+        |     +- pbDuplFragment = new bool[iArraySizeGlobal]  <- per-call, ORIGINAL design
+        |     |     (2026-07-10: superseded -- now AcquirePoolSlot() + reuse of
+        |     |      _ppbDuplFragmentArr[iSlot], guarded by SearchMemoryPoolSlotGuard;
+        |     |      see Task 1.3/3.1 status notes above)
         |     +- if FI_DB:  SearchFragmentIndex(pQuery, pbDuplFragment)
         |     |     reads g_iFragmentIndex / g_vFragmentPeptides  [READ-ONLY] [x]
         |     |     XcorrScoreI(pQuery, ...)  -> pQuery->_pResults only
@@ -291,21 +320,25 @@ C# Task thread N
         |     +- if PI_DB:  [double-checked lock] ReadPeptideIndex() if needed
         |     |             SearchPeptideIndex(pQuery, pbDuplFragment)
         |     |     reads g_pvDBIndex  [READ-ONLY after load] [x]
-        |     +- delete[] pbDuplFragment
+        |     +- pool slot released (guard destructor)
         |
         +- CalculateSP(pQuery->_pResults, pQuery, N)        <- pQuery only
         +- CalculateEValue(pQuery, false)                   <- pQuery only
         +- CalculateDeltaCn(pQuery)                         <- pQuery only
         +- CalculateAScorePro(pQuery, g_AScoreInterface)    <- conditional; g_AScoreInterface READ-ONLY [x]
         |
-        +- fp = fopen(szDatabase, "rb")                     <- per-call FILE*
+        +- fp = fopen(szDatabase, "rb")                     <- per-call FILE*, ORIGINAL design
         |     reads g_pvProteinsList  [READ-ONLY] [x]
+        |     (2026-07-10: this fopen-per-call now only happens for FASTA_DB.
+        |      FI_DB/PI_DB -- what RTS actually uses -- resolve protein names from
+        |      the in-memory g_pvProteinNameCache populated at init instead, with
+        |      no per-call file I/O; see CometSearchManager.cpp's
+        |      `if (iDbType == DbType::FASTA_DB)` guard around this fopen.)
         +- extract results -> output vectors
-        +- fclose(fp)
+        +- fclose(fp)  <- only reached on the FASTA_DB fallback path
         |
         +- cleanup_results:
                delete pQuery
-               delete[] pdTmpSpectrum
 ```
 
 Globals written per-call on this path: **none**. All state is either read-only after init

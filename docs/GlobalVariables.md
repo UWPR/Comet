@@ -9,21 +9,22 @@ All globals are defined in `CometSearch/CometSearchManager.cpp` (unless noted) a
 | Variable | Type | Thread-safe? | Notes |
 |----------|------|:------------:|-------|
 | `g_staticParams` | `StaticParams` | Read-only after init | All user-configurable search parameters. Written once by `InitializeStaticParams()`, then read-only for the life of the search. Safe to read from any thread. |
-| `g_massRange` | `MassRange` | Batch path: written per-batch | Written in `DoSearch()` at the start of each spectrum batch. The RTS paths (`DoSingleSpectrumSearchMultiResults`, `DoMS1SearchMultiResults`) do **not** write `g_massRange`; they derive mass limits from the per-call `Query*` / `QueryMS1*`. |
-| `g_cometStatus` | `CometStatus` | Shared mutable | Error/cancel status. Any thread can call `SetError()` or `IsCancel()`. Internally mutex-protected. |
+| `g_massRange` | `MassRange` | Mixed -- see below | `dMinMass`/`dMaxMass` are written once during init on *either* path -- `DoSearch()` (batch) or `InitializeSingleSpectrumSearch()` (RTS, `CometSearchManager.cpp:2210-2211`) -- not batch-only. `bNarrowMassRange` is likewise set once during `CreateFragmentIndex()`, which both paths call during their respective init. Only `usiMaxFragmentCharge` is genuinely batch-only: it's updated under `_maxChargeMutex` inside `CometPreprocess::PreprocessSpectrum` (the batch preprocessing path), which the RTS thread-local preprocessing path never calls. |
+| `g_cometStatus` | `CometStatus` | Shared mutable | Error/cancel status. Any thread can call `SetStatus(CometResult[, msg])` or `IsCancel()`/`IsError()` (there is no `SetError()`). Internally mutex-protected. |
 
 ---
 
 ## Spectrum batch containers
 
-Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The RTS paths do not touch these. Batch-path query lists and per-run flags were moved from bare globals into `SearchSession` (defined in `search/SearchSession.h`) as part of the Phase 4-5 architecture migration.
+Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The RTS paths do not touch these. Query lists (`g_pvQuery`/`g_pvQueryMS1`) were moved into `SearchSession` (defined in `search/SearchSession.h`) as part of the Phase 4-5 architecture migration; per-run flags were only partly moved -- see the note below.
 
 | Variable | Type / Location | Thread-safe? | Notes |
 |----------|----------------|:------------:|-------|
-| `SearchSession::queries` | `vector<Query*>` | Guarded by `queriesMutex` | One `Query*` per spectrum/charge combination for the current batch. Populated by `CometPreprocess`, consumed by `CometSearch` and `CometPostAnalysis`. Replaces the former global `g_pvQuery`. |
+| `SearchSession::queries` | `vector<Query*>` | Mixed -- see below | One `Query*` per spectrum/charge combination for the current batch. Populated by `CometPreprocess`, consumed by `CometSearch` and `CometPostAnalysis`. Replaces the former global `g_pvQuery`. On the fused FI_DB batch path (`FusedLoadAndSearchSpectra`), workers append lock-free to their own per-slot vectors and this is filled by one serial concatenation after the thread-pool join -- `queriesMutex` is not used there. Other batch paths (`LoadAndPreprocessSpectra`, etc.) still guard direct pushes with `queriesMutex`. |
 | `SearchSession::ms1Queries` | `vector<QueryMS1*>` | Guarded by `queriesMutex` | Analogous to `queries` for MS1 spectral library batch searches. Replaces the former global `g_pvQueryMS1`. |
-| `SearchSession::queriesMutex` | `std::mutex` | -- | Protects `queries` / `ms1Queries` insertions during batch preprocessing. Replaces the former `g_pvQueryMutex`. |
+| `SearchSession::queriesMutex` | `std::mutex` | -- | Protects `queries` / `ms1Queries` insertions on the non-fused batch paths (see above). Replaces the former `g_pvQueryMutex`. |
 | `g_pvInputFiles` | `vector<InputFileInfo*>` | Read-only after init | List of input files to search; set before `DoSearch()` begins. |
+| `g_bPerformDatabaseSearch` / `g_bPerformSpecLibSearch` / `g_bIdxNoFasta` | `bool` | Written once per run | Still live bare globals (`CometSearchManager.cpp:94,95,99`), not `SearchSession` members -- despite being conceptually per-run flags, they were never migrated. Written in `DoSearch()` (`g_bPerformDatabaseSearch`, lines ~1953-1962) and `ValidateSequenceDatabaseFile()` (`g_bIdxNoFasta`, lines ~183-188), then copied *into* `session.bPerformDatabaseSearch` etc. rather than replaced. `ValidateSequenceDatabaseFile()` is also called from the RTS init path (`InitializeSingleSpectrumSearch()`), so `g_bIdxNoFasta` is touched by both paths, not batch-only. |
 
 ---
 
@@ -50,7 +51,9 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 |----------|------|-------|
 | `g_vSpecLib` | `vector<SpecLibStruct>` | In-memory spectral library entries. Each entry holds peaks, charge, RT, and a unit-vector representation for dot-product scoring. |
 | `g_vulSpecLibPrecursorIndex` | `vector<vector<unsigned int>>` | Mass index into `g_vSpecLib`; maps precursor mass bins to library entry indices for fast lookup. |
-| `RetentionMatchHistory` | `std::deque<RetentionMatch>` | Rolling window of (query RT, reference RT) pairs used by the MS1 RT aligner. Protected by `g_ms1AlignerMutex`. |
+| `pMS1Aligner` | `CometMassSpecAligner` (`CometSearchManager.cpp:110`) | The RT-regression aligner object itself. Its `processRetentionMatch(dQueryRT, dMatchedSpecLibRT)` method is called under `g_ms1AlignerMutex` from `DoMS1SearchMultiResults` and internally maintains the rolling RT-match history (`RetentionMatchHistory` below is the deque it manipulates, not a separate globally-visible container). |
+| `RetentionMatchHistory` | `std::deque<RetentionMatch>` | Rolling window of (query RT, reference RT) pairs used by the MS1 RT aligner, owned internally by `pMS1Aligner`. Protected by `g_ms1AlignerMutex`. |
+| `dMaxSpecLibRT` | `double` (`CometSearchManager.cpp:106`) | Set once during `InitializeSingleSpectrumMS1Search()` -> `LoadSpecLibMS1Raw()`; read on every RTS MS1 call to rescale query RT against the library's RT range. |
 
 ---
 
@@ -62,7 +65,6 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 | `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. Used for FASTA searches and legacy index paths. |
 | `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein file offsets (for multi-protein peptides). `ProteinsListCSR` is a CSR-layout replacement for `vector<vector<comet_fileoffset_t>>`; exposes the same `operator[]`/`size()`/range-for interface but uses only two heap allocations total. |
 | `g_pvProteinNameCache` | `unordered_map<comet_fileoffset_t, string>` | Protein name lookup cache for index-based searches. Populated at index load time from the protein name blocks in the `.idx` file. Maps protein file-position offsets to accession strings. ~7 MB for a human target-decoy database. Allows O(1) protein name resolution during RTS without file I/O. |
-| `g_pvDIAWindows` | `vector<double>` | Flat list of DIA isolation window edges (start, end, start, end, ...). Empty if not doing DIA. |
 
 ---
 
@@ -109,6 +111,8 @@ Not a global variable, but the direct replacement for the old `_pbSearchMemoryPo
 
 ## RTS initialization flags
 
+**Not process-wide globals**, unlike everything else in this document: `singleSearchInitializationComplete`/`singleSearchMS1InitializationComplete` are private, non-static members of the `CometSearchManager` class (`CometSearchManager.h:115-116`) -- one pair per instance. They only *behave* like globals in practice because the C# side (`RealtimeSearch/SearchMS1MS2.cs`) keeps exactly one `globalSearchMgr` instance alive for the life of an RTS session; that's an external convention, not a language guarantee (see `docs/20260615_multiple_rts_instances.md` for what breaks if a process ever needs two concurrent `ICometSearchManager` instances).
+
 | Variable | Type | Notes |
 |----------|------|-------|
 | `singleSearchInitializationComplete` | `std::atomic<bool>` | Set to `true` (with `release` ordering) after `InitializeSingleSpectrumSearch()` completes. Checked with `acquire` ordering at the top of `DoSingleSpectrumSearchMultiResults()`. Ensures all RTS threads see fully initialized globals. |
@@ -129,8 +133,8 @@ Not a global variable, but the direct replacement for the old `_pbSearchMemoryPo
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_sCometVersion` | `string` | Full version string including git hash. Assembled once in `main()` or the first RTS call. |
-| `g_psGITHUB_SHA` | `string` | Raw `GITHUB_SHA` env var trimmed to 7 characters; empty string if not set. |
+| `g_sCometVersion` | `string` | Full version string, e.g. `"2026.02 rev. 1 (a1b2c3d)"`. Assembled once in `main()`/`Comet.cpp` (batch) or `InitializeSingleSpectrumSearch()`/`CometSearchManager.cpp` (RTS) by appending the `GITHUBSHA` macro (below) to `comet_version` when non-empty. |
+| `GITHUBSHA` | `#define` macro (`CometSearch/githubsha.h`) | Not a variable -- a compile-time string literal. Defaults to `#define GITHUBSHA ""` in the tracked file; CI workflows overwrite `githubsha.h` with the actual commit SHA before building a release, so a locally-built binary normally has an empty `GITHUBSHA`. There is no `g_psGITHUB_SHA` global; earlier drafts of this doc described one, but the mechanism has always been this compile-time macro. |
 
 ---
 
@@ -158,22 +162,27 @@ Not a global variable, but the direct replacement for the old `_pbSearchMemoryPo
 Safe to read from any concurrent RTS thread (after init):
   g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
   g_vFragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
-  g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex, g_pvDIAWindows,
+  g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex,
   g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
-  g_massRange.iMaxFragmentCharge (after batch setup)
+  g_massRange.dMinMass / dMaxMass / bNarrowMassRange (written once at init on
+  either path -- not batch-only, see "Core search state" above)
+
+Written once per call, batch path only (RTS never calls PreprocessSpectrum):
+  g_massRange.usiMaxFragmentCharge
 
 Written per batch (batch path only -- not touched by RTS):
   SearchSession::queries, SearchSession::ms1Queries,
-  g_massRange.dMinMass / dMaxMass / bNarrowMassRange,
   g_staticParams.databaseInfo.uliTotAACount
 
 Protected by mutex (safe to call from any thread):
-  RetentionMatchHistory (g_ms1AlignerMutex)
+  RetentionMatchHistory (g_ms1AlignerMutex, via pMS1Aligner.processRetentionMatch())
 
 Always shared mutable -- use sparingly from hot paths:
-  g_cometStatus (SetError/IsCancel are mutex-protected internally)
+  g_cometStatus (SetStatus()/IsCancel()/IsError() are mutex-protected
+  internally; there is no SetError())
 
 Atomic, checked with acquire/release ordering:
-  singleSearchInitializationComplete, singleSearchMS1InitializationComplete,
-  g_bPeptideIndexRead
+  singleSearchInitializationComplete, singleSearchMS1InitializationComplete
+  (CometSearchManager instance members, not free globals -- see "RTS
+  initialization flags" above), g_bPeptideIndexRead
 ```

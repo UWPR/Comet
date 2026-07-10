@@ -1,8 +1,8 @@
-# Code Review — architecture_update branch
+# Code Review -- architecture_update branch
 # 2026-06-16
 
 Reviewed by: Claude Sonnet 4.6 (high-effort, 7-angle finder + per-candidate verification)
-Scope: `git diff master...HEAD` — 70 files, +5542 / -3127 lines
+Scope: `git diff master...HEAD` -- 70 files, +5542 / -3127 lines
 
 ---
 
@@ -20,9 +20,9 @@ on error paths.
 
 ## Critical Issues
 
-### 1. `StorePeptideI` ignores `bDecoyPep` — decoys written to target list (FDR corruption)
+### 1. `StorePeptideI` ignores `bDecoyPep` -- decoys written to target list (FDR corruption)
 **File:** `CometSearch/CometSearch.cpp` ~line 8618
-**Severity:** Critical — wrong results, silent
+**Severity:** Critical -- wrong results, silent
 
 The new `Query*`-based overload of `StorePeptideI` (added for the FI/PI index path in
 Task 1.2) comments out the `bDecoyPep` parameter:
@@ -57,7 +57,7 @@ to `pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]` and comparing against
 
 ### 2. `SearchMS1Library` uses global `g_pvQueryMutex` instead of per-query lock
 **File:** `CometSearch/CometSearch.cpp` ~line 3275
-**Severity:** High — RTS latency violation; cross-path serialization
+**Severity:** High -- RTS latency violation; cross-path serialization
 
 `SearchMS1Library` (the MS1 real-time search path) guards score updates on a caller-owned
 `QueryMS1*` with the process-wide `g_pvQueryMutex`:
@@ -83,7 +83,7 @@ use it in `SearchMS1Library` for score-update critical sections.
 
 ### 3. `MzIdentMlWriter::FinalizeOne` silently produces invalid `.mzid` on temp-file reopen failure
 **File:** `CometSearch/output/MzIdentMlWriter.h` ~line 116
-**Severity:** High — silent data corruption, no error reported
+**Severity:** High -- silent data corruption, no error reported
 
 `FinalizeOne()` closes the temp file then immediately reopens it for reading:
 
@@ -100,7 +100,7 @@ fclose(fpFinal);                        // line 129
 If the `fopen` at line 116 fails (network filesystem, external cleanup, non-atomic
 close-reopen), the `if` block is skipped: `WriteMzIdentML` is never called, the
 spectrum results are never appended, and the output file is closed at line 129 containing
-only the XML header — no spectrum results, no closing tags. `g_cometStatus` is never
+only the XML header -- no spectrum results, no closing tags. `g_cometStatus` is never
 updated; `DoSearch` returns `true`. Downstream tools receive a structurally invalid file.
 
 **Fix:** Check the return value of the second `fopen` and call
@@ -110,13 +110,13 @@ updated; `DoSearch` returns `true`. Downstream tools receive a structurally inva
 
 ## Code Quality & Maintainability
 
-### 4. `Pipeline::run` — writer `open()` failure leaves already-opened writers unclosed
+### 4. `Pipeline::run` -- writer `open()` failure leaves already-opened writers unclosed
 **File:** `CometSearch/search/Pipeline.cpp` ~line 108
-**Severity:** Medium — FILE* handle leak, truncated output files
+**Severity:** Medium -- FILE* handle leak, truncated output files
 
 When a writer's `open()` fails, the inner loop breaks and Pipeline calls
 `_strategy->closeFiles()` then breaks out of the file loop entirely, bypassing the
-`pw->close()` block at lines ~243–247. Writers that already opened successfully (with
+`pw->close()` block at lines ~243-247. Writers that already opened successfully (with
 partially-written headers on disk) are never closed.
 
 **Fix:** On `open()` failure, iterate all writers that have already been successfully
@@ -126,7 +126,7 @@ opened and call their `close()` before returning `false`.
 
 ### 5. `Pipeline::run` returns on `initialize()` failure without calling `finalize()` (memory leak)
 **File:** `CometSearch/search/Pipeline.cpp` ~line 38
-**Severity:** Medium — memory leak on error path
+**Severity:** Medium -- memory leak on error path
 
 ```cpp
 if (!_strategy->initialize(session)) return false;   // line 38
@@ -135,8 +135,8 @@ _strategy->finalize(session);                        // line ~256, only reached 
 ```
 
 `finalize()` is the sole cleanup point for memory allocated by `initialize()` (thread-pool
-scratch buffers, precursor arrays). If `initialize()` returns `false` midway — e.g.,
-`CometPreprocess::AllocateMemory` succeeds then `ReadPrecursors` fails — those allocations
+scratch buffers, precursor arrays). If `initialize()` returns `false` midway -- e.g.,
+`CometPreprocess::AllocateMemory` succeeds then `ReadPrecursors` fails -- those allocations
 are never freed. On repeated calls (C# wrapper retrying after a failed search), each
 failed init accumulates leaked memory.
 
@@ -147,7 +147,7 @@ structure the function with a `goto cleanup` / RAII guard so `finalize` always r
 
 ### 6. `WithinMassTolerancePeff` seek-back loop uses wrong reference mass
 **File:** `CometSearch/CometSearch.cpp` ~line 4380
-**Severity:** Medium — false negatives in PEFF searches
+**Severity:** Medium -- false negatives in PEFF searches
 
 After `BinarySearchMass` locates the correct position for `dCalcPepMass + dMassAddition`,
 the seek-back while-loop compares against bare `dCalcPepMass` instead of
@@ -163,10 +163,10 @@ the modified mass are never evaluated.
 
 ### 7. `SearchSession::bPlainPeptideIndexRead` / `bSpecLibRead` are dead fields
 **File:** `CometSearch/search/SearchSession.h` ~line 44
-**Severity:** Low — architectural drift; misleads about ownership
+**Severity:** Low -- architectural drift; misleads about ownership
 
 `SearchSession` declares `bPlainPeptideIndexRead` and `bSpecLibRead` as session-owned
-state, but `FiStrategy::initialize` reads the global `g_bPlainPeptideIndexRead` — not
+state, but `FiStrategy::initialize` reads the global `g_bPlainPeptideIndexRead` -- not
 `session.bPlainPeptideIndexRead`. The session fields are never set or checked by any
 code path. A reader auditing `SearchSession` to understand index state will draw the
 wrong conclusion about where the authoritative value lives.
@@ -208,7 +208,7 @@ static void BuildNames(const std::string& defaultExt,
 
 ---
 
-### 10. `PrintPercolatorSearchHit` takes `vector<string>` by value — per-PSM copy overhead
+### 10. `PrintPercolatorSearchHit` takes `vector<string>` by value -- per-PSM copy overhead
 **File:** `CometSearch/CometWritePercolator.h` ~line 43
 
 `PrintPercolatorSearchHit` accepts `vProteinTargets` and `vProteinDecoys` by value,

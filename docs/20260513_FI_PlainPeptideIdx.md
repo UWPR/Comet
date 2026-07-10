@@ -1,5 +1,17 @@
 # Efficient Plain Peptide Index Generation for Fragment Ion Index
 
+**Note (2026-07-10):** this doc repeatedly names `CometDataInternal.h` as the
+file to declare new structs/globals in (`PepGenTuple`, `PepGenTupleShort`,
+`kAA5bit`/`k5bitAA`, `PackPeptide`/`UnpackPeptide`, `g_vvvPepGenShort`/
+`g_vvvPepGenLong`, etc.) throughout. A later repo reorg (2026-06-18) split
+`CometDataInternal.h` into `core/Constants.h` / `core/Params.h` / `core/Types.h`;
+it is now only a compatibility shim that `#include`s them
+(`CometSearch/CometDataInternal.h:24`). Everything this doc says belongs in
+`CometDataInternal.h` now actually lives in `core/Types.h` -- a reader grepping
+`CometDataInternal.h` directly for these names won't find them. Individual
+"Files Modified" table entries below are not corrected one-by-one; treat every
+`CometDataInternal.h` reference in this doc as `core/Types.h` today.
+
 ## Problem
 
 When Comet builds a fragment ion index (`.idx` file), it first calls
@@ -45,7 +57,9 @@ Attempting this on a 32 GB machine results in OOM or swap thrashing.
 4. Fit comfortably within **32 GB** of free RAM for canonical human-scale databases
    on all enzyme settings.
 5. The `.idx` file format may change as long as both the writer
-   (`WriteFIPlainPeptideIndex`) and the reader (`ReadFragmentIndex`) are updated
+   (`WriteFIPlainPeptideIndex`) and the reader (`ReadPlainPeptideIndex` --
+   this doc originally named it `ReadFragmentIndex`, which has never been the
+   actual function name; see `CometFragmentIndex.h`/`.cpp`) are updated
    together.
 
 ---
@@ -487,6 +501,16 @@ are fully populated and `g_pvDBIndex` is sorted by peptide sequence (not yet by
 mass; the existing mass-sort and write code in `WriteFIPlainPeptideIndex` runs
 unchanged after the call).
 
+**Superseded by Phase 9 (below), already shipped:** the "existing mass-sort and
+write code runs unchanged" plan above did not survive to the current
+implementation. `GeneratePlainPeptideIndex` now returns per-length
+**mass-sorted** slices directly (`CometFragmentIndex.cpp`, parallel per-slice
+sort), and `WriteFIPlainPeptideIndex` no longer does a single global sort+write
+pass -- it performs a k-way `priority_queue<HeapEntry>` merge over those slices
+instead (see "Phase 9", marked DONE further down in this doc). Treat this
+Architecture section as the Phase-1 starting point only; it describes an
+intermediate state this document's own later sections replace.
+
 The function replaces the sort-by-peptide / build-g_pvProteinsList / unique block
 (lines ~650-700 in `WriteFIPlainPeptideIndex`) as well -- that block should be
 removed once `GeneratePlainPeptideIndex` is adopted.
@@ -655,21 +679,28 @@ in `WriteFIPlainPeptideIndex` (lines ~703+) run unchanged.
 2. Remove lines ~650-700 (the sort-by-peptide / build-`g_pvProteinsList` /
    `unique` block) -- `GeneratePlainPeptideIndex` performs these steps.
 3. Keep lines ~703+ (mass sort, header write, binary write loop, protein list
-   write) unchanged.
+   write) unchanged. (As above: this step itself was later superseded by the
+   Phase 9 k-way merge, which replaces the global mass sort here too.)
 
 ---
 
 ## `seenInProtein` Placement in `DoSearch`
 
-`DoSearch` currently processes one protein per call. The `unordered_set<string>
-seenInProtein` should be declared at the top of `DoSearch` (or at the start of the
-main per-peptide sliding window loop) and used only when
-`bFastPlainPeptideIdx == true`. It is never locked -- it is purely local to the
-call stack.
+This section describes the single-set `seenInProtein` design from the
+Architecture section above, before it was split into the `seenShort`/`seenLong`
+pair described in "Modified `DoSearch` Push Site" earlier in this doc. The
+placement reasoning below still applies to whichever set(s) are in play.
 
-Because `DoSearch` is called by many threads simultaneously (one protein per
-thread), each call has its own stack frame and thus its own `seenInProtein`. No
-sharing occurs.
+**Correction:** in the shipped code neither design ended up as a call-stack
+local. `seenShort`/`seenLong` are `CometSearch` member variables (`_seenShort`,
+`_seenLong` -- `CometSearch.h:383-384`), persisted across many `DoSearch` calls
+on the same thread and explicitly `.clear()`'d at the top of each call
+(`CometSearch.cpp:1240-1243`) rather than re-constructed as a stack-local
+`unordered_set` each time. The end result is behaviorally equivalent to what
+this section describes -- still exactly one instance per thread, still no
+cross-thread sharing, since each thread's member state is only ever touched by
+that thread -- but "purely local to the call stack" / "each call has its own
+stack frame" is not literally how it's implemented.
 
 ---
 
@@ -700,7 +731,7 @@ sharing occurs.
 | `CometSearch.cpp` | Add `bFastPlainPeptideIdx` branch at push site (~line 3498); add `seenInProtein` set; thread-slot pass-through |
 
 The `.idx` file format is **unchanged** by this implementation -- the writer
-produces identical binary output; the reader (`ReadFragmentIndex`) needs no
+produces identical binary output; the reader (`ReadPlainPeptideIndex`) needs no
 modification.
 
 ---

@@ -63,24 +63,32 @@ call sites, in descending order of call frequency:
 ### The pattern that already avoids this problem
 
 The fused batch FI_DB path (`CometPreprocess::FusedLoadAndSearchSpectra`,
-`CometPreprocess.cpp:3246-3278`) does **not** call `AcquirePoolSlot()` at all. It
+`CometPreprocess.cpp:3344-3387`) does **not** call `AcquirePoolSlot()` at all. It
 launches exactly `iNumThreads` long-lived consumer jobs up front, each one closed
 over a fixed slot index `t`:
 
 ```cpp
 const int iNumSlots = g_staticParams.options.iNumThreads;
+std::vector<SlotVec> vSlotQueries(iNumSlots);
+std::atomic<size_t> aQueryCount{0};
 BoundedSpectrumQueue queue(static_cast<size_t>(iNumSlots) * 4);
 
 for (int t = 0; t < iNumSlots; ++t)
 {
-   tp->doJob([&queue, t, &session]()
+   tp->doJob([&queue, t, &vSlotQueries, &aQueryCount]()
    {
       Spectrum spec;
       while (queue.pop(spec))
-         FusedSearchSpectrum(std::move(spec), t, session);   // pre-assigned slot, no lock
+         FusedSearchSpectrum(std::move(spec), t, vSlotQueries[t].v, aQueryCount);   // pre-assigned slot, no lock
    });
 }
 ```
+
+(Snippet updated 2026-07-10 to match the current signature -- a later change
+gave each worker its own result vector plus a shared atomic counter instead of
+capturing `session` directly, to remove a separate `queriesMutex` from this
+same hot path. The pre-assigned-slot mechanism this section is about --
+`RunSearch(Query*, int iSlot)`, next paragraph -- is unchanged.)
 
 Each worker keeps its slot for the worker's entire lifetime instead of
 acquiring/releasing it per spectrum. `RunSearch(Query*, int iSlot)`

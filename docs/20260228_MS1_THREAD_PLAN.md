@@ -76,7 +76,15 @@ When `SearchMS1MS2.cs` launches N C# `Task` threads, they all call
   threads, causing `LoadSpecLibMS1Raw()` to deadlock on `wait_on_threads()`. Fix by
   ensuring at least 1 worker thread.
 - **Key change:** `fillPool(max(1, iNumThreads - 1))`
-- **Status:** [x] Complete
+- **Status:** [x] Complete at the time. **(2026-07-10 correction: this specific
+  fix is not what's in current code.)** `InitializeSingleSpectrumMS1Search()`
+  today calls `_tp->fillPool(g_staticParams.options.iNumThreads)` directly, with
+  no `-1`/`max()` adjustment (`CometSearchManager.cpp:2366`). The deadlock this
+  task describes no longer applies to this code: `ThreadPool` was later rewritten
+  on top of `BS::thread_pool` (`ThreadPool.h`), and `fillPool()` now throws
+  `std::invalid_argument` for `threads <= 0` rather than silently creating a
+  0-worker pool, so the failure mode this task worked around was closed off by
+  a different, later change rather than by the fix described here.
 
 ### Phase 2: Make `DoMS1SearchMultiResults()` Thread-Local
 
@@ -169,7 +177,10 @@ batch-path-only and must not be accessed from `DoMS1SearchMultiResults()`.
     `RunMS1Search(QueryMS1*,...)` -- no `g_pvQueryMS1` references
   - [x] `RunMS1Search(QueryMS1*,...)` thread-local overload does not read `g_pvQueryMS1`
   - [x] `FinalizeSingleSpectrumMS1Search()` cleanup of `g_pvQueryMS1` is safe -- vector
-    will be empty since `DoMS1SearchMultiResults()` never populates it
+    will be empty since `DoMS1SearchMultiResults()` never populates it.
+    (2026-07-10: current `FinalizeSingleSpectrumMS1Search()` doesn't reference
+    `g_pvQueryMS1` at all -- low-severity drift, the underlying claim that
+    `g_pvQueryMS1` isn't touched by this path still holds either way.)
   - [x] `g_pvQueryMS1` retained for batch path backward compatibility
 - **Status:** [x] Complete
 

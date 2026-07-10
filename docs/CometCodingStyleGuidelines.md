@@ -1,5 +1,26 @@
 # Comet Coding Style Guidelines
 
+**Scope:** These conventions govern the native C++ core in `CometSearch/`
+(`CometSearch.cpp`, `CometPreprocess.cpp`, `core/*.h`, etc.) -- new code there,
+including edits to existing files, should follow all of A-F below.
+
+Two documented exceptions, not violations to "fix" if you encounter them:
+- `MSToolkit/` is adapted third-party source (Mike Hoopmann's library, with a
+  `/clr`-based Thermo RawFileReader integration layered on top per
+  `docs/20260618_RawFileReaderMigration.md`); files there such as
+  `MSToolkit/src/MSToolkit/RAWReader.cpp` follow K&R brace style and tab/2-space
+  indentation rather than A/B below, matching the surrounding third-party code
+  rather than this guide.
+- The newer OOP architecture layer (`CometSearch/search/*.h`, `CometSearch/output/*.h`
+  -- `Pipeline`, `ISearchStrategy`, `SearchSession`, `IResultWriter`, etc.,
+  introduced by the Phase 1-5 migration in `docs/20260612_architecture_migration.md`)
+  uses a `_member` leading-underscore convention for private fields instead of
+  Hungarian prefixes, and generally drops Hungarian prefixes from parameters of
+  "modern" types (`SearchSession& session`, `ThreadPool* tp` with no `p`,
+  `std::vector<...> writers` with no `v`). Follow the convention already used
+  in whichever file you're editing rather than importing Hungarian notation
+  into that layer, or vice versa.
+
 ## A. Brace style
 
 Use Allman brace style (credited to Eric Allman). Opening braces are placed on their own line, at the same indentation level as the control structure.

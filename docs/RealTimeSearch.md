@@ -26,7 +26,7 @@ bool DoSingleSpectrumSearchMultiResults(
     vector<string>& strReturnPeptides,
     vector<string>& strReturnProteins,
     vector<vector<Fragment>>& matchedFragments,
-    vector<Scores>& scores);
+    vector<CometScores>& scores);
 ```
 
 Returns up to `topN` hits. Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
@@ -38,11 +38,16 @@ bool InitializeSingleSpectrumMS1Search(const double dMaxQueryRT);
 void FinalizeSingleSpectrumMS1Search();
 bool DoMS1SearchMultiResults(
     const double dMaxMS1RTDiff,
-    const int iPrecursorCharge,
-    const double dMZ,
+    const double dMaxQueryRT,
+    const int topN,
+    const double dRT,
     double* pdMass, double* pdInten, int iNumPeaks,
-    vector<Scores>& scores);
+    vector<CometScoresMS1>& scores);
 ```
+
+Note this is NOT precursor-charge/m-z based like the MS2 call -- it takes the
+query's retention time (`dRT`) directly, since MS1 scoring matches against
+spectral-library retention times rather than a precursor mass window.
 
 Scores against the in-memory spectral library (`g_vSpecLib`). Also safe for concurrent calls; uses `g_ms1AlignerMutex` only for the RT alignment history update.
 
@@ -107,29 +112,40 @@ The C# caller invokes `InitializeSingleSpectrumMS1Search` and `InitializeSingleS
 ```
 DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks, ...)
   |
-  +- Guard: singleSearchInitializationComplete.load(acquire) -- abort if not ready
-  +- Guard: IsCancel() -- abort if cancelled (not IsError(), which would poison all threads)
+  +- Guard: iNumPeaks == 0, or dMZ*charge exceeds dPeptideMassHigh -- reject early
+  +- InitializeSingleSpectrumSearch() -- SELF-INITIALIZING, not abort-only: this
+  |     call IS the double-checked-locking init path (see "Initialization" above).
+  |     The first caller across all threads pays the index-load cost; every
+  |     other concurrent/later caller takes the atomic fast path and returns
+  |     immediately once init has completed.
   |
-  +- tRealTimeStart = now()                         <- LOCAL variable; no shared write
+  +- pdTmpSpectrum = CometPreprocess::GetRtsRawDataBuffer()   <- thread-local
+  |     pooled buffer (RtsScratch), not a per-call new[]/delete[]
   |
-  +- CometPreprocess::PreprocessSingleSpectrumThreadLocal(charge, mz, masses, intensities)
+  +- CometPreprocess::PreprocessSingleSpectrumThreadLocal(charge, mz, masses, intensities, nPeaks, pdTmpSpectrum)
   |     -> allocates caller-owned Query* on the heap
   |     -> fills it with binned spectrum data
   |     -> does NOT touch SearchSession::queries
   |     -> returns nullptr on failure (caller checks and returns false)
   |
-  +- pdTmpSpectrum = new double[iArraySize]          <- per-call allocation
+  +- pQuery->tSearchStart = now()                    <- member of the per-call Query;
+  |                                                      not a local passed through calls
   |
-  +- CometSearch::RunSearch(pQuery, tRealTimeStart)
-  |     -> allocates per-call bool* pbDuplFragment[]
-  |     -> SearchFragmentIndex(pQuery, pbDuplFragment, tRealTimeStart)
+  +- CometSearch::RunSearch(pQuery)
+  |     -> AcquirePoolSlot() reserves one slot of the shared SearchMemoryPool
+  |        (s_pool), guarded by a SearchMemoryPoolSlotGuard so the slot is
+  |        released on any exit path (including exceptions)
+  |     -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
   |           reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
   |           reads g_vFragmentPeptides (READ-ONLY) [x]
   |           XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
   |           CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
-  |           timeout checked against local tRealTimeStart
-  |     -> delete[] pbDuplFragment
+  |           timeout checked periodically against pQuery->tSearchStart
+  |     -> guard destructor releases the pool slot on return
   |
+  +- timeout re-checked against pQuery->tSearchStart (iMaxIndexRunTime) before
+  |     each of the following post-analysis steps; any step is skipped past
+  |     the deadline
   +- CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, iSize)
   +- CometPostAnalysis::CalculateEValue(pQuery, bSkip)
   +- CometPostAnalysis::CalculateDeltaCn(pQuery)
@@ -140,32 +156,49 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |
   +- cleanup_results:
        delete pQuery          (destructor frees sparse arrays, _pResults[], accessMutex)
-       delete[] pdTmpSpectrum
        return
 ```
+
+Note: `pdTmpSpectrum` above is a thread-local buffer owned by the per-thread
+`RtsScratch` pool (`CometPreprocess::GetRtsRawDataBuffer()`), not a per-call
+heap allocation -- this replaced an earlier per-call `new[]`/`delete[]` design.
 
 ### MS1 (`DoMS1SearchMultiResults`)
 
 ```
-DoMS1SearchMultiResults(dMaxMS1RTDiff, charge, mz, masses, intensities, nPeaks, ...)
+DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensities, nPeaks, scoresMS1)
   |
-  +- Guard: singleSearchMS1InitializationComplete.load(acquire)
+  +- Guard: singleSearchMS1InitializationComplete.load(acquire) -- ABORTS with an
+  |     error (unlike MS2's self-initializing InitializeSingleSpectrumSearch()
+  |     call above) if InitializeSingleSpectrumMS1Search() has not already
+  |     completed. The C# caller is responsible for calling it first.
+  +- Guard: iNumPeaks == 0 -- reject early
   |
-  +- CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(charge, mz, masses, intensities)
-  |     -> allocates caller-owned QueryMS1* on the heap
+  +- CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(pdMass, pdInten, iNumPeaks)
+  |     -> allocates caller-owned QueryMS1* on the heap (no charge/mz -- MS1
+  |        scoring is retention-time based, not precursor-mass based)
   |     -> does NOT touch SearchSession::ms1Queries
   |
-  +- CometSpecLib::RunMS1Search(pQueryMS1, ...)
+  +- CometSearch::RunMS1Search(pQueryMS1, dRT, dMaxMS1RTDiff, dMaxSpecLibRT, dMaxQueryRT, localScores)
   |     reads g_vSpecLib / g_vulSpecLibPrecursorIndex (READ-ONLY) [x]
+  |     fills the out-parameter vector<CometScoresMS1> localScores directly
+  |     (pQueryMS1->_pSpecLibResultsMS1 is internal mid-scoring scratch, not
+  |     the source the caller reads from)
   |
-  +- Threading::LockMutex(g_ms1AlignerMutex)
-  |     CometAlignment::UpdateAlignment(RetentionMatchHistory, ...)  <- guarded write
-  |   Threading::UnlockMutex(g_ms1AlignerMutex)
+  +- if localScores is non-empty:
+  |     dMatchedSpecLibRT = localScores[0].fRTime
+  |     Threading::LockMutex(g_ms1AlignerMutex)
+  |       dLinearRegressionRT = pMS1Aligner.processRetentionMatch(dRT, dMatchedSpecLibRT)
+  |          <- pMS1Aligner is a global CometMassSpecAligner instance that
+  |             accumulates RT history across the whole run; the mutex
+  |             protects that shared history, not localScores itself
+  |     Threading::UnlockMutex(g_ms1AlignerMutex)
+  |     localScores[0].fRTime = dLinearRegressionRT   <- overwrite with the
+  |                                                       regression-adjusted RT
+  |     scoresMS1 = std::move(localScores)
   |
-  +- extract results from pQueryMS1->_pSpecLibResultsMS1 into output vectors
-  |
-  +- delete pQueryMS1
-       return
+  +- delete pQueryMS1 (after freeing pQueryMS1->pfFastXcorrData if non-null)
+       return bSucceeded
 ```
 
 ---
@@ -182,11 +215,11 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, charge, mz, masses, intensities, nPeaks, 
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |
 | `SearchSession::queries` / `SearchSession::ms1Queries` | Not touched [x] | `SearchSession` is batch-path only. RTS path uses per-call `Query*` / `QueryMS1*`. |
 | `g_massRange` | Not written [x] | Mass limits derived from per-call `Query*._pepMassInfo`. |
-| `tRealTimeStart` | Per-call local [x] | Each call has its own `chrono::time_point`. |
+| `pQuery->tSearchStart` | Per-Query member [x] | Set once per call on the caller-owned `Query*`, not a bare local threaded through function params; each call's clock is independent. |
 | `Query*` / `QueryMS1*` | Per-call heap [x] | Each call allocates and owns its object; freed at end. |
-| `pbDuplFragment[]` | Per-call heap [x] | Allocated in `RunSearch`, freed before return. |
+| `_ppbDuplFragmentArr[iSlot]` | Pool-slot, not per-call heap [x] | `RunSearch(Query*)` reuses a pre-allocated scratch array from the shared `SearchMemoryPool` (`AcquirePoolSlot()`, released by `SearchMemoryPoolSlotGuard`) rather than allocating a fresh array per call; each concurrent caller gets its own slot, so no data race, but it is not the per-call `new[]`/`delete[]` an earlier design used. |
 | `RetentionMatchHistory` | Mutex-guarded [x] | `g_ms1AlignerMutex` protects writes in `DoMS1SearchMultiResults`. |
-| `g_cometStatus` | Shared mutable [!] | Pre-existing; `IsCancel()` is safe, `SetError()` is mutex-protected. RTS path checks `IsCancel()` only -- avoids poisoning all threads on one failure. |
+| `g_cometStatus` | Shared mutable [!] | Pre-existing; `IsCancel()` is safe, `SetStatus()` is mutex-protected (there is no `SetError()` -- errors are reported via `SetStatus(CometResult_Failed, msg)`). RTS path checks `IsCancel()` only -- avoids poisoning all threads on one failure. |
 
 ---
 
@@ -206,7 +239,7 @@ CometSearch/CometSearchManager          (native library)
 
 `CometSearchManagerWrapper` holds a native `ICometSearchManager*` and marshals per-call:
 - Managed `array<double>^` <-> native `double*` via `pin_ptr` (zero-copy).
-- Native `Scores` -> managed `ScoreWrapper` via copy-constructor.
+- Native `CometScores` -> managed `ScoreWrapper` via copy-constructor; native `CometScoresMS1` -> managed `ScoreWrapperMS1` likewise.
 - Native `Fragment` -> managed `FragmentWrapper` via copy-constructor.
 - Native `string` <-> managed `String^` via `marshal_as<>`.
 
@@ -216,24 +249,47 @@ No shared mutable state exists in the wrapper layer. Each managed call creates s
 
 | Wrapper type | Native type | Key properties |
 |---|---|---|
-| `ScoreWrapper` | `Scores` | `xCorr`, `dCn`, `dExpect`, `mass`, `matchedIons`, `totalIons`, `dAScorePro`, `sAScoreProSiteScores` |
+| `ScoreWrapper` | `CometScores` | `xCorr`, `dSp`, `dCn`, `dExpect`, `mass`, `MatchedIons`, `TotalIons`, `dAScorePro`, `sAScoreProSiteScores` |
+| `ScoreWrapperMS1` | `CometScoresMS1` | `fDotProduct`, `fRTime`, `iScanNumber` |
 | `FragmentWrapper` | `Fragment` | `mass`, `intensity`, `type`, `number`, `charge`, `neutralLoss`, `neutralLossMass` |
 
 **Note:** If `CometData.h` enums or struct layouts change, `CometDataWrapper.h` must be updated in parallel. The file contains this reminder for `AnalysisType` and `InputType`.
 
 ### C# search loop (`SearchMS1MS2.cs`)
 
-Multiple `Task.Run()` workers share a single `globalSearchMgr` instance:
+A `ConcurrentQueue<int>` of scan numbers is drained by a fixed pool of `Task.Run()`
+workers, all sharing a single `globalSearchMgr` instance:
 
 ```csharp
-// Concurrent Task threads -- safe because native C++ is fully thread-local:
-Parallel.ForEach(scanQueue, scan => {
-    globalSearchMgr.DoSingleSpectrumSearchMultiResults(charge, mz, masses, ...);
-    // result stored into ConcurrentBag<ScanResult>
-});
+// Populate scan queue
+for (int i = iFirstScan; i <= iLastScan; ++i)
+    scanQueue.Enqueue(i);
+
+void ProcessScans(int threadId)
+{
+    while (scanQueue.TryDequeue(out int iScanNumber))
+    {
+        // ... read spectrum from the shared (thread-safe) raw file reader ...
+        if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
+            globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
+                pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
+        else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)
+            globalSearchMgr.DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dPrecursorMZ,
+                pdMass, pdInten, iNumPeaks, out ...);
+        // ... result stored on a per-scan ScanResult, collected after all tasks join ...
+    }
+}
+
+Task[] tasks = new Task[numThreads];
+for (int i = 0; i < numThreads; ++i)
+{
+    int threadId = i;
+    tasks[i] = Task.Run(() => ProcessScans(threadId));
+}
 ```
 
-MS1 searches run similarly via `DoMS1SearchMultiResults`, with `InitializeSingleSpectrumMS1Search` called once before the loop.
+`InitializeSingleSpectrumMS1Search`/`InitializeSingleSpectrumSearch` are called
+once before the tasks are started, not inside the per-scan loop.
 
 ---
 
@@ -241,7 +297,15 @@ MS1 searches run similarly via `DoMS1SearchMultiResults`, with `InitializeSingle
 
 `g_staticParams.options.iMaxIndexRunTime` (milliseconds; 0 = no limit) limits fragment index search time per call.
 
-The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, passed through `RunSearch(pQuery, tRealTimeStart)` -> `SearchFragmentIndex(pQuery, pbDuplFragment, tRealTimeStart)`. Each concurrent call has an independent clock; there is no shared timeout state.
+The timeout clock is `pQuery->tSearchStart`, a `chrono::time_point` member set
+once on the per-call `Query*` right after preprocessing (`CometSearchManager.cpp`,
+inside `DoSingleSpectrumSearchMultiResults`). `RunSearch(Query*)` and
+`SearchFragmentIndex(Query*, bool*)` take no separate time parameter -- they read
+the deadline directly off `pQuery` at several checkpoints during the search, and
+`DoSingleSpectrumSearchMultiResults` re-checks it again before each post-analysis
+step (`CalculateSP`/`CalculateEValue`/`CalculateDeltaCn`), skipping ahead to
+cleanup once the deadline has passed. Each concurrent call has an independent
+clock via its own `Query*`; there is no shared timeout state.
 
 ---
 
@@ -252,13 +316,11 @@ The timeout clock is a `chrono::time_point tRealTimeStart` local to each call, p
 | Allocation | Freed at |
 |-----------|----------|
 | `Query* pQuery` | `cleanup_results` (`delete pQuery`; destructor frees nested arrays + mutex) |
-| `QueryMS1* pQueryMS1` | End of `DoMS1SearchMultiResults` (`delete pQueryMS1`) |
-| `double* pdTmpSpectrum` | `cleanup_results` |
-| `bool* pbDuplFragment[]` | End of `RunSearch(Query*, ...)` |
+| `QueryMS1* pQueryMS1` | End of `DoMS1SearchMultiResults` (`delete pQueryMS1`; also frees `pQueryMS1->pfFastXcorrData` if non-null) |
 
-**Shared pools (allocated once at init, reused across calls):**
+**Shared pools (allocated once at init or once per thread, reused across calls):**
 
-- `CometPreprocess::AllocateMemory(N)` -- per-thread preprocessing buffers for the batch path. The RTS thread-local path bypasses this pool and allocates directly.
+- `CometPreprocess::GetRtsRawDataBuffer()` -- returns the thread-local raw-data buffer owned by a per-thread `RtsScratch` pool, initializing it on first use per thread. This replaced an earlier per-call `new[] iArraySizeGlobal doubles` / `delete[]` design (`pdTmpSpectrum` is no longer a per-call heap allocation).
 - `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal)` (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
 - **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
@@ -271,7 +333,7 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
 1. Declare the method in `CometInterfaces.h` (`ICometSearchManager`).
 2. Implement in `CometSearchManager.cpp` using the thread-local pattern:
    - Use `PreprocessSingleSpectrumThreadLocal()` (not `PreprocessSingleSpectrum()`).
-   - Call `CometSearch::RunSearch(pQuery, tRealTimeStart)` (not `RunSearch(ThreadPool*)`).
+   - Set `pQuery->tSearchStart` right after preprocessing, then call `CometSearch::RunSearch(pQuery)` (not `RunSearch(ThreadPool*)` or the pre-assigned-slot `RunSearch(Query*, int iSlot)` overload used by the fused batch path).
    - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
 4. If new return types are needed, add wrapper structs to `CometDataWrapper.h` (and mirror in `CometData.h`).

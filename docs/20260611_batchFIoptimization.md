@@ -44,7 +44,9 @@ memory, while producing **bit-identical** PSM output to today's batch path.
 ## Confirmed facts the design relies on
 
 - `Query::bSparseFromPool` already gates the destructor
-  (CometDataInternal.h:1429/1445/1460): when true, pool-backed sparse children are
+  (`core/Types.h:628` field, guards at `:724/740/755` -- moved out of
+  `CometDataInternal.h` by the later repo reorg; that file is now just a
+  compatibility shim that includes `core/Types.h`): when true, pool-backed sparse children are
   not freed by `~Query()`; only the small parent `float**` arrays are. So a Query
   can persist in `g_pvQuery` for output while its sparse payload lives in the
   reusable thread-local pool.
@@ -103,8 +105,9 @@ memory, while producing **bit-identical** PSM output to today's batch path.
   7. push `pQuery` into `g_pvQuery` under `g_pvQueryMutex`.
 
 ### Stage 2 - FI_DB fused dispatch in DoSearch
-- In `CometSearchManager::DoSearch` (CometSearchManager.cpp:2862-3021), add a
-  branch `if (iDbType==FI_DB && g_bPerformDatabaseSearch && !bMango && !specLib)`
+- **(2026-07-10: this landed differently -- see note below.)** As originally
+  proposed: in `CometSearchManager::DoSearch` (CometSearchManager.cpp:2862-3021),
+  add a branch `if (iDbType==FI_DB && g_bPerformDatabaseSearch && !bMango && !specLib)`
   that, per batch:
   - reads the batch's spectra into `std::vector<Spectrum>` (extract the read loop
     from `LoadAndPreprocessSpectra` / `PreloadIons`, respecting `iSpectrumBatchSize`
@@ -118,6 +121,14 @@ memory, while producing **bit-identical** PSM output to today's batch path.
   - **keeps** the by-scan sort (2978), every output writer (2986-3008), and the
     cleanup `delete` loop (3014) unchanged.
 - The existing three-sweep code remains as the `else` path for FASTA/Mango/speclib.
+- **As actually shipped:** `DoSearch()` was later shrunk from ~4,500 lines to
+  ~140 (the Phase-5 refactor, `docs/20260612_architecture_migration.md`), and
+  this dispatch logic now lives in `CometSearch/search/FiStrategy.cpp::executeBatch`
+  (~line 122-148), which calls `CometPreprocess::FusedLoadAndSearchSpectra`
+  rather than a branch inline in `DoSearch`. The `bFused` gating condition
+  (`bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`) and the
+  fallback to the legacy three-sweep path for Mango/speclib match what's
+  described above; only the location moved.
 
 ### Stage 3 - Fixed-slot RunSearch overload
 - Add `CometSearch::RunSearch(Query*, int iSlot)` that calls

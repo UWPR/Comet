@@ -12,7 +12,7 @@ All state that makes one search parameterization distinct from another is curren
 - `g_staticParams` -- the parameter root
 - `g_iFragmentIndex` / `g_iFragmentIndexOffset` / `g_vFragmentPeptides` -- the index encodes enzyme cleavage, variable mods, and peptide length range; different params -> different index
 - `MOD_NUMBERS` / `MOD_SEQS` / `PEPTIDE_MOD_SEQ_IDXS` -- mod permutation tables built from `variableModParameters`
-- `CometSearch::_pbSearchMemoryPool` / `_ppbDuplFragmentArr` -- pool sized to param-set's thread count
+- `CometFragmentIndex::_pbSearchMemoryPool` / `CometSearch::_ppbDuplFragmentArr` -- pool sized to param-set's thread count (2026-07-10: corrected class attribution -- _pbSearchMemoryPool is a CometFragmentIndex static, not CometSearch)
 - `g_AScoreOptions` / `g_AScoreInterface` -- if AScore settings differ
 - `g_cometStatus` -- each instance needs independent error/cancel state
 - All init flags and `singleSearchInitializationComplete`
@@ -70,7 +70,7 @@ struct RtsContext {
 };
 ```
 
-`CometSearchManager` holds a `unique_ptr<RtsContext>`. Every internal function that currently reads `g_staticParams` receives a `const RtsContext&` (or `const StaticParams&`) instead. The `CometSearch` class static members `_pbSearchMemoryPool` / `_ppbDuplFragmentArr` become per-instance (either stored in `RtsContext` and passed in, or `CometSearch` becomes a non-static class).
+`CometSearchManager` holds a `unique_ptr<RtsContext>`. Every internal function that currently reads `g_staticParams` receives a `const RtsContext&` (or `const StaticParams&`) instead. The `CometFragmentIndex`/`CometSearch` class static members `_pbSearchMemoryPool` / `_ppbDuplFragmentArr` become per-instance (either stored in `RtsContext` and passed in, or `CometSearch` becomes a non-static class).
 
 The C# side creates N `CometSearchManagerWrapper` objects -- a natural extension of what is already there. Each wrapper wraps one `CometSearchManager` which owns one `RtsContext`. Spectra are routed to the appropriate wrapper by the C# coordinator.
 

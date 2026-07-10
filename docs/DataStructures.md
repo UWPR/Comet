@@ -118,12 +118,12 @@ Contains nested sub-structs (all defined in `core/Params.h`):
 | `massUtility` | `MassUtil` | `pdAAMassParent[128]` and `pdAAMassFragment[128]` look-up tables; mono vs. average flag. |
 | `precalcMasses` | `PrecalcMasses` | Pre-computed `dNtermProton`, `dCtermOH2Proton`, `dOH2ProtonCtermNterm`, BIN'd H2O/NH3 values. |
 | `staticModifications` | `StaticMod` | Per-AA static mod deltas (`pdStaticMods[128]`), peptide/protein terminal additions. |
-| `variableModParameters` | `VarModParams` | `varModList[VMODS]` (9 slots), mod symbol codes, max-per-peptide limit, compound mod list. |
+| `variableModParameters` | `VarModParams` | `varModList[VMODS]` (`VMODS = 15` slots), mod symbol codes, max-per-peptide limit, compound mod list. |
 | `ionInformation` | `IonInfo` | Active ion series bitmask, water/ammonia loss flag, flanking peak mode. |
 | `enzymeInformation` | `EnzymeInfo` | Search enzyme, sample enzyme, 2nd enzyme, allowed missed cleavages, offset directions. |
 | `databaseInfo` | `DBInfo` | FASTA path; `iTotalNumProteins` and `uliTotAACount` updated during batch scan. |
 | `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment ion -- computed once to turn division into multiplication. |
-| `tRealTimeStart` | `chrono::time_point` | Timestamp set at the start of each `DoSingleSpectrumSearch()` call; used to enforce `iMaxIndexRunTime`. |
+| `tRealTimeStart` | `chrono::time_point` | PI_DB (peptide-index) RTS clock: set exactly once, the first time `CometSearch::SearchPeptideIndex()` reads the index (`CometSearch.cpp:1893`, guarded by `!g_bPeptideIndexRead` -- "for the first RTS query, set clock start now to skip time reading index"), not per-call. There is no function named `DoSingleSpectrumSearch()`. The FI_DB (fragment-index) RTS path uses a *different*, genuinely per-call clock instead: `pQuery->tSearchStart` on the heap-allocated `Query` (see `docs/RealTimeSearch.md`), set fresh by `DoSingleSpectrumSearchMultiResults()` for every call. |
 
 ---
 
@@ -138,8 +138,8 @@ struct VarModParams // core/Params.h (all mod config)
 
 | Field | Purpose |
 |-------|---------|
-| `varModList[VMODS]` | Array of 9 `VarMods` entries. `VMODS = 9`, indexed 0-8. |
-| `cModCode[VMODS]` | Output symbol for each mod: `*`, `#`, `@`, `^`, `~`, `$`, `%`, `!`, `+`. |
+| `varModList[VMODS]` | Array of `VarMods` entries. `VMODS = 15` (`core/Constants.h`), indexed 0-14. |
+| `cModCode[VMODS]` | Output symbol for each mod slot. Slots 0-8 use fixed symbols `*`, `#`, `@`, `^`, `~`, `$`, `%`, `!`, `+`; slots 9-14 use an ASCII-derived fallback code (`core/Params.h`, `int iAscii = 88 + i`) so up to 15 simultaneous variable mods can each get a distinct output character. |
 | `bVarModSearch` | Set to `true` if any mod has a non-zero mass; gates the `WithVariableMods` code path. |
 | `iMaxVarModPerPeptide` | Total modified residues allowed per peptide across all mods. |
 | `iMaxPermutations` | Cap on permutation count in `WithVariableMods`. |
@@ -319,17 +319,25 @@ typedef struct sDBEntry  // core/Types.h
 | `lProteinFilePosition` | Byte offset into FASTA (used as the canonical protein identifier). |
 | `vectorPeffMod` | PEFF modifications from the protein header. |
 | `vectorPeffVariantSimple/Complex` | PEFF sequence variants. |
+| `vectorPeffProcessed` | Processed/applied PEFF annotations (`vector<PeffProcessedStruct>`). |
 
 ---
 
 ## MassRange
 
 ```cpp
-struct MassRange  // CometDataInternal.h
+struct MassRange  // core/Params.h
 extern MassRange g_massRange;
 ```
 
-Computed once per spectrum batch from the lowest and highest precursor masses in `SearchSession.queries`. Search threads read `dMinMass` / `dMaxMass` for early-exit decisions in `SearchForPeptides`. `iMaxFragmentCharge` caps the fragment ion charge loop.
+`dMinMass`/`dMaxMass` are computed once at init (either the batch path's
+`DoSearch()` or the RTS path's `InitializeSingleSpectrumSearch()`) from the
+configured peptide mass range, not per-batch from `SearchSession.queries`.
+Search threads read them for early-exit decisions in `SearchForPeptides`.
+`usiMaxFragmentCharge` (not `iMaxFragmentCharge`) caps the fragment ion charge
+loop and is the one field in this struct that genuinely is batch-only,
+updated per-spectrum under `_maxChargeMutex` inside `CometPreprocess::PreprocessSpectrum`.
+See `docs/GlobalVariables.md` for the full per-field thread-safety breakdown.
 
 ---
 
@@ -339,7 +347,7 @@ These types cross the library boundary into `CometWrapper` and `RealtimeSearch`.
 
 | Type | Purpose |
 |------|---------|
-| `Scores` | XCorr, dCn, E-value, mass, matched/total ions -- returned per search hit. |
+| `CometScores` | XCorr, dSp, dCn, E-value, mass, matched/total ions, AScorePro -- returned per MS2 search hit. (MS1 spectral-library hits use the separate `CometScoresMS1` struct: dot product, RT, scan number.) |
 | `Fragment` | Single fragment ion: mass, intensity, type, number, charge, neutral loss. |
 | `VarMods` | User-facing mod definition (same as internal `VarMods`; shared header). |
 | `EnzymeInfo` | Enzyme parameters surfaced to the wrapper layer. |

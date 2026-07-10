@@ -30,7 +30,7 @@ manual step that had to be remembered.
 The MSToolkit Linux build (`MSToolkit/Makefile`) handles zlib and expat in two
 stages.
 
-### Stage 1 — Unpack and configure
+### Stage 1 -- Unpack and configure
 
 1. Unzips `extern/zlib1211.zip` into `extern/zlib-1.2.11/`
    and `extern/expat-2.2.9.zip` into `extern/expat-2.2.9/`.
@@ -56,14 +56,14 @@ to:
 The unconditional `#define Z_HAVE_UNISTD_H` triggers `#include <unistd.h>` later
 in `zconf.h`, which does not exist on Windows.
 
-### Stage 2 — Install headers
+### Stage 2 -- Install headers
 
 3. Runs `make install` with `--includedir MSToolkit/include`, copying the
    configure-modified headers into `MSToolkit/include/`:
 
 | Installed file | Problem |
 |---|---|
-| `MSToolkit/include/zconf.h` | contains `#if 1` — always enables `Z_HAVE_UNISTD_H` |
+| `MSToolkit/include/zconf.h` | contains `#if 1` -- always enables `Z_HAVE_UNISTD_H` |
 | `MSToolkit/include/zlib.h` | shadows the tracked extern copy |
 | `MSToolkit/include/expat.h` | shadows the tracked extern copy |
 | `MSToolkit/include/expat_config.h` | Linux-specific content |
@@ -97,9 +97,9 @@ re-extraction and compiles against the Linux-modified files.
 Two MSBuild tasks were added to each VS project file, both hooked into
 **Clean Solution** via `AfterTargets="Clean"`:
 
-1. **`RemoveDir`** — removes the unpacked source directory so that `UnpackXxx`
+1. **`RemoveDir`** -- removes the unpacked source directory so that `UnpackXxx`
    re-extracts a clean copy on the next Build.
-2. **`Delete`** — removes the five headers that Linux `make install` placed in
+2. **`Delete`** -- removes the five headers that Linux `make install` placed in
    `MSToolkit/include/`.  After deletion, MSVC falls through to the Windows-safe
    copies in `MSToolkit/include/extern/`.  `Delete` is a no-op when a file does
    not exist, so Clean Solution is safe to run at any time.
@@ -129,8 +129,8 @@ Two MSBuild tasks were added to each VS project file, both hooked into
 | Step | Action |
 |------|--------|
 | Build on Linux | `make` |
-| Switch to VS | **Clean Solution** — removes `extern/zlib-1.2.11/`, `extern/expat-2.2.9/`, and the five installed headers from `MSToolkit/include/` |
-| | **Build Solution** — re-extracts clean zips, compiles OK |
+| Switch to VS | **Clean Solution** -- removes `extern/zlib-1.2.11/`, `extern/expat-2.2.9/`, and the five installed headers from `MSToolkit/include/` |
+| | **Build Solution** -- re-extracts clean zips, compiles OK |
 
 ---
 
@@ -149,14 +149,14 @@ recur.  Steps to re-apply the fix:
    changes.  After a Linux `make`, the untracked files in `MSToolkit/include/`
    (shown by `git status`) are the ones to remove.
 
-4. **Update `UnpackXxx`** targets — check that their `Condition` attributes and
+4. **Update `UnpackXxx`** targets -- check that their `Condition` attributes and
    `Unzip` source paths also reference the new version strings.
 
 5. **Test the round-trip:**
    - Run `make` on Linux.
-   - In VS, run **Clean Solution** — confirm the source directories and installed
+   - In VS, run **Clean Solution** -- confirm the source directories and installed
      headers are removed from `MSToolkit/include/`.
-   - Run **Build Solution** — confirm extraction and compilation succeed.
+   - Run **Build Solution** -- confirm extraction and compilation succeed.
 
 If MSToolkit adds a third library with the same unzip-then-configure-then-install
 pattern, apply the same `AfterTargets="Clean"` block containing both `RemoveDir`
