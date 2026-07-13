@@ -31,6 +31,12 @@ make cclean   # Quick clean: only CometSearch and root object files
 `.raw` file reading uses Thermo's RawFileReader .NET library via a `/clr` (C++/CLI) build in
 `MSToolkit` -- no separate Thermo software installation is required (Windows only).
 
+**If the build fails with `error C1083: Cannot open include file: 'unistd.h'`** (usually
+in `MSToolkit.vcxproj` or `zlibstat.vcxproj`): this repo was just built with Linux `make`,
+which regenerates `MSToolkit/include/zconf.h` in a Unix-configured form that breaks MSVC.
+Run **Clean Solution**, then **Build Solution** again -- see the `comet-build` skill for
+the full explanation and the Unix-side equivalent (`make clean`, not `make cclean`).
+
 ### CometSearch library only
 ```bash
 cd CometSearch && make
