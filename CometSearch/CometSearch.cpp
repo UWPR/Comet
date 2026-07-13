@@ -57,7 +57,10 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
    if (g_bCometSearchMemoryAllocated)
       return true;
 
-   if (!s_pool.allocate(maxNumThreads, g_staticParams.iArraySizeGlobal))
+   size_t nBinnedIonMassesElems = (size_t)(MAX_FRAGMENT_CHARGE + 1) * NUM_ION_SERIES * MAX_PEPTIDE_LEN * (VMODS + 2);
+   size_t nBinnedPrecursorNLElems = (size_t)MAX_PRECURSOR_NL_SIZE * MAX_PRECURSOR_CHARGE;
+
+   if (!s_pool.allocate(maxNumThreads, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems))
       return false;
 
    try
@@ -198,7 +201,7 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
-      SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+      SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot);
    }
    else
    {
@@ -1861,7 +1864,7 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
             return;
          }
          SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
-         SearchPeptideIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+         SearchPeptideIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot], iSlot);
       });
    }
 
@@ -1882,7 +1885,8 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
 // read-only g_pvDBIndex.  Does not access g_pvQuery.
 // pbDuplFragment is a thread-local scratch buffer of size g_staticParams.iArraySizeGlobal.
 void CometSearch::SearchPeptideIndex(Query* pQuery,
-                                     bool* pbDuplFragment)
+                                     bool* pbDuplFragment,
+                                     int iSlot)
 {
    if (!g_bPeptideIndexRead || g_pvDBIndex.empty())
       return;
@@ -1916,7 +1920,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
          continue;
 
       dbe.lProteinFilePosition = g_pvDBIndex[i].lIndexProteinFilePosition;
-      AnalyzePeptideIndex(pQuery, g_pvDBIndex[i], pbDuplFragment, &dbe);
+      AnalyzePeptideIndex(pQuery, g_pvDBIndex[i], pbDuplFragment, &dbe, iSlot);
 
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -1934,7 +1938,8 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
 void CometSearch::AnalyzePeptideIndex(Query* pQuery,
                                       const DBIndex& sDBI,
                                       bool* pbDuplFragment,
-                                      struct sDBEntry* dbe)
+                                      struct sDBEntry* dbe,
+                                      int iSlot)
 {
    int iLenPeptide = (int)strlen(sDBI.sPeptide);
    int iLenMinus1 = iLenPeptide - 1;
@@ -1949,8 +1954,10 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
 
    // Use VMODS+2 for 4th dimension to match batch path
    // Peptide index will apply up to VMODS, fragment ion index goes to FRAGINDEXVMODS
-   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   // Pool-backed (sized once per thread in AllocateMemory()) instead of stack-local,
+   // so this ~142 KB array isn't re-declared on the stack for every candidate.
+   auto& uiBinnedIonMasses = *reinterpret_cast<unsigned int(*)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(s_pool.binnedIonMasses(iSlot));
+   auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]>(s_pool.binnedPrecursorNL(iSlot));
 
    char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
 
@@ -2269,8 +2276,8 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
       double pdAAforwardDecoy[MAX_PEPTIDE_LEN];
       double pdAAreverseDecoy[MAX_PEPTIDE_LEN];
-      unsigned int uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-      unsigned int uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+      auto& uiBinnedIonMassesDecoy = *reinterpret_cast<unsigned int(*)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(s_pool.binnedIonMassesDecoy(iSlot));
+      auto& uiBinnedPrecursorNLDecoy = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]>(s_pool.binnedPrecursorNLDecoy(iSlot));
       int iFoundVariableModDecoy = 0;
 
       // Reverse the peptide sequence, keeping the terminal residue fixed

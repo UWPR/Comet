@@ -293,14 +293,19 @@ private:
                                    bool* pbDuplFragment);
 
    // Thread-local overload: searches a caller-owned Query* against the
-   // read-only g_pvDBIndex. Does not access g_pvQuery.
-   static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment);
+   // read-only g_pvDBIndex. Does not access g_pvQuery. iSlot identifies the
+   // caller's claimed SearchMemoryPool slot, used to fetch the thread-local
+   // PI_DB ion-mass/precursor-NL scratch buffers (see AnalyzePeptideIndex).
+   static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment, int iSlot);
 
-   // Thread-local overload accepting Query* directly.
+   // Thread-local overload accepting Query* directly. iSlot selects this
+   // thread's pool-backed uiBinnedIonMasses/uiBinnedPrecursorNL (and decoy
+   // counterparts) scratch buffers instead of declaring them on the stack.
    static void AnalyzePeptideIndex(Query* pQuery,
                                    const DBIndex& sDBI,
                                    bool* pbDuplFragment,
-                                   struct sDBEntry* dbe);
+                                   struct sDBEntry* dbe,
+                                   int iSlot);
 
    bool SearchForPeptides(struct sDBEntry dbe,
                           char* szProteinSeq,

@@ -32,8 +32,12 @@ public:
    SearchMemoryPool() = default;
    ~SearchMemoryPool() { if (_allocated) _deallocate(_nSlots); }
 
-   // Allocates nSlots scratch arrays each of iArraySize bools.
-   bool allocate(int nSlots, int iArraySize);
+   // Allocates nSlots scratch arrays each of iArraySize bools, plus nSlots each of
+   // the PI_DB target/decoy ion-mass and precursor-NL scratch buffers (element
+   // counts, not bytes -- caller computes these from MAX_FRAGMENT_CHARGE,
+   // NUM_ION_SERIES, MAX_PEPTIDE_LEN, VMODS, MAX_PRECURSOR_NL_SIZE,
+   // MAX_PRECURSOR_CHARGE so this header stays free of those dependencies).
+   bool allocate(int nSlots, int iArraySize, size_t nBinnedIonMassesElems, size_t nBinnedPrecursorNLElems);
 
    // Frees all scratch arrays.
    void deallocate();
@@ -48,6 +52,15 @@ public:
    // Returns the duplicate-fragment scratch array for a claimed slot.
    bool* duplFragmentArr(int slot) const { assert(slot >= 0 && slot < _nSlots); return _pool[slot]; }
 
+   // Returns the PI_DB target/decoy ion-mass and precursor-NL scratch buffers for a
+   // claimed slot. Caller reinterprets the flat buffer as the
+   // [MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2] /
+   // [MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE] array shape it was sized for.
+   unsigned int* binnedIonMasses(int slot)      const { assert(slot >= 0 && slot < _nSlots); return _poolBinnedIonMasses[slot]; }
+   unsigned int* binnedPrecursorNL(int slot)    const { assert(slot >= 0 && slot < _nSlots); return _poolBinnedPrecursorNL[slot]; }
+   unsigned int* binnedIonMassesDecoy(int slot) const { assert(slot >= 0 && slot < _nSlots); return _poolBinnedIonMassesDecoy[slot]; }
+   unsigned int* binnedPrecursorNLDecoy(int slot) const { assert(slot >= 0 && slot < _nSlots); return _poolBinnedPrecursorNLDecoy[slot]; }
+
    bool isAllocated() const { return _allocated; }
    int  slotCount()   const { return _nSlots; }
 
@@ -57,6 +70,13 @@ private:
    int    _nSlots    = 0;
    bool** _pool      = nullptr;   // [_nSlots][iArraySize]: scratch buffers
    bool   _allocated = false;
+
+   // Per-slot PI_DB scoring scratch, sized once at allocate() time instead of being
+   // re-declared (and re-zeroed in full) on the stack for every scored candidate.
+   unsigned int** _poolBinnedIonMasses        = nullptr;   // [_nSlots][nBinnedIonMassesElems]
+   unsigned int** _poolBinnedPrecursorNL      = nullptr;   // [_nSlots][nBinnedPrecursorNLElems]
+   unsigned int** _poolBinnedIonMassesDecoy   = nullptr;   // [_nSlots][nBinnedIonMassesElems]
+   unsigned int** _poolBinnedPrecursorNLDecoy = nullptr;   // [_nSlots][nBinnedPrecursorNLElems]
 
    // Stack of currently-free slot indices.  A slot's presence here (rather than a
    // separate bool[] scanned linearly) is the sole source of truth for "is free",
