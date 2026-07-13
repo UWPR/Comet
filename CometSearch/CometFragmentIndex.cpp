@@ -628,6 +628,13 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_vvvPepGenShort.assign(nShortLens, vector<vector<PepGenTupleShort>>(iNumThreads));
    g_vvvPepGenLong.assign(nLongLens,   vector<vector<PepGenTuple>>(iNumThreads));
 
+   // Save/restore rather than hardcode: this function is reused by both the
+   // FI_DB build (WriteFIPlainPeptideIndex) and the PI_DB build (PI_DB reuse
+   // of this fast digestion path), and both enter with iDbType == FASTA_DB.
+   // Hardcoding the post-call value to FI_DB would be wrong for a PI_DB caller.
+   const bool  bCreateFragmentIndexSave = g_staticParams.options.bCreateFragmentIndex;
+   const DbType iDbTypeSave             = g_staticParams.iDbType;
+
    g_staticParams.options.bCreateFragmentIndex = true;
    g_staticParams.options.bFastPlainPeptideIdx = true;
    g_staticParams.iDbType = DbType::FASTA_DB;
@@ -635,9 +642,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    vector<Query*> emptyQueries;
    bool bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
 
-   g_staticParams.options.bCreateFragmentIndex = false;
+   g_staticParams.options.bCreateFragmentIndex = bCreateFragmentIndexSave;
    g_staticParams.options.bFastPlainPeptideIdx = false;
-   g_staticParams.iDbType = DbType::FI_DB;
+   g_staticParams.iDbType = iDbTypeSave;
 
    if (!bSucceeded)
       return false;

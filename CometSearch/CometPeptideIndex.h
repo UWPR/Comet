@@ -18,6 +18,7 @@
 
 #include "Common.h"
 #include "CometDataInternal.h"
+#include "CometFragmentIndex.h"
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
 #include "CometStatus.h"

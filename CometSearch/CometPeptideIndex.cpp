@@ -246,6 +246,48 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       return false;
    }
 
+   // Phase A validation (temporary, opt-in, no effect on the file written below):
+   // confirms that CometFragmentIndex::GeneratePlainPeptideIndex() -- the fast
+   // per-thread digestion path being planned for PI_DB reuse, see
+   // docs/20260713_PIidxformat.md -- produces the same unique unmodified peptide
+   // count as this legacy RunSearch() path when invoked from a PI_DB
+   // (bCreatePeptideIndex) context, and that it restores g_staticParams.iDbType
+   // correctly instead of clobbering it. Runs a second, throwaway digestion pass,
+   // so it is opt-in via an environment variable rather than always-on.
+   if (getenv("COMET_VALIDATE_FAST_PI_GEN") != NULL)
+   {
+      vector<DBIndex> vLegacyDBIndex;
+      vLegacyDBIndex.swap(g_pvDBIndex);
+      ProteinsListCSR vLegacyProteinsList;
+      std::swap(vLegacyProteinsList, g_pvProteinsList);
+      map<long long, IndexProteinStruct> mapLegacyProteinNames;
+      mapLegacyProteinNames.swap(g_pvProteinNames);
+
+      const DbType iDbTypeBeforeValidation = g_staticParams.iDbType;
+
+      vector<pair<size_t,size_t>> slices;
+      bool bFastSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp, slices);
+
+      // The fast path dedups across protein occurrences internally, so its count
+      // should match the FINAL written peptide count below, not this raw legacy
+      // count (which still has one entry per protein occurrence -- e.g. a peptide
+      // present in two identical proteins counts twice here until this function's
+      // own sort+unique pass runs further down).
+      logout(" - [Phase A validation] fast unmodified peptide count (deduped): " + to_string(g_pvDBIndex.size())
+         + ", legacy raw peptide count (pre-dedup, one entry per protein occurrence): "
+         + to_string(vLegacyDBIndex.size()) + "\n");
+
+      if (!bFastSucceeded)
+         logout(" - [Phase A validation] WARNING: GeneratePlainPeptideIndex() reported failure\n");
+
+      if (g_staticParams.iDbType != iDbTypeBeforeValidation)
+         logout(" - [Phase A validation] WARNING: iDbType not restored correctly after GeneratePlainPeptideIndex()\n");
+
+      g_pvDBIndex.swap(vLegacyDBIndex);
+      std::swap(g_pvProteinsList, vLegacyProteinsList);
+      g_pvProteinNames.swap(mapLegacyProteinNames);
+   }
+
    // sanity check
    if (g_pvDBIndex.size() == 0)
    {
