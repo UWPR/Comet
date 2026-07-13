@@ -32,9 +32,13 @@ public:
    static bool CreateFragmentIndex(ThreadPool *tp);
    static int WhichPrecursorBin(double dMass);
 
+   // Public for reuse by CometPeptideIndex (PI_DB build, see
+   // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS/MOD_NUMBERS/
+   // MOD_SEQ_MOD_NUM_START/CNT/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
+   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
+
 private:
 
-   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
    static void GenerateFragmentIndex(ThreadPool *tp);
    static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
                             size_t iWhichPeptide,

@@ -257,14 +257,93 @@ So this cannot be "call FI_DB's functions instead of DoSearch()". It is:
    passes unchanged, confirming the validation hook has zero effect on production behavior when the
    env var is unset (the default for every existing test and real invocation).
 
-2. **Phase B combinatorics**: reuse `PermuteIndexPeptideMods`/`ModificationsPermuter` as-is, capped
-   at `FRAGINDEX_VMODS = 5` (decided -- no generalization needed).
-3. **New Phase B enumeration function**: write the new function (working name
-   `MaterializeIndexPeptideMods` or similar) that walks `MOD_SEQ_MOD_NUM_START/CNT` per peptide
-   (mirroring `AddFragmentsThreadProc`'s loop structure) and produces full `DBIndex`-equivalent
-   entries with explicit `pcVarModSites`, honoring `iRequireVarMod` (section 5).
-4. **Wire into `WritePeptideIndex()`**: replace the `RunSearch()`-based generation call with Phase A
-   + Phase B, keep the existing sort-by-mass + file-write tail unchanged.
+2. **Phase B combinatorics -- DONE.** `PermuteIndexPeptideMods` was `private` on
+   `CometFragmentIndex`; moved to `public` (only visibility changed, no behavior change) so
+   `CometPeptideIndex` can call it. Reused as-is, capped at `FRAGINDEX_VMODS = 5` as decided.
+
+3. **New Phase B enumeration function -- DONE.** Added
+   `CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEntries)`
+   (`CometPeptideIndex.h`/`.cpp`). Mirrors `AddFragmentsThreadProc()`'s enumeration structure
+   (unmodified variant when `!iRequireVarMod`, n-term-only/c-term-only/n+c-term combos when
+   `bVarTermModSearch`, then every `modNumIdx` in `MOD_SEQ_MOD_NUM_START/CNT` for the peptide's
+   modifiable-sequence class, each optionally combined with term mods again) and
+   `AddFragments()`'s mass computation, but materializes a full `DBIndex` entry (peptide string,
+   protein reference, mass, explicit `pcVarModSites`) per valid combination instead of fragment-ion
+   bins. Two deliberate, scoped-to-this-function-only deviations from `AddFragments()` (full
+   rationale in the code comment above the function):
+   - Mass is computed by adding variable-mod deltas onto
+     `g_vRawPeptides[iWhichPeptide].dPepMass` (the authoritative unmodified mass, already correct
+     including protein-terminal static mods) rather than recomputing residue-by-residue from
+     `dOH2ProtonCtermNterm` -- `AddFragments()`'s recompute is documented as tolerant of up to a
+     10 Da protein-terminal-static-mod discrepancy, acceptable for fragment-ion binning but not for
+     PI_DB's mass-tolerance precursor search.
+   - The `bVarModProteinFilter` bitmask check skips candidate positions where `mods[i] == -1`
+     before bit-testing (the FI_DB original does not, which passes `-1` to `cometbitcheck`'s shift
+     operand for any combination leaving a candidate position unmodified -- undefined behavior).
+   - `vModSlotForAllModsIdx` translates FI_DB's compacted `ALL_MODS` index (skips inactive
+     `variable_modNN` slots) back to a direct `varModList` slot index, since PI_DB's `pcVarModSites`
+     encoding (`WritePeptideIndex()`/`ReadPeptideIndexEntry()`) requires direct slot index + 1, not
+     the compacted index `AddFragments()` uses.
+
+   Extended the same opt-in (`COMET_VALIDATE_FAST_PI_GEN`) validation hook in
+   `WritePeptideIndex()` to build `g_vRawPeptides` from the fast unmodified list, call
+   `PermuteIndexPeptideMods`, call `MaterializeIndexPeptideMods`, combine per `iRequireVarMod`, and
+   compare the deduplicated fast (unmodified + modified) count against the legacy path's
+   deduplicated count (both sides deduped locally with `DBIndex`'s own `operator<`/`operator==` for
+   a fair comparison -- see the code comment for why this differs from Phase A's raw-count
+   comparison). Verified against:
+   - `t1_basic.fasta` + K variable mod (5 of 6 peptides contain K): fast=11, legacy=11 (6 unmod + 5
+     mod).
+   - `t2_repeat.fasta` + K variable mod, length 8 (multiple K's per peptide window, exercises the
+     multi-combination path): fast=16, legacy=16 (12 modified entries across 4 unique peptides).
+   - `t1_basic.fasta` + K variable mod + `require_variable_mod=1`: fast=5, legacy=5 -- confirms the
+     unmodified variants and the one K-less peptide are correctly dropped entirely.
+   - `t1_basic.fasta` + n-term mod + K variable mod (exercises term-mod and term+residue-mod combo
+     branches): fast=22, legacy=22 (16 modified entries: 5 K-only + 1 n-term-only + 5 n-term+K, per
+     peptide, matching hand-computed expectations).
+
+   c-term-only and n+c-term-combo branches share the same code structure as the n-term-only branch
+   verified above but were not separately exercised with test data in this session.
+
+   Full unit suite (19 tests) passes unchanged with the env var unset.
+
+4. **Wire into `WritePeptideIndex()` -- DONE.** Replaced the `RunSearch()`-based generation call
+   with Phase A (`GeneratePlainPeptideIndex`) + Phase B (`PermuteIndexPeptideMods` +
+   `MaterializeIndexPeptideMods`), then dropped the now-obsolete opt-in validation hook (its whole
+   purpose was to validate Phase A/B safely alongside the legacy path before this swap; once the
+   swap happened there was no legacy path left in the same run to compare against, and running it
+   unconditionally would have doubled every production build's cost for no benefit).
+
+   **A significant format assumption broke and had to be fixed as part of this step, not merely a
+   mechanical call-site swap.** The legacy path's post-`RunSearch()` code (removed) rebuilt a local
+   `pvProteinsListLocal` by grouping consecutive same-peptide `g_pvDBIndex` entries and reassigning
+   each entry's `lIndexProteinFilePosition` from a **raw protein file offset** (one entry existed
+   per protein occurrence pre-dedup, so this grouping pass was load-bearing) to an index into that
+   local list. Phase A's `GeneratePlainPeptideIndex()` populates `g_pvDBIndex`/`g_pvProteinsList`
+   completely differently: `lIndexProteinFilePosition` is already a ready-made row index into the
+   global `g_pvProteinsList` (a `ProteinsListCSR`, one row per unique peptide, built once during
+   digestion) -- never a raw file offset at any point. Running the old grouping pass against
+   Phase A's output would have looked up small integer indices in `g_pvProteinNames` (keyed by raw
+   file offsets), failing to resolve on every entry. Fixed by deleting the entire grouping pass
+   (now a defensive `sort`+`unique` on `g_pvDBIndex` itself is sufficient -- Phase A guarantees
+   unique peptides and Phase B's enumeration is deterministic and non-duplicating, so this is a
+   no-op in the common case) and rewriting the peptide-index file's protein-list write loop to
+   iterate the global `g_pvProteinsList` directly instead of the deleted local copy. Phase B's
+   `MaterializeIndexPeptideMods()` entries carry the same `lIndexProteinFilePosition` as their
+   parent unmodified peptide (correct: a modified variant is found in exactly the same proteins),
+   so no additional handling was needed there.
+
+   Verified via the real production path (no env var) with `-j` builds re-run on the same fixtures
+   used for the Phase A/B validation hook: `t1_basic.fasta` plain (6 peptides), + K mod (11), +
+   K mod with `require_variable_mod=1` (5), + n-term mod (22); `t2_repeat.fasta` + K mod (16) --
+   all match the validation hook's pre-wiring numbers exactly. Additionally wrote and ran a
+   standalone Python parser against the built `t16_crosspath.fasta.idx` (2 identical proteins) to
+   directly read back the protein-list section and confirm all 21 peptides resolve to both protein
+   names correctly through the new `g_pvProteinsList`-based write path -- this is the scenario the
+   deleted grouping pass existed to handle, so it was the most important case to check by hand
+   rather than trust indirectly. Full unit suite (19 tests, including T20's real `-j` build+search+
+   AScore regression) passes.
+
 5. **Validation**: run the full unit suite (`tests/unit/run_tests.py --integration`), plus
    `compare_idx.py` against the legacy-path output for at least one test FASTA with variable mods
    configured (>5 slots configured should be flagged, not silently truncated -- add a build-time

@@ -37,6 +37,16 @@ public:
    static bool WritePeptideIndex(ThreadPool* tp);
    static bool ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp);
 
+   // Phase B (docs/20260713_PIidxformat.md): walks g_vRawPeptides x valid mod
+   // combinations (mirroring CometFragmentIndex::AddFragmentsThreadProc()'s
+   // enumeration structure) and materializes full DBIndex entries with explicit
+   // pcVarModSites, using the combinatorics tables built by a prior call to
+   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Appends results
+   // to vModifiedEntries; does not touch g_pvDBIndex itself.
+   static bool MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEntries);
+
+
+
    // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,
    // Enzyme2, VariableMod lines) from an already-open file pointer.
    // Updates g_staticParams in-place and must only be called once per index
