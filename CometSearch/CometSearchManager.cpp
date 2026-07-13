@@ -2808,16 +2808,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
 
-         int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
-         for (int x = 0; x < iSize; ++x)
-         {
-            int iLen = (int)strlen(pOutput[x].szPeptide);
-            if (iLen == 0)
-               break;
-            if (iLen < iMinLength)
-               iMinLength = iLen;
-         }
-
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
          {

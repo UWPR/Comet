@@ -216,6 +216,32 @@ typedef struct sDBEntry
    vector<PeffProcessedStruct> vectorPeffProcessed;
 } sDBEntry;
 
+// strcmp()-like comparison that folds L to I when g_staticParams.options.bTreatSameIL
+// (equal_I_and_L) is set, so peptides that differ only by I/L -- which are
+// mass-indistinguishable and therefore the same identification -- sort and compare
+// as equal. Falls back to plain strcmp() when bTreatSameIL is off. Used by
+// WritePeptideIndex()'s build-time sort/dedup/protein-grouping passes (PI_DB) so that
+// two different real peptides (e.g. from different proteins) that are I/L-equivalent
+// are merged into a single index entry with a combined protein bucket, instead of
+// surviving as separate entries that a single query could match twice.
+inline int ILAwarePeptideCompare(const char* a, const char* b)
+{
+   if (!g_staticParams.options.bTreatSameIL)
+      return strcmp(a, b);
+
+   for (; ; ++a, ++b)
+   {
+      char ca = (*a == 'L') ? 'I' : *a;
+      char cb = (*b == 'L') ? 'I' : *b;
+
+      if (ca != cb)
+         return (unsigned char)ca < (unsigned char)cb ? -1 : 1;
+
+      if (ca == '\0')
+         return 0;
+   }
+}
+
 struct DBIndex
 {
    vector<char>          pcVarModSites;                         // empty = unmodified; else [iLen+2] encoding var mods
@@ -228,7 +254,7 @@ struct DBIndex
 
    bool operator==(const DBIndex& rhs) const
    {
-      if (strcmp(sPeptide, rhs.sPeptide) != 0)
+      if (ILAwarePeptideCompare(sPeptide, rhs.sPeptide) != 0)
          return false;
 
       if (fabs(dPepMass - rhs.dPepMass) > FLOAT_ZERO)
@@ -248,7 +274,7 @@ struct DBIndex
 
    bool operator<(const DBIndex& rhs) const
    {
-      int cmp = strcmp(sPeptide, rhs.sPeptide);
+      int cmp = ILAwarePeptideCompare(sPeptide, rhs.sPeptide);
       if (cmp != 0)
          return cmp < 0;
 

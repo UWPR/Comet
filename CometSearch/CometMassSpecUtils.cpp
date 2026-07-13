@@ -216,15 +216,48 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
-      // get target proteins
-      if (g_staticParams.iDbType == DbType::FI_DB || pOutput[iWhichResult].pWhichProtein.size() > 0)
+      // get target proteins -- walk every protein bucket this peptide was matched
+      // against (CheckDuplicateI() may have attached more than one bucket to this
+      // entry when multiple candidates reduced to the same peptide+mod-state), not
+      // just the first. Falls back to the single lProteinFilePosition bucket if
+      // pWhichProtein is unexpectedly empty (defensive; should not happen since
+      // StorePeptideI() always populates one or the other).
+      if (pOutput[iWhichResult].pWhichProtein.size() > 0)
       {
-         comet_fileoffset_t lEntry;
+         for (const auto& protEntry : pOutput[iWhichResult].pWhichProtein)
+         {
+            comet_fileoffset_t lEntry = protEntry.lWhichProtein;
 
-         if (g_staticParams.iDbType == DbType::FI_DB)
-            lEntry = pOutput[iWhichResult].lProteinFilePosition;
-         else
-            lEntry = pOutput[iWhichResult].pWhichProtein.at(0).lWhichProtein;
+            *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
+
+            for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+            {
+               comet_fseek(fpdb, *it, SEEK_SET);
+
+               if (bReturnFullProteinString)
+               {
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
+                  {
+                     // throw error
+                  }
+               }
+               else
+                  iRet = fscanf(fpdb, szFormat, szProteinName);
+
+               szProteinName[WIDTH_REFERENCE - 1] = '\0';
+               vProteinTargets.push_back(szProteinName);
+
+               iPrintDuplicateProteinCt++;
+               if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                  break;
+            }
+            if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+               break;
+         }
+      }
+      else if (g_staticParams.iDbType == DbType::FI_DB)
+      {
+         comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
 
          *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
 
@@ -251,30 +284,37 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          }
       }
 
-      // get decoy proteins for peptide index searches
-      if (g_staticParams.iDbType == DbType::PI_DB && pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
+      // get decoy proteins -- same multi-bucket walk as above, for every protein
+      // bucket a duplicate on-the-fly-decoy candidate was attached to.
+      if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
       {
-         comet_fileoffset_t lEntry = pOutput[iWhichResult].pWhichDecoyProtein.at(0).lWhichProtein;
-         *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
-
-         for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+         for (const auto& protEntry : pOutput[iWhichResult].pWhichDecoyProtein)
          {
-            comet_fseek(fpdb, *it, SEEK_SET);
+            comet_fileoffset_t lEntry = protEntry.lWhichProtein;
 
-            if (bReturnFullProteinString)
+            *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
+
+            for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
             {
-               if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
+               comet_fseek(fpdb, *it, SEEK_SET);
+
+               if (bReturnFullProteinString)
                {
-                  // throw error
+                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
+                  {
+                     // throw error
+                  }
                }
+               else
+                  iRet = fscanf(fpdb, szFormat, szProteinName); // must be less than WIDTH_REFERENCE
+
+               szProteinName[WIDTH_REFERENCE - 1] = '\0';
+               vProteinDecoys.push_back(szProteinName);
+
+               iPrintDuplicateProteinCt++;
+               if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                  break;
             }
-            else
-               iRet = fscanf(fpdb, szFormat, szProteinName); // must be less than WIDTH_REFERENCE
-
-            szProteinName[WIDTH_REFERENCE - 1] = '\0';
-            vProteinDecoys.push_back(szProteinName);
-
-            iPrintDuplicateProteinCt++;
             if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
                break;
          }
@@ -478,7 +518,9 @@ string CometMassSpecUtils::ElapsedTime(std::chrono::time_point<std::chrono::stea
 bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
                                              const DBIndex& rhs)
 {
-   if (strcmp(lhs.sPeptide, rhs.sPeptide) == 0)
+   int iCmp = ILAwarePeptideCompare(lhs.sPeptide, rhs.sPeptide);
+
+   if (iCmp == 0)
    {
       // peptides are same here so look at mass next
       if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
@@ -504,7 +546,7 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
    }
 
    // peptides are different
-   return strcmp(lhs.sPeptide, rhs.sPeptide) < 0;
+   return iCmp < 0;
 };
 
 

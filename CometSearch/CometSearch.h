@@ -64,6 +64,13 @@ public:
 
    static bool InitializeMassesFromPeptideIndex();
 
+   // Ensures the peptide index (g_pvDBIndex, g_pvProteinsList, protein name cache)
+   // and its associated fragment/parent masses are loaded exactly once. Shared by
+   // both the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB path
+   // (SearchPeptideIndex(ThreadPool*, vector<Query*>&)) so the guard logic isn't
+   // duplicated between them.
+   static bool EnsurePeptideIndexLoaded();
+
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
                          ThreadPool* tp,
@@ -227,6 +234,18 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
+   // Indexed-search (PI_DB/FI_DB) analog of CheckDuplicate(): if a candidate's
+   // peptide sequence (and mod state) already matches an existing pQuery->_pResults[]
+   // entry, attach this candidate's protein bucket to that entry (mirroring
+   // CheckDuplicate()'s pWhichProtein/pWhichDecoyProtein merge) instead of letting
+   // StorePeptideI() create a second, separate row for the same peptide.
+   static bool CheckDuplicateI(Query* pQuery,
+                               int iStartPos,
+                               int iEndPos,
+                               bool bDecoyPep,
+                               char *szProteinSeq,
+                               int *piVarModSites,
+                               struct sDBEntry *dbe);
    static void StorePeptideI(Query* pQuery,
                              int iStartPos,
                              int iEndPos,
@@ -277,14 +296,9 @@ private:
    // read-only g_pvDBIndex. Does not access g_pvQuery.
    static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment);
 
-   void AnalyzePeptideIndex(int iWhichQuery,
-                            DBIndex sDBI,
-                            bool *pbDuplFragment,
-                            struct sDBEntry *dbe);
-
    // Thread-local overload accepting Query* directly.
    static void AnalyzePeptideIndex(Query* pQuery,
-                                   DBIndex sDBI,
+                                   const DBIndex& sDBI,
                                    bool* pbDuplFragment,
                                    struct sDBEntry* dbe);
 

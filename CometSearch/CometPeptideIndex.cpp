@@ -287,8 +287,10 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       else
       {
          // each unique peptide, irregardless of mod state, will have the same list
-         // of matched proteins
-         if (strcmp(g_pvDBIndex.at(i).sPeptide, g_pvDBIndex.at(i - 1).sPeptide) == 0)
+         // of matched proteins. I/L-aware (respects equal_I_and_L) so that peptides
+         // differing only by I/L -- adjacent here because DBICompareByPeptide sorted
+         // with the same I/L-aware comparison -- are grouped into one protein bucket.
+         if (ILAwarePeptideCompare(g_pvDBIndex.at(i).sPeptide, g_pvDBIndex.at(i - 1).sPeptide) == 0)
          {
             temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
             g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
