@@ -41,9 +41,13 @@ ModificationsPermuter::~ModificationsPermuter()
 
 //bool DEBUG = false;
 
-// Maximum number of bits that can be set in a modifiable sequence for a given modification.
-// C(25, 5) = 53,130; C(25, 4) = 10,650; C(25, 3) = 2300.  This is more than FRAGINDEX_MAX_COMBINATIONS (65,534)
-unsigned int MAX_BITCOUNT = 24;
+// Maximum number of candidate (modifiable) residue positions for a single mod type within a
+// peptide's modifiable sequence. Set to MAX_PEPTIDE_LEN - 1 (the hard peptide-length ceiling
+// enforced at CometSearchManager.cpp, peptideLengthRange.iEnd = MAX_PEPTIDE_LEN - 1), so no real
+// peptide can ever exceed this -- i.e. this cap is effectively disabled. See
+// docs/20260714_modifications.md for verification (including at this exact boundary) and the
+// prior, much lower default (24) this replaced.
+unsigned int MAX_BITCOUNT = 50;
 int MAX_K_VAL = 10;
 
 int IGNORED_SEQ_CNT = 0; // Sequences that were ignored because they would generate more than FRAGINDEX_MAX_COMBINATIONS combinations.

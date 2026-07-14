@@ -31,7 +31,7 @@
 #define FRAGINDEX_MAX_BATCHSIZE     1000     // maximum number of spectra loaded when querying fragment index
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
-#define FRAGINDEX_MAX_COMBINATIONS  2000
+#define FRAGINDEX_MAX_COMBINATIONS  10000    // raised from 2000; see docs/20260714_modifications.md
 #define FRAGINDEX_MAX_MODS_PER_MOD  5
 #define FRAGINDEX_KEEP_ALL_PEPTIDES 1        // 1 = consider up to FRAGINDEX_MAX_COMBINATIONS of peptides; 0 = ignore all mods for peptide that exceed FRAGINDEX_MAX_COMBINATIONS
 

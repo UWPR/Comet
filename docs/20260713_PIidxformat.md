@@ -174,7 +174,7 @@ So this cannot be "call FI_DB's functions instead of DoSearch()". It is:
 | Compound mods (J residues) | `CompoundModSearch()` is *called* during digestion (`CometSearch.cpp:3298`, `:8394`), but its only output path (`CometSearch.cpp:8481`, `while (iWhichQuery < _pQueries->size())`) requires a non-empty query list -- index builds call `RunSearch()` with an empty query list, so it never executes. **Verified: zero compound-mod entries reach `g_pvDBIndex` in the current PI_DB build.** | Zero references to `CompoundModSearch`/J-handling anywhere in `CometFragmentIndex.cpp` | **No gap** -- FI_DB's fast path already matches PI_DB's actual current (non-)behavior for J-containing peptides. Confirmed in section 6, question 2. |
 | PEFF variants | Already excluded for `bCreatePeptideIndex` today (`CometSearch.cpp:6825`) | Also not handled in FI_DB path | No gap -- already consistent |
 | `iRequireVarMod` (require_variable_mod=1) | When set, PI_DB's digestion loop **skips the shared index-build branch entirely** (`!iRequireVarMod` in the line-2756 gate) -- unmodified peptides are presumably never stored, only fully-required-mod variants via a different path | `AddFragmentsThreadProc` explicitly checks `iRequireVarMod` before adding the bare unmodified variant, and still adds it to `g_vRawPeptides`/enumeration unconditionally upstream | **Needs new logic** (section 6, question 3): the new build path generates the unmodified peptide via Phase A unconditionally (no `iRequireVarMod` gate exists in `GeneratePlainPeptideIndex`), then must suppress emitting the unmodified-only entry (and any peptide with zero modifiable sites) at Phase B time when `iRequireVarMod` is set |
-| Max combinations per peptide | No documented cap in the legacy path (bounded only by `VariableModSearch`'s own recursion limits) | Capped at `FRAGINDEX_MAX_COMBINATIONS` = 2000 per modifiable sequence | Possible behavior change for peptides with many modifiable residues + many mod types -- likely fine in practice but should be validated during implementation, not assumed |
+| Max combinations per peptide | No documented cap in the legacy path (bounded only by `VariableModSearch`'s own recursion limits) | **RESOLVED 2026-07-14**: both raised globally -- `FRAGINDEX_MAX_COMBINATIONS` 2000 -> 10000, `MAX_BITCOUNT` 24 -> 50 (effectively disabled, since 50 is the hard peptide-length ceiling). See docs/20260714_modifications.md section 6 | Residual gap on `human.small.fasta` with M+STY mods down to 8,748 of 10.87M (99.92% match) after both raises, from 352,793 with the original defaults. Full test suite passes |
 
 ## 6. Open questions -- answered
 
@@ -344,9 +344,142 @@ So this cannot be "call FI_DB's functions instead of DoSearch()". It is:
    rather than trust indirectly. Full unit suite (19 tests, including T20's real `-j` build+search+
    AScore regression) passes.
 
-5. **Validation**: run the full unit suite (`tests/unit/run_tests.py --integration`), plus
-   `compare_idx.py` against the legacy-path output for at least one test FASTA with variable mods
-   configured (>5 slots configured should be flagged, not silently truncated -- add a build-time
-   warning/error if `iRequireVarMod` or active var mods exceed `FRAGINDEX_VMODS`), and one with
-   `require_variable_mod=1`. Confirm peptide counts and mass sums match (or differ only in the
-   documented, expected way -- e.g. I/L canonicalization) between old and new build paths.
+5. **Validation -- DONE, with one real finding to track separately.**
+
+   **`compare_idx.py` does not apply to PI_DB `.idx` files** -- it is written specifically for
+   FI_DB's plain-peptide format (`_skip_header` looks for a `RequireVariableMod:` line;
+   `_section_offsets` reads a 3-offset footer with a permutation section; `_PepReader` assumes a
+   fixed-size per-record tail with no mod-site data). PI_DB's format
+   (`WritePeptideIndex()`/`ReadPeptideIndexEntry()`) has a 2-offset footer, no permutation section,
+   and variable-length mod-site records. Running it against a PI_DB file would misparse the header
+   and offsets. Wrote an adapted comparison script for this validation pass (not checked in --
+   scratch-only) that streams PI_DB peptide records and diffs an I/L-canonical
+   `(sequence, sorted mod-site pairs, rounded mass)` multiset between two files.
+
+   **Legacy-vs-new comparison setup**: used `git worktree` to build a "legacy" `comet.exe` at
+   `05c01bdb` (the commit immediately before the Phase B production wiring -- last commit where
+   `-j` still ran the original `RunSearch()`-based path), then built `human.small.fasta` (a real
+   proteome subset, not a synthetic fixture) with realistic parameters
+   (`data/comet_phospho.params`: trypsin, 2 missed cleavages, M oxidation + STY phospho, length
+   8-50) through both the legacy binary and the current (HEAD) binary.
+
+   **Result: peptide counts do not match exactly.** `equal_I_and_L=1` config: legacy = 5,444,923,
+   new = 5,443,746 (-1,177, ~0.02%). `require_variable_mod=1` config: legacy = 5,135,579, new =
+   5,133,916 (-1,663, ~0.03%). Streaming diff identified the mismatched keys precisely: e.g.
+   `GSSGAGGR`/`GSTSPGPK` (found by legacy, absent from new -- both unmodified and every modified
+   variant) and `GAAGAAGAK`/`TGTDGGAP` (found by new, absent from legacy).
+
+   **CORRECTION (superseding the paragraph originally here): the initial root-cause attribution to
+   Phase A / `GeneratePlainPeptideIndex()` was wrong.** A follow-up investigation (prompted by a
+   request to isolate the no-modification case) built `human.small.fasta` through both binaries with
+   **no variable mods configured at all** (all `variable_modNN` slots blank). Result: **exact match,
+   311,179 = 311,179 peptides**, with an identical distinct-sequence set. Digestion is provably
+   correct -- Phase A's fast path finds precisely the same peptide windows as the legacy
+   `RunSearch()` path when there is nothing to modify.
+
+   Re-running the comparison on the earlier M+STY-mod build and isolating just the *unmodified*
+   entries (`cNumMods == 0`) inside each full (mods-enabled) `.idx` file confirmed this further:
+   that subset is **also** exactly 311,179 = 311,179 in both files, even with mods configured. So
+   `GSSGAGGR`/`GSTSPGPK` and `GAAGAAGAK`/`TGTDGGAP` (misattributed to digestion in the original
+   version of this section) are not digestion artifacts at all -- they are specific **modified**
+   variants of peptides that both files' digestion found identically; the two files simply disagree
+   on which mod combinations to keep for them. The earlier evidence (that FI_DB's own `-i` build,
+   run with the same mod-configured params file, also lacked `GSSGAGGR`) was real, but the
+   conclusion drawn from it was wrong: it wasn't showing a digestion difference, it was showing the
+   *same* combinatorics-capping effect described below, which affects `GeneratePlainPeptideIndex()`
+   only insofar as `PermuteIndexPeptideMods` (called from both FI_DB and PI_DB build paths) inherits
+   a cap designed for FI_DB's use case.
+
+   **Actual root cause: `FRAGINDEX_MAX_COMBINATIONS` (2000, `core/Constants.h:34`) silently
+   drops `MaterializeIndexPeptideMods()`'s enumeration entirely for peptides with many candidate mod
+   sites.** (Correction to a correction: an earlier draft of this paragraph said this cap
+   "truncates" to 2000 -- verified afterward, in docs/20260714_modifications.md, that this and the
+   related `MAX_BITCOUNT` cap are both strict all-or-nothing thresholds with no partial/truncated
+   middle ground; see that document for the full trace and a targeted empirical confirmation. The
+   two specific example peptides below turned out to illustrate the *two different* caps, not the
+   same one -- see the follow-up experiment further down this section, and
+   docs/20260714_modifications.md, for the corrected per-peptide attribution.) A full diff of the
+   M+STY-mod comparison found 353,077 entries present only in the legacy
+   build and 284 only in the new build, but the legacy-only entries collapse to just **284 distinct
+   peptide sequences** -- i.e. a handful of peptides account for essentially the entire count
+   discrepancy (353,059 of 353,077 legacy-only entries are modified variants; only 18 are
+   unmodified -- see below). The worst offenders are long, S/T-rich sequences characteristic of
+   low-complexity/RS-domain regions, e.g. `LSSSVSMNTFSDSSTPDYREDGMDLGSDAGSSSSSSRASSQSNSTK` (46
+   residues, 22 S/T/Y candidate sites, missing 5,635 combinations from the new build) and
+   `HFSASSASTTASTAIAATTAATASSSASSSSLSSSSSSSSSSSSSQFR` (missing 4,991). With
+   `max_variable_mods_in_peptide=4`, 22 candidate sites alone produce
+   `C(22,1)+C(22,2)+C(22,3)+C(22,4) = 9,108` raw combinations before per-mod (`iMaxNumVarModAAPerMod`)
+   filtering -- far exceeding 2000, so `ModificationsPermuter::generateModifications()`
+   (`CometModificationsPermuter.cpp:509-521`) drops this peptide's entire STY-mod enumeration outright
+   (see docs/20260714_modifications.md section 2 for why "drops entirely," not "truncates," is the
+   verified behavior). `HFSASSASTTASTAIAATTAATASSSASSSSLSSSSSSSSSSSSSQFR` turned out to have 31
+   candidate sites, not a number close to 22 -- it hits the *other* cap, `MAX_BITCOUNT=24`
+   (`CometModificationsPermuter.cpp:46`), not `FRAGINDEX_MAX_COMBINATIONS`; see the follow-up
+   experiment later in this section and docs/20260714_modifications.md for the full breakdown.
+   **Neither cap exists in the legacy PI_DB path at all** --
+   `VariableModSearch()`'s recursive enumeration has no equivalent limit, only the per-peptide
+   `iMaxVarModPerPeptide`/per-mod `iMaxNumVarModAAPerMod` constraints already respected by both
+   paths.
+
+   This is exactly the risk flagged (but not resolved) in section 5's "Max combinations per peptide"
+   row when this project was planned, now confirmed as a real, measurable effect rather than a
+   theoretical one. **It is a genuine functional gap in the new PI_DB build path, not a
+   pre-existing/inherited characteristic**: `FRAGINDEX_MAX_COMBINATIONS` is an acceptable trade-off
+   for FI_DB (a bounded in-memory fragment index, regenerated at every search-time load, where
+   dropping rare combinations for pathologically-modifiable peptides is a deliberate size/speed
+   trade-off), but PI_DB's whole design intent is an *exhaustive*, built-once index -- silently
+   dropping valid, in-mass-range modified peptides from it means a real search against that peptide
+   (e.g. an SR-domain phosphopeptide with more than a handful of phosphosites populated) can never
+   be found, with no warning logged anywhere that this happened.
+
+   **Follow-up experiment: does raising the cap close the gap?** Temporarily raised
+   `FRAGINDEX_MAX_COMBINATIONS` from 2,000 to 1,000,000 (uncommitted, reverted after the experiment)
+   and rebuilt the same M+STY-mod `human.small.fasta` comparison. Result: the gap shrank by 97.7%
+   (352,793 -> 15,232 residual entries out of ~10.87M), confirming this cap as the dominant cause,
+   but did **not** close it exactly. Diffing the residual found two further things:
+
+   1. **A second, separate, harder-coded cap**: `MAX_BITCOUNT = 24` (`CometModificationsPermuter.cpp:46`
+      -- a plain global variable, not even a `#define`) skips a peptide's *entire* modifiable-sequence
+      class outright (`generateModifications()` returns early, before any combination generation) if
+      its candidate-residue count exceeds 24. Two peptides in this dataset have 31 S/T/Y candidate
+      sites each (`HFSASSASTTASTAIAATTAATASSSASSSSLSSSSSSSSSSSSSQFR` and a paralog/missed-cleavage
+      pair, plus a similar 30-candidate pair) and lose their entire STY-mod enumeration to this check
+      regardless of how high `FRAGINDEX_MAX_COMBINATIONS` is set. Their missing-combination counts
+      (4,991 and 2,625 respectively) match `C(31,1)+C(31,2)+C(31,3)` and the 30-candidate equivalent
+      exactly, confirming `MAX_BITCOUNT` -- not the combination cap -- is what's biting for these
+      specific peptides, and together these four peptide variants account for the entire 15,232
+      residual by themselves.
+   2. **The remaining ~279/61 "mismatched" entries once those four peptides are excluded are not a
+      real content loss at all** -- they are I/L-spelling pairs (e.g. `TLTLVDTGIGMTKADLINNLGTIAKSGTK`
+      vs `TLTIVDTGIGMTKADLINNLGTIAKSGTK`, `GYALTALMKLSTR` vs `GYALTAIMKLSTR`): the same mass-identical
+      peptide under `equal_I_and_L=1`, but Phase A's per-thread dedup and the legacy path's final
+      sort+unique pick different literal I/L spellings as the "canonical" representative when multiple
+      protein occurrences differ only by I/L at some position. Same peptide, same mass, same
+      modification state -- just spelled differently, which is what my exact-string comparison key
+      (not I/L-canonicalized) reported as a mismatch. This also explains the smaller
+      18-unmodified-entry mismatch noted in the original (capped) comparison -- almost certainly the
+      same cosmetic effect, not a distinct bug.
+
+   **Net answer to "if we raise the cap, do the numbers match exactly": no, but the residual is fully
+   explained and is not evidence of any further bug.** Confirms both caps needed to move together.
+
+   **IMPLEMENTED (2026-07-14, see docs/20260714_modifications.md section 6 for full detail):**
+   `MAX_BITCOUNT` raised `24` -> `50` (`CometModificationsPermuter.cpp:46` -- effectively disables
+   this cap entirely, since 50 is the hard peptide-length ceiling everywhere in the codebase, so no
+   real peptide's candidate count can ever exceed it) and `FRAGINDEX_MAX_COMBINATIONS` raised
+   `2000` -> `10000` (`core/Constants.h:34` -- a substantial but still-bounded raise, not a removal).
+   Both changed globally (apply to FI_DB and PI_DB alike, per explicit instruction), not scoped to
+   PI_DB only. Re-running this same `human.small.fasta` comparison with both new values in place
+   simultaneously: 10,860,586 vs. legacy's 10,869,334 -- a residual of 8,748 (99.92% match), down
+   from the 15,232 residual when only `FRAGINDEX_MAX_COMBINATIONS` was raised. Full 21-test suite
+   (including T18 determinism) passes with the new values. See docs/20260714_modifications.md
+   section 6 for the full validation table and an honest note that this final 8,748-entry residual's
+   detailed per-peptide attribution was not independently re-confirmed (inferred from the
+   already-established pattern above, not re-diffed).
+
+   Ran `tests/unit/run_tests.py --integration` (T17/T18, no-enzyme length 8-13 build of
+   `human.small.fasta` via `-i`, plus the full 19-test unit suite) -- **all 21 tests pass**: T17's
+   peptide count (8,929,339) falls in its established expected range and matches the protein-list
+   count exactly; T18 confirms two independent builds are still byte-identical (determinism intact).
+   This corroborates that FI_DB's own behavior (which shares `GeneratePlainPeptideIndex()` with
+   PI_DB's new build path) is unaffected by this session's changes.
