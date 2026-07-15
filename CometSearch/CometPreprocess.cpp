@@ -1727,8 +1727,32 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       return nullptr;
    }
 
+   // pPre.iHighestIon is updated from every peak's bin above (line ~1646-1647),
+   // unconditionally -- including peaks whose bin is >= iArraySize, which the ion-loading
+   // loop above deliberately never writes into pdTmpRawData for (guarded by
+   // "iBinIon < iArraySize"). MakeCorrData() below reads/writes pdTmpRawData/
+   // pdTmpCorrelationData up to iHighestIon (only capped by iArraySizeGlobal, not
+   // iArraySize -- see the "FIX: need to check why both iArraySize and iHighestIons are
+   // used" comment on MakeCorrData() itself). On the RTS thread-local-pool path these
+   // buffers are only pre-zeroed up to iArraySize + iXcorrProcessingOffset (see
+   // EnsureInitialized()/ResetForNewSpectrum() above), not the full iArraySizeGlobal like
+   // the batch path's Preprocess() always does -- so an out-of-range peak here let
+   // MakeCorrData read stale pdTmpRawData left behind by a larger spectrum previously
+   // processed on this thread, producing a genuinely different (not just
+   // differently-ordered) windowed-normalization result and therefore XCorr for
+   // candidates whose fragment bins share a MakeCorrData window with the contaminated
+   // tail. Confirmed as the root cause of the RTS E-value jitter investigated in
+   // docs/20260714_EvalueJitter.md (Phase 3: a temporary full-iArraySizeGlobal clear on
+   // the RTS path eliminated the jitter; reverting brought it back). Clamping here is
+   // sufficient and cheaper than widening the memset: pdTmpRawData is provably zero (once
+   // properly cleared) for any bin >= iArraySize, so MakeCorrData has nothing real to
+   // read past that point regardless of how much larger iHighestIon is.
+   int iHighestIonForCorrData = pPre.iHighestIon;
+   if (iHighestIonForCorrData >= iArraySize)
+      iHighestIonForCorrData = iArraySize - 1;
+
    // --- MakeCorrData: normalize to 100, windowed ---
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iHighestIonForCorrData, pPre.dHighestIntensity);
 
 #ifdef RTS_TIMING
    if (bUseThreadLocalPool)

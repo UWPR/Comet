@@ -51,6 +51,8 @@ tmp/
 *.out
 *.app
 tests/unit/test_comet_internal
+tests/rts_repro/rts_repro
+tests/rts_repro/work/
 
 # End of https://www.toptal.com/developers/gitignore/api/c++
 

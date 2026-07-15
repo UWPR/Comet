@@ -366,7 +366,7 @@ four are suggested as optimization targets.
   avoids it via the in-memory `g_pvProteinNameCache` path (`:2692-2713`). Noted as a confirmation
   that PI_DB doesn't have this problem, not as a new finding.
 
-## RTS E-value nondeterminism under concurrency -- investigated, partially fixed
+## RTS E-value nondeterminism under concurrency -- RESOLVED
 
 Separate from the 8 findings above: replicate 8-thread RTS runs against identical input (same
 `.raw` file, same PI_DB index) produce a small number of PSMs (roughly 200-300 out of ~44,700
@@ -420,26 +420,37 @@ only the I/O calls into the shared reader are serialized. This is a real, indepe
 thread-safety fix (unsynchronized concurrent calls into a shared native/COM object is unsound
 regardless of its measured impact on this specific symptom) and has been kept.
 
-**Honest result: the fix is real but does not fully explain the nondeterminism.** Per the bisection
-table, the C# fix alone (row 5) made no measurable difference versus baseline when the C++ side runs
-normally (unserialized); the dominant reduction (~292 -> ~71-86, roughly 3-4x) came from fully
-serializing the C++ per-spectrum pipeline, which is not a viable production fix (it would eliminate
-RTS's multithreading benefit entirely, the reason findings 1/2 and the original `docs/20260713_PIopt.md`
-work exist). Combining both the C# fix and C++ serialization does not go lower than C++ serialization
-alone. This means there remains an unidentified, genuine C++-side source of run-to-run variation
-under real concurrent execution that this investigation did not localize -- `CalculateSP` was checked
-for shared/static state and found clean (only per-call stack locals and the per-query `Results*`
-array), but the search was not exhaustive of every code path reachable from `RunSearch(Query*)` and
-`CalculateSP`/`CalculateEValue`/`CalculateDeltaCn` under real 8-way contention. The residual is small
-(roughly 0.15-0.2% of PSMs even at its observed worst) and, per the pre-existing
-"Fix non-deterministic FASTA_DB search results under concurrent scoring ties" commit in this repo's
-own history, concurrent near-tied-score nondeterminism is a known, longer-standing category of issue
-in this codebase, not something newly introduced here.
+**Update: the residual left by the C# fix was tracked down and fixed in a dedicated follow-up
+investigation -- see `docs/20260714_EvalueJitter.md` for the full plan, bisection, and root-cause
+localization.** Summary of what that investigation found beyond this section: the C# `rawFile` fix
+above was real but not the dominant cause (confirmed here already, "no measurable difference...
+when the C++ side runs normally"). The actual root cause was in
+`CometPreprocess.cpp::PreprocessSingleSpectrumCore()`'s RTS thread-local-pool path:
+`pPre.iHighestIon` (updated from every peak's bin, including peaks whose bin lands at or beyond
+`iArraySize`) was passed uncapped into `MakeCorrData()`, which reads/writes
+`pdTmpRawData`/`pdTmpCorrelationData` up to `iHighestIon` -- but the RTS path's buffer-clearing
+optimization only pre-zeroes those buffers up to `iArraySize + iXcorrProcessingOffset`, not the full
+`iArraySizeGlobal` the batch path always clears. A spectrum with any peak beyond that range let
+`MakeCorrData` read stale data left behind by a *different, larger* spectrum previously processed on
+the same thread, corrupting the windowed-normalization result (and therefore XCorr) for candidates
+whose fragment bins shared a window with the contaminated region -- explaining both the "same
+peptide, different E-value" cases (a non-winning candidate's score shifts a histogram bin) and the
+rarer "different peptide wins" cases. Confirmed via a temporary full-clear experiment (jitter
+dropped to zero across 4 independent run pairs; reverting brought it back), then fixed narrowly by
+clamping `iHighestIon` to `iArraySize - 1` before the `MakeCorrData()` call -- no memset widening
+needed, since `pdTmpRawData` is provably zero beyond `iArraySize` once cleared. This is why
+`CalculateSP`/`CalculateEValue`/`CalculateDeltaCn` themselves checked out clean in the paragraph
+above: the corruption happened upstream, in preprocessing, before any of those functions ever see
+the data.
 
-**Validation of the shipped fix**: Linux unit suite (19 tests) passes; the C# change was reviewed for
-correctness (no `rawFile`-derived values used outside their lock scope -- verified by grep for
-`scanFilter`/`scanStatistics` after the edit) rather than further RTS-run-diffed, since the RTS-run
-methodology above already covers it as row 5/6 in the bisection table.
+**Validation of both fixes (final)**: replicate real-Windows-RTS-harness runs (same 8-thread,
+49,844-scan methodology as the bisection table above) are now **byte-identical** -- 0 differing PSM
+lines in the full `rts.out` diff, matching the determinism bar batch search already meets. Also
+validated via `tests/rts_repro/` (a fast, Linux-buildable, Thermo-independent reproducer built
+during the follow-up investigation): 5 independent 8-thread runs, all pairwise diffs zero. Linux
+unit suite (19 tests) passes; an `RTS_TIMING` before/after comparison showed no measurable
+performance change (+0.36% mean `llPreprocess`, within run-to-run noise), since the fix is a single
+integer clamp, not a widened memset.
 
 ## Suggested next step, if you want to act on this
 
