@@ -64,10 +64,10 @@ CometFragmentIndex::~CometFragmentIndex()
 }
 
 
-bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
+bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
    if (!g_bPlainPeptideIndexRead)
-      ReadPlainPeptideIndex();
+      ReadPlainPeptideIndex(bIsRTS);
 
    // vFragmentPeptides is vector of modified peptides
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
@@ -1183,8 +1183,10 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
 
 // read the raw peptides from disk
-bool CometFragmentIndex::ReadPlainPeptideIndex(void)
+bool CometFragmentIndex::ReadPlainPeptideIndex(bool bIsRTS)
 {
+   (void)bIsRTS;   // reserved for RTS-vs-batch-specific behavior; not yet used
+
    FILE *fp;
    int iRet;     // used to reduce compiler warnings only
    char szBuf[SIZE_BUF];

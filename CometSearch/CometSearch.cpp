@@ -114,7 +114,7 @@ int CometSearch::AcquirePoolSlot()
 // but if it didn't (or this is called before init), load it now.
 // Shared by the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB
 // path (SearchPeptideIndex(ThreadPool*, vector<Query*>&)).
-bool CometSearch::EnsurePeptideIndexLoaded()
+bool CometSearch::EnsurePeptideIndexLoaded(bool bIsRTS)
 {
    if (g_bPeptideIndexRead)
       return true;
@@ -122,7 +122,7 @@ bool CometSearch::EnsurePeptideIndexLoaded()
    Threading::LockMutex(g_pvDBIndexMutex);
    if (!g_bPeptideIndexRead)  // re-check under lock
    {
-      if (!CometPeptideIndex::ReadPeptideIndex())
+      if (!CometPeptideIndex::ReadPeptideIndex(bIsRTS))
       {
          Threading::UnlockMutex(g_pvDBIndexMutex);
          string strErrorMsg = " Error - peptide index could not be read.\n";
@@ -191,7 +191,7 @@ bool CometSearch::RunSearch(Query* pQuery)
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
-      if (!EnsurePeptideIndexLoaded())
+      if (!EnsurePeptideIndexLoaded(true))   // RTS: thread-local RunSearch(Query*)
          return false;
 
       int iSlot = AcquirePoolSlot();
@@ -236,8 +236,8 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if (!g_bPlainPeptideIndexRead)
       {
-         sqFI.ReadPlainPeptideIndex();
-         sqFI.CreateFragmentIndex(tp);
+         sqFI.ReadPlainPeptideIndex(false);   // batch path
+         sqFI.CreateFragmentIndex(tp, false);
       }
 
       ThreadPool* pSearchThreadPool = tp;
@@ -1847,7 +1847,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 // searches already do.
 bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
 {
-   if (!EnsurePeptideIndexLoaded())
+   if (!EnsurePeptideIndexLoaded(false))   // batch path
       return false;
 
    std::atomic<bool> bAllSlotsAcquired(true);

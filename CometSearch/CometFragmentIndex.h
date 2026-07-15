@@ -28,8 +28,13 @@ public:
 
    static bool WriteFIPlainPeptideIndex(ThreadPool *tp);
    static bool GeneratePlainPeptideIndex(ThreadPool *tp, vector<pair<size_t,size_t>>& slices);
-   static bool ReadPlainPeptideIndex(void);
-   static bool CreateFragmentIndex(ThreadPool *tp);
+
+   // bIsRTS: true if called (directly or via CreateFragmentIndex()) from the RTS
+   // single-spectrum-search init path (InitializeSingleSpectrumSearch()), false
+   // if called from a batch search path. Reserved for RTS-vs-batch-specific
+   // behavior (e.g. logging); no such behavior exists yet.
+   static bool ReadPlainPeptideIndex(bool bIsRTS);
+   static bool CreateFragmentIndex(ThreadPool *tp, bool bIsRTS);
    static int WhichPrecursorBin(double dMass);
 
    // Public for reuse by CometPeptideIndex (PI_DB build, see

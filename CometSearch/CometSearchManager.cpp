@@ -2255,8 +2255,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.iDbType == DbType::FI_DB && !g_bPlainPeptideIndexRead)
       {
-         sqSearch.ReadPlainPeptideIndex();
-         sqSearch.CreateFragmentIndex(tp);
+         sqSearch.ReadPlainPeptideIndex(true);   // RTS: InitializeSingleSpectrumSearch()
+         sqSearch.CreateFragmentIndex(tp, true);
 
          if (g_staticParams.options.iPrintAScoreProScore)
          {
@@ -2284,7 +2284,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    // This runs once under the singleSearchInitializationComplete atomic guard.
    if (g_staticParams.iDbType == DbType::PI_DB && !g_bPeptideIndexRead)
    {
-      if (!CometPeptideIndex::ReadPeptideIndex())
+      if (!CometPeptideIndex::ReadPeptideIndex(true))   // RTS: InitializeSingleSpectrumSearch()
       {
          string strErrorMsg = " Error - failed to read peptide index in InitializeSingleSpectrumSearch().\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);

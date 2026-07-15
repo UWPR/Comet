@@ -33,7 +33,11 @@ public:
    CometPeptideIndex();
    ~CometPeptideIndex();
 
-   static bool ReadPeptideIndex(void);
+   // bIsRTS: true if called from the RTS single-spectrum-search init path
+   // (InitializeSingleSpectrumSearch()), false if called from the batch
+   // search path (via CometSearch::EnsurePeptideIndexLoaded()). Reserved for
+   // RTS-vs-batch-specific behavior (e.g. logging); no such behavior exists yet.
+   static bool ReadPeptideIndex(bool bIsRTS);
    static bool WritePeptideIndex(ThreadPool* tp);
    static bool ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp);
 

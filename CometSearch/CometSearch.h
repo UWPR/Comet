@@ -68,8 +68,9 @@ public:
    // and its associated fragment/parent masses are loaded exactly once. Shared by
    // both the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB path
    // (SearchPeptideIndex(ThreadPool*, vector<Query*>&)) so the guard logic isn't
-   // duplicated between them.
-   static bool EnsurePeptideIndexLoaded();
+   // duplicated between them. bIsRTS distinguishes which of those two callers
+   // this is, and is forwarded to CometPeptideIndex::ReadPeptideIndex().
+   static bool EnsurePeptideIndexLoaded(bool bIsRTS);
 
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,

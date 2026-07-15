@@ -40,8 +40,10 @@ CometPeptideIndex::~CometPeptideIndex()
 //   [footer: iMinMass(int), iMaxMass(int), tNumPeptides(uint64_t),
 //            lIndex[iMaxMass*10](comet_fileoffset_t), lEndOfPeptides, clProteinsFilePos]
 //
-bool CometPeptideIndex::ReadPeptideIndex(void)
+bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 {
+   (void)bIsRTS;   // reserved for RTS-vs-batch-specific behavior; not yet used
+
    if (g_bPeptideIndexRead)
       return true;
 
@@ -191,8 +193,16 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    delete[] lIndex;
    fclose(fp);
 
-   logout(" Read peptide index: " + to_string(tNumPeptides) + " peptides, "
-      + to_string(tNumProteinEntries) + " protein groups\n");
+   if (bIsRTS)
+   {
+      logout(" Read peptide index: " + to_string(tNumPeptides) + " peptides, "
+         + to_string(tNumProteinEntries) + " protein groups\n");
+   }
+   else
+   {
+      logout("\n   - Read peptide index: " + to_string(tNumPeptides) + " peptides, "
+         + to_string(tNumProteinEntries) + " protein groups\n");
+   }
 
    g_staticParams.iDbType = DbType::PI_DB;
    g_bPeptideIndexRead = true;
