@@ -8121,6 +8121,66 @@ void CometSearch::StorePeptideI(Query* pQuery,
    {
       short siLowestDecoyXcorrScoreIndex = pQuery->siLowestDecoyXcorrScoreIndex;
 
+      // Mirrors the fix in StorePeptide() (commit 7c04814d, "Fix non-deterministic FASTA_DB
+      // search results under concurrent scoring ties"): only replace the identified worst
+      // slot if the incoming candidate is actually preferred under the same (score, then
+      // sequence, then mod state) rule used to pick that slot. Without this, a candidate
+      // that merely ties the current worst score unconditionally evicted it regardless of
+      // tie-break preference, so the survivor of a multi-way tie depended on arrival order
+      // among callers of this function. RTS's single-threaded-per-query scan makes arrival
+      // order fixed for RTS (confirmed empirically -- see docs/20260714_EvalueJitter.md
+      // Phase 1), but XcorrScoreI()/StorePeptideI() are also reachable from batch FI_DB/PI_DB
+      // search paths that scan the database across multiple threads per query (evidenced by
+      // Query::accessMutex existing at all), where this fix is a real correctness issue.
+      //
+      // Compare at float precision (matching what actually gets stored, fXcorr) rather than
+      // double: comparing the full-precision double dXcorr against a float widened back to
+      // double is not the same as comparing the value that will be stored, and a value that
+      // is genuinely tied once both sides are floats can register as "less than" purely from
+      // the double/float round-trip -- silently rejecting a tied candidate before it ever
+      // reaches the sequence tie-break below.
+      {
+         float fIncomingXcorr = (float)dXcorr;
+
+         if (fIncomingXcorr < pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+         {
+            return;
+         }
+         else if (fIncomingXcorr == pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+         {
+            char szIncomingPeptide[MAX_PEPTIDE_LEN];
+            memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
+            szIncomingPeptide[iLenPeptide] = '\0';
+
+            int iCmp = strcmp(szIncomingPeptide, pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide);
+
+            if (iCmp > 0)
+            {
+               return;  // incoming has the less-preferred (higher) sequence at the same score
+            }
+            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+            {
+               bool bIncomingPreferred = false;
+
+               for (int x = 0; x < iLenPeptide + 2; ++x)
+               {
+                  if (piVarModSites[x] < pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x])
+                  {
+                     bIncomingPreferred = true;
+                     break;
+                  }
+                  else if (piVarModSites[x] > pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x])
+                  {
+                     break;
+                  }
+               }
+
+               if (!bIncomingPreferred)
+                  return;
+            }
+         }
+      }
+
       pQuery->iDecoyMatchPeptideCount++;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiLenPeptide = iLenPeptide;
 
@@ -8236,6 +8296,49 @@ void CometSearch::StorePeptideI(Query* pQuery,
    else
    {
       short siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
+
+      // See the matching check in the decoy branch above for rationale.
+      {
+         float fIncomingXcorr = (float)dXcorr;
+
+         if (fIncomingXcorr < pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+         {
+            return;
+         }
+         else if (fIncomingXcorr == pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+         {
+            char szIncomingPeptide[MAX_PEPTIDE_LEN];
+            memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
+            szIncomingPeptide[iLenPeptide] = '\0';
+
+            int iCmp = strcmp(szIncomingPeptide, pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide);
+
+            if (iCmp > 0)
+            {
+               return;  // incoming has the less-preferred (higher) sequence at the same score
+            }
+            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+            {
+               bool bIncomingPreferred = false;
+
+               for (int x = 0; x < iLenPeptide + 2; ++x)
+               {
+                  if (piVarModSites[x] < pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x])
+                  {
+                     bIncomingPreferred = true;
+                     break;
+                  }
+                  else if (piVarModSites[x] > pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x])
+                  {
+                     break;
+                  }
+               }
+
+               if (!bIncomingPreferred)
+                  return;
+            }
+         }
+      }
 
       pQuery->iMatchPeptideCount++;
       pQuery->_pResults[siLowestXcorrScoreIndex].usiLenPeptide = iLenPeptide;
