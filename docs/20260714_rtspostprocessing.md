@@ -1,7 +1,7 @@
 # RTS PI_DB search: post-determination pipeline review
 
-Status: Finding 1 IMPLEMENTED and validated (see its section below); findings 2-8 remain
-REVIEW ONLY, no implementation change made for those. Scope: everything that happens after
+Status: Findings 1, 2, 4, 6 IMPLEMENTED and validated (see their sections below); findings 3, 5, 7, 8
+remain REVIEW ONLY, no implementation change made for those. Scope: everything that happens after
 `CometSearch::RunSearch(Query*)` has identified the candidate peptide matches for a single RTS
 spectrum, through to `DoSingleSpectrumSearchMultiResults()` returning results to the C# caller.
 Entry point: `CometSearchManager::DoSingleSpectrumSearchMultiResults()`
@@ -242,16 +242,74 @@ protein names already come from the in-memory `g_pvProteinNameCache` -- no file 
 1-2, but a thread-local reusable pair of vectors (cleared, not reallocated, between results) would
 be a small, low-risk win alongside finding 4.
 
-### 6. `CalculateAScorePro` cost is opaque from this codebase alone
+### 6. `CalculateAScorePro` cost -- MEASURED; premise was wrong, and a real correctness bug was found and fixed
 
-`CometPostAnalysis::CalculateAScorePro()` (`CometPostAnalysis.cpp:849-976`) builds a peptide
-sequence string and calls `AScoreDllInterface::CalculateScoreWithOptions()` -- the actual
-binomial-probability site-localization computation lives in the separate `AScorePro/` library, not
-reviewed here. Given `RTS_TIMING` tracks this as its own bucket (`llCalcAScore`), and site
-localization inherently requires scoring multiple candidate mod-site permutations against the
-spectrum, this is plausibly the single largest cost among the post-determination steps for any PSM
-that has a variable mod (`cHasVariableModType_AScorePro`) -- but confirming that, and finding
-anything to optimize, needs a dedicated look at `AScorePro/` itself, not covered by this review.
+The original text of this finding speculated AScorePro was "plausibly the single largest cost among
+the post-determination steps" and recommended measuring `llCalcAScore` via `RTS_TIMING` before
+investing further. Doing that measurement surfaced something more important than a timing number.
+
+**AScorePro was never running in RTS PI_DB search at all**, regardless of `print_ascorepro_score`.
+The first `RTS_TIMING` run showed `llCalcAScore == 0` for **100% of ~49,800 spectra**, and every
+`AScore` field in `rts.out` was `0.00`. Root-caused via two layers:
+
+1. `RealtimeSearch/SearchMS1MS2.cs` never reads `comet.params` -- every search parameter is set via
+   hardcoded `SetParam()` calls in `SearchSettings.ConfigureInputSettings()`, and
+   `print_ascorepro_score` was hardcoded to `0` (off) there, silently ignoring whatever the params
+   file said. (This also means most other `comet.params` edits made during this investigation, and
+   presumably in prior sessions, had no effect on RTS behavior -- only the params this method
+   explicitly forwards, plus mod info read from the `.idx` header, actually apply.)
+2. Even after wiring that up (see fix below), AScorePro *still* didn't run: `g_AScoreInterface`
+   stayed `nullptr` for the whole session. `CometSearchManager::InitializeSingleSpectrumSearch()`'s
+   FI_DB branch calls `SetAScoreOptions()` + `CreateAScoreDllInterface()` when loading its index, but
+   the **PI_DB branch right below it never did** -- it only calls `ReadPeptideIndex()` and sets
+   `g_bPeptideIndexRead = true`. `CometSearch::EnsurePeptideIndexLoaded()` has its own copy of the
+   same interface-creation code, but it's gated on `g_bPeptideIndexRead` being false -- which by the
+   time `RunSearch(Query*)` first calls it, is already true (set by
+   `InitializeSingleSpectrumSearch()` above), so that code path is dead for RTS PI_DB. Confirmed via
+   a temporary debug print: `cHasVariableMod` correctly evaluated to the AScorePro-triggering value
+   for ~45% of matched spectra (phospho search), but `g_AScoreInterface` was `0x0000000000000000`
+   every time.
+
+**Fixed, two changes:**
+- `RealtimeSearch/SearchMS1MS2.cs`: added an optional 5th CLI argument (`ascorepro`: 0=off default,
+  1=localize all mods), threaded through `ConfigureInputSettings()`, replacing the hardcoded `0`.
+  Defaults to the prior (off) behavior so existing invocations of `RealtimeSearch.exe` are unaffected.
+- `CometSearchManager.cpp`: added the same `SetAScoreOptions()` + `CreateAScoreDllInterface()` block
+  to the PI_DB branch of `InitializeSingleSpectrumSearch()` that the FI_DB branch already had, so
+  `g_AScoreInterface` actually gets created for RTS PI_DB search.
+- `CometPostAnalysis.cpp`: added a defensive `if (ascoreInterface == nullptr) return;` at the top of
+  `CalculateAScorePro()` as a safety net, since a null interface reaching this function (from either
+  this bug recurring elsewhere, or a future code path) should silently no-op rather than risk
+  dereferencing a null pointer.
+
+**Real `RTS_TIMING` measurement, with AScorePro now genuinely running** (same 8-thread,
+~49,800-scan PI_DB RTS run, `print_ascorepro_score=-1` via the new `ascorepro=1` flag):
+
+| Step | mean | % of `llTotal` |
+|---|---|---|
+| `llPreprocess` | 426.51 us | 32.20% |
+| `llRunSearch` | 644.21 us | 48.63% |
+| `llSort` | 10.84 us | 0.82% |
+| `llCalcSP` | 1.10 us | 0.08% |
+| `llCalcEValue` | 191.45 us | 14.45% |
+| `llCalcDeltaCn` | 0.06 us | 0.00% |
+| **`llCalcAScore`** | **43.18 us** | **3.26%** |
+| `llResults` | 3.80 us | 0.29% |
+
+`llCalcAScore` ran on 45.2% of spectra (matched a variable mod); when it ran, mean 95.44 us, median
+53 us, p90 188 us, max 5278 us (occasional slow outlier worth noting for tail latency, not
+investigated further here).
+
+**Conclusion: the original finding's premise was wrong.** Now that it's measured rather than
+guessed, `CalculateAScorePro` is a small fraction of total per-spectrum time (3.26%), smaller than
+`CalculateEValue` (14.45%, and already documented as optimized -- see finding 7) and far smaller
+than `llPreprocess`/`llRunSearch` (80.8% combined, out of scope for this "post-determination" review).
+There is no performance case for a dedicated `AScorePro/`-internals investigation right now. The
+actual valuable outcome here was the correctness fix: RTS PI_DB searches requesting AScorePro
+localization were silently getting empty results with no error, for every RTS PI_DB deployment using
+this C# harness, regardless of `comet.params` -- that's now fixed and validated (Linux unit suite,
+including T19/T20's own AScorePro assertions, plus a live RTS run showing 22,047/49,844 spectra with
+real non-zero AScore/site-score output).
 
 ### 7. Not a finding -- confirmed already well-optimized
 
@@ -359,20 +417,20 @@ methodology above already covers it as row 5/6 in the bisection table.
 
 ## Suggested next step, if you want to act on this
 
-Findings 1, 2, and 4 are done (see above). Finding 1's own `RTS_TIMING` measurement showed the step
-it targeted was already a small fraction of per-spectrum time (no measurable end-to-end win, despite
-a real 62.6% reduction in the targeted step); finding 2's did show a real end-to-end win (3.9% total
-per-spectrum time, from an 83.2% reduction in the sort step specifically) -- so unbounded-vs-bounded
-work on a per-spectrum-repeated structure was the more impactful of the two "shrink the same array's
-per-spectrum cost" ideas here, not the allocation pattern. That's useful new information for
-prioritizing what's left:
+Findings 1, 2, 4, and 6 are done (see above). Finding 1's own `RTS_TIMING` measurement showed the
+step it targeted was already a small fraction of per-spectrum time (no measurable end-to-end win,
+despite a real 62.6% reduction in the targeted step); finding 2's did show a real end-to-end win
+(3.9% total per-spectrum time, from an 83.2% reduction in the sort step specifically); finding 6
+turned out not to be a performance question at all -- AScorePro was completely non-functional in RTS
+PI_DB search (a real correctness bug, now fixed), and once measured for real it's only 3.26% of
+total per-spectrum time, not the dominant cost the original speculative ranking assumed. Measuring
+before optimizing paid off twice here: once by redirecting effort in finding 2 (bounding beat
+pooling), and once by revealing finding 6's target wasn't even running.
 
-- Finding 6 (`CalculateAScorePro` cost, opaque from this codebase alone) remains the most likely
-  place a further real end-to-end win lives, now that both cheaper, better-precedented fixes on
-  `_pResults` have been tried and only one moved the needle -- worth getting an `RTS_TIMING` reading
-  of `llCalcAScore` specifically (same technique used for findings 1 and 2) before investing in an
-  `AScorePro/`-side investigation, to confirm it's actually the dominant cost before spending effort
-  there.
+- `CalculateEValue` (14.45% of total per-spectrum time, per the finding-6 table) is now the largest
+  measured cost among the post-determination steps -- but finding 7 already documents it as using a
+  10-30x-optimized inverted-index scatter approach, so this isn't a fresh, unexamined target; treat
+  it as "already addressed" unless a further measurement shows otherwise.
 - Finding 5 (protein-lookup vectors reallocated per result) remains low-risk, low-effort, not
   implemented or separately measured.
 - The reset-loop half of finding 2 was investigated and found unsafe to change as originally framed

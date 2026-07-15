@@ -2308,6 +2308,25 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       // unconditional CometSearch::AllocateMemory() call earlier in this function;
       // nothing deallocates it on the PI_DB path before here.
 
+      if (g_staticParams.options.iPrintAScoreProScore)
+      {
+         // Mirrors the FI_DB branch above -- without this, g_AScoreInterface stays
+         // NULL for the entire session (CometSearch::EnsurePeptideIndexLoaded()'s own
+         // AScoreInterface-creation code never runs for RTS PI_DB, since it's gated on
+         // g_bPeptideIndexRead being false, and this function already set it to true
+         // above before that code path is ever reached).
+         SetAScoreOptions(g_AScoreOptions);
+
+         g_AScoreInterface = CreateAScoreDllInterface();
+         if (!g_AScoreInterface)
+         {
+            string strErrorMsg = " Error - failed to create AScore interface.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+
       g_bPeptideIndexRead = true;
    }
 

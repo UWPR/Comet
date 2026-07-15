@@ -43,8 +43,9 @@ namespace RealTimeSearch
          if (args.Length < 2)
          {
             Console.WriteLine(" RTS MS1/MS2\n");
-            Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads]\n",
+            Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro]\n",
                System.AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine("    ascorepro: 0=off (default), 1=localize all variable mods\n");
             return;
          }
 
@@ -76,6 +77,21 @@ namespace RealTimeSearch
 
          Console.WriteLine(" Using {0} search threads\n", numThreads);
 
+         // Parse ascorepro flag (default off -- preserves prior hardcoded behavior).
+         // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally).
+         bool bEnableAScorePro = false;
+         if (args.Length >= 5)
+         {
+            if (!int.TryParse(args[4], out int iAScoreProArg) || (iAScoreProArg != 0 && iAScoreProArg != 1))
+            {
+               Console.WriteLine(" Warning: Invalid ascorepro '{0}', using 0 (off)", args[4]);
+            }
+            else
+            {
+               bEnableAScorePro = (iAScoreProArg == 1);
+            }
+         }
+
          // Create SINGLE global search manager
          CometSearchManagerWrapper globalSearchMgr = new CometSearchManagerWrapper();
          SearchSettings searchParams = new SearchSettings();
@@ -90,7 +106,8 @@ namespace RealTimeSearch
             ref dPeptideMassLow,
             ref dPeptideMassHigh,
             ref numThreads,
-            bDatabaseSearch);
+            bDatabaseSearch,
+            bEnableAScorePro);
 
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
@@ -541,7 +558,8 @@ namespace RealTimeSearch
             ref double dPeptideMassLow,
             ref double dPeptideMassHigh,
             ref int numThreads,
-            bool bDatabaseSearch)
+            bool bDatabaseSearch,
+            bool bEnableAScorePro)
          {
             String sTmp;
             int iTmp;
@@ -642,7 +660,8 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("use_Y_ions", sTmp, iTmp);
 
-            iTmp = 0;  // 0=unused, -1=localize all mods; otherwise 1 for variable_mod01, 2 for variable_mod02, etc.
+            // 0=off, -1=localize all mods; otherwise 1 for variable_mod01, 2 for variable_mod02, etc.
+            iTmp = bEnableAScorePro ? -1 : 0;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 
