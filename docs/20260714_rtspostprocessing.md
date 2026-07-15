@@ -1,6 +1,6 @@
 # RTS PI_DB search: post-determination pipeline review
 
-Status: Findings 1, 2, 4, 6 IMPLEMENTED and validated (see their sections below); findings 3, 5, 7, 8
+Status: Findings 1, 2, 4, 5, 6 IMPLEMENTED and validated (see their sections below); findings 3, 7, 8
 remain REVIEW ONLY, no implementation change made for those. Scope: everything that happens after
 `CometSearch::RunSearch(Query*)` has identified the candidate peptide matches for a single RTS
 spectrum, through to `DoSingleSpectrumSearchMultiResults()` returning results to the C# caller.
@@ -233,14 +233,40 @@ In the per-result extraction loop (`CometSearchManager.cpp`):
 this was flagged as low-effort/low-risk, not expected to be individually significant relative to
 findings 1/2); bundled with the E-value investigation below rather than measured in isolation.
 
-### 5. Protein name lookup allocates fresh vectors per result
+### 5. Protein name lookup allocates fresh vectors per result -- IMPLEMENTED
 
-`vProteinTargets`/`vProteinDecoys` (`vector<string>`, `CometSearchManager.cpp:2689-2690`) are
-declared fresh inside the per-result loop. For PI_DB/FI_DB (the indexed-DB path relevant here),
-protein names already come from the in-memory `g_pvProteinNameCache` -- no file I/O, which is good
--- but the vectors themselves are still heap-churn per result. Low priority relative to findings
-1-2, but a thread-local reusable pair of vectors (cleared, not reallocated, between results) would
-be a small, low-risk win alongside finding 4.
+`vProteinTargets`/`vProteinDecoys` (`vector<string>`) were declared fresh inside the per-result
+loop. For PI_DB/FI_DB (the indexed-DB path relevant here), protein names already come from the
+in-memory `g_pvProteinNameCache` -- no file I/O, which is good -- but the vectors themselves were
+still heap-churn per result.
+
+**Implemented**: two `thread_local std::vector<string>` (`tl_vProteinTargets`/`tl_vProteinDecoys`)
+declared once per thread, `.clear()`-ed (not reallocated) at the top of each result instead of
+being freshly constructed; the rest of the loop body binds local references to them so the
+surrounding logic is unchanged. `DoSingleSpectrumSearchMultiResults()` is the RTS single-spectrum
+entry point only (never called from the batch multi-threaded path -- confirmed by grep, only one
+C++ implementation and one caller, the C++/CLI wrapper), so `thread_local` is safe: each RTS worker
+thread gets its own persistent pair of vectors, reused both across results within one spectrum and
+across spectra over that thread's lifetime.
+
+**Validation**: same before/after `git stash` methodology as findings 1/2/4 -- built via MSBuild,
+ran the same 8-thread, ~49,844-scan RTS search against `human.small.fasta`'s PI_DB index twice
+(before/after), diffed the full `rts.out`. Of 281 differing lines, 280 had byte-identical peptide
+and protein fields (only E-value differed -- the same pre-existing near-tied-score nondeterminism
+documented under the E-value investigation above); the 1 remaining difference was a genuinely
+different winning peptide with its own (correct) protein string, i.e. also the pre-existing
+near-tie-flip class, not a protein-string bug. No case had a *mismatched* protein for the *same*
+winning peptide, which is what this change could plausibly have broken. Linux unit suite (19 tests)
+passes.
+
+**Honest performance result**: `RTS_TIMING`'s `llResults` bucket (the step this touches) showed no
+measurable change (4.382us -> 4.379us mean, -0.1%, effectively noise) -- consistent with the
+original review's own "low priority... small win" framing, and with finding 1's similar outcome:
+the targeted step was already a small fraction of per-spectrum time (`llResults` is ~0.3% of
+`llTotal` per the finding-6 measurement table), so removing its allocator churn doesn't move the
+end-to-end number. Kept anyway: it's architecturally correct, matches the established
+thread-local-pool pattern used elsewhere in this file, and removes genuine (if small) per-result
+heap traffic.
 
 ### 6. `CalculateAScorePro` cost -- MEASURED; premise was wrong, and a real correctness bug was found and fixed
 
@@ -417,22 +443,22 @@ methodology above already covers it as row 5/6 in the bisection table.
 
 ## Suggested next step, if you want to act on this
 
-Findings 1, 2, 4, and 6 are done (see above). Finding 1's own `RTS_TIMING` measurement showed the
+Findings 1, 2, 4, 5, and 6 are done (see above). Finding 1's own `RTS_TIMING` measurement showed the
 step it targeted was already a small fraction of per-spectrum time (no measurable end-to-end win,
 despite a real 62.6% reduction in the targeted step); finding 2's did show a real end-to-end win
-(3.9% total per-spectrum time, from an 83.2% reduction in the sort step specifically); finding 6
-turned out not to be a performance question at all -- AScorePro was completely non-functional in RTS
-PI_DB search (a real correctness bug, now fixed), and once measured for real it's only 3.26% of
-total per-spectrum time, not the dominant cost the original speculative ranking assumed. Measuring
-before optimizing paid off twice here: once by redirecting effort in finding 2 (bounding beat
-pooling), and once by revealing finding 6's target wasn't even running.
+(3.9% total per-spectrum time, from an 83.2% reduction in the sort step specifically); finding 5
+landed like finding 1 (real, correct, no measurable end-to-end win -- `llResults` was already ~0.3%
+of total time); finding 6 turned out not to be a performance question at all -- AScorePro was
+completely non-functional in RTS PI_DB search (a real correctness bug, now fixed), and once measured
+for real it's only 3.26% of total per-spectrum time, not the dominant cost the original speculative
+ranking assumed. Measuring before optimizing paid off repeatedly here: once by redirecting effort in
+finding 2 (bounding beat pooling), once by setting realistic expectations for finding 5, and once by
+revealing finding 6's target wasn't even running.
 
 - `CalculateEValue` (14.45% of total per-spectrum time, per the finding-6 table) is now the largest
   measured cost among the post-determination steps -- but finding 7 already documents it as using a
   10-30x-optimized inverted-index scatter approach, so this isn't a fresh, unexamined target; treat
   it as "already addressed" unless a further measurement shows otherwise.
-- Finding 5 (protein-lookup vectors reallocated per result) remains low-risk, low-effort, not
-  implemented or separately measured.
 - The reset-loop half of finding 2 was investigated and found unsafe to change as originally framed
   (see above) -- not worth revisiting unless the underlying insertion algorithm in `RunSearch()`
   changes to not require all `iNumStored` slots to hold a valid sentinel throughout the search.

@@ -2677,6 +2677,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    matchedFragments.reserve(matchedFragments.size() + takeSearchResultsN);
    scores.reserve(scores.size() + takeSearchResultsN);
 
+   // Reused across results (this call) and across spectra (this thread) instead of
+   // being declared fresh per result -- see docs/20260714_rtspostprocessing.md
+   // finding 5. This function is the RTS single-spectrum entry point only (never
+   // called from the batch multi-threaded path), so thread_local is safe here.
+   thread_local std::vector<string> tl_vProteinTargets;
+   thread_local std::vector<string> tl_vProteinDecoys;
+
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
       CometScores score;
@@ -2732,8 +2739,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          // FASTA_DB: seek and read from the file handle opened above.
          int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
-         std::vector<string> vProteinTargets;
-         std::vector<string> vProteinDecoys;
+         tl_vProteinTargets.clear();
+         tl_vProteinDecoys.clear();
+         std::vector<string>& vProteinTargets = tl_vProteinTargets;
+         std::vector<string>& vProteinDecoys = tl_vProteinDecoys;
 
          if (g_staticParams.iDbType != DbType::FASTA_DB)
          {
