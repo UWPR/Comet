@@ -1,11 +1,19 @@
 # FRAGINDEX_MAX_COMBINATIONS and MAX_BITCOUNT: status and considerations
 
-Status: **IMPLEMENTED.** Both caps have been raised (`MAX_BITCOUNT` to 50, effectively disabling
-it; `FRAGINDEX_MAX_COMBINATIONS` to 10,000) -- see section 6. Companion to
+Status: **IMPLEMENTED** (raising both ceilings, section 6) **+ PROPOSED** (section 7, not yet
+implemented). Both caps have been raised (`MAX_BITCOUNT` to 50, effectively disabling it;
+`FRAGINDEX_MAX_COMBINATIONS` to 10,000) -- see section 6. Companion to
 docs/20260713_PIidxformat.md (the PI_DB-reuses-FI_DB's-peptide-generation project), which is
 where these two caps were discovered to matter for PI_DB's new build path. Sections 1-5 below
 describe the caps' original (pre-change) behavior and the investigation that led to the change;
-section 6 covers what was actually implemented and its measured effect.
+section 6 covers what was actually implemented and its measured effect. Section 7 evaluates a
+further behavior change -- generate modification combinations up to `FRAGINDEX_MAX_COMBINATIONS`
+and truncate, instead of today's all-or-nothing skip described in section 2 -- and lays out an
+implementation and testing plan for it. That change has not been made yet. Section 7.3 additionally
+evaluates the complexity-ordering question for which combinations to keep when truncating; the
+decision there (Option C, simplest-to-most-complex by total mod count with mod-type-breadth
+tiebreak) is deferred until after a prerequisite change adds N-terminal/C-terminal modification
+support to `ModificationsPermuter`.
 
 ## 1. What they are and where they live
 
@@ -276,3 +284,241 @@ peptides whose combination count still exceeds even 10,000 (e.g. a peptide with 
 candidates at `max_mods=3` could reach `C(45,3)=14,190`, over the new ceiling). This attribution is
 inferred from the established pattern, not independently re-confirmed for this specific residual --
 flagged as unfinished verification, not a claim of certainty.
+
+## 7. Proposed: truncate at `FRAGINDEX_MAX_COMBINATIONS` instead of all-or-nothing skip (not yet implemented)
+
+Request: instead of section 2's verified behavior (a peptide's modifiable class produces **zero**
+modified entries once its combination count exceeds `FRAGINDEX_MAX_COMBINATIONS`), generate
+combinations up to `FRAGINDEX_MAX_COMBINATIONS` and then stop -- keep a partial, capped set of
+modified entries rather than none.
+
+### 7.1 Key finding: the truncation logic already exists and is dead code
+
+Section 2 already identified this: `generateModifications()` (`CometModificationsPermuter.cpp`)
+contains a truncation-shaped code path that section 2 called "structurally unreachable" --
+
+- `:556` -- `combinationsForModArrLen` is already computed as
+  `min(calculatedCombinationsCount, FRAGINDEX_MAX_COMBINATIONS)` per mod type.
+- `:574-589` -- the per-mod-type combination-gathering loop already breaks once
+  `combinationsFound >= FRAGINDEX_MAX_COMBINATIONS` (`:576-577`).
+- `:691-694` and `:706-707` -- the Step 3 combine loop already breaks once the running total
+  (`totalModNumCount`) reaches `FRAGINDEX_MAX_COMBINATIONS`, both inside a single combination-set's
+  inner loop and across combination sets.
+
+All of this is currently unreachable because two earlier gates abort the **entire** peptide first:
+
+1. The Step 1 per-mod-type early `return` at `:513-517` (`bitCount > MAX_BITCOUNT`) and `:521-525`
+   (`combinationCount > FRAGINDEX_MAX_COMBINATIONS`), which exit `generateModifications()` before
+   any combination is generated.
+2. `getTotalCombinationCount()` (`:390-409`) returning its `-1` sentinel whenever any mod-type
+   subset's product, or the grand total, exceeds `FRAGINDEX_MAX_COMBINATIONS` -- consumed at `:622`
+   (`if (combinationCount != -1)`), which routes straight to the `else` branch (`:719-721`,
+   `IGNORED_SEQ_CNT++`) and generates nothing.
+
+So implementing truncation is mostly about **removing these two abort gates**, not writing new
+truncation logic -- the code downstream of them was already built to cap output at
+`FRAGINDEX_MAX_COMBINATIONS`; it just never gets the chance to run today.
+
+### 7.2 Proposed code changes
+
+**A. Step 1, `FRAGINDEX_MAX_COMBINATIONS` gate only (`:521-525`)** -- remove the early `return`.
+Let `combinationCount` (already computed at `:519` via `getCombinationCount()`, uncapped) flow into
+`combinationCounts` as-is; `:556`'s existing `min(...)` ternary then caps the per-mod-type array
+correctly with no further change needed there.
+
+Leave the `MAX_BITCOUNT` gate (`:513-517`) untouched. `MAX_BITCOUNT` bounds the number of candidate
+*residues*, not the number of *combinations* -- there is no natural "truncate to N candidates"
+semantics without arbitrarily discarding specific residues from consideration, which is a different
+and more invasive feature than what's requested here. Per section 6, `MAX_BITCOUNT=50` is already
+peptide-length-ceiling-safe (`MAX_PEPTIDE_LEN - 1 = 50`), so this gate is already a practical no-op
+for any legal peptide and costs nothing to leave as an all-or-nothing safety net. Flag this
+asymmetry explicitly in a code comment so a future reader doesn't assume truncation applies
+uniformly to both caps.
+
+**B. `getTotalCombinationCount()` (`:390-409`)** -- remove the `-1` abort sentinel; replace with
+saturating arithmetic so it never causes a full-peptide skip, while still avoiding `int` overflow
+on the per-subset product:
+
+```cpp
+// per-subset product loop, :397-405
+combos *= combinationCounts.at(s);
+if (combos > FRAGINDEX_MAX_COMBINATIONS)
+   combos = FRAGINDEX_MAX_COMBINATIONS;   // clamp instead of aborting; precision beyond the cap isn't needed
+```
+
+and drop the `allCombos > FRAGINDEX_MAX_COMBINATIONS ? -1 : allCombos` ternary at `:408` in favor of
+returning `allCombos` directly (each of the at-most `2^(active mod count) - 1` subsets now
+contributes at most `FRAGINDEX_MAX_COMBINATIONS`, so the sum stays well within `int` range for any
+realistic number of active mod types). Since this function can no longer return `-1`, the
+`if (combinationCount != -1)` branch at `:622` and its `else { IGNORED_SEQ_CNT++; }` at `:719-721`
+become dead and should be removed (or repurposed -- see item D).
+
+**C. Remove or repurpose the `"ERROR: calculated combination count exceeds FRAGINDEX_MAX_COMBINATIONS..."`
+cout at `:545-550`.** Section 2 noted this line was never observed to print because it was
+structurally unreachable under the current all-or-nothing behavior. After change A, a per-mod-type
+`calculatedCombinationsCount > FRAGINDEX_MAX_COMBINATIONS` becomes the **expected** trigger for
+truncation, not a bug -- printing it as `"ERROR"` would mislabel normal, by-design behavior. Replace
+with the counter in item D instead of a console message.
+
+**D. Add a new counter distinguishing "truncated" from "fully dropped".** `IGNORED_SEQ_CNT`
+(`:53`) currently means "this modifiable class produced zero entries" (still a real outcome after
+this change, via the `MAX_BITCOUNT` gate). Add e.g. `int TRUNCATED_SEQ_CNT = 0;` alongside it,
+incremented exactly once per modifiable-sequence class where the Step 3 break (`:691-694` or
+`:706-707`) actually fired, or any per-mod-type array was capped at `:556` -- i.e., once per class
+that produced a **partial, not full**, set of modified entries. This distinction matters more after
+this change than before: a partial result has a nonzero entry count and looks superficially
+complete, unlike today's unambiguous zero, so it needs its own signal. Declare both as `extern int`
+in `CometModificationsPermuter.h` (currently neither is declared there; `IGNORED_SEQ_CNT` is a
+file-local global with no other reader anywhere in the codebase today -- confirmed by grep -- which
+is exactly the "not surfaced to logging" gap section 5 item 3 already flagged).
+
+**E. Surface both counters in build-completion status output** (`WriteFIPlainPeptideIndex()` in
+`CometFragmentIndex.cpp`, `WritePeptideIndex()` in `CometPeptideIndex.cpp`), e.g. appended to the
+existing `" - write peptides/proteins to file"` status line area: `"N sequences had modifications
+truncated at FRAGINDEX_MAX_COMBINATIONS=10000; M sequences had all modifications dropped
+(MAX_BITCOUNT)"`. This was already recommended in section 5 item 3 for the all-or-nothing case; it
+becomes more important once truncation can silently produce incomplete-but-nonzero results.
+
+### 7.3 Selection-bias caveat -- enumeration order and complexity-ordering options
+
+The combinations that survive truncation are whichever ones are enumerated **first**, not a random
+or representative sample. Two independent orderings compose to produce today's traversal order:
+
+- **Position-subset table** (`ALL_COMBINATIONS`, built once in `initCombinations()`, `:133-223`) --
+  a peptide-independent lookup table. For subset sizes `k = maxMods` down to `1`, it generates every
+  k-subset of positions as a bitmask, then merges each size-group into one array sorted by
+  **ascending numeric bitmask value** (`:161`'s merge step). `getModBitmask()` maps sequence
+  position 0 (the N-terminal-most candidate) to the *highest* bit (`:342`, `len - i - 1`), so
+  ascending bitmask order has nothing to do with modification count -- a 3-mod combination clustered
+  toward the C-terminus can sort before a 1-mod combination near the N-terminus, purely as an
+  artifact of the bit-packing scheme, not a deliberate choice.
+- **Mod-type-subset order** (`getCombinationSets(modCount)`, `:353-380`) -- decides which *mod
+  types* to combine for a given peptide. The loop runs `i = modCount` down to `1` (`:356`), so it
+  enumerates the **largest** mod-type-combined subsets first (e.g. "M-oxidation + STY-phospho
+  together" before "M-oxidation alone" or "STY-phospho alone").
+- **Net traversal** (Step 3, `:616-708`): outer loop = mod-type-subset, largest-combined-first;
+  inner loop = cross product of each member mod type's own bitmask-ascending position-subset list.
+  Neither axis is ordered by total modification count -- that's an unordered side effect of the two
+  composing. If the cap lands mid-enumeration, single-mod-type entries can be crowded out by
+  combined-mod-type entries (or vice versa), and surviving entries skew toward C-terminal-clustered
+  placements over N-terminal ones -- not an unbiased sample of the true combinatorial space.
+
+To fix this, "complexity" needs a definition. Three options, in increasing order of how closely they
+match "fewest total modifications = simplest":
+
+**Option A -- total modification count only.** Complexity = total number of modified residues across
+all mod types, regardless of type. 1 phospho is simpler than 2 oxidations, which is simpler than
+1 oxidation + 1 phospho (also count 2 -- a tie, unresolved by this option alone). Most directly
+search-relevant: multiply-modified peptides get combinatorially rarer with each added mod in real
+samples, independent of which mod types are involved, so this ordering is most likely to keep the
+most-plausible combinations under the cap.
+- Cost: largest of the three. Mod-type-subset and position-subset are separate axes today, generated
+  independently; sorting by total count requires unifying them -- either generate everything then
+  sort by popcount before truncating (defeats truncation's point of avoiding full generation), or
+  restructure Step 3 to walk popcount level-by-level directly (a real rewrite of the nested-loop
+  structure, not a parameter tweak).
+
+**Option B -- mod-type breadth first, then within-type count.** Complexity = number of distinct mod
+types involved first (single-type combos rank above any multi-type combo, regardless of total count
+-- so 3 oxidations alone would rank as "simpler" than 1 oxidation + 1 phospho, even though the latter
+has a lower total count). Implementation: reverse `getCombinationSets()`'s loop bound (`i = 1` up to
+`modCount` instead of `modCount` down to `1`), plus sort each mod type's own position-subset list by
+popcount (not raw bitmask value) before the C-terminal-bias artifact applies.
+- Cost: smallest -- a one-line loop-bound flip plus a local `sort()` of the already-materialized
+  per-mod-type lists in `combinationsForAllMods`, no structural rewrite.
+- Downside: only approximates "simplest first" -- can rank a 3-mod single-type combination ahead of
+  a 2-mod mixed-type one, which reads as backwards if "complex" is meant to track total change to the
+  peptide.
+
+**Option C -- total count primary, mod-type breadth as tiebreak.** Complexity = total modification
+count first (Option A's key); among combinations tied on total count, prefer fewer distinct mod types
+(homogeneous beats heterogeneous at the same count -- 2 oxidations ranks above 1 oxidation +
+1 phospho). The "purest" match to "simplest to most complex," and resolves Option A's ties in a
+principled way.
+- Cost: same order of effort as Option A -- it's Option A's rewrite with an extra comparator field on
+  ties, not meaningfully harder once the two axes are already being unified.
+
+**Decision: Option C**, deferred. This work will be taken up after a prerequisite change to
+`ModificationsPermuter` to support N-terminal and C-terminal modifications, since that change is
+also expected to touch the combinatorics/enumeration structure this reorder depends on -- doing the
+complexity-ordering rewrite first would mean redoing part of it once terminal-mod support lands.
+Until then, section 7's truncation behavior (7.1/7.2) can still be implemented and will use today's
+enumeration order (mod-type-subset descending, position-subset bitmask-ascending) as-is; the bias
+described above applies to that interim state and should be called out as a known limitation if
+truncation ships before Option C does.
+
+Whichever option is eventually implemented, it must stay deterministic (see 7.6 item 4) -- reservoir
+sampling or any random subset selection is explicitly out of scope unless seeded and tested for
+determinism.
+
+### 7.4 Scope: FI_DB vs. PI_DB, global vs. caller-specific
+
+Per section 6, both caps and this combinatorics code are shared, ungated by caller, with no
+caller-specific parameterization currently threaded through. Absent new plumbing (section 5 item 1's
+option of a toggle mirroring `GeneratePlainPeptideIndex()`'s temporary `bCreateFragmentIndex`/
+`iDbType` pattern), this truncation change would apply globally to both FI_DB and PI_DB builds, same
+as the section 6 raise. Not proposing caller-specific scoping here unless requested -- consistent
+with the choice already made in section 6.
+
+### 7.5 Files touched
+
+- `CometSearch/CometModificationsPermuter.cpp` -- `generateModifications()` (~`:513-556`),
+  `getTotalCombinationCount()` (~`:390-409`), new `TRUNCATED_SEQ_CNT` counter (~`:53`), optional
+  `getCombinationSets()` reorder (~`:356`).
+- `CometSearch/CometModificationsPermuter.h` -- declare `IGNORED_SEQ_CNT` and `TRUNCATED_SEQ_CNT` as
+  `extern int` so build-status code in other files can read them.
+- `CometSearch/CometFragmentIndex.cpp` (`WriteFIPlainPeptideIndex()`), `CometSearch/CometPeptideIndex.cpp`
+  (`WritePeptideIndex()`) -- surface both counters in build-completion status output.
+
+### 7.6 Testing plan
+
+1. **Formalize section 2's synthetic test.** Commit the all-serine FASTA (3 proteins, lengths 20/23/
+   30, no enzyme, length range 20-30, single STY-phospho mod max 3) as a new unit test (e.g. `t19`)
+   in `tests/unit/data/` -- it already isolates the `FRAGINDEX_MAX_COMBINATIONS` boundary precisely.
+   Recompute expected peptide counts under truncation: the current all-or-nothing total (4,715, from
+   section 2) assumed zero contribution from the length 23-30 peptides; the truncated version
+   instead contributes up to `FRAGINDEX_MAX_COMBINATIONS` modified entries for each over-cap
+   peptide. Recommend generating the new expected count empirically from a post-implementation
+   reference build (rather than hand-deriving it) and locking that in as the regression baseline,
+   using `compare_idx.py` plus a manual entry-count check as in section 2's methodology.
+2. **Off-by-one boundary check.** Add cases exactly at `combinationCount == FRAGINDEX_MAX_COMBINATIONS`
+   (no truncation should occur) and `== FRAGINDEX_MAX_COMBINATIONS + 1` (exactly one combination
+   dropped), mirroring the care section 2 already took for `MAX_BITCOUNT`'s `>` vs. `>=` boundary
+   (L=24 vs. L=25 in that table).
+3. **Unmodified peptide still present.** Assert the unmodified variant is generated regardless of
+   truncation (already true and unaffected by this change, but worth a regression guard given how
+   central it is to the answer given for the original all-or-nothing question).
+4. **Determinism (T18-style).** Two independent builds of the same input must still produce
+   byte-identical `.idx` output after this change -- truncation must select the same subset every
+   run. Run T18 unmodified after the change to confirm the new control flow (removed early returns,
+   clamped arithmetic) introduced no incidental nondeterminism.
+5. **Full regression suite.** `tests/unit/run_tests.py --integration` (T1-T18) must continue passing.
+   T17's count-range window will likely need re-derivation: PI_DB peptide counts against
+   `human.small.fasta` should shift upward since some of the section 6 residual (8,748 entries) came
+   from peptides now getting partial rather than zero modified entries. Recompute and update the
+   T17 acceptable range after the change lands rather than reusing the current
+   `[8,800,000, 9,100,000]` window unchanged.
+6. **Repeat the section 6 legacy comparison.** Rebuild `human.small.fasta` with M-oxidation +
+   STY-phospho, trypsin, 2 missed cleavages, length 8-50; compare against both (a) the no-cap legacy
+   build (`05c01bdb`) and (b) the pre-truncation all-or-nothing build (current HEAD) to quantify how
+   much of the residual 8,748-entry gap this closes. Expect: peptides that were previously fully
+   dropped for exceeding `FRAGINDEX_MAX_COMBINATIONS` (but under `MAX_BITCOUNT=50`) now contribute
+   exactly `FRAGINDEX_MAX_COMBINATIONS` entries each, not their true (larger) count -- the gap versus
+   legacy narrows but does not fully close for those specific peptides. That is expected and by
+   design, not a bug to chase further.
+7. **Counter validation.** Verify `TRUNCATED_SEQ_CNT` increments exactly once per modifiable-sequence
+   class that hit the cap (not once per over-cap mod type within a class), and that it appears in
+   build stdout; spot-check against the synthetic test's known-truncated peptides (the length 23-30
+   rows in section 2's table).
+8. **Build-time impact.** Peptides that previously exited `generateModifications()` almost instantly
+   at the Step 1 early return now proceed through the full Step 2/Step 3 generation (up to
+   `FRAGINDEX_MAX_COMBINATIONS` entries each) instead. Rerun the `human.small.fasta` build-time
+   comparison from sections 4/6 to quantify the delta before this lands on a full human proteome
+   build, where low-complexity S/T/Y-rich regions (section 4) are exactly the peptides most likely to
+   hit the cap.
+9. **When Option C (7.3) is implemented** (deferred until after N-/C-terminal mod support lands),
+   add a small targeted synthetic case with 2 active mod types where the cap lands between
+   equal-total-count combinations of different mod-type breadth (e.g. 2 oxidations vs. 1 oxidation +
+   1 phospho, both total count 2), to confirm the homogeneous (fewer-mod-type) combination is kept
+   over the heterogeneous one at the tie, and that lower total-count combinations are kept over
+   higher ones generally.
