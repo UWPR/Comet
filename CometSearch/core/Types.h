@@ -653,6 +653,13 @@ struct Query
    // Set only by PreprocessSingleSpectrumThreadLocal via PreprocessSingleSpectrumCore.
    bool bSparseFromPool;
 
+   // When true, _pResults/_pDecoys belong to the thread-local RtsScratch pool
+   // (RtsScratch::pResults/pDecoys) and must NOT be delete[]'d by the destructor --
+   // the pool owns that memory for the lifetime of the thread and reuses it for the
+   // next spectrum. Set only by PreprocessSingleSpectrumThreadLocal via
+   // PreprocessSingleSpectrumCore. See docs/20260714_rtspostprocessing.md finding 1.
+   bool bResultsFromPool;
+
    // Sparse matrix representation of data
    int iSpScoreData;    //size of sparse matrix
    int iFastXcorrDataSize;
@@ -708,6 +715,7 @@ struct Query
       _uliNumMatchedDecoyPeptides = 0;
 
       bSparseFromPool = false;
+      bResultsFromPool = false;
 
       // Set by CometPreprocess::Preprocess (or its long/MS1-path siblings)
       // once the spectrum's array size is known; must start at 0 here so the
@@ -790,20 +798,31 @@ struct Query
       delete[] ppfSparseFastXcorrData;
       ppfSparseFastXcorrData = NULL;
 
-      if (_pResults != NULL)
+      if (bResultsFromPool)
       {
-         _pResults->pWhichProtein.clear();
-         if (g_staticParams.options.iDecoySearch == 1)
-            _pResults->pWhichDecoyProtein.clear();
-         delete[] _pResults;
+         // Thread-local RtsScratch pool owns this memory; it will be reset in place
+         // for the next spectrum (or freed when the thread exits). Just drop the
+         // reference -- do not touch or delete[] it here.
          _pResults = NULL;
-      }
-
-      if (g_staticParams.options.iDecoySearch == 2 && _pDecoys != NULL)
-      {
-         _pDecoys->pWhichDecoyProtein.clear();
-         delete[] _pDecoys;
          _pDecoys = NULL;
+      }
+      else
+      {
+         if (_pResults != NULL)
+         {
+            _pResults->pWhichProtein.clear();
+            if (g_staticParams.options.iDecoySearch == 1)
+               _pResults->pWhichDecoyProtein.clear();
+            delete[] _pResults;
+            _pResults = NULL;
+         }
+
+         if (g_staticParams.options.iDecoySearch == 2 && _pDecoys != NULL)
+         {
+            _pDecoys->pWhichDecoyProtein.clear();
+            delete[] _pDecoys;
+            _pDecoys = NULL;
+         }
       }
 
       Threading::DestroyMutex(accessMutex);

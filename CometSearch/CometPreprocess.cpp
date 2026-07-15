@@ -69,10 +69,19 @@ struct RtsScratch
 
    int     iAllocSize;             // 0 = not yet initialised
 
+   // _pResults / _pDecoys pool: avoids a ~160 KB new[]/delete[] of Results[iNumStored]
+   // (each Results is ~1.6 KB -- see docs/20260714_rtspostprocessing.md finding 1) plus
+   // a full per-field reset loop, on every single RTS spectrum. Allocated once per
+   // thread; reset in place (not reallocated) between spectra via ResetResultsForNewSpectrum().
+   Results* pResults;
+   Results* pDecoys;               // only allocated when iDecoySearch == 2
+   int      iResultsCapacity;      // 0 = not yet initialised
+
    RtsScratch()
       : pdTmpRawData(nullptr), pdTmpFastXcorrData(nullptr), pdTmpCorrelationData(nullptr),
         pfFastXcorrData(nullptr), pfFastXcorrDataNL(nullptr), pfSpScoreData(nullptr),
-        pSparseChildPool(nullptr), iSparsePoolCapacity(0), iSparsePoolUsed(0), iAllocSize(0)
+        pSparseChildPool(nullptr), iSparsePoolCapacity(0), iSparsePoolUsed(0), iAllocSize(0),
+        pResults(nullptr), pDecoys(nullptr), iResultsCapacity(0)
    {}
 
    ~RtsScratch()
@@ -84,6 +93,8 @@ struct RtsScratch
       delete[] pfFastXcorrDataNL;
       delete[] pfSpScoreData;
       delete[] pSparseChildPool;
+      delete[] pResults;
+      delete[] pDecoys;
    }
 
    // Called once on first use (or if global array size changes at re-init).
@@ -138,6 +149,62 @@ struct RtsScratch
       if (iSparsePoolUsed < iSparsePoolCapacity)
          return pSparseChildPool + (size_t)iSparsePoolUsed++ * SPARSE_MATRIX_SIZE;
       return new float[SPARSE_MATRIX_SIZE]();   // safety fallback
+   }
+
+   // Called once on first use (or if iNumStored / decoy-search config changes).
+   void EnsureResultsInitialized()
+   {
+      const int  iCapacity   = g_staticParams.options.iNumStored;
+      const bool bWantDecoys = (g_staticParams.options.iDecoySearch == 2);
+
+      if (iCapacity == iResultsCapacity && (pDecoys != nullptr) == bWantDecoys)
+         return;
+
+      delete[] pResults;
+      delete[] pDecoys;
+
+      pResults = new Results[iCapacity];
+      pDecoys  = bWantDecoys ? new Results[iCapacity] : nullptr;
+
+      iResultsCapacity = iCapacity;
+   }
+
+   // Resets the subset of Results fields that PreprocessSingleSpectrumCore's
+   // batch-path (non-pooled) loop also resets -- see the near-duplicate loops
+   // there for the batch-path equivalent. Mirrors that loop's field list exactly.
+   static void ResetOneResult(Results& r)
+   {
+      r.dPepMass = 0.0;
+      r.dExpect = 999;
+      r.fScoreSp = 0.0;
+      r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+      r.fAScorePro = 0.0;
+      r.usiLenPeptide = 0;
+      r.usiRankSp = 0;
+      r.usiMatchedIons = 0;
+      r.usiTotalIons = 0;
+      r.szPeptide[0] = '\0';
+      r.sAScoreProSiteScores.clear();
+      r.pWhichProtein.clear();
+      r.sPeffOrigResidues.clear();
+      r.iPeffOrigResiduePosition = -9;
+   }
+
+   // Called at the start of each new spectrum so pResults/pDecoys are clean for reuse.
+   void ResetResultsForNewSpectrum()
+   {
+      for (int j = 0; j < iResultsCapacity; ++j)
+      {
+         ResetOneResult(pResults[j]);
+         if (g_staticParams.options.iDecoySearch)
+            pResults[j].pWhichDecoyProtein.clear();
+      }
+
+      if (pDecoys != nullptr)
+      {
+         for (int j = 0; j < iResultsCapacity; ++j)
+            ResetOneResult(pDecoys[j]);
+      }
    }
 };
 
@@ -1869,52 +1936,72 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    // Allocate _pResults (and _pDecoys if needed) so the Query is ready for search.
    // This mirrors what AllocateResultsMem() does for batch-search g_pvQuery entries.
-   pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
+   //
+   // RTS path (bUseThreadLocalPool=true): pull from the thread-local pool instead of
+   // new[]/delete[]-ing ~160 KB (Results[iNumStored], ~1.6 KB each) every spectrum --
+   // see docs/20260714_rtspostprocessing.md finding 1. Query::bResultsFromPool tells
+   // the destructor not to free this thread-owned memory.
+   //
+   // Batch path (bUseThreadLocalPool=false): allocate on heap as before.
    pScoring->iMatchPeptideCount = 0;
    pScoring->iDecoyMatchPeptideCount = 0;
    memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
 
-   for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+   if (bUseThreadLocalPool)
    {
-      pScoring->_pResults[j].dPepMass = 0.0;
-      pScoring->_pResults[j].dExpect = 999;
-      pScoring->_pResults[j].fScoreSp = 0.0;
-      pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-      pScoring->_pResults[j].fAScorePro = 0.0;
-      pScoring->_pResults[j].usiLenPeptide = 0;
-      pScoring->_pResults[j].usiRankSp = 0;
-      pScoring->_pResults[j].usiMatchedIons = 0;
-      pScoring->_pResults[j].usiTotalIons = 0;
-      pScoring->_pResults[j].szPeptide[0] = '\0';
-      pScoring->_pResults[j].sAScoreProSiteScores.clear();
-      pScoring->_pResults[j].pWhichProtein.clear();
-      pScoring->_pResults[j].sPeffOrigResidues.clear();
-      pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+      g_rtsScratch.EnsureResultsInitialized();
+      g_rtsScratch.ResetResultsForNewSpectrum();
 
-      if (g_staticParams.options.iDecoySearch)
-         pScoring->_pResults[j].pWhichDecoyProtein.clear();
+      pScoring->_pResults = g_rtsScratch.pResults;
+      pScoring->_pDecoys  = g_rtsScratch.pDecoys;
+      pScoring->bResultsFromPool = true;
    }
-
-   if (g_staticParams.options.iDecoySearch == 2)
+   else
    {
-      pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+      pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
 
       for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
       {
-         pScoring->_pDecoys[j].dPepMass = 0.0;
-         pScoring->_pDecoys[j].dExpect = 999;
-         pScoring->_pDecoys[j].fScoreSp = 0.0;
-         pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-         pScoring->_pDecoys[j].fAScorePro = 0.0;
-         pScoring->_pDecoys[j].usiLenPeptide = 0;
-         pScoring->_pDecoys[j].usiRankSp = 0;
-         pScoring->_pDecoys[j].usiMatchedIons = 0;
-         pScoring->_pDecoys[j].usiTotalIons = 0;
-         pScoring->_pDecoys[j].szPeptide[0] = '\0';
-         pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
-         pScoring->_pDecoys[j].pWhichProtein.clear();
-         pScoring->_pDecoys[j].sPeffOrigResidues.clear();
-         pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+         pScoring->_pResults[j].dPepMass = 0.0;
+         pScoring->_pResults[j].dExpect = 999;
+         pScoring->_pResults[j].fScoreSp = 0.0;
+         pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pScoring->_pResults[j].fAScorePro = 0.0;
+         pScoring->_pResults[j].usiLenPeptide = 0;
+         pScoring->_pResults[j].usiRankSp = 0;
+         pScoring->_pResults[j].usiMatchedIons = 0;
+         pScoring->_pResults[j].usiTotalIons = 0;
+         pScoring->_pResults[j].szPeptide[0] = '\0';
+         pScoring->_pResults[j].sAScoreProSiteScores.clear();
+         pScoring->_pResults[j].pWhichProtein.clear();
+         pScoring->_pResults[j].sPeffOrigResidues.clear();
+         pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+
+         if (g_staticParams.options.iDecoySearch)
+            pScoring->_pResults[j].pWhichDecoyProtein.clear();
+      }
+
+      if (g_staticParams.options.iDecoySearch == 2)
+      {
+         pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+
+         for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+         {
+            pScoring->_pDecoys[j].dPepMass = 0.0;
+            pScoring->_pDecoys[j].dExpect = 999;
+            pScoring->_pDecoys[j].fScoreSp = 0.0;
+            pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+            pScoring->_pDecoys[j].fAScorePro = 0.0;
+            pScoring->_pDecoys[j].usiLenPeptide = 0;
+            pScoring->_pDecoys[j].usiRankSp = 0;
+            pScoring->_pDecoys[j].usiMatchedIons = 0;
+            pScoring->_pDecoys[j].usiTotalIons = 0;
+            pScoring->_pDecoys[j].szPeptide[0] = '\0';
+            pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
+            pScoring->_pDecoys[j].pWhichProtein.clear();
+            pScoring->_pDecoys[j].sPeffOrigResidues.clear();
+            pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+         }
       }
    }
 

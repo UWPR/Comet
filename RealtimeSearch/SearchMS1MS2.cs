@@ -163,6 +163,14 @@ namespace RealTimeSearch
                      var scanQueue = new ConcurrentQueue<int>();
                      var results = new ConcurrentBag<ScanResult>();
                      var progressLock = new object();
+                     // Thermo's RawFileReader serializes concurrent calls internally (does not
+                     // crash), but does not guarantee the returned scan data is correct/consistent
+                     // under concurrent access from multiple threads sharing one IRawDataPlus
+                     // instance -- observed as small, run-to-run-varying differences in a handful
+                     // of PSMs (occasionally a different peptide on a near-tie, more often just the
+                     // E-value) even with every other stage of the pipeline fully deterministic.
+                     // All reads from the shared rawFile must be serialized at the app level.
+                     var rawFileLock = new object();
                      int scansProcessedMS2 = 0;
                      int totalScans = iLastScan - iFirstScan + 1;
                      double cumulativeElapsedMS2 = 0.0;  // cumulative ms spent inside DoSingleSpectrumSearchMultiResults only
@@ -192,34 +200,48 @@ namespace RealTimeSearch
                         {
                            try
                            {
-                              // Use SHARED raw file reader (thread-safe)
-                              var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
-                              double dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
-                              var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
-
-                              if (scanFilter.MSOrder != MSOrderType.Ms && scanFilter.MSOrder != MSOrderType.Ms2)
-                              {
-                                 continue;
-                              }
-
-                              // Get spectral data
+                              // Raw file reads must be serialized -- see rawFileLock comment above.
+                              double dRT;
+                              MSOrderType eScanOrder;
                               double[] pdMass;
                               double[] pdInten;
                               int iNumPeaks;
+                              bool bSkipScan = false;
 
-                              if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
+                              lock (rawFileLock)
                               {
-                                 var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
-                                 iNumPeaks = centroidStream.Length;
-                                 pdMass = centroidStream.Masses;
-                                 pdInten = centroidStream.Intensities;
+                                 var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                                 dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
+                                 var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+                                 eScanOrder = scanFilter.MSOrder;
+
+                                 if (eScanOrder != MSOrderType.Ms && eScanOrder != MSOrderType.Ms2)
+                                 {
+                                    bSkipScan = true;
+                                    pdMass = null;
+                                    pdInten = null;
+                                    iNumPeaks = 0;
+                                 }
+                                 // Get spectral data
+                                 else if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
+                                 {
+                                    var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
+                                    iNumPeaks = centroidStream.Length;
+                                    pdMass = centroidStream.Masses;
+                                    pdInten = centroidStream.Intensities;
+                                 }
+                                 else
+                                 {
+                                    var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
+                                    iNumPeaks = segmentedScan.Positions.Length;
+                                    pdMass = segmentedScan.Positions;
+                                    pdInten = segmentedScan.Intensities;
+                                 }
                               }
-                              else
+
+                              if (bSkipScan)
                               {
-                                 var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
-                                 iNumPeaks = segmentedScan.Positions.Length;
-                                 pdMass = segmentedScan.Positions;
-                                 pdInten = segmentedScan.Intensities;
+                                 continue;
                               }
 
                               if (iNumPeaks < 10)  // don't bother searching sparse spectra
@@ -230,12 +252,12 @@ namespace RealTimeSearch
                               ScanResult result = new ScanResult
                               {
                                  ScanNumber = iScanNumber,
-                                 ScanType = scanFilter.MSOrder,
+                                 ScanType = eScanOrder,
                                  RT = dRT
                               };
 
                               // Perform search using SHARED manager (C++ is thread-safe via mutexes)
-                              if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
+                              if (bPerformMS1Search && eScanOrder == MSOrderType.Ms)
                               {
                                  int iMS1TopN = 1;
                                  watch.Restart();
@@ -251,24 +273,29 @@ namespace RealTimeSearch
                                  result.ScoresMS1 = vScores;
                                  result.ElapsedMs = (int)watch.ElapsedMilliseconds;
                               }
-                              else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)
+                              else if (bPerformMS2Search && eScanOrder == MSOrderType.Ms2)
                               {
                                  int iPrecursorCharge = 0;
-                                 double dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
+                                 double dPrecursorMZ;
 
-                                 var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
-                                 for (int i = 0; i < trailerData.Length; ++i)
+                                 lock (rawFileLock)
                                  {
-                                    if (trailerData.Labels[i] == "Monoisotopic M/Z:")
-                                    {
-                                       double dTmp = double.Parse(trailerData.Values[i]);
-                                       double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+                                    dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
 
-                                       if (dTmp != 0.0 && dMassDiff < 10.0)
-                                          dPrecursorMZ = dTmp;
+                                    var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
+                                    for (int i = 0; i < trailerData.Length; ++i)
+                                    {
+                                       if (trailerData.Labels[i] == "Monoisotopic M/Z:")
+                                       {
+                                          double dTmp = double.Parse(trailerData.Values[i]);
+                                          double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+
+                                          if (dTmp != 0.0 && dMassDiff < 10.0)
+                                             dPrecursorMZ = dTmp;
+                                       }
+                                       else if (trailerData.Labels[i] == "Charge State:")
+                                          iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
                                     }
-                                    else if (trailerData.Labels[i] == "Charge State:")
-                                       iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
                                  }
 
                                  double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * dProtonMass;

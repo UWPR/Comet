@@ -2501,6 +2501,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
+   takeSearchResultsN = topN;
+   if (takeSearchResultsN > iSize)
+      takeSearchResultsN = iSize;
+
    if (g_staticParams.options.iMaxIndexRunTime > 0)
    {
       auto tNow = std::chrono::high_resolution_clock::now();
@@ -2514,15 +2518,33 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 #endif
    if (iSize > 1)
    {
-      std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
+      // Only a prefix needs to be fully, correctly sorted -- the rest of
+      // _pResults[0, iSize) never gets read again this call:
+      //  - the output-extraction loop below only reads [0, takeSearchResultsN)
+      //  - CalculateSP() only reads [0, takeSearchResultsN) (CometPostAnalysis.cpp:498)
+      //  - CalculateEValue() does not depend on sort order at all -- dExpect is a
+      //    pure function of each entry's own fXcorr (CometPostAnalysis.cpp:1403-1430)
+      //  - CalculateDeltaCn() -> CalculateDeltaCnsAndRank() walks up to
+      //    iNumPeptideOutputLines + 1 entries and DOES depend on adjacency-based
+      //    sort order to compute delta-Cn/rank correctly for the entries actually
+      //    returned (CometPostAnalysis.cpp:269-363) -- this is the binding
+      //    constraint whenever it exceeds takeSearchResultsN.
+      // iNumStored is already >= iNumPeptideOutputLines + 1 (enforced at
+      // CometSearchManager.cpp:1393-1395), so clamping to iSize (<= iNumStored)
+      // can only shrink the bound when the search itself found fewer than
+      // iNumPeptideOutputLines + 1 candidates -- never invalidate it.
+      int iSortBound = takeSearchResultsN;
+      if (g_staticParams.options.iNumPeptideOutputLines + 1 > iSortBound)
+         iSortBound = g_staticParams.options.iNumPeptideOutputLines + 1;
+      if (iSortBound > iSize)
+         iSortBound = iSize;
+
+      std::partial_sort(pQuery->_pResults, pQuery->_pResults + iSortBound,
+         pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 #ifdef RTS_TIMING
    llSort = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
 #endif
-
-   takeSearchResultsN = topN;
-   if (takeSearchResultsN > iSize)
-      takeSearchResultsN = iSize;
 
    // Step 4: Post-analysis using Query* overloads (no session.queries access)
    if (pQuery->iMatchPeptideCount > 0)
@@ -2631,6 +2653,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
 
    // Step 6: Extract results from thread-local Query*
+   strReturnPeptide.reserve(strReturnPeptide.size() + takeSearchResultsN);
+   strReturnProtein.reserve(strReturnProtein.size() + takeSearchResultsN);
+   matchedFragments.reserve(matchedFragments.size() + takeSearchResultsN);
+   scores.reserve(scores.size() + takeSearchResultsN);
+
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
       CometScores score;
@@ -2858,6 +2885,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             bAddNtermFragmentNeutralLoss[iMod] = false;
             bAddCtermFragmentNeutralLoss[iMod] = false;
          }
+
+         // Upper bound on matched fragments (ignoring neutral losses, which are
+         // comparatively rare) -- avoids repeated push_back() reallocation growth
+         // for longer peptides / higher charge states / multiple ion series enabled.
+         eachMatchedFragments.reserve((size_t)(pQuery->_pResults[iWhichResult].usiLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.usiMaxFragCharge
+            * g_staticParams.ionInformation.iNumIonSeriesUsed);
 
          // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
          for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)
