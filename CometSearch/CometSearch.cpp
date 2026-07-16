@@ -6933,6 +6933,22 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
       {
          if (g_staticParams.options.bCreatePeptideIndex && dCalcPepMass >= g_massRange.dMinMass && dCalcPepMass <= g_massRange.dMaxMass)
          {
+            // Build and validate the compact site list before taking the lock -- this is a
+            // pure local computation from piVarModSites, so failing here (VarModSites::MAX_SITES
+            // exceeded) needs no unlock/cleanup.
+            VarModSites sitesTmp;
+            for (int x = 0; x < iLen2; x++)  // +2 for n/c term mods
+            {
+               if (piVarModSites[x] != 0 && !sitesTmp.set(x, static_cast<char>(piVarModSites[x])))
+               {
+                  string sErrorMsg = " Error - a peptide's variable modification count exceeds "
+                     "VarModSites::MAX_SITES (" + std::to_string(VarModSites::MAX_SITES) + ").\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, sErrorMsg);
+                  logerr(sErrorMsg);
+                  return true;
+               }
+            }
+
             Threading::LockMutex(g_pvDBIndexMutex);
 
             // add to DBIndex vector
@@ -6952,10 +6968,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
                sDBTmp.cNextAA = szProteinSeq[_varModInfo.iEndPos + 1];
 
             sDBTmp.lIndexProteinFilePosition = _proteinInfo.lProteinFilePosition;
-
-            sDBTmp.pcVarModSites.assign(iLen2, 0);
-            for (int x = 0; x < iLen2; x++)  // +2 for n/c term mods
-               sDBTmp.pcVarModSites[x] = static_cast<char>(piVarModSites[x]);
+            sDBTmp.pcVarModSites = sitesTmp;
 
             try
             {

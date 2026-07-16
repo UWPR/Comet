@@ -2104,9 +2104,10 @@ bool CometSearchManager::DoSearch()
        {
           // Standalone index-only run: the .idx file is written and fclose()
           // has already been called.  Skip all C++ static-duration destructors
-          // -- the OS reclaims every page instantly.  Without this, ~80-90M
-          // individual free() calls for g_pvDBIndex vector<char> pcVarModSites
-          // members would add ~1-2 min of cleanup after the "done" message.
+          // -- the OS reclaims every page instantly.  g_pvDBIndex's pcVarModSites
+          // is now an inline VarModSites (core/Types.h, no per-entry heap
+          // allocation), so this mainly just avoids the O(n) vector<DBIndex>
+          // teardown itself at ~80-90M entries rather than per-entry free() calls.
           fflush(stdout);
           fflush(stderr);
           _exit(0);

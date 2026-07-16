@@ -74,6 +74,22 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    // - modification encoding index
    // - modification mass
 
+   // FragmentPeptidesStruct::iWhichPeptide is unsigned int (narrowed from size_t to shrink the
+   // struct -- see AddFragments() below); g_vRawPeptides is now fully populated (either just read
+   // via ReadPlainPeptideIndex() above, or already built earlier in this process), so this is the
+   // one place that covers every path into GenerateFragmentIndex() below.
+   if (g_vRawPeptides.size() > (size_t)std::numeric_limits<unsigned int>::max())
+   {
+      string strErrorMsg = " Error - " + std::to_string(g_vRawPeptides.size())
+         + " raw peptides exceeds the " + std::to_string(std::numeric_limits<unsigned int>::max())
+         + " entries FragmentPeptidesStruct::iWhichPeptide (unsigned int) can address. Reduce the "
+         + "database/digest size, or widen iWhichPeptide back to size_t if this database size is "
+         + "intentional.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
    // CSR layout: allocate offset array now (size+1 for sentinel); flat data allocated after counting.
    g_iFragmentIndexOffset = new uint64_t[g_massRange.uiMaxFragmentArrayIndex + 1]();
 
@@ -491,7 +507,9 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    {
       struct FragmentPeptidesStruct sTmp;
 
-      sTmp.iWhichPeptide = iWhichPeptide;
+      // Safe: g_vRawPeptides.size() <= UINT_MAX is checked once in CreateFragmentIndex()
+      // before any AddFragments() call can reach here.
+      sTmp.iWhichPeptide = static_cast<unsigned int>(iWhichPeptide);
       sTmp.modNumIdx = modNumIdx;
       sTmp.dPepMass = dCalcPepMass;
       sTmp.cNtermMod = cNtermMod;
@@ -1137,8 +1155,9 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    // Both g_vRawPeptides and g_pvDBIndex now use fixed-size char arrays for
    // peptide sequences (szPeptide[MAX_PEPTIDE_LEN] and sPeptide[MAX_PEPTIDE_LEN]
    // respectively), so neither has non-SSO string heap blocks to free.
-   // Destruction is O(n) for pcVarModSites in g_pvDBIndex but trivial for
-   // g_vRawPeptides; order no longer matters.
+   // g_pvDBIndex's pcVarModSites is now an inline VarModSites (no heap allocation
+   // at all -- see core/Types.h), so destruction is trivial for both; order no
+   // longer matters.
    {
       vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
    }

@@ -269,13 +269,15 @@ bool CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEn
       }
    }
 
+   bool bModSitesOverflow = false;
+
    auto buildEntry = [&](size_t iWhichPeptide, int modNumIdx, char cNtermMod, char cCtermMod)
    {
       const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
       const int iLen = (int)strlen(raw.szPeptide);
 
       double dCalcPepMass = raw.dPepMass;
-      vector<char> pcVarModSites(iLen + 2, 0);
+      VarModSites pcVarModSites;
 
       if (modNumIdx >= 0)
       {
@@ -293,7 +295,11 @@ bool CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEn
                {
                   int iSlot = vModSlotForAllModsIdx.at((size_t)mods[j]);
                   dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
-                  pcVarModSites[i] = (char)(iSlot + 1);
+                  if (!pcVarModSites.set(i, (char)(iSlot + 1)))
+                  {
+                     bModSitesOverflow = true;
+                     return;
+                  }
                }
                j++;
             }
@@ -303,19 +309,27 @@ bool CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEn
       if (cNtermMod >= 0)
       {
          dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-         pcVarModSites[iLen] = (char)(cNtermMod + 1);
+         if (!pcVarModSites.set(iLen, (char)(cNtermMod + 1)))
+         {
+            bModSitesOverflow = true;
+            return;
+         }
       }
       if (cCtermMod >= 0)
       {
          dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
-         pcVarModSites[iLen + 1] = (char)(cCtermMod + 1);
+         if (!pcVarModSites.set(iLen + 1, (char)(cCtermMod + 1)))
+         {
+            bModSitesOverflow = true;
+            return;
+         }
       }
 
       if (dCalcPepMass > g_massRange.dMaxMass || dCalcPepMass < g_massRange.dMinMass)
          return;
 
       DBIndex sEntry;
-      sEntry.pcVarModSites = std::move(pcVarModSites);
+      sEntry.pcVarModSites = pcVarModSites;
       sEntry.lIndexProteinFilePosition = raw.lIndexProteinFilePosition;
       sEntry.dPepMass = dCalcPepMass;
       sEntry.siVarModProteinFilter = raw.siVarModProteinFilter;
@@ -437,6 +451,17 @@ bool CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEn
             }
          }
       }
+   }
+
+   if (bModSitesOverflow)
+   {
+      string strErrorMsg = " Error - a peptide's variable modification count exceeds VarModSites::MAX_SITES ("
+         + std::to_string(VarModSites::MAX_SITES) + "). Reduce max_variable_mods_in_peptide or the number "
+         + "of active variable mod types, or widen VarModSites::MAX_SITES (core/Types.h) if this "
+         + "configuration is intentional.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
    }
 
    return true;
@@ -702,30 +727,16 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       fwrite(&((*it).cPrevAA), sizeof(char), 1, fptr);
       fwrite(&((*it).cNextAA), sizeof(char), 1, fptr);
 
-      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
-      int iLen2 = iLen + 2;
-      unsigned char cNumMods = 0;
-      if (!(*it).pcVarModSites.empty())
-      {
-         for (unsigned char x = 0; x < iLen2; x++)
-         {
-            if ((*it).pcVarModSites[x] != 0)
-               cNumMods++;
-         }
-      }
-      fwrite(&cNumMods, sizeof(unsigned char), 1, fptr);
+      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod).
+      // VarModSites already stores exactly this (position,residue) pair list, in ascending
+      // position order, so no scan over unmodified positions is needed.
+      const VarModSites& sites = (*it).pcVarModSites;
+      fwrite(&sites.cNumSites, sizeof(unsigned char), 1, fptr);
 
-      if (cNumMods > 0)
+      for (unsigned char x = 0; x < sites.cNumSites; x++)
       {
-         for (unsigned char x = 0; x < iLen2; x++)
-         {
-            if ((*it).pcVarModSites[x] != 0)
-            {
-               char cWhichMod = (*it).pcVarModSites[x];
-               fwrite(&x, sizeof(unsigned char), 1, fptr);
-               fwrite(&cWhichMod, sizeof(char), 1, fptr);
-            }
-         }
+         fwrite(&sites.position[x], sizeof(unsigned char), 1, fptr);
+         fwrite(&sites.residue[x], sizeof(char), 1, fptr);
       }
       // done writing out mod sites
 
@@ -802,18 +813,20 @@ bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
    if (tTmp != 1) return false;
 
    sDBI->pcVarModSites.clear();
-   if (cNumMods > 0)
+   for (unsigned char x = 0; x < cNumMods; x++)
    {
-      sDBI->pcVarModSites.assign(iLen + 2, 0);
-      for (unsigned char x = 0; x < cNumMods; x++)
+      unsigned char cPosition;
+      char cResidue;
+      tTmp = fread(&cPosition, sizeof(unsigned char), 1, fp);
+      if (tTmp != 1) return false;
+      tTmp = fread(&cResidue, sizeof(char), 1, fp);
+      if (tTmp != 1) return false;
+      if (!sDBI->pcVarModSites.set((int)cPosition, cResidue))
       {
-         unsigned char cPosition;
-         char cResidue;
-         tTmp = fread(&cPosition, sizeof(unsigned char), 1, fp);
-         if (tTmp != 1) return false;
-         tTmp = fread(&cResidue, sizeof(char), 1, fp);
-         if (tTmp != 1) return false;
-         sDBI->pcVarModSites[(int)cPosition] = cResidue;
+         logerr(" Error - a peptide's variable modification count exceeds VarModSites::MAX_SITES ("
+            + std::to_string(VarModSites::MAX_SITES) + ") while reading the peptide index; the file "
+            + "may be corrupt, or was built with a wider VarModSites than this binary supports.\n");
+         return false;
       }
    }
    // done reading mod sites

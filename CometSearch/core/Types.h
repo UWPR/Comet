@@ -242,14 +242,67 @@ inline int ILAwarePeptideCompare(const char* a, const char* b)
    }
 }
 
+// Compact, inline (no heap allocation) encoding of a peptide's variable-mod placement
+// sites. Mirrors the on-disk (position, residue) pair format directly -- WritePeptideIndex()/
+// ReadPeptideIndexEntry() already store/read exactly this pair list -- instead of expanding
+// into a dense per-residue-position array (peptide_length+2 bytes, positions overwhelmingly
+// zero/unmodified, with its own separate heap allocation per entry). Replaced a vector<char>
+// that cost ~30-55 bytes (payload + allocator overhead) per modified entry and a dedicated
+// heap allocation for each of them; see docs/20260716_pidbmemory.md for the sizing analysis.
+//
+// MAX_SITES=8 comfortably covers the default max_variable_mods_in_peptide (5) plus both
+// termini (7 total); ReadPeptideIndexEntry()/MaterializeIndexPeptideMods()/MergeVarMods() all
+// check set()'s return value and fail cleanly (rather than silently truncating) if a
+// more permissive configuration ever exceeds it.
+struct VarModSites
+{
+   static const int MAX_SITES = 8;
+
+   unsigned char cNumSites = 0;
+   unsigned char position[MAX_SITES] = {};   // 0-based residue index, or iLen/iLen+1 for n-term/c-term
+   char          residue[MAX_SITES] = {};    // encoded mod value, always > 0 (see set())
+
+   bool empty() const { return cNumSites == 0; }
+   void clear() { cNumSites = 0; }
+
+   // Positional lookup mirroring the old vector<char>::operator[] semantics: the encoded mod
+   // value at peptide position `pos`, or 0 if unmodified. O(cNumSites), always small (<= MAX_SITES).
+   char operator[](int pos) const
+   {
+      for (unsigned char i = 0; i < cNumSites; ++i)
+         if (position[i] == (unsigned char)pos)
+            return residue[i];
+      return 0;
+   }
+
+   // Appends a site; sites must be added in ascending position order (both construction
+   // sites already process positions ascending, so this falls out naturally -- see
+   // CometPeptideIndex.cpp's positional-scan callers of this method for why order matters:
+   // e.g. neutral-loss position lookups in CometSearch.cpp rely on it). Returns false if
+   // MAX_SITES would be exceeded; caller must check and fail rather than ignore.
+   bool set(int pos, char val)
+   {
+      if (cNumSites >= MAX_SITES)
+         return false;
+      position[cNumSites] = (unsigned char)pos;
+      residue[cNumSites] = val;
+      ++cNumSites;
+      return true;
+   }
+};
+
+// Field order matters: the two 8-byte-aligned fields first, then progressively smaller/
+// 1-byte-aligned fields, avoids the internal padding that an 8-byte-aligned field placed
+// after VarModSites (1-byte aligned, 17 bytes) would otherwise force. Saves another 8
+// bytes/entry on top of VarModSites' own reduction -- see its comment above.
 struct DBIndex
 {
-   vector<char>          pcVarModSites;                         // empty = unmodified; else [iLen+2] encoding var mods
    comet_fileoffset_t    lIndexProteinFilePosition;             // points to entry in g_pvProteinsList
    double                dPepMass;                              // MH+ pep mass
    unsigned short        siVarModProteinFilter = 0;             // bitwise representation of mmapProtein
    char                  cPrevAA;
    char                  cNextAA;
+   VarModSites            pcVarModSites;                         // empty = unmodified; else encodes var mod (position,residue) pairs
    char                  sPeptide[MAX_PEPTIDE_LEN];             // peptide sequence, null-terminated
 
    bool operator==(const DBIndex& rhs) const
@@ -263,9 +316,7 @@ struct DBIndex
       int iLen = (int)strlen(sPeptide) + 2;
       for (int i = 0; i < iLen; ++i)
       {
-         char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
-         char r = rhs.pcVarModSites.empty() ? 0 : rhs.pcVarModSites[i];
-         if (l != r)
+         if (pcVarModSites[i] != rhs.pcVarModSites[i])
             return false;
       }
 
@@ -284,8 +335,8 @@ struct DBIndex
       int iLen = (int)strlen(sPeptide) + 2;
       for (int i = 0; i < iLen; ++i)
       {
-         char l = pcVarModSites.empty()     ? 0 : pcVarModSites[i];
-         char r = rhs.pcVarModSites.empty() ? 0 : rhs.pcVarModSites[i];
+         char l = pcVarModSites[i];
+         char r = rhs.pcVarModSites[i];
          if (l != r)
             return l < r;
       }
@@ -429,11 +480,20 @@ struct PlainPeptideIndexStruct
    }
 };
 
+// Field order matters: dPepMass (8-byte aligned) first, then the two 4-byte fields, then the two
+// 1-byte fields, packs to 24 bytes with no internal padding (vs. 32 bytes for the original
+// size_t-first ordering). At 80M+ entries for a heavily-modified fragment index build, that's a
+// real reduction -- see docs/20260715_fusedflush.md's follow-up investigation (RTS PI_DB/FI_DB
+// memory) for the sizing rationale.
 struct FragmentPeptidesStruct
 {
-   size_t iWhichPeptide;   // reference to raw peptide (sequence, proteins, etc.) in PlainPeptideIndexStruct
+   double dPepMass;        // peptide mass (modified or unmodified) after permuting mods
+   unsigned int iWhichPeptide;  // reference to raw peptide (sequence, proteins, etc.) in
+                                 // PlainPeptideIndexStruct -- narrowed from size_t since
+                                 // g_vRawPeptides.size() is checked to fit in unsigned int
+                                 // before this struct is ever populated (CometFragmentIndex.cpp,
+                                 // CreateFragmentIndex())
    int modNumIdx;
-   double dPepMass;     // peptide mass (modified or unmodified) after permuting mods
    char cNtermMod;
    char cCtermMod;
 

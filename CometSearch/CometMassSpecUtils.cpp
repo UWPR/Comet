@@ -571,8 +571,8 @@ bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
       size_t iLen = strlen(lhs.sPeptide) + 2;
       for (size_t i = 0; i < iLen; ++i)
       {
-         char l = lhs.pcVarModSites.empty()     ? 0 : lhs.pcVarModSites[i];
-         char r = rhs.pcVarModSites.empty()     ? 0 : rhs.pcVarModSites[i];
+         char l = lhs.pcVarModSites[(int)i];   // VarModSites::operator[] already returns 0 for an empty/no-site position
+         char r = rhs.pcVarModSites[(int)i];
          if (l != r)
             return l > r;
       }
