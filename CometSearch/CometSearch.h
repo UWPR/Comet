@@ -81,8 +81,10 @@ public:
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
    static bool RunSearch(Query* pQuery);
 
-   // Fused batch FI_DB overload: skips AcquirePoolSlot by using a pre-assigned
-   // duplicate-fragment slot.  Caller guarantees iSlot is in [0, iNumThreads).
+   // Fused batch FI_DB/PI_DB overload: skips AcquirePoolSlot by using a
+   // pre-assigned duplicate-fragment slot.  Caller guarantees iSlot is in
+   // [0, iNumThreads).  Dispatches to SearchFragmentIndex or SearchPeptideIndex
+   // based on g_staticParams.iDbType.
    static bool RunSearch(Query* pQuery, int iSlot);
 
    static bool RunSpecLibSearch(int iPercentStart,

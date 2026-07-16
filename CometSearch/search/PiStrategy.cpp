@@ -22,17 +22,19 @@
 
 bool PiStrategy::initialize(SearchSession& session, ThreadPool* tp)
 {
-   (void)session;
    (void)tp;
-
-   // The peptide index is loaded lazily on first access inside
-   // CometSearch::RunSearch -> SearchPeptideIndex.  No explicit
-   // ReadPeptideIndex() call is needed here.
 
    if (!CometPreprocess::AllocateMemory(g_staticParams.options.iNumThreads))
       return false;
 
    if (!CometSearch::AllocateMemory(g_staticParams.options.iNumThreads))
+      return false;
+
+   // Load the peptide index up front (mirrors FiStrategy::initialize()) so the
+   // fused per-spectrum search below never has to lazily trigger it mid-stream.
+   // EnsurePeptideIndexLoaded() itself logs the "Read peptide index: ..." status
+   // line and is a no-op if already loaded.
+   if (session.bPerformDatabaseSearch && !CometSearch::EnsurePeptideIndexLoaded(false))
       return false;
 
    return true;
@@ -77,6 +79,26 @@ bool PiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
                               int& iPercentStart, int& iPercentEnd,
                               ThreadPool* tp, SearchSession& session)
 {
+   // Fused path: per-spectrum read+preprocess+search+post-analysis in one pass,
+   // same as FiStrategy. Disabled for Mango or speclib runs (those require the
+   // legacy ordering), matching FiStrategy's own restriction.
+   bool bFused = session.bPerformDatabaseSearch
+                 && !g_staticParams.options.bMango
+                 && !session.bPerformSpecLibSearch;
+
+   if (bFused)
+   {
+      session.statusRef.SetStatusMsg(string("Running fused PI_DB search..."));
+
+      bool bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(
+            mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
+
+      iPercentStart = iPercentEnd;
+      iPercentEnd   = mstReader.getPercent();
+
+      return bSucceeded;
+   }
+
    return executeBatchLegacy(mstReader, iFirstScan, iLastScan, iAnalysisType,
                              iPercentStart, iPercentEnd, tp, session, false);
 }

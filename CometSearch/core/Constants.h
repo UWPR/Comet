@@ -28,7 +28,27 @@
 #define FRAGINDEX_MIN_IONS_REPORT   3        // min # of matched ions for peptide to be reported
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index
-#define FRAGINDEX_MAX_BATCHSIZE     1000     // maximum number of spectra loaded when querying fragment index
+#define FRAGINDEX_MAX_BATCHSIZE     1000     // maximum number of spectra loaded when querying fragment index; legacy (non-fused) batch path only -- see FUSED_FLUSH_PER_THREAD
+
+// Fused FI_DB/PI_DB batch path (CometPreprocess::FusedLoadAndSearchSpectra): number of
+// fully-searched-and-post-analysed spectra to accumulate before returning to
+// Pipeline::run() for a write+free cycle. Decoupled from FRAGINDEX_MAX_BATCHSIZE/
+// spectrum_batch_size (which govern the legacy load-all-then-search-all path) --
+// the fused path already bounds spectra-read-but-not-searched via its own
+// BoundedSpectrumQueue (depth = 4 * iNumThreads).
+//
+// Scaled by thread count (actual threshold = max(FUSED_FLUSH_MIN_BATCH_SIZE,
+// iNumThreads * FUSED_FLUSH_PER_THREAD), computed in FusedLoadAndSearchSpectra) --
+// a flat constant was tried first and found to under-flush on high-thread-count
+// machines: each flush round requires every worker thread to fully drain before
+// the next round's jobs are dispatched (and, for readahead, its background
+// reader thread torn down and recreated), so the *per-thread* share of a round
+// is what needs to stay above the amortization floor, not the round's total
+// size. Empirically, throughput reaches its ceiling around 50-125 spectra/thread
+// regardless of total thread count (measured at both 8 and 20 threads); 50 is
+// the conservative choice. See docs/20260715_fusedflush.md for the sweep data.
+#define FUSED_FLUSH_PER_THREAD      50
+#define FUSED_FLUSH_MIN_BATCH_SIZE  100
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  10000    // raised from 2000; see docs/20260714_modifications.md

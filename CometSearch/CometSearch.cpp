@@ -215,10 +215,13 @@ bool CometSearch::RunSearch(Query* pQuery)
 }
 
 
-// Fused batch FI_DB path: use a pre-assigned pool slot, skipping AcquirePoolSlot.
+// Fused batch FI_DB/PI_DB path: use a pre-assigned pool slot, skipping AcquirePoolSlot.
 bool CometSearch::RunSearch(Query* pQuery, int iSlot)
 {
-   SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+   if (g_staticParams.iDbType == DbType::FI_DB)
+      SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+   else
+      SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot);
    return true;
 }
 

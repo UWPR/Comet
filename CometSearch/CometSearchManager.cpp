@@ -1518,6 +1518,16 @@ bool CometSearchManager::InitializeStaticParams()
          if (!strncmp(szTmp, "Comet peptide index", 19))
          {
             g_staticParams.iDbType = DbType::PI_DB;
+
+            // Same reasoning as the FI_DB branch below: this clamp only matters for
+            // the legacy load-all-then-search-all path (PiStrategy falls back to it
+            // for Mango/speclib runs; see PiStrategy::executeBatch()) -- the fused
+            // path ignores iSpectrumBatchSize entirely in favor of its own
+            // its own thread-scaled flush threshold. Previously missing here (only the FI_DB branch
+            // had it), which left a default/unset spectrum_batch_size unbounded for
+            // any PI_DB search that fell back to the legacy path.
+            if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+               g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
          }
          else if (!strncmp(szTmp, "Comet fragment ion index", 24))
          {

@@ -3153,9 +3153,9 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
 }
 
 
-// Fused FI_DB batch worker: preprocess + RunSearch + post-analysis for one spectrum.
-// Uses per-thread g_rtsScratch scratch buffers (no shared batch pool contention).
-// iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
+// Fused FI_DB/PI_DB batch worker: preprocess + RunSearch + post-analysis for one
+// spectrum. Uses per-thread g_rtsScratch scratch buffers (no shared batch pool
+// contention). iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
 void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                                           int iSlot,
                                           std::vector<Query*>& outQueries,
@@ -3449,7 +3449,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
 }
 
 
-// Fused FI_DB batch loader: streams spectra from the raw file through a
+// Fused FI_DB/PI_DB batch loader: streams spectra from the raw file through a
 // bounded producer/consumer queue into FusedSearchSpectrum workers.  On return
 // g_pvQuery holds fully scored and post-analysed Query* objects ready for output.
 bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
@@ -3485,6 +3485,11 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // Running count of accumulated Query* across all workers.  Only read by the
    // producer, and only when iSpectrumBatchSize != 0 (batch-size cap feature).
    std::atomic<size_t> aQueryCount{0};
+
+   // Scaled by thread count -- see FUSED_FLUSH_PER_THREAD's comment in
+   // core/Constants.h for why a flat constant under-flushes at high thread counts.
+   const size_t iFlushBatchSize = std::max(static_cast<size_t>(FUSED_FLUSH_MIN_BATCH_SIZE),
+                                           static_cast<size_t>(iNumSlots) * FUSED_FLUSH_PER_THREAD);
 
    BoundedSpectrumQueue queue(static_cast<size_t>(iNumSlots) * 4);
 
@@ -3529,6 +3534,7 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    {
       iFileLastScan = pRA->iSnapshotLastScan.load(std::memory_order_relaxed);
       bool bAborted = false;
+      bool bFlushLimitHit = false;
 
       while (pRA->next(mstSpectrum))              // false at EOF/error/stop
       {
@@ -3553,12 +3559,26 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
          // iFileLastScan are already in hand.
          if (iTotalScans > iFileLastScan)
             break;
+
+         // Fused flush cap: stop pulling from the readahead ring once enough
+         // spectra have finished searching, so Pipeline::run() can write and
+         // free them and the held Query pool (each carrying its own sparse
+         // XCorr matrices) stays bounded independent of file size.  Unlike the
+         // other two breaks above, this does NOT mean EntireFile is done --
+         // requestStopAndJoin() below cleanly tears down this call's readahead
+         // thread, and the next executeBatch() call creates a fresh one to
+         // resume exactly where mstReader left off.
+         if (aQueryCount.load(std::memory_order_relaxed) >= iFlushBatchSize)
+         {
+            bFlushLimitHit = true;
+            break;
+         }
       }
 
       // Mirror CheckExit: error/cancel return true WITHOUT setting
       // _bDoneProcessingAllSpectra (see below); only a clean EOF or the
       // safety net above means EntireFile is actually done.
-      if (!bAborted)
+      if (!bAborted && !bFlushLimitHit)
          _bDoneProcessingAllSpectra = true;
    }
    else
@@ -3645,20 +3665,25 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
             }
          }
 
-         // No lock: when iSpectrumBatchSize == 0 (the common case) CheckExit ignores
-         // the count entirely, so pass 0.  When the batch-size cap is active, read the
-         // lock-free running total.  This value is inherently approximate under
-         // concurrency (the old locked read was too -- workers appended while the
-         // producer held the lock), so relaxed ordering preserves existing behavior.
+         // legacy iSpectrumBatchSize/FRAGINDEX_MAX_BATCHSIZE governs the load-all-
+         // then-search-all path only; ignore it here (bIgnoreSpectrumBatchSize=true)
+         // in favor of the fused-specific flush check below (iFlushBatchSize, scaled
+         // by thread count -- see FUSED_FLUSH_PER_THREAD in core/Constants.h), which
+         // is entirely independent of the legacy batch-size concept.
+         if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                       mstReader.getLastScan(), 0, true))
          {
-            int iLoaded = (g_staticParams.options.iSpectrumBatchSize != 0)
-                             ? (int)aQueryCount.load(std::memory_order_relaxed)
-                             : 0;
-            if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                          mstReader.getLastScan(), iLoaded, 0))
-            {
-               break;
-            }
+            break;
+         }
+
+         // No lock: this value is inherently approximate under concurrency (the old
+         // locked read was too -- workers appended while the producer held the
+         // lock), so relaxed ordering preserves existing behavior. Not treated as
+         // "done" -- the next executeBatch() call resumes reading where this one
+         // left off.
+         if (aQueryCount.load(std::memory_order_relaxed) >= iFlushBatchSize)
+         {
+            break;
          }
       }
    }

@@ -116,19 +116,22 @@ public:
 
    static double GetMassCushion(double dMass);
 
-   // Fused FI_DB batch path: preprocess + search + post-analysis for one spectrum
-   // in a single pass using thread-local scratch buffers.  iSlot is this worker's
-   // pre-assigned _ppbDuplFragmentArr index.  outQueries is this worker's own
-   // result vector (no lock needed); outCount is a shared running total bumped
-   // with relaxed ordering for the CheckExit batch-size-cap read.
+   // Fused FI_DB/PI_DB batch path: preprocess + search + post-analysis for one
+   // spectrum in a single pass using thread-local scratch buffers.  iSlot is this
+   // worker's pre-assigned _ppbDuplFragmentArr index.  outQueries is this worker's
+   // own result vector (no lock needed); outCount is a shared running total bumped
+   // with relaxed ordering for the CheckExit batch-size-cap read.  The actual index
+   // search (FI_DB vs. PI_DB) is dispatched by CometSearch::RunSearch(Query*, int).
    static void FusedSearchSpectrum(Spectrum spec,
                                    int iSlot,
                                    std::vector<Query*>& outQueries,
                                    std::atomic<size_t>& outCount);
 
-   // Fused FI_DB batch path: stream spectra through a bounded producer/consumer
-   // queue into FusedSearchSpectrum workers.  Replaces LoadAndPreprocessSpectra +
-   // AllocateResultsMem + RunSearch + PostAnalysis for the FI_DB case.
+   // Fused FI_DB/PI_DB batch path: stream spectra through a bounded producer/
+   // consumer queue into FusedSearchSpectrum workers.  Replaces
+   // LoadAndPreprocessSpectra + AllocateResultsMem + RunSearch + PostAnalysis for
+   // both index-based search types -- see FiStrategy::executeBatch() and
+   // PiStrategy::executeBatch().
    static bool FusedLoadAndSearchSpectra(MSReader& mstReader,
                                           int iFirstScan,
                                           int iLastScan,

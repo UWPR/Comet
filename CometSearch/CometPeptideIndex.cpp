@@ -128,19 +128,30 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    size_t tNumProteinEntries;
    (void)fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
 
-   g_pvProteinsList.clear();
-   g_pvProteinsList.reserve(tNumProteinEntries);
+   // Read directly into flat CSR staging buffers instead of one throwaway
+   // vector<comet_fileoffset_t> per row -- avoids tNumProteinEntries individual
+   // heap allocations (each immediately freed by ProteinsListCSR::push_back's
+   // swap-to-release), the same per-row allocation cost append_flat() was
+   // built to eliminate on the build side (see its comment in core/Types.h).
+   vector<comet_fileoffset_t> vFlatProteinOffsets;
+   vector<uint32_t> vProteinCounts;
+   vProteinCounts.reserve(tNumProteinEntries);
 
    for (size_t i = 0; i < tNumProteinEntries; ++i)
    {
       size_t tNumProteins;
       (void)fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
 
-      vector<comet_fileoffset_t> vTmp(tNumProteins);
-      for (size_t j = 0; j < tNumProteins; ++j)
-         (void)fread(&vTmp[j], clSizeCometFileOffset, 1, fp);
-      g_pvProteinsList.push_back(std::move(vTmp));
+      size_t tOldSize = vFlatProteinOffsets.size();
+      vFlatProteinOffsets.resize(tOldSize + tNumProteins);
+      (void)fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp);
+
+      vProteinCounts.push_back((uint32_t)tNumProteins);
    }
+
+   g_pvProteinsList.clear();
+   g_pvProteinsList.reserve(tNumProteinEntries);
+   g_pvProteinsList.append_flat(vFlatProteinOffsets, vProteinCounts);
 
    // The file position after reading the proteins list is where the peptides start.
    comet_fileoffset_t lFirstPeptidePos = comet_ftell(fp);
@@ -164,7 +175,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             + " from .idx file; file may be truncated or corrupt.\n");
          return false;
       }
-      g_pvDBIndex.push_back(sEntry);
+      g_pvDBIndex.push_back(std::move(sEntry));
    }
 
    // g_pvDBIndex is already sorted by mass from the .idx file
