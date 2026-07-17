@@ -79,7 +79,7 @@ namespace RealTimeSearch
 
          // Parse ascorepro flag (default off -- preserves prior hardcoded behavior).
          // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally).
-         bool bEnableAScorePro = false;
+         bool bEnableAScorePro = true;
          if (args.Length >= 5)
          {
             if (!int.TryParse(args[4], out int iAScoreProArg) || (iAScoreProArg != 0 && iAScoreProArg != 1))
@@ -133,8 +133,7 @@ namespace RealTimeSearch
 
                      Stopwatch watchGlobal = new Stopwatch();
                      Stopwatch watchIndexCreate = new Stopwatch();
-                     Stopwatch watchSearchMS1 = new Stopwatch();
-                     Stopwatch watchSearchMS2 = new Stopwatch();
+                     Stopwatch watchParallelPhase = new Stopwatch();   // single-threaded wall clock around Task.Run..Task.WaitAll; Start/Stop each called exactly once, so unlike a Stopwatch shared/toggled from multiple concurrent threads, it can't race or under-count
 
                      watchGlobal.Start();
 
@@ -190,7 +189,6 @@ namespace RealTimeSearch
                      var rawFileLock = new object();
                      int scansProcessedMS2 = 0;
                      int totalScans = iLastScan - iFirstScan + 1;
-                     double cumulativeElapsedMS2 = 0.0;  // cumulative ms spent inside DoSingleSpectrumSearchMultiResults only
 
                      // Initialize ONCE (before threading)
                      if (bPerformMS1Search)
@@ -278,14 +276,12 @@ namespace RealTimeSearch
                               {
                                  int iMS1TopN = 1;
                                  watch.Restart();
-                                 watchSearchMS1.Start();
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
                                  globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
                                     pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
 
                                  watch.Stop();
-                                 watchSearchMS1.Stop();
 
                                  result.ScoresMS1 = vScores;
                                  result.ElapsedMs = (int)watch.ElapsedMilliseconds;
@@ -327,8 +323,6 @@ namespace RealTimeSearch
                                  }
 
                                  watch.Restart();
-                                 watchSearchMS2.Start();
-
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
                                  globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ,
@@ -339,7 +333,6 @@ namespace RealTimeSearch
                                     out List<ScoreWrapper> vScores);
 
                                  watch.Stop();
-                                 watchSearchMS2.Stop();
 
                                  double elapsedThisSpec = watch.Elapsed.TotalMilliseconds;
 
@@ -351,7 +344,6 @@ namespace RealTimeSearch
                                  lock (progressLock)
                                  {
                                     scansProcessedMS2++;
-                                    cumulativeElapsedMS2 += elapsedThisSpec;
                                  }
                               }
 
@@ -379,6 +371,7 @@ namespace RealTimeSearch
                      {
                         // Launch worker threads
                         Task[] tasks = new Task[numThreads];
+                        watchParallelPhase.Start();
                         for (int i = 0; i < numThreads; ++i)
                         {
                            int threadId = i;
@@ -387,6 +380,7 @@ namespace RealTimeSearch
 
                         // Wait for all threads to complete
                         Task.WaitAll(tasks);
+                        watchParallelPhase.Stop();
                         Console.WriteLine(); // newline after progress
 
                         watchGlobal.Stop();
@@ -409,6 +403,7 @@ namespace RealTimeSearch
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
+                     double ms1ElapsedTotalMs = 0.0;   // sum of each MS1 search's own accurately-measured (thread-local watch) duration
 
                      foreach (var result in sortedResults)
                      {
@@ -416,6 +411,8 @@ namespace RealTimeSearch
 
                         if (result.ScanType == MSOrderType.Ms && result.ScoresMS1 != null && result.ScoresMS1.Count > 0)
                         {
+                           ms1ElapsedTotalMs += result.ElapsedMs;   // use the uncapped value, not the histogram-clamped iTime below
+
                            if (iTime >= iMaxHistogramTime)
                               iTime = iMaxHistogramTime - 1;
                            if (iTime >= 0)
@@ -505,14 +502,14 @@ namespace RealTimeSearch
                            iTot > 0 ? ((double)iAbove10ms / iTot) * 100.0 : 0);
                         rtsWriter.WriteLine(line);
 
-                        double dAvgTimePerScan = scansProcessedMS2 > 0 ? ((double)cumulativeElapsedMS2 / (double)scansProcessedMS2)/numThreads: 0;
+                        double dAvgTimePerScan = scansProcessedMS2 > 0 ? watchParallelPhase.Elapsed.TotalMilliseconds / (double)scansProcessedMS2 : 0;
                         double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
 
                         line = string.Format("\n initialize elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
-                        line = string.Format( " MS2 search elapsed time: {0:F2} s", watchSearchMS2.Elapsed.TotalSeconds);
+                        line = string.Format( " MS2 search elapsed time: {0:F2} s", watchParallelPhase.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
@@ -520,7 +517,7 @@ namespace RealTimeSearch
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
-                        line = string.Format(" MS1 search elapsed time: {0:F2} s", watchSearchMS1.Elapsed.TotalSeconds);
+                        line = string.Format(" MS1 search elapsed time: {0:F2} s", ms1ElapsedTotalMs / 1000.0);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
