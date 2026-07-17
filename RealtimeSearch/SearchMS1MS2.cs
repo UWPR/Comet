@@ -587,10 +587,6 @@ namespace RealTimeSearch
             string MS1MassRangeString = dMS1MassLow.ToString() + " " + dMS1MassHigh.ToString();
             SearchMgr.SetParam("ms1_mass_range", MS1MassRangeString, MS1MassRange);
 
-            iTmp = 100; // search time cutoff in milliseconds
-            sTmp = iTmp.ToString();
-            SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
-
             SearchMgr.SetParam("num_threads", numThreads.ToString(), numThreads);
 
             dTmp = 0.02; // fragment bin width
@@ -625,7 +621,7 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 
-            iTmp = 200; // search time cutoff in milliseconds
+            iTmp = 500; // search time cutoff in milliseconds
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_index_runtime", sTmp, iTmp);
 

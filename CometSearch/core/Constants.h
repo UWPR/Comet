@@ -48,7 +48,7 @@
 // regardless of total thread count (measured at both 8 and 20 threads); 50 is
 // the conservative choice. See docs/20260715_fusedflush.md for the sweep data.
 #define FUSED_FLUSH_PER_THREAD      50
-#define FUSED_FLUSH_MIN_BATCH_SIZE  100
+#define FUSED_FLUSH_MIN_BATCH_SIZE  5000
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  10000    // raised from 2000; see docs/20260714_modifications.md
