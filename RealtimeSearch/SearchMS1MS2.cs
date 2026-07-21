@@ -38,6 +38,27 @@ namespace RealTimeSearch
 
       }
 
+      // Prototype: result of a single-threaded upfront pass over the raw file, done
+      // once before any search thread starts, so no thread ever touches the shared
+      // IRawDataPlus instance during the parallel search phase -- removes the need
+      // for rawFileLock entirely instead of working around it. Valid=false covers
+      // both non-MS1/MS2 scan types and MS1 scans skipped because MS1 search is off
+      // (see the preload loop -- fetching a full MS1 profile trace that nothing will
+      // ever search is pure waste, and under the old code it paid the rawFileLock
+      // cost during the parallel phase for zero benefit).
+      private struct PreloadedScan
+      {
+         public int ScanNumber;
+         public MSOrderType ScanType;
+         public double RT;
+         public double[] Mass;
+         public double[] Intensity;
+         public int NumPeaks;
+         public double PrecursorMZ;
+         public int PrecursorCharge;
+         public bool Valid;
+      }
+
       static void Main(string[] args)
       {
          if (args.Length < 2)
@@ -133,6 +154,7 @@ namespace RealTimeSearch
 
                      Stopwatch watchGlobal = new Stopwatch();
                      Stopwatch watchIndexCreate = new Stopwatch();
+                     Stopwatch watchPreload = new Stopwatch();        // single-threaded wall clock around the upfront raw-file preload pass
                      Stopwatch watchParallelPhase = new Stopwatch();   // single-threaded wall clock around Task.Run..Task.WaitAll; Start/Stop each called exactly once, so unlike a Stopwatch shared/toggled from multiple concurrent threads, it can't race or under-count
 
                      watchGlobal.Start();
@@ -179,14 +201,6 @@ namespace RealTimeSearch
                      var scanQueue = new ConcurrentQueue<int>();
                      var results = new ConcurrentBag<ScanResult>();
                      var progressLock = new object();
-                     // Thermo's RawFileReader serializes concurrent calls internally (does not
-                     // crash), but does not guarantee the returned scan data is correct/consistent
-                     // under concurrent access from multiple threads sharing one IRawDataPlus
-                     // instance -- observed as small, run-to-run-varying differences in a handful
-                     // of PSMs (occasionally a different peptide on a near-tie, more often just the
-                     // E-value) even with every other stage of the pipeline fully deterministic.
-                     // All reads from the shared rawFile must be serialized at the app level.
-                     var rawFileLock = new object();
                      int scansProcessedMS2 = 0;
                      int totalScans = iLastScan - iFirstScan + 1;
 
@@ -201,6 +215,94 @@ namespace RealTimeSearch
 
                      Console.WriteLine();
 
+                     // Prototype: single-threaded upfront preload of every scan's data from the
+                     // raw file, done BEFORE any search thread starts. This is the only code that
+                     // ever touches `rawFile` -- no lock is needed because nothing else runs
+                     // concurrently with this loop. MS1 scans are only fully read (full profile
+                     // trace -- can be ~20K points, far bigger than a centroided MS2 spectrum)
+                     // when bPerformMS1Search is actually on; otherwise only cheap metadata
+                     // (RT/scan type) is captured so downstream skip logic still works.
+                     var preloadedScans = new PreloadedScan[totalScans];
+
+                     watchPreload.Start();
+                     for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
+                     {
+                        int idx = iScanNumber - iFirstScan;
+
+                        var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
+                        double dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
+                        var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
+                        MSOrderType eScanOrder = scanFilter.MSOrder;
+
+                        if (eScanOrder != MSOrderType.Ms && eScanOrder != MSOrderType.Ms2)
+                        {
+                           preloadedScans[idx] = new PreloadedScan { ScanNumber = iScanNumber, ScanType = eScanOrder, RT = dRT, Valid = false };
+                           continue;
+                        }
+
+                        if (eScanOrder == MSOrderType.Ms && !bPerformMS1Search)
+                        {
+                           preloadedScans[idx] = new PreloadedScan { ScanNumber = iScanNumber, ScanType = eScanOrder, RT = dRT, Valid = false };
+                           continue;
+                        }
+
+                        double[] pdMass;
+                        double[] pdInten;
+                        int iNumPeaks;
+
+                        if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
+                        {
+                           var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
+                           iNumPeaks = centroidStream.Length;
+                           pdMass = centroidStream.Masses;
+                           pdInten = centroidStream.Intensities;
+                        }
+                        else
+                        {
+                           var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
+                           iNumPeaks = segmentedScan.Positions.Length;
+                           pdMass = segmentedScan.Positions;
+                           pdInten = segmentedScan.Intensities;
+                        }
+
+                        double dPrecursorMZ = 0;
+                        int iPrecursorCharge = 0;
+
+                        if (eScanOrder == MSOrderType.Ms2)
+                        {
+                           dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
+
+                           var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
+                           for (int i = 0; i < trailerData.Length; ++i)
+                           {
+                              if (trailerData.Labels[i] == "Monoisotopic M/Z:")
+                              {
+                                 double dTmp = double.Parse(trailerData.Values[i]);
+                                 double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
+
+                                 if (dTmp != 0.0 && dMassDiff < 10.0)
+                                    dPrecursorMZ = dTmp;
+                              }
+                              else if (trailerData.Labels[i] == "Charge State:")
+                                 iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
+                           }
+                        }
+
+                        preloadedScans[idx] = new PreloadedScan
+                        {
+                           ScanNumber = iScanNumber,
+                           ScanType = eScanOrder,
+                           RT = dRT,
+                           Mass = pdMass,
+                           Intensity = pdInten,
+                           NumPeaks = iNumPeaks,
+                           PrecursorMZ = dPrecursorMZ,
+                           PrecursorCharge = iPrecursorCharge,
+                           Valid = true
+                        };
+                     }
+                     watchPreload.Stop();
+
                      // Populate scan queue
                      for (int i = iFirstScan; i <= iLastScan; ++i)
                         scanQueue.Enqueue(i);
@@ -210,112 +312,51 @@ namespace RealTimeSearch
                      {
                         Stopwatch watch = new Stopwatch();
 
-                        // Process scans from queue using SHARED resources
+                        // Process scans from queue -- purely in-memory, no shared-resource locking:
+                        // every scan's data was already read by the single-threaded preload pass above.
                         while (scanQueue.TryDequeue(out int iScanNumber))
                         {
                            try
                            {
-                              // Raw file reads must be serialized -- see rawFileLock comment above.
-                              double dRT;
-                              MSOrderType eScanOrder;
-                              double[] pdMass;
-                              double[] pdInten;
-                              int iNumPeaks;
-                              bool bSkipScan = false;
+                              PreloadedScan pre = preloadedScans[iScanNumber - iFirstScan];
 
-                              lock (rawFileLock)
-                              {
-                                 var scanStatistics = rawFile.GetScanStatsForScanNumber(iScanNumber);
-                                 dRT = 60.0 * rawFile.RetentionTimeFromScanNumber(iScanNumber);
-                                 var scanFilter = rawFile.GetFilterForScanNumber(iScanNumber);
-                                 eScanOrder = scanFilter.MSOrder;
-
-                                 if (eScanOrder != MSOrderType.Ms && eScanOrder != MSOrderType.Ms2)
-                                 {
-                                    bSkipScan = true;
-                                    pdMass = null;
-                                    pdInten = null;
-                                    iNumPeaks = 0;
-                                 }
-                                 // Get spectral data
-                                 else if (scanStatistics.IsCentroidScan && (scanStatistics.SpectrumPacketType == SpectrumPacketType.FtCentroid))
-                                 {
-                                    var centroidStream = rawFile.GetCentroidStream(iScanNumber, false);
-                                    iNumPeaks = centroidStream.Length;
-                                    pdMass = centroidStream.Masses;
-                                    pdInten = centroidStream.Intensities;
-                                 }
-                                 else
-                                 {
-                                    var segmentedScan = rawFile.GetSegmentedScanFromScanNumber(iScanNumber, scanStatistics);
-                                    iNumPeaks = segmentedScan.Positions.Length;
-                                    pdMass = segmentedScan.Positions;
-                                    pdInten = segmentedScan.Intensities;
-                                 }
-                              }
-
-                              if (bSkipScan)
-                              {
+                              if (!pre.Valid)
                                  continue;
-                              }
 
-                              if (iNumPeaks < 10)  // don't bother searching sparse spectra
+                              if (pre.NumPeaks < 10)  // don't bother searching sparse spectra
                               {
                                  continue;
                               }
 
                               ScanResult result = new ScanResult
                               {
-                                 ScanNumber = iScanNumber,
-                                 ScanType = eScanOrder,
-                                 RT = dRT
+                                 ScanNumber = pre.ScanNumber,
+                                 ScanType = pre.ScanType,
+                                 RT = pre.RT
                               };
 
                               // Perform search using SHARED manager (C++ is thread-safe via mutexes)
-                              if (bPerformMS1Search && eScanOrder == MSOrderType.Ms)
+                              if (bPerformMS1Search && pre.ScanType == MSOrderType.Ms)
                               {
                                  int iMS1TopN = 1;
                                  watch.Restart();
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
-                                 globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
-                                    pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
+                                 globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, pre.RT,
+                                    pre.Mass, pre.Intensity, pre.NumPeaks, out List<ScoreWrapperMS1> vScores);
 
                                  watch.Stop();
 
                                  result.ScoresMS1 = vScores;
                                  result.ElapsedMs = (int)watch.ElapsedMilliseconds;
                               }
-                              else if (bPerformMS2Search && eScanOrder == MSOrderType.Ms2)
+                              else if (bPerformMS2Search && pre.ScanType == MSOrderType.Ms2)
                               {
-                                 int iPrecursorCharge = 0;
-                                 double dPrecursorMZ;
-
-                                 lock (rawFileLock)
-                                 {
-                                    dPrecursorMZ = rawFile.GetScanEventForScanNumber(iScanNumber).GetReaction(0).PrecursorMass;
-
-                                    var trailerData = rawFile.GetTrailerExtraInformation(iScanNumber);
-                                    for (int i = 0; i < trailerData.Length; ++i)
-                                    {
-                                       if (trailerData.Labels[i] == "Monoisotopic M/Z:")
-                                       {
-                                          double dTmp = double.Parse(trailerData.Values[i]);
-                                          double dMassDiff = Math.Abs(dTmp - dPrecursorMZ);
-
-                                          if (dTmp != 0.0 && dMassDiff < 10.0)
-                                             dPrecursorMZ = dTmp;
-                                       }
-                                       else if (trailerData.Labels[i] == "Charge State:")
-                                          iPrecursorCharge = (int)double.Parse(trailerData.Values[i]);
-                                    }
-                                 }
-
-                                 double dExpPepMass = (iPrecursorCharge * dPrecursorMZ) - (iPrecursorCharge - 1) * dProtonMass;
+                                 double dExpPepMass = (pre.PrecursorCharge * pre.PrecursorMZ) - (pre.PrecursorCharge - 1) * dProtonMass;
 
                                  result.ExpMass = dExpPepMass - dProtonMass;  // store neutral mass
-                                 result.Charge = iPrecursorCharge;
-                                 result.MZ = dPrecursorMZ;
+                                 result.Charge = pre.PrecursorCharge;
+                                 result.MZ = pre.PrecursorMZ;
 
                                  if (dExpPepMass < dPeptideMassLow || dExpPepMass > dPeptideMassHigh)
                                  {
@@ -325,8 +366,8 @@ namespace RealTimeSearch
                                  watch.Restart();
 
                                  // Use SHARED globalSearchMgr (thread-safe on C++ side)
-                                 globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, iPrecursorCharge, dPrecursorMZ,
-                                    pdMass, pdInten, iNumPeaks,
+                                 globalSearchMgr.DoSingleSpectrumSearchMultiResults(iMS2TopN, pre.PrecursorCharge, pre.PrecursorMZ,
+                                    pre.Mass, pre.Intensity, pre.NumPeaks,
                                     out List<string> vPeptide,
                                     out List<string> vProtein,
                                     out List<List<FragmentWrapper>> vMatchingFragments,
@@ -399,7 +440,7 @@ namespace RealTimeSearch
                      var sortedResults = results.OrderBy(r => r.ScanNumber).ToList();
 
                      // Create histograms
-                     int iMaxHistogramTime = 300;
+                     int iMaxHistogramTime = 500;
                      int[] piTimeSearchMS1 = new int[iMaxHistogramTime];
                      int[] piTimeSearchMS2 = new int[iMaxHistogramTime];
                      var slowestRuns = new List<(int TimeMs, string Peptide, int ScanNumber, double XCorr)>();
@@ -506,6 +547,10 @@ namespace RealTimeSearch
                         double dHz = dAvgTimePerScan > 0 ? 1000.0 / dAvgTimePerScan : 0;
 
                         line = string.Format("\n initialize elapsed time: {0:F2} s", watchIndexCreate.Elapsed.TotalSeconds);
+                        rtsWriter.WriteLine(line);
+                        Console.WriteLine(line);
+
+                        line = string.Format(" raw file preload elapsed time: {0:F2} s", watchPreload.Elapsed.TotalSeconds);
                         rtsWriter.WriteLine(line);
                         Console.WriteLine(line);
 
