@@ -10,6 +10,13 @@ of millions of modified peptide entries. Replaced it with `VarModSites`, a compa
 (no heap allocation) struct mirroring the on-disk `(position, residue)` pair format directly, and
 reordered `DBIndex`'s fields to eliminate resulting struct padding.
 
+**Note on figures:** the commit message for this change quotes "13.1GB->9.2GB (-30%)" at the
+80.7M-peptide production scale. That does not match this doc's own numbers: the production-scale
+baseline measured here is 11.6GB, not 13.1GB, and the only real A/B measurement in the Validation
+section below is at the 52.3M-peptide scale (6.79GB->5.03GB search RSS); the 80.7M-peptide figure
+(~8.7-9.1GB) is an extrapolation from that measurement, not a direct measurement. Treat this doc's
+numbers, not the commit message's, as authoritative.
+
 ## Background
 
 Follow-up to `docs/20260715_fusedflush.md`'s PI_DB batch-search memory work. A real RTS PI_DB

@@ -300,6 +300,8 @@ The first `RTS_TIMING` run showed `llCalcAScore == 0` for **100% of ~49,800 spec
 - `RealtimeSearch/SearchMS1MS2.cs`: added an optional 5th CLI argument (`ascorepro`: 0=off default,
   1=localize all mods), threaded through `ConfigureInputSettings()`, replacing the hardcoded `0`.
   Defaults to the prior (off) behavior so existing invocations of `RealtimeSearch.exe` are unaffected.
+  (Superseded later in the same branch: the default was subsequently changed to `1` (on), so
+  invocations without the 5th arg now get AScorePro localization enabled by default.)
 - `CometSearchManager.cpp`: added the same `SetAScoreOptions()` + `CreateAScoreDllInterface()` block
   to the PI_DB branch of `InitializeSingleSpectrumSearch()` that the FI_DB branch already had, so
   `g_AScoreInterface` actually gets created for RTS PI_DB search.

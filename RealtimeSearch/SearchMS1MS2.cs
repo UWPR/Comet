@@ -66,7 +66,7 @@ namespace RealTimeSearch
             Console.WriteLine(" RTS MS1/MS2\n");
             Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro]\n",
                System.AppDomain.CurrentDomain.FriendlyName);
-            Console.WriteLine("    ascorepro: 0=off (default), 1=localize all variable mods\n");
+            Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
             return;
          }
 
@@ -98,14 +98,14 @@ namespace RealTimeSearch
 
          Console.WriteLine(" Using {0} search threads\n", numThreads);
 
-         // Parse ascorepro flag (default off -- preserves prior hardcoded behavior).
+         // Parse ascorepro flag (default on: localize all variable mods).
          // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally).
          bool bEnableAScorePro = true;
          if (args.Length >= 5)
          {
             if (!int.TryParse(args[4], out int iAScoreProArg) || (iAScoreProArg != 0 && iAScoreProArg != 1))
             {
-               Console.WriteLine(" Warning: Invalid ascorepro '{0}', using 0 (off)", args[4]);
+               Console.WriteLine(" Warning: Invalid ascorepro '{0}', using default (1, on)", args[4]);
             }
             else
             {
