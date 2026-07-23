@@ -44,9 +44,7 @@
 // the next round's jobs are dispatched (and, for readahead, its background
 // reader thread torn down and recreated), so the *per-thread* share of a round
 // is what needs to stay above the amortization floor, not the round's total
-// size. Empirically, throughput reaches its ceiling around 50-125 spectra/thread
-// regardless of total thread count (measured at both 8 and 20 threads); 50 is
-// the conservative choice. See docs/20260715_fusedflush.md for the sweep data.
+// size.
 #define FUSED_FLUSH_PER_THREAD      50
 #define FUSED_FLUSH_MIN_BATCH_SIZE  5000
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
