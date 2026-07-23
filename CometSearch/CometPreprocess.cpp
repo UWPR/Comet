@@ -69,10 +69,19 @@ struct RtsScratch
 
    int     iAllocSize;             // 0 = not yet initialised
 
+   // _pResults / _pDecoys pool: avoids a ~160 KB new[]/delete[] of Results[iNumStored]
+   // (each Results is ~1.6 KB -- see docs/20260714_rtspostprocessing.md finding 1) plus
+   // a full per-field reset loop, on every single RTS spectrum. Allocated once per
+   // thread; reset in place (not reallocated) between spectra via ResetResultsForNewSpectrum().
+   Results* pResults;
+   Results* pDecoys;               // only allocated when iDecoySearch == 2
+   int      iResultsCapacity;      // 0 = not yet initialised
+
    RtsScratch()
       : pdTmpRawData(nullptr), pdTmpFastXcorrData(nullptr), pdTmpCorrelationData(nullptr),
         pfFastXcorrData(nullptr), pfFastXcorrDataNL(nullptr), pfSpScoreData(nullptr),
-        pSparseChildPool(nullptr), iSparsePoolCapacity(0), iSparsePoolUsed(0), iAllocSize(0)
+        pSparseChildPool(nullptr), iSparsePoolCapacity(0), iSparsePoolUsed(0), iAllocSize(0),
+        pResults(nullptr), pDecoys(nullptr), iResultsCapacity(0)
    {}
 
    ~RtsScratch()
@@ -84,6 +93,8 @@ struct RtsScratch
       delete[] pfFastXcorrDataNL;
       delete[] pfSpScoreData;
       delete[] pSparseChildPool;
+      delete[] pResults;
+      delete[] pDecoys;
    }
 
    // Called once on first use (or if global array size changes at re-init).
@@ -138,6 +149,62 @@ struct RtsScratch
       if (iSparsePoolUsed < iSparsePoolCapacity)
          return pSparseChildPool + (size_t)iSparsePoolUsed++ * SPARSE_MATRIX_SIZE;
       return new float[SPARSE_MATRIX_SIZE]();   // safety fallback
+   }
+
+   // Called once on first use (or if iNumStored / decoy-search config changes).
+   void EnsureResultsInitialized()
+   {
+      const int  iCapacity   = g_staticParams.options.iNumStored;
+      const bool bWantDecoys = (g_staticParams.options.iDecoySearch == 2);
+
+      if (iCapacity == iResultsCapacity && (pDecoys != nullptr) == bWantDecoys)
+         return;
+
+      delete[] pResults;
+      delete[] pDecoys;
+
+      pResults = new Results[iCapacity];
+      pDecoys  = bWantDecoys ? new Results[iCapacity] : nullptr;
+
+      iResultsCapacity = iCapacity;
+   }
+
+   // Resets the subset of Results fields that PreprocessSingleSpectrumCore's
+   // batch-path (non-pooled) loop also resets -- see the near-duplicate loops
+   // there for the batch-path equivalent. Mirrors that loop's field list exactly.
+   static void ResetOneResult(Results& r)
+   {
+      r.dPepMass = 0.0;
+      r.dExpect = 999;
+      r.fScoreSp = 0.0;
+      r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+      r.fAScorePro = 0.0;
+      r.usiLenPeptide = 0;
+      r.usiRankSp = 0;
+      r.usiMatchedIons = 0;
+      r.usiTotalIons = 0;
+      r.szPeptide[0] = '\0';
+      r.sAScoreProSiteScores.clear();
+      r.pWhichProtein.clear();
+      r.sPeffOrigResidues.clear();
+      r.iPeffOrigResiduePosition = -9;
+   }
+
+   // Called at the start of each new spectrum so pResults/pDecoys are clean for reuse.
+   void ResetResultsForNewSpectrum()
+   {
+      for (int j = 0; j < iResultsCapacity; ++j)
+      {
+         ResetOneResult(pResults[j]);
+         if (g_staticParams.options.iDecoySearch)
+            pResults[j].pWhichDecoyProtein.clear();
+      }
+
+      if (pDecoys != nullptr)
+      {
+         for (int j = 0; j < iResultsCapacity; ++j)
+            ResetOneResult(pDecoys[j]);
+      }
    }
 };
 
@@ -1660,8 +1727,32 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       return nullptr;
    }
 
+   // pPre.iHighestIon is updated from every peak's bin above (line ~1646-1647),
+   // unconditionally -- including peaks whose bin is >= iArraySize, which the ion-loading
+   // loop above deliberately never writes into pdTmpRawData for (guarded by
+   // "iBinIon < iArraySize"). MakeCorrData() below reads/writes pdTmpRawData/
+   // pdTmpCorrelationData up to iHighestIon (only capped by iArraySizeGlobal, not
+   // iArraySize -- see the "FIX: need to check why both iArraySize and iHighestIons are
+   // used" comment on MakeCorrData() itself). On the RTS thread-local-pool path these
+   // buffers are only pre-zeroed up to iArraySize + iXcorrProcessingOffset (see
+   // EnsureInitialized()/ResetForNewSpectrum() above), not the full iArraySizeGlobal like
+   // the batch path's Preprocess() always does -- so an out-of-range peak here let
+   // MakeCorrData read stale pdTmpRawData left behind by a larger spectrum previously
+   // processed on this thread, producing a genuinely different (not just
+   // differently-ordered) windowed-normalization result and therefore XCorr for
+   // candidates whose fragment bins share a MakeCorrData window with the contaminated
+   // tail. Confirmed as the root cause of the RTS E-value jitter investigated in
+   // docs/20260714_EvalueJitter.md (Phase 3: a temporary full-iArraySizeGlobal clear on
+   // the RTS path eliminated the jitter; reverting brought it back). Clamping here is
+   // sufficient and cheaper than widening the memset: pdTmpRawData is provably zero (once
+   // properly cleared) for any bin >= iArraySize, so MakeCorrData has nothing real to
+   // read past that point regardless of how much larger iHighestIon is.
+   int iHighestIonForCorrData = pPre.iHighestIon;
+   if (iHighestIonForCorrData >= iArraySize)
+      iHighestIonForCorrData = iArraySize - 1;
+
    // --- MakeCorrData: normalize to 100, windowed ---
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iHighestIonForCorrData, pPre.dHighestIntensity);
 
 #ifdef RTS_TIMING
    if (bUseThreadLocalPool)
@@ -1869,52 +1960,72 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    // Allocate _pResults (and _pDecoys if needed) so the Query is ready for search.
    // This mirrors what AllocateResultsMem() does for batch-search g_pvQuery entries.
-   pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
+   //
+   // RTS path (bUseThreadLocalPool=true): pull from the thread-local pool instead of
+   // new[]/delete[]-ing ~160 KB (Results[iNumStored], ~1.6 KB each) every spectrum --
+   // see docs/20260714_rtspostprocessing.md finding 1. Query::bResultsFromPool tells
+   // the destructor not to free this thread-owned memory.
+   //
+   // Batch path (bUseThreadLocalPool=false): allocate on heap as before.
    pScoring->iMatchPeptideCount = 0;
    pScoring->iDecoyMatchPeptideCount = 0;
    memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
 
-   for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+   if (bUseThreadLocalPool)
    {
-      pScoring->_pResults[j].dPepMass = 0.0;
-      pScoring->_pResults[j].dExpect = 999;
-      pScoring->_pResults[j].fScoreSp = 0.0;
-      pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-      pScoring->_pResults[j].fAScorePro = 0.0;
-      pScoring->_pResults[j].usiLenPeptide = 0;
-      pScoring->_pResults[j].usiRankSp = 0;
-      pScoring->_pResults[j].usiMatchedIons = 0;
-      pScoring->_pResults[j].usiTotalIons = 0;
-      pScoring->_pResults[j].szPeptide[0] = '\0';
-      pScoring->_pResults[j].sAScoreProSiteScores.clear();
-      pScoring->_pResults[j].pWhichProtein.clear();
-      pScoring->_pResults[j].sPeffOrigResidues.clear();
-      pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+      g_rtsScratch.EnsureResultsInitialized();
+      g_rtsScratch.ResetResultsForNewSpectrum();
 
-      if (g_staticParams.options.iDecoySearch)
-         pScoring->_pResults[j].pWhichDecoyProtein.clear();
+      pScoring->_pResults = g_rtsScratch.pResults;
+      pScoring->_pDecoys  = g_rtsScratch.pDecoys;
+      pScoring->bResultsFromPool = true;
    }
-
-   if (g_staticParams.options.iDecoySearch == 2)
+   else
    {
-      pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+      pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
 
       for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
       {
-         pScoring->_pDecoys[j].dPepMass = 0.0;
-         pScoring->_pDecoys[j].dExpect = 999;
-         pScoring->_pDecoys[j].fScoreSp = 0.0;
-         pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-         pScoring->_pDecoys[j].fAScorePro = 0.0;
-         pScoring->_pDecoys[j].usiLenPeptide = 0;
-         pScoring->_pDecoys[j].usiRankSp = 0;
-         pScoring->_pDecoys[j].usiMatchedIons = 0;
-         pScoring->_pDecoys[j].usiTotalIons = 0;
-         pScoring->_pDecoys[j].szPeptide[0] = '\0';
-         pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
-         pScoring->_pDecoys[j].pWhichProtein.clear();
-         pScoring->_pDecoys[j].sPeffOrigResidues.clear();
-         pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+         pScoring->_pResults[j].dPepMass = 0.0;
+         pScoring->_pResults[j].dExpect = 999;
+         pScoring->_pResults[j].fScoreSp = 0.0;
+         pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pScoring->_pResults[j].fAScorePro = 0.0;
+         pScoring->_pResults[j].usiLenPeptide = 0;
+         pScoring->_pResults[j].usiRankSp = 0;
+         pScoring->_pResults[j].usiMatchedIons = 0;
+         pScoring->_pResults[j].usiTotalIons = 0;
+         pScoring->_pResults[j].szPeptide[0] = '\0';
+         pScoring->_pResults[j].sAScoreProSiteScores.clear();
+         pScoring->_pResults[j].pWhichProtein.clear();
+         pScoring->_pResults[j].sPeffOrigResidues.clear();
+         pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+
+         if (g_staticParams.options.iDecoySearch)
+            pScoring->_pResults[j].pWhichDecoyProtein.clear();
+      }
+
+      if (g_staticParams.options.iDecoySearch == 2)
+      {
+         pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+
+         for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+         {
+            pScoring->_pDecoys[j].dPepMass = 0.0;
+            pScoring->_pDecoys[j].dExpect = 999;
+            pScoring->_pDecoys[j].fScoreSp = 0.0;
+            pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+            pScoring->_pDecoys[j].fAScorePro = 0.0;
+            pScoring->_pDecoys[j].usiLenPeptide = 0;
+            pScoring->_pDecoys[j].usiRankSp = 0;
+            pScoring->_pDecoys[j].usiMatchedIons = 0;
+            pScoring->_pDecoys[j].usiTotalIons = 0;
+            pScoring->_pDecoys[j].szPeptide[0] = '\0';
+            pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
+            pScoring->_pDecoys[j].pWhichProtein.clear();
+            pScoring->_pDecoys[j].sPeffOrigResidues.clear();
+            pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
+         }
       }
    }
 
@@ -3042,9 +3153,9 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
 }
 
 
-// Fused FI_DB batch worker: preprocess + RunSearch + post-analysis for one spectrum.
-// Uses per-thread g_rtsScratch scratch buffers (no shared batch pool contention).
-// iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
+// Fused FI_DB/PI_DB batch worker: preprocess + RunSearch + post-analysis for one
+// spectrum. Uses per-thread g_rtsScratch scratch buffers (no shared batch pool
+// contention). iSlot is this worker thread's pre-assigned _ppbDuplFragmentArr index.
 void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                                           int iSlot,
                                           std::vector<Query*>& outQueries,
@@ -3338,7 +3449,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
 }
 
 
-// Fused FI_DB batch loader: streams spectra from the raw file through a
+// Fused FI_DB/PI_DB batch loader: streams spectra from the raw file through a
 // bounded producer/consumer queue into FusedSearchSpectrum workers.  On return
 // g_pvQuery holds fully scored and post-analysed Query* objects ready for output.
 bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
@@ -3374,6 +3485,11 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // Running count of accumulated Query* across all workers.  Only read by the
    // producer, and only when iSpectrumBatchSize != 0 (batch-size cap feature).
    std::atomic<size_t> aQueryCount{0};
+
+   // Scaled by thread count -- see FUSED_FLUSH_PER_THREAD's comment in
+   // core/Constants.h for why a flat constant under-flushes at high thread counts.
+   const size_t iFlushBatchSize = std::max(static_cast<size_t>(FUSED_FLUSH_MIN_BATCH_SIZE),
+                                           static_cast<size_t>(iNumSlots) * FUSED_FLUSH_PER_THREAD);
 
    BoundedSpectrumQueue queue(static_cast<size_t>(iNumSlots) * 4);
 
@@ -3418,6 +3534,7 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    {
       iFileLastScan = pRA->iSnapshotLastScan.load(std::memory_order_relaxed);
       bool bAborted = false;
+      bool bFlushLimitHit = false;
 
       while (pRA->next(mstSpectrum))              // false at EOF/error/stop
       {
@@ -3442,12 +3559,26 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
          // iFileLastScan are already in hand.
          if (iTotalScans > iFileLastScan)
             break;
+
+         // Fused flush cap: stop pulling from the readahead ring once enough
+         // spectra have finished searching, so Pipeline::run() can write and
+         // free them and the held Query pool (each carrying its own sparse
+         // XCorr matrices) stays bounded independent of file size.  Unlike the
+         // other two breaks above, this does NOT mean EntireFile is done --
+         // requestStopAndJoin() below cleanly tears down this call's readahead
+         // thread, and the next executeBatch() call creates a fresh one to
+         // resume exactly where mstReader left off.
+         if (aQueryCount.load(std::memory_order_relaxed) >= iFlushBatchSize)
+         {
+            bFlushLimitHit = true;
+            break;
+         }
       }
 
       // Mirror CheckExit: error/cancel return true WITHOUT setting
       // _bDoneProcessingAllSpectra (see below); only a clean EOF or the
       // safety net above means EntireFile is actually done.
-      if (!bAborted)
+      if (!bAborted && !bFlushLimitHit)
          _bDoneProcessingAllSpectra = true;
    }
    else
@@ -3534,20 +3665,25 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
             }
          }
 
-         // No lock: when iSpectrumBatchSize == 0 (the common case) CheckExit ignores
-         // the count entirely, so pass 0.  When the batch-size cap is active, read the
-         // lock-free running total.  This value is inherently approximate under
-         // concurrency (the old locked read was too -- workers appended while the
-         // producer held the lock), so relaxed ordering preserves existing behavior.
+         // legacy iSpectrumBatchSize/FRAGINDEX_MAX_BATCHSIZE governs the load-all-
+         // then-search-all path only; ignore it here (bIgnoreSpectrumBatchSize=true)
+         // in favor of the fused-specific flush check below (iFlushBatchSize, scaled
+         // by thread count -- see FUSED_FLUSH_PER_THREAD in core/Constants.h), which
+         // is entirely independent of the legacy batch-size concept.
+         if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                       mstReader.getLastScan(), 0, true))
          {
-            int iLoaded = (g_staticParams.options.iSpectrumBatchSize != 0)
-                             ? (int)aQueryCount.load(std::memory_order_relaxed)
-                             : 0;
-            if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
-                          mstReader.getLastScan(), iLoaded, 0))
-            {
-               break;
-            }
+            break;
+         }
+
+         // No lock: this value is inherently approximate under concurrency (the old
+         // locked read was too -- workers appended while the producer held the
+         // lock), so relaxed ordering preserves existing behavior. Not treated as
+         // "done" -- the next executeBatch() call resumes reading where this one
+         // left off.
+         if (aQueryCount.load(std::memory_order_relaxed) >= iFlushBatchSize)
+         {
+            break;
          }
       }
    }

@@ -853,6 +853,12 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    double precursorMz;
    int precursorCharge;
 
+   // Caller must have initialized the interface (CreateAScoreDllInterface()) before
+   // enabling print_ascorepro_score; a null interface here means that initialization
+   // was skipped for this search's iDbType/code path.
+   if (ascoreInterface == nullptr)
+      return;
+
    // sanity check here; AScorePro will segfault if peptide length is 0
    if (pQuery->_pResults[0].usiLenPeptide <= 0)
       return;

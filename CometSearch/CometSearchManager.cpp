@@ -1518,6 +1518,16 @@ bool CometSearchManager::InitializeStaticParams()
          if (!strncmp(szTmp, "Comet peptide index", 19))
          {
             g_staticParams.iDbType = DbType::PI_DB;
+
+            // Same reasoning as the FI_DB branch below: this clamp only matters for
+            // the legacy load-all-then-search-all path (PiStrategy falls back to it
+            // for Mango/speclib runs; see PiStrategy::executeBatch()) -- the fused
+            // path ignores iSpectrumBatchSize entirely in favor of its own
+            // thread-scaled flush threshold. Previously missing here (only the FI_DB branch
+            // had it), which left a default/unset spectrum_batch_size unbounded for
+            // any PI_DB search that fell back to the legacy path.
+            if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+               g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
          }
          else if (!strncmp(szTmp, "Comet fragment ion index", 24))
          {
@@ -2094,9 +2104,10 @@ bool CometSearchManager::DoSearch()
        {
           // Standalone index-only run: the .idx file is written and fclose()
           // has already been called.  Skip all C++ static-duration destructors
-          // -- the OS reclaims every page instantly.  Without this, ~80-90M
-          // individual free() calls for g_pvDBIndex vector<char> pcVarModSites
-          // members would add ~1-2 min of cleanup after the "done" message.
+          // -- the OS reclaims every page instantly.  g_pvDBIndex's pcVarModSites
+          // is now an inline VarModSites (core/Types.h, no per-entry heap
+          // allocation), so this mainly just avoids the O(n) vector<DBIndex>
+          // teardown itself at ~80-90M entries rather than per-entry free() calls.
           fflush(stdout);
           fflush(stderr);
           _exit(0);
@@ -2255,8 +2266,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.iDbType == DbType::FI_DB && !g_bPlainPeptideIndexRead)
       {
-         sqSearch.ReadPlainPeptideIndex();
-         sqSearch.CreateFragmentIndex(tp);
+         sqSearch.ReadPlainPeptideIndex(true);   // RTS: InitializeSingleSpectrumSearch()
+         sqSearch.CreateFragmentIndex(tp, true);
 
          if (g_staticParams.options.iPrintAScoreProScore)
          {
@@ -2284,7 +2295,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    // This runs once under the singleSearchInitializationComplete atomic guard.
    if (g_staticParams.iDbType == DbType::PI_DB && !g_bPeptideIndexRead)
    {
-      if (!CometPeptideIndex::ReadPeptideIndex())
+      if (!CometPeptideIndex::ReadPeptideIndex(true))   // RTS: InitializeSingleSpectrumSearch()
       {
          string strErrorMsg = " Error - failed to read peptide index in InitializeSingleSpectrumSearch().\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -2307,6 +2318,25 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       // Search memory (pbDuplFragment arrays) is already allocated by the
       // unconditional CometSearch::AllocateMemory() call earlier in this function;
       // nothing deallocates it on the PI_DB path before here.
+
+      if (g_staticParams.options.iPrintAScoreProScore)
+      {
+         // Mirrors the FI_DB branch above -- without this, g_AScoreInterface stays
+         // NULL for the entire session (CometSearch::EnsurePeptideIndexLoaded()'s own
+         // AScoreInterface-creation code never runs for RTS PI_DB, since it's gated on
+         // g_bPeptideIndexRead being false, and this function already set it to true
+         // above before that code path is ever reached).
+         SetAScoreOptions(g_AScoreOptions);
+
+         g_AScoreInterface = CreateAScoreDllInterface();
+         if (!g_AScoreInterface)
+         {
+            string strErrorMsg = " Error - failed to create AScore interface.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
 
       g_bPeptideIndexRead = true;
    }
@@ -2501,6 +2531,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
+   takeSearchResultsN = topN;
+   if (takeSearchResultsN > iSize)
+      takeSearchResultsN = iSize;
+
    if (g_staticParams.options.iMaxIndexRunTime > 0)
    {
       auto tNow = std::chrono::high_resolution_clock::now();
@@ -2514,15 +2548,33 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 #endif
    if (iSize > 1)
    {
-      std::sort(pQuery->_pResults, pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
+      // Only a prefix needs to be fully, correctly sorted -- the rest of
+      // _pResults[0, iSize) never gets read again this call:
+      //  - the output-extraction loop below only reads [0, takeSearchResultsN)
+      //  - CalculateSP() only reads [0, takeSearchResultsN) (CometPostAnalysis.cpp:498)
+      //  - CalculateEValue() does not depend on sort order at all -- dExpect is a
+      //    pure function of each entry's own fXcorr (CometPostAnalysis.cpp:1403-1430)
+      //  - CalculateDeltaCn() -> CalculateDeltaCnsAndRank() walks up to
+      //    iNumPeptideOutputLines + 1 entries and DOES depend on adjacency-based
+      //    sort order to compute delta-Cn/rank correctly for the entries actually
+      //    returned (CometPostAnalysis.cpp:269-363) -- this is the binding
+      //    constraint whenever it exceeds takeSearchResultsN.
+      // iNumStored is already >= iNumPeptideOutputLines + 1 (enforced at
+      // CometSearchManager.cpp:1393-1395), so clamping to iSize (<= iNumStored)
+      // can only shrink the bound when the search itself found fewer than
+      // iNumPeptideOutputLines + 1 candidates -- never invalidate it.
+      int iSortBound = takeSearchResultsN;
+      if (g_staticParams.options.iNumPeptideOutputLines + 1 > iSortBound)
+         iSortBound = g_staticParams.options.iNumPeptideOutputLines + 1;
+      if (iSortBound > iSize)
+         iSortBound = iSize;
+
+      std::partial_sort(pQuery->_pResults, pQuery->_pResults + iSortBound,
+         pQuery->_pResults + iSize, CometPostAnalysis::SortFnXcorr);
    }
 #ifdef RTS_TIMING
    llSort = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
 #endif
-
-   takeSearchResultsN = topN;
-   if (takeSearchResultsN > iSize)
-      takeSearchResultsN = iSize;
 
    // Step 4: Post-analysis using Query* overloads (no session.queries access)
    if (pQuery->iMatchPeptideCount > 0)
@@ -2631,6 +2683,18 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    }
 
    // Step 6: Extract results from thread-local Query*
+   strReturnPeptide.reserve(strReturnPeptide.size() + takeSearchResultsN);
+   strReturnProtein.reserve(strReturnProtein.size() + takeSearchResultsN);
+   matchedFragments.reserve(matchedFragments.size() + takeSearchResultsN);
+   scores.reserve(scores.size() + takeSearchResultsN);
+
+   // Reused across results (this call) and across spectra (this thread) instead of
+   // being declared fresh per result -- see docs/20260714_rtspostprocessing.md
+   // finding 5. This function is the RTS single-spectrum entry point only (never
+   // called from the batch multi-threaded path), so thread_local is safe here.
+   thread_local std::vector<string> tl_vProteinTargets;
+   thread_local std::vector<string> tl_vProteinDecoys;
+
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
       CometScores score;
@@ -2686,8 +2750,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          // FASTA_DB: seek and read from the file handle opened above.
          int iLenDecoyPrefix = (int)strlen(g_staticParams.szDecoyPrefix);
 
-         std::vector<string> vProteinTargets;
-         std::vector<string> vProteinDecoys;
+         tl_vProteinTargets.clear();
+         tl_vProteinDecoys.clear();
+         std::vector<string>& vProteinTargets = tl_vProteinTargets;
+         std::vector<string>& vProteinDecoys = tl_vProteinDecoys;
 
          if (g_staticParams.iDbType != DbType::FASTA_DB)
          {
@@ -2808,16 +2874,6 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
 
-         int iMinLength = g_staticParams.options.peptideLengthRange.iEnd;
-         for (int x = 0; x < iSize; ++x)
-         {
-            int iLen = (int)strlen(pOutput[x].szPeptide);
-            if (iLen == 0)
-               break;
-            if (iLen < iMinLength)
-               iMinLength = iLen;
-         }
-
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
          {
@@ -2868,6 +2924,13 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             bAddNtermFragmentNeutralLoss[iMod] = false;
             bAddCtermFragmentNeutralLoss[iMod] = false;
          }
+
+         // Upper bound on matched fragments (ignoring neutral losses, which are
+         // comparatively rare) -- avoids repeated push_back() reallocation growth
+         // for longer peptides / higher charge states / multiple ion series enabled.
+         eachMatchedFragments.reserve((size_t)(pQuery->_pResults[iWhichResult].usiLenPeptide - 1)
+            * pQuery->_spectrumInfoInternal.usiMaxFragCharge
+            * g_staticParams.ionInformation.iNumIonSeriesUsed);
 
          // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
          for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)

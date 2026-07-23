@@ -40,8 +40,10 @@ CometPeptideIndex::~CometPeptideIndex()
 //   [footer: iMinMass(int), iMaxMass(int), tNumPeptides(uint64_t),
 //            lIndex[iMaxMass*10](comet_fileoffset_t), lEndOfPeptides, clProteinsFilePos]
 //
-bool CometPeptideIndex::ReadPeptideIndex(void)
+bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 {
+   (void)bIsRTS;   // reserved for RTS-vs-batch-specific behavior; not yet used
+
    if (g_bPeptideIndexRead)
       return true;
 
@@ -126,19 +128,30 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    size_t tNumProteinEntries;
    (void)fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
 
-   g_pvProteinsList.clear();
-   g_pvProteinsList.reserve(tNumProteinEntries);
+   // Read directly into flat CSR staging buffers instead of one throwaway
+   // vector<comet_fileoffset_t> per row -- avoids tNumProteinEntries individual
+   // heap allocations (each immediately freed by ProteinsListCSR::push_back's
+   // swap-to-release), the same per-row allocation cost append_flat() was
+   // built to eliminate on the build side (see its comment in core/Types.h).
+   vector<comet_fileoffset_t> vFlatProteinOffsets;
+   vector<uint32_t> vProteinCounts;
+   vProteinCounts.reserve(tNumProteinEntries);
 
    for (size_t i = 0; i < tNumProteinEntries; ++i)
    {
       size_t tNumProteins;
       (void)fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
 
-      vector<comet_fileoffset_t> vTmp(tNumProteins);
-      for (size_t j = 0; j < tNumProteins; ++j)
-         (void)fread(&vTmp[j], clSizeCometFileOffset, 1, fp);
-      g_pvProteinsList.push_back(std::move(vTmp));
+      size_t tOldSize = vFlatProteinOffsets.size();
+      vFlatProteinOffsets.resize(tOldSize + tNumProteins);
+      (void)fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp);
+
+      vProteinCounts.push_back((uint32_t)tNumProteins);
    }
+
+   g_pvProteinsList.clear();
+   g_pvProteinsList.reserve(tNumProteinEntries);
+   g_pvProteinsList.append_flat(vFlatProteinOffsets, vProteinCounts);
 
    // The file position after reading the proteins list is where the peptides start.
    comet_fileoffset_t lFirstPeptidePos = comet_ftell(fp);
@@ -162,7 +175,7 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
             + " from .idx file; file may be truncated or corrupt.\n");
          return false;
       }
-      g_pvDBIndex.push_back(sEntry);
+      g_pvDBIndex.push_back(std::move(sEntry));
    }
 
    // g_pvDBIndex is already sorted by mass from the .idx file
@@ -191,11 +204,265 @@ bool CometPeptideIndex::ReadPeptideIndex(void)
    delete[] lIndex;
    fclose(fp);
 
-   logout(" Read peptide index: " + to_string(tNumPeptides) + " peptides, "
-      + to_string(tNumProteinEntries) + " protein groups\n");
+   if (bIsRTS)
+   {
+      logout(" Read peptide index: " + to_string(tNumPeptides) + " peptides, "
+         + to_string(tNumProteinEntries) + " protein groups\n");
+   }
+   else
+   {
+      logout("\n   - Read peptide index: " + to_string(tNumPeptides) + " peptides, "
+         + to_string(tNumProteinEntries) + " protein groups\n");
+   }
 
    g_staticParams.iDbType = DbType::PI_DB;
    g_bPeptideIndexRead = true;
+
+   return true;
+}
+
+
+// See docs/20260713_PIidxformat.md section 8 (Phase B). Mirrors
+// CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure (which
+// mod/n-term/c-term combinations to try per peptide) and AddFragments()'s mass
+// computation, but materializes full DBIndex entries (with explicit pcVarModSites)
+// instead of fragment-ion bins, since PI_DB's .idx format requires every specific
+// modified peptide fully enumerated and written, unlike FI_DB's deferred approach.
+//
+// Two deliberate deviations from AddFragments(), both scoped to this new function
+// only -- FI_DB's own code is untouched:
+//
+//  1. Mass is computed by adding variable-mod deltas onto
+//     g_vRawPeptides[iWhichPeptide].dPepMass (the authoritative unmodified mass,
+//     already correct including protein-terminal static mods, computed once during
+//     Phase A digestion) rather than recomputing residue-by-residue from
+//     dOH2ProtonCtermNterm. AddFragments()'s from-scratch recompute is documented
+//     (CometFragmentIndex.cpp:440-465) as tolerant of a protein-terminal-static-mod
+//     discrepancy of up to 10 Da -- acceptable for fragment-ion binning, but not for
+//     PI_DB's mass-tolerance-based precursor search.
+//
+//  2. The bVarModProteinFilter bitmask check skips any candidate position where
+//     mods[i] == -1 (not modified in this combination) before bit-testing it.
+//     AddFragmentsThreadProc's equivalent check (CometFragmentIndex.cpp:323-335)
+//     does not skip these, which passes -1 (a "no mod here" sentinel, not a slot
+//     index) to cometbitcheck()'s shift operand -- undefined behavior for a
+//     combination that leaves any candidate position unmodified. Also translates
+//     through vModSlotForAllModsIdx (see below) rather than bit-testing the
+//     compacted index directly.
+//
+// FI_DB's ModificationsPermuter compacts active variable_modNN slots into ALL_MODS,
+// skipping inactive/blank slots, so MOD_NUMBERS[].modifications[] values are indices
+// into that compacted list, not direct varModList slot indices. PI_DB's pcVarModSites
+// encoding (WritePeptideIndex()/ReadPeptideIndexEntry()) requires a direct varModList
+// slot index + 1. vModSlotForAllModsIdx rebuilds the exact same compaction order as
+// CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop to translate
+// between the two -- must stay in sync with that loop if it ever changes.
+bool CometPeptideIndex::MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEntries)
+{
+   vector<int> vModSlotForAllModsIdx;
+   for (int i = 0; i < FRAGINDEX_VMODS; ++i)
+   {
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
+      {
+         vModSlotForAllModsIdx.push_back(i);
+      }
+   }
+
+   bool bModSitesOverflow = false;
+
+   auto buildEntry = [&](size_t iWhichPeptide, int modNumIdx, char cNtermMod, char cCtermMod)
+   {
+      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
+      const int iLen = (int)strlen(raw.szPeptide);
+
+      double dCalcPepMass = raw.dPepMass;
+      VarModSites pcVarModSites;
+
+      if (modNumIdx >= 0)
+      {
+         const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
+         char* mods = modNum.modifications;
+         int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+         const string& modSeq = MOD_SEQS.at(modSeqIdx);
+
+         int j = 0;
+         for (int i = 0; i < iLen; ++i)
+         {
+            if (raw.szPeptide[i] == modSeq[j])
+            {
+               if (mods[j] != -1)
+               {
+                  int iSlot = vModSlotForAllModsIdx.at((size_t)mods[j]);
+                  dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+                  if (!pcVarModSites.set(i, (char)(iSlot + 1)))
+                  {
+                     bModSitesOverflow = true;
+                     return;
+                  }
+               }
+               j++;
+            }
+         }
+      }
+
+      if (cNtermMod >= 0)
+      {
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+         if (!pcVarModSites.set(iLen, (char)(cNtermMod + 1)))
+         {
+            bModSitesOverflow = true;
+            return;
+         }
+      }
+      if (cCtermMod >= 0)
+      {
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
+         if (!pcVarModSites.set(iLen + 1, (char)(cCtermMod + 1)))
+         {
+            bModSitesOverflow = true;
+            return;
+         }
+      }
+
+      if (dCalcPepMass > g_massRange.dMaxMass || dCalcPepMass < g_massRange.dMinMass)
+         return;
+
+      DBIndex sEntry;
+      sEntry.pcVarModSites = pcVarModSites;
+      sEntry.lIndexProteinFilePosition = raw.lIndexProteinFilePosition;
+      sEntry.dPepMass = dCalcPepMass;
+      sEntry.siVarModProteinFilter = raw.siVarModProteinFilter;
+      sEntry.cPrevAA = raw.cPrevAA;
+      sEntry.cNextAA = raw.cNextAA;
+      strcpy(sEntry.sPeptide, raw.szPeptide);
+
+      vModifiedEntries.push_back(std::move(sEntry));
+   };
+
+   for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
+   {
+      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
+      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+
+      if (g_staticParams.variableModParameters.bVarTermModSearch)
+      {
+         for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
+               && (!g_staticParams.variableModParameters.bVarModProteinFilter
+                  || cometbitcheck(raw.siVarModProteinFilter, ctNtermMod)))
+            {
+               buildEntry(iWhichPeptide, -1, ctNtermMod, -1);
+            }
+         }
+
+         for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+         {
+            if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
+               && (!g_staticParams.variableModParameters.bVarModProteinFilter
+                  || cometbitcheck(raw.siVarModProteinFilter, ctCtermMod)))
+            {
+               buildEntry(iWhichPeptide, -1, -1, ctCtermMod);
+            }
+         }
+
+         for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+         {
+            for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+            {
+               if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
+                  && g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
+                  && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
+                     (cometbitcheck(raw.siVarModProteinFilter, ctNtermMod)
+                        && cometbitcheck(raw.siVarModProteinFilter, ctCtermMod))))
+               {
+                  buildEntry(iWhichPeptide, -1, ctNtermMod, ctCtermMod);
+               }
+            }
+         }
+      }
+
+      if (modSeqIdx < 0)
+         continue;
+
+      int startIdx = MOD_SEQ_MOD_NUM_START[modSeqIdx];
+      if (startIdx == -1)
+         continue;
+
+      int modNumCount = MOD_SEQ_MOD_NUM_CNT[modSeqIdx];
+
+      for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; ++modNumIdx)
+      {
+         bool bPass = true;
+
+         if (g_staticParams.variableModParameters.bVarModProteinFilter)
+         {
+            char* mods = MOD_NUMBERS.at(modNumIdx).modifications;
+            for (int i = 0; i < MOD_NUMBERS.at(modNumIdx).modStringLen; ++i)
+            {
+               if (mods[i] != -1
+                  && !cometbitcheck(raw.siVarModProteinFilter, vModSlotForAllModsIdx.at((size_t)mods[i])))
+               {
+                  bPass = false;
+                  break;
+               }
+            }
+         }
+
+         if (!bPass)
+            continue;
+
+         buildEntry(iWhichPeptide, modNumIdx, -1, -1);
+
+         if (g_staticParams.variableModParameters.bVarTermModSearch)
+         {
+            for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+            {
+               if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
+                  && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(raw.siVarModProteinFilter, ctNtermMod)))
+               {
+                  buildEntry(iWhichPeptide, modNumIdx, ctNtermMod, -1);
+               }
+            }
+
+            for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+            {
+               if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
+                  && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(raw.siVarModProteinFilter, ctCtermMod)))
+               {
+                  buildEntry(iWhichPeptide, modNumIdx, -1, ctCtermMod);
+               }
+            }
+
+            for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
+            {
+               for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
+               {
+                  if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
+                     && g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
+                     && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
+                        (cometbitcheck(raw.siVarModProteinFilter, ctNtermMod)
+                           && cometbitcheck(raw.siVarModProteinFilter, ctCtermMod))))
+                  {
+                     buildEntry(iWhichPeptide, modNumIdx, ctNtermMod, ctCtermMod);
+                  }
+               }
+            }
+         }
+      }
+   }
+
+   if (bModSitesOverflow)
+   {
+      string strErrorMsg = " Error - a peptide's variable modification count exceeds VarModSites::MAX_SITES ("
+         + std::to_string(VarModSites::MAX_SITES) + "). Reduce max_variable_mods_in_peptide or the number "
+         + "of active variable mod types, or widen VarModSites::MAX_SITES (core/Types.h) if this "
+         + "configuration is intentional.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    return true;
 }
@@ -232,19 +499,62 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    else
       g_massRange.bNarrowMassRange = false;
 
+   // Phase A: generate the deduplicated unmodified peptide list using the fast
+   // per-thread digestion path (same code FI_DB's plain-peptide-index build uses),
+   // instead of the legacy RunSearch() path (one heap-allocated DBIndex push per
+   // protein occurrence, under a global mutex). See docs/20260713_PIidxformat.md.
    if (bSucceeded)
    {
-      vector<Query*> emptyQueries;
-      bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
+      vector<pair<size_t,size_t>> slices;
+      bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp, slices);
    }
 
    if (!bSucceeded)
    {
-      string strErrorMsg = " Error in RunSearch() for peptide index creation.\n";
+      string strErrorMsg = " Error in GeneratePlainPeptideIndex() for peptide index creation.\n";
       logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
       return false;
    }
+
+   // Phase B: permute mods onto the deduplicated unmodified list and materialize a
+   // full DBIndex entry (peptide, protein reference, mass, explicit pcVarModSites)
+   // for every valid (peptide, mod combination) pair.
+   g_vRawPeptides.clear();
+   g_vRawPeptides.reserve(g_pvDBIndex.size());
+   for (const auto& entry : g_pvDBIndex)
+   {
+      PlainPeptideIndexStruct sTmp;
+      strcpy(sTmp.szPeptide, entry.sPeptide);
+      sTmp.lIndexProteinFilePosition = entry.lIndexProteinFilePosition;
+      sTmp.dPepMass = entry.dPepMass;
+      sTmp.siVarModProteinFilter = entry.siVarModProteinFilter;
+      sTmp.cPrevAA = entry.cPrevAA;
+      sTmp.cNextAA = entry.cNextAA;
+      g_vRawPeptides.push_back(sTmp);
+   }
+
+   CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides);
+
+   vector<DBIndex> vModifiedEntries;
+   if (!MaterializeIndexPeptideMods(vModifiedEntries))
+   {
+      string strErrorMsg = " Error in MaterializeIndexPeptideMods() for peptide index creation.\n";
+      logerr(strErrorMsg);
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      return false;
+   }
+
+   // require_variable_mod: every entry must carry a required mod, so the
+   // unmodified variants Phase A generated unconditionally must be dropped here
+   // (matching CometFragmentIndex::AddFragmentsThreadProc()'s equivalent check).
+   if (g_staticParams.variableModParameters.iRequireVarMod)
+      g_pvDBIndex.clear();
+
+   g_pvDBIndex.insert(g_pvDBIndex.end(),
+      make_move_iterator(vModifiedEntries.begin()), make_move_iterator(vModifiedEntries.end()));
+
+   vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
 
    // sanity check
    if (g_pvDBIndex.size() == 0)
@@ -259,69 +569,19 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    logout(" - removing duplicates\n");
    fflush(stdout);
 
-   // keep unique entries only; sort by peptide/modification state and protein
-   // first sort by peptide, then mod state, then protein file position
-   sort(g_pvDBIndex.begin(), g_pvDBIndex.end(), CometMassSpecUtils::DBICompareByPeptide);
-
-   // At this point, need to create pvProteinsListLocal protein file position vector of vectors to map each peptide
-   // to every protein. g_pvDBIndex.at().lProteinFilePosition is now reference to protein vector entry.
-   // When reading the peptide index file as part of the first call to SearchPeptideIndex(), this vector of vectors
-   // will be stored in g_pvProteinsList to be used in the search.
-   vector<vector<comet_fileoffset_t>> pvProteinsListLocal;
-   vector<comet_fileoffset_t> temp;  // stores list of duplicate proteins which gets pushed to pvProteinsListLocal
-
-   // Create pvProteinsListLocal.  This is a vector of vectors.  Each element is vector list
-   // of duplicate proteins (generated as "temp") ... these are generated by looping
-   // through g_pvDBIndex and looking for consecutive, same peptides.  Once the "temp"
-   // vector is assigned the lIndexProteinFilePosition offset, the g_pvDBIndex entry
-   // sets lIndexProteinFilePosition to lProtCount which references which vector of
-   // proteins the peptide is contained in.
-   long lProtCount = 0;
-   for (size_t i = 0; i < g_pvDBIndex.size(); i++)
-   {
-      if (i == 0)
-      {
-         temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-         g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-      }
-      else
-      {
-         // each unique peptide, irregardless of mod state, will have the same list
-         // of matched proteins
-         if (strcmp(g_pvDBIndex.at(i).sPeptide, g_pvDBIndex.at(i - 1).sPeptide) == 0)
-         {
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-         }
-         else
-         {
-            // different peptide + mod state so go ahead and push temp onto pvProteinsListLocal
-            // and store current protein reference into new temp
-            // temp can have duplicates due to mod forms of peptide so make unique here
-            sort(temp.begin(), temp.end());
-            temp.erase(unique(temp.begin(), temp.end()), temp.end());
-            pvProteinsListLocal.push_back(temp);
-
-            lProtCount++; // start new row in pvProteinsListLocal
-            temp.clear();
-            temp.push_back(g_pvDBIndex.at(i).lIndexProteinFilePosition);
-            g_pvDBIndex.at(i).lIndexProteinFilePosition = lProtCount;
-
-         }
-      }
-   }
-
-   // now at end of loop, push last temp onto pvProteinsListLocal
-   sort(temp.begin(), temp.end());
-   temp.erase(unique(temp.begin(), temp.end()), temp.end() );
-   pvProteinsListLocal.push_back(temp);
-
-   // JKE FIX:  Currently g_vProteinsList has an entry for every peptide and there
-   // can be duplicates set of file pointers in g_vProteinsList.  Ideally each entry
-   // in g_vProteinsList is a unique set of file pointers which means a bit of
-   // optimization needs to happen to here (granted resulting only in storage/ram
-   // savings for the reduced size of g_vProteinsList).
-
+   // Unlike the legacy RunSearch() path (one raw g_pvDBIndex entry per protein
+   // OCCURRENCE, needing a grouping pass here to consolidate into a per-unique-peptide
+   // protein list), Phase A/B already produced g_pvDBIndex with lIndexProteinFilePosition
+   // as a ready-made index into g_pvProteinsList (a row per unique peptide, built once
+   // during Phase A's digestion) -- both for the unmodified entries (set directly by
+   // GeneratePlainPeptideIndex()) and the modified entries (MaterializeIndexPeptideMods()
+   // copies the same index from each entry's parent unmodified peptide, since a modified
+   // variant is found in exactly the same proteins as its unmodified form). No renumbering
+   // or protein-list rebuilding is needed; g_pvProteinsList is written as-is further down.
+   //
+   // This sort+unique is a defensive no-op in the common case (Phase A guarantees unique
+   // peptides; Phase B's enumeration is deterministic and non-duplicating per peptide) but
+   // is cheap insurance against a peptide+mod-state collision.
    sort(g_pvDBIndex.begin(), g_pvDBIndex.end());  // sort by peptide sequence, mod state, protein file position
    g_pvDBIndex.erase(unique(g_pvDBIndex.begin(), g_pvDBIndex.end()), g_pvDBIndex.end());
 
@@ -404,14 +664,16 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       ctProteinNames++;
    }
 
-   // Now write out: vector<vector<comet_fileoffset_t>> pvProteinsListLocal
+   // Now write out g_pvProteinsList (ProteinsListCSR, already built by Phase A --
+   // see the comment above the dedup pass for why no local rebuild is needed here).
    comet_fileoffset_t clProteinsFilePos = comet_ftell(fptr);
-   size_t tTmp = pvProteinsListLocal.size();
+   size_t tTmp = g_pvProteinsList.size();
    int iWhichProtein;
    fwrite(&tTmp, clSizeCometFileOffset, 1, fptr);
-   for (auto it = pvProteinsListLocal.begin(); it != pvProteinsListLocal.end(); ++it)
+   for (size_t iRow = 0; iRow < g_pvProteinsList.size(); ++iRow)
    {
-      tTmp = (*it).size();
+      ProteinsListCSR::Row row = g_pvProteinsList[iRow];
+      tTmp = row.size();
       fwrite(&tTmp, clSizeCometFileOffset, 1, fptr);
 
       for (size_t it2 = 0; it2 < tTmp; ++it2)
@@ -419,7 +681,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
          iWhichProtein = -1;
 
          // find protein by matching g_pvProteinNames.lProteinFilePosition to g_pvProteinNames.lProteinIndex;
-         auto result = g_pvProteinNames.find((*it).at(it2));
+         auto result = g_pvProteinNames.find(row[it2]);
          if (result != g_pvProteinNames.end())
          {
             iWhichProtein = result->second.iWhichProtein;
@@ -465,30 +727,16 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       fwrite(&((*it).cPrevAA), sizeof(char), 1, fptr);
       fwrite(&((*it).cNextAA), sizeof(char), 1, fptr);
 
-      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod)
-      int iLen2 = iLen + 2;
-      unsigned char cNumMods = 0;
-      if (!(*it).pcVarModSites.empty())
-      {
-         for (unsigned char x = 0; x < iLen2; x++)
-         {
-            if ((*it).pcVarModSites[x] != 0)
-               cNumMods++;
-         }
-      }
-      fwrite(&cNumMods, sizeof(unsigned char), 1, fptr);
+      // write out for char 0=no mod, N=mod.  If N, write out var mods as N pairs (pos,whichmod).
+      // VarModSites already stores exactly this (position,residue) pair list, in ascending
+      // position order, so no scan over unmodified positions is needed.
+      const VarModSites& sites = (*it).pcVarModSites;
+      fwrite(&sites.cNumSites, sizeof(unsigned char), 1, fptr);
 
-      if (cNumMods > 0)
+      for (unsigned char x = 0; x < sites.cNumSites; x++)
       {
-         for (unsigned char x = 0; x < iLen2; x++)
-         {
-            if ((*it).pcVarModSites[x] != 0)
-            {
-               char cWhichMod = (*it).pcVarModSites[x];
-               fwrite(&x, sizeof(unsigned char), 1, fptr);
-               fwrite(&cWhichMod, sizeof(char), 1, fptr);
-            }
-         }
+         fwrite(&sites.position[x], sizeof(unsigned char), 1, fptr);
+         fwrite(&sites.residue[x], sizeof(char), 1, fptr);
       }
       // done writing out mod sites
 
@@ -565,18 +813,20 @@ bool CometPeptideIndex::ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp)
    if (tTmp != 1) return false;
 
    sDBI->pcVarModSites.clear();
-   if (cNumMods > 0)
+   for (unsigned char x = 0; x < cNumMods; x++)
    {
-      sDBI->pcVarModSites.assign(iLen + 2, 0);
-      for (unsigned char x = 0; x < cNumMods; x++)
+      unsigned char cPosition;
+      char cResidue;
+      tTmp = fread(&cPosition, sizeof(unsigned char), 1, fp);
+      if (tTmp != 1) return false;
+      tTmp = fread(&cResidue, sizeof(char), 1, fp);
+      if (tTmp != 1) return false;
+      if (!sDBI->pcVarModSites.set((int)cPosition, cResidue))
       {
-         unsigned char cPosition;
-         char cResidue;
-         tTmp = fread(&cPosition, sizeof(unsigned char), 1, fp);
-         if (tTmp != 1) return false;
-         tTmp = fread(&cResidue, sizeof(char), 1, fp);
-         if (tTmp != 1) return false;
-         sDBI->pcVarModSites[(int)cPosition] = cResidue;
+         logerr(" Error - a peptide's variable modification count exceeds VarModSites::MAX_SITES ("
+            + std::to_string(VarModSites::MAX_SITES) + ") while reading the peptide index; the file "
+            + "may be corrupt, or was built with a wider VarModSites than this binary supports.\n");
+         return false;
       }
    }
    // done reading mod sites

@@ -18,7 +18,7 @@
 #include <string>
 
 
-bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
+bool SearchMemoryPool::allocate(int nSlots, int iArraySize, size_t nBinnedIonMassesElems, size_t nBinnedPrecursorNLElems)
 {
    if (_allocated)
       return true;
@@ -28,6 +28,19 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
       _pool  = new bool*[nSlots]();   // value-init to nullptr so partial allocs are safe to delete[]
       for (int i = 0; i < nSlots; ++i)
          _pool[i] = new bool[iArraySize]();
+
+      _poolBinnedIonMasses        = new unsigned int*[nSlots]();
+      _poolBinnedPrecursorNL      = new unsigned int*[nSlots]();
+      _poolBinnedIonMassesDecoy   = new unsigned int*[nSlots]();
+      _poolBinnedPrecursorNLDecoy = new unsigned int*[nSlots]();
+      for (int i = 0; i < nSlots; ++i)
+      {
+         _poolBinnedIonMasses[i]        = new unsigned int[nBinnedIonMassesElems]();
+         _poolBinnedPrecursorNL[i]      = new unsigned int[nBinnedPrecursorNLElems]();
+         _poolBinnedIonMassesDecoy[i]   = new unsigned int[nBinnedIonMassesElems]();
+         _poolBinnedPrecursorNLDecoy[i] = new unsigned int[nBinnedPrecursorNLElems]();
+      }
+
       _freeSlots.reserve(nSlots);
       for (int i = 0; i < nSlots; ++i)
          _freeSlots.push_back(i);
@@ -38,14 +51,7 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
    catch (const std::bad_alloc& ba)
    {
       // Free whatever was allocated before the throw.
-      if (_pool)
-      {
-         for (int k = 0; k < nSlots; ++k)
-            delete[] _pool[k];   // safe: unset slots are nullptr after value-init above
-         delete[] _pool;
-         _pool = nullptr;
-      }
-      _freeSlots.clear();
+      _deallocate(nSlots);
       std::string strErrorMsg = " Error - SearchMemoryPool::allocate failed. bad_alloc: " + std::string(ba.what()) + ".\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
@@ -57,10 +63,29 @@ bool SearchMemoryPool::allocate(int nSlots, int iArraySize)
 
 void SearchMemoryPool::_deallocate(int nSlots)
 {
-   for (int i = 0; i < nSlots; ++i)
-      delete[] _pool[i];
-   delete[] _pool;
-   _pool      = nullptr;
+   if (_pool)
+   {
+      for (int i = 0; i < nSlots; ++i)
+         delete[] _pool[i];   // safe: unset slots are nullptr after value-init above
+      delete[] _pool;
+      _pool = nullptr;
+   }
+
+   auto freeSlotArray = [nSlots](unsigned int**& poolArr)
+   {
+      if (!poolArr)
+         return;
+      for (int i = 0; i < nSlots; ++i)
+         delete[] poolArr[i];
+      delete[] poolArr;
+      poolArr = nullptr;
+   };
+
+   freeSlotArray(_poolBinnedIonMasses);
+   freeSlotArray(_poolBinnedPrecursorNL);
+   freeSlotArray(_poolBinnedIonMassesDecoy);
+   freeSlotArray(_poolBinnedPrecursorNLDecoy);
+
    _freeSlots.clear();
    _allocated = false;
 }

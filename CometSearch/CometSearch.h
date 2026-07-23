@@ -64,6 +64,14 @@ public:
 
    static bool InitializeMassesFromPeptideIndex();
 
+   // Ensures the peptide index (g_pvDBIndex, g_pvProteinsList, protein name cache)
+   // and its associated fragment/parent masses are loaded exactly once. Shared by
+   // both the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB path
+   // (SearchPeptideIndex(ThreadPool*, vector<Query*>&)) so the guard logic isn't
+   // duplicated between them. bIsRTS distinguishes which of those two callers
+   // this is, and is forwarded to CometPeptideIndex::ReadPeptideIndex().
+   static bool EnsurePeptideIndexLoaded(bool bIsRTS);
+
    static bool RunSearch(int iPercentStart,
                          int iPercentEnd,
                          ThreadPool* tp,
@@ -73,8 +81,10 @@ public:
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
    static bool RunSearch(Query* pQuery);
 
-   // Fused batch FI_DB overload: skips AcquirePoolSlot by using a pre-assigned
-   // duplicate-fragment slot.  Caller guarantees iSlot is in [0, iNumThreads).
+   // Fused batch FI_DB/PI_DB overload: skips AcquirePoolSlot by using a
+   // pre-assigned duplicate-fragment slot.  Caller guarantees iSlot is in
+   // [0, iNumThreads).  Dispatches to SearchFragmentIndex or SearchPeptideIndex
+   // based on g_staticParams.iDbType.
    static bool RunSearch(Query* pQuery, int iSlot);
 
    static bool RunSpecLibSearch(int iPercentStart,
@@ -227,6 +237,18 @@ private:
                      bool bStoreSeparateDecoy,
                      int *piVarModSites,
                      struct sDBEntry *dbe);
+   // Indexed-search (PI_DB/FI_DB) analog of CheckDuplicate(): if a candidate's
+   // peptide sequence (and mod state) already matches an existing pQuery->_pResults[]
+   // entry, attach this candidate's protein bucket to that entry (mirroring
+   // CheckDuplicate()'s pWhichProtein/pWhichDecoyProtein merge) instead of letting
+   // StorePeptideI() create a second, separate row for the same peptide.
+   static bool CheckDuplicateI(Query* pQuery,
+                               int iStartPos,
+                               int iEndPos,
+                               bool bDecoyPep,
+                               char *szProteinSeq,
+                               int *piVarModSites,
+                               struct sDBEntry *dbe);
    static void StorePeptideI(Query* pQuery,
                              int iStartPos,
                              int iEndPos,
@@ -274,19 +296,19 @@ private:
                                    bool* pbDuplFragment);
 
    // Thread-local overload: searches a caller-owned Query* against the
-   // read-only g_pvDBIndex. Does not access g_pvQuery.
-   static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment);
+   // read-only g_pvDBIndex. Does not access g_pvQuery. iSlot identifies the
+   // caller's claimed SearchMemoryPool slot, used to fetch the thread-local
+   // PI_DB ion-mass/precursor-NL scratch buffers (see AnalyzePeptideIndex).
+   static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment, int iSlot);
 
-   void AnalyzePeptideIndex(int iWhichQuery,
-                            DBIndex sDBI,
-                            bool *pbDuplFragment,
-                            struct sDBEntry *dbe);
-
-   // Thread-local overload accepting Query* directly.
+   // Thread-local overload accepting Query* directly. iSlot selects this
+   // thread's pool-backed uiBinnedIonMasses/uiBinnedPrecursorNL (and decoy
+   // counterparts) scratch buffers instead of declaring them on the stack.
    static void AnalyzePeptideIndex(Query* pQuery,
-                                   DBIndex sDBI,
+                                   const DBIndex& sDBI,
                                    bool* pbDuplFragment,
-                                   struct sDBEntry* dbe);
+                                   struct sDBEntry* dbe,
+                                   int iSlot);
 
    bool SearchForPeptides(struct sDBEntry dbe,
                           char* szProteinSeq,

@@ -64,15 +64,31 @@ CometFragmentIndex::~CometFragmentIndex()
 }
 
 
-bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp)
+bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
    if (!g_bPlainPeptideIndexRead)
-      ReadPlainPeptideIndex();
+      ReadPlainPeptideIndex(bIsRTS);
 
    // vFragmentPeptides is vector of modified peptides
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
    // - modification encoding index
    // - modification mass
+
+   // FragmentPeptidesStruct::iWhichPeptide is unsigned int (narrowed from size_t to shrink the
+   // struct -- see AddFragments() below); g_vRawPeptides is now fully populated (either just read
+   // via ReadPlainPeptideIndex() above, or already built earlier in this process), so this is the
+   // one place that covers every path into GenerateFragmentIndex() below.
+   if (g_vRawPeptides.size() > (size_t)std::numeric_limits<unsigned int>::max())
+   {
+      string strErrorMsg = " Error - " + std::to_string(g_vRawPeptides.size())
+         + " raw peptides exceeds the " + std::to_string(std::numeric_limits<unsigned int>::max())
+         + " entries FragmentPeptidesStruct::iWhichPeptide (unsigned int) can address. Reduce the "
+         + "database/digest size, or widen iWhichPeptide back to size_t if this database size is "
+         + "intentional.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    // CSR layout: allocate offset array now (size+1 for sentinel); flat data allocated after counting.
    g_iFragmentIndexOffset = new uint64_t[g_massRange.uiMaxFragmentArrayIndex + 1]();
@@ -491,7 +507,9 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    {
       struct FragmentPeptidesStruct sTmp;
 
-      sTmp.iWhichPeptide = iWhichPeptide;
+      // Safe: g_vRawPeptides.size() <= UINT_MAX is checked once in CreateFragmentIndex()
+      // before any AddFragments() call can reach here.
+      sTmp.iWhichPeptide = static_cast<unsigned int>(iWhichPeptide);
       sTmp.modNumIdx = modNumIdx;
       sTmp.dPepMass = dCalcPepMass;
       sTmp.cNtermMod = cNtermMod;
@@ -628,6 +646,13 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_vvvPepGenShort.assign(nShortLens, vector<vector<PepGenTupleShort>>(iNumThreads));
    g_vvvPepGenLong.assign(nLongLens,   vector<vector<PepGenTuple>>(iNumThreads));
 
+   // Save/restore rather than hardcode: this function is reused by both the
+   // FI_DB build (WriteFIPlainPeptideIndex) and the PI_DB build (PI_DB reuse
+   // of this fast digestion path), and both enter with iDbType == FASTA_DB.
+   // Hardcoding the post-call value to FI_DB would be wrong for a PI_DB caller.
+   const bool  bCreateFragmentIndexSave = g_staticParams.options.bCreateFragmentIndex;
+   const DbType iDbTypeSave             = g_staticParams.iDbType;
+
    g_staticParams.options.bCreateFragmentIndex = true;
    g_staticParams.options.bFastPlainPeptideIdx = true;
    g_staticParams.iDbType = DbType::FASTA_DB;
@@ -635,9 +660,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    vector<Query*> emptyQueries;
    bool bSucceeded = CometSearch::RunSearch(0, 0, tp, emptyQueries);
 
-   g_staticParams.options.bCreateFragmentIndex = false;
+   g_staticParams.options.bCreateFragmentIndex = bCreateFragmentIndexSave;
    g_staticParams.options.bFastPlainPeptideIdx = false;
-   g_staticParams.iDbType = DbType::FI_DB;
+   g_staticParams.iDbType = iDbTypeSave;
 
    if (!bSucceeded)
       return false;
@@ -1130,8 +1155,9 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
    // Both g_vRawPeptides and g_pvDBIndex now use fixed-size char arrays for
    // peptide sequences (szPeptide[MAX_PEPTIDE_LEN] and sPeptide[MAX_PEPTIDE_LEN]
    // respectively), so neither has non-SSO string heap blocks to free.
-   // Destruction is O(n) for pcVarModSites in g_pvDBIndex but trivial for
-   // g_vRawPeptides; order no longer matters.
+   // g_pvDBIndex's pcVarModSites is now an inline VarModSites (no heap allocation
+   // at all -- see core/Types.h), so destruction is trivial for both; order no
+   // longer matters.
    {
       vector<PlainPeptideIndexStruct>().swap(g_vRawPeptides);
    }
@@ -1176,8 +1202,10 @@ bool CometFragmentIndex::WriteFIPlainPeptideIndex(ThreadPool *tp)
 
 
 // read the raw peptides from disk
-bool CometFragmentIndex::ReadPlainPeptideIndex(void)
+bool CometFragmentIndex::ReadPlainPeptideIndex(bool bIsRTS)
 {
+   (void)bIsRTS;   // reserved for RTS-vs-batch-specific behavior; not yet used
+
    FILE *fp;
    int iRet;     // used to reduce compiler warnings only
    char szBuf[SIZE_BUF];

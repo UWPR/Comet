@@ -236,10 +236,18 @@ bool Pipeline::run(SearchSession&                     session,
                strOut = "";
 
             std::snprintf(buf, sizeof(buf), "%.2f", dTimePerSpectra);
-            strOut += CometMassSpecUtils::ElapsedTime(tBeginTime)
-                      + " (" + std::to_string(iTotalSpectraSearched) + " spectra, "
-                      + std::string(buf) + "ms/spec, ";
-
+            if (g_staticParams.iDbType == DbType::PI_DB)
+            {
+               strOut += "   - " + CometMassSpecUtils::ElapsedTime(tBeginTime)
+                  + " (" + std::to_string(iTotalSpectraSearched) + " spectra, "
+                  + std::string(buf) + "ms/spec, ";
+            }
+            else
+            {
+               strOut += CometMassSpecUtils::ElapsedTime(tBeginTime)
+                  + " (" + std::to_string(iTotalSpectraSearched) + " spectra, "
+                  + std::string(buf) + "ms/spec, ";
+            }
             std::snprintf(buf, sizeof(buf), "%.0f", (dTimePerSpectra > 0.0) ? 1000.0 / dTimePerSpectra : 0.0);
             strOut += std::string(buf) + "Hz";
 
