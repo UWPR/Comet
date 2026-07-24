@@ -42,6 +42,7 @@
 
 #include "core/Params.h"
 #include "core/Types.h"
+#include "core/FusedSparseArena.h"
 #include "CometStatus.h"
 #include <mutex>
 #include <vector>
@@ -55,6 +56,13 @@ struct SearchSession
    // batch paths (LoadAndPreprocessSpectra, PreprocessSingleSpectrum, etc.) still
    // guard direct pushes to this vector with queriesMutex.
    std::vector<Query*>    queries;
+
+   // Per-slot sparse-XCorr-matrix bump arenas for the fused FI_DB/PI_DB batch path
+   // (FusedLoadAndSearchSpectra). Sized to iNumSlots on first use there; indexed by
+   // the same iSlot each worker task-closure already owns for a round. Reset (not
+   // freed) once per round by Pipeline.cpp's cleanupBatch, alongside the `queries`
+   // free above. See docs/20260723_ExtendFusedBatchPath.md.
+   std::vector<FusedSparseArena> sparseArenas;
 
    // Per-batch MS1 result accumulator (batch path only).
    std::vector<QueryMS1*> ms1Queries;

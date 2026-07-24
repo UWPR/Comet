@@ -120,12 +120,16 @@ public:
    // spectrum in a single pass using thread-local scratch buffers.  iSlot is this
    // worker's pre-assigned _ppbDuplFragmentArr index.  outQueries is this worker's
    // own result vector (no lock needed); outCount is a shared running total bumped
-   // with relaxed ordering for the CheckExit batch-size-cap read.  The actual index
-   // search (FI_DB vs. PI_DB) is dispatched by CometSearch::RunSearch(Query*, int).
+   // with relaxed ordering for the CheckExit batch-size-cap read.  pArena is this
+   // worker's per-slot sparse-XCorr-matrix bump arena (session.sparseArenas[iSlot]),
+   // used instead of a per-spectrum heap allocation for each Query's sparse child
+   // blocks -- see docs/20260723_ExtendFusedBatchPath.md.  The actual index search
+   // (FI_DB vs. PI_DB) is dispatched by CometSearch::RunSearch(Query*, int).
    static void FusedSearchSpectrum(Spectrum spec,
                                    int iSlot,
                                    std::vector<Query*>& outQueries,
-                                   std::atomic<size_t>& outCount);
+                                   std::atomic<size_t>& outCount,
+                                   FusedSparseArena* pArena);
 
    // Fused FI_DB/PI_DB batch path: stream spectra through a bounded producer/
    // consumer queue into FusedSearchSpectrum workers.  Replaces
@@ -181,6 +185,12 @@ private:
    // if it survives all three filters.  Returns true iff enqueued.
    static bool FilterAndEnqueueSpectrum(Spectrum& mstSpectrum,
                                         BoundedSpectrumQueue& queue);
+   // pArena: when non-null, each sparse-matrix child block ([SPARSE_MATRIX_SIZE]
+   // leaf array) is taken from this bump arena instead of individually heap-
+   // allocated, and pScoring->bSparseFromPool is set so the Query destructor skips
+   // delete[]-ing them (see docs/20260723_ExtendFusedBatchPath.md). Currently only
+   // the fused batch path (FusedSearchSpectrum) passes non-null; nullptr preserves
+   // the prior per-spectrum-heap-allocation behavior for any other caller.
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
@@ -188,7 +198,8 @@ private:
                           double *pdTmpCorrelationData,
                           float *pfFastXcorrData,
                           float *pfFastXcorrDataNL,
-                          float *pfSpScoreData);
+                          float *pfSpScoreData,
+                          FusedSparseArena *pArena = nullptr);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
                         Spectrum mstSpectrum,
