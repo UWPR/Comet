@@ -169,27 +169,6 @@ struct RtsScratch
       iResultsCapacity = iCapacity;
    }
 
-   // Resets the subset of Results fields that PreprocessSingleSpectrumCore's
-   // batch-path (non-pooled) loop also resets -- see the near-duplicate loops
-   // there for the batch-path equivalent. Mirrors that loop's field list exactly.
-   static void ResetOneResult(Results& r)
-   {
-      r.dPepMass = 0.0;
-      r.dExpect = 999;
-      r.fScoreSp = 0.0;
-      r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-      r.fAScorePro = 0.0;
-      r.usiLenPeptide = 0;
-      r.usiRankSp = 0;
-      r.usiMatchedIons = 0;
-      r.usiTotalIons = 0;
-      r.szPeptide[0] = '\0';
-      r.sAScoreProSiteScores.clear();
-      r.pWhichProtein.clear();
-      r.sPeffOrigResidues.clear();
-      r.iPeffOrigResiduePosition = -9;
-   }
-
    // Called at the start of each new spectrum so pResults/pDecoys are clean for reuse.
    void ResetResultsForNewSpectrum()
    {
@@ -1190,7 +1169,8 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
                                  float *pfFastXcorrData,
                                  float *pfFastXcorrDataNL,
                                  float *pfSpScoreData,
-                                 FusedSparseArena *pArena)
+                                 FusedSparseArena *pArena,
+                                 FusedPointerArena *pPtrArena)
 {
    int i;
    int x;
@@ -1300,19 +1280,27 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
    {
 
-      try
+      if (pPtrArena != nullptr)
       {
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+         pScoring->ppfSparseFastXcorrDataNL = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+         pScoring->bSparsePointerArraysFromPool = true;
       }
-      catch (std::bad_alloc& ba)
+      else
       {
-         string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
-            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
+         try
+         {
+            pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
+               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
 
       for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
@@ -1354,19 +1342,27 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    //MH: Fill sparse matrix
-   try
+   if (pPtrArena != nullptr)
    {
-      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
+      pScoring->ppfSparseFastXcorrData = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+      pScoring->bSparsePointerArraysFromPool = true;
    }
-   catch (std::bad_alloc& ba)
+   else
    {
-      string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
-         + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-         + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-         + "parameters to address mitigate memory use.\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
-      return false;
+      try
+      {
+         pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
+      }
+      catch (std::bad_alloc& ba)
+      {
+         string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
+            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+            + "parameters to address mitigate memory use.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
    }
 
    for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
@@ -1415,19 +1411,27 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
 
-   try
+   if (pPtrArena != nullptr)
    {
-      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+      pScoring->ppfSparseSpScoreData = pPtrArena->AllocSpan(pScoring->iSpScoreData);
+      pScoring->bSparsePointerArraysFromPool = true;
    }
-   catch (std::bad_alloc& ba)
+   else
    {
-      string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
-         + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-         + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-         + "parameters to address mitigate memory use.\n";
-      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-      logerr(strErrorMsg);
-      return false;
+      try
+      {
+         pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+      }
+      catch (std::bad_alloc& ba)
+      {
+         string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
+            + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+            + "parameters to address mitigate memory use.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
    }
 
    for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
@@ -2011,20 +2015,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
       {
-         pScoring->_pResults[j].dPepMass = 0.0;
-         pScoring->_pResults[j].dExpect = 999;
-         pScoring->_pResults[j].fScoreSp = 0.0;
-         pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-         pScoring->_pResults[j].fAScorePro = 0.0;
-         pScoring->_pResults[j].usiLenPeptide = 0;
-         pScoring->_pResults[j].usiRankSp = 0;
-         pScoring->_pResults[j].usiMatchedIons = 0;
-         pScoring->_pResults[j].usiTotalIons = 0;
-         pScoring->_pResults[j].szPeptide[0] = '\0';
-         pScoring->_pResults[j].sAScoreProSiteScores.clear();
-         pScoring->_pResults[j].pWhichProtein.clear();
-         pScoring->_pResults[j].sPeffOrigResidues.clear();
-         pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
+         ResetOneResult(pScoring->_pResults[j]);
 
          if (g_staticParams.options.iDecoySearch)
             pScoring->_pResults[j].pWhichDecoyProtein.clear();
@@ -2035,22 +2026,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
 
          for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
-         {
-            pScoring->_pDecoys[j].dPepMass = 0.0;
-            pScoring->_pDecoys[j].dExpect = 999;
-            pScoring->_pDecoys[j].fScoreSp = 0.0;
-            pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-            pScoring->_pDecoys[j].fAScorePro = 0.0;
-            pScoring->_pDecoys[j].usiLenPeptide = 0;
-            pScoring->_pDecoys[j].usiRankSp = 0;
-            pScoring->_pDecoys[j].usiMatchedIons = 0;
-            pScoring->_pDecoys[j].usiTotalIons = 0;
-            pScoring->_pDecoys[j].szPeptide[0] = '\0';
-            pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
-            pScoring->_pDecoys[j].pWhichProtein.clear();
-            pScoring->_pDecoys[j].sPeffOrigResidues.clear();
-            pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
-         }
+            ResetOneResult(pScoring->_pDecoys[j]);
       }
    }
 
@@ -3185,7 +3161,9 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                                           int iSlot,
                                           std::vector<Query*>& outQueries,
                                           std::atomic<size_t>& outCount,
-                                          FusedSparseArena* pArena)
+                                          FusedSparseArena* pArena,
+                                          FusedResultsArena* pResultsArena,
+                                          FusedPointerArena* pPtrArena)
 {
    int iScanNumber = spec.getScanNumber();
    int iSpectrumCharge = 0;
@@ -3347,76 +3325,66 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                continue;
             }
 
-            try
+            if (pResultsArena != nullptr)
             {
-               pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
+               FusedResultsArena::ResultsPair pair = pResultsArena->AllocResultsPair();
+               pScoring->_pResults = pair.pResults;
+               pScoring->_pDecoys  = pair.pDecoys;
+               pScoring->bResultsFromPool = true;
             }
-            catch (std::bad_alloc& ba)
-            {
-               string strErrorMsg = " Error - new(_pResults[]). bad_alloc: " + std::string(ba.what()) + "\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               delete pScoring;
-               return;
-            }
-
-            if (g_staticParams.options.iDecoySearch == 2)
+            else
             {
                try
                {
-                  pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+                  pScoring->_pResults = new Results[g_staticParams.options.iNumStored];
                }
                catch (std::bad_alloc& ba)
                {
-                  string strErrorMsg = " Error - new(_pDecoys[]). bad_alloc: " + std::string(ba.what()) + "\n";
+                  string strErrorMsg = " Error - new(_pResults[]). bad_alloc: " + std::string(ba.what()) + "\n";
                   g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                   logerr(strErrorMsg);
                   delete pScoring;
                   return;
+               }
+
+               if (g_staticParams.options.iDecoySearch == 2)
+               {
+                  try
+                  {
+                     pScoring->_pDecoys = new Results[g_staticParams.options.iNumStored];
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg = " Error - new(_pDecoys[]). bad_alloc: " + std::string(ba.what()) + "\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     delete pScoring;
+                     return;
+                  }
+               }
+
+               // Arena-issued Results (above) are already reset by AllocResultsPair();
+               // freshly new[]'d Results here still need it.
+               for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+               {
+                  ResetOneResult(pScoring->_pResults[j]);
+                  if (g_staticParams.options.iDecoySearch == 2)
+                     ResetOneResult(pScoring->_pDecoys[j]);
                }
             }
 
             pScoring->iMatchPeptideCount = 0;
             pScoring->iDecoyMatchPeptideCount = 0;
 
+            // ResetOneResult() deliberately never touches pWhichDecoyProtein (see its
+            // comment in core/Types.h) -- clear it here regardless of whether _pResults
+            // came from the arena or a fresh new[], same as before this pool existed.
             for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
             {
-               pScoring->_pResults[j].dPepMass = 0.0;
-               pScoring->_pResults[j].dExpect = 999;
-               pScoring->_pResults[j].fScoreSp = 0.0;
-               pScoring->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-               pScoring->_pResults[j].fAScorePro = 0.0;
-               pScoring->_pResults[j].usiLenPeptide = 0;
-               pScoring->_pResults[j].usiRankSp = 0;
-               pScoring->_pResults[j].usiMatchedIons = 0;
-               pScoring->_pResults[j].usiTotalIons = 0;
-               pScoring->_pResults[j].szPeptide[0] = '\0';
-               pScoring->_pResults[j].sAScoreProSiteScores.clear();
-               pScoring->_pResults[j].pWhichProtein.clear();
-               pScoring->_pResults[j].sPeffOrigResidues.clear();
-               pScoring->_pResults[j].iPeffOrigResiduePosition = -9;
                memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
 
                if (g_staticParams.options.iDecoySearch)
                   pScoring->_pResults[j].pWhichDecoyProtein.clear();
-
-               if (g_staticParams.options.iDecoySearch == 2)
-               {
-                  pScoring->_pDecoys[j].dPepMass = 0.0;
-                  pScoring->_pDecoys[j].dExpect = 999;
-                  pScoring->_pDecoys[j].fScoreSp = 0.0;
-                  pScoring->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-                  pScoring->_pDecoys[j].fAScorePro = 0.0;
-                  pScoring->_pDecoys[j].usiLenPeptide = 0;
-                  pScoring->_pDecoys[j].usiRankSp = 0;
-                  pScoring->_pDecoys[j].usiMatchedIons = 0;
-                  pScoring->_pDecoys[j].usiTotalIons = 0;
-                  pScoring->_pDecoys[j].szPeptide[0] = '\0';
-                  pScoring->_pDecoys[j].sAScoreProSiteScores.clear();
-                  pScoring->_pDecoys[j].pWhichProtein.clear();
-                  pScoring->_pDecoys[j].sPeffOrigResidues.clear();
-                  pScoring->_pDecoys[j].iPeffOrigResiduePosition = -9;
-               }
             }
 
             // Preprocess using thread-local scratch buffers; Preprocess() memsets
@@ -3428,7 +3396,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                             g_rtsScratch.pfFastXcorrData,
                             g_rtsScratch.pfFastXcorrDataNL,
                             g_rtsScratch.pfSpScoreData,
-                            pArena))
+                            pArena, pPtrArena))
             {
                delete pScoring;
                continue;
@@ -3519,6 +3487,26 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    if (session.sparseArenas.empty())
       session.sparseArenas.resize(iNumSlots);
 
+   // Per-slot pool for the outer sparse pointer arrays: same first-use sizing/
+   // persistence pattern as sparseArenas above -- see
+   // docs/20260723_ExtendFusedBatchPath.md Phase 2a.
+   if (session.pointerArenas.empty())
+      session.pointerArenas.resize(iNumSlots);
+
+   // Per-slot _pResults/_pDecoys pool: same first-use sizing/persistence pattern
+   // as sparseArenas above -- see docs/20260723_ExtendFusedBatchPath.md Phase 2b.
+   // EnsureInitialized() captures iNumStored/decoy-search config once; both are
+   // assumed constant for the SearchSession's lifetime (comet.params is not
+   // re-read mid-run), the same assumption sparseArenas already makes about
+   // iNumThreads.
+   if (session.resultsArenas.empty())
+   {
+      session.resultsArenas.resize(iNumSlots);
+      for (auto& arena : session.resultsArenas)
+         arena.EnsureInitialized(g_staticParams.options.iNumStored,
+                                 g_staticParams.options.iDecoySearch == 2);
+   }
+
    // Running count of accumulated Query* across all workers.  Only read by the
    // producer, and only when iSpectrumBatchSize != 0 (batch-size cap feature).
    std::atomic<size_t> aQueryCount{0};
@@ -3537,7 +3525,8 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
          Spectrum spec;
          while (queue.pop(spec))
             FusedSearchSpectrum(std::move(spec), t, vSlotQueries[t].v, aQueryCount,
-                                &session.sparseArenas[t]);
+                                &session.sparseArenas[t], &session.resultsArenas[t],
+                                &session.pointerArenas[t]);
       });
    }
 

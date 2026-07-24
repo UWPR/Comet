@@ -380,3 +380,315 @@ the answer is now "much less penalty, but not zero." A phase 2 covering the oute
 curve. The original 82,000 / 165,000 / ~400,000 ("all spectra") configurations were not re-tested
 in this pass; given memory is now higher rather than lower at each tested size, those larger configs
 should be approached with the same OOM caution as the original investigation, not less.
+
+## Phase 2 plan: pool the outer sparse pointer arrays and `_pResults`/`_pDecoys`
+
+Status: IMPLEMENTED and validated -- see "Phase 2 results" near the end for measured before/after
+numbers, including a chunk-size tuning finding not anticipated by this plan. Line numbers below are
+as they were when this plan was written (commit `4c5567b9`, phase 1); see the Phase 2 results
+section for what actually landed.
+
+### Recap: what's left after phase 1
+
+Phase 1 pooled only the sparse matrix *child* blocks (the `float[SPARSE_MATRIX_SIZE]` leaves).
+Two other per-spectrum heap allocations in the fused batch path remain untouched, and per the
+Results section above, their residual cost is now the visible bottleneck:
+
+1. The three outer sparse-matrix **pointer arrays** (`ppfSparseFastXcorrDataNL`,
+   `ppfSparseFastXcorrData`, `ppfSparseSpScoreData`) -- `CometPreprocess.cpp:1305`, `:1359`, `:1420`.
+2. **`_pResults`/`_pDecoys`** (the `Results[iNumStored]` arrays) -- allocated in `FusedSearchSpectrum`
+   (around `CometPreprocess.cpp:3450-3489`, the `new Results[...]` calls and their per-field reset
+   loop).
+
+These need two different designs, because one is safely bump-allocatable (pure `float*` data) and
+the other is not (has non-trivial C++ members).
+
+### 2a. Outer sparse-matrix pointer arrays
+
+**A finding that changes the framing versus phase 1:** these outer arrays are *not* pooled even by
+the existing RTS single-spectrum pool. The `Query` destructor's unconditional
+`delete[] ppfSparseFastXcorrDataNL` / `delete[] ppfSparseFastXcorrData` / `delete[] ppfSparseSpScoreData`
+calls (`core/Types.h:826-827`, `:844-845`, `:858-859`) run regardless of `bSparseFromPool` -- only the
+inner per-bucket child-block loops are gated by that flag (`:818`, `:834`, `:849`). So unlike phase 1
+(which extended an existing RTS mechanism to the batch path), phase 2a would be pooling something
+RTS itself has never pooled either. That is fine -- it does not need to touch the RTS path at all --
+but it means there is no existing pattern to mirror here beyond phase 1's own arena design.
+
+**Design.** These arrays vary in length per spectrum (`iFastXcorrDataSize`/`iSpScoreData` scale with
+the spectrum's precursor mass), unlike phase 1's fixed-size `SPARSE_MATRIX_SIZE` blocks. Generalize
+`FusedSparseArena` (`core/FusedSparseArena.h`) into a small template, `FusedBumpArena<T>`, with two
+allocation modes built on the same append-only, never-move chunk list:
+
+- `AllocBlock()` -- fixed-size convenience wrapper (phase 1's existing usage), equivalent to
+  `AllocSpan(SPARSE_MATRIX_SIZE)`.
+- `AllocSpan(size_t n)` -- new for 2a: returns a zeroed, contiguous span of `n` elements. If the
+  remaining space in the current chunk is less than `n`, the remainder is wasted (never split a span
+  across chunks -- ownership stays a single contiguous pointer, matching how the code indexes these
+  arrays) and a new chunk begins. Chunk size must be >= the largest possible single request
+  (`g_staticParams.iArraySizeGlobal / SPARSE_MATRIX_SIZE + 1`) so a request can never fail to fit in
+  a freshly started chunk.
+
+Two type aliases cover both uses: `using FusedSparseChildArena = FusedBumpArena<float>;` (phase 1,
+unchanged behavior) and `using FusedPointerArena = FusedBumpArena<float*>;` (new).
+
+*Judgment call:* genericizing touches phase 1's already-shipped, validated code purely to avoid a
+second, hand-duplicated copy of the same chunk-growth logic (a real risk -- see phase 1's own
+"Correctness invariants" section for how easy it would be to get the never-move/zero-on-issue rules
+subtly wrong a second time). A hand-written, standalone `FusedPointerArena` struct is an equally
+valid, lower-risk-to-phase-1 alternative if keeping shipped code untouched is preferred; either way
+requires re-running phase 1's full validation (T1-T20 + byte-identical diff), since either changes
+the concrete type `sparseArenas` holds.
+
+**Wiring.**
+- `SearchSession` (`search/SearchSession.h`): add `std::vector<FusedPointerArena> pointerArenas;`,
+  sized alongside `sparseArenas` in `FusedLoadAndSearchSpectra` (same first-use lazy init, same
+  `iNumSlots` sizing).
+- `Preprocess()` (`CometPreprocess.cpp:1185`+): add a second optional parameter,
+  `FusedPointerArena* pPtrArena = nullptr`, threaded the same way `pArena` is today (from
+  `FusedSearchSpectrum` -> `Preprocess()`).
+- At each of the three allocation sites (`:1305`, `:1359`, `:1420`), when `pPtrArena != nullptr`:
+  replace `new float*[N]()` with `pPtrArena->AllocSpan(N)`, and set a **new** flag
+  `pScoring->bSparsePointerArraysFromPool = true`.
+
+**New `Query` flag: `bSparsePointerArraysFromPool`** (`core/Types.h`, alongside `bSparseFromPool`/
+`bResultsFromPool` at `:711-721`). Cannot reuse `bSparseFromPool` -- as established above, that flag
+never gated these outer-array deletes for *either* path, so repurposing it would silently change
+RTS's behavior (leaking these arrays, since RTS's pool was never designed to own them), not just add
+a capability to the batch path. Destructor changes needed: wrap the three unconditional
+`delete[] ppfSparse*` calls (`:826`, `:844-845`, `:858-859`) in
+`if (!bSparsePointerArraysFromPool)`.
+
+**Reset.** `FusedPointerArena::ResetRound()` rewinds the cursor only (O(1)), called from
+`Pipeline.cpp`'s `cleanupBatch` alongside the existing `sparseArenas` reset loop.
+
+### 2b. `_pResults`/`_pDecoys`
+
+**Why this needs a different mechanism than 2a/phase 1.** `Results` (`core/Types.h:44-74`) has two
+`std::string` and two `std::vector<ProteinEntryStruct>` members. A pure bump arena that hands out
+raw memory and "forgets" it at `ResetRound()` -- phase 1/2a's approach -- would leak whatever heap
+memory those strings/vectors had allocated the moment a chunk gets reused, since nothing would ever
+run their destructors. That rules out a memory-bump-and-forget design here.
+
+**Design: checkout-and-reset-in-place, not bump-and-forget.** Still an append-only, never-move chunk
+list (same pointer-stability requirement as phase 1, since issued `Results*` pointers must stay valid
+until the round's flush writes them out), but each chunk stores real, default-constructed
+`Results[]` objects (via `new Results[...]`, which default-constructs their string/vector members
+once, when a chunk grows) rather than raw bytes. Reuse across rounds relies on the exact reset-in-place
+technique `RtsScratch` already uses for the RTS path -- `EnsureResultsInitialized()` /
+`ResetOneResult()` / `ResetResultsForNewSpectrum()` (`CometPreprocess.cpp:155-208`) -- not
+placement-new/explicit-destructor bookkeeping. This is deliberately the simpler, safer of the two
+ways to handle non-POD members; see "Correctness invariants" below for why the alternative was
+rejected.
+
+A side benefit beyond eliminating `new[]`/`delete[]`: `ResetOneResult()`'s `.clear()` calls do not
+release a `std::vector`'s/`std::string`'s capacity, so a `Results` slot reused across *many* rounds
+will have its `pWhichProtein`/site-score-string capacity grow to fit its typical usage once, then
+stop reallocating -- something today's fresh-every-spectrum design can never benefit from, since
+every spectrum currently starts every vector at capacity 0. This is a genuinely new win, not just
+phase 1's technique reapplied.
+
+**Prerequisite refactor.** The field-reset list already exists in two near-duplicate places --
+`RtsScratch::ResetOneResult()` (`:175-191`) and an inline loop in `FusedSearchSpectrum`
+(`CometPreprocess.cpp`, the `new Results[...]` block and its following `for` loop). The code already
+flags this exact risk in a comment (`:172-174`: "Resets the subset of Results fields that
+PreprocessSingleSpectrumCore's batch-path (non-pooled) loop also resets ... Mirrors that loop's
+field list exactly"). Adding a third copy inside the new pool without consolidating first would make
+an already-acknowledged risk worse. Factor the field list into one shared function (e.g.
+`CometMassSpecUtils::ResetOneResult(Results&)`), called from all three places (RTS pool, the batch
+path's existing non-pooled fallback, and the new pool below). This refactor alone should be built and
+validated (T1-T20, byte-identical output) as its own step before adding the pool, since it changes
+nothing observable if done correctly.
+
+**`FusedResultsArena` (sketch).** `AllocResultsPair(iNumStored, bWantDecoys)` returns
+`{Results* pResults; Results* pDecoys /* nullptr if !bWantDecoys */;}`, running the shared
+`ResetOneResult()` loop on issue -- matching phase 1's `AllocBlock()` zero-on-issue convention,
+keeping `ResetRound()` O(1), and putting the reset cost exactly where the original code already paid
+it (no double cost). Unlike 2a, no variable-length span handling is needed: a `Results[iNumStored]`
+block's size depends only on `g_staticParams.options.iNumStored`, a single run-wide constant, not on
+anything spectrum-specific -- so this is a fixed-size-block arena, structurally simpler than 2a's.
+
+**Wiring.** `SearchSession` gets `std::vector<FusedResultsArena> resultsArenas;` (sized alongside the
+others). This only threads through `FusedSearchSpectrum`'s signature, not `Preprocess()`'s -- Results
+allocation happens directly in `FusedSearchSpectrum`, not inside `Preprocess()`.
+
+**Query flag: reuse `bResultsFromPool` as-is.** Unlike 2a, no new flag is needed: the destructor's
+existing `bResultsFromPool` branch (`:861-868`) already unconditionally covers both `_pResults` and
+`_pDecoys` with exactly the semantics 2b needs ("pool owns this, don't touch it") -- it was simply
+never set `true` by the batch path before. No destructor change required for 2b, mirroring phase 1's
+finding that `Query`'s destructor needed no changes.
+
+**Reset.** `FusedResultsArena::ResetRound()` rewinds the issuance cursor only (O(1)) -- the field-reset
+work happens at `AllocResultsPair()` time (issue), not here.
+
+### Correctness invariants (both sub-phases)
+
+- The same three invariants from phase 1 apply identically here, for the same structural reasons:
+  exactly one writer per slot's arena per round (the single `doJob` closure owning that slot for the
+  round); no arena access during `ResetRound()` (only called from `cleanupBatch`, after
+  `tp->wait_on_threads()` has returned); no pointer invalidation on chunk growth (append-only, never
+  move or resize an existing chunk).
+- **2b-specific.** Placement-new/manual-destructor-call arenas were considered and rejected in favor
+  of reset-in-place specifically to avoid a new invariant class phase 1/2a do not have: "every
+  constructed C++ object in a chunk must have its destructor run before that chunk's memory is next
+  treated as raw bytes." Reset-in-place sidesteps this entirely -- the `Results` objects in a chunk
+  stay constructed (never destroyed) for the arena's whole lifetime; only their dynamic (string/
+  vector) contents get cleared and refilled, exactly mirroring what `RtsScratch` already does safely
+  for RTS.
+
+### Implementation steps (suggested order -- each independently buildable/testable)
+
+1. Prerequisite refactor: consolidate the `Results` field-reset list into one shared function, used
+   by `RtsScratch::ResetOneResult()`, the batch path's existing inline loop, and (once added)
+   `FusedResultsArena`. Build + run T1-T20 to confirm this pure refactor changes nothing (byte-
+   identical output expected -- same field list, just called from a shared location).
+2. **Phase 2b first** (`_pResults`/`_pDecoys`): structurally simpler and lower-risk than 2a (no
+   variable-length spans, reuses `bResultsFromPool` as-is, no destructor change needed).
+3. **Phase 2a second** (outer pointer arrays): generalize `FusedSparseArena` into `FusedBumpArena<T>`
+   (or write a standalone `FusedPointerArena`, per the judgment call above), wire through
+   `Preprocess()`, add `bSparsePointerArraysFromPool` and the three destructor guard changes.
+4. Re-run the full phase 1 validation plan (T1-T20, byte-identical-output diff, the four-point
+   `FUSED_FLUSH_MIN_BATCH_SIZE` sweep) after **each** of steps 2 and 3 independently, not just once at
+   the end -- this isolates which sub-phase contributes how much (matching this investigation's
+   repeated measure-before/after-each-change discipline) and avoids one sub-phase's bug being masked
+   by the other's fix.
+
+### Expected outcome / what would falsify this plan
+
+Phase 1's own results attributed the residual Hz-degradation-with-batch-size and the higher-than-
+original-baseline memory at each size to these two remaining allocations. If 2b and/or 2a genuinely
+close that gap, the four-point sweep should show Hz *flattening out* (not just improving further) as
+batch size grows, and peak memory should stop exceeding phase 1's own pre-fix numbers at each size.
+If Hz still degrades meaningfully with batch size after both sub-phases, that would mean a third,
+still-unidentified cost is responsible, and would call for fresh instrumentation-driven investigation
+(e.g. adding `RTS_TIMING`-style per-step timing to the batch path, which does not currently exist --
+see `docs/20260714_rtspostprocessing.md`'s methodology for the RTS path as a template) rather than
+further guessing.
+
+### Risks / open questions
+
+- **`FusedResultsArena` chunk sizing is workload-sensitive in a new way.** Memory per chunk scales
+  with `iNumStored` (a run-wide constant that could be 1 or 100 depending on `comet.params`), unlike
+  phase 1/2a's blocks, which are a fixed size regardless of params. A chunk-spectra-count default
+  tuned for `iNumStored=2` (this investigation's benchmark config) could be a poor default for
+  `iNumStored=100` runs (100x more memory per chunk). Should size by a chunk *byte* budget, not a
+  fixed chunk-spectra-count -- i.e. compute `kChunkSpectra = kChunkByteBudget / (iNumStored *
+  sizeof(Results))` once `iNumStored` is known at first use, rather than a compile-time constant.
+- **Generalizing `FusedSparseArena` into `FusedBumpArena<T>` changes phase 1's already-shipped,
+  validated code.** Needs the same correctness validation phase 1 got (T1-T20 + byte-identical diff)
+  even though phase 1's own logic is meant to be behaviorally unchanged, purely because the concrete
+  class changes underneath it.
+- **Neither sub-phase touches the RTS single-spectrum path.** Both are additive, fused-batch-path-only
+  changes, consistent with phase 1's scoping and this repo's general pattern of keeping RTS and batch
+  memory-ownership logic deliberately separate (see `CometPreprocess.h`'s own comment on
+  `bUseThreadLocalPool`, and phase 1's "why the existing pool can't be reused unchanged" section
+  above).
+
+## Phase 2 results (2026-07-24, implemented and measured)
+
+Implemented in the order this plan suggested: (1) the prerequisite `Results` field-reset
+consolidation (`ResetOneResult` moved to a free function in `core/Types.h`, replacing three
+near-duplicate inline copies), (2) Phase 2b (`FusedResultsArena`, `core/FusedResultsArena.h`, new),
+(3) Phase 2a (`FusedSparseArena.h` generalized into a `FusedBumpArena<T, kChunkBytes>` template;
+`FusedSparseArena`/`FusedPointerArena` are now `using` aliases of two instantiations). `Query` got
+one new flag, `bSparsePointerArraysFromPool`, exactly as planned -- `bResultsFromPool` was reused
+as-is for 2b with no destructor change, also as planned.
+
+**Correctness**, validated independently after each of the three steps above (not just once at the
+end, per the plan's suggested order):
+- Full Linux `tests/unit/run_tests.py` suite: 19/19 passed after the refactor, after 2b, and after
+  2a (T1-T7, T11-T16, T19, T20).
+- Byte-identical output diff (same methodology as phase 1: `20250903_Hela_Ast_Neo_02.raw`, scan
+  range 1-40000, 37,453 spectra spanning multiple flush rounds) run three times, each comparing the
+  new state against the last validated one -- refactor vs. phase-1 baseline, 2b vs. refactor, and
+  (2a+2b combined) vs. phase-1 baseline. All three: byte-identical PSM data, only the output file's
+  embedded `-N` basename text differed.
+
+**An unplanned finding: `FusedPointerArena`'s chunk size mattered a lot.** The first Phase 2a
+measurement, using the same ~32 MB chunk-byte-budget guess phase 1 used for `FusedSparseArena`
+(never separately tuned, exactly the risk this plan's own "Risks" section flagged), was a poor
+trade: 0.3-4.4% faster than 2b alone but consistently ~3-3.5GB heavier at every batch size --
+including at `FUSED_FLUSH_MIN_BATCH_SIZE=1000`, where there is little pointer-array data to pool in
+the first place. Shrinking `kChunkBytes` from 32 MB to 2 MB (`core/FusedSparseArena.h`) left peak
+memory *unchanged* (ruling out chunk-size waste as the memory driver -- the cost is inherent to
+holding pointer-array data un-flushed longer, the same tradeoff 2b already makes for `Results`) but
+took Phase 2a from a marginal win to a clear one, described below. `2 MB` is itself still an
+untuned guess, just a better one than 32 MB for this workload -- see "Risks" below.
+
+**Performance (full file, 326,696 MS2 spectra), final state (refactor + 2b + tuned 2a) against both
+the phase 1 baseline and the very first (pre-phase-1) baseline from the original investigation:**
+
+| FUSED_FLUSH_MIN_BATCH_SIZE | Original (pre-phase-1) | Phase 1 only | Phase 2 (final) | Hz, phase 2 vs. original |
+|---|---|---|---|---|
+| 100 (effective 400) | not tested | not tested | 3009 Hz / 34.8GB | -- |
+| 250 (effective 400) | not tested | not tested | 2941 Hz / 34.8GB | -- |
+| 500 | not tested | not tested | 3012 Hz / 34.8GB | -- |
+| 1,000 | 1888 Hz / 30.3GB | 3234 Hz / 31.3GB | 3515 Hz / 35.8GB | +86% |
+| 5,000 ("default" when this table was measured -- see below) | 1332 Hz / 31.8GB | 2966 Hz / 33.6GB | 3496 Hz / 37.3GB | +162% |
+| 10,000 | 1019 Hz / 34.5GB | 2588 Hz / 35.5GB | 3497 Hz / 39.6GB | +243% |
+| 20,000 | 665 Hz / 40.0GB | 2088 Hz / 41.1GB | 3179 Hz / 44.8GB | +378% |
+
+**Default changed, 2026-07-24: `FUSED_FLUSH_MIN_BATCH_SIZE` is now `1,000` (was `5,000`).** Based on
+this table's "Phase 2 (final)" column, `1,000` gives both the best throughput (3515 Hz, versus
+3496/3497/3179 Hz at 5,000/10,000/20,000) and the lowest memory (35.8GB, versus 37.3-44.8GB) of every
+non-floored value tested -- there is no longer a reason to default to a larger value now that phase 2
+has removed most of the throughput penalty larger values used to carry, and smaller peak memory is a
+strict win with no measured downside at this workload's scale. The `5,000` label above is left as
+"default at the time" for an accurate historical record of what this specific table measured, not
+current behavior -- see `git log core/Constants.h` for the change itself.
+
+`FUSED_FLUSH_PER_THREAD` (`core/Constants.h:48`) imposes a floor: the actual per-round flush
+threshold is `max(FUSED_FLUSH_MIN_BATCH_SIZE, iNumThreads * FUSED_FLUSH_PER_THREAD)`, which is
+`max(N, 8 * 50) = max(N, 400)` for this benchmark's 8 threads. So `100` and `250` both actually ran
+at an effective threshold of `400`, not their nominal values -- their near-identical Hz (3009 vs.
+2941, within run-to-run noise) and identical memory (34.8GB both) confirm this rather than
+representing two genuinely different configurations. `500` is only slightly above that same floor,
+which is why it also lands in the same narrow band. None of the three moved memory measurably below
+the 1,000 row's 35.8GB -- consistent with the fixed ~19.8GB FI-index baseline (see the original
+2026-07-23 investigation) dominating at these small batch sizes, with the pooled-arena contribution
+too small yet to show much variation.
+
+**Interpretation.** The original pathology -- Hz collapsing as batch size grew (1888 -> 665 Hz, -65%
+from 1,000 to 20,000) -- is essentially gone: Hz is now flat from 1,000 through 10,000
+(3515/3496/3497 Hz) and only softens at 20,000 (3179 Hz, still 51% above phase 1 alone at that size
+and 4.8x the original baseline). Memory still grows with batch size, as expected for "hold more
+results before flushing," but far more gently in relative terms than the original problem: +25%
+from 1,000 to 20,000 (35.8GB -> 44.8GB) versus the original's +32% (30.3GB -> 40.0GB) *combined with*
+a throughput collapse the current numbers no longer show.
+
+**Against the validation plan's stated success criterion** ("Hz should stay roughly flat... peak
+memory growth... should shrink substantially versus baseline, stop exceeding phase 1's own pre-fix
+numbers"): the Hz-flattening half is essentially achieved. The memory half is not -- final peak
+memory is still higher than phase 1 alone at every size (e.g. 44.8GB vs. 41.1GB at 20,000), by
+roughly a constant 4-5GB across all four sizes, attributable to the two new pools (`FusedResultsArena`
++ tuned `FusedPointerArena`) holding their own data un-flushed for the same duration `FusedSparseArena`
+already does. This is the expected, accepted cost of pooling rather than a defect -- pooling trades
+allocator churn for a larger steady-state working set -- and per the interpretation above, is a much
+better trade than the original per-spectrum-allocation regime it replaced.
+
+**Conclusion:** the original question from the 2026-07-23 investigation -- can
+`FUSED_FLUSH_MIN_BATCH_SIZE` be raised to reduce flush-wait pauses without a severe throughput
+penalty -- now has a much more favorable answer than after phase 1 alone. Throughput no longer
+collapses with batch size; it stays close to its best value across the whole tested range. Memory
+still grows somewhat with batch size, which is inherent to holding more results in memory longer
+(the entire point of raising this constant) rather than a bug to fix further. The 82,000 / 165,000 /
+~400,000-"all" configurations skipped in the original investigation were not re-tested here; given
+memory still grows with batch size (now from a higher floor, ~35-45GB across the tested range versus
+the original ~30-40GB), those larger configs should still be approached with real OOM caution on a
+machine like the one used throughout this investigation (63.5GB total RAM).
+
+### Risks / open questions (Phase 2, post-implementation)
+
+- **`kChunkBytes = 2 MB` for `FusedPointerArena` is a better guess, not a tuned optimum.** Only two
+  values (32 MB, 2 MB) were compared, at one batch size (20,000) before adopting 2 MB across the
+  board. A proper sweep of chunk sizes (and confirming the optimum doesn't shift at the larger,
+  untested batch sizes) was not performed.
+- **The ~4-5GB memory premium of Phase 2 over Phase 1 alone was not decomposed** between
+  `FusedResultsArena` and the tuned `FusedPointerArena` -- both were implemented and measured
+  together as "final state." Isolating each pool's individual memory contribution (e.g. via the same
+  before/after methodology used for 2b alone earlier in this document) would clarify whether one pool
+  dominates the premium, which would be the natural next place to look for further memory reduction.
+- **All Phase 2 measurements reuse the same machine, raw file, and params as phase 1 and the original
+  investigation** (this repo's benchmarking convention throughout this document) -- results have not
+  been checked against a different `iNumStored`/decoy-search configuration, which `FusedResultsArena`'s
+  own sizing (chunk-byte-budget divided by `iNumStored`) is specifically designed to adapt to but
+  which was never exercised here (`iNumStored=2` throughout, from `num_output_lines=1`).

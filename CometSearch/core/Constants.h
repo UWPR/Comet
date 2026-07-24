@@ -46,7 +46,7 @@
 // is what needs to stay above the amortization floor, not the round's total
 // size.
 #define FUSED_FLUSH_PER_THREAD      50
-#define FUSED_FLUSH_MIN_BATCH_SIZE  5000
+#define FUSED_FLUSH_MIN_BATCH_SIZE  1000
 #define FRAGINDEX_MAX_NUMPEAKS      150      // number of spectrum peaks used to query fragment index
 #define FRAGINDEX_MAX_NUMSCORED     100      // for each fragment index spectrum query, score up to this many peptides
 #define FRAGINDEX_MAX_COMBINATIONS  10000    // raised from 2000; see docs/20260714_modifications.md
