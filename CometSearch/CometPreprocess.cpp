@@ -249,11 +249,12 @@ struct BoundedSpectrumQueue
 
 
 // Mutates mstSpectrum in place (clearMzRange zeroes cleared-range intensities)
-// and moves it into queue if it survives all three filters.  Returns true iff
-// the spectrum was enqueued.  This is the ONLY copy of this filter sequence;
-// both the synchronous and readahead loops in FusedLoadAndSearchSpectra call
-// it so they cannot drift apart on a future filter change.
-bool CometPreprocess::FilterAndEnqueueSpectrum(Spectrum& mstSpectrum, BoundedSpectrumQueue& queue)
+// and returns true iff it survives the iMinPeaks/activation-method filters.
+// This is the ONLY copy of this filter sequence; FilterAndEnqueueSpectrum below
+// (both the synchronous and readahead loops in FusedLoadAndSearchSpectra) and
+// the diagnostic FusedPreloadThenSearch's own read loop all call it so they
+// cannot drift apart on a future filter change.
+bool CometPreprocess::ApplySpectrumFilters(Spectrum& mstSpectrum)
 {
    int iNumClearedPeaks = 0;
 
@@ -279,6 +280,16 @@ bool CometPreprocess::FilterAndEnqueueSpectrum(Spectrum& mstSpectrum, BoundedSpe
       return false;
 
    if (!CometPreprocess::CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
+      return false;
+
+   return true;
+}
+
+// Moves mstSpectrum into queue if it survives ApplySpectrumFilters().  Returns
+// true iff the spectrum was enqueued.
+bool CometPreprocess::FilterAndEnqueueSpectrum(Spectrum& mstSpectrum, BoundedSpectrumQueue& queue)
+{
+   if (!ApplySpectrumFilters(mstSpectrum))
       return false;
 
    queue.push(std::move(mstSpectrum));
@@ -3734,6 +3745,224 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
    // mutated.  Concatenate into session.queries (ownership of the raw Query* moves
    // by value; they are freed later in Pipeline cleanupBatch).  Push order is
    // irrelevant: Pipeline.cpp sorts by scan number before writing.
+   size_t iTotalQueries = 0;
+   for (auto& slot : vSlotQueries)
+      iTotalQueries += slot.v.size();
+
+   session.queries.reserve(session.queries.size() + iTotalQueries);
+   for (auto& slot : vSlotQueries)
+   {
+      session.queries.insert(session.queries.end(), slot.v.begin(), slot.v.end());
+      slot.v.clear();
+   }
+
+   return !g_cometStatus.IsError() && !g_cometStatus.IsCancel();
+}
+
+
+// DIAGNOSTIC / BENCHMARK ONLY -- not part of the normal search pipeline.
+// Opt-in via the COMET_PRELOAD_BENCHMARK environment variable (see
+// FiStrategy::executeBatch / PiStrategy::executeBatch). Reads every matching
+// spectrum for the current input file into memory FIRST (single-threaded, same
+// filters as the normal fused path), then dispatches the whole in-memory set
+// across the thread pool for search -- separately timed and memory-snapshotted
+// at each phase boundary. This exists to answer one specific question: how much
+// of the normal fused path's measured Hz is raw-file read/parse time vs. actual
+// search, by reproducing RTS's own preload-then-search-only-timed methodology
+// (RealtimeSearch/SearchMS1MS2.cs) inside the batch path for a fair comparison.
+// See docs/20260724_PreloadBenchmark.md.
+//
+// Unlike FusedLoadAndSearchSpectra, this always consumes the ENTIRE remaining
+// scan range in one call (no FUSED_FLUSH_MIN_BATCH_SIZE flush cap) -- the whole
+// point is to measure one uninterrupted preload phase and one uninterrupted
+// search phase, not to bound peak memory the way normal batch search does.
+bool CometPreprocess::FusedPreloadThenSearch(MSReader& mstReader,
+                                             int iFirstScan,
+                                             int iLastScan,
+                                             int iAnalysisType,
+                                             ThreadPool* tp,
+                                             SearchSession& session)
+{
+   int iFileLastScan = -1;
+   int iScanNumber = 0;
+   int iTotalScans = 0;
+   int iTmpCount = 0;
+   Spectrum mstSpectrum;
+
+   g_massRange.usiMaxFragmentCharge = 0;
+   g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
+   g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
+
+   Threading::InitMutex(&_maxChargeMutex);
+
+   const int iNumSlots = g_staticParams.options.iNumThreads;
+
+   struct alignas(64) SlotVec { std::vector<Query*> v; };
+   std::vector<SlotVec> vSlotQueries(iNumSlots);
+
+   if (session.sparseArenas.empty())
+      session.sparseArenas.resize(iNumSlots);
+   if (session.pointerArenas.empty())
+      session.pointerArenas.resize(iNumSlots);
+   if (session.resultsArenas.empty())
+   {
+      session.resultsArenas.resize(iNumSlots);
+      for (auto& arena : session.resultsArenas)
+         arena.EnsureInitialized(g_staticParams.options.iNumStored,
+                                 g_staticParams.options.iDecoySearch == 2);
+   }
+
+   std::atomic<size_t> aQueryCount{0};   // unused for flow control here (no flush cap); FusedSearchSpectrum's signature still requires it
+
+   // ---- Phase 1: preload every matching spectrum into memory ----
+   const size_t memBeforePreloadKB = CometMassSpecUtils::GetCurrentWorkingSetKB();
+   const auto tPreloadStart = chrono::steady_clock::now();
+
+   std::vector<Spectrum> vAllSpectra;
+   vAllSpectra.reserve(200000);   // generous upfront guess to avoid most reallocation churn; grows if needed
+
+   while (true)
+   {
+      if (_bFirstScan)
+      {
+         PreloadIons(mstReader, mstSpectrum, false, 0);
+         _bFirstScan = false;
+      }
+      else
+      {
+         PreloadIons(mstReader, mstSpectrum, true);
+      }
+
+      if (iFileLastScan == -1)
+         iFileLastScan = mstReader.getLastScan();
+
+      if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+
+      iScanNumber = mstSpectrum.getScanNumber();
+
+      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      {
+         g_staticParams.bSkipToStartScan = false;
+
+         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         iScanNumber = mstSpectrum.getScanNumber();
+
+         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         {
+            iFirstScan++;
+            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            iScanNumber = mstSpectrum.getScanNumber();
+         }
+      }
+
+      if (iScanNumber != 0)
+      {
+         iTmpCount = iScanNumber;
+
+         if (iLastScan != 0 && iScanNumber > iLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+         if (iFirstScan != 0 && iLastScan != 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
+            continue;
+         if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
+            continue;
+
+         if (ApplySpectrumFilters(mstSpectrum))
+            vAllSpectra.push_back(std::move(mstSpectrum));
+
+         iTotalScans++;
+      }
+      else if (IsValidInputType(g_staticParams.inputFile.iInputType))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+      else
+      {
+         iTmpCount++;
+         if (iTmpCount > iFileLastScan)
+         {
+            _bDoneProcessingAllSpectra = true;
+            break;
+         }
+      }
+
+      // bIgnoreSpectrumBatchSize=true: read the ENTIRE remaining range in this
+      // one preload phase, deliberately ignoring both the legacy spectrum_batch_size
+      // concept and the fused path's FUSED_FLUSH_MIN_BATCH_SIZE flush cap.
+      if (CheckExit(iAnalysisType, iScanNumber, iTotalScans, iLastScan,
+                    mstReader.getLastScan(), 0, true))
+      {
+         _bDoneProcessingAllSpectra = true;
+         break;
+      }
+   }
+
+   const double dPreloadSeconds = chrono::duration<double>(chrono::steady_clock::now() - tPreloadStart).count();
+   const size_t memAfterPreloadKB = CometMassSpecUtils::GetCurrentWorkingSetKB();
+
+   if (!g_staticParams.options.bOutputSqtStream)
+   {
+      // Signed double delta -- GetCurrentWorkingSetKB() is a point-in-time snapshot,
+      // not a monotonic counter, so it CAN legitimately decrease. This was not just
+      // theoretical: a large-file run (326,696 spectra) showed working set drop from
+      // 37.42GB to 4.31GB across the search phase, consistent with the OS trimming
+      // this process's working set under real memory pressure -- see
+      // docs/20260724_PreloadBenchmark.md's "Follow-up" section. An unsigned (size_t)
+      // subtraction here would silently underflow to a huge bogus value instead of
+      // showing that negative delta (this bug was hit and fixed during that run).
+      printf(" [PRELOAD] %zu spectra in %.3fs (%.1f Hz) -- memory %.2fGB -> %.2fGB (%+.2fGB)\n",
+             vAllSpectra.size(), dPreloadSeconds,
+             (dPreloadSeconds > 0.0) ? (vAllSpectra.size() / dPreloadSeconds) : 0.0,
+             memBeforePreloadKB / (1024.0 * 1024.0), memAfterPreloadKB / (1024.0 * 1024.0),
+             ((double)memAfterPreloadKB - (double)memBeforePreloadKB) / (1024.0 * 1024.0));
+      fflush(stdout);
+   }
+
+   // ---- Phase 2: search every preloaded spectrum across the thread pool ----
+   const auto tSearchStart = chrono::steady_clock::now();
+
+   std::atomic<size_t> iNextIndex{0};
+   const size_t iTotalSpectra = vAllSpectra.size();
+
+   for (int t = 0; t < iNumSlots; ++t)
+   {
+      tp->doJob([&vAllSpectra, &iNextIndex, iTotalSpectra, t, &vSlotQueries, &aQueryCount, &session]()
+      {
+         size_t i;
+         while ((i = iNextIndex.fetch_add(1, std::memory_order_relaxed)) < iTotalSpectra)
+         {
+            FusedSearchSpectrum(std::move(vAllSpectra[i]), t, vSlotQueries[t].v, aQueryCount,
+                                &session.sparseArenas[t], &session.resultsArenas[t],
+                                &session.pointerArenas[t]);
+         }
+      });
+   }
+
+   tp->wait_on_threads();
+
+   const double dSearchSeconds = chrono::duration<double>(chrono::steady_clock::now() - tSearchStart).count();
+   const size_t memAfterSearchKB = CometMassSpecUtils::GetCurrentWorkingSetKB();
+
+   if (!g_staticParams.options.bOutputSqtStream)
+   {
+      // See the [PRELOAD] print above for why this must be a signed double delta.
+      printf(" [SEARCH] %zu spectra in %.3fs (%.1f Hz) -- memory %.2fGB -> %.2fGB (%+.2fGB)\n",
+             iTotalSpectra, dSearchSeconds,
+             (dSearchSeconds > 0.0) ? (iTotalSpectra / dSearchSeconds) : 0.0,
+             memAfterPreloadKB / (1024.0 * 1024.0), memAfterSearchKB / (1024.0 * 1024.0),
+             ((double)memAfterSearchKB - (double)memAfterPreloadKB) / (1024.0 * 1024.0));
+      fflush(stdout);
+   }
+
+   Threading::DestroyMutex(_maxChargeMutex);
+
    size_t iTotalQueries = 0;
    for (auto& slot : vSlotQueries)
       iTotalQueries += slot.v.size();

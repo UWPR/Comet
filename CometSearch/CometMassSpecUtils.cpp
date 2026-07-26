@@ -634,6 +634,34 @@ string CometMassSpecUtils::GetPeakMemory()
    return strOut;
 }
 
+// See header comment: current (not peak) resident memory, for before/after deltas.
+size_t CometMassSpecUtils::GetCurrentWorkingSetKB()
+{
+   size_t currentMemoryKB = 0;
+
+#ifdef _WIN32
+   PROCESS_MEMORY_COUNTERS pmc = {};
+   if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+   {
+      currentMemoryKB = pmc.WorkingSetSize / 1024;
+   }
+#elif defined(__APPLE__)
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+   {
+      currentMemoryKB = (size_t)ru.ru_maxrss / 1024;   // macOS returns bytes; ru_maxrss is peak, not current, but there is no portable "current RSS" via getrusage
+   }
+#else
+   struct rusage ru;
+   if (getrusage(RUSAGE_SELF, &ru) == 0)
+   {
+      currentMemoryKB = (size_t)ru.ru_maxrss;          // Linux returns KB; same peak-not-current caveat as above
+   }
+#endif
+
+   return currentMemoryKB;
+}
+
 // Plain free function usable from C++/CLI without pulling in CometDataInternal.h
 string GetPeakMemoryStr()
 {

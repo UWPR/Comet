@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include "Common.h"
 #include "FiStrategy.h"
 #include "SearchUtils.h"
@@ -134,8 +135,17 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
    {
       session.statusRef.SetStatusMsg(string("Running fused FI_DB search..."));
 
-      bool bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(
-            mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
+      // DIAGNOSTIC / BENCHMARK ONLY: COMET_PRELOAD_BENCHMARK opts into
+      // FusedPreloadThenSearch (read the whole file into memory first, then
+      // search, separately timed) instead of the normal streaming fused path.
+      // See CometPreprocess.cpp's FusedPreloadThenSearch comment and
+      // docs/20260724_PreloadBenchmark.md. Default behavior (env var unset) is
+      // completely unchanged.
+      bool bSucceeded = getenv("COMET_PRELOAD_BENCHMARK") != nullptr
+            ? CometPreprocess::FusedPreloadThenSearch(
+                  mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session)
+            : CometPreprocess::FusedLoadAndSearchSpectra(
+                  mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
 
       iPercentStart = iPercentEnd;
       iPercentEnd   = mstReader.getPercent();

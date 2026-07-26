@@ -148,6 +148,15 @@ public:
                                           ThreadPool* tp,
                                           SearchSession& session);
 
+   // DIAGNOSTIC / BENCHMARK ONLY -- see the .cpp definition's comment and
+   // docs/20260724_PreloadBenchmark.md. Opt-in via COMET_PRELOAD_BENCHMARK.
+   static bool FusedPreloadThenSearch(MSReader& mstReader,
+                                      int iFirstScan,
+                                      int iLastScan,
+                                      int iAnalysisType,
+                                      ThreadPool* tp,
+                                      SearchSession& session);
+
    // Returns the thread-local raw-data buffer used by PreprocessSingleSpectrumThreadLocal.
    // The buffer is sized to g_staticParams.iArraySizeGlobal and its content after a
    // PreprocessSingleSpectrumThreadLocal call holds the binned sqrt-intensity spectrum
@@ -182,12 +191,16 @@ private:
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
 
-   // Shared by both the synchronous and readahead producer loops in
-   // FusedLoadAndSearchSpectra so a future filter change (clearMzRange,
-   // iMinPeaks, activation method) cannot land in only one of the two call
-   // sites and silently diverge between them.  Mutates mstSpectrum in place
-   // (clearMzRange zeroes cleared-range intensities) and moves it into queue
-   // if it survives all three filters.  Returns true iff enqueued.
+   // Shared by the synchronous and readahead producer loops in
+   // FusedLoadAndSearchSpectra, and by FusedPreloadThenSearch's own read loop,
+   // so a future filter change (clearMzRange, iMinPeaks, activation method)
+   // cannot land in only one call site and silently diverge from the others.
+   // Mutates mstSpectrum in place (clearMzRange zeroes cleared-range
+   // intensities). Returns true iff it survives all three filters.
+   static bool ApplySpectrumFilters(Spectrum& mstSpectrum);
+
+   // Moves mstSpectrum into queue if it survives ApplySpectrumFilters().
+   // Returns true iff enqueued.
    static bool FilterAndEnqueueSpectrum(Spectrum& mstSpectrum,
                                         BoundedSpectrumQueue& queue);
    // pArena: when non-null, each sparse-matrix child block ([SPARSE_MATRIX_SIZE]
