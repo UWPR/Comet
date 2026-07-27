@@ -73,31 +73,6 @@ struct Results
    vector<struct ProteinEntryStruct> pWhichDecoyProtein;  // keep separate decoy list (used for separate decoy matches and combined results)
 };
 
-// Resets one Results slot to its pre-search sentinel state so it is safe to reuse
-// for a new spectrum, whether the underlying memory came from a fresh new[],
-// RtsScratch's thread-local RTS pool, or the fused batch path's FusedResultsArena.
-// Deliberately does not touch pWhichDecoyProtein -- callers reset that themselves
-// only when iDecoySearch actually applies, matching the pre-existing call sites
-// this consolidates (see docs/20260723_ExtendFusedBatchPath.md, Phase 2 prerequisite
-// refactor).
-inline void ResetOneResult(Results& r)
-{
-   r.dPepMass = 0.0;
-   r.dExpect = 999;
-   r.fScoreSp = 0.0;
-   r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
-   r.fAScorePro = 0.0;
-   r.usiLenPeptide = 0;
-   r.usiRankSp = 0;
-   r.usiMatchedIons = 0;
-   r.usiTotalIons = 0;
-   r.szPeptide[0] = '\0';
-   r.sAScoreProSiteScores.clear();
-   r.pWhichProtein.clear();
-   r.sPeffOrigResidues.clear();
-   r.iPeffOrigResiduePosition = -9;
-}
-
 struct SpecLibResults // MS2 spec lib
 {
    unsigned int iWhichSpecLib;                // the matched spectral library entry
@@ -169,6 +144,39 @@ struct ProteinEntryStruct
       return (lWhichProtein < a.lWhichProtein);
    }
 };
+
+// Resets one Results slot to its pre-search sentinel state so it is safe to reuse
+// for a new spectrum, whether the underlying memory came from a fresh new[],
+// RtsScratch's thread-local RTS pool, or the fused batch path's FusedResultsArena.
+// Deliberately does not touch pWhichDecoyProtein -- callers reset that themselves
+// only when iDecoySearch actually applies, matching the pre-existing call sites
+// this consolidates (see docs/20260723_ExtendFusedBatchPath.md, Phase 2 prerequisite
+// refactor).
+//
+// Defined here (after ProteinEntryStruct's full definition) rather than
+// immediately after struct Results: pWhichProtein.clear() requires
+// ProteinEntryStruct to be a complete type, which it is not yet at that earlier
+// point in the file (only forward-declared via the elaborated-type-specifier in
+// Results' member declarations). MSVC's STL and libstdc++ tolerate instantiating
+// vector<T>::clear() against an incomplete T in this situation, but libc++
+// (macOS) does not and fails to compile.
+inline void ResetOneResult(Results& r)
+{
+   r.dPepMass = 0.0;
+   r.dExpect = 999;
+   r.fScoreSp = 0.0;
+   r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+   r.fAScorePro = 0.0;
+   r.usiLenPeptide = 0;
+   r.usiRankSp = 0;
+   r.usiMatchedIons = 0;
+   r.usiTotalIons = 0;
+   r.szPeptide[0] = '\0';
+   r.sAScoreProSiteScores.clear();
+   r.pWhichProtein.clear();
+   r.sPeffOrigResidues.clear();
+   r.iPeffOrigResiduePosition = -9;
+}
 
 struct PeffModStruct       // stores info read from PEFF header
 {
