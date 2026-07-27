@@ -1726,7 +1726,12 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       viIntensityOrder.reserve(iNumPeaks);
       for (int i = 0; i < iNumPeaks; ++i)
       {
-         if (pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0)
+         // Only peaks within the fragindex_min_fragmentmass/fragindex_max_fragmentmass
+         // bounds are eligible since peaks outside that range can never match an
+         // indexed fragment; matches the bound convention used when building the
+         // fragment index in CometFragmentIndex.cpp.
+         if (pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0
+               && pdMass[i] > g_staticParams.options.dFragIndexMinMass && pdMass[i] < g_staticParams.options.dFragIndexMaxMass)
             viIntensityOrder.push_back(i);
       }
 
@@ -2772,12 +2777,16 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < g_staticParams.options.iFragIndexNumSpectrumPeaks)
+         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < g_staticParams.options.iFragIndexNumSpectrumPeaks
+               && dIon > g_staticParams.options.dFragIndexMinMass && dIon < g_staticParams.options.dFragIndexMaxMass)
          {
             // Store list of fragment masses for fragment index search
             // Intensities don't matter here. Note that peaks are sorted in
             // ascending order by intensity so that the most intense peaks
-            // are stored in vfRawFragmentPeakMass.
+            // are stored in vfRawFragmentPeakMass. Only peaks within the
+            // fragindex_min_fragmentmass/fragindex_max_fragmentmass bounds
+            // are eligible since peaks outside that range can never match
+            // an indexed fragment.
             pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
 
             iNumFragmentPeaks++;
