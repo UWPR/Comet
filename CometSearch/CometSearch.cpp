@@ -7980,7 +7980,21 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    // PI_DB: gate on xcorr and minimum xcorr threshold (all mass-matched candidates scored)
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport && dXcorr >= pQuery->dLowestXcorrScore)
+      // "+ 0.00005" mirrors the fudge factor already used in the PI_DB and FASTA_DB
+      // gates below/StorePeptide's caller: dXcorr here is a full-precision double,
+      // but pQuery->dLowestXcorrScore was assigned from a stored fXcorr (float) and
+      // widened back to double, so it carries a float-rounding error on the order of
+      // 1e-7 to 1e-6 relative to the true value. Without the margin, a second
+      // candidate that ties the first at the 3-decimal xcorr precision Comet actually
+      // stores (dXcorr is already rounded to 3 decimals above) fails this ">="
+      // check roughly half the time, purely depending on which way the float
+      // rounding happened to go -- silently dropping a legitimate tied candidate
+      // before it ever reaches StorePeptideI/CheckDuplicateI, regardless of any
+      // tie-break logic downstream. Confirmed empirically: for a large sample of
+      // 3-decimal-rounded xcorr values, "dXcorr >= (double)(float)dXcorr" is false
+      // ~50% of the time.
+      if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
+         && dXcorr + 0.00005 >= pQuery->dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
