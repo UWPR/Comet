@@ -390,21 +390,43 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
    // Target search
    CalculateSP(pQuery->_pResults, pQuery, iSize);
 
-   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnSp);
-
-   pQuery->_pResults[0].usiRankSp = 1;
-
-   for (int ii=1; ii<iSize; ++ii)
+   // Rank by SP score via an index permutation rather than physically sorting
+   // _pResults by SP and then sorting it back to Xcorr order. isEqual() is an
+   // epsilon-tolerant, non-transitive relation (a~b and b~c does not imply
+   // a~c), so std::sort's result for an isEqual-tied-but-not-bitwise-identical
+   // group is not actually guaranteed independent of the array's order going
+   // into that sort -- a real hazard when the array has just been reordered
+   // by a *different* comparator (SortFnSp) immediately beforehand. Doing the
+   // rank assignment on a side index array means _pResults is sorted by
+   // SortFnXcorr exactly once for this stage (matching RTS's single-pass
+   // std::partial_sort(SortFnXcorr)), so there is no second Xcorr sort whose
+   // outcome could depend on that intermediate SP-order detour.
+   if (iSize > 0)
    {
-      // Determine score rankings
-      if (isEqual(pQuery->_pResults[ii].fScoreSp, pQuery->_pResults[ii-1].fScoreSp))
-         pQuery->_pResults[ii].usiRankSp = pQuery->_pResults[ii-1].usiRankSp;
-      else
-         pQuery->_pResults[ii].usiRankSp = pQuery->_pResults[ii-1].usiRankSp + 1;
+      std::vector<int> viSpOrder(iSize);
+      for (int ii = 0; ii < iSize; ++ii)
+         viSpOrder[ii] = ii;
+
+      std::sort(viSpOrder.begin(), viSpOrder.end(),
+         [pQuery](int a, int b)
+         {
+            return SortFnSp(pQuery->_pResults[a], pQuery->_pResults[b]);
+         });
+
+      pQuery->_pResults[viSpOrder[0]].usiRankSp = 1;
+
+      for (int ii=1; ii<iSize; ++ii)
+      {
+         // Determine score rankings
+         if (isEqual(pQuery->_pResults[viSpOrder[ii]].fScoreSp, pQuery->_pResults[viSpOrder[ii-1]].fScoreSp))
+            pQuery->_pResults[viSpOrder[ii]].usiRankSp = pQuery->_pResults[viSpOrder[ii-1]].usiRankSp;
+         else
+            pQuery->_pResults[viSpOrder[ii]].usiRankSp = pQuery->_pResults[viSpOrder[ii-1]].usiRankSp + 1;
+      }
    }
 
-   // Then sort each entry in descending order by xcorr
-   std::sort(pQuery->_pResults, pQuery->_pResults + iSize, SortFnXcorr);
+   // _pResults is still in the Xcorr order from the sort above -- no second
+   // SortFnXcorr sort needed here.
 
    // if mod search, now sort peptides with same score but different mod locations
    if (g_staticParams.variableModParameters.bVarModSearch)
@@ -443,20 +465,35 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 
       CalculateSP(pQuery->_pDecoys, pQuery, iSize);
 
-      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnSp);
-      pQuery->_pDecoys[0].usiRankSp = 1;
-
-      for (int ii=1; ii<iSize; ++ii)
+      // See the matching target-branch block above for why this ranks via an
+      // index permutation instead of a destructive sort-by-SP-then-back-to-
+      // Xcorr round trip.
+      if (iSize > 0)
       {
-         // Determine score rankings
-         if (isEqual(pQuery->_pDecoys[ii].fScoreSp, pQuery->_pDecoys[ii-1].fScoreSp))
-            pQuery->_pDecoys[ii].usiRankSp = pQuery->_pDecoys[ii-1].usiRankSp;
-         else
-            pQuery->_pDecoys[ii].usiRankSp = pQuery->_pDecoys[ii-1].usiRankSp + 1;
+         std::vector<int> viSpOrder(iSize);
+         for (int ii = 0; ii < iSize; ++ii)
+            viSpOrder[ii] = ii;
+
+         std::sort(viSpOrder.begin(), viSpOrder.end(),
+            [pQuery](int a, int b)
+            {
+               return SortFnSp(pQuery->_pDecoys[a], pQuery->_pDecoys[b]);
+            });
+
+         pQuery->_pDecoys[viSpOrder[0]].usiRankSp = 1;
+
+         for (int ii=1; ii<iSize; ++ii)
+         {
+            // Determine score rankings
+            if (isEqual(pQuery->_pDecoys[viSpOrder[ii]].fScoreSp, pQuery->_pDecoys[viSpOrder[ii-1]].fScoreSp))
+               pQuery->_pDecoys[viSpOrder[ii]].usiRankSp = pQuery->_pDecoys[viSpOrder[ii-1]].usiRankSp;
+            else
+               pQuery->_pDecoys[viSpOrder[ii]].usiRankSp = pQuery->_pDecoys[viSpOrder[ii-1]].usiRankSp + 1;
+         }
       }
 
-      // Then sort each entry by xcorr
-      std::sort(pQuery->_pDecoys, pQuery->_pDecoys + iSize, SortFnXcorr);
+      // _pDecoys is still in the Xcorr order from the sort above -- no second
+      // SortFnXcorr sort needed here.
 
       // if mod search, now sort peptides with same score but different mod locations
       if (g_staticParams.variableModParameters.bVarModSearch)
