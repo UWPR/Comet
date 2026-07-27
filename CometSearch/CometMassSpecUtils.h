@@ -88,6 +88,19 @@ public:
 
    static string GetPeakMemory();
 
+   // Current resident memory in KB, 0 on failure, intended as a point-in-time
+   // snapshot suitable for before/after deltas -- e.g. measuring the incremental
+   // memory cost of a specific phase (see FusedPreloadThenSearch in
+   // CometPreprocess.cpp). This distinction from GetPeakMemory() (a monotonic
+   // process-lifetime high-water mark) only holds on Windows, which has a true
+   // current-RSS query (GetProcessMemoryInfo's WorkingSetSize). macOS and Linux
+   // have no portable current-RSS query via getrusage(), so their
+   // implementations fall back to ru_maxrss -- peak, not current -- making
+   // deltas computed from two calls to this function unreliable on those
+   // platforms (a delta of two peak readings is not the incremental cost of
+   // the phase between them).
+   static size_t GetCurrentWorkingSetKB();
+
 };
 
 #endif // _COMETMASSSPECUTILS_H_

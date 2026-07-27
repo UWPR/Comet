@@ -1,4 +1,4 @@
-// Copyright 2023 Jimmy Eng
+// Copyright 2012-2026 Jimmy Eng
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -144,6 +144,39 @@ struct ProteinEntryStruct
       return (lWhichProtein < a.lWhichProtein);
    }
 };
+
+// Resets one Results slot to its pre-search sentinel state so it is safe to reuse
+// for a new spectrum, whether the underlying memory came from a fresh new[],
+// RtsScratch's thread-local RTS pool, or the fused batch path's FusedResultsArena.
+// Deliberately does not touch pWhichDecoyProtein -- callers reset that themselves
+// only when iDecoySearch actually applies, matching the pre-existing call sites
+// this consolidates (see docs/20260723_ExtendFusedBatchPath.md, Phase 2 prerequisite
+// refactor).
+//
+// Defined here (after ProteinEntryStruct's full definition) rather than
+// immediately after struct Results: pWhichProtein.clear() requires
+// ProteinEntryStruct to be a complete type, which it is not yet at that earlier
+// point in the file (only forward-declared via the elaborated-type-specifier in
+// Results' member declarations). MSVC's STL and libstdc++ tolerate instantiating
+// vector<T>::clear() against an incomplete T in this situation, but libc++
+// (macOS) does not and fails to compile.
+inline void ResetOneResult(Results& r)
+{
+   r.dPepMass = 0.0;
+   r.dExpect = 999;
+   r.fScoreSp = 0.0;
+   r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+   r.fAScorePro = 0.0;
+   r.usiLenPeptide = 0;
+   r.usiRankSp = 0;
+   r.usiMatchedIons = 0;
+   r.usiTotalIons = 0;
+   r.szPeptide[0] = '\0';
+   r.sAScoreProSiteScores.clear();
+   r.pWhichProtein.clear();
+   r.sPeffOrigResidues.clear();
+   r.iPeffOrigResiduePosition = -9;
+}
 
 struct PeffModStruct       // stores info read from PEFF header
 {
@@ -708,16 +741,30 @@ struct Query
    unsigned long int  _uliNumMatchedPeptides;  // # of peptides that get scored
    unsigned long int  _uliNumMatchedDecoyPeptides;
 
-   // When true, sparse child arrays (float[SPARSE_MATRIX_SIZE]) belong to the
-   // thread-local RtsScratch pool and must NOT be delete[]'d by the destructor.
-   // Set only by PreprocessSingleSpectrumThreadLocal via PreprocessSingleSpectrumCore.
+   // When true, sparse child arrays (float[SPARSE_MATRIX_SIZE]) belong to a pool
+   // and must NOT be delete[]'d by the destructor -- either the thread-local
+   // RtsScratch pool (set by PreprocessSingleSpectrumThreadLocal via
+   // PreprocessSingleSpectrumCore, RTS path) or a per-slot FusedSparseArena (set
+   // by Preprocess(), fused batch path). See
+   // docs/20260723_ExtendFusedBatchPath.md for the batch-path pool.
    bool bSparseFromPool;
 
-   // When true, _pResults/_pDecoys belong to the thread-local RtsScratch pool
-   // (RtsScratch::pResults/pDecoys) and must NOT be delete[]'d by the destructor --
-   // the pool owns that memory for the lifetime of the thread and reuses it for the
-   // next spectrum. Set only by PreprocessSingleSpectrumThreadLocal via
-   // PreprocessSingleSpectrumCore. See docs/20260714_rtspostprocessing.md finding 1.
+   // Same idea as bSparseFromPool, but for the outer ppfSparseSpScoreData/
+   // ppfSparseFastXcorrData/ppfSparseFastXcorrDataNL pointer arrays themselves
+   // (not their child blocks). Unlike bSparseFromPool, RTS's pool has never
+   // pooled these -- only set by Preprocess() when given a non-null
+   // FusedPointerArena (fused batch path). Deliberately a separate flag rather
+   // than folding into bSparseFromPool: reusing that flag's meaning would
+   // silently change RTS's destructor behavior for memory RTS's pool was never
+   // designed to own. See docs/20260723_ExtendFusedBatchPath.md Phase 2a.
+   bool bSparsePointerArraysFromPool;
+
+   // When true, _pResults/_pDecoys belong to a pool and must NOT be delete[]'d
+   // by the destructor -- either the thread-local RtsScratch pool (RTS path) or
+   // a per-slot FusedResultsArena (fused batch path, see
+   // docs/20260723_ExtendFusedBatchPath.md Phase 2b). Set by
+   // PreprocessSingleSpectrumCore (RTS) or FusedSearchSpectrum (batch). See also
+   // docs/20260714_rtspostprocessing.md finding 1 for the original RTS pool.
    bool bResultsFromPool;
 
    // Sparse matrix representation of data
@@ -775,6 +822,7 @@ struct Query
       _uliNumMatchedDecoyPeptides = 0;
 
       bSparseFromPool = false;
+      bSparsePointerArraysFromPool = false;
       bResultsFromPool = false;
 
       // Set by CometPreprocess::Preprocess (or its long/MS1-path siblings)
@@ -823,7 +871,8 @@ struct Query
                delete[] ppfSparseSpScoreData[i];
          }
       }
-      delete[] ppfSparseSpScoreData;
+      if (!bSparsePointerArraysFromPool)
+         delete[] ppfSparseSpScoreData;
       ppfSparseSpScoreData = NULL;
 
       if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
@@ -841,7 +890,8 @@ struct Query
                   delete[] ppfSparseFastXcorrDataNL[i];
             }
          }
-         delete[] ppfSparseFastXcorrDataNL;
+         if (!bSparsePointerArraysFromPool)
+            delete[] ppfSparseFastXcorrDataNL;
          ppfSparseFastXcorrDataNL = NULL;
       }
       else
@@ -855,7 +905,8 @@ struct Query
             }
          }
       }
-      delete[] ppfSparseFastXcorrData;
+      if (!bSparsePointerArraysFromPool)
+         delete[] ppfSparseFastXcorrData;
       ppfSparseFastXcorrData = NULL;
 
       if (bResultsFromPool)

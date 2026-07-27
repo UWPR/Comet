@@ -1,4 +1,4 @@
-// Copyright 2023 Jimmy Eng
+// Copyright 2012-2026 Jimmy Eng
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdlib>
 #include "Common.h"
 #include "PiStrategy.h"
 #include "SearchUtils.h"
@@ -90,8 +91,12 @@ bool PiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
    {
       session.statusRef.SetStatusMsg(string("Running fused PI_DB search..."));
 
-      bool bSucceeded = CometPreprocess::FusedLoadAndSearchSpectra(
-            mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
+      // DIAGNOSTIC / BENCHMARK ONLY -- see FiStrategy::executeBatch's identical gate.
+      bool bSucceeded = getenv("COMET_PRELOAD_BENCHMARK") != nullptr
+            ? CometPreprocess::FusedPreloadThenSearch(
+                  mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session)
+            : CometPreprocess::FusedLoadAndSearchSpectra(
+                  mstReader, iFirstScan, iLastScan, iAnalysisType, tp, session);
 
       iPercentStart = iPercentEnd;
       iPercentEnd   = mstReader.getPercent();

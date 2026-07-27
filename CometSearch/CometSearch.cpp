@@ -7980,7 +7980,21 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    // PI_DB: gate on xcorr and minimum xcorr threshold (all mass-matched candidates scored)
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport && dXcorr >= pQuery->dLowestXcorrScore)
+      // "+ 0.00005" mirrors the fudge factor already used in the PI_DB and FASTA_DB
+      // gates below/StorePeptide's caller: dXcorr here is a full-precision double,
+      // but pQuery->dLowestXcorrScore was assigned from a stored fXcorr (float) and
+      // widened back to double, so it carries a float-rounding error on the order of
+      // 1e-7 to 1e-6 relative to the true value. Without the margin, a second
+      // candidate that ties the first at the 3-decimal xcorr precision Comet actually
+      // stores (dXcorr is already rounded to 3 decimals above) fails this ">="
+      // check roughly half the time, purely depending on which way the float
+      // rounding happened to go -- silently dropping a legitimate tied candidate
+      // before it ever reaches StorePeptideI/CheckDuplicateI, regardless of any
+      // tie-break logic downstream. Confirmed empirically: for a large sample of
+      // 3-decimal-rounded xcorr values, "dXcorr >= (double)(float)dXcorr" is false
+      // ~50% of the time.
+      if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
+         && dXcorr + 0.00005 >= pQuery->dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
@@ -8135,19 +8149,70 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
    if (g_staticParams.options.iDecoySearch == 2 && bDecoyPep)
    {
-      short siLowestDecoyXcorrScoreIndex = pQuery->siLowestDecoyXcorrScoreIndex;
+      short siLowestDecoyXcorrScoreIndex = 0;
+
+      // Fresh, exhaustive recompute every call -- mirrors StorePeptide()'s top-of-function
+      // scan (commit 7c04814d) rather than trusting pQuery->siLowestDecoyXcorrScoreIndex,
+      // which is only maintained by the simple score-only loop at the bottom of this
+      // function (kept cheap on purpose: it exists solely to feed the approximate
+      // pre-filter gate in XcorrScoreI(), "dXcorr >= pQuery->dLowestXcorrScore", not to
+      // decide which slot gets evicted). Relying on that stale, score-only cached index
+      // here meant the "which slot is worst" answer could still be wrong on an exact-score
+      // tie between two already-filled slots, even after the eviction-preference check
+      // below was added -- the eviction check only validates the comparison against
+      // whichever slot this index happens to point at; it can't fix a wrong index. That
+      // made which of 3+ exactly-tied candidates survived depend on arrival order among
+      // worker threads (batch FI_DB/PI_DB) vs. RTS's fixed single-threaded scan order --
+      // the confirmed root cause of FI_DB batch vs. RTS PSM divergence on tied spectra.
+      // usiLenPeptide==0 identifies a still-empty slot, which must be preferred as "lowest"
+      // over any already-filled slot regardless of score, so empty slots get filled before
+      // any eviction happens.
+      for (short siA = 1; siA < g_staticParams.options.iNumStored; ++siA)
+      {
+         if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiLenPeptide != 0
+            && pQuery->_pDecoys[siA].usiLenPeptide == 0)
+         {
+            siLowestDecoyXcorrScoreIndex = siA;
+         }
+         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].usiLenPeptide == 0)
+         {
+            // current lowest is already an empty slot; only another empty slot could
+            // tie it and it doesn't matter which empty slot we keep pointing at
+         }
+         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr > pQuery->_pDecoys[siA].fXcorr)
+         {
+            siLowestDecoyXcorrScoreIndex = siA;
+         }
+         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr == pQuery->_pDecoys[siA].fXcorr)
+         {
+            int iCmp = strcmp(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide, pQuery->_pDecoys[siA].szPeptide);
+
+            if (iCmp < 0)
+            {
+               siLowestDecoyXcorrScoreIndex = siA;
+            }
+            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+            {
+               for (int x = 0; x < pQuery->_pDecoys[siA].usiLenPeptide + 2; ++x)
+               {
+                  if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x] < pQuery->_pDecoys[siA].piVarModSites[x])
+                  {
+                     siLowestDecoyXcorrScoreIndex = siA;
+                     break;
+                  }
+                  else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].piVarModSites[x] > pQuery->_pDecoys[siA].piVarModSites[x])
+                  {
+                     break;
+                  }
+               }
+            }
+         }
+      }
 
       // Mirrors the fix in StorePeptide() (commit 7c04814d, "Fix non-deterministic FASTA_DB
       // search results under concurrent scoring ties"): only replace the identified worst
       // slot if the incoming candidate is actually preferred under the same (score, then
-      // sequence, then mod state) rule used to pick that slot. Without this, a candidate
-      // that merely ties the current worst score unconditionally evicted it regardless of
-      // tie-break preference, so the survivor of a multi-way tie depended on arrival order
-      // among callers of this function. RTS's single-threaded-per-query scan makes arrival
-      // order fixed for RTS (confirmed empirically -- see docs/20260714_EvalueJitter.md
-      // Phase 1), but XcorrScoreI()/StorePeptideI() are also reachable from batch FI_DB/PI_DB
-      // search paths that scan the database across multiple threads per query (evidenced by
-      // Query::accessMutex existing at all), where this fix is a real correctness issue.
+      // sequence, then mod state) rule used to pick that slot.
       //
       // Compare at float precision (matching what actually gets stored, fXcorr) rather than
       // double: comparing the full-precision double dXcorr against a float widened back to
@@ -8311,7 +8376,54 @@ void CometSearch::StorePeptideI(Query* pQuery,
    }
    else
    {
-      short siLowestXcorrScoreIndex = pQuery->siLowestXcorrScoreIndex;
+      short siLowestXcorrScoreIndex = 0;
+
+      // Fresh, exhaustive recompute every call -- see the matching block in the decoy
+      // branch above for full rationale. pQuery->siLowestXcorrScoreIndex is only ever
+      // maintained by the simple score-only loop at the bottom of this function, which
+      // exists to feed the approximate pre-filter gate in XcorrScoreI(), not to decide
+      // which slot to evict.
+      for (int i = 1; i < g_staticParams.options.iNumStored; ++i)
+      {
+         if (pQuery->_pResults[siLowestXcorrScoreIndex].usiLenPeptide != 0
+            && pQuery->_pResults[i].usiLenPeptide == 0)
+         {
+            siLowestXcorrScoreIndex = i;
+         }
+         else if (pQuery->_pResults[siLowestXcorrScoreIndex].usiLenPeptide == 0)
+         {
+            // current lowest is already an empty slot; only another empty slot could
+            // tie it and it doesn't matter which empty slot we keep pointing at
+         }
+         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > pQuery->_pResults[i].fXcorr)
+         {
+            siLowestXcorrScoreIndex = i;
+         }
+         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr == pQuery->_pResults[i].fXcorr)
+         {
+            int iCmp = strcmp(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, pQuery->_pResults[i].szPeptide);
+
+            if (iCmp < 0)
+            {
+               siLowestXcorrScoreIndex = i;
+            }
+            else if (iCmp == 0 && g_staticParams.variableModParameters.bVarModSearch)
+            {
+               for (int x = 0; x < pQuery->_pResults[i].usiLenPeptide + 2; ++x)
+               {
+                  if (pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x] < pQuery->_pResults[i].piVarModSites[x])
+                  {
+                     siLowestXcorrScoreIndex = i;
+                     break;
+                  }
+                  else if (pQuery->_pResults[siLowestXcorrScoreIndex].piVarModSites[x] > pQuery->_pResults[i].piVarModSites[x])
+                  {
+                     break;
+                  }
+               }
+            }
+         }
+      }
 
       // See the matching check in the decoy branch above for rationale.
       {

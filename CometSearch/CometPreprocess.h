@@ -120,12 +120,21 @@ public:
    // spectrum in a single pass using thread-local scratch buffers.  iSlot is this
    // worker's pre-assigned _ppbDuplFragmentArr index.  outQueries is this worker's
    // own result vector (no lock needed); outCount is a shared running total bumped
-   // with relaxed ordering for the CheckExit batch-size-cap read.  The actual index
-   // search (FI_DB vs. PI_DB) is dispatched by CometSearch::RunSearch(Query*, int).
+   // with relaxed ordering for the CheckExit batch-size-cap read.  pArena is this
+   // worker's per-slot sparse-XCorr-matrix bump arena (session.sparseArenas[iSlot]),
+   // used instead of a per-spectrum heap allocation for each Query's sparse child
+   // blocks.  pResultsArena is this worker's per-slot _pResults/_pDecoys pool
+   // (session.resultsArenas[iSlot]).  pPtrArena is this worker's per-slot pool for
+   // the outer sparse pointer arrays (session.pointerArenas[iSlot]) -- see
+   // docs/20260723_ExtendFusedBatchPath.md.  The actual index search (FI_DB vs.
+   // PI_DB) is dispatched by CometSearch::RunSearch(Query*, int).
    static void FusedSearchSpectrum(Spectrum spec,
                                    int iSlot,
                                    std::vector<Query*>& outQueries,
-                                   std::atomic<size_t>& outCount);
+                                   std::atomic<size_t>& outCount,
+                                   FusedSparseArena* pArena,
+                                   FusedResultsArena* pResultsArena,
+                                   FusedPointerArena* pPtrArena);
 
    // Fused FI_DB/PI_DB batch path: stream spectra through a bounded producer/
    // consumer queue into FusedSearchSpectrum workers.  Replaces
@@ -138,6 +147,15 @@ public:
                                           int iAnalysisType,
                                           ThreadPool* tp,
                                           SearchSession& session);
+
+   // DIAGNOSTIC / BENCHMARK ONLY -- see the .cpp definition's comment and
+   // docs/20260724_PreloadBenchmark.md. Opt-in via COMET_PRELOAD_BENCHMARK.
+   static bool FusedPreloadThenSearch(MSReader& mstReader,
+                                      int iFirstScan,
+                                      int iLastScan,
+                                      int iAnalysisType,
+                                      ThreadPool* tp,
+                                      SearchSession& session);
 
    // Returns the thread-local raw-data buffer used by PreprocessSingleSpectrumThreadLocal.
    // The buffer is sized to g_staticParams.iArraySizeGlobal and its content after a
@@ -173,14 +191,28 @@ private:
    static bool AdjustMassTol(struct Query *pScoring);
    static bool CheckActivationMethodFilter(MSActivation act);
 
-   // Shared by both the synchronous and readahead producer loops in
-   // FusedLoadAndSearchSpectra so a future filter change (clearMzRange,
-   // iMinPeaks, activation method) cannot land in only one of the two call
-   // sites and silently diverge between them.  Mutates mstSpectrum in place
-   // (clearMzRange zeroes cleared-range intensities) and moves it into queue
-   // if it survives all three filters.  Returns true iff enqueued.
+   // Shared by the synchronous and readahead producer loops in
+   // FusedLoadAndSearchSpectra, and by FusedPreloadThenSearch's own read loop,
+   // so a future filter change (clearMzRange, iMinPeaks, activation method)
+   // cannot land in only one call site and silently diverge from the others.
+   // Mutates mstSpectrum in place (clearMzRange zeroes cleared-range
+   // intensities). Returns true iff it survives all three filters.
+   static bool ApplySpectrumFilters(Spectrum& mstSpectrum);
+
+   // Moves mstSpectrum into queue if it survives ApplySpectrumFilters().
+   // Returns true iff enqueued.
    static bool FilterAndEnqueueSpectrum(Spectrum& mstSpectrum,
                                         BoundedSpectrumQueue& queue);
+   // pArena: when non-null, each sparse-matrix child block ([SPARSE_MATRIX_SIZE]
+   // leaf array) is taken from this bump arena instead of individually heap-
+   // allocated, and pScoring->bSparseFromPool is set so the Query destructor skips
+   // delete[]-ing them. pPtrArena: when non-null, the three outer
+   // ppfSparse*[...] pointer arrays themselves are taken from this arena instead
+   // of individually heap-allocated, and pScoring->bSparsePointerArraysFromPool
+   // is set so the Query destructor skips delete[]-ing them (see
+   // docs/20260723_ExtendFusedBatchPath.md). Currently only the fused batch path
+   // (FusedSearchSpectrum) passes non-null for either; nullptr preserves the
+   // prior per-spectrum-heap-allocation behavior for any other caller.
    static bool Preprocess(struct Query *pScoring,
                           Spectrum mstSpectrum,
                           double *pdTmpRawData,
@@ -188,7 +220,9 @@ private:
                           double *pdTmpCorrelationData,
                           float *pfFastXcorrData,
                           float *pfFastXcorrDataNL,
-                          float *pfSpScoreData);
+                          float *pfSpScoreData,
+                          FusedSparseArena *pArena = nullptr,
+                          FusedPointerArena *pPtrArena = nullptr);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
                         Spectrum mstSpectrum,
