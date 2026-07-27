@@ -159,13 +159,15 @@ bool Pipeline::run(SearchSession&                     session,
          for (auto* q : session.ms1Queries) delete q;
          session.ms1Queries.clear();
 
-         // Rewind (not free) the fused batch path's per-slot sparse-matrix and
-         // results arenas, if any were used this run -- safe here because this
-         // only runs after executeBatch()'s underlying FusedLoadAndSearchSpectra()
-         // has already returned, i.e. after tp->wait_on_threads() confirmed every
-         // worker for this round is idle. See docs/20260723_ExtendFusedBatchPath.md.
+         // Rewind (not free) the fused batch path's per-slot sparse-matrix,
+         // results, and pointer arenas, if any were used this run -- safe here
+         // because this only runs after executeBatch()'s underlying
+         // FusedLoadAndSearchSpectra() has already returned, i.e. after
+         // tp->wait_on_threads() confirmed every worker for this round is idle.
+         // See docs/20260723_ExtendFusedBatchPath.md.
          for (auto& arena : session.sparseArenas) arena.ResetRound();
          for (auto& arena : session.resultsArenas) arena.ResetRound();
+         for (auto& arena : session.pointerArenas) arena.ResetRound();
       };
 
       while (!CometPreprocess::DoneProcessingAllSpectra())

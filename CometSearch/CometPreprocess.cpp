@@ -1295,8 +1295,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
       if (pPtrArena != nullptr)
       {
-         pScoring->ppfSparseFastXcorrDataNL = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
-         pScoring->bSparsePointerArraysFromPool = true;
+         try
+         {
+            pScoring->ppfSparseFastXcorrDataNL = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+            pScoring->bSparsePointerArraysFromPool = true;
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrDataNL["
+               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
       else
       {
@@ -1325,8 +1338,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
             {
                if (pArena != nullptr)
                {
-                  pScoring->ppfSparseFastXcorrDataNL[x] = pArena->AllocBlock();
-                  pScoring->bSparseFromPool = true;
+                  try
+                  {
+                     pScoring->ppfSparseFastXcorrDataNL[x] = pArena->AllocBlock();
+                     pScoring->bSparseFromPool = true;
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrDataNL["
+                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                        + "parameters to address mitigate memory use.\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     return false;
+                  }
                }
                else
                {
@@ -1357,8 +1383,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    //MH: Fill sparse matrix
    if (pPtrArena != nullptr)
    {
-      pScoring->ppfSparseFastXcorrData = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
-      pScoring->bSparsePointerArraysFromPool = true;
+      try
+      {
+         pScoring->ppfSparseFastXcorrData = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+         pScoring->bSparsePointerArraysFromPool = true;
+      }
+      catch (std::bad_alloc& ba)
+      {
+         string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrData["
+            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+            + "parameters to address mitigate memory use.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
    }
    else
    {
@@ -1387,8 +1426,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          {
             if (pArena != nullptr)
             {
-               pScoring->ppfSparseFastXcorrData[x] = pArena->AllocBlock();
-               pScoring->bSparseFromPool = true;
+               try
+               {
+                  pScoring->ppfSparseFastXcorrData[x] = pArena->AllocBlock();
+                  pScoring->bSparseFromPool = true;
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrData["
+                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                     + "parameters to address mitigate memory use.\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
             }
             else
             {
@@ -1426,8 +1478,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
    if (pPtrArena != nullptr)
    {
-      pScoring->ppfSparseSpScoreData = pPtrArena->AllocSpan(pScoring->iSpScoreData);
-      pScoring->bSparsePointerArraysFromPool = true;
+      try
+      {
+         pScoring->ppfSparseSpScoreData = pPtrArena->AllocSpan(pScoring->iSpScoreData);
+         pScoring->bSparsePointerArraysFromPool = true;
+      }
+      catch (std::bad_alloc& ba)
+      {
+         string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseSpScoreData["
+            + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+            + "parameters to address mitigate memory use.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
    }
    else
    {
@@ -1456,8 +1521,21 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          {
             if (pArena != nullptr)
             {
-               pScoring->ppfSparseSpScoreData[x] = pArena->AllocBlock();
-               pScoring->bSparseFromPool = true;
+               try
+               {
+                  pScoring->ppfSparseSpScoreData[x] = pArena->AllocBlock();
+                  pScoring->bSparseFromPool = true;
+               }
+               catch (std::bad_alloc& ba)
+               {
+                  string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseSpScoreData["
+                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                     + "parameters to address mitigate memory use.\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
             }
             else
             {
@@ -3422,14 +3500,14 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
             pScoring->iMatchPeptideCount = 0;
             pScoring->iDecoyMatchPeptideCount = 0;
 
+            memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
+
             // ResetOneResult() deliberately never touches pWhichDecoyProtein (see its
             // comment in core/Types.h) -- clear it here regardless of whether _pResults
             // came from the arena or a fresh new[], same as before this pool existed.
-            for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
+            if (g_staticParams.options.iDecoySearch)
             {
-               memset(pScoring->iXcorrHistogram, 0, sizeof(pScoring->iXcorrHistogram));
-
-               if (g_staticParams.options.iDecoySearch)
+               for (int j = 0; j < g_staticParams.options.iNumStored; ++j)
                   pScoring->_pResults[j].pWhichDecoyProtein.clear();
             }
 
