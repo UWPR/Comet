@@ -21,6 +21,7 @@
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
 #include <string.h>
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -28,6 +29,7 @@
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <vector>
 
 Mutex CometPreprocess::_maxChargeMutex;
 bool CometPreprocess::_bDoneProcessingAllSpectra;
@@ -1627,7 +1629,45 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          dIntensityCutoff = dPctCutoff;
    }
 
-   int iNumFragmentPeaks = 0;
+   // Select the top iFragIndexNumSpectrumPeaks peaks BY INTENSITY for
+   // vfRawFragmentPeakMass, matching LoadIons()'s explicit mstSpectrum.sortIntensity()
+   // call before its equivalent reverse-iteration loop below. Without this, taking
+   // the last iFragIndexNumSpectrumPeaks entries of pdMass[]/pdInten[] in their raw
+   // input order (native mass-ascending order for a centroided peak list) silently
+   // selects the iFragIndexNumSpectrumPeaks HIGHEST-MASS peaks instead of the
+   // highest-INTENSITY ones whenever a spectrum has more peaks than that cap -- a
+   // scientifically wrong peak selection for FI_DB fragment-ion-index matching (mass
+   // has no bearing on how informative a peak is), and a real source of candidate-
+   // coverage divergence between this path (RTS single-spectrum search) and
+   // LoadIons() (batch search), confirmed by comparing the two paths' raw peak lists
+   // for the same spectrum: RTS's list excluded every peak below ~240 Da while
+   // batch's included several low-mass, high-intensity peaks (e.g. immonium ions).
+   if (g_staticParams.iDbType == DbType::FI_DB)
+   {
+      std::vector<int> viIntensityOrder;
+      viIntensityOrder.reserve(iNumPeaks);
+      for (int i = 0; i < iNumPeaks; ++i)
+      {
+         if (pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0)
+            viIntensityOrder.push_back(i);
+      }
+
+      std::sort(viIntensityOrder.begin(), viIntensityOrder.end(),
+         [pdMass, pdInten](int a, int b)
+         {
+            if (pdInten[a] != pdInten[b])
+               return pdInten[a] > pdInten[b];
+            return pdMass[a] < pdMass[b];   // deterministic tie-break on an intensity tie
+         });
+
+      size_t iCap = (size_t)g_staticParams.options.iFragIndexNumSpectrumPeaks;
+      if (viIntensityOrder.size() < iCap)
+         iCap = viIntensityOrder.size();
+
+      pScoring->vfRawFragmentPeakMass.reserve(iCap);
+      for (size_t k = 0; k < iCap; ++k)
+         pScoring->vfRawFragmentPeakMass.push_back((float)pdMass[viIntensityOrder[k]]);
+   }
 
    // Pre-compute per-spectrum constant values used inside the peak loop.
    // For iRemovePrecursor modes 1/3/4 these m/z values are identical for every
@@ -1667,11 +1707,6 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       if (dIntensity >= dIntensityCutoff && dIntensity > 0.0)
       {
-         if (g_staticParams.iDbType == DbType::FI_DB && iNumFragmentPeaks < g_staticParams.options.iFragIndexNumSpectrumPeaks)
-         {
-            pScoring->vfRawFragmentPeakMass.push_back((float)dIon);
-            iNumFragmentPeaks++;
-         }
          if (g_staticParams.options.iPrintAScoreProScore)
          {
             pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
