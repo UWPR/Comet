@@ -90,7 +90,11 @@ struct FusedBumpArena
          }
          else
          {
-            const size_t cap = std::max(kChunkElements, n);
+            // Parenthesized to block macro expansion if a translation unit pulls in
+            // <windows.h> without NOMINMAX (its own `max` macro would otherwise
+            // swallow this call and turn it into a syntax error) -- CometSearch.vcxproj
+            // itself defines NOMINMAX, but tests/unit/CometUnitTests.vcxproj does not.
+            const size_t cap = (std::max)(kChunkElements, n);
             ChunkSlot slot{ std::unique_ptr<T[]>(new T[cap]), cap };
             vChunks.push_back(std::move(slot));
             iCurChunk = vChunks.size() - 1;
