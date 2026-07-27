@@ -141,18 +141,42 @@ namespace AScoreProCpp
          peptides.push_back(p);
       }
 
-      // Sort by score. Prefer original sequence if tied.
+      // Sort by score, descending. On an exact tie, prefer whichever candidate
+      // matches the original (pre-AScore) site placement Comet passed in, so
+      // an ambiguous site stays stable instead of being silently reassigned,
+      // and the choice is grounded in candidate content rather than in
+      // whatever order the peptide generator happened to enumerate
+      // combinations -- which is not itself guaranteed stable across
+      // otherwise-equivalent call contexts (e.g. batch vs. RTS).
+      //
+      // The previous comparator was not a valid strict-weak-ordering: on a
+      // tie it returned "a.toString() == b.toString() ? 1 : 0", which is true
+      // in both directions when a and b are the same peptide (violating
+      // asymmetry) and false in both directions for two genuinely different,
+      // equal-scoring peptides -- leaving std::sort's actual outcome for that
+      // case entirely dependent on generator enumeration order and
+      // std::sort's internal partitioning, not a deliberate rule. It also
+      // never referenced `original` despite the "prefer original sequence"
+      // comment describing the intent.
       struct PeptideScoreComparer
       {
          const Peptide& original;
          explicit PeptideScoreComparer(const Peptide& orig) : original(orig) {}
          bool operator()(const Peptide& a, const Peptide& b) const
          {
-            if (a.getScore() == b.getScore())
-            {
-               return a.toString() == b.toString() ? 1 : 0;
-            }
-            return a.getScore() > b.getScore();
+            if (a.getScore() != b.getScore())
+               return a.getScore() > b.getScore();
+
+            bool bAIsOriginal = (a.toString() == original.toString());
+            bool bBIsOriginal = (b.toString() == original.toString());
+
+            if (bAIsOriginal != bBIsOriginal)
+               return bAIsOriginal;
+
+            // Neither candidate matches the seed placement: fall back to a
+            // canonical, content-only order so the result no longer depends
+            // on enumeration order at all.
+            return a.toString() < b.toString();
          }
       };
 
