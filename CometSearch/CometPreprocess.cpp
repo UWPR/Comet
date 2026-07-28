@@ -1604,6 +1604,42 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
    }
 
+   // Enforce the same clear_mz_range + minimum_peaks filters batch applies via
+   // ApplySpectrumFilters() (this file, ~line 259) before a spectrum is even
+   // turned into a Query, so RTS and batch consider the same set of spectra
+   // searchable. Confirmed missing here by a full-proteome batch-vs-RTS
+   // comparison: batch silently dropped ~1728/42030 real spectra (below
+   // minimum_peaks) that RTS went on to weakly "identify" since it had no
+   // equivalent gate. clear_mz_range peaks are treated as zero-intensity
+   // inline below (via bInClearRange) rather than mutating the caller-owned
+   // pdMass/pdInten arrays, matching batch's zeroed-in-place end result
+   // without the side effect on caller memory.
+   const bool bClearMzRangeActive = (g_staticParams.options.clearMzRange.dEnd > 0.0
+         && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd);
+
+   auto bInClearRange = [bClearMzRangeActive, pdMass](int i) -> bool
+   {
+      return bClearMzRangeActive
+         && pdMass[i] >= g_staticParams.options.clearMzRange.dStart
+         && pdMass[i] <= g_staticParams.options.clearMzRange.dEnd;
+   };
+
+   int iNumClearedPeaks = 0;
+   if (bClearMzRangeActive)
+   {
+      for (int i = 0; i < iNumPeaks; ++i)
+      {
+         if (bInClearRange(i))
+            ++iNumClearedPeaks;
+      }
+   }
+
+   if (iNumPeaks - iNumClearedPeaks < g_staticParams.options.iMinPeaks)
+   {
+      delete pScoring;
+      return nullptr;
+   }
+
    double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
 
@@ -1715,11 +1751,13 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    // --- Inline LoadIons logic for raw arrays instead of Spectrum object ---
 
-   // Compute base-peak intensity so we can apply both absolute and percentage cutoffs
+   // Compute base-peak intensity so we can apply both absolute and percentage cutoffs.
+   // Peaks in clear_mz_range are treated as zero-intensity (see bInClearRange above),
+   // matching batch's in-place zeroing.
    double dBasePeakIntensity = 0.0;
    for (int i = 0; i < iNumPeaks; ++i)
    {
-      if (pdInten[i] > dBasePeakIntensity)
+      if (!bInClearRange(i) && pdInten[i] > dBasePeakIntensity)
          dBasePeakIntensity = pdInten[i];
    }
    // Start with the configured absolute minimum intensity
@@ -1754,8 +1792,9 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          // Only peaks within the fragindex_min_fragmentmass/fragindex_max_fragmentmass
          // bounds are eligible since peaks outside that range can never match an
          // indexed fragment; matches the bound convention used when building the
-         // fragment index in CometFragmentIndex.cpp.
-         if (pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0
+         // fragment index in CometFragmentIndex.cpp. Peaks in clear_mz_range are
+         // excluded, matching batch's in-place zeroing (see bInClearRange above).
+         if (!bInClearRange(i) && pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0
                && pdMass[i] > g_staticParams.options.dFragIndexMinMass && pdMass[i] < g_staticParams.options.dFragIndexMaxMass)
             viIntensityOrder.push_back(i);
       }
@@ -1809,7 +1848,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    for (int i = iNumPeaks - 1; i >= 0; --i)
    {
       double dIon = pdMass[i];
-      double dIntensity = pdInten[i];
+      double dIntensity = bInClearRange(i) ? 0.0 : pdInten[i];
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
