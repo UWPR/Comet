@@ -1624,7 +1624,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // --- Scratch buffer setup ---
    //
    // RTS path  (bUseThreadLocalPool=true): use pre-allocated per-thread buffers.
-   //   - Zero only [0, iArraySize + iXcorrProcessingOffset) -- the region actually
+   //   - Zero only [0, iZeroBound + iXcorrProcessingOffset) -- the region actually
    //     read/written -- instead of the full iArraySizeGlobal.
    //
    // Batch path (bUseThreadLocalPool=false): allocate on heap as before.
@@ -1632,6 +1632,29 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    const int    iArraySize   = pScoring->_spectrumInfoInternal.iArraySize;
    const int    iXcorrOffset = g_staticParams.iXcorrProcessingOffset;
    size_t iGlobalBytes = (size_t)g_staticParams.iArraySizeGlobal;
+
+   // pPre.iHighestIon (set below) can exceed iArraySize: the peak-loading loop
+   // updates it for every peak below dExpPepMass+50 unconditionally, even peaks
+   // whose bin is >= iArraySize and therefore never written into pdTmpRawData
+   // (guarded by "iBinIon < iArraySize" below). MakeCorrData()'s window-size
+   // calculation uses the real iHighestIon, so on the RTS thread-local-pool path
+   // the zeroed region must cover that same worst case -- not just iArraySize --
+   // or MakeCorrData reads stale pdTmpRawData left behind by a larger spectrum
+   // previously processed on this thread (see docs/20260714_EvalueJitter.md Phase 3).
+   // An earlier fix instead clamped the iHighestIon *value* passed to MakeCorrData()
+   // to iArraySize-1, which avoided the stale read but made MakeCorrData compute a
+   // different (smaller) window size than the batch path -- which never clamps,
+   // since its buffers are always freshly zeroed to the full iArraySizeGlobal --
+   // producing genuinely different XCorr/E-value results between RTS and batch for
+   // any spectrum with a real peak in the dExpPepMass+cushion..dExpPepMass+50 gap
+   // (confirmed via tests/rts_repro against a full human-proteome FI_DB search: 21
+   // peptide-ID and ~1500 XCorr/E-value mismatches out of 27,862 shared PSMs,
+   // thread-count-independent, absent from small synthetic fixtures whose peaks
+   // never reach the gap). Zeroing up to the true worst case instead lets RTS pass
+   // the unclamped iHighestIon to MakeCorrData(), matching batch exactly.
+   const int iZeroBound = std::min(
+      std::max(iArraySize, BIN(pScoring->_pepMassInfo.dExpPepMass + 50.0) + 1),
+      g_staticParams.iArraySizeGlobal);
 
    double *pdTmpRawData;
    double *pdTmpFastXcorrData;
@@ -1654,10 +1677,12 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       pScoring->bSparseFromPool = true;
 
-      // Zero only the region that will be accessed.
-      // pdTmpCorrelationData and pdTmpFastXcorrData are read up to
-      // iArraySize + iXcorrOffset by the sliding-window loop.
-      const size_t nD = (size_t)(iArraySize + iXcorrOffset);
+      // Zero only the region that will be accessed. pdTmpCorrelationData and
+      // pdTmpFastXcorrData are read up to iZeroBound + iXcorrOffset by
+      // MakeCorrData()/the sliding-window loop (see iZeroBound comment above);
+      // pfFastXcorrData/pfFastXcorrDataNL/pfSpScoreData are only ever indexed
+      // up to iArraySize, so they don't need the wider bound.
+      const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
       const size_t nF = (size_t)iArraySize;
       memset(pdTmpRawData,         0, nD * sizeof(double));
       memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
@@ -1885,32 +1910,24 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       return nullptr;
    }
 
-   // pPre.iHighestIon is updated from every peak's bin above (line ~1646-1647),
-   // unconditionally -- including peaks whose bin is >= iArraySize, which the ion-loading
-   // loop above deliberately never writes into pdTmpRawData for (guarded by
-   // "iBinIon < iArraySize"). MakeCorrData() below reads/writes pdTmpRawData/
-   // pdTmpCorrelationData up to iHighestIon (only capped by iArraySizeGlobal, not
-   // iArraySize -- see the "FIX: need to check why both iArraySize and iHighestIons are
-   // used" comment on MakeCorrData() itself). On the RTS thread-local-pool path these
-   // buffers are only pre-zeroed up to iArraySize + iXcorrProcessingOffset (see
-   // EnsureInitialized()/ResetForNewSpectrum() above), not the full iArraySizeGlobal like
-   // the batch path's Preprocess() always does -- so an out-of-range peak here let
-   // MakeCorrData read stale pdTmpRawData left behind by a larger spectrum previously
-   // processed on this thread, producing a genuinely different (not just
-   // differently-ordered) windowed-normalization result and therefore XCorr for
-   // candidates whose fragment bins share a MakeCorrData window with the contaminated
-   // tail. Confirmed as the root cause of the RTS E-value jitter investigated in
-   // docs/20260714_EvalueJitter.md (Phase 3: a temporary full-iArraySizeGlobal clear on
-   // the RTS path eliminated the jitter; reverting brought it back). Clamping here is
-   // sufficient and cheaper than widening the memset: pdTmpRawData is provably zero (once
-   // properly cleared) for any bin >= iArraySize, so MakeCorrData has nothing real to
-   // read past that point regardless of how much larger iHighestIon is.
-   int iHighestIonForCorrData = pPre.iHighestIon;
-   if (iHighestIonForCorrData >= iArraySize)
-      iHighestIonForCorrData = iArraySize - 1;
-
+   // pPre.iHighestIon is updated from every peak's bin above, unconditionally --
+   // including peaks whose bin is >= iArraySize, which the ion-loading loop above
+   // deliberately never writes into pdTmpRawData for (guarded by "iBinIon < iArraySize").
+   // MakeCorrData() below reads/writes pdTmpRawData/pdTmpCorrelationData up to
+   // iHighestIon (internally capped by iArraySizeGlobal, not iArraySize -- see the
+   // "FIX: need to check why both iArraySize and iHighestIons are used" comment on
+   // MakeCorrData() itself), so it is passed through unclamped here, matching the
+   // batch path exactly (CometPreprocess::Preprocess() never clamps it either). The
+   // RTS thread-local-pool buffers are zeroed up to iZeroBound (see its definition
+   // above), which covers this same worst case, so there is no stale-data risk from
+   // skipping the clamp -- a previous version of this code instead clamped the value
+   // passed to MakeCorrData() to iArraySize-1, which avoided a stale read but made
+   // MakeCorrData compute a different (smaller) window size than batch, producing
+   // genuinely different XCorr/E-value results for real spectra with a peak in the
+   // dExpPepMass+cushion..dExpPepMass+50 gap (see docs/20260714_EvalueJitter.md and
+   // the iZeroBound comment above for the full history).
    // --- MakeCorrData: normalize to 100, windowed ---
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, iHighestIonForCorrData, pPre.dHighestIntensity);
+   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
 
 #ifdef RTS_TIMING
    if (bUseThreadLocalPool)
