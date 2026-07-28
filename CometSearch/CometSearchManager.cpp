@@ -88,9 +88,9 @@ vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodifie
 vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
 vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
 
-bool g_bPlainPeptideIndexRead = false;
+std::atomic<bool> g_bPlainPeptideIndexRead = false;
 std::atomic<bool> g_bPeptideIndexRead = false;
-bool g_bSpecLibRead = false;
+std::atomic<bool> g_bSpecLibRead = false;
 bool g_bPerformSpecLibSearch = false;
 bool g_bPerformDatabaseSearch = false;
 bool g_bCometPreprocessMemoryAllocated = false;
@@ -1980,17 +1980,8 @@ bool CometSearchManager::DoSearch()
 
    bool bSucceeded = true;
 
-   // add git hash to version string if present
    // repeated here from Comet main() as main() is skipped when search invoked via DLL
-   if (strlen(GITHUBSHA) > 0)
-   {
-      string sTmp = std::string(GITHUBSHA);
-      if (sTmp.size() > 7)
-         sTmp.resize(7);
-      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
-   }
-   else
-      g_sCometVersion = std::string(comet_version);
+   g_sCometVersion = BuildCometVersionString();
 
    if (!g_staticParams.options.bOutputSqtStream)
    {
@@ -2214,7 +2205,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       }
    }
 
-   g_sCometVersion = comet_version;
+   g_sCometVersion = BuildCometVersionString();
 
    g_staticParams.precalcMasses.iMinus17 = BIN(g_staticParams.massUtility.dH2O);
    g_staticParams.precalcMasses.iMinus18 = BIN(g_staticParams.massUtility.dNH3);
@@ -2634,6 +2625,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          }
          if (!bHasTerminalVariableMod)
          {
+            if (g_staticParams.options.iMaxIndexRunTime > 0)
+            {
+               auto tNow = std::chrono::high_resolution_clock::now();
+               auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+               if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+                  goto cleanup_results;
+            }
+
 #ifdef RTS_TIMING
             tTimingMark = hrc::now();
 #endif

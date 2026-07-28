@@ -40,16 +40,7 @@ bool ValidateInputFile(char *pszInputFileName);
 
 int main(int argc, char *argv[])
 {
-   // add git hash to version string if present
-   if (strlen(GITHUBSHA) > 0)
-   {
-      string sTmp = std::string(GITHUBSHA);
-      if (sTmp.size() > 7)
-         sTmp.resize(7);
-      g_sCometVersion = std::string(comet_version) + " (" + sTmp + ")";
-   }
-   else
-      g_sCometVersion = std::string(comet_version);
+   g_sCometVersion = BuildCometVersionString();
 
    if (argc < 2)
       Usage(argv[0]);

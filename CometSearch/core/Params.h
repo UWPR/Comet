@@ -18,7 +18,6 @@
 #ifndef _COMETPARAMS_H_
 #define _COMETPARAMS_H_
 
-#include <chrono>
 #include <map>
 #include <string>
 #include <vector>
@@ -241,7 +240,6 @@ struct StaticParams
    int             iPrecursorNLSize;
    int             iOldModsEncoding;
    bool            bSkipToStartScan;
-   std::chrono::high_resolution_clock::time_point tRealTimeStart;     // track run time of real-time index search
 
    StaticParams()
    {

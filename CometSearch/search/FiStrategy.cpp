@@ -24,7 +24,7 @@
 #include "MSReader.h"
 
 extern std::vector<InputFileInfo*> g_pvInputFiles;
-extern bool g_bPlainPeptideIndexRead;
+extern std::atomic<bool> g_bPlainPeptideIndexRead;
 extern unsigned int*  g_iFragmentIndex;
 extern uint64_t*      g_iFragmentIndexOffset;
 extern bool*          g_bIndexPrecursors;

@@ -702,10 +702,10 @@ extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiab
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
-extern bool g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
+extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
-extern bool g_bSpecLibRead;             // set to true if spectral library file is read
+extern std::atomic<bool> g_bSpecLibRead;             // set to true if spectral library file is read
 
 // g_bPerformSpecLibSearch, g_bPerformDatabaseSearch, g_bIdxNoFasta moved to SearchSession
 // (Phase 4: batch path only -- see search/SearchSession.h)
@@ -981,8 +981,6 @@ extern vector<InputFileInfo*>  g_pvInputFiles;
 extern Mutex                   g_pvQueryMutex;
 extern Mutex                   g_pvDBIndexMutex;
 extern Mutex                   g_preprocessMemoryPoolMutex;
-extern Mutex                   g_dbIndexMutex;
-extern Mutex                   g_vSpecLibMutex;
 
 extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and fragment ion index; latter to store plain peptides
 // Per-length, per-thread generation buffers.  Outer index = (iLen - iMinLen) for short,

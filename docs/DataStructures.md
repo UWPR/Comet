@@ -356,8 +356,24 @@ shared `RunSearchAndPostAnalysis()` helper (`search/SearchUtils.cpp`) then
 (sorted by peptide mass: `queries.front()`'s tolerance-minus and `queries.back()`'s
 tolerance-plus), so they track the current batch rather than the whole run's
 range. The fused batch path (`FusedLoadAndSearchSpectra`) and the RTS path do
-not do this per-batch/per-call re-narrowing. Search threads read the current
-values for early-exit decisions in `SearchForPeptides`.
+not do this per-batch/per-call re-narrowing.
+
+**This asymmetry is provably benign, not a gap** (traced end-to-end for
+`docs/20260728_CodeUpdates.md` item 6): `dMinMass`/`dMaxMass` are read for
+candidate filtering *exclusively* by `SearchForPeptides()` and its
+digestion-loop siblings (`WithinMassTolerance`, `MergeVarMods`,
+`CompoundModSearch`), all reachable only through
+`CometSearch::DoSearch(sDBEntry&, ...)` -- the FASTA-digestion search engine,
+used for real `FASTA_DB` search and for one-time index building, never for
+FI_DB/PI_DB *searching*. FI_DB's `SearchFragmentIndex()` and PI_DB's
+`SearchPeptideIndex()` (used identically by the fused batch path, the legacy
+FI_DB/PI_DB fallback, and RTS) never read `dMinMass`/`dMaxMass` at all -- PI_DB
+does its own per-query binary search directly against
+`pQuery->_pepMassInfo`, and FI_DB only reads the unrelated
+`g_massRange.uiMaxFragmentArrayIndex`. So whether or not a code path
+re-narrows these two fields has zero effect on FI_DB/PI_DB search results;
+only `FastaStrategy` actually depends on the re-narrowed value, and it always
+re-narrows (no fused/legacy split exists for FASTA_DB).
 `usiMaxFragmentCharge` (not `iMaxFragmentCharge`) caps the fragment ion charge
 loop and is the one field in this struct that genuinely is batch-only,
 updated per-spectrum under `_maxChargeMutex` inside `CometPreprocess::PreprocessSpectrum`.

@@ -7,7 +7,12 @@ prior, differently-sized spectrum on the same thread corrupt windowed XCorr norm
 candidates. Fixed by clamping `iHighestIon` to `iArraySize - 1` before the `MakeCorrData()` call.
 Validated byte-identical (0 differing lines) on both the real Windows RTS harness and the
 `tests/rts_repro/` reproducer, matching batch search's determinism bar exactly. See the Phase 5
-section for full details.
+section for full details. **Note:** the clamp-based fix described below was superseded on
+2026-07-27 (commit `0c064a2e`) by a different mechanism -- see the update appended to the end of
+Phase 5 -- because the clamp itself introduced a separate, deterministic RTS-vs-batch divergence
+bug. The RTS-jitter conclusion of this document (zero run-to-run nondeterminism) still stands and
+was independently re-confirmed 2026-07-28 against the current code; only the specific fix mechanism
+changed.
 
 ## Problem statement
 
@@ -369,6 +374,62 @@ per-spectrum allocation cost findings 1/4/5 removed.
 
 **This closes the investigation.** All 5 phases of this plan are complete; RTS PI_DB search is now
 deterministic across replicate runs, matching batch search's determinism exactly.
+
+**Update (2026-07-27): the clamp-based fix above was superseded, not reverted.** Commit
+`0c064a2e` ("Fix RTS/batch scoring divergence from iHighestIon clamp in MakeCorrData window
+sizing") found that clamping the *value* passed to `MakeCorrData()` -- while it did eliminate the
+stale-read jitter documented above -- also changed `MakeCorrData()`'s window-size calculation
+relative to batch (which never clamps, since its buffers are always freshly zeroed to the full
+`iArraySizeGlobal`). That made RTS compute a genuinely different, but now *consistently* different,
+XCorr/E-value/top-peptide result than batch for any spectrum with a real peak in the
+`dExpPepMass+cushion..dExpPepMass+50` window -- a new, deterministic RTS-vs-batch divergence bug,
+confirmed via a full human-proteome FI_DB regression (21 peptide-ID + 645 XCorr + 862 E-value
+mismatches across 27,862 shared PSMs). The fix: instead of clamping the value handed to
+`MakeCorrData()`, widen the RTS thread-local zeroing region (`iZeroBound` in
+`PreprocessSingleSpectrumCore()`) to cover the true worst-case `iHighestIon`, and pass the
+**unclamped** value to `MakeCorrData()` -- matching batch's behavior exactly while still avoiding
+any stale read, since the wider zeroed region guarantees `pdTmpRawData` is legitimately zero
+wherever `MakeCorrData()` might read past `iArraySize`. Current code (`CometPreprocess.cpp`) uses
+this `iZeroBound`-based fix, not the plain clamp described in Phase 5 above; the clamp is gone from
+the codebase. See the code comment at the `iZeroBound` computation for the full rationale, which
+also cites this document.
+
+**Independent re-validation (2026-07-28).** Re-confirmed zero RTS run-to-run jitter against the
+current code (post the `iZeroBound` fix above, and post same-day unrelated changes in
+`docs/20260728_CodeUpdates.md` items 1-5) via a fresh `RealtimeSearch.exe` run, independent of the
+original Phase 0-5 validation in three ways: different index type (**FI_DB**, not PI_DB -- Phases
+0-5 above validated PI_DB only), different dataset (`20170103_Hela_01.raw`, 56,152 total scans /
+40,302 MS2, vs. the original `20250520_Hela_60min_06.raw` ~49,844-scan set), and different thread
+count (20, not 8).
+
+*Method:* rebuilt the full Windows solution (Release/x64) and ran 4 replicate searches from
+`20260728-rts-evalue-determinism/`:
+
+```
+RealtimeSearch.exe 20170103_Hela_01.raw 20170103_Hela_01.raw human.canonical.target-decoy.fasta.idx 20
+```
+
+against `20260420-human-phosho/20170103_Hela_01.raw` and
+`20260420-human-phosho/human.canonical.target-decoy.fasta.idx` (FI_DB, phospho search params: STY
+79.966331 / M 15.9949 variable mods).
+
+*Result:* all 4 replicates produced the identical set of 27,862 scored PSMs; for every one,
+peptide, xcorr, e-value, charge, exp/calc mass, AScore, Sites string, and protein assignment were
+byte-identical across all 4 output files -- zero differences in any scientific field. The only
+per-replicate differences were wall-clock-timing metadata (per-spectrum `<N> ms`, the timing
+histogram, "5 Slowest MS2 Runs" list) -- not scored values.
+
+*Caveat:* `MS1 search elapsed time: 0.00 s` in every run log confirms this only exercised the
+MS2/FI_DB RTS path (`DoSingleSpectrumSearchMultiResults`), not MS1/spectral-library RTS
+(`DoMS1SearchMultiResults`, `g_bSpecLibRead`, `pMS1Aligner`) -- that path remains untested for
+jitter by both this pass and the original Phase 0-5 investigation, which also only covered MS2
+(PI_DB/FI_DB). If MS1 RTS jitter is ever reported, don't assume this document's fix automatically
+covers it -- `PreprocessMS1SingleSpectrumThreadLocal()` is a separate preprocessing path from
+`PreprocessSingleSpectrumCore()` and has not been checked for an analogous stale-buffer issue.
+
+*Conclusion:* this adds a fourth, independent confirmation (FI_DB, different dataset, different
+thread count, current code including the `iZeroBound` fix) on top of Phase 5's PI_DB validation.
+RESOLVED status stands, now with coverage across both PI_DB and FI_DB RTS search modes.
 
 ## Non-goals / scope guardrails
 

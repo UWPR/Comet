@@ -233,6 +233,18 @@ bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
 
    std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
 
+   // Only matters for FASTA_DB: g_massRange.dMinMass/dMaxMass are read for candidate
+   // filtering exclusively by SearchForPeptides() and its digestion-loop siblings
+   // (WithinMassTolerance, MergeVarMods, CompoundModSearch), all reachable only through
+   // CometSearch::DoSearch(sDBEntry&, ...) -- the FASTA-digestion search engine. FI_DB's
+   // SearchFragmentIndex() and PI_DB's SearchPeptideIndex() (used by the fused batch path,
+   // the legacy FI_DB/PI_DB batch fallback, and RTS alike) never read these two fields --
+   // PI_DB does its own per-query binary search against pQuery->_pepMassInfo directly, and
+   // FI_DB only reads the unrelated g_massRange.uiMaxFragmentArrayIndex. So it's fine that
+   // the fused batch path and RTS don't do this per-batch/per-call re-narrowing themselves;
+   // there is no FI_DB/PI_DB code path that would read a stale value. See the "MassRange"
+   // section of docs/DataStructures.md and item 6 of docs/20260728_CodeUpdates.md for the
+   // full trace that established this.
    g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
    g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
    g_massRange.bNarrowMassRange = (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass);

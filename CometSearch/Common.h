@@ -66,9 +66,27 @@ using namespace std;
 #include <iostream>
 #include <functional>
 
+#include "githubsha.h"
+
 #define comet_version   "2026.02 rev. 1"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
+
+// Builds the g_sCometVersion value: comet_version, with the short git hash appended in
+// parens when GITHUBSHA was populated by CI (see githubsha.h). Centralized so all call
+// sites (Comet.cpp main(), CometSearchManager::DoSearch(), InitializeSingleSpectrumSearch())
+// stay in sync instead of each re-deriving it.
+inline string BuildCometVersionString()
+{
+   if (strlen(GITHUBSHA) > 0)
+   {
+      string sTmp = string(GITHUBSHA);
+      if (sTmp.size() > 7)
+         sTmp.resize(7);
+      return string(comet_version) + " (" + sTmp + ")";
+   }
+   return string(comet_version);
+}
 
 // Redefined how the bin offset is interpreted and applied.  The valid range for the offset is
 // now between 0.0 and 1.0 and scales to the binWidth.
