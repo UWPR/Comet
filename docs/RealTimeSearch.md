@@ -13,7 +13,7 @@ This document covers the RTS path. The design history and task-by-task implement
 
 All entry points are declared in `CometSearch/CometInterfaces.h` as virtual methods on `ICometSearchManager` and implemented in `CometSearchManager`. They are exposed to C# through `CometWrapper/CometSearchManagerWrapper` (a C++/CLI ref class) and called from `RealtimeSearch/SearchMS1MS2.cs`.
 
-### MS2 fragment index search
+### MS2 search (fragment index or peptide index)
 
 ```cpp
 bool InitializeSingleSpectrumSearch();
@@ -77,11 +77,28 @@ slow path: mutex-guarded check + initialization
                                        DoSearch() calls CometSearch::DeallocateMemory()
                                        internally before returning
          CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
-       ReadPlainPeptideIndex()         loads g_vRawPeptides from the .idx file
-       CreateFragmentIndex(tp)         builds g_iFragmentIndex / g_iFragmentIndexOffset
+       ReadPlainPeptideIndex(true)     loads g_vRawPeptides from the .idx file
+       CreateFragmentIndex(tp, true)   builds g_iFragmentIndex / g_iFragmentIndexOffset
                                        in memory (CSR posting lists)
+  -> if iDbType == PI_DB and !g_bPeptideIndexRead:
+       CometPeptideIndex::ReadPeptideIndex(true)       loads g_pvDBIndex from the .idx file
+       CometSearch::InitializeMassesFromPeptideIndex() re-derives pdAAMassFragment from the
+                                                        .idx header so fragment masses match
+                                                        the mods baked into the index (otherwise
+                                                        InitializeStaticParams()'s values may have
+                                                        double-applied static mods)
+       if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
+                                (mirrors the FI_DB branch's AScore setup, since
+                                EnsurePeptideIndexLoaded()'s own AScore-creation code is
+                                gated on g_bPeptideIndexRead being false, and this branch
+                                already sets it true below)
+       g_bPeptideIndexRead = true
   -> singleSearchInitializationComplete.store(true, release)
 ```
+
+Note: search memory (the `pbDuplFragment` scratch arrays) is already allocated by the
+unconditional `CometSearch::AllocateMemory()` call earlier in this sequence; nothing
+deallocates it on the PI_DB branch before this point, unlike the FI_DB index-build branch.
 
 The `release` store ensures all threads that subsequently load the flag with `acquire` see a fully initialized `g_iFragmentIndex`, `g_iFragmentIndexOffset`, `g_pvProteinNameCache`, and all other globals.
 
@@ -101,7 +118,7 @@ The C# caller invokes `InitializeSingleSpectrumMS1Search` and `InitializeSingleS
 
 **Important:** Both init calls must complete before any thread calls `DoMS1SearchMultiResults()` or `DoSingleSpectrumSearchMultiResults()`. This ordering is enforced by the C# caller, not by the C++ code itself.
 
-`FinalizeSingleSpectrumSearch()` and `FinalizeSingleSpectrumMS1Search()` free allocated memory and reset the atomic flags. Call them when the search session ends.
+`FinalizeSingleSpectrumSearch()` frees allocated memory (`CometSearch::DeallocateMemory`/`CometPreprocess::DeallocateMemory`/`DeleteAScoreDllInterface`) and resets `singleSearchInitializationComplete`. `FinalizeSingleSpectrumMS1Search()` only resets `singleSearchMS1InitializationComplete` -- by design it frees nothing, since MS1 init never allocates the `CometSearch` pool (it only loads `g_vSpecLib`), and that pool belongs to the independent MS2 lifecycle which may still be in use. Call both when the search session ends.
 
 ---
 
@@ -135,17 +152,27 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |     -> AcquirePoolSlot() reserves one slot of the shared SearchMemoryPool
   |        (s_pool), guarded by a SearchMemoryPoolSlotGuard so the slot is
   |        released on any exit path (including exceptions)
-  |     -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
-  |           reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
-  |           reads g_vFragmentPeptides (READ-ONLY) [x]
-  |           XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
-  |           CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
-  |           timeout checked periodically against pQuery->tSearchStart
+  |     -> branches on g_staticParams.iDbType (CometSearch.cpp:171-215):
+  |        FI_DB -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
+  |                   reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
+  |                   reads g_vFragmentPeptides (READ-ONLY) [x]
+  |                   XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
+  |                   CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
+  |                   timeout checked periodically against pQuery->tSearchStart
+  |        PI_DB -> EnsurePeptideIndexLoaded(true) then
+  |                 SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot)
+  |                   thread-local peptide-index search; also checks
+  |                   pQuery->tSearchStart for the iMaxIndexRunTime timeout
+  |        any other iDbType -> error
   |     -> guard destructor releases the pool slot on return
   |
   +- timeout re-checked against pQuery->tSearchStart (iMaxIndexRunTime) before
-  |     each of the following post-analysis steps; any step is skipped past
-  |     the deadline
+  |     each of CalculateSP/CalculateEValue/CalculateDeltaCn (each is skipped
+  |     past the deadline); CalculateAScorePro is NOT individually gated -- it
+  |     always runs once CalculateDeltaCn completes, and is only implicitly
+  |     bounded by the next timeout check below (CometSearchManager.cpp:2582,
+  |     2599, 2613 have explicit pre-checks; 2640's CalculateAScorePro call
+  |     does not; the next check is at 2658, after AScorePro has already run)
   +- CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, iSize)
   +- CometPostAnalysis::CalculateEValue(pQuery, bSkip)
   +- CometPostAnalysis::CalculateDeltaCn(pQuery)
@@ -251,31 +278,47 @@ No shared mutable state exists in the wrapper layer. Each managed call creates s
 |---|---|---|
 | `ScoreWrapper` | `CometScores` | `xCorr`, `dSp`, `dCn`, `dExpect`, `mass`, `MatchedIons`, `TotalIons`, `dAScorePro`, `sAScoreProSiteScores` |
 | `ScoreWrapperMS1` | `CometScoresMS1` | `fDotProduct`, `fRTime`, `iScanNumber` |
-| `FragmentWrapper` | `Fragment` | `mass`, `intensity`, `type`, `number`, `charge`, `neutralLoss`, `neutralLossMass` |
+| `FragmentWrapper` | `Fragment` | `Mass`, `MZ` (computed via `ToMz()`), `IsNeutralLossFragment`, `NeutralLossMass`, `Intensity`, `Number`, `Type` (`IonSeries` enum), `Charge` |
 
 **Note:** If `CometData.h` enums or struct layouts change, `CometDataWrapper.h` must be updated in parallel. The file contains this reminder for `AnalysisType` and `InputType`.
 
 ### C# search loop (`SearchMS1MS2.cs`)
 
-A `ConcurrentQueue<int>` of scan numbers is drained by a fixed pool of `Task.Run()`
-workers, all sharing a single `globalSearchMgr` instance:
+The loop is a **single-threaded preload pass followed by a purely in-memory parallel
+search pass** -- not concurrent raw-file reads from worker threads. `rawFile` (the
+Thermo reader) is touched only by the preload loop; by the time any worker thread
+starts, all scan data already lives in memory:
 
 ```csharp
-// Populate scan queue
+// Single-threaded: reads every scan from rawFile into preloadedScans[] up front.
+// "no lock is needed because nothing else runs concurrently with this loop."
+var preloadedScans = new PreloadedScan[totalScans];
+for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
+{
+    // ... GetScanStatsForScanNumber / GetCentroidStream or GetSegmentedScanFromScanNumber /
+    //     GetTrailerExtraInformation for precursor m/z + charge ...
+    preloadedScans[iScanNumber - iFirstScan] = new PreloadedScan { ScanNumber = iScanNumber, Mass = pdMass, Intensity = pdInten, ... };
+}
+
+// Populate scan queue (numbers only -- data already in preloadedScans[])
 for (int i = iFirstScan; i <= iLastScan; ++i)
     scanQueue.Enqueue(i);
 
 void ProcessScans(int threadId)
 {
+    // Purely in-memory, no shared-resource locking: every scan's data was
+    // already read by the single-threaded preload pass above.
     while (scanQueue.TryDequeue(out int iScanNumber))
     {
-        // ... read spectrum from the shared (thread-safe) raw file reader ...
-        if (bPerformMS1Search && scanFilter.MSOrder == MSOrderType.Ms)
-            globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, dRT,
-                pdMass, pdInten, iNumPeaks, out List<ScoreWrapperMS1> vScores);
-        else if (bPerformMS2Search && scanFilter.MSOrder == MSOrderType.Ms2)
-            globalSearchMgr.DoSingleSpectrumSearchMultiResults(topN, iPrecursorCharge, dPrecursorMZ,
-                pdMass, pdInten, iNumPeaks, out ...);
+        PreloadedScan pre = preloadedScans[iScanNumber - iFirstScan];
+        if (!pre.Valid || pre.NumPeaks < 10) continue;
+
+        if (bPerformMS1Search && pre.ScanType == MSOrderType.Ms)
+            globalSearchMgr.DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, iMS1TopN, pre.RT,
+                pre.Mass, pre.Intensity, pre.NumPeaks, out List<ScoreWrapperMS1> vScores);
+        else if (bPerformMS2Search && pre.ScanType == MSOrderType.Ms2)
+            globalSearchMgr.DoSingleSpectrumSearchMultiResults(topN, pre.PrecursorCharge, pre.PrecursorMZ,
+                pre.Mass, pre.Intensity, pre.NumPeaks, out ...);
         // ... result stored on a per-scan ScanResult, collected after all tasks join ...
     }
 }
@@ -289,7 +332,10 @@ for (int i = 0; i < numThreads; ++i)
 ```
 
 `InitializeSingleSpectrumMS1Search`/`InitializeSingleSpectrumSearch` are called
-once before the tasks are started, not inside the per-scan loop.
+once before the preload pass, not inside the per-scan loop. MS1 scans are only
+fully read (profile trace, up to ~20K points) when `bPerformMS1Search` is on;
+otherwise only cheap metadata (RT/scan type) is captured during preload so
+downstream skip logic still works.
 
 ---
 
@@ -321,7 +367,7 @@ clock via its own `Query*`; there is no shared timeout state.
 **Shared pools (allocated once at init or once per thread, reused across calls):**
 
 - `CometPreprocess::GetRtsRawDataBuffer()` -- returns the thread-local raw-data buffer owned by a per-thread `RtsScratch` pool, initializing it on first use per thread. This replaced an earlier per-call `new[] iArraySizeGlobal doubles` / `delete[]` design (`pdTmpSpectrum` is no longer a per-call heap allocation).
-- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal)` (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems)` (`CometSearch.cpp:63`; the latter two args size the PI_DB target/decoy scratch buffers) (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
 - **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
 ---
