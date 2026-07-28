@@ -31,11 +31,9 @@ make cclean   # Quick clean: only CometSearch and root object files
 `.raw` file reading uses Thermo's RawFileReader .NET library via a `/clr` (C++/CLI) build in
 `MSToolkit` -- no separate Thermo software installation is required (Windows only).
 
-**If the build fails with `error C1083: Cannot open include file: 'unistd.h'`** (usually
-in `MSToolkit.vcxproj` or `zlibstat.vcxproj`): this repo was just built with Linux `make`,
-which regenerates `MSToolkit/include/zconf.h` in a Unix-configured form that breaks MSVC.
-Run **Clean Solution**, then **Build Solution** again -- see the `comet-build` skill for
-the full explanation and the Unix-side equivalent (`make clean`, not `make cclean`).
+See the `comet-build` skill for MSBuild-from-WSL invocation, the post-build wrapper-DLL
+copy step, and the `zconf.h` / `error C1083: unistd.h` cross-platform gotcha (Clean
+Solution + Build Solution on Windows, or `make clean` -- not `cclean` -- on Linux).
 
 ### CometSearch library only
 ```bash
@@ -91,6 +89,9 @@ The real-time search (`DoSingleSpectrumSearchMultiResults` and `DoMS1SearchMulti
 - **MS2 RTS**: `PreprocessSingleSpectrumThreadLocal()` creates a caller-owned `Query*`; `CometSearch::RunSearch(Query*, time_point)` searches against the read-only fragment index; thread-local `CalculateSP/CalculateEValue/CalculateDeltaCn(Query*)` do post-analysis. No `g_pvQuery` access.
 - **MS1 RTS**: `PreprocessMS1SingleSpectrumThreadLocal()` creates a caller-owned `QueryMS1*`; `RunMS1Search(QueryMS1*, ...)` scores against read-only `g_vSpecLib`. No `g_pvQueryMS1` access. Reference library is loaded once in `InitializeSingleSpectrumMS1Search()`.
 - **Batch search**: Still uses `g_pvQuery` / `g_pvQueryMS1` with the original mutex-guarded path.
+
+For a file-by-file ownership map, the full global-variable table, and RTS/batch call-path
+diagrams, use the `comet-codebase` skill.
 
 ## Testing
 
@@ -151,33 +152,15 @@ python tests/unit/compare_idx.py old.idx new.idx
 
 ### Reading `.raw` files on Linux (for test/data-extraction purposes)
 
-`comet.exe` itself cannot open `.raw` on Linux -- `.raw` support is Windows-only by design
-(`docs/20260618_RawFileReaderMigration.md`), and this environment's `msconvert` is a non-MSVC
-build with vendor DLLs disabled (`no Thermo, Bruker, Waters etc input`), so it cannot convert
-`.raw` -> `.mzXML` either. Do not conclude `.raw` files are simply unreadable here, though --
-**`dotnet`/`msbuild` is available and can read them directly.**
-
-Thermo's `ThermoFisher.CommonCore.RawFileReader` package targets `netstandard2.0` and is
-genuinely cross-platform (confirmed cross-platform in production by the open-source
-`ThermoRawFileParser` project; see the Appendix of the migration doc above). The repo already
-has everything needed to restore it on Linux: a root `nuget.config` with a local
-`ThermoFisher-local` feed (`RealtimeSearch/ThermoNuGet/*.nupkg`) plus `nuget.org` for transitive
-deps (`OpenMcdf`, `System.IO.FileSystem.AccessControl`), and this package version is typically
-already warm in `~/.nuget/packages/thermofisher.commoncore.*`.
-
-To read a `.raw` file (e.g. to extract spectra for a batch-vs-RTS comparison test), write a
-small **pure C# console project** (SDK-style `.csproj`, e.g. `TargetFramework=net8.0`) that
-`PackageReference`s `ThermoFisher.CommonCore.RawFileReader`/`.Data` and calls
-`RawFileReaderAdapter.FileFactory(path)` directly -- mirror the scan-reading logic in
-`RealtimeSearch/SearchMS1MS2.cs` (`GetCentroidStream`, `GetScanEventForScanNumber(...).GetReaction(0).PrecursorMass`,
-`GetTrailerExtraInformation` for `"Monoisotopic M/Z:"`/`"Charge State:"`) for field-accurate
-results. This bypasses the Windows-only C++/CLI `CometWrapper` bridge entirely (that bridge is
-what actually keeps `RealtimeSearch.exe` Windows-only, not the RawFileReader library itself), so
-`dotnet build`/`dotnet run` works unmodified on Linux. This only gets you spectra out of the
-file for tooling/testing purposes -- it does not make `comet.exe` or `RealtimeSearch.exe`
-themselves able to read `.raw`; that remains Windows-only.
+`comet.exe` cannot open `.raw` on Linux and `msconvert` here can't convert it either, but
+`dotnet`/`msbuild` can read Thermo `.raw` files directly via the cross-platform
+`ThermoFisher.CommonCore.RawFileReader` package -- see `docs/ReadingRawFilesOnLinux.md`
+for the full explanation and a working approach.
 
 ## Benchmarking and FDR Analysis
+
+For search-speed benchmarking (batch vs. RTS throughput, Hz, ms/spectrum), use the
+`comet-benchmark` skill instead -- this section covers result-quality (FDR) analysis only.
 
 ### tools/qvalue.py
 
@@ -213,16 +196,14 @@ FDR formula:
 
 ## Coding Style
 
-From `docs/CometCodingStyleGuidelines.md`:
+Full conventions (brace style, indentation, comments, Hungarian notation, and the
+documented exceptions for `MSToolkit/` third-party code and the newer OOP layer under
+`CometSearch/search/`, `CometSearch/output/`) live in `docs/CometCodingStyleGuidelines.md`
+-- read it before writing or editing C++ in `CometSearch/`.
 
-- **Allman brace style**: opening brace on its own line at the same indentation as the control structure
-- **3 spaces** per indentation level (no tabs)
-- **Windows-style line endings (`\r\n`) — MANDATORY for every file in this repo.**
-  See the enforcement rules below.
-- Use `//` for inline comments (reserve `/* */` for commenting out blocks)
-- **Systems Hungarian Notation** for variable names (e.g., `iCount`, `dMass`, `szName`, `bFlag`, `p` prefix for pointers)
-- No trailing whitespace
-- No non-ASCII characters allowed in the code or documentation
+**Windows-style line endings (`\r\n`) are MANDATORY for every file in this repo.** This
+applies to Claude Code's own Edit/Write behavior specifically, not just human-authored
+code -- see the enforcement rules below.
 
 ### Line-ending enforcement (CRLF)
 
