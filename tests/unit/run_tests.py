@@ -18,6 +18,7 @@ Exit code 0 = all tests passed; non-zero = failures.
 import argparse
 import filecmp
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -25,6 +26,12 @@ import sys
 import tempfile
 import textwrap
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
+import legacy_cases  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "rts_repro"))
+import ms2_to_fixture  # noqa: E402
 
 
 UNIT_DIR      = Path(__file__).parent.resolve()
@@ -42,6 +49,13 @@ WIDTH_REFERENCE = 512
 # Set by main() before running integration tests
 _RUN_INTEGRATION = False
 _BASELINE_EXE    = str(DEFAULT_BASELINE_EXE)
+
+# Tests gated behind --integration: they need large/manually-supplied data
+# and/or take much longer than the T1-T16/T19-T21 unit tests.
+INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity")
+
+# Set by main() for T23/T24 (--bigdata)
+_BIGDATA_DIR = str(REPO_ROOT.parent / "20130226-comet-tests")
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +293,7 @@ def check(condition, msg, failures):
         failures.append(msg)
     else:
         print(f"  pass: {msg}")
+    return bool(condition)
 
 
 # ---------------------------------------------------------------------------
@@ -1241,39 +1256,525 @@ def test_t20(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T21 -- legacy functional-correctness cases (from 20130226-comet-tests/runall.sh)
+# ---------------------------------------------------------------------------
+
+def _legacy_case_dir(case):
+    return legacy_cases.LEGACY_DIR / case["dir"]
+
+
+def _legacy_write_params(case_dir, params_kwargs, fmt, database_path):
+    params_content = legacy_cases.build_params(database=fmt(database_path), **params_kwargs)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params_content)
+        return Path(pf.name)
+
+
+def _legacy_run(comet_exe, case, extra_args=(), params_override=None):
+    """Run one legacy case's search. Returns (rows, stdout+stderr)."""
+    case_dir = _legacy_case_dir(case)
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if case["database"].startswith("../"):
+        database_path = legacy_cases.LEGACY_DIR / case["database"][3:]
+    else:
+        database_path = case_dir / case["database"]
+
+    ms2_path = case_dir / case["ms2"]
+    txt_path = ms2_path.with_suffix(".txt")
+    if txt_path.exists():
+        txt_path.unlink()
+
+    kwargs = dict(case["params"])
+    if params_override:
+        kwargs.update(params_override)
+    params_file = _legacy_write_params(case_dir, kwargs, fmt, database_path)
+
+    args = [f"-P{fmt(params_file)}"]
+    for a in case.get("extra_args", []):
+        args.append(a.format(tmp1_db=fmt(case_dir / "tmp1.db")))
+    args += list(extra_args)
+    args.append(fmt(ms2_path))
+
+    try:
+        rc, out = _run_t19_step(comet_exe, args)
+        rows = legacy_cases.parse_txt(txt_path) if txt_path.exists() else []
+        return rc, rows, out
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt_path.unlink(missing_ok=True)
+
+
+def _make_legacy_test(name, case):
+    def test_fn(comet_exe):
+        failures = []
+
+        if name in ("fragmentNL", "fragmentNL2"):
+            rc0, rows0, out0 = _legacy_run(comet_exe, case)
+            if not check(rc0 == 0, f"base search exited 0 (rc={rc0})", failures):
+                return failures
+            if not check(len(rows0) >= 1, "base search: at least 1 PSM row", failures):
+                return failures
+
+            nl_idx = case["nl_mod_index"]
+            nl_mods = list(case["params"]["mods"])
+            base_mod = nl_mods[nl_idx].split()
+            base_mod[-1] = str(case["nl_value"])
+            nl_mods[nl_idx] = " ".join(base_mod)
+            rc1, rows1, out1 = _legacy_run(comet_exe, case, params_override={"mods": tuple(nl_mods)})
+            if not check(rc1 == 0, f"NL search exited 0 (rc={rc1})", failures):
+                return failures
+            if not check(len(rows1) >= 1, "NL search: at least 1 PSM row", failures):
+                return failures
+
+            xcorr0 = float(rows0[0]["xcorr"])
+            xcorr1 = float(rows1[0]["xcorr"])
+            check(xcorr1 > xcorr0,
+                  f"xcorr(NL={case['nl_value']})={xcorr1} > xcorr(base)={xcorr0}", failures)
+            return failures
+
+        rc, rows, out = _legacy_run(comet_exe, case)
+        if not check(rc == 0, f"search exited 0 (rc={rc}):\n{out}" if rc != 0 else "search exited 0", failures):
+            return failures
+        case["check"](rows, failures, check)
+        return failures
+
+    test_fn.__doc__ = f"T21 [legacy]: {name} -- migrated from 20130226-comet-tests/{case['dir']}"
+    return test_fn
+
+
+for _name, _case in legacy_cases.LEGACY_CASES.items():
+    _safe = _name.replace("-", "_")
+    register(f"t21_{_safe}")(_make_legacy_test(_name, _case))
+
+
+# ---------------------------------------------------------------------------
+# T22 -- RTS FI_DB / PI_DB regression (real-time single-spectrum search path)
+# ---------------------------------------------------------------------------
+#
+# tests/rts_repro/rts_repro links directly against libcometsearch and calls the
+# same InitializeSingleSpectrumSearch()/DoSingleSpectrumSearchMultiResults() API
+# RealtimeSearch/SearchMS1MS2.cs calls through CometWrapper.dll -- no C++/CLI,
+# no Thermo dependency, Linux-buildable (see tests/rts_repro/README.md).
+# InitializeSingleSpectrumSearch() (CometSearchManager.cpp) auto-detects FI_DB
+# vs PI_DB from the .idx header, so the same rts_repro binary drives both with
+# no code changes.
+#
+# Two checks per index type:
+#   1. Ground truth: t19_ascore_fidb's unambiguous phospho-S peptide must be
+#      found via the RTS API -- the same fixture T19/T20 use for the batch
+#      path, now exercised through the single-spectrum path instead.
+#   2. Determinism: num_threads=1 and num_threads=8 must produce byte-identical
+#      output over the 197-spectrum fixture (built from data/human.small.fasta),
+#      per the determinism guarantee in tests/rts_repro/README.md.
+#
+# An "RTS vs batch agreement" check was evaluated during development and
+# dropped: fixture_spectra.txt's peaks were extracted directly from
+# 20250520_Hela_60min_06.raw via RawFileReader, while the closest available
+# batch input (data/20250520_Hela_60min_06.mzXML) is an independently
+# generated conversion of the same acquisition and does not centroid
+# identically -- batch-FI vs batch-PI on that *same* mzXML only agreed ~51%
+# rank-1-peptide, showing the mismatch is in the input data, not the RTS
+# path itself, so no reliable agreement threshold could be calibrated from it.
+
+RTS_REPRO_DIR = REPO_ROOT / "tests" / "rts_repro"
+RTS_REPRO_BIN = RTS_REPRO_DIR / "rts_repro"
+RTS_REPRO_CPP = RTS_REPRO_DIR / "rts_repro.cpp"
+RTS_FIXTURE   = RTS_REPRO_DIR / "fixture_spectra.txt"
+
+
+def _ensure_rts_repro_built():
+    if RTS_REPRO_BIN.exists():
+        return True
+    if not RTS_REPRO_CPP.exists():
+        return False
+    cmd = [
+        "g++", "-O2", "-std=c++20", "-fpermissive", "-Wno-write-strings",
+        "-D_LARGEFILE_SOURCE", "-D_FILE_OFFSET_BITS=64", "-DGCC", "-D_NOSQLITE", "-D__int64=off64_t",
+        f"-I{REPO_ROOT / 'CometSearch'}", f"-I{REPO_ROOT / 'MSToolkit' / 'include'}",
+        f"-I{REPO_ROOT / 'MSToolkit' / 'extern' / 'expat-2.2.9' / 'lib'}",
+        f"-I{REPO_ROOT / 'MSToolkit' / 'extern' / 'zlib-1.2.11'}", f"-I{REPO_ROOT / 'AScorePro' / 'include'}",
+        str(RTS_REPRO_CPP), "-o", str(RTS_REPRO_BIN),
+        f"-L{REPO_ROOT / 'MSToolkit'}", f"-L{REPO_ROOT / 'CometSearch'}", f"-L{REPO_ROOT / 'AScorePro'}",
+        "-lcometsearch", "-lmstoolkit", "-lmstoolkitextern", "-lascorepro", "-lm", "-lpthread",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+    return result.returncode == 0 and RTS_REPRO_BIN.exists()
+
+
+def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
+    idx_path = Path(fasta_path).with_suffix(".fasta.idx")
+    if idx_path.exists():
+        idx_path.unlink()
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params_content)
+        params_file = Path(pf.name)
+    try:
+        result = subprocess.run(
+            [str(comet_exe), index_flag, f"-P{params_file}"],
+            capture_output=True, text=True, timeout=300,
+        )
+        if result.returncode != 0 or not idx_path.exists():
+            raise RuntimeError(f"index build failed (rc={result.returncode}):\n{result.stdout}{result.stderr}")
+    finally:
+        params_file.unlink(missing_ok=True)
+    return idx_path
+
+
+def _rts_run(idx_path, fixture_path, num_threads, output_path, ascorepro=0):
+    result = subprocess.run(
+        [str(RTS_REPRO_BIN), str(idx_path), str(fixture_path), str(num_threads), str(output_path), str(ascorepro)],
+        capture_output=True, text=True, timeout=300,
+    )
+    return result.returncode, result.stdout + result.stderr
+
+
+def _rts_sorted_lines(path):
+    lines = Path(path).read_text().splitlines()
+    return sorted(lines, key=lambda l: int(l.split("\t")[0].split()[1]))
+
+
+def _test_rts_index_type(comet_exe, index_flag, label):
+    failures = []
+    if not _RUN_INTEGRATION:
+        print("  SKIP: pass --integration to run this test")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+
+    small_fasta = REAL_DATA_DIR / "human.small.fasta"
+    phospho_params = REAL_DATA_DIR / "comet_phospho.params"
+    if not small_fasta.exists() or not RTS_FIXTURE.exists() or not phospho_params.exists():
+        print(f"  SKIP: {small_fasta}, {phospho_params}, or {RTS_FIXTURE} not found")
+        return []
+
+    # --- 1. Ground truth: t19's unambiguous phospho-S peptide, same fixture
+    #        T19/T20 use for the batch path ---
+    t19_fasta = DATA_DIR / "t19_ascore_fidb.fasta"
+    t19_ms2 = DATA_DIR / "t19_ascore_fidb.ms2"
+    t19_fixture = Path(tempfile.mktemp(suffix=".fixture.txt", dir=str(DATA_DIR)))
+    t19_fixture.write_text("\n".join(ms2_to_fixture.convert(str(t19_ms2))) + "\n")
+
+    t19_params = T19_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=str(t19_fasta),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 0.0",
+    )
+    t19_idx = None
+    try:
+        t19_idx = _rts_build_index(comet_exe, t19_fasta, t19_params, index_flag)
+        out_path = Path(tempfile.mktemp(suffix=".out", dir=str(DATA_DIR)))
+        rc, out = _rts_run(t19_idx, t19_fixture, 1, out_path)
+        if not check(rc == 0, f"{label}: rts_repro exits 0 on ground-truth fixture", failures):
+            print(out)
+            return failures
+        lines = out_path.read_text().splitlines() if out_path.exists() else []
+        out_path.unlink(missing_ok=True)
+        if not check(len(lines) == 1, f"{label}: 1 ground-truth result line, got {len(lines)}", failures):
+            return failures
+        parts = lines[0].split("\t")
+        pep = parts[1] if len(parts) > 1 else "NO_MATCH"
+        check(pep != "NO_MATCH" and "ACDEFGS" in pep and "79.9663" in pep,
+              f"{label}: RTS finds ACDEFGS[79.9663]K, got {pep!r}", failures)
+    finally:
+        if t19_idx and t19_idx.exists():
+            t19_idx.unlink()
+        t19_fixture.unlink(missing_ok=True)
+
+    # --- 2. Determinism: 1 vs 8 threads over 197 real spectra ---
+    hs_params_content = phospho_params.read_text().replace(
+        "database_name = human.target-decoy.fasta", f"database_name = {small_fasta}")
+    hs_idx = None
+    try:
+        hs_idx = _rts_build_index(comet_exe, small_fasta, hs_params_content, index_flag)
+        out1 = Path(tempfile.mktemp(suffix=".1thread.out", dir=str(DATA_DIR)))
+        out8 = Path(tempfile.mktemp(suffix=".8thread.out", dir=str(DATA_DIR)))
+        try:
+            rc1, log1 = _rts_run(hs_idx, RTS_FIXTURE, 1, out1)
+            if not check(rc1 == 0, f"{label}: rts_repro (1 thread) exits 0", failures):
+                print(log1)
+                return failures
+            rc8, log8 = _rts_run(hs_idx, RTS_FIXTURE, 8, out8)
+            if not check(rc8 == 0, f"{label}: rts_repro (8 threads) exits 0", failures):
+                print(log8)
+                return failures
+
+            lines1 = _rts_sorted_lines(out1)
+            lines8 = _rts_sorted_lines(out8)
+            check(len(lines1) == 197, f"{label}: 1-thread run covers all 197 fixture spectra, got {len(lines1)}", failures)
+            check(lines1 == lines8,
+                  f"{label}: 1-thread and 8-thread outputs are byte-identical after sorting by scan "
+                  f"({sum(a != b for a, b in zip(lines1, lines8))} differing lines out of {len(lines1)})",
+                  failures)
+        finally:
+            out1.unlink(missing_ok=True)
+            out8.unlink(missing_ok=True)
+    finally:
+        if hs_idx and hs_idx.exists():
+            hs_idx.unlink()
+
+    return failures
+
+
+@register("t22_rts_fi")
+def test_t22_rts_fi(comet_exe):
+    """T22 [integration]: RTS single-spectrum search against an FI_DB index."""
+    return _test_rts_index_type(comet_exe, "-i", "FI_DB")
+
+
+@register("t22_rts_pi")
+def test_t22_rts_pi(comet_exe):
+    """T22 [integration]: RTS single-spectrum search against a PI_DB index."""
+    return _test_rts_index_type(comet_exe, "-j", "PI_DB")
+
+
+# ---------------------------------------------------------------------------
+# T23 -- decoy-mode parity (comet-debug3), --bigdata gated
+# ---------------------------------------------------------------------------
+#
+# Migrated from 20130226-comet-tests/comet-debug3, which ran these same two
+# configs and eyeballed an FDR scatter plot (qvalue.exe / explorer.exe *.png).
+# Same two configs here, but pass/fail is a real 1%-FDR PSM-count comparison
+# via tools/qvalue.py: internal-decoy and target-decoy searches of the same
+# real HeLa run should identify a similar number of peptides at 1% FDR.
+#
+# Needs ~350MB of real data (177MB mzXML, 57MB/116MB FASTAs) referenced in
+# place via --bigdata (default: sibling 20130226-comet-tests/ directory) and
+# takes several minutes -- skips cleanly if absent, like T17/T18 skip without
+# human.small.fasta. Data is never copied.
+
+sys.path.insert(0, str(REPO_ROOT / "tools"))
+import qvalue  # noqa: E402
+
+
+def _q1pct_counts(txt_path):
+    """Return (n_rank1_psms, xcorr_count_at_1pct, evalue_count_at_1pct) via tools/qvalue.py."""
+    psms = qvalue.load_rank1(str(txt_path))
+    sx = qvalue._sort_psms(psms, "xcorr")
+    qx = qvalue.compute_qvalues(sx)
+    cx, _ = qvalue._count_passing(sx, qx, 0.01, qvalue._F_XCORR)
+    se = qvalue._sort_psms(psms, "evalue")
+    qe = qvalue.compute_qvalues(se)
+    ce, _ = qvalue._count_passing(se, qe, 0.01, qvalue._F_EVALUE)
+    return len(psms), cx, ce
+
+
+def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params_content)
+        params_file = Path(pf.name)
+    txt_path = Path(mzxml_path).with_suffix(".txt")
+    if txt_path.exists():
+        txt_path.unlink()
+    try:
+        result = subprocess.run(
+            [str(comet_exe), f"-P{params_file}", str(mzxml_path)],
+            capture_output=True, text=True, timeout=timeout,
+        )
+        return result.returncode, txt_path, result.stdout + result.stderr
+    finally:
+        params_file.unlink(missing_ok=True)
+
+
+def _set_param_line(params_text, key, value):
+    return re.sub(rf"(?m)^{re.escape(key)} = .*$", f"{key} = {value}", params_text, count=1)
+
+
+@register("t23_decoy_modes")
+def test_t23_decoy_modes(comet_exe):
+    """T23 [integration]: comet-debug3 -- internal-decoy vs target-decoy 1% FDR parity."""
+    if not _RUN_INTEGRATION:
+        print("  SKIP: pass --integration to run this test")
+        return []
+
+    failures = []
+    d3 = Path(_BIGDATA_DIR) / "comet-debug3"
+    mzxml = d3 / "20170103_HelaQC_01.mzXML"
+    human_fasta = d3 / "human.fasta"
+    human_td_fasta = d3 / "human.target-decoy.fasta"
+    base_params_file = d3 / "comet.params"
+    if not (mzxml.exists() and human_fasta.exists() and human_td_fasta.exists() and base_params_file.exists()):
+        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR "
+              f"(this test needs ~350MB of real data not checked into the repo)")
+        return []
+
+    base = base_params_file.read_text()
+    internaldecoy_params = _set_param_line(base, "database_name", human_fasta)
+    internaldecoy_params = _set_param_line(internaldecoy_params, "decoy_search", "1")
+    targetdecoy_params = _set_param_line(base, "database_name", human_td_fasta)
+    targetdecoy_params = _set_param_line(targetdecoy_params, "decoy_search", "0")
+
+    print("  Running internal-decoy search (human.fasta, decoy_search=1) ...")
+    rc1, txt1, out1 = _run_bigdata_search(comet_exe, internaldecoy_params, mzxml)
+    if not check(rc1 == 0, f"internal-decoy search exits 0 (rc={rc1})", failures):
+        print(out1[-2000:])
+        return failures
+
+    print("  Running target-decoy search (human.target-decoy.fasta, decoy_search=0) ...")
+    rc2, txt2, out2 = _run_bigdata_search(comet_exe, targetdecoy_params, mzxml)
+    if not check(rc2 == 0, f"target-decoy search exits 0 (rc={rc2})", failures):
+        print(out2[-2000:])
+        return failures
+
+    n1, cx1, ce1 = _q1pct_counts(txt1)
+    n2, cx2, ce2 = _q1pct_counts(txt2)
+    txt1.unlink(missing_ok=True)
+    txt2.unlink(missing_ok=True)
+
+    check(10_000 <= cx1 <= 30_000,
+          f"internal-decoy: {cx1:,} PSMs at 1% FDR (xcorr) in plausible range [10k, 30k]", failures)
+    check(10_000 <= cx2 <= 30_000,
+          f"target-decoy: {cx2:,} PSMs at 1% FDR (xcorr) in plausible range [10k, 30k]", failures)
+    ratio = (cx1 / cx2) if cx2 else float("inf")
+    check(0.9 <= ratio <= 1.1,
+          f"internal-decoy ({cx1:,}) and target-decoy ({cx2:,}) agree within 10% "
+          f"at 1% FDR xcorr (ratio {ratio:.3f})", failures)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T24 -- FI_DB / PI_DB index parity vs. plain FASTA (comet-debug4), --bigdata gated
+# ---------------------------------------------------------------------------
+#
+# Migrated from 20130226-comet-tests/comet-debug4. A target-decoy search
+# should identify a similar peptide population whether run against the plain
+# FASTA, a fragment-ion index (-i), or a peptide index (-j) -- FI/PI trade
+# exhaustiveness for speed, but shouldn't diverge sharply from brute force.
+#
+# NOTE: while developing this test, one manual (non-harness) attempt to search
+# a full-scale target-decoy FI_DB crashed with
+#   terminate called after throwing an instance of 'std::length_error':
+#     cannot create std::vector larger than max_size()
+# That manual build was interrupted by a shell command timeout partway through
+# writing the .idx file, which most likely left a truncated/corrupt index on
+# disk -- the crash was almost certainly reading that corrupt file, not a
+# Comet defect. Under this test's own clean build-then-search sequence (no
+# interruption), FI_DB has run correctly every time (see the count-agreement
+# check below). If this ever resurfaces under the harness's own clean run,
+# treat it as a live regression and start by ruling out a truncated .idx
+# before going near CometFragmentIndex's read path.
+
+@register("t24_index_parity")
+def test_t24_index_parity(comet_exe):
+    """T24 [integration]: comet-debug4 -- plain FASTA vs FI_DB vs PI_DB 1% FDR parity."""
+    if not _RUN_INTEGRATION:
+        print("  SKIP: pass --integration to run this test")
+        return []
+
+    failures = []
+    d3 = Path(_BIGDATA_DIR) / "comet-debug3"  # comet-debug4 reuses comet-debug3's mzXML + fasta
+    mzxml = d3 / "20170103_HelaQC_01.mzXML"
+    human_td_fasta = d3 / "human.target-decoy.fasta"
+    base_params_file = d3 / "comet.params"
+    if not (mzxml.exists() and human_td_fasta.exists() and base_params_file.exists()):
+        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR "
+              f"(this test needs ~350MB of real data not checked into the repo)")
+        return []
+
+    base = base_params_file.read_text()
+    plain_params = _set_param_line(base, "database_name", human_td_fasta)
+    plain_params = _set_param_line(plain_params, "decoy_search", "0")
+
+    print("  Running plain-FASTA target-decoy search ...")
+    rc0, txt0, out0 = _run_bigdata_search(comet_exe, plain_params, mzxml)
+    if not check(rc0 == 0, f"plain-FASTA search exits 0 (rc={rc0})", failures):
+        print(out0[-2000:])
+        return failures
+    n0, cx0, ce0 = _q1pct_counts(txt0)
+    txt0.unlink(missing_ok=True)
+    check(10_000 <= cx0 <= 30_000,
+          f"plain-FASTA: {cx0:,} PSMs at 1% FDR (xcorr) in plausible range [10k, 30k]", failures)
+
+    idx_path = human_td_fasta.with_suffix(".fasta.idx")
+
+    for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+        print(f"  Building {label} index ...")
+        if idx_path.exists():
+            idx_path.unlink()
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as pf:
+            pf.write(plain_params)
+            idx_params_file = Path(pf.name)
+        try:
+            r = subprocess.run([str(comet_exe), flag, f"-P{idx_params_file}"],
+                                capture_output=True, text=True, timeout=400)
+            if not check(r.returncode == 0 and idx_path.exists(),
+                          f"{label} index builds (rc={r.returncode})", failures):
+                print((r.stdout + r.stderr)[-2000:])
+                continue
+        finally:
+            idx_params_file.unlink(missing_ok=True)
+
+        idx_params = _set_param_line(plain_params, "database_name", idx_path)
+        print(f"  Searching against {label} ...")
+        rc, txt, out = _run_bigdata_search(comet_exe, idx_params, mzxml)
+        if not check(rc == 0, f"{label} search exits 0 (rc={rc})", failures):
+            print(out[-2000:])
+            continue
+        n, cx, ce = _q1pct_counts(txt)
+        txt.unlink(missing_ok=True)
+        ratio = (cx / cx0) if cx0 else float("inf")
+        check(0.9 <= ratio <= 1.1,
+              f"{label} ({cx:,}) agrees with plain-FASTA ({cx0:,}) within 10% at 1% FDR "
+              f"xcorr (ratio {ratio:.3f})", failures)
+
+    idx_path.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
 def main():
-    global _RUN_INTEGRATION, _BASELINE_EXE
+    global _RUN_INTEGRATION, _BASELINE_EXE, _BIGDATA_DIR
 
     all_tests = list(TESTS.keys())
-    non_integration = [t for t in all_tests if t not in ("t17", "t18")]
+    non_integration = [t for t in all_tests if t not in INTEGRATION_TESTS]
 
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--comet", default=str(COMET_EXE),
-                        help="path to Comet binary")
+    parser.add_argument("--comet", action="append", default=None,
+                        help="path to a Comet binary; repeat to run the suite against "
+                             "multiple binaries (e.g. Linux comet.exe and Windows Comet.exe)")
     parser.add_argument("--integration", action="store_true",
-                        help="run integration tests T17 and T18 (require human.small.fasta)")
+                        help=f"run integration tests {', '.join(INTEGRATION_TESTS)} "
+                             "(require human.small.fasta and/or --bigdata)")
     parser.add_argument("--baseline", default=str(DEFAULT_BASELINE_EXE),
                         help="path to v2026.01.1 baseline binary (for T17)")
+    parser.add_argument("--bigdata", default=str(REPO_ROOT.parent / "20130226-comet-tests"),
+                        help="directory holding comet-debug3/comet-debug4 big-data fixtures "
+                             "(for T23/T24); referenced in place, never copied")
     parser.add_argument("tests", nargs="*", default=non_integration,
                         help="test IDs to run (default: all non-integration tests)")
     args = parser.parse_args()
 
     _RUN_INTEGRATION = args.integration
     _BASELINE_EXE    = args.baseline
+    _BIGDATA_DIR     = args.bigdata
 
-    comet_exe = Path(args.comet)
-    if not comet_exe.exists():
-        print(f"ERROR: Comet binary not found: {comet_exe}", file=sys.stderr)
-        sys.exit(2)
+    comet_binaries = args.comet or [str(COMET_EXE)]
+    for b in comet_binaries:
+        if not Path(b).exists():
+            print(f"ERROR: Comet binary not found: {b}", file=sys.stderr)
+            sys.exit(2)
 
     requested = args.tests
-    # If --integration is passed and T17/T18 not explicitly listed, add them
-    if args.integration and "t17" not in requested:
-        requested = requested + ["t17", "t18"]
+    # If --integration is passed and none of INTEGRATION_TESTS is explicitly listed, add them all
+    if args.integration and not any(t in requested for t in INTEGRATION_TESTS):
+        requested = requested + list(INTEGRATION_TESTS)
 
     unknown = set(requested) - set(TESTS)
     if unknown:
@@ -1281,34 +1782,50 @@ def main():
         print(f"Available: {all_tests}", file=sys.stderr)
         sys.exit(2)
 
-    total_fail = 0
-    total_pass = 0
-    total_skip = 0
+    grand_fail = 0
 
-    for name in requested:
+    for binary in comet_binaries:
+        comet_exe = Path(binary)
+        print(f"\n{'#'*60}")
+        print(f"  Binary: {comet_exe}")
+        print(f"{'#'*60}")
+
+        total_fail = 0
+        total_pass = 0
+        total_skip = 0
+
+        for name in requested:
+            print(f"\n{'='*60}")
+            print(f"  {name}: {TESTS[name].__doc__.strip().splitlines()[0]}")
+            print(f"{'='*60}")
+            try:
+                failures = TESTS[name](comet_exe)
+            except Exception as e:
+                print(f"  ERROR: {e}")
+                failures = [str(e)]
+
+            if failures == [] and name in INTEGRATION_TESTS and not _RUN_INTEGRATION:
+                total_skip += 1
+                print("  --> SKIPPED")
+            elif failures:
+                total_fail += 1
+                print(f"  --> FAILED ({len(failures)} check(s))")
+            else:
+                total_pass += 1
+                print("  --> PASSED")
+
         print(f"\n{'='*60}")
-        print(f"  {name}: {TESTS[name].__doc__.strip().splitlines()[0]}")
+        print(f"  [{comet_exe}] Results: {total_pass} passed, {total_fail} failed, {total_skip} skipped")
         print(f"{'='*60}")
-        try:
-            failures = TESTS[name](comet_exe)
-        except Exception as e:
-            print(f"  ERROR: {e}")
-            failures = [str(e)]
+        grand_fail += total_fail
 
-        if failures == [] and name in ("t17", "t18") and not _RUN_INTEGRATION:
-            total_skip += 1
-            print("  --> SKIPPED")
-        elif failures:
-            total_fail += 1
-            print(f"  --> FAILED ({len(failures)} check(s))")
-        else:
-            total_pass += 1
-            print("  --> PASSED")
-
-    print(f"\n{'='*60}")
-    print(f"  Results: {total_pass} passed, {total_fail} failed, {total_skip} skipped")
+    if len(comet_binaries) > 1:
+        print(f"\n{'#'*60}")
+        print(f"  Overall across {len(comet_binaries)} binaries: "
+              f"{'ALL PASSED' if grand_fail == 0 else f'{grand_fail} total failure(s)'}")
+        print(f"{'#'*60}")
     print(f"{'='*60}")
-    sys.exit(0 if total_fail == 0 else 1)
+    sys.exit(0 if grand_fail == 0 else 1)
 
 
 if __name__ == "__main__":

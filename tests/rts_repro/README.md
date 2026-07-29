@@ -71,6 +71,28 @@ Kept as a regression test for this bug class -- if this reproducer ever shows no
 start with `docs/20260714_EvalueJitter.md`'s Phase 3 methodology (full XCorr histogram dump,
 compare content not just count) rather than re-deriving it from scratch.
 
+## Using this from tests/unit/run_tests.py (t22_rts_fi, t22_rts_pi)
+
+`tests/unit/run_tests.py` drives this reproducer as part of its `--integration` suite
+(see CLAUDE.md's Testing section). It builds `rts_repro` on demand (the same `g++`
+invocation as above) if the binary isn't already present, then runs two checks per index
+type (FI_DB via `-i`, PI_DB via `-j`):
+
+1. **Ground truth**: builds an FI_DB/PI_DB from `tests/unit/data/t19_ascore_fidb.fasta`
+   (the same unambiguous single-phospho-peptide fixture T19/T20 use for the batch path)
+   and asserts RTS finds `ACDEFGS[79.9663]K` -- confirming the RTS single-spectrum path
+   actually works against both index types, not just that it runs.
+2. **Determinism**: the 1-vs-8-thread check described above, against an FI_DB/PI_DB built
+   from `data/human.small.fasta`.
+
+`ms2_to_fixture.py` converts any `.ms2` file into this reproducer's `SPECTRUM` block
+format (one block per `Z` line), so new ground-truth fixtures don't require extracting
+real spectra from a `.raw` file:
+
+```bash
+python3 tests/rts_repro/ms2_to_fixture.py path/to/input.ms2 > my_fixture.txt
+```
+
 ## Regenerating the fixture
 
 `fixture_spectra.txt` was generated once via a temporary, since-reverted dump added to

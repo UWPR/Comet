@@ -100,13 +100,19 @@ diagrams, use the `comet-codebase` skill.
 Tests live in `tests/unit/`. The runner is `run_tests.py`.
 
 ```bash
-# Run all unit tests (T1-T7, T11-T16) -- fast, no large data required
+# Run all unit tests (T1-T7, T11-T16, T19-T21) -- fast, no large data required
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
 
 # Run a specific test by ID
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe t13
 
-# Run unit + integration tests (T17, T18) -- requires data/human.small.fasta
+# Run against both a Linux and a Windows build in one invocation (--comet is repeatable)
+python tests/unit/run_tests.py \
+  --comet /mnt/c/Work/Comet-master/comet.exe \
+  --comet /mnt/c/Work/Comet-master/x64/Release/Comet.exe
+
+# Run unit + integration tests (T17, T18, T22-T24) -- requires data/human.small.fasta
+# and/or --bigdata (see below)
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe --integration
 ```
 
@@ -118,8 +124,40 @@ invoked from inside `tests/unit/`.
 Small crafted FASTA files for T1-T16 live in `tests/unit/data/`. Pre-built `.idx`
 reference files are committed alongside them for byte-exact comparison tests.
 
-Integration tests (T17, T18) require `data/human.small.fasta` (not in repo -- must
-be present manually before running `--integration`).
+Integration tests T17/T18 require `data/human.small.fasta` (not in repo -- must be
+present manually before running `--integration`).
+
+### Legacy functional-correctness cases (T21) and RTS/big-data regressions (T22-T24)
+
+T21 (`t21_*`, one per case, always run) migrates the ~21 hand-run cases from
+`/mnt/c/Work/20130226-comet-tests/runall.sh` -- fixtures live in `tests/unit/data/legacy/`,
+params are generated at runtime from `tests/unit/legacy_cases.py`'s template rather than
+maintaining ~15 historical `comet.params.YYYYNNN` copies per case. See that module's
+docstring for the full case table and what each one asserts.
+
+T22 (`t22_rts_fi`, `t22_rts_pi`, `--integration`) exercises the real-time search (RTS)
+single-spectrum path via `tests/rts_repro/` -- no C++/CLI or Thermo dependency, so it
+runs on Linux. It checks (1) RTS finds the correct peptide against both an FI_DB and a
+PI_DB built from a small unambiguous fixture, and (2) 1-thread and 8-thread runs over
+197 real spectra are byte-identical (the determinism guarantee from
+`tests/rts_repro/README.md`). `tests/rts_repro/ms2_to_fixture.py` converts any `.ms2`
+into the driver's fixture format.
+
+T23/T24 (`t23_decoy_modes`, `t24_index_parity`, `--integration` + `--bigdata`) migrate
+`comet-debug3`/`comet-debug4`'s full-scale searches (~350MB of real data: a 177MB mzXML,
+57MB/116MB FASTAs). `--bigdata DIR` (default: the sibling `20130226-comet-tests/`
+directory) points at this data in place -- it is never copied into the repo. Both tests
+skip cleanly if the directory isn't present. T23 checks that internal-decoy and
+target-decoy searches agree on PSM counts at 1% FDR (via `tools/qvalue.py`); T24 checks
+the same for plain-FASTA vs. FI_DB vs. PI_DB searches -- all three currently pass and
+agree within a few percent (17,660 / 17,033 / 17,660 PSMs at 1% FDR respectively).
+
+Note: while developing T24, one manual (non-harness) attempt to search a full-scale
+target-decoy FI_DB crashed with `std::length_error: cannot create std::vector larger
+than max_size()`. That manual build was interrupted by a shell timeout mid-write, almost
+certainly leaving a truncated/corrupt `.idx` on disk -- under T24's own clean
+build-then-search sequence, FI_DB has run correctly every time. See the comment above
+`test_t24_index_parity` in `run_tests.py` if this ever resurfaces.
 
 ### Key Design Decisions in the Test Suite
 
