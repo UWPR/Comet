@@ -148,9 +148,9 @@ T23/T24 (`t23_decoy_modes`, `t24_index_parity`, `--integration` + `--bigdata`) m
 57MB/116MB FASTAs). `--bigdata DIR` (default: the sibling `20130226-comet-tests/`
 directory) points at this data in place -- it is never copied into the repo. Both tests
 skip cleanly if the directory isn't present. T23 checks that internal-decoy and
-target-decoy searches agree on PSM counts at 1% FDR (via `tools/qvalue.py`); T24 checks
-the same for plain-FASTA vs. FI_DB vs. PI_DB searches -- all three currently pass and
-agree within a few percent (17,660 / 17,033 / 17,660 PSMs at 1% FDR respectively).
+target-decoy searches agree on PSM counts at 1% FDR (via `tools/qvalue.py`) within 5%;
+T24 checks the same for plain-FASTA vs. FI_DB vs. PI_DB searches -- all three currently
+pass and agree within a few percent (17,660 / 17,033 / 17,660 PSMs at 1% FDR respectively).
 
 Note: while developing T24, one manual (non-harness) attempt to search a full-scale
 target-decoy FI_DB crashed with `std::length_error: cannot create std::vector larger
@@ -158,6 +158,28 @@ than max_size()`. That manual build was interrupted by a shell timeout mid-write
 certainly leaving a truncated/corrupt `.idx` on disk -- under T24's own clean
 build-then-search sequence, FI_DB has run correctly every time. See the comment above
 `test_t24_index_parity` in `run_tests.py` if this ever resurfaces.
+
+**Cross-version comparison against a previous Comet release.** Both T23 and T24 also run
+every one of their configs (T23: both decoy modes; T24: plain-FASTA, FI_DB, PI_DB --
+each built fresh with the baseline binary, since `.idx` formats aren't guaranteed
+compatible across versions) against a pinned previous release, `v2025.03.0`
+(`BASELINE_TAG` in `run_tests.py`), fetched automatically on first use via
+`tests/regression/setup_baselines.py`'s download logic into
+`tests/regression/baselines/v2025.03.0/comet` (gitignored, like all fetched baselines --
+override with `--baseline PATH` to point at something else; cross-version checks skip
+cleanly, without failing the test, if no baseline is available). Same-version comparisons
+(internal-vs-target-decoy, FI/PI-vs-plain-FASTA) use a 5% tolerance; current-vs-baseline
+comparisons use 10%, since a different Comet version legitimately identifies a somewhat
+different peptide population.
+
+**Runtime regression check.** Each search and index build is timed, and every
+current-vs-baseline pairing also asserts current isn't more than `TIMING_NOISE_TOLERANCE`
+(currently 25%) slower than `v2025.03.0`'s wall-clock time for the same operation, via
+`_check_timing()`. That threshold is deliberately generous: these are multi-minute,
+single-sample wall-clock measurements on real (possibly shared) hardware, and run-to-run
+variance from machine noise alone can plausibly reach 10-20% with no code change at all.
+Treat one `_check_timing` failure as "worth re-running to confirm," not proof of a
+regression on its own -- a *repeated* failure across multiple runs is the real signal.
 
 ### Key Design Decisions in the Test Suite
 

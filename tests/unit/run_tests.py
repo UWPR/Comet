@@ -7,9 +7,11 @@ Runs Comet.exe -i on each crafted FASTA and verifies expected properties.
 Usage:
     python run_tests.py [--comet PATH] [--integration] [--baseline PATH] [test_id ...]
 
-    --comet       path to Comet binary (default: ../../comet.exe)
-    --integration also run T17 and T18 (require human.small.fasta in data/)
-    --baseline    path to v2026.01.1 baseline binary (for T17)
+    --comet       path to Comet binary (default: ../../comet.exe); repeatable
+    --integration also run T17, T18, T22-T24 (require human.small.fasta and/or --bigdata)
+    --baseline    path to a previous-Comet-version binary for T23/T24's cross-version
+                  checks (default: tests/regression/baselines/v2025.03.0/comet,
+                  auto-downloaded from GitHub Releases on first use if missing)
     test_id       one or more test IDs (default: all non-integration tests)
 
 Exit code 0 = all tests passed; non-zero = failures.
@@ -25,6 +27,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -32,6 +35,9 @@ import legacy_cases  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "rts_repro"))
 import ms2_to_fixture  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "regression"))
+import setup_baselines  # noqa: E402
 
 
 UNIT_DIR      = Path(__file__).parent.resolve()
@@ -41,7 +47,13 @@ REAL_DATA_DIR = REPO_ROOT / "data"
 
 # Default binary paths
 COMET_EXE            = REPO_ROOT / "comet.exe"
-DEFAULT_BASELINE_EXE = REPO_ROOT / "tests" / "regression" / "baselines" / "v2026.01.1" / "comet"
+
+# Previous-version binary T23/T24 compare against (see _ensure_baseline()).
+# setup_baselines.py already knows how to fetch this tag's release asset; reusing
+# it here means run_tests.py always gets the same comet.linux.exe/win64.exe naming
+# convention without duplicating the download logic.
+BASELINE_TAG         = "v2025.03.0"
+DEFAULT_BASELINE_EXE = setup_baselines.BASELINES_DIR / BASELINE_TAG / setup_baselines.asset_url(BASELINE_TAG)[1]
 
 MASS_TOL        = 0.002   # Da -- loose tolerance for monoisotopic masses
 WIDTH_REFERENCE = 512
@@ -1568,6 +1580,9 @@ def _q1pct_counts(txt_path):
 
 
 def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
+    """Returns (returncode, txt_path, output, elapsed_seconds). elapsed_seconds
+    is wall-clock time around the subprocess call -- a single-sample real-machine
+    measurement, not an average of repeated runs; see _check_timing()."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
@@ -1577,17 +1592,100 @@ def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
     if txt_path.exists():
         txt_path.unlink()
     try:
+        t0 = time.perf_counter()
         result = subprocess.run(
             [str(comet_exe), f"-P{params_file}", str(mzxml_path)],
             capture_output=True, text=True, timeout=timeout,
         )
-        return result.returncode, txt_path, result.stdout + result.stderr
+        elapsed = time.perf_counter() - t0
+        return result.returncode, txt_path, result.stdout + result.stderr, elapsed
     finally:
         params_file.unlink(missing_ok=True)
 
 
 def _set_param_line(params_text, key, value):
     return re.sub(rf"(?m)^{re.escape(key)} = .*$", f"{key} = {value}", params_text, count=1)
+
+
+def _index_build_and_search(binary, flag, label, plain_params, idx_path, mzxml, failures, tag=""):
+    """Build an FI_DB (-i) or PI_DB (-j) index with `binary` and search `mzxml`
+    against it. Returns (xcorr_count_at_1pct, build_seconds, search_seconds),
+    or None if the build/search failed (already recorded in `failures` via
+    check()). `idx_path` is rebuilt fresh each call, so it's safe to reuse
+    across binaries as long as calls aren't interleaved concurrently."""
+    prefix = f"{tag} " if tag else ""
+    if idx_path.exists():
+        idx_path.unlink()
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(plain_params)
+        idx_params_file = Path(pf.name)
+    try:
+        t0 = time.perf_counter()
+        r = subprocess.run([str(binary), flag, f"-P{idx_params_file}"],
+                            capture_output=True, text=True, timeout=400)
+        build_elapsed = time.perf_counter() - t0
+        if not check(r.returncode == 0 and idx_path.exists(),
+                      f"{prefix}{label} index builds (rc={r.returncode})", failures):
+            print((r.stdout + r.stderr)[-2000:])
+            return None
+    finally:
+        idx_params_file.unlink(missing_ok=True)
+
+    idx_params = _set_param_line(plain_params, "database_name", idx_path)
+    rc, txt, out, search_elapsed = _run_bigdata_search(binary, idx_params, mzxml)
+    if not check(rc == 0, f"{prefix}{label} search exits 0 (rc={rc})", failures):
+        print(out[-2000:])
+        return None
+    _, cx, _ = _q1pct_counts(txt)
+    txt.unlink(missing_ok=True)
+    return cx, build_elapsed, search_elapsed
+
+
+# A single-sample wall-clock comparison on shared/real hardware can easily vary
+# 10-20% run to run for a multi-minute search with no code change at all --
+# this is intentionally a generous threshold so it flags a real slowdown
+# rather than ordinary machine jitter. Treat one failure here as "worth a
+# re-run to confirm," not proof of a regression; treat a *repeated* failure
+# as a real one.
+TIMING_NOISE_TOLERANCE = 0.25   # current allowed to be up to 25% slower
+
+
+def _check_timing(current_s, baseline_s, label, failures, rel_tol=TIMING_NOISE_TOLERANCE):
+    ratio = (current_s / baseline_s) if baseline_s else float("inf")
+    check(ratio <= 1 + rel_tol,
+          f"{label}: current ({current_s:.1f}s) not more than {rel_tol*100:.0f}% slower than "
+          f"{BASELINE_TAG} ({baseline_s:.1f}s) -- ratio {ratio:.3f}", failures)
+
+
+def _ensure_baseline():
+    """Return the previous-version baseline binary Path for T23/T24's
+    cross-version checks, downloading it via setup_baselines.py's fetch logic
+    on first use if it's missing from its default location. Returns None
+    (never raises) if unavailable -- callers should skip just their
+    cross-version checks in that case, not the whole test.
+
+    Auto-download only applies to the default path (BASELINE_TAG's expected
+    location); if --baseline was pointed at a custom path that doesn't exist,
+    that's treated as an explicit "no baseline" rather than downloaded over.
+    """
+    baseline_exe = Path(_BASELINE_EXE)
+    if baseline_exe.exists():
+        return baseline_exe
+
+    if baseline_exe != DEFAULT_BASELINE_EXE:
+        print(f"  Baseline not found at {baseline_exe} (--baseline was set explicitly; "
+              f"not auto-downloading over a custom path)")
+        return None
+
+    print(f"  Baseline {BASELINE_TAG} not found at {baseline_exe}; downloading from "
+          f"GitHub Releases ...")
+    ok = setup_baselines.setup_tag(BASELINE_TAG)
+    if not ok or not baseline_exe.exists():
+        print(f"  Baseline {BASELINE_TAG} download failed or produced no binary")
+        return None
+    return baseline_exe
 
 
 @register("t23_decoy_modes")
@@ -1615,13 +1713,13 @@ def test_t23_decoy_modes(comet_exe):
     targetdecoy_params = _set_param_line(targetdecoy_params, "decoy_search", "0")
 
     print("  Running internal-decoy search (human.fasta, decoy_search=1) ...")
-    rc1, txt1, out1 = _run_bigdata_search(comet_exe, internaldecoy_params, mzxml)
+    rc1, txt1, out1, t1 = _run_bigdata_search(comet_exe, internaldecoy_params, mzxml)
     if not check(rc1 == 0, f"internal-decoy search exits 0 (rc={rc1})", failures):
         print(out1[-2000:])
         return failures
 
     print("  Running target-decoy search (human.target-decoy.fasta, decoy_search=0) ...")
-    rc2, txt2, out2 = _run_bigdata_search(comet_exe, targetdecoy_params, mzxml)
+    rc2, txt2, out2, t2 = _run_bigdata_search(comet_exe, targetdecoy_params, mzxml)
     if not check(rc2 == 0, f"target-decoy search exits 0 (rc={rc2})", failures):
         print(out2[-2000:])
         return failures
@@ -1636,9 +1734,40 @@ def test_t23_decoy_modes(comet_exe):
     check(10_000 <= cx2 <= 30_000,
           f"target-decoy: {cx2:,} PSMs at 1% FDR (xcorr) in plausible range [10k, 30k]", failures)
     ratio = (cx1 / cx2) if cx2 else float("inf")
-    check(0.9 <= ratio <= 1.1,
-          f"internal-decoy ({cx1:,}) and target-decoy ({cx2:,}) agree within 10% "
+    check(0.95 <= ratio <= 1.05,
+          f"internal-decoy ({cx1:,}) and target-decoy ({cx2:,}) agree within 5% "
           f"at 1% FDR xcorr (ratio {ratio:.3f})", failures)
+
+    # --- Cross-version: same two configs against the v2025.03.0 baseline ---
+    baseline_exe = _ensure_baseline()
+    if baseline_exe is None:
+        print(f"  SKIP cross-version checks: {BASELINE_TAG} baseline unavailable")
+    else:
+        print(f"  Running internal-decoy search with baseline {BASELINE_TAG} ...")
+        brc1, btxt1, bout1, bt1 = _run_bigdata_search(baseline_exe, internaldecoy_params, mzxml)
+        if not check(brc1 == 0, f"baseline ({BASELINE_TAG}) internal-decoy search exits 0 (rc={brc1})", failures):
+            print(bout1[-2000:])
+        else:
+            _, bcx1, _ = _q1pct_counts(btxt1)
+            btxt1.unlink(missing_ok=True)
+            bratio1 = (cx1 / bcx1) if bcx1 else float("inf")
+            check(0.9 <= bratio1 <= 1.1,
+                  f"internal-decoy: current ({cx1:,}) agrees with {BASELINE_TAG} ({bcx1:,}) "
+                  f"within 10% at 1% FDR xcorr (ratio {bratio1:.3f})", failures)
+            _check_timing(t1, bt1, "internal-decoy search time", failures)
+
+        print(f"  Running target-decoy search with baseline {BASELINE_TAG} ...")
+        brc2, btxt2, bout2, bt2 = _run_bigdata_search(baseline_exe, targetdecoy_params, mzxml)
+        if not check(brc2 == 0, f"baseline ({BASELINE_TAG}) target-decoy search exits 0 (rc={brc2})", failures):
+            print(bout2[-2000:])
+        else:
+            _, bcx2, _ = _q1pct_counts(btxt2)
+            btxt2.unlink(missing_ok=True)
+            bratio2 = (cx2 / bcx2) if bcx2 else float("inf")
+            check(0.9 <= bratio2 <= 1.1,
+                  f"target-decoy: current ({cx2:,}) agrees with {BASELINE_TAG} ({bcx2:,}) "
+                  f"within 10% at 1% FDR xcorr (ratio {bratio2:.3f})", failures)
+            _check_timing(t2, bt2, "target-decoy search time", failures)
 
     return failures
 
@@ -1687,7 +1816,7 @@ def test_t24_index_parity(comet_exe):
     plain_params = _set_param_line(plain_params, "decoy_search", "0")
 
     print("  Running plain-FASTA target-decoy search ...")
-    rc0, txt0, out0 = _run_bigdata_search(comet_exe, plain_params, mzxml)
+    rc0, txt0, out0, t0 = _run_bigdata_search(comet_exe, plain_params, mzxml)
     if not check(rc0 == 0, f"plain-FASTA search exits 0 (rc={rc0})", failures):
         print(out0[-2000:])
         return failures
@@ -1698,37 +1827,59 @@ def test_t24_index_parity(comet_exe):
 
     idx_path = human_td_fasta.with_suffix(".fasta.idx")
 
+    current_counts = {"plain-FASTA": cx0}
+    current_search_times = {"plain-FASTA": t0}
+    current_build_times = {}
     for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
         print(f"  Building {label} index ...")
-        if idx_path.exists():
-            idx_path.unlink()
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
-        ) as pf:
-            pf.write(plain_params)
-            idx_params_file = Path(pf.name)
-        try:
-            r = subprocess.run([str(comet_exe), flag, f"-P{idx_params_file}"],
-                                capture_output=True, text=True, timeout=400)
-            if not check(r.returncode == 0 and idx_path.exists(),
-                          f"{label} index builds (rc={r.returncode})", failures):
-                print((r.stdout + r.stderr)[-2000:])
-                continue
-        finally:
-            idx_params_file.unlink(missing_ok=True)
-
-        idx_params = _set_param_line(plain_params, "database_name", idx_path)
-        print(f"  Searching against {label} ...")
-        rc, txt, out = _run_bigdata_search(comet_exe, idx_params, mzxml)
-        if not check(rc == 0, f"{label} search exits 0 (rc={rc})", failures):
-            print(out[-2000:])
+        result = _index_build_and_search(comet_exe, flag, label, plain_params, idx_path, mzxml, failures)
+        if result is None:
             continue
-        n, cx, ce = _q1pct_counts(txt)
-        txt.unlink(missing_ok=True)
+        cx, build_s, search_s = result
+        current_counts[label] = cx
+        current_build_times[label] = build_s
+        current_search_times[label] = search_s
         ratio = (cx / cx0) if cx0 else float("inf")
-        check(0.9 <= ratio <= 1.1,
-              f"{label} ({cx:,}) agrees with plain-FASTA ({cx0:,}) within 10% at 1% FDR "
+        check(0.95 <= ratio <= 1.05,
+              f"{label} ({cx:,}) agrees with plain-FASTA ({cx0:,}) within 5% at 1% FDR "
               f"xcorr (ratio {ratio:.3f})", failures)
+
+    idx_path.unlink(missing_ok=True)
+
+    # --- Cross-version: same three modes against the v2025.03.0 baseline ---
+    baseline_exe = _ensure_baseline()
+    if baseline_exe is None:
+        print(f"  SKIP cross-version checks: {BASELINE_TAG} baseline unavailable")
+        return failures
+
+    print(f"  Running plain-FASTA target-decoy search with baseline {BASELINE_TAG} ...")
+    brc0, btxt0, bout0, bt0 = _run_bigdata_search(baseline_exe, plain_params, mzxml)
+    if not check(brc0 == 0, f"baseline ({BASELINE_TAG}) plain-FASTA search exits 0 (rc={brc0})", failures):
+        print(bout0[-2000:])
+        return failures
+    _, bcx0, _ = _q1pct_counts(btxt0)
+    btxt0.unlink(missing_ok=True)
+    bratio0 = (current_counts["plain-FASTA"] / bcx0) if bcx0 else float("inf")
+    check(0.9 <= bratio0 <= 1.1,
+          f"plain-FASTA: current ({current_counts['plain-FASTA']:,}) agrees with "
+          f"{BASELINE_TAG} ({bcx0:,}) within 10% at 1% FDR xcorr (ratio {bratio0:.3f})", failures)
+    _check_timing(current_search_times["plain-FASTA"], bt0, "plain-FASTA search time", failures)
+
+    for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+        if label not in current_counts:
+            continue  # current binary's own build/search already failed for this mode
+        print(f"  Building {label} index with baseline {BASELINE_TAG} ...")
+        bresult = _index_build_and_search(baseline_exe, flag, label, plain_params, idx_path, mzxml,
+                                           failures, tag=f"baseline ({BASELINE_TAG})")
+        if bresult is None:
+            continue
+        bcx, bbuild_s, bsearch_s = bresult
+        bratio = (current_counts[label] / bcx) if bcx else float("inf")
+        check(0.9 <= bratio <= 1.1,
+              f"{label}: current ({current_counts[label]:,}) agrees with {BASELINE_TAG} "
+              f"({bcx:,}) within 10% at 1% FDR xcorr (ratio {bratio:.3f})", failures)
+        _check_timing(current_build_times[label], bbuild_s, f"{label} index build time", failures)
+        _check_timing(current_search_times[label], bsearch_s, f"{label} search time", failures)
 
     idx_path.unlink(missing_ok=True)
     return failures
