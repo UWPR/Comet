@@ -64,7 +64,8 @@ public:
 
    static bool InitializeMassesFromPeptideIndex();
 
-   // Ensures the peptide index (g_pvDBIndex, g_pvProteinsList, protein name cache)
+   // Ensures the peptide index (g_vRawPeptides, g_vDBIndexVariants, g_pvProteinsList,
+   // protein name cache)
    // and its associated fragment/parent masses are loaded exactly once. Shared by
    // both the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB path
    // (SearchPeptideIndex(ThreadPool*, vector<Query*>&)) so the guard logic isn't
@@ -296,7 +297,7 @@ private:
                                    bool* pbDuplFragment);
 
    // Thread-local overload: searches a caller-owned Query* against the
-   // read-only g_pvDBIndex. Does not access g_pvQuery. iSlot identifies the
+   // read-only g_vDBIndexVariants. Does not access g_pvQuery. iSlot identifies the
    // caller's claimed SearchMemoryPool slot, used to fetch the thread-local
    // PI_DB ion-mass/precursor-NL scratch buffers (see AnalyzePeptideIndex).
    static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment, int iSlot);
