@@ -2,8 +2,8 @@
 
 <div id="sidebar">
   <h2>News</h2>
+  <h3>2026/07/29: <a href="/Comet/releases/release_202601.html">Release 2026.02 rev. 1</a> is now available.</h3>
   <h3>2026/06/10: <a href="/Comet/releases/release_202602.html">Release 2026.02 rev. 0</a> is now available.</h3>
-  <h3>2026/03/16: <a href="/Comet/releases/release_202601.html">Release 2026.01 rev. 1</a> is now available.</h3>
   <h3>2021/09/17: The Comet repository has migrated to GitHub from <a href="https://sourceforge.net/projects/comet-ms/">SourceForge</a>.</h3>
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>
@@ -30,7 +30,7 @@ C++ library](https://github.com/mhoopmann/mstoolkit), and writes .pep.xml, .mzid
 .pin, .sqt and .txt files. You will need some other support tool(s) to
 actually make use of Comet results. Unless you specifically know that you want
 to use the standalone Comet command line binary available from this repository,
-you should start with [one of the many proteomics software suites](/Comet/releases/)
+you should start with [one of the proteomics software suites](/Comet/releases/)
 that Comet is integrated into.
 
 ### Publications

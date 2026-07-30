@@ -5,6 +5,67 @@ here](/Comet/parameters/parameters_202602/).
 
 Download release [here](https://github.com/UWPR/Comet/releases).
 
+#### release 2026.02 rev. 1 (2026.02.1), release date 2026/07/29
+
+**What's Changed**
+
+This release combines a Thermo raw file reading infrastructure migration, RTS peptide index multithreading, numerous batch and real-time-search (RTS) performance work, and correctness fixes.
+
+#### New Features
+
+- Native `.raw` file reading on Windows now uses Thermo's RawFileReader .NET library, replacing the legacy MSFileReader COM dependency entirely in MSToolkit code. No COM registration required,  just two DLLs  shipped alongside `comet.win64.exe`.
+- Batch peptide-index (PI) search now uses the same fused, streaming pipeline as fragment-ion index (FI) search. PI index builds also now reuse FI's faster peptide-generation code and the search is now multithreaded.
+- New dependency-free C++ unit test harness (`CometUnitTests`), wired into both the Linux and Windows build systems.
+
+#### Performance Improvements
+
+- Batch FI and PI search: per-worker memory arenas now pool per-spectrum scratch allocations instead of individually allocating/freeing them resulting in ~70 to ~200% higher throughput, with memory holding flat rather than degrading as batch size grows.
+- RTS spectrum reading in SearchMS1MS2.cs changed from per-scan locked reads to a single-threaded upfront preload, so the parallel search phase touches only in-memory data with no locking. This allows measuring the maximum theoretical search throughput instead of being limited by raw file reading. 
+- RTS PI search is now multithreaded. The peptide index is now loaded in memory versus being parsed from disk previously.
+- Asynchronous spectrum readahead for fused FI whole-file batch searches, overlapping file I/O with search work instead of stalling on it.
+
+#### Bug Fixes
+
+**Search-result determinism and RTS/batch parity**:
+
+- Fixed non-deterministic FASTA_DB search results: identical searches could report different results across runs when many candidates were exactly tied in score.
+- Fixed the same class of tie-break bug in FI and PI's RTS-reachable scoring path.
+- Fixed a stale-buffer bug causing RTS-specific run-to-run E-value/peptide jitter under concurrency.
+- Fixed RTS FI fragment-peak selection ranking candidate peaks by mass instead of intensity, silently excluding low-mass/high-intensity peaks that batch correctly included, the single largest driver of FI batch vs RTS divergence found this release.
+- Fixed RTS PI search previously never running AScorePro phosphosite localization; not a bug, just never implemented.
+- Fixed RTS not enforcing the `minimum_peaks` and `clear_mz_range` spectrum filters that batch always applied, so RTS could weakly score spectra that batch search correctly skips.
+- Fixed FI_DB top-peak selection (both RTS and batch) not respecting the configured `fragindex_min_fragmentmass` and `fragindex_max_fragmentmass` bounds.
+- Fixed an invalid AScorePro site-scoring tie-break comparator that made phosphosite placement on exact ties depend on internal enumeration order rather than a deterministic rule.
+- Fixed RTS never including the build's git commit hash in its reported version string.
+
+**Memory safety and crashes:**
+
+- Fixed heap corruption reading certain compact, non-indexed mzML files.
+- Fixed a peptide-packing collision that could silently drop or truncate fragment-index peptides containing non-standard residue codes.
+
+**Modification and mass correctness:**
+
+- Fixed double-application of static modifications to parent-ion mass when reading a fragment-index (`.idx`) file, which corrupted reported modification masses in pepXML output.
+- Fixed duplicate-row reporting for internal decoys in PI search.
+- Fixed I/L-equivalent peptides from different proteins surviving as separate index entries instead of being correctly merged.
+- Raised internal modification-combination limits for the index searches.
+
+**RTS reliability:**
+
+- Fixed an asymmetric RTS init/finalize lifecycle that could leak native resources (thread pool, scratch memory) if an exception occurred mid-session.
+- RTS now respects the configured search timeout before running AScorePro localization, matching its other post-analysis steps.
+
+#### Tools and Build
+
+- Migrated MSToolkit's `.raw` file reading from MSFileReader COM to Thermo's RawFileReader .NET (see New Features above).
+- Windows release packages now includes the two RawFileReader DLLs needed to read `.raw` files given the COM to .NET file reading migration.
+- Added a dependency-free C++ unit test harness (`CometUnitTests`).
+
+**Full Changelog**: https://github.com/UWPR/Comet/compare/v2026.02.0...v2026.02.1
+
+---
+
+
 #### release 2026.02 rev. 0 (2026.02.0), release date 2026/06/10
 
 New Features
@@ -21,8 +82,7 @@ New Features
 - Python q-value / FDR tool
   -  A new `tools/qvalue.py` script computes q-values from Comet tab-delimited output and supports side-by-side comparison of two result files with an optional `--diff` flag to list differing PSMs.
 
- ---
- Performance Improvements
+Performance Improvements
 
 - Parallel .idx index building
     -  `GeneratePlainPeptideIndex` now uses a parallel per-length sort+dedup phase followed by a k-way heap merge write. On benchmarks with the human proteome this reduces index creation time by 1.3× (tryptic) to 1.9× (no-enzyme/MHC) compared to v2026.01.1.
@@ -44,7 +104,6 @@ New Features
 - `AcquirePoolSlot()` contention reduction
     -  The previous busy-spin wait on `_pbSearchMemoryPool` is replaced by a `std::condition_variable::wait_for` with proper lock/notify at all release sites, eliminating CPU waste under thread contention.
 
----
 Bug Fixes
 
 - I/L deduplication: When `equal_I_and_L=1`, the FASTA-original (L-containing) peptide sequence is now preserved in the index; the I-containing variant is the one discarded. Previously the choice was arbitrary, causing extra spurious entries in the index.
@@ -54,7 +113,6 @@ Bug Fixes
 - Peptide length range error message: Was displaying scan range values instead of peptide length values.
 - `logout()` routing: All `logout()` calls now go to `stdout` instead of `stderr`.
 
----
 Tools and Build
 
 - Fragment ion index parameters added to the params file generated by `comet -p`.
