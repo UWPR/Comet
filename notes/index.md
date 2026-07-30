@@ -17,6 +17,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 
 ### Miscellaneous Notes
 
+- 2026/07/29:  [RTS (peptide index and fragment-ion index) performance with v2026.02.1 release](20260729_RTS_2026021.html)
 - 2026/06/10:  [Comet fragment ion index performance update with v2026.02.0 release](20260610_FI.html)
 - 2025/11/12:  [AScorePro integration](20251112_AScorePro.html)
 - 2025/11/12:  [MS1 retention time alignment](20251112_MS1-RT-Alignment.html)
