@@ -42,13 +42,16 @@ bool Pipeline::run(SearchSession&                     session,
    }
 
    // AScore initialization happens here -- after the strategy has loaded its
-   // database/index -- rather than earlier in DoSearch(), because
-   // CometPeptideIndex::ReadPeptideIndex() (called from FiStrategy::initialize() above, via
-   // the shared unified index reader -- docs/20260730_PI_reduction.md Phase 0) overwrites
-   // g_staticParams.variableModParameters.varModList[] from the .idx file's
-   // VariableMod: header. SetAScoreOptions() reads those same fields to build its
-   // differential-mod list, so it must run after the index load, not before, or it
-   // configures AScore from stale/default mod values.
+   // database/index -- rather than earlier in DoSearch(). Historically this ordering was
+   // required because CometPeptideIndex::ReadPeptideIndex() overwrote
+   // g_staticParams.variableModParameters.varModList[] from the .idx file's VariableMod:
+   // header, so SetAScoreOptions() (which reads those same fields to build its
+   // differential-mod list) had to run after the index load or it would configure AScore
+   // from stale/default mod values. As of Phase 0.5 (docs/20260730_PI_reduction.md) the
+   // .idx header no longer carries variable-mod settings at all -- varModList[] comes
+   // entirely from comet.params, stable well before this point -- so this ordering is no
+   // longer strictly required, but is left as-is since it's already correct and there's no
+   // reason to take on the risk of moving it.
    if (g_staticParams.options.iPrintAScoreProScore)
    {
       _pMgr->SetAScoreOptions(g_AScoreOptions);

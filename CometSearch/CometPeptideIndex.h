@@ -40,13 +40,21 @@ public:
    static bool ReadPeptideIndex(bool bIsRTS);
    static bool WritePeptideIndex(ThreadPool* tp);
 
+   // docs/20260730_PI_reduction.md Phase 0.5: builds g_vDBIndexVariants (PI_DB mode only)
+   // from g_vRawPeptides + the mod-permutation tables built by a prior call to
+   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Called once per search
+   // session from ReadPeptideIndex(), not from WritePeptideIndex() -- nothing about the
+   // modified-peptide variant list is persisted to disk any more, so it must be regenerated
+   // fresh every time a session starts, from whatever comet.params says at that moment.
+   static bool GenerateVariantArray();
+
    // Phase B (docs/20260713_PIidxformat.md, docs/20260730_PI_reduction.md Phase 1): walks
    // g_vRawPeptides x valid mod combinations (mirroring
    // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and appends a
    // compact FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
    // dPepMass} per valid combination, using the combinatorics tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include the
-   // fully-unmodified variant for each raw peptide -- see WritePeptideIndex() for that.
+   // fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for that.
    static bool EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants);
 
    // Single-entry version of EnumerateIndexPeptideMods()'s tryPush lambda,
@@ -69,11 +77,15 @@ public:
 
 
    // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,
-   // Enzyme2, VariableMod lines) from an already-open file pointer.
-   // Updates g_staticParams in-place and must only be called once per index
-   // load (guarded by g_bPeptideIndexRead). Called by both
-   // SearchPeptideIndex(ThreadPool*) and InitializeMassesFromPeptideIndex()
-   // to avoid duplication.
+   // Enzyme2 lines, terminated by the blank line separating the header from
+   // the protein-name section) from an already-open file pointer. Updates
+   // g_staticParams in-place. As of Phase 0.5 (docs/20260730_PI_reduction.md)
+   // this no longer touches variable-mod settings (VariableMod:/
+   // ProteinModList:/RequireVariableMod: are gone from the header) -- those
+   // are read live from comet.params instead, the same as a non-indexed
+   // FASTA search already does. Called by both EnsurePeptideIndexLoaded() (via
+   // ReadPeptideIndex()) and InitializeMassesFromPeptideIndex() to avoid
+   // duplication.
    static bool ParsePeptideIndexHeader(FILE* fp);
 
    // Compacted list of active variable_modNN slot indices (0-based into

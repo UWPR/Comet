@@ -74,9 +74,10 @@ def build_index(comet, params_path, work_dir):
 def read_peptide_sequences(idx_path):
     """Parse the binary plain-peptide section and return list of sequence strings."""
     with open(idx_path, "rb") as fh:
-        # Footer: last 3 x int64 = clPeptidesFilePos, clProteinsFilePos, clPermutationsFilePos
-        fh.seek(-24, 2)
-        pep_pos, _, _ = struct.unpack("<qqq", fh.read(24))
+        # Footer: last 2 x int64 = clPeptidesFilePos, clProteinsFilePos
+        # (docs/20260730_PI_reduction.md Phase 0.5 -- no permutation/variant sections any more)
+        fh.seek(-16, 2)
+        pep_pos, _ = struct.unpack("<qq", fh.read(16))
 
         fh.seek(pep_pos)
         (n_pep,) = struct.unpack("<Q", fh.read(8))  # size_t = uint64 on Linux
