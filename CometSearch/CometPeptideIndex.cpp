@@ -1048,7 +1048,35 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
 
    while (fgets(szBuf, SIZE_BUF, fp))
    {
-      if (!strncmp(szBuf, "MassType:", 9))
+      if (!strncmp(szBuf, "MassRange:", 10))
+      {
+         // Peptides outside this range were never generated when the index was built
+         // (Phase A/B, WritePeptideIndex()) -- a search-time digest_mass_range wider than
+         // this has nothing to admit beyond what's already in the file, so only clamp
+         // inward: a narrower search-time range further restricts g_massRange (applied by
+         // both PI_DB's SearchPeptideIndex() and FI_DB's AddFragments()); a wider one is a
+         // silent no-op, not an error.
+         double dIdxMassLow = 0.0, dIdxMassHigh = 0.0;
+         sscanf(szBuf + 10, "%lf %lf", &dIdxMassLow, &dIdxMassHigh);
+
+         if (g_massRange.dMinMass < dIdxMassLow)
+            g_massRange.dMinMass = dIdxMassLow;
+         if (g_massRange.dMaxMass > dIdxMassHigh)
+            g_massRange.dMaxMass = dIdxMassHigh;
+      }
+      else if (!strncmp(szBuf, "LengthRange:", 12))
+      {
+         // Same inward-only clamp as MassRange: above, applied to peptide length instead
+         // of mass.
+         int iIdxLenStart = 0, iIdxLenEnd = 0;
+         sscanf(szBuf + 12, "%d %d", &iIdxLenStart, &iIdxLenEnd);
+
+         if (g_staticParams.options.peptideLengthRange.iStart < iIdxLenStart)
+            g_staticParams.options.peptideLengthRange.iStart = iIdxLenStart;
+         if (g_staticParams.options.peptideLengthRange.iEnd > iIdxLenEnd)
+            g_staticParams.options.peptideLengthRange.iEnd = iIdxLenEnd;
+      }
+      else if (!strncmp(szBuf, "MassType:", 9))
       {
          sscanf(szBuf + 10, "%d %d",
             &g_staticParams.massUtility.bMonoMassesParent,

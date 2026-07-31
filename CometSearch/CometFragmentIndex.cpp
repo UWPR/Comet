@@ -438,6 +438,15 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    int k = 0; // track count of each modifiable residue in reverse
    int iEndPos = (int)sPeptide.length() - 1;
 
+   // Search-time peptide_length_range narrower than what's baked into g_vRawPeptides (see
+   // ParsePeptideIndexHeader()'s inward-only clamp of peptideLengthRange from the .idx's
+   // LengthRange: line) further restricts which raw peptides get fragmented here, on every
+   // rebuild of the fragment index. A wider search-time range is already a no-op: no raw
+   // peptide outside the original digestion's length bounds exists in g_vRawPeptides to admit.
+   if (iEndPos + 1 < g_staticParams.options.peptideLengthRange.iStart
+      || iEndPos + 1 > g_staticParams.options.peptideLengthRange.iEnd)
+      return;
+
    // first calculate peptide mass as that's needed in fragment loop
    j = 0;
    double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;

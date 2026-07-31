@@ -1920,6 +1920,22 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       if (variant.dPepMass > dMassTolHigh)
          break;
 
+      // Search-time digest_mass_range/peptide_length_range narrower than what's stored in
+      // the .idx (see ParsePeptideIndexHeader()'s inward-only clamp of g_massRange/
+      // peptideLengthRange from the MassRange:/LengthRange: header lines) further restricts
+      // g_vDBIndexVariants here -- this is the one place PI_DB needs to apply that clamp
+      // explicitly, since (unlike FI_DB, whose fragment index is rebuilt fresh from these
+      // same bounds on every load) g_vDBIndexVariants is read directly off disk unfiltered.
+      // A wider search-time range is already a no-op: nothing outside the file's own
+      // MassRange:/LengthRange: bounds was ever written to g_vDBIndexVariants to admit.
+      if (variant.dPepMass < g_massRange.dMinMass || variant.dPepMass > g_massRange.dMaxMass)
+         continue;
+
+      int iRawLen = (int)strlen(g_vRawPeptides.at(variant.iWhichPeptide).szPeptide);
+      if (iRawLen < g_staticParams.options.peptideLengthRange.iStart
+         || iRawLen > g_staticParams.options.peptideLengthRange.iEnd)
+         continue;
+
       // Verify mass match (handles isotope offsets)
       if (!CheckMassMatch(pQuery, variant.dPepMass))
          continue;

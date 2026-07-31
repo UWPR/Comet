@@ -439,7 +439,41 @@ needed per candidate) trades some of the memory win back for lower per-candidate
    additionally builds the fragment-ion posting list from the shared data at load time; PI_DB does
    not; that's the only remaining divergence between the two modes once this design lands.
 
-## 9. Reproducing the measurement
+## 9. Addendum (2026-07-31): confirmed PI_DB and FI_DB builds are byte-identical given the same params
+
+A follow-up review of the merged Phase 0 code (`CometPeptideIndex.cpp`, `CometFragmentIndex.cpp/.h`,
+`CometSearchManager.cpp`, `Comet.cpp`) re-traced the full build/read/search paths for both modes and
+confirmed two things beyond what Section 4 already states:
+
+**The on-disk file has zero PI-vs-FI content divergence.** `Comet.cpp:192-203` shows `-i`/`-j` only
+toggle `bCreateFragmentIndex`/`bCreatePeptideIndex`; `CometSearchManager.cpp:2092-2098` routes *either*
+flag into the same single call, `CometPeptideIndex::WritePeptideIndex(tp)`. There is no `iDbType`
+branch anywhere inside `WritePeptideIndex()` that changes what gets written -- same Phase A digestion,
+same mod-permutation tables, same compact variant array, same header lines (`ProteinModList:`/
+`RequireVariableMod:` used to be FI_DB-only pre-unification but are now written unconditionally for
+both). Given identical `comet.params` (mass range, enzyme, mods, decoy setting, etc.), an `-i` build
+and a `-j` build produce a byte-identical `.idx` file -- consistent with this doc's own Phase 0
+validation ("built one unified index ... searched it as both PI_DB and FI_DB from the exact same
+file").
+
+**The only PI-vs-FI differences are runtime, not on-disk:**
+- `index_search_type` (`comet.params` key for batch; a new positional CLI arg for
+  `RealtimeSearch.exe`, since RTS never reads a params file) selects which mode a given search run
+  applies to a given file -- `CometSearchManager.cpp:237`, `:1519`, `:2212-2218`.
+- FI_DB additionally builds the fragment-ion posting list (`g_iFragmentIndex`/
+  `g_iFragmentIndexOffset`) in memory at load time, via `CometFragmentIndex::CreateFragmentIndex()` ->
+  `GenerateFragmentIndex()` (`CometFragmentIndex.cpp:67`, `:172`), from the same shared
+  `g_vRawPeptides`/mod-permutation tables both modes read off disk. This posting list is never
+  persisted to the `.idx` file itself, regardless of which flag (`-i` or `-j`) built it.
+- PI_DB skips that step entirely; instead `CometSearch::SearchPeptideIndex()` binary-searches the
+  shared compact variant array (`g_vDBIndexVariants`) by mass and calls
+  `CometPeptideIndex::MaterializeOneEntry()` (`CometPeptideIndex.cpp:585`) per mass-window candidate
+  to reconstruct a stack-local `DBIndex` on the fly.
+
+Net: PI_DB vs FI_DB is now purely a search-time interpretation of one shared file, not two different
+files or two different builders.
+
+## 10. Reproducing the measurement
 
 The `MEMPROBE` instrumentation used for Section 1's numbers is a small uncommitted diff to
 `RealtimeSearch/SearchMS1MS2.cs` (prints `Process.WorkingSet64`/`PrivateMemorySize64` right after
