@@ -1,9 +1,42 @@
 # PI_DB memory reduction: splitting DBIndex into a raw-peptide table + compact per-variant record
 
-Status: **IMPLEMENTED.** Phases 1-3 (Section 4) and Phase 0 (Section 4, "unify the PI_DB/FI_DB
-on-disk format") are both done -- PI_DB and FI_DB now share one `.idx` file, one builder, one
-reader, and dispatch on the new `index_search_type` comet.params key (RTS: a new
-`RealtimeSearch.exe` CLI argument) instead of sniffing the file's own header.
+Status: Phases 1-3 (Section 4), Phase 0 (Section 4, "unify the PI_DB/FI_DB on-disk format"), and
+Phase 0.5 (Section 4, "drop persisted mod-permutation tables and compact variant array") are all
+**IMPLEMENTED (2026-07-31).** PI_DB and FI_DB share one `.idx` file, one builder, one reader, and
+dispatch on the `index_search_type` comet.params key (RTS: a `RealtimeSearch.exe` CLI argument)
+instead of sniffing the file's own header. The `.idx` file persists only what can't be redone
+without re-digesting the FASTA (enzyme, static mods, decoy mode, peptide mass/length range) plus
+the raw unmodified peptide table; `MOD_NUMBERS`/`MOD_SEQS`/etc. and the modified-peptide variant
+array are regenerated once per search session from live `comet.params`, for both search modes.
+
+**Validation.** Full unit/integration suite passes on both a fresh Linux `make` build and a fresh
+Windows MSBuild build (Clean + Build, working around the known `zconf.h`/`unistd.h` cross-platform
+gotcha triggered by the preceding Linux build -- see `docs/CometCodingStyleGuidelines.md`/CLAUDE.md):
+40/40 default tests, T17/T18 (real 8.9M-peptide no-enzyme build + determinism), T19/T20 (AScore +
+PI_DB regression, rewritten for Phase 0.5 -- see below), and T22 (`t22_rts_fi`/`t22_rts_pi`, real
+RTS single-spectrum search via `tests/rts_repro/`, both ground-truth localization and 1-vs-8-thread
+determinism over 197 real spectra) -- all identical pass results and, where compared directly
+(T19/T20's AScore score), byte-identical output between platforms.
+
+A real production gap surfaced during this validation, not caught by the test suite until the fix
+was already in progress: **RTS had no source for variable mods at all once the `.idx` header
+stopped carrying them.** `RealtimeSearch/SearchMS1MS2.cs` never loads a `comet.params` file, and
+its `SetParam("variable_mod01", ...)` calls lived only inside the "build a brand-new `.idx`" branch
+-- for a run against an *already-existing* `.idx` (the common case), variable mods came exclusively
+from the now-removed header line. Fixed by moving that `SetParam` block so it runs unconditionally,
+on every run, not just index auto-build (per explicit user direction: extend RTS's existing
+CLI/`SetParam`-based mechanism, matching how `index_search_type` was added, rather than giving RTS
+a `comet.params`-file-loading path -- the user is separately planning to extend the example program
+with optional `comet.params` support of its own). `tests/rts_repro/rts_repro.cpp` -- the Linux test
+driver that exercises the same `ICometSearchManager` API `RealtimeSearch.exe` calls through
+`CometWrapper.dll` -- got the equivalent fix (explicit `variable_mod01` + a new `index_search_type`
+CLI argument, both previously implicit/absent) so T22 continues to test real behavior.
+
+T19/T20 were inverted to match the new architecture: they now build the index with a *blank*
+variable mod (proving build-time mod settings are irrelevant, Phase 0.5's whole point) and search
+with the real phospho-S mod in search-time params (the only source left), rather than the old
+build-real/search-blank pattern that specifically proved the header-override behavior Phase 0.5
+removed.
 
 ## 1. Background
 
@@ -196,6 +229,11 @@ implementation:**
    set different values for these than build time, `modNumIdx` lookups would silently resolve to the
    wrong mod combination. Persisting the tables directly removes this class of bug entirely, for
    both search modes.
+   **Superseded 2026-07-31 -- see the Phase 0.5 section below.** This decision to persist rather than
+   recompute is reversed there, but for a different reason than the bug being worked around here: the
+   bug above only exists because a *separately persisted* compact variant array referenced the
+   recomputed table by index. Phase 0.5 removes that referencing structure entirely rather than
+   re-adding recompute alongside it, so the bug class doesn't reappear.
 2. **`ProteinModList:`/`RequireVariableMod:` header lines** (previously FI_DB-only) are now written
    and parsed for both modes, since `CometPeptideIndex::ParsePeptideIndexHeader()` became the one
    shared header parser.
@@ -366,6 +404,74 @@ path all earlier validation in this doc used) compiles cleanly with zero errors,
 Linux binary passes the identical 40/40 + T17/T18 suite with byte-identical peptide counts to
 Windows.
 
+### Phase 0.5 -- drop persisted mod-permutation tables and compact variant array; full regen per session (planned, 2026-07-31)
+
+**Motivating question.** If modified peptides are expanded from `g_vRawPeptides` at the start of
+every search session anyway, does `VariableMod:` (and `ProteinModList:`/`RequireVariableMod:`) still
+need to live in the `.idx` header at all, or can that generation step just read `comet.params`
+directly, the same way a non-indexed FASTA search already does?
+
+**Why Phase 0 answered "yes, it must stay in the header."** Under Phase 0's design, generation is
+only *half* re-run at search time: `MOD_NUMBERS`/`MOD_SEQS`/`PEPTIDE_MOD_SEQ_IDXS` and the full
+per-variant array (mass + `modNumIdx` + terminal mod codes) are built once at index-build time and
+persisted; search time only re-derives a per-candidate `DBIndex` (`MaterializeOneEntry()`) from
+those frozen tables. `modNumIdx` is a foreign-key-like reference into a *specific* `MOD_NUMBERS`
+table, built from a *specific* `varModList[]` order/composition. If the live `varModList[]` at
+search time (whether restored from `comet.params` or anything else) doesn't match what built the
+frozen tables, `modNumIdx` lookups and `MaterializeOneEntry()`'s independently-recomputed mass
+resolve against the wrong data -- candidates get selected against one mass and scored against
+another, or a compacted mod-slot index resolves to the wrong residue. `VariableMod:` exists purely
+to pin the live value to match the frozen one; nothing else does.
+
+**Phase 0.5: remove the frozen half instead of pinning against it.** Persist only what genuinely
+can't be redone without re-digesting the FASTA -- enzyme, static mods, decoy mode, peptide mass
+range, peptide length range (these determine which raw peptides physically exist in
+`g_vRawPeptides`, so they must stay fixed at build time). Everything downstream of
+`g_vRawPeptides` -- `MOD_NUMBERS`/`MOD_SEQS`/`PEPTIDE_MOD_SEQ_IDXS` (`PermuteIndexPeptideMods()`) and
+the full mass-sorted variant array -- is generated fresh in memory once per search session, for both
+PI_DB and FI_DB, directly from whatever `comet.params` says at that moment. Nothing referencing the
+old, frozen shape is ever persisted, so there is nothing for a mismatched `varModList[]` to
+disagree with. This is not the same design as the recompute approach the Phase 0 IMPLEMENTED note
+above rejected: that one *also* persisted a compact variant array whose `modNumIdx` entries assumed
+the recomputed table would come out byte-identical to build time. Phase 0.5 persists no such array,
+so there's no reference that can go stale regardless of what `comet.params` says.
+
+**Session lifecycle (2026-07-31, confirmed).** Regeneration happens exactly once per session:
+batch search regenerates once at process start and holds the result for the run; RTS regenerates
+once inside `InitializeSingleSpectrumSearch()` and holds it until
+`CometSearchManager::FinalizeSingleSpectrumSearch()` tears it down. There is no mechanism for
+`comet.params` to change mid-session, so there is no invalidation/regeneration-trigger logic to
+design and no concurrency hazard between a live search thread and a param mutation -- a session's
+in-memory mod state is immutable for its entire lifetime by construction. A new session with
+different mod settings always starts from a clean regeneration.
+
+**Cost -- confirmed acceptable.** Regeneration cost is `PermuteIndexPeptideMods()` (rebuild
+`MOD_NUMBERS`/`MOD_SEQS`) plus enumerating and mass-sorting the full variant array, i.e. the same
+work Phase 1's `WritePeptideIndex()` already does at build time, now repeated once per session
+instead of stored on disk. This is the same order of cost FI_DB's RTS startup already pays today
+for the `MOD_NUMBERS` half alone (~20s of its ~60s "generate fragment ion index" step at 8.9M-peptide
+scale, Section 4 Phase 0's numbers) -- confirmed acceptable for both search modes, including RTS.
+No new memory cost: the regenerated array's in-memory shape is identical to Phase 0's persisted
+version (`FragmentPeptidesStruct`, 24B/variant); only its source changes, from disk read to
+in-memory build. A useful side effect: since both modes now call the same regeneration step, the
+`g_vDBIndexVariants`/`g_vFragmentPeptides` split noted as a follow-up in `docs/GlobalVariables.md`
+(two structurally-identical globals because PI_DB/FI_DB didn't yet share a build/dispatch path for
+the array) can be collapsed into one shared array as part of this work.
+
+**On-disk format impact.** The `.idx` file shrinks back down: header (`MassType:`/`StaticMod:`/
+`Enzyme:`/`Enzyme2:`/`DecoySearch:`/peptide mass range/peptide length range only --
+`VariableMod:`/`ProteinModList:`/`RequireVariableMod:` are removed) + protein names + raw peptide
+table (`g_vRawPeptides`) + proteins list. The permutation-table section (`.clPermutationsFilePos`)
+and the persisted compact variant array section (`.clVariantsFilePos`), both added in Phase 0's
+commit (`022da11f`), are removed for both search modes -- the footer goes from 4 pointers back to 2
+(`clPeptidesFilePos`/`clProteinsFilePos`). Existing Phase-0-format `.idx` files fail the version
+check by design and require a rebuild, same as every prior format change in this document.
+
+**Reproducibility note.** Previously the `.idx` file alone fully determined the search space (mods
+included). After this change, `.idx` + `comet.params`'s mod settings jointly determine it -- the
+same way a non-indexed FASTA search has always worked, and consistent with the premise that
+motivated this change: variable mods are a per-search choice, not a property of the index.
+
 ## 5. Compatibility
 
 This changes the on-disk `.idx` file format for **both** PI_DB and FI_DB -- per Section 8's
@@ -379,6 +485,16 @@ Omitting it (unset, `-1`) defaults to `FI_DB`, matching the pre-unification defa
 "ambiguous `.idx` specified" case (`CometSearchManager.cpp`'s `ValidateSequenceDatabaseFile()` and
 the dispatch blocks in `InitializeStaticParams()`/`InitializeSingleSpectrumSearch()` -- see Section
 4, Phase 0 above for the current call sites).
+
+**Phase 0.5 changes this again.** The header shrinks to `MassType:`/`StaticMod:`/`Enzyme:`/
+`Enzyme2:`/`DecoySearch:`/peptide mass range/peptide length range -- `VariableMod:`/
+`ProteinModList:`/`RequireVariableMod:` are removed and become ordinary `comet.params` keys, read at
+search time exactly as they already are for a non-indexed FASTA search. The footer drops from 4
+pointers to 2 (permutation-table and compact-variant-array sections removed). This is another
+breaking format-version bump: Phase-0-format `.idx` files (and older) fail the version check and
+require a rebuild. `index_search_type` dispatch is unaffected by Phase 0.5 -- it's an orthogonal
+axis (which search algorithm to run) from what Phase 0.5 changes (what's persisted vs. regenerated
+per session).
 
 ## 6. Performance risk
 
@@ -438,6 +554,20 @@ needed per candidate) trades some of the memory win back for lower per-candidate
    (since `RealtimeSearch.exe`'s `Main()` doesn't load `comet.params` at all today) for RTS. FI_DB
    additionally builds the fragment-ion posting list from the shared data at load time; PI_DB does
    not; that's the only remaining divergence between the two modes once this design lands.
+
+4. **Does `VariableMod:` (and `ProteinModList:`/`RequireVariableMod:`) need to persist in the `.idx`
+   header, given modified peptides are generated from the raw-peptide table at search time anyway?**
+   Not if nothing downstream of the raw-peptide table is *also* persisted. Phase 0's answer was "yes"
+   because it persisted a compact variant array whose `modNumIdx` entries were foreign keys into a
+   specific, frozen `MOD_NUMBERS` table -- `VariableMod:` existed solely to keep the live
+   `varModList[]` pinned to whatever built that frozen table. Phase 0.5 (Section 4) removes the
+   frozen table and the variant array entirely and regenerates both, from `g_vRawPeptides` +
+   live `comet.params`, once per search session -- with nothing persisted to go stale, the source of
+   mod definitions stops being load-bearing for correctness, so `comet.params` can be the sole
+   source, the same as it already is for non-indexed FASTA search. The cost (full
+   `PermuteIndexPeptideMods()` + variant enumeration once per session, ~20s at 8.9M-peptide scale per
+   Phase 0's numbers) and the session lifecycle (regenerate once at session start, immutable for the
+   session's duration, no mid-session `comet.params` mutation is possible) were confirmed acceptable.
 
 ## 9. Reproducing the measurement
 

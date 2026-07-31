@@ -63,17 +63,18 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 
 PI_DB and FI_DB share one unified `.idx` format and one reader,
 `CometPeptideIndex::ReadPeptideIndex()` (`docs/20260730_PI_reduction.md` Phase 0). Both
-modes populate `g_vRawPeptides` and the protein-list globals below identically;
-`g_vDBIndexVariants` is PI_DB-specific (populated either way, but only read when
-`iDbType == PI_DB`), and `g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_vFragmentPeptides`
-(built separately by FI_DB from the same loaded raw peptides/permutation tables -- not
-listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_DB-specific.
+modes populate `g_vRawPeptides` and the protein-list globals below identically -- these are
+the only peptide-level data actually read from disk. `g_vDBIndexVariants` is PI_DB-specific,
+built once per session (not read from disk, see Phase 0.5) only when `iDbType == PI_DB`, and
+`g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_vFragmentPeptides` (built separately by
+FI_DB, once per session, from the same `g_vRawPeptides` + regenerated permutation tables --
+not listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_DB-specific.
 
 | Variable | Type | Notes |
 |----------|------|-------|
 | `g_pvDBIndex` | `vector<DBIndex>` | **Build-time only, no longer the search-time index.** Phase A digestion output (`CometFragmentIndex::GeneratePlainPeptideIndex()`) inside `CometPeptideIndex::WritePeptideIndex()`: one entry per unique raw peptide, copied into `g_vRawPeptides` and cleared before the function returns. `DBIndex` itself is also used as a transient, stack-local, per-candidate reconstruction target at PI_DB search time (`CometPeptideIndex::MaterializeOneEntry()`, called from `CometSearch::SearchPeptideIndex()`) -- that usage never touches this global. |
 | `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | One entry per unique unmodified peptide (sequence, protein reference, flank AAs, unmodified mass), loaded from the `.idx` file at search init and kept resident for the whole session. Shared by both search modes. |
-| `g_vDBIndexVariants` | `vector<FragmentPeptidesStruct>` | PI_DB's compact per-variant array (one entry per (peptide, mod combination) pair: mass + a reference back into `g_vRawPeptides`), mass-sorted, loaded from the `.idx` file alongside `g_vRawPeptides`. `CometSearch::SearchPeptideIndex()` binary-searches this by mass; `CometPeptideIndex::MaterializeOneEntry()` reconstructs a full `DBIndex` per surviving candidate. Populated but unused when `iDbType == FI_DB`. |
+| `g_vDBIndexVariants` | `vector<FragmentPeptidesStruct>` | PI_DB's compact per-variant array (one entry per (peptide, mod combination) pair: mass + a reference back into `g_vRawPeptides`), mass-sorted. As of Phase 0.5, built once per search session by `CometPeptideIndex::GenerateVariantArray()` from `g_vRawPeptides` + whatever variable mods `comet.params` has active at that moment -- not read from the `.idx` file, which no longer carries this array at all. `CometSearch::SearchPeptideIndex()` binary-searches this by mass; `CometPeptideIndex::MaterializeOneEntry()` reconstructs a full `DBIndex` per surviving candidate. Only populated when `iDbType == PI_DB`. |
 | `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. Used for FASTA searches and legacy index paths. |
 | `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein file offsets (for multi-protein peptides). `ProteinsListCSR` is a CSR-layout replacement for `vector<vector<comet_fileoffset_t>>`; exposes the same `operator[]`/`size()`/range-for interface but uses only two heap allocations total. |
 | `g_pvProteinNameCache` | `unordered_map<comet_fileoffset_t, string>` | Protein name lookup cache for index-based searches. Populated at index load time from the protein name blocks in the `.idx` file. Maps protein file-position offsets to accession strings. ~7 MB for a human target-decoy database. Allows O(1) protein name resolution during RTS without file I/O. |
@@ -91,13 +92,16 @@ listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_DB-s
 
 ## Combinatorics / mod permutation tables (read-only after init)
 
-Used by the variable mod permutation engine (`CometModificationsPermuter`). Built once at
-`.idx` build time (`CometFragmentIndex::PermuteIndexPeptideMods()`) and persisted directly
-in the `.idx` file's "permutations" section; both search modes' init paths
-(`CometPeptideIndex::ReadPeptideIndex()`) read these back as-is rather than recomputing
-them (`docs/20260730_PI_reduction.md` Phase 0 -- recomputing at load time was tried first
-and rejected as fragile, since it required several fields no earlier `.idx` header version
-persisted to be reproduced byte-for-byte from the search-time environment).
+Used by the variable mod permutation engine (`CometModificationsPermuter`). As of Phase 0.5
+(`docs/20260730_PI_reduction.md`), rebuilt once per search session by
+`CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides)`, called from
+`CometPeptideIndex::ReadPeptideIndex()`, from whichever variable mods `comet.params` has
+active at that moment -- **not** persisted in the `.idx` file. (An earlier design, Phase 0,
+persisted these tables directly and read them back as-is; that was reverted in Phase 0.5,
+which also removes the `.idx` header's `VariableMod:`/`ProteinModList:`/
+`RequireVariableMod:` lines that Phase 0's approach depended on to keep the live
+`varModList[]` pinned to whatever built the persisted tables. See Phase 0.5's writeup for
+why removing the frozen structure, rather than pinning against it, is the safer fix.)
 
 | Variable | Notes |
 |----------|-------|

@@ -66,12 +66,14 @@ CometFragmentIndex::~CometFragmentIndex()
 
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
-   // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0) --
-   // g_vRawPeptides plus the persisted MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
-   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below, exactly as
-   // it already did against the pre-unification plain-index format -- no PermuteIndexPeptideMods()
-   // call needed here, before or after this unification. g_vDBIndexVariants also gets
-   // populated but is unused in this FI_DB path (PI_DB-only).
+   // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0/0.5) --
+   // g_vRawPeptides plus the MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
+   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below.
+   // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
+   // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
+   // longer persisted in the .idx file), so no separate call is needed here. g_vDBIndexVariants
+   // also gets populated (by ReadPeptideIndex(), for PI_DB mode only) but is unused on this
+   // FI_DB path.
    if (!g_bPlainPeptideIndexRead)
       CometPeptideIndex::ReadPeptideIndex(bIsRTS);
 

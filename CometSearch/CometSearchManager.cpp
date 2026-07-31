@@ -85,7 +85,7 @@ uint64_t*     g_iFragmentIndexOffset;                       // CSR offsets [uiMa
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
-vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;   // PI_DB's compact per-variant array (docs/20260730_PI_reduction.md); see core/Types.h
+vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;   // PI_DB's compact per-variant array, regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5); see core/Types.h
 vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
 vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
 

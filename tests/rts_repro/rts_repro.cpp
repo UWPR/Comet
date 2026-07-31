@@ -36,6 +36,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <mutex>
 #include <sstream>
@@ -139,8 +140,11 @@ static bool SetRangesFromIndexHeader(ICometSearchManager* mgr, const string& szD
          mgr->SetParam("peptide_length_range", line, r);
          bFoundLen = true;
       }
-      else if (tag == "VariableMod:")
+      else if (tag == "StaticMod:")
       {
+         // StaticMod: is now the last header line before the blank-line separator
+         // (docs/20260730_PI_reduction.md Phase 0.5 removed VariableMod:/
+         // ProteinModList:/RequireVariableMod: from the header entirely).
          break;
       }
    }
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
 {
    if (argc < 5)
    {
-      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1]\n", argv[0]);
+      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n", argv[0]);
       return 1;
    }
 
@@ -161,6 +165,7 @@ int main(int argc, char** argv)
    int numThreads = atoi(argv[3]);
    string szOutput = argv[4];
    bool bEnableAScorePro = (argc > 5) && (atoi(argv[5]) != 0);
+   int iIndexSearchType = (argc > 6) ? atoi(argv[6]) : 1;   // default FI_DB, matching RTS's default
 
    if (numThreads < 1)
       numThreads = 1;
@@ -206,6 +211,25 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "use_B_ions", 1);
    SetIntParam(mgr, "use_Y_ions", 1);
    SetIntParam(mgr, "print_ascorepro_score", bEnableAScorePro ? -1 : 0);
+   SetIntParam(mgr, "index_search_type", iIndexSearchType);
+
+   // Variable mods: no longer available from the .idx header (docs/20260730_PI_reduction.md
+   // Phase 0.5 removed VariableMod:/ProteinModList:/RequireVariableMod: from it entirely), so
+   // this driver -- like RTS itself -- must set them explicitly on every run. T22's ground-truth
+   // check needs the same phospho-S mod the fixture's index was built with (see
+   // tests/unit/run_tests.py's T19_PARAMS_TEMPLATE usage in _test_rts_index_type()).
+   {
+      VarMods phosphoS;
+      phosphoS.dVarModMass = 79.966331;
+      strcpy(phosphoS.szVarModChar, "S");
+      phosphoS.iMaxNumVarModAAPerMod = 1;
+      phosphoS.iRequireThisMod = 0;
+      phosphoS.iVarModTermDistance = -1;
+      phosphoS.iWhichTerm = 0;
+      phosphoS.dNeutralLoss = 0.0;
+      mgr->SetParam("variable_mod01", "79.966331 S 0 1 -1 0 0 0.0", phosphoS);
+   }
+   SetIntParam(mgr, "max_variable_mods_in_peptide", 1);
 
    if (!SetRangesFromIndexHeader(mgr, szDB))
    {

@@ -572,10 +572,12 @@ extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
 // PI_DB's compact per-variant array (docs/20260730_PI_reduction.md): one entry per
 // (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
 // structurally identical to g_vFragmentPeptides/FragmentPeptidesStruct, but kept as its own
-// vector rather than literally sharing FI_DB's, since PI_DB and FI_DB don't yet share a
-// build/dispatch path (see the doc's Section 8, Open Question 3 resolution and Phase 0 --
-// not yet implemented). CometSearch::SearchPeptideIndex() binary-searches this by dPepMass
-// and materializes a full DBIndex per surviving candidate via
+// vector rather than literally sharing FI_DB's, since PI_DB and FI_DB build it via different
+// code paths (CometPeptideIndex::GenerateVariantArray() vs.
+// CometFragmentIndex::AddFragmentsThreadProc()) even though both now run once per session
+// from the same source data (Phase 0.5) -- collapsing them into one shared array is a
+// possible follow-up, not yet done. CometSearch::SearchPeptideIndex() binary-searches this
+// by dPepMass and materializes a full DBIndex per surviving candidate via
 // CometPeptideIndex::MaterializeOneEntry().
 extern vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
