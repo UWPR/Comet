@@ -654,14 +654,30 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 {
    bool bSucceeded;
    FILE* fptr;
+   string strIndexFile;
+   bool bSwapIdxExtension = false;
 
-   const int iIndex_SIZE_FILE = SIZE_FILE + 4;
-   char szIndexFile[iIndex_SIZE_FILE];
-   sprintf(szIndexFile, "%s.idx", g_staticParams.databaseInfo.szDatabase);
-
-   if ((fptr = fopen(szIndexFile, "wb")) == NULL)
+   // RTS's "auto-build if the requested .idx is missing" path (InitializeSingleSpectrumSearch())
+   // passes a database_name that already ends in ".idx" (the file that doesn't exist yet) rather
+   // than a plain FASTA path -- GeneratePlainPeptideIndex() below needs the real FASTA path to
+   // read from, so temporarily strip the ".idx" suffix in place, then restore it once the FASTA
+   // has been fully digested (before writing the header, so "InputDB:" reflects the originally
+   // requested path either way). Mirrors CometFragmentIndex::WriteFIPlainPeptideIndex()'s
+   // pre-unification handling of the same case -- lost when that function was retired in favor of
+   // this one (docs/20260730_PI_reduction.md Phase 0) until this fix restored it.
+   size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
+   if (databaseLen >= 4 && !strcmp(g_staticParams.databaseInfo.szDatabase + databaseLen - 4, ".idx"))
    {
-      printf(" Error - cannot open index file %s to write\n", szIndexFile);
+      strIndexFile = g_staticParams.databaseInfo.szDatabase;
+      g_staticParams.databaseInfo.szDatabase[databaseLen - 4] = '\0';
+      bSwapIdxExtension = true;
+   }
+   else
+      strIndexFile = string(g_staticParams.databaseInfo.szDatabase) + ".idx";
+
+   if ((fptr = fopen(strIndexFile.c_str(), "wb")) == NULL)
+   {
+      printf(" Error - cannot open index file %s to write\n", strIndexFile.c_str());
       exit(1);
    }
 
@@ -690,6 +706,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       vector<pair<size_t,size_t>> slices;
       bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp, slices);
    }
+
+   if (bSwapIdxExtension)
+      strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
 
    if (!bSucceeded)
    {
@@ -982,7 +1001,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       strNumPeps = std::to_string(tNumVariants);
    }
 
-   string strOut = " - created: " + std::string(szIndexFile) + " (" + strNumPeps + " peptides)\n";
+   string strOut = " - created: " + strIndexFile + " (" + strNumPeps + " peptides)\n";
    strOut += " - done. (" + CometMassSpecUtils::ElapsedTime(tPeptideIndexStartTime);
 
    string strMem = CometMassSpecUtils::GetPeakMemory();

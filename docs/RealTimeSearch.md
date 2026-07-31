@@ -59,13 +59,29 @@ Scores against the in-memory spectral library (`g_vSpecLib`). Also safe for conc
 
 Uses a double-checked locking pattern with `std::atomic<bool> singleSearchInitializationComplete`:
 
+**PI_DB and FI_DB share one unified `.idx` format and one builder/reader**
+(`CometPeptideIndex::WritePeptideIndex()` / `ReadPeptideIndex()`;
+`docs/20260730_PI_reduction.md` Phase 0). Since the file no longer implies a mode on its
+own, which mode to build/search comes from `g_staticParams.options.iIndexSearchType`
+(`0`=PI_DB, `1`=FI_DB, default when unset) -- for RTS this is set via a
+`CometSearchManagerWrapper::SetParam("index_search_type", ...)` call in
+`RealtimeSearch/SearchMS1MS2.cs` (a new `[index_search_type]` CLI argument), since RTS has
+no `comet.params` file to read a `index_search_type` key from the way batch does.
+
 ```
 fast path: singleSearchInitializationComplete.load(acquire) -> return true if set
 slow path: mutex-guarded check + initialization
-  -> InitializeStaticParams()         populates g_staticParams; sets iDbType from .idx header
-                                      if .idx is absent, sets iDbType=FI_DB (will be built)
-  -> ValidateSequenceDatabaseFile()   validates FASTA / index; sets bCreateFragmentIndex=true
-                                      if .idx is absent but FASTA exists
+  -> InitializeStaticParams()         populates g_staticParams
+  -> ValidateSequenceDatabaseFile()   validates FASTA / index. If the requested .idx is
+                                      absent but the underlying FASTA exists, sets EITHER
+                                      bCreatePeptideIndex=true + iDbType=PI_DB OR
+                                      bCreateFragmentIndex=true + iDbType=FI_DB, from
+                                      iIndexSearchType -- the only place either gets set
+                                      for a missing .idx (the block below only runs when
+                                      the file already exists).
+  -> if requested database ends in ".idx" and the file exists: read its first line as a
+       sanity check only (must start "Comet index database"; does NOT select a mode), then
+       set iDbType from iIndexSearchType (same as ValidateSequenceDatabaseFile's branch above)
   -> CometPreprocess::AllocateMemory()  preprocessing thread buffers
   -> CometSearch::AllocateMemory()      search thread pool (s_pool, a SearchMemoryPool
                                         instance; aliased into _ppbDuplFragmentArr)
@@ -73,20 +89,46 @@ slow path: mutex-guarded check + initialization
   -> tp->fillPool()
   -> if iDbType == FI_DB:
        if bCreateFragmentIndex:
-         CreateFragmentIndex()         calls DoSearch() to scan FASTA and write .idx;
-                                       DoSearch() calls CometSearch::DeallocateMemory()
-                                       internally before returning
+         CreateFragmentIndex()         (CometSearchManager's own overload) calls DoSearch()
+                                       to scan FASTA and write the unified .idx; DoSearch()
+                                       calls CometSearch::DeallocateMemory() internally
+                                       before returning
          CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
-       ReadPlainPeptideIndex(true)     loads g_vRawPeptides from the .idx file
-       CreateFragmentIndex(tp, true)   builds g_iFragmentIndex / g_iFragmentIndexOffset
-                                       in memory (CSR posting lists)
+       if !g_bPlainPeptideIndexRead:
+         CometPeptideIndex::ReadPeptideIndex(true)   loads g_vRawPeptides + the persisted
+                                                      MOD_SEQS/MOD_NUMBERS/etc. permutation
+                                                      tables from the .idx file (also sets
+                                                      g_vDBIndexVariants, unused here)
+         sqSearch.CreateFragmentIndex(tp, true)       builds g_iFragmentIndex /
+                                                      g_iFragmentIndexOffset in memory
+                                                      (CSR posting lists) from those tables
+                                                      -- no header re-parse or mod-table
+                                                      recompute needed at this point
+         if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
+       g_bPlainPeptideIndexRead = true
   -> if iDbType == PI_DB and !g_bPeptideIndexRead:
-       CometPeptideIndex::ReadPeptideIndex(true)       loads g_pvDBIndex from the .idx file
-       CometSearch::InitializeMassesFromPeptideIndex() re-derives pdAAMassFragment from the
-                                                        .idx header so fragment masses match
-                                                        the mods baked into the index (otherwise
-                                                        InitializeStaticParams()'s values may have
-                                                        double-applied static mods)
+       if bCreatePeptideIndex:
+         CometPeptideIndex::WritePeptideIndex(tp)    builds the unified .idx from FASTA
+                                                      (strips/restores the ".idx" suffix on
+                                                      g_staticParams.databaseInfo.szDatabase
+                                                      internally, since that field holds the
+                                                      not-yet-existent .idx path at this
+                                                      point, not a FASTA path); calls
+                                                      CometSearch::DeallocateMemory()
+                                                      internally before returning
+         CometSearch::AllocateMemory()               re-allocate search pool freed above
+       CometPeptideIndex::ReadPeptideIndex(true)      loads g_vRawPeptides +
+                                                       g_vDBIndexVariants + the persisted
+                                                       permutation tables from the .idx file
+       CometSearch::InitializeMassesFromPeptideIndex() re-parses the .idx header
+                                                        (MassType/StaticMod/VariableMod/etc.)
+                                                        into g_staticParams so fragment
+                                                        masses match the mods baked into the
+                                                        index (otherwise InitializeStaticParams()'s
+                                                        values may have double-applied static
+                                                        mods); does NOT recompute mod-permutation
+                                                        tables -- ReadPeptideIndex() already
+                                                        read them directly, see its own comment
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
@@ -97,12 +139,23 @@ slow path: mutex-guarded check + initialization
 ```
 
 Note: search memory (the `pbDuplFragment` scratch arrays) is already allocated by the
-unconditional `CometSearch::AllocateMemory()` call earlier in this sequence; nothing
-deallocates it on the PI_DB branch before this point, unlike the FI_DB index-build branch.
+unconditional `CometSearch::AllocateMemory()` call earlier in this sequence; the
+`bCreatePeptideIndex`/`bCreateFragmentIndex` build sub-branches each re-allocate it after
+their respective builder internally deallocates it, mirroring each other.
 
 The `release` store ensures all threads that subsequently load the flag with `acquire` see a fully initialized `g_iFragmentIndex`, `g_iFragmentIndexOffset`, `g_pvProteinNameCache`, and all other globals.
 
-**Note on the index-build path:** When the `.idx` file is absent, `CreateFragmentIndex()` calls `DoSearch()` with `m_bRTSIndexBuild=true`. `DoSearch()` writes the `.idx` file, calls `CometSearch::DeallocateMemory()` to free the large FASTA-parse memory, then returns early (skipping the spec-lib and batch-search logic that follows in `DoSearch()`). `InitializeSingleSpectrumSearch()` then re-allocates the search pool before proceeding to load the index.
+**Note on the index-build path:** the "requested .idx is missing, build it from the
+underlying FASTA" scenario is symmetric between the two modes now (it wasn't reachable for
+PI_DB at all before `index_search_type` existed, since RTS previously had no way to request
+PI_DB mode without a PI-formatted `.idx` already on disk to sniff). For FI_DB,
+`CreateFragmentIndex()` calls `DoSearch()` with `m_bRTSIndexBuild=true`; `DoSearch()` writes
+the `.idx` file, calls `CometSearch::DeallocateMemory()` to free the large FASTA-parse
+memory, then returns early (skipping the spec-lib and batch-search logic that follows in
+`DoSearch()`). For PI_DB, `CometPeptideIndex::WritePeptideIndex()` does the equivalent
+directly (no `DoSearch()`/`m_bRTSIndexBuild` involved). Either way,
+`InitializeSingleSpectrumSearch()` re-allocates the search pool before proceeding to load
+the index it just built.
 
 ### MS1 (`InitializeSingleSpectrumMS1Search`)
 
@@ -161,7 +214,12 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |                   timeout checked periodically against pQuery->tSearchStart
   |        PI_DB -> EnsurePeptideIndexLoaded(true) then
   |                 SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot)
-  |                   thread-local peptide-index search; also checks
+  |                   thread-local peptide-index search; binary-searches
+  |                   g_vDBIndexVariants (READ-ONLY) [x] by mass, then
+  |                   CometPeptideIndex::MaterializeOneEntry() reconstructs a
+  |                   stack-local DBIndex per surviving candidate from
+  |                   g_vRawPeptides (READ-ONLY) [x] -- see
+  |                   docs/20260730_PI_reduction.md; also checks
   |                   pQuery->tSearchStart for the iMaxIndexRunTime timeout
   |        any other iDbType -> error
   |     -> guard destructor releases the pool slot on return
@@ -236,7 +294,8 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensiti
 |-------|:--------:|-------|
 | `g_staticParams` | Read-only [x] | Set once at init; never written during search. |
 | `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
-| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | Loaded at init; never modified. |
+| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | Loaded at init; never modified. FI_DB uses `g_vFragmentPeptides` for its own posting-list resolution; `g_vRawPeptides` is shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). |
+| `g_vDBIndexVariants` | Read-only [x] | PI_DB's compact per-variant array (mass-sorted), loaded at init alongside `g_vRawPeptides`; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Populated but unused when `iDbType == FI_DB`. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
 | `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |

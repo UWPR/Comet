@@ -209,7 +209,21 @@ static bool ValidateSequenceDatabaseFile()
          else
          {
             fclose(fpcheck);
-            g_staticParams.options.bCreateFragmentIndex = true;  // set to true to make the index
+
+            // Which index format to auto-build (and which mode to search it as
+            // afterward) comes from index_search_type, same as the "file already
+            // exists" branch below -- both bCreate*Index and iDbType need setting here
+            // since this is the only place either gets set when the .idx is missing.
+            if (g_staticParams.options.iIndexSearchType == 0)
+            {
+               g_staticParams.options.bCreatePeptideIndex = true;
+               g_staticParams.iDbType = DbType::PI_DB;
+            }
+            else
+            {
+               g_staticParams.options.bCreateFragmentIndex = true;  // set to true to make the index
+               g_staticParams.iDbType = DbType::FI_DB;
+            }
             return true;
          }
       }
@@ -2290,6 +2304,32 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    // This runs once under the singleSearchInitializationComplete atomic guard.
    if (g_staticParams.iDbType == DbType::PI_DB && !g_bPeptideIndexRead)
    {
+      // Mirrors the FI_DB branch above: if the requested .idx doesn't exist yet,
+      // ValidateSequenceDatabaseFile() already set bCreatePeptideIndex=true (and left
+      // database_name pointing at the .idx path CometPeptideIndex::WritePeptideIndex()
+      // needs to strip/restore -- see its own comment). Before index_search_type existed,
+      // RTS could never reach PI_DB mode without an existing PI-format .idx already on
+      // disk (dispatch was header-sniffed), so this auto-build path was previously
+      // unreachable for PI_DB, not merely untested.
+      if (g_staticParams.options.bCreatePeptideIndex)
+      {
+         if (!CometPeptideIndex::WritePeptideIndex(tp))
+         {
+            string strErrorMsg = " Error - failed to build peptide index in InitializeSingleSpectrumSearch().\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+
+         // WritePeptideIndex() calls RunSearch internally to digest the FASTA, which
+         // calls CometSearch::DeallocateMemory() before returning. Re-allocate here so
+         // AcquirePoolSlot() has a valid _pbSearchMemoryPool when worker threads start
+         // searching (mirrors the FI_DB branch's identical re-allocation above).
+         bSucceeded = CometSearch::AllocateMemory(g_staticParams.options.iNumThreads);
+         if (!bSucceeded)
+            return false;
+      }
+
       if (!CometPeptideIndex::ReadPeptideIndex(true))   // RTS: InitializeSingleSpectrumSearch()
       {
          string strErrorMsg = " Error - failed to read peptide index in InitializeSingleSpectrumSearch().\n";

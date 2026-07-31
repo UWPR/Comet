@@ -915,6 +915,11 @@ void PrintParams(int iPrintParams)
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
 \n\
+# Only relevant when database_name points at an existing .idx file (built via -i or -j,\n\
+# which now produce the same unified format); ignored for a plain FASTA or when building a\n\
+# new index. Selects which search algorithm to run against that index this run.\n\
+index_search_type = 1                  # 0=peptide index (PI_DB), 1=fragment ion index (FI_DB, default)\n\
+\n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
 
    if (iPrintParams == 2)

@@ -330,6 +330,42 @@ with an explicit one:
   (`docs/20260713_PIidxformat.md`) -- confirm these are dead code on the current build path before
   touching them; out of scope for this change if so, but worth a follow-up cleanup note.
 
+### Phase 0 follow-up -- RTS auto-build regressions found and fixed (2026-07-30)
+
+Actually exercising `RealtimeSearch.exe` against a *missing* `.idx` (the "auto-build from the
+underlying FASTA if the requested index doesn't exist yet" path) surfaced two real bugs, both in
+`CometSearchManager.cpp`/`CometPeptideIndex.cpp`, neither caught by the batch-only validation this
+doc originally reported:
+
+1. **`CometPeptideIndex::WritePeptideIndex()` didn't handle a `database_name` that already ends in
+   `.idx`.** RTS's auto-build path passes the not-yet-existent `.idx` path directly as
+   `database_name` (not a `.fasta` path with `.idx` appended, the way batch `-i`/`-j` usage always
+   does), so `WritePeptideIndex()`'s original `sprintf(szIndexFile, "%s.idx", database_name)` produced
+   a doubly-suffixed path, and `GeneratePlainPeptideIndex()` tried to open the (nonexistent) `.idx`
+   file itself as the FASTA to digest. This exact case was handled correctly by the retired
+   `WriteFIPlainPeptideIndex()` (strip the `.idx` suffix in place before digesting, restore it
+   afterward) but that handling was lost when the function was consolidated into
+   `WritePeptideIndex()`. Fixed by porting the same strip/restore logic over.
+2. **RTS could reach `iDbType == PI_DB` with a missing `.idx` but nothing would build it.**
+   `ValidateSequenceDatabaseFile()`'s "requested `.idx` missing, underlying FASTA exists" branch
+   unconditionally set only `bCreateFragmentIndex = true` (a holdover from when FI_DB was the only
+   mode RTS could auto-build, since PI_DB mode was previously unreachable without an
+   already-existing PI-formatted `.idx` to sniff -- there was no way to *request* PI_DB before
+   `index_search_type` existed). `InitializeSingleSpectrumSearch()`'s PI_DB branch, in turn, went
+   straight to `ReadPeptideIndex()` with no build call at all. Fixed on both ends: the "missing"
+   branch now sets `bCreatePeptideIndex` + `iDbType = PI_DB` when `index_search_type == 0` (mirroring
+   the FI_DB case), and the PI_DB branch in `InitializeSingleSpectrumSearch()` gained a
+   `WritePeptideIndex()` call (+ the matching `CometSearch::AllocateMemory()` re-allocation) mirroring
+   the FI_DB branch's existing `CreateFragmentIndex()` call.
+
+Both fixes validated by re-running the auto-build scenario for both modes (fresh `.idx`, real Hela
+`.raw` data, real phospho/oxidation-modified peptides scored correctly in the output) and by a full
+unit/integration suite re-run (40/40 + T17/T18) after each fix. Also validated in this same pass:
+a full Linux `make` build (previously never attempted -- separate toolchain from the Windows MSBuild
+path all earlier validation in this doc used) compiles cleanly with zero errors, and the resulting
+Linux binary passes the identical 40/40 + T17/T18 suite with byte-identical peptide counts to
+Windows.
+
 ## 5. Compatibility
 
 This changes the on-disk `.idx` file format for **both** PI_DB and FI_DB -- per Section 8's
@@ -337,11 +373,12 @@ resolution of Open Question 3, they converge onto one shared format rather than 
 a new format. Existing `.idx` files built with older Comet versions (either kind) will fail the
 header/version check (by design, per Phase 0/1) and require a rebuild with the new unified build
 step. The `-i`/`-j` build-flag distinction goes away at the same time (Phase 0) since there is only
-one build path left to invoke. A new `comet.params` key (and, for RTS, a new
-`RealtimeSearch.exe` CLI argument) is required at search time to select PI-style vs. FI-style search
-against a given index -- omitting it needs a defined default (candidate: default to `FI_DB`, matching
-today's existing behavior when a `.idx` path is given that doesn't parse as a known PI_DB header,
-`CometSearchManager.cpp:1499-1506`).
+one build path left to invoke. A new `comet.params` key, `index_search_type` (and, for RTS, a new `RealtimeSearch.exe` CLI
+argument, also `index_search_type`), selects PI-style vs. FI-style search against a given index.
+Omitting it (unset, `-1`) defaults to `FI_DB`, matching the pre-unification default for the
+"ambiguous `.idx` specified" case (`CometSearchManager.cpp`'s `ValidateSequenceDatabaseFile()` and
+the dispatch blocks in `InitializeStaticParams()`/`InitializeSingleSpectrumSearch()` -- see Section
+4, Phase 0 above for the current call sites).
 
 ## 6. Performance risk
 
