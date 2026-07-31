@@ -45,9 +45,15 @@ def _skip_header(f):
 
 
 def _section_offsets(f):
-    """Return (pep_pos, prot_pos, perm_pos) from last 24 bytes."""
-    f.seek(-24, 2)
-    return struct.unpack("<qqq", f.read(24))
+    """Return (pep_pos, prot_pos, perm_pos) from the footer.
+
+    docs/20260730_PI_reduction.md Phase 0: the footer grew from 3 pointers (peptides,
+    proteins, permutations) to 4 (+ variants, PI_DB-mode search data this FI_DB-focused
+    comparison doesn't need) when PI_DB and FI_DB were unified onto one .idx format.
+    """
+    f.seek(-32, 2)
+    pep_pos, prot_pos, perm_pos, _variants_pos = struct.unpack("<qqqq", f.read(32))
+    return pep_pos, prot_pos, perm_pos
 
 
 def _open_idx(path):

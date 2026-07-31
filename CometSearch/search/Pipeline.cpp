@@ -42,8 +42,9 @@ bool Pipeline::run(SearchSession&                     session,
    }
 
    // AScore initialization happens here -- after the strategy has loaded its
-   // database/index -- rather than earlier in DoSearch(), because FI_DB's
-   // ReadPlainPeptideIndex() (called from FiStrategy::initialize() above) overwrites
+   // database/index -- rather than earlier in DoSearch(), because
+   // CometPeptideIndex::ReadPeptideIndex() (called from FiStrategy::initialize() above, via
+   // the shared unified index reader -- docs/20260730_PI_reduction.md Phase 0) overwrites
    // g_staticParams.variableModParameters.varModList[] from the .idx file's
    // VariableMod: header. SetAScoreOptions() reads those same fields to build its
    // differential-mod list, so it must run after the index load, not before, or it

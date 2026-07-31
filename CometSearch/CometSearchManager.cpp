@@ -215,22 +215,16 @@ static bool ValidateSequenceDatabaseFile()
       }
       else
       {
-         // Detect index type from .idx file header
-         char szHeader[256];
-         if (fgets(szHeader, sizeof(szHeader), fpcheck))
-         {
-            if (strstr(szHeader, "Comet peptide index database"))
-               g_staticParams.iDbType = DbType::PI_DB;  // peptide index
-            else
-               g_staticParams.iDbType = DbType::FI_DB;  // fragment ion index
-         }
+         // Search mode against this (now-shared-format) .idx file comes from
+         // index_search_type, not the file itself (docs/20260730_PI_reduction.md Phase 0) --
+         // unset (-1) defaults to FI_DB, matching the pre-unification default for this
+         // "ambiguous .idx specified" case.
+         fclose(fpcheck);
+         g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
+         g_staticParams.options.bCreateFragmentIndex = false;
+         g_staticParams.options.bCreatePeptideIndex = false;
+         return true;
       }
-
-      fclose(fpcheck);
-      g_staticParams.options.bCreateFragmentIndex = false;
-      g_staticParams.options.bCreatePeptideIndex = false;
-
-      return true;
    }
 
 #ifndef WIN32
@@ -701,6 +695,14 @@ bool CometSearchManager::InitializeStaticParams()
       else
          g_staticParams.options.bCreatePeptideIndex = true;
    }
+
+   // docs/20260730_PI_reduction.md Phase 0: which search mode (PI_DB or FI_DB) to run
+   // against an existing unified .idx file. 0=PI_DB, 1=FI_DB; unset (-1) defaults to FI_DB
+   // at the point of use, matching the pre-unification default for a plain ".idx specified
+   // but ambiguous" case. RTS sets this via the corresponding RealtimeSearch.exe CLI
+   // argument, since it never loads comet.params.
+   if (GetParamValue("index_search_type", iIntData))
+      g_staticParams.options.iIndexSearchType = iIntData;
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
@@ -1492,61 +1494,54 @@ bool CometSearchManager::InitializeStaticParams()
    size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
    if (databaseLen >= 4 && !strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
-      // Has .idx extension.  Now parse first line ot see if peptide index or fragment index.
-      // either "Comet peptide index" or "Comet fragment ion index"
+      // Has .idx extension. Which search mode to run against it (PI_DB vs FI_DB) comes from
+      // index_search_type (docs/20260730_PI_reduction.md Phase 0), not the file's own header
+      // -- PI_DB and FI_DB now share one on-disk format/header, so the file itself no longer
+      // implies a mode. Unset (-1) defaults to FI_DB, matching the pre-unification default
+      // for the "ambiguous .idx specified" case below.
       char szTmp[512];
       FILE *fp;
 
-      // If .idx specified but does not exist, Comet will generate a fragment ion index
-      // for the search.
+      g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
+
+      // If .idx specified but does not exist, Comet will generate the index for the search
+      // (both -i and -j build the same unified format; see CometPeptideIndex::WritePeptideIndex()).
       if ( (fp=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
-         g_staticParams.iDbType = DbType::FI_DB;
          if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
       else
       {
-         if (fgets(szTmp, 512, fp) == NULL) // grab first line of peptide index
+         if (fgets(szTmp, 512, fp) == NULL) // grab first line of the index file
          {
             string strErrorMsg = " Error - .idx file is blank?? \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
+            fclose(fp);
             return false;
          }
          fclose(fp);
 
-         if (!strncmp(szTmp, "Comet peptide index", 19))
+         // Sanity check only -- confirms this is a valid unified index file; does not
+         // determine PI_DB vs FI_DB (that's already decided above).
+         if (strncmp(szTmp, "Comet index database", sizeof("Comet index database") - 1) != 0)
          {
-            g_staticParams.iDbType = DbType::PI_DB;
-
-            // Same reasoning as the FI_DB branch below: this clamp only matters for
-            // the legacy load-all-then-search-all path (PiStrategy falls back to it
-            // for Mango/speclib runs; see PiStrategy::executeBatch()) -- the fused
-            // path ignores iSpectrumBatchSize entirely in favor of its own
-            // thread-scaled flush threshold. Previously missing here (only the FI_DB branch
-            // had it), which left a default/unset spectrum_batch_size unbounded for
-            // any PI_DB search that fell back to the legacy path.
-            if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
-               g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
-         }
-         else if (!strncmp(szTmp, "Comet fragment ion index", 24))
-         {
-             g_staticParams.iDbType = DbType::FI_DB;
-
-            // if searching fragment index database, limit load of query spectra as no
-            // need to load all spectra into memory since querying spectra sequentially
-            if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
-               g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
-         }
-         else
-         {
-            string strErrorMsg = " Error - first line of database index file \""
-               + std::string(g_staticParams.databaseInfo.szDatabase) + "\" contains:\n" + std::string(szTmp) + "\n";
+            string strErrorMsg = " Error - \"" + std::string(g_staticParams.databaseInfo.szDatabase)
+               + "\" is not a valid Comet index file (first line: " + std::string(szTmp) + ").\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             return false;
          }
+
+         // This clamp only matters for the legacy load-all-then-search-all path
+         // (PiStrategy falls back to it for Mango/speclib runs; see
+         // PiStrategy::executeBatch()) -- the fused path ignores iSpectrumBatchSize
+         // entirely in favor of its own thread-scaled flush threshold. Applies to both
+         // modes identically; no need to load all spectra into memory for either, since
+         // both query the index sequentially.
+         if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
+            g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
    }
 
@@ -2003,12 +1998,10 @@ bool CometSearchManager::DoSearch()
       return false;
    }
 
-   if (g_staticParams.options.bCreatePeptideIndex && g_staticParams.iDbType == DbType::FASTA_DB)
-   {
-      // WritePeptideIndex calls RunSearch just to query fasta and generate unique peptide list
-      bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
-      return bSucceeded;
-   }
+   // -i and -j are now synonyms (docs/20260730_PI_reduction.md Phase 0): both flags build the
+   // same unified index format via CometPeptideIndex::WritePeptideIndex() further below, so
+   // there's no separate early-return path here any more -- a -j build now goes through the
+   // same protein-var-mod-filter-file/compound-mods-file setup a -i build always did.
 
    if (g_staticParams.options.bCreateFragmentIndex || g_staticParams.iDbType == DbType::FASTA_DB)
    {
@@ -2082,11 +2075,13 @@ bool CometSearchManager::DoSearch()
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   if (g_bPerformDatabaseSearch && g_staticParams.options.bCreateFragmentIndex) //index
+   if (g_bPerformDatabaseSearch
+      && (g_staticParams.options.bCreateFragmentIndex || g_staticParams.options.bCreatePeptideIndex)) //index
    {
-       // write out .idx file containing unmodified peptides and protein refs;
-       // this calls RunSearch just to query fasta and generate uniq peptide list
-       bSucceeded = CometFragmentIndex::WriteFIPlainPeptideIndex(tp);
+       // write out the unified .idx file (docs/20260730_PI_reduction.md Phase 0; -i and -j
+       // are now synonyms, both handled by this one builder); this calls RunSearch just to
+       // query fasta and generate uniq peptide list
+       bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
        if (!bSucceeded)
           return bSucceeded;
 
@@ -2172,7 +2167,11 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    if (!ValidateSequenceDatabaseFile())
       return false;
 
-   // Determine index type from .idx file header
+   // Which search mode to run against this (shared-format) .idx file comes from
+   // index_search_type, not the file's own header (docs/20260730_PI_reduction.md Phase 0)
+   // -- RTS sets this via CometSearchManagerWrapper::SetParam("index_search_type", ...) in
+   // RealtimeSearch/SearchMS1MS2.cs, since it has no comet.params file to read it from.
+   // Unset (-1) defaults to FI_DB, matching the pre-unification default.
    size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
    if (databaseLen >= 4 && strstr(g_staticParams.databaseInfo.szDatabase + databaseLen - 4, ".idx"))
    {
@@ -2182,24 +2181,28 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          char szHeader[256];
          if (fgets(szHeader, sizeof(szHeader), fpCheck))
          {
-            if (strstr(szHeader, "Comet peptide index database"))
-            {
-               g_staticParams.iDbType = DbType::PI_DB;  // peptide index
-               g_staticParams.options.bCreatePeptideIndex = false;
-               g_bPeptideIndexRead = false;
-            }
-            else if (strstr(szHeader, "Comet fragment ion index plain peptides"))
-            {
-               g_staticParams.iDbType = DbType::FI_DB;  // fragment ion index
-               g_staticParams.options.bCreateFragmentIndex = false;
-            }
-            else
+            // Sanity check only -- confirms this is a valid unified index file; does not
+            // determine PI_DB vs FI_DB.
+            if (strncmp(szHeader, "Comet index database", sizeof("Comet index database") - 1) != 0)
             {
                string strErrorMsg = " Error - unrecognized .idx file header in file \"" + string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
                strErrorMsg += " Found header: \"" + string(szHeader) + "\"\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
                logerr(strErrorMsg);
+               fclose(fpCheck);
                return false;
+            }
+
+            if (g_staticParams.options.iIndexSearchType == 0)
+            {
+               g_staticParams.iDbType = DbType::PI_DB;
+               g_staticParams.options.bCreatePeptideIndex = false;
+               g_bPeptideIndexRead = false;
+            }
+            else
+            {
+               g_staticParams.iDbType = DbType::FI_DB;
+               g_staticParams.options.bCreateFragmentIndex = false;
             }
          }
          fclose(fpCheck);
@@ -2258,13 +2261,13 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.iDbType == DbType::FI_DB && !g_bPlainPeptideIndexRead)
       {
-         sqSearch.ReadPlainPeptideIndex(true);   // RTS: InitializeSingleSpectrumSearch()
+         CometPeptideIndex::ReadPeptideIndex(true);   // RTS: InitializeSingleSpectrumSearch()
          sqSearch.CreateFragmentIndex(tp, true);
 
          if (g_staticParams.options.iPrintAScoreProScore)
          {
             // normally set at end of InitializeStaticParams; must do here again after
-            // ReadPlainPeptideIndex for single spectrum search
+            // CometPeptideIndex::ReadPeptideIndex() for single spectrum search
             SetAScoreOptions(g_AScoreOptions);
             //       PrintAScoreOptions(g_AScoreOptions);
 
@@ -2278,8 +2281,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          }
       }
 
-      // Freeze index (make immutable); already set in ReadPlainPeptideIndex but doing
-      // here again to be safe for no good reason.
+      // Freeze index (make immutable); already set in CometPeptideIndex::ReadPeptideIndex()
+      // but doing here again to be safe for no good reason.
       g_bPlainPeptideIndexRead = true;
    }
 

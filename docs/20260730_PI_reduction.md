@@ -1,6 +1,9 @@
 # PI_DB memory reduction: splitting DBIndex into a raw-peptide table + compact per-variant record
 
-Status: PLANNING ONLY. No implementation yet.
+Status: **IMPLEMENTED.** Phases 1-3 (Section 4) and Phase 0 (Section 4, "unify the PI_DB/FI_DB
+on-disk format") are both done -- PI_DB and FI_DB now share one `.idx` file, one builder, one
+reader, and dispatch on the new `index_search_type` comet.params key (RTS: a new
+`RealtimeSearch.exe` CLI argument) instead of sniffing the file's own header.
 
 ## 1. Background
 
@@ -174,6 +177,55 @@ its own new compact format" -- PI_DB and FI_DB share a single `.idx` file. See S
 ## 4. Implementation plan (target design)
 
 ### Phase 0 -- unify the PI_DB/FI_DB on-disk format and add explicit search-mode selection
+
+**IMPLEMENTED (2026-07-30), with two changes from the plan below, both found necessary during
+implementation:**
+
+1. **Mod-permutation tables (`MOD_SEQS`/`MOD_NUMBERS`/`MOD_SEQ_MOD_NUM_START`/
+   `MOD_SEQ_MOD_NUM_CNT`/`PEPTIDE_MOD_SEQ_IDXS`) are persisted directly in the `.idx` file and
+   read back as-is, not recomputed at load time.** Investigating FI_DB's pre-unification plain-index
+   format (`WriteFIPlainPeptideIndex()`/`ReadPlainPeptideIndex()`, both since retired) found it
+   already did this -- an earlier assumption in this doc's Section 8 (Open Question 2 resolution:
+   "recompute, don't reserialize... the same cost FI_DB already pays") was wrong; FI_DB reserializes,
+   it never recomputes at load. Reusing FI_DB's proven approach also retroactively fixed a real
+   latent bug in this doc's own Phases 1-3 implementation: recomputing via `PermuteIndexPeptideMods()`
+   at load time (as originally implemented) required several mod-related fields --
+   `iMaxNumVarModAAPerMod` per mod slot, the overall `max_variable_mods_in_peptide` cap, and
+   `peptideLengthRange` -- to be byte-for-byte reproduced from the search-time environment, none of
+   which any earlier `.idx` header version actually persisted. If search-time `comet.params` ever
+   set different values for these than build time, `modNumIdx` lookups would silently resolve to the
+   wrong mod combination. Persisting the tables directly removes this class of bug entirely, for
+   both search modes.
+2. **`ProteinModList:`/`RequireVariableMod:` header lines** (previously FI_DB-only) are now written
+   and parsed for both modes, since `CometPeptideIndex::ParsePeptideIndexHeader()` became the one
+   shared header parser.
+
+The rest of this section is the original plan, which still describes the mechanism accurately.
+Section 8 covers the resolved open questions.
+
+**Validation.** Full unit/integration suite passes (40/40 default tests, T17/T18 real 8.9M-peptide
+builds). Real-data check: built one unified index (`comet-debug3`'s `human.fasta`, M-oxidation,
+572 real spectra), searched it as both PI_DB (`index_search_type=0`) and FI_DB (`index_search_type=1`)
+from the exact same file, and diffed each mode's `.txt` output against its own pre-unification
+baseline (built with the pre-Phase-0 binary, PI_DB via its old separate v2 format, FI_DB via its old
+separate plain-index format) -- **byte-identical in both modes.** PI_DB and FI_DB legitimately
+disagree with *each other* on this dataset (432 vs. 65 PSM rows) but that gap is pre-existing and
+reproduced identically pre- and post-unification, not something this change introduced.
+
+Two bugs surfaced and fixed during implementation, both the same class of mistake: an
+`strncmp(buf, "literal string", N)` magic-string check where `N` didn't match the literal's actual
+length (`"Comet index database"` is 20 characters, not the 21 first written; same one-off error
+made twice, independently, at two different call sites). Both now use `sizeof("literal") - 1`
+instead of a hardcoded length, which can't drift out of sync with the string. Caught by T19/T20
+failing immediately -- worth remembering as a reason to prefer `sizeof(...)-1` over a manually
+counted length for this pattern going forward.
+
+Separately, `index_search_type` needed registering in **two** independent places to actually take
+effect from a `comet.params` file: `CometSearchManager`'s internal `SetParam`/`GetParamValue` map
+(added in Task 12) and `Comet.cpp`'s `LoadParameters()` key-to-parser-lambda table (a separate,
+explicit allow-list the batch comet.params text-file reader uses -- unrecognized keys in a
+`comet.params` file are silently ignored, not forwarded). RTS doesn't have this second gate; its
+`SetParam` calls from `RealtimeSearch/SearchMS1MS2.cs` go straight to the shared map.
 
 Per Section 8's resolution of Open Question 3, PI_DB and FI_DB are to share one `.idx` file rather
 than each having its own format. This removes today's implicit PI-vs-FI dispatch and replaces it

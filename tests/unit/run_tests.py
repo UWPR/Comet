@@ -210,8 +210,11 @@ def parse_idx(path):
                 f.readline()   # blank line after header
                 break
 
-        f.seek(-24, 2)
-        pep_pos, prot_pos, perm_pos = struct.unpack("<qqq", f.read(24))
+        # docs/20260730_PI_reduction.md Phase 0: footer grew from 3 pointers (peptides,
+        # proteins, permutations) to 4 (+ variants, PI_DB-mode search data this FI_DB-focused
+        # parser doesn't need) when PI_DB and FI_DB were unified onto one .idx format.
+        f.seek(-32, 2)
+        pep_pos, prot_pos, perm_pos, _variants_pos = struct.unpack("<qqqq", f.read(32))
 
         f.seek(pep_pos)
         (num_pep,) = struct.unpack("<Q", f.read(8))

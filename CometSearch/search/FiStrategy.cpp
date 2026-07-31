@@ -75,7 +75,7 @@ bool FiStrategy::initialize(SearchSession& session, ThreadPool* tp)
       }
 
       CometFragmentIndex sqSearch;
-      sqSearch.ReadPlainPeptideIndex(false);   // batch path
+      CometPeptideIndex::ReadPeptideIndex(false);   // batch path
 
       if (!g_staticParams.options.bOutputSqtStream)
          cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;

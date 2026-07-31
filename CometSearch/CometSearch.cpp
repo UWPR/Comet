@@ -239,7 +239,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if (!g_bPlainPeptideIndexRead)
       {
-         sqFI.ReadPlainPeptideIndex(false);   // batch path
+         CometPeptideIndex::ReadPeptideIndex(false);   // batch path
          sqFI.CreateFragmentIndex(tp, false);
       }
 
@@ -8610,17 +8610,16 @@ void CometSearch::StorePeptideI(Query* pQuery,
 // loaded the peptide data, so that mass arrays reflect the exact static/variable mods used
 // when the index was built.
 //
-// Also rebuilds the MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables
-// (docs/20260730_PI_reduction.md) that g_vDBIndexVariants' compact entries reference by
-// index, via CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides) -- must happen
-// here, after ParsePeptideIndexHeader() below has just overwritten
-// g_staticParams.variableModParameters with this .idx file's baked-in build-time mod
-// settings, not inside ReadPeptideIndex() itself (which runs first, while
-// variableModParameters still reflects whatever search-time comet.params set, possibly
-// different mods entirely -- see CometPeptideIndex::ReadPeptideIndex()'s own comment).
-// Deterministic given the same g_vRawPeptides content/order and the same mod settings, so
-// this reproduces exactly the tables WritePeptideIndex() used to assign modNumIdx values
-// with in the first place.
+// Does NOT rebuild the MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
+// ReadPeptideIndex() already read them directly from the .idx file's persisted permutations
+// section (docs/20260730_PI_reduction.md Phase 0), rather than recomputing them here from
+// whatever mod settings happen to be active. An earlier version of this function called
+// CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides) here to rebuild them, which
+// was fragile: it required every mod-related field PermuteIndexPeptideMods() touches
+// (including several no earlier .idx format version persisted at all, e.g. each mod's
+// max-count-per-type and the overall max_variable_mods_in_peptide cap) to be byte-for-byte
+// reproduced from the search-time environment to match what WritePeptideIndex() used at
+// build time -- silently wrong if they ever differed.
 bool CometSearch::InitializeMassesFromPeptideIndex()
 {
    FILE* fp;
@@ -8642,8 +8641,6 @@ bool CometSearch::InitializeMassesFromPeptideIndex()
    }
 
    std::fclose(fp);
-
-   CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides);
 
    return true;
 }
