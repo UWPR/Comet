@@ -239,8 +239,14 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if (!g_bPlainPeptideIndexRead)
       {
-         sqFI.ReadPlainPeptideIndex(false);   // batch path
-         sqFI.CreateFragmentIndex(tp, false);
+         if (!CometPeptideIndex::ReadPeptideIndex(false)   // batch path
+            || !sqFI.CreateFragmentIndex(tp, false))
+         {
+            string strErrorMsg = " Error - failed to load/build fragment index for batch search.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
 
       ThreadPool* pSearchThreadPool = tp;
@@ -1844,7 +1850,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 // Batch PI_DB search: loads the peptide index into memory once (shared with the
 // thread-local RTS path via EnsurePeptideIndexLoaded()), then fans out one job per
 // query onto the thread pool. Each job binary-searches the shared, read-only,
-// mass-sorted g_pvDBIndex via the thread-local SearchPeptideIndex(Query*, bool*)
+// mass-sorted g_vDBIndexVariants via the thread-local SearchPeptideIndex(Query*, bool*)
 // overload instead of streaming candidates serially off disk on the calling
 // thread, so batch PI_DB searches now scale with iNumThreads like FI_DB batch
 // searches already do.
@@ -1884,14 +1890,14 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
 }
 
 
-// Thread-local overload: searches a caller-owned Query* against the
-// read-only g_pvDBIndex.  Does not access g_pvQuery.
+// Thread-local overload: searches a caller-owned Query* against the read-only
+// g_vDBIndexVariants (docs/20260730_PI_reduction.md). Does not access g_pvQuery.
 // pbDuplFragment is a thread-local scratch buffer of size g_staticParams.iArraySizeGlobal.
 void CometSearch::SearchPeptideIndex(Query* pQuery,
                                      bool* pbDuplFragment,
                                      int iSlot)
 {
-   if (!g_bPeptideIndexRead || g_pvDBIndex.empty())
+   if (!g_bPeptideIndexRead || g_vDBIndexVariants.empty())
       return;
 
    double dMassTolLow = pQuery->_pepMassInfo.dPeptideMassToleranceMinus;
@@ -1899,12 +1905,12 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
 
    // Binary search: find first entry with dPepMass >= dMassTolLow
    size_t iStart = 0;
-   size_t iEnd = g_pvDBIndex.size();
+   size_t iEnd = g_vDBIndexVariants.size();
 
    while (iStart < iEnd)
    {
       size_t iMid = iStart + (iEnd - iStart) / 2;
-      if (g_pvDBIndex[iMid].dPepMass < dMassTolLow)
+      if (g_vDBIndexVariants[iMid].dPepMass < dMassTolLow)
          iStart = iMid + 1;
       else
          iEnd = iMid;
@@ -1913,17 +1919,58 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
    struct sDBEntry dbe;
 
    // Iterate through candidates within mass tolerance
-   for (size_t i = iStart; i < g_pvDBIndex.size(); ++i)
+   for (size_t i = iStart; i < g_vDBIndexVariants.size(); ++i)
    {
-      if (g_pvDBIndex[i].dPepMass > dMassTolHigh)
+      const FragmentPeptidesStruct& variant = g_vDBIndexVariants[i];
+
+      if (variant.dPepMass > dMassTolHigh)
          break;
 
-      // Verify mass match (handles isotope offsets)
-      if (!CheckMassMatch(pQuery, g_pvDBIndex[i].dPepMass))
+      // Search-time digest_mass_range/peptide_length_range narrower than what's stored in
+      // the .idx (see ParsePeptideIndexHeader()'s inward-only clamp of g_massRange/
+      // peptideLengthRange from the MassRange:/LengthRange: header lines) further restricts
+      // g_vDBIndexVariants here -- this is the one place PI_DB needs to apply that clamp
+      // explicitly, since (unlike FI_DB, whose fragment index is rebuilt fresh from these
+      // same bounds on every load) g_vDBIndexVariants is read directly off disk unfiltered.
+      // A wider search-time range is already a no-op: nothing outside the file's own
+      // MassRange:/LengthRange: bounds was ever written to g_vDBIndexVariants to admit.
+      if (variant.dPepMass < g_massRange.dMinMass || variant.dPepMass > g_massRange.dMaxMass)
          continue;
 
-      dbe.lProteinFilePosition = g_pvDBIndex[i].lIndexProteinFilePosition;
-      AnalyzePeptideIndex(pQuery, g_pvDBIndex[i], pbDuplFragment, &dbe, iSlot);
+      // variant.iWhichPeptide comes straight off disk (g_vDBIndexVariants is read unfiltered
+      // by ReadPeptideIndex()) -- a corrupt/truncated .idx could put an out-of-range value
+      // here. Checked explicitly rather than relying on g_vRawPeptides.at()'s bounds-checked
+      // exception, since an uncaught exception from this per-candidate hot-path loop (reached
+      // directly from the RTS thread-local path with no generic try/catch around it) would
+      // crash the search instead of just skipping this one candidate, consistent with
+      // MaterializeOneEntry()'s own handling of the same untrusted field.
+      if (variant.iWhichPeptide >= g_vRawPeptides.size())
+         continue;
+
+      int iRawLen = (int)strlen(g_vRawPeptides.at(variant.iWhichPeptide).szPeptide);
+      if (iRawLen < g_staticParams.options.peptideLengthRange.iStart
+         || iRawLen > g_staticParams.options.peptideLengthRange.iEnd)
+         continue;
+
+      // Verify mass match (handles isotope offsets)
+      if (!CheckMassMatch(pQuery, variant.dPepMass))
+         continue;
+
+      // Materialize this candidate's full DBIndex (sequence, explicit pcVarModSites, flank
+      // AAs, protein reference) on the fly -- the compact variant array only carries a
+      // reference into g_vRawPeptides plus the mod-permutation tables, not the full
+      // reconstruction, since only the handful of candidates surviving this mass-window
+      // filter (not every one of g_vDBIndexVariants' entries) ever need it. See
+      // docs/20260730_PI_reduction.md Phase 3.
+      DBIndex dbiLocal;
+      if (!CometPeptideIndex::MaterializeOneEntry(variant.iWhichPeptide, variant.modNumIdx,
+            variant.cNtermMod, variant.cCtermMod, dbiLocal))
+      {
+         continue;
+      }
+
+      dbe.lProteinFilePosition = dbiLocal.lIndexProteinFilePosition;
+      AnalyzePeptideIndex(pQuery, dbiLocal, pbDuplFragment, &dbe, iSlot);
 
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -8590,9 +8637,21 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
 
 // Reads the .idx file header to initialise fragment/parent masses and
-// modification parameters.  Called from InitializeSingleSpectrumSearch()
-// after ReadPeptideIndex() has loaded the peptide data, so that mass arrays
-// reflect the exact static/variable mods used when the index was built.
+// modification parameters.  Called from InitializeSingleSpectrumSearch() and
+// CometSearch::EnsurePeptideIndexLoaded(), both immediately after ReadPeptideIndex() has
+// loaded the peptide data, so that mass arrays reflect the exact static/variable mods used
+// when the index was built.
+//
+// Does NOT rebuild the MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
+// ReadPeptideIndex() already read them directly from the .idx file's persisted permutations
+// section (docs/20260730_PI_reduction.md Phase 0), rather than recomputing them here from
+// whatever mod settings happen to be active. An earlier version of this function called
+// CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides) here to rebuild them, which
+// was fragile: it required every mod-related field PermuteIndexPeptideMods() touches
+// (including several no earlier .idx format version persisted at all, e.g. each mod's
+// max-count-per-type and the overall max_variable_mods_in_peptide cap) to be byte-for-byte
+// reproduced from the search-time environment to match what WritePeptideIndex() used at
+// build time -- silently wrong if they ever differed.
 bool CometSearch::InitializeMassesFromPeptideIndex()
 {
    FILE* fp;
@@ -8614,6 +8673,7 @@ bool CometSearch::InitializeMassesFromPeptideIndex()
    }
 
    std::fclose(fp);
+
    return true;
 }
 

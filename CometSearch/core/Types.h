@@ -276,17 +276,19 @@ inline int ILAwarePeptideCompare(const char* a, const char* b)
 }
 
 // Compact, inline (no heap allocation) encoding of a peptide's variable-mod placement
-// sites. Mirrors the on-disk (position, residue) pair format directly -- WritePeptideIndex()/
-// ReadPeptideIndexEntry() already store/read exactly this pair list -- instead of expanding
+// sites. Mirrors the (position, residue) pair format WritePeptideIndex() stored on disk
+// per modified peptide before docs/20260730_PI_reduction.md -- now built only transiently,
+// per scored candidate, by CometPeptideIndex::MaterializeOneEntry() -- instead of expanding
 // into a dense per-residue-position array (peptide_length+2 bytes, positions overwhelmingly
 // zero/unmodified, with its own separate heap allocation per entry). Replaced a vector<char>
 // that cost ~30-55 bytes (payload + allocator overhead) per modified entry and a dedicated
 // heap allocation for each of them; see docs/20260716_pidbmemory.md for the sizing analysis.
 //
 // MAX_SITES=8 comfortably covers the default max_variable_mods_in_peptide (5) plus both
-// termini (7 total); ReadPeptideIndexEntry()/MaterializeIndexPeptideMods()/MergeVarMods() all
-// check set()'s return value and fail cleanly (rather than silently truncating) if a
-// more permissive configuration ever exceeds it.
+// termini (7 total); CometPeptideIndex::EnumerateIndexPeptideMods()/MaterializeOneEntry()/
+// MergeVarMods() all check set()'s return value (or an equivalent site count) and fail
+// cleanly (rather than silently truncating) if a more permissive configuration ever
+// exceeds it.
 struct VarModSites
 {
    static const int MAX_SITES = 8;
@@ -566,6 +568,19 @@ extern unsigned int* g_iFragmentIndex;            // CSR flat data: all posting 
 extern uint64_t*     g_iFragmentIndexOffset;      // CSR offsets [uiMaxFragmentArrayIndex+1]: cumulative entry counts, can exceed UINT_MAX for large non-enzymatic searches
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
+
+// PI_DB's compact per-variant array (docs/20260730_PI_reduction.md): one entry per
+// (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
+// structurally identical to g_vFragmentPeptides/FragmentPeptidesStruct. Kept as its own
+// vector rather than literally the same one as FI_DB's, since PI_DB and FI_DB build this
+// array via different enumeration entry points (EnumerateIndexPeptideMods() vs.
+// GenerateFragmentIndex()/AddFragmentsThreadProc()) even though both now read/write it
+// through the same unified .idx format and CometPeptideIndex::WritePeptideIndex()/
+// ReadPeptideIndex() (docs/20260730_PI_reduction.md Phase 0 -- implemented; PI_DB and FI_DB
+// share one on-disk file/builder, dispatched at search time via index_search_type).
+// CometSearch::SearchPeptideIndex() binary-searches this by dPepMass and materializes a
+// full DBIndex per surviving candidate via CometPeptideIndex::MaterializeOneEntry().
+extern vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
 extern vector<SpecLibStruct> g_vSpecLib;
 extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>

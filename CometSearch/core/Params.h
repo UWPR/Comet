@@ -63,6 +63,12 @@ struct Options
    bool bScaleFragmentNL;        // 0=no; 1=scale fragment NL for each modified residue contained in fragment
    bool bCreateFragmentIndex;    // 0=normal search; 1=create fragment ion index plain peptide file
    bool bCreatePeptideIndex;     // 0=normal search; 1=create peptide index file; only one of bCreateFragmentIndex and bCreatePeptideIndex can be 1
+   int iIndexSearchType;         // docs/20260730_PI_reduction.md Phase 0: which search mode to run against an
+                                  // existing unified .idx file (-1=unset/default to FI_DB, 0=PI_DB, 1=FI_DB).
+                                  // Replaces the pre-unification header-magic-string sniff, since PI_DB and
+                                  // FI_DB now share one on-disk format/header that no longer implies a mode.
+                                  // Set via the index_search_type comet.params key (batch) or the corresponding
+                                  // RealtimeSearch.exe CLI argument (RTS, which doesn't load comet.params).
    bool bFastPlainPeptideIdx;    // 0=legacy RunSearch path; 1=use PepGenTuple per-thread buffers (avoids heap alloc)
    bool bVerboseOutput;
    bool bExplicitDeltaCn;        // if set to 1, do not use sequence similarity logic
@@ -376,6 +382,7 @@ struct StaticParams
       options.bScaleFragmentNL = false;
       options.bCreatePeptideIndex = false;
       options.bCreateFragmentIndex = false;
+      options.iIndexSearchType = -1;
       options.bFastPlainPeptideIdx = false;
       options.bVerboseOutput = false;
       options.iDecoySearch = 0;

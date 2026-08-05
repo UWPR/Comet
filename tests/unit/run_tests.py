@@ -210,8 +210,11 @@ def parse_idx(path):
                 f.readline()   # blank line after header
                 break
 
-        f.seek(-24, 2)
-        pep_pos, prot_pos, perm_pos = struct.unpack("<qqq", f.read(24))
+        # docs/20260730_PI_reduction.md Phase 0: footer grew from 3 pointers (peptides,
+        # proteins, permutations) to 4 (+ variants, PI_DB-mode search data this FI_DB-focused
+        # parser doesn't need) when PI_DB and FI_DB were unified onto one .idx format.
+        f.seek(-32, 2)
+        pep_pos, prot_pos, perm_pos, _variants_pos = struct.unpack("<qqqq", f.read(32))
 
         f.seek(pep_pos)
         (num_pep,) = struct.unpack("<Q", f.read(8))
@@ -1604,7 +1607,26 @@ def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
 
 
 def _set_param_line(params_text, key, value):
-    return re.sub(rf"(?m)^{re.escape(key)} = .*$", f"{key} = {value}", params_text, count=1)
+    """Set `key = value` in a comet.params text blob: replaces an existing line for
+    that key if present, otherwise inserts a new one -- silently no-op'ing on a
+    missing key (the original behavior here) is a real footgun for any key that isn't
+    guaranteed to already exist in every params fixture (e.g. index_search_type is
+    absent from comet-debug3/4's real, pre-unification comet.params). Insertion must
+    go *before* a `[COMET_ENZYME_INFO]` section marker if present -- comet.params
+    itself documents that section as required to be last, and Comet's own parser
+    silently ignores a `key = value` line placed after it (confirmed directly while
+    investigating a T24 dispatch bug: an appended-at-EOF index_search_type line never
+    took effect). Falls back to appending at the end if there's no enzyme section."""
+    new_text, n = re.subn(rf"(?m)^{re.escape(key)} = .*$", f"{key} = {value}", params_text, count=1)
+    if n > 0:
+        return new_text
+    line = f"{key} = {value}\n"
+    marker = re.search(r"(?m)^\[COMET_ENZYME_INFO\]", params_text)
+    if marker:
+        pos = marker.start()
+        return params_text[:pos] + line + params_text[pos:]
+    sep = "" if params_text.endswith("\n") else "\n"
+    return params_text + sep + line
 
 
 def _index_build_and_search(binary, flag, label, plain_params, idx_path, mzxml, failures, tag=""):
@@ -1633,7 +1655,16 @@ def _index_build_and_search(binary, flag, label, plain_params, idx_path, mzxml, 
     finally:
         idx_params_file.unlink(missing_ok=True)
 
+    # -i/-j only select which build flag is passed above; per docs/20260730_PI_reduction.md
+    # Phase 0, PI_DB and FI_DB now share one on-disk .idx format/builder, so the file itself
+    # no longer implies a search mode -- which mode a *search* runs against it is controlled
+    # purely by index_search_type (0=PI_DB, 1=FI_DB; unset defaults to FI_DB). Without setting
+    # it explicitly here, both legs of this function silently searched in FI_DB mode
+    # regardless of `label`/`flag`, making the "PI_DB" leg a mislabeled duplicate of the
+    # "FI_DB" leg -- caught by a real PI_DB-vs-FI_DB PSM-count divergence (17,660 vs 17,033 on
+    # comet-debug3/4's real data) this test should have been able to catch but couldn't.
     idx_params = _set_param_line(plain_params, "database_name", idx_path)
+    idx_params = _set_param_line(idx_params, "index_search_type", 0 if label == "PI_DB" else 1)
     rc, txt, out, search_elapsed = _run_bigdata_search(binary, idx_params, mzxml)
     if not check(rc == 0, f"{prefix}{label} search exits 0 (rc={rc})", failures):
         print(out[-2000:])
@@ -1830,6 +1861,13 @@ def test_t24_index_parity(comet_exe):
     current_counts = {"plain-FASTA": cx0}
     current_search_times = {"plain-FASTA": t0}
     current_build_times = {}
+    # PI_DB has no fragment-ion-index pre-filter, so it searches the same precursor-mass-
+    # window candidate set plain-FASTA does -- a real A/B on comet-debug3/4's data (after
+    # fixing this test's missing index_search_type, see _index_build_and_search) measured an
+    # *exact* match (17,660 == 17,660), so its tolerance here is intentionally much tighter
+    # than FI_DB's, which genuinely excludes some candidates via its posting-list filter and
+    # legitimately varies more by dataset (measured ~3.6% low on the same data).
+    tolerance = {"FI_DB": 0.05, "PI_DB": 0.01}
     for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
         print(f"  Building {label} index ...")
         result = _index_build_and_search(comet_exe, flag, label, plain_params, idx_path, mzxml, failures)
@@ -1840,8 +1878,9 @@ def test_t24_index_parity(comet_exe):
         current_build_times[label] = build_s
         current_search_times[label] = search_s
         ratio = (cx / cx0) if cx0 else float("inf")
-        check(0.95 <= ratio <= 1.05,
-              f"{label} ({cx:,}) agrees with plain-FASTA ({cx0:,}) within 5% at 1% FDR "
+        tol = tolerance[label]
+        check(1 - tol <= ratio <= 1 + tol,
+              f"{label} ({cx:,}) agrees with plain-FASTA ({cx0:,}) within {tol*100:.0f}% at 1% FDR "
               f"xcorr (ratio {ratio:.3f})", failures)
 
     idx_path.unlink(missing_ok=True)

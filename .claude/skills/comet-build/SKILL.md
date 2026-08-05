@@ -21,21 +21,41 @@ Show only errors and C4-level warnings:
 
 `MSBuild.exe` is directly invocable from the Bash tool in a WSL session on this machine (no
 `powershell.exe`/`cmd.exe` wrapper needed) — Windows interop lets WSL bash exec `.exe` paths
-under `/mnt/c/...` directly:
+under `/mnt/c/...` directly. This means a WSL-based Claude Code session can build and verify
+the Windows/VS side of a change directly, not just the Linux `make` build — **don't assume
+Windows-only code (e.g. `/clr` files, `CometWrapper`, `RealtimeSearch`) is unverifiable just
+because the working shell is bash.**
+
+**Path format is NOT uniform between the exe itself and its arguments** (this bit a session
+on 2026-08-05, which took the `/mnt/c/...`-for-everything phrasing below too literally and
+concluded MSBuild couldn't run at all, rather than that its own path argument needed fixing):
+WSL's interop layer resolves the *executable's own path* for you (so `/mnt/c/.../MSBuild.exe`
+launches fine), but every other argument is passed through to the resulting native Windows
+process as a literal string, untranslated. A `.sln`/project path given as `/mnt/c/Work/...`
+arrives at MSBuild looking like an unrecognized `/`-prefixed switch — it fails immediately
+with `MSBUILD : error MSB1001: Unknown switch.` **The `.sln` path itself must be Windows-style
+(`C:\Work\Comet-master\Comet.sln`), even though the `MSBuild.exe` path before it stays
+`/mnt/c/...`:**
 
 ```bash
 "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" \
-  "/mnt/c/Work/Comet-master/Comet.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+  "C:\Work\Comet-master\Comet.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 ```
 
-Use forward-slash `/mnt/c/...` paths (not `C:\...`) when invoking from bash. This means a WSL-based
-Claude Code session can build and verify the Windows/VS side of a change directly, not just the
-Linux `make` build — don't assume Windows-only code (e.g. `/clr` files, `CometWrapper`,
-`RealtimeSearch`) is unverifiable just because the working shell is bash.
+Confirmed 2026-08-05: this exact command (full solution, no `/t:Clean`) builds
+`MSToolkit.lib`, `Comet.exe`, `CometWrapper.dll`, `RealtimeSearch.exe`, and
+`CometUnitTests.exe` with zero errors, and the wrapper DLL is already correctly copied into
+`RealtimeSearch\bin\x64\Release\` by the solution build itself (byte-identical to
+`x64\Release\CometWrapper.dll` -- see the caveat below on when a manual copy is still needed).
 
-## After building: copy the wrapper DLL
+## After building: copy the wrapper DLL (only for a targeted/partial build)
 
-CometWrapper.dll must be manually copied after each build for RealtimeSearch.exe to pick it up:
+A **full solution build** (as above) already copies `CometWrapper.dll` into
+`RealtimeSearch\bin\x64\Release\` correctly on its own -- confirmed byte-identical to
+`x64\Release\CometWrapper.dll` on 2026-08-05, no manual step needed. This manual copy is only
+for a **targeted rebuild that doesn't include the `RealtimeSearch` project itself** (e.g. the
+`/t:CometSearch;CometWrapper` tip below) -- in that case `RealtimeSearch.exe`'s own project
+build/copy step never runs, so its bin folder keeps a stale `CometWrapper.dll`:
 ```powershell
 Copy-Item "C:\Work\Comet-master\x64\Release\CometWrapper.dll" `
           "C:\Work\Comet-master\RealtimeSearch\bin\x64\Release\CometWrapper.dll" -Force
@@ -100,17 +120,20 @@ the extracted `MSToolkit/extern/zlib-1.2.11/` directory and the two copied heade
 re-extracts a pristine `zlib1211.zip` and MSVC falls back to the Windows-safe
 copies already checked into `MSToolkit/include/extern/`.
 
-**Validated workflow — Clean *then* Build (a plain Build alone will still fail):**
+**Validated workflow — Clean *then* Build (a plain Build alone will still fail).** Note the
+`.sln` path is Windows-style (`C:\...`), same reasoning as "Building from WSL" above -- a
+`/mnt/c/...` `.sln` argument fails with `MSB1001: Unknown switch` regardless of `/t:Clean`:
 ```bash
 "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe" \
-  "/mnt/c/Work/Comet-master/Comet.sln" /t:Clean /p:Configuration=Release /p:Platform=x64 /v:minimal
+  "C:\Work\Comet-master\Comet.sln" /t:Clean /p:Configuration=Release /p:Platform=x64 /v:minimal
 
 "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe" \
-  "/mnt/c/Work/Comet-master/Comet.sln" /p:Configuration=Release /p:Platform=x64 /v:minimal
+  "C:\Work\Comet-master\Comet.sln" /p:Configuration=Release /p:Platform=x64 /v:minimal
 ```
 (In Visual Studio: **Build → Clean Solution**, then **Build → Build Solution**.)
-Confirmed this produces a fully clean build of `CometWrapper.dll` and
-`RealtimeSearch.exe` with zero errors, with no manual file edits.
+Confirmed (re-confirmed 2026-08-05, with the corrected `.sln` path above) this produces a
+fully clean build of `CometWrapper.dll` and `RealtimeSearch.exe` with zero errors, with no
+manual file edits.
 
 **Unix-side equivalent:** the top-level `make clean` (not `make cclean` — `cclean`
 only touches `CometSearch/` and never removes `MSToolkit/include/zconf.h` or the

@@ -363,6 +363,7 @@ void LoadParameters(char* pszParamsFile,
       {"fragindex_min_ions_score",     { [&]() { parse_int("fragindex_min_ions_score"); }}},
       {"fragindex_num_spectrumpeaks",  { [&]() { parse_int("fragindex_num_spectrumpeaks"); }}},
       {"fragindex_skipreadprecursors" ,{ [&]() { parse_int("fragindex_skipreadprecursors"); }}},
+      {"index_search_type",            { [&]() { parse_int("index_search_type"); }}},
       {"isotope_error",                { [&]() { parse_int("isotope_error"); }}},
       {"mango_search",                 { [&]() { parse_int("mango_search"); }}},
       {"mass_type_fragment",           { [&]() { parse_int("mass_type_fragment"); }}},
@@ -913,6 +914,11 @@ void PrintParams(int iPrintParams)
 "#\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
+\n\
+# Only relevant when database_name points at an existing .idx file (built via -i or -j,\n\
+# which now produce the same unified format); ignored for a plain FASTA or when building a\n\
+# new index. Selects which search algorithm to run against that index this run.\n\
+index_search_type = 1                  # 0=peptide index (PI_DB), 1=fragment ion index (FI_DB, default)\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
 

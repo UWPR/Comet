@@ -39,15 +39,32 @@ public:
    // RTS-vs-batch-specific behavior (e.g. logging); no such behavior exists yet.
    static bool ReadPeptideIndex(bool bIsRTS);
    static bool WritePeptideIndex(ThreadPool* tp);
-   static bool ReadPeptideIndexEntry(struct DBIndex* sDBI, FILE* fp);
 
-   // Phase B (docs/20260713_PIidxformat.md): walks g_vRawPeptides x valid mod
-   // combinations (mirroring CometFragmentIndex::AddFragmentsThreadProc()'s
-   // enumeration structure) and materializes full DBIndex entries with explicit
-   // pcVarModSites, using the combinatorics tables built by a prior call to
-   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Appends results
-   // to vModifiedEntries; does not touch g_pvDBIndex itself.
-   static bool MaterializeIndexPeptideMods(vector<DBIndex>& vModifiedEntries);
+   // Phase B (docs/20260713_PIidxformat.md, docs/20260730_PI_reduction.md Phase 1): walks
+   // g_vRawPeptides x valid mod combinations (mirroring
+   // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and appends a
+   // compact FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
+   // dPepMass} per valid combination, using the combinatorics tables built by a prior call to
+   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include the
+   // fully-unmodified variant for each raw peptide -- see WritePeptideIndex() for that.
+   static bool EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants);
+
+   // Single-entry version of EnumerateIndexPeptideMods()'s tryPush lambda,
+   // factored out so it can be called per-candidate at search time (see
+   // docs/20260730_PI_reduction.md Phase 3), not just once-per-peptide at build
+   // time. Reconstructs a full DBIndex (sequence, explicit pcVarModSites, mass,
+   // flank AAs, protein reference) from a compact (iWhichPeptide, modNumIdx,
+   // cNtermMod, cCtermMod) reference into g_vRawPeptides, using the
+   // MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
+   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). modNumIdx == -1
+   // means "no body modification" (only possibly cNtermMod/cCtermMod);
+   // cNtermMod/cCtermMod == -1 means "no terminal modification". Returns false
+   // only if a mod-site encoding would exceed VarModSites::MAX_SITES -- should
+   // not happen in practice since Phase 1's build-time enumeration already
+   // validated every (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple it
+   // wrote to the compact array.
+   static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
+      char cCtermMod, DBIndex& out);
 
 
 
@@ -58,6 +75,18 @@ public:
    // SearchPeptideIndex(ThreadPool*) and InitializeMassesFromPeptideIndex()
    // to avoid duplication.
    static bool ParsePeptideIndexHeader(FILE* fp);
+
+   // Compacted list of active variable_modNN slot indices (0-based into
+   // g_staticParams.variableModParameters.varModList), built in the same compaction order
+   // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop uses --
+   // MOD_NUMBERS[].modifications[] values are indices into *this* compacted list, not direct
+   // varModList slot indices, so both EnumerateIndexPeptideMods() (build time) and
+   // MaterializeOneEntry() (search time, called per mass-window candidate) need the exact
+   // same translation. Single shared implementation rather than two independently-maintained
+   // copies of the same loop -- previously duplicated verbatim between the two with only a
+   // comment asking future edits to keep them in sync, which a change to either copy alone
+   // could silently violate.
+   static const vector<int>& GetVModSlotForAllModsIdx();
 
 };
 
