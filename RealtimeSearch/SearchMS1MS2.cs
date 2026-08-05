@@ -64,9 +64,10 @@ namespace RealTimeSearch
          if (args.Length < 2)
          {
             Console.WriteLine(" RTS MS1/MS2\n");
-            Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro]\n",
+            Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro] [index_search_type]\n",
                System.AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
+            Console.WriteLine("    index_search_type: 0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default)\n");
             return;
          }
 
@@ -113,6 +114,19 @@ namespace RealTimeSearch
             }
          }
 
+         // Parse index_search_type (default 1, FI_DB -- matches the pre-unification default
+         // for an ambiguous .idx; docs/20260730_PI_reduction.md Phase 0).
+         // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index).
+         int iIndexSearchType = 1;
+         if (args.Length >= 6)
+         {
+            if (!int.TryParse(args[5], out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
+            {
+               Console.WriteLine(" Warning: Invalid index_search_type '{0}', using default (1, FI_DB)", args[5]);
+               iIndexSearchType = 1;
+            }
+         }
+
          // Create SINGLE global search manager
          CometSearchManagerWrapper globalSearchMgr = new CometSearchManagerWrapper();
          SearchSettings searchParams = new SearchSettings();
@@ -128,7 +142,8 @@ namespace RealTimeSearch
             ref dPeptideMassHigh,
             ref numThreads,
             bDatabaseSearch,
-            bEnableAScorePro);
+            bEnableAScorePro,
+            iIndexSearchType);
 
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
@@ -210,7 +225,21 @@ namespace RealTimeSearch
 
                      watchIndexCreate.Start();
                      if (bDatabaseSearch && bPerformMS2Search)
-                        globalSearchMgr.InitializeSingleSpectrumSearch();
+                     {
+                        if (!globalSearchMgr.InitializeSingleSpectrumSearch())
+                        {
+                           // A corrupt/truncated .idx (or a missing underlying FASTA for auto-build)
+                           // makes this return false with the specific error already logged on the
+                           // native side (CometSearchManager::InitializeSingleSpectrumSearch()) --
+                           // this return value used to be silently discarded here, so a load failure
+                           // fell through into per-spectrum search with no index loaded instead of
+                           // aborting.
+                           string strStatusMsg = "";
+                           globalSearchMgr.GetStatusMessage(ref strStatusMsg);
+                           Console.WriteLine(" Error initializing search index: " + strStatusMsg);
+                           System.Environment.Exit(1);
+                        }
+                     }
                      watchIndexCreate.Stop();
 
                      Console.WriteLine();
@@ -601,7 +630,8 @@ namespace RealTimeSearch
             ref double dPeptideMassHigh,
             ref int numThreads,
             bool bDatabaseSearch,
-            bool bEnableAScorePro)
+            bool bEnableAScorePro,
+            int iIndexSearchType)
          {
             String sTmp;
             int iTmp;
@@ -702,6 +732,13 @@ namespace RealTimeSearch
             iTmp = bEnableAScorePro ? -1 : 0;
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
+
+            // docs/20260730_PI_reduction.md Phase 0: which search mode to run against the
+            // (now-shared-format) .idx file. 0=PI_DB, 1=FI_DB (default). Since PI_DB and
+            // FI_DB share one on-disk format, the file itself no longer implies a mode --
+            // this is the RTS-side equivalent of batch's index_search_type comet.params key.
+            sTmp = iIndexSearchType.ToString();
+            SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
 
             if (bDatabaseSearch)
             {

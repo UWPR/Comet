@@ -178,7 +178,16 @@ Each `VarMods` entry:
 
 ## DBIndex
 
-One entry in the peptide index (`g_pvDBIndex`), used during index generation and FASTA search. Sorted by peptide sequence and mass for deduplication.
+**Build-time and per-candidate transient use only -- not the search-time index.**
+Historically one entry in `g_pvDBIndex`, used both during index generation and as PI_DB's
+resident search-time array; as of `docs/20260730_PI_reduction.md`, `g_pvDBIndex` is
+build-time-only (Phase A digestion output inside `CometPeptideIndex::WritePeptideIndex()`,
+copied into `g_vRawPeptides` and cleared before the function returns -- see
+`PlainPeptideIndexStruct`/`FragmentPeptidesStruct` below for what replaced it at search
+time). `DBIndex` the *type* is still used, but only as a stack-local, per-candidate
+reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on demand from
+a `g_vDBIndexVariants` entry for each mass-window candidate PI_DB search scores, then
+discards it.
 
 ```cpp
 struct DBIndex  // core/Types.h
@@ -199,7 +208,12 @@ struct DBIndex  // core/Types.h
 
 ## PlainPeptideIndexStruct
 
-Compact fixed-size tuple stored in the plain peptide index (`.idx` file) and loaded into `g_vRawPeptides` at runtime. Same core fields as `DBIndex` but without the `VarModSites` mod-site field (only unmodified peptides are stored here; modifications are layered on in `g_vFragmentPeptides`).
+Compact fixed-size tuple stored in the unified `.idx` file (shared by PI_DB and FI_DB,
+`docs/20260730_PI_reduction.md` Phase 0) and loaded into `g_vRawPeptides` at runtime by
+both search modes. Same core fields as `DBIndex` but without the `VarModSites` mod-site
+field (only unmodified peptides are stored here; modifications are layered on in
+`g_vFragmentPeptides` for FI_DB, or the structurally-identical `g_vDBIndexVariants` for
+PI_DB).
 
 ```cpp
 struct PlainPeptideIndexStruct  // core/Types.h
@@ -218,6 +232,15 @@ struct PlainPeptideIndexStruct  // core/Types.h
 ## FragmentPeptidesStruct
 
 One entry in the fragment index peptide list (`g_vFragmentPeptides`). Represents one (peptide, mod-state) combination. Sorted by mass so that RunSearch can binary-search for mass-matching candidates.
+
+**Also used, as the same type, for PI_DB's compact per-variant array** (`g_vDBIndexVariants`,
+`docs/20260730_PI_reduction.md`) -- a separate global rather than literally sharing
+`g_vFragmentPeptides` with FI_DB (the two backends don't yet share a build/dispatch path
+for this, tracked as a follow-up), but identical in layout and semantics. PI_DB's
+`CometSearch::SearchPeptideIndex()` binary-searches `g_vDBIndexVariants` by `dPepMass`
+exactly as FI_DB does with `g_vFragmentPeptides`, then reconstructs a full `DBIndex` per
+surviving candidate via `CometPeptideIndex::MaterializeOneEntry()` instead of resolving a
+fragment-ion posting list.
 
 ```cpp
 struct FragmentPeptidesStruct  // core/Types.h
@@ -298,7 +321,7 @@ class Pipeline         // search/Pipeline.h
 | `FastaStrategy` | `search/FastaStrategy.cpp` | `FASTA_DB` | Classic three-sweep (load -> allocate -> RunSearch -> PostAnalysis). |
 | `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
 
-**AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering matters: for `FI_DB`, `FiStrategy::initialize()` calls `ReadPlainPeptideIndex()`, which overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header -- `SetAScoreOptions()` must run after that overwrite, not before, or it configures AScore from stale/default mod values. (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate, already-correctly-ordered AScore setup and is not affected by this.)
+**AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering matters: for `FI_DB`, `FiStrategy::initialize()` calls `CometPeptideIndex::ReadPeptideIndex()` (the shared unified-index reader both search modes now use, `docs/20260730_PI_reduction.md` Phase 0), which overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header -- `SetAScoreOptions()` must run after that overwrite, not before, or it configures AScore from stale/default mod values. (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate, already-correctly-ordered AScore setup and is not affected by this.)
 
 **`_pQueries` discipline (FASTA only):** `CometSearch::BinarySearchMass()` reads the query list through the `CometSearch` member `_pQueries` rather than a parameter; `CometSearch::DoSearch()` (the FASTA path) sets `_pQueries = &queries` at entry before any call into it. This is FASTA-specific -- the PI_DB path was refactored away from `_pQueries`: `CometSearch::SearchPeptideIndex(Query*, bool*, int)` and its `AnalyzePeptideIndex(Query*, const DBIndex&, bool*, sDBEntry*, int)` overload both take the `Query*` directly as a parameter and never touch `_pQueries` or `BinarySearchMass()`. Any new code path that calls into `BinarySearchMass()` still needs `_pQueries` assigned first; PI_DB code does not.
 

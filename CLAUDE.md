@@ -22,18 +22,26 @@ make clean    # Full clean including MSToolkit and AScorePro
 make cclean   # Quick clean: only CometSearch and root object files
 ```
 
-### Windows (Visual Studio)
-- Load `Comet.sln` in Visual Studio 2022 (build tools v143)
-- Set configuration to **Release / x64**
-- Right-click the **Comet** project -> **Build**
-- Output: `x64/Release/Comet.exe`
+### Windows (Visual Studio / MSBuild)
+
+**`MSBuild.exe` is directly runnable from a WSL Bash session on this machine** --
+Windows interop lets bash exec `.exe` paths under `/mnt/c/...` directly, no
+`powershell.exe`/`cmd.exe` wrapper needed. Do not assume the Windows/C# side of this repo
+(`RealtimeSearch`, `CometWrapper`, any `/clr` file) is unbuildable or untestable just
+because the current shell is bash -- **check the `comet-build` skill and try MSBuild
+before ever telling the user a Windows-only change "can't be verified in this
+session."** The skill has the exact invocation, the post-build wrapper-DLL copy step,
+and the `zconf.h` / `error C1083: unistd.h` cross-platform gotcha (Clean Solution +
+Build Solution on Windows, or `make clean` -- not `cclean` -- on Linux).
+
+In Visual Studio itself (2022, build tools v143): load `Comet.sln`, set configuration to
+**Release / x64**, right-click the **Comet** project -> **Build**. Output:
+`x64/Release/Comet.exe`.
 
 `.raw` file reading uses Thermo's RawFileReader .NET library via a `/clr` (C++/CLI) build in
-`MSToolkit` -- no separate Thermo software installation is required (Windows only).
-
-See the `comet-build` skill for MSBuild-from-WSL invocation, the post-build wrapper-DLL
-copy step, and the `zconf.h` / `error C1083: unistd.h` cross-platform gotcha (Clean
-Solution + Build Solution on Windows, or `make clean` -- not `cclean` -- on Linux).
+`MSToolkit` -- no separate Thermo software installation is required (Windows only). This is
+a *runtime data-file* limitation (no `.raw` reader on Linux), not a build-capability one --
+it doesn't mean the Windows/C# code itself can't be compiled from a WSL session; see above.
 
 ### CometSearch library only
 ```bash
