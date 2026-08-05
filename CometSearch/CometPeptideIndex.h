@@ -76,6 +76,18 @@ public:
    // to avoid duplication.
    static bool ParsePeptideIndexHeader(FILE* fp);
 
+   // Compacted list of active variable_modNN slot indices (0-based into
+   // g_staticParams.variableModParameters.varModList), built in the same compaction order
+   // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop uses --
+   // MOD_NUMBERS[].modifications[] values are indices into *this* compacted list, not direct
+   // varModList slot indices, so both EnumerateIndexPeptideMods() (build time) and
+   // MaterializeOneEntry() (search time, called per mass-window candidate) need the exact
+   // same translation. Single shared implementation rather than two independently-maintained
+   // copies of the same loop -- previously duplicated verbatim between the two with only a
+   // comment asking future edits to keep them in sync, which a change to either copy alone
+   // could silently violate.
+   static const vector<int>& GetVModSlotForAllModsIdx();
+
 };
 
 #endif // _COMETPEPTIDEINDEX_H_

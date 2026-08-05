@@ -268,6 +268,23 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    MOD_SEQ_MOD_NUM_CNT = new int[ulSizeModSeqs];
    PEPTIDE_MOD_SEQ_IDXS = new int[ulSizevRawPeptides];
 
+   // Frees the three permutation-table arrays just allocated above, plus the modifications[]
+   // buffer of any MOD_NUMBERS entry already pushed by the loop below at the point of a
+   // corrupt-file bailout -- every early-return past this point takes this same cleanup path
+   // rather than leaking them (a real if low-impact leak on the corrupt-file path; every
+   // current caller of ReadPeptideIndex() treats a false return as fatal and exits/aborts
+   // shortly after, but that's a caller convention, not a guarantee this function should rely
+   // on for its own correctness).
+   auto freePermutationTables = [&]()
+   {
+      delete[] MOD_SEQ_MOD_NUM_START; MOD_SEQ_MOD_NUM_START = nullptr;
+      delete[] MOD_SEQ_MOD_NUM_CNT;   MOD_SEQ_MOD_NUM_CNT = nullptr;
+      delete[] PEPTIDE_MOD_SEQ_IDXS;  PEPTIDE_MOD_SEQ_IDXS = nullptr;
+      for (auto& m : MOD_NUMBERS)
+         delete[] m.modifications;
+      MOD_NUMBERS.clear();
+   };
+
    (void)fread(MOD_SEQ_MOD_NUM_START, sizeof(int), ulSizeModSeqs, fp);
    (void)fread(MOD_SEQ_MOD_NUM_CNT, sizeof(int), ulSizeModSeqs, fp);
    (void)fread(PEPTIDE_MOD_SEQ_IDXS, sizeof(int), ulSizevRawPeptides, fp);
@@ -280,6 +297,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             + "\" is corrupt: mod-permutation table read past the start of the next section.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(strErrorMsg);
+         freePermutationTables();
          fclose(fp);
          return false;
       }
@@ -287,6 +305,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       vector<char> vBuf(tVarDataSize);
       if (fread(vBuf.data(), 1, tVarDataSize, fp) != tVarDataSize)
       {
+         freePermutationTables();
          fclose(fp);
          logout(" Error - failed to read mod-permutation variable-length data from .idx file; "
             "file may be truncated or corrupt.\n");
@@ -306,6 +325,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             + "table; the file is likely truncated or corrupt. Rebuild it with -i or -j.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(strErrorMsg);
+         freePermutationTables();
          fclose(fp);
          return false;
       };
@@ -351,6 +371,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       vector<char> vBuf(tSectionSize);
       if (fread(vBuf.data(), 1, tSectionSize, fp) != tSectionSize)
       {
+         freePermutationTables();   // permutation tables are already fully built by this point
          fclose(fp);
          logout(" Error - failed to read variant array from .idx file; file may be truncated or corrupt.\n");
          return false;
@@ -456,17 +477,33 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 // error, exactly as before, rather than surfacing later as a silent per-candidate
 // skip in MaterializeOneEntry()), is repeated there since that function needs to
 // produce an explicit pcVarModSites, not just a count.
+// g_staticParams.variableModParameters is read-only for the lifetime of a search (see
+// CLAUDE.md's Key Globals table), so this only ever needs to be computed once. Computed via
+// a function-local static under C++11's thread-safe "magic statics" guarantee, since
+// MaterializeOneEntry() (called through this function) runs concurrently across PI_DB's
+// search threads.
+const vector<int>& CometPeptideIndex::GetVModSlotForAllModsIdx()
+{
+   static const vector<int> vModSlotForAllModsIdx = []
+   {
+      vector<int> v;
+      for (int i = 0; i < FRAGINDEX_VMODS; ++i)
+      {
+         if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
+         {
+            v.push_back(i);
+         }
+      }
+      return v;
+   }();
+   return vModSlotForAllModsIdx;
+}
+
+
 bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants)
 {
-   vector<int> vModSlotForAllModsIdx;
-   for (int i = 0; i < FRAGINDEX_VMODS; ++i)
-   {
-      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-         && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
-      {
-         vModSlotForAllModsIdx.push_back(i);
-      }
-   }
+   const vector<int>& vModSlotForAllModsIdx = GetVModSlotForAllModsIdx();
 
    bool bModSitesOverflow = false;
 
@@ -673,28 +710,18 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
 bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
    char cCtermMod, DBIndex& out)
 {
-   // vModSlotForAllModsIdx only depends on g_staticParams.variableModParameters, which is
-   // read-only for the lifetime of a search (see CLAUDE.md's Key Globals table) -- rebuilding
-   // it from scratch on every call was wasted work in what's otherwise the PI_DB search hot
-   // path (this function runs once per mass-window candidate surviving
-   // CometSearch::SearchPeptideIndex()'s binary search, across every search thread). Computed
-   // once via a function-local static initialized under C++11's thread-safe "magic statics"
-   // guarantee -- this function is called concurrently from PI_DB's search threads, so a plain
-   // non-static local-turned-cache would need its own explicit synchronization; a static local
-   // doesn't.
-   static const vector<int> vModSlotForAllModsIdx = []
-   {
-      vector<int> v;
-      for (int i = 0; i < FRAGINDEX_VMODS; ++i)
-      {
-         if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-            && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
-         {
-            v.push_back(i);
-         }
-      }
-      return v;
-   }();
+   const vector<int>& vModSlotForAllModsIdx = GetVModSlotForAllModsIdx();
+
+   // iWhichPeptide, like modNumIdx below, comes directly from an on-disk FragmentPeptidesStruct
+   // record read straight off disk by CometSearch::SearchPeptideIndex() -- untrusted for a
+   // corrupt/truncated .idx, same as the modNumIdx/modSeqIdx checks below. Checked explicitly
+   // here (rather than relying on g_vRawPeptides.at()'s bounds-checked exception) so a bad
+   // value fails this one candidate cleanly instead of risking an uncaught exception mid-search;
+   // ulSizevRawPeptides == g_vRawPeptides.size() is already guaranteed by ReadPeptideIndex()'s
+   // own load-time check, so this same bound also covers PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide]
+   // below, which -- unlike g_vRawPeptides -- is a raw array with no bounds-checked accessor.
+   if (iWhichPeptide >= g_vRawPeptides.size())
+      return false;
 
    const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
    const int iLen = (int)strlen(raw.szPeptide);

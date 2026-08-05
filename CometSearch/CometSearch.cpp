@@ -1937,6 +1937,16 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       if (variant.dPepMass < g_massRange.dMinMass || variant.dPepMass > g_massRange.dMaxMass)
          continue;
 
+      // variant.iWhichPeptide comes straight off disk (g_vDBIndexVariants is read unfiltered
+      // by ReadPeptideIndex()) -- a corrupt/truncated .idx could put an out-of-range value
+      // here. Checked explicitly rather than relying on g_vRawPeptides.at()'s bounds-checked
+      // exception, since an uncaught exception from this per-candidate hot-path loop (reached
+      // directly from the RTS thread-local path with no generic try/catch around it) would
+      // crash the search instead of just skipping this one candidate, consistent with
+      // MaterializeOneEntry()'s own handling of the same untrusted field.
+      if (variant.iWhichPeptide >= g_vRawPeptides.size())
+         continue;
+
       int iRawLen = (int)strlen(g_vRawPeptides.at(variant.iWhichPeptide).szPeptide);
       if (iRawLen < g_staticParams.options.peptideLengthRange.iStart
          || iRawLen > g_staticParams.options.peptideLengthRange.iEnd)

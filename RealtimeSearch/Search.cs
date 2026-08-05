@@ -79,7 +79,16 @@
 
                int iTime = 0;
 
-               SearchMgr.InitializeSingleSpectrumSearch();
+               if (!SearchMgr.InitializeSingleSpectrumSearch())
+               {
+                  // See SearchMS1MS2.cs's identical check: this return value used to be
+                  // silently discarded, so a corrupt/truncated .idx (error already logged
+                  // native-side) fell through into per-spectrum search with no index loaded.
+                  string strStatusMsg = "";
+                  SearchMgr.GetStatusMessage(ref strStatusMsg);
+                  Console.WriteLine(" Error initializing search index: " + strStatusMsg);
+                  System.Environment.Exit(1);
+               }
 
                for (int iScanNumber = iFirstScan; iScanNumber <= iLastScan; ++iScanNumber)
                {

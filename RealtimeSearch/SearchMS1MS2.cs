@@ -225,7 +225,21 @@ namespace RealTimeSearch
 
                      watchIndexCreate.Start();
                      if (bDatabaseSearch && bPerformMS2Search)
-                        globalSearchMgr.InitializeSingleSpectrumSearch();
+                     {
+                        if (!globalSearchMgr.InitializeSingleSpectrumSearch())
+                        {
+                           // A corrupt/truncated .idx (or a missing underlying FASTA for auto-build)
+                           // makes this return false with the specific error already logged on the
+                           // native side (CometSearchManager::InitializeSingleSpectrumSearch()) --
+                           // this return value used to be silently discarded here, so a load failure
+                           // fell through into per-spectrum search with no index loaded instead of
+                           // aborting.
+                           string strStatusMsg = "";
+                           globalSearchMgr.GetStatusMessage(ref strStatusMsg);
+                           Console.WriteLine(" Error initializing search index: " + strStatusMsg);
+                           System.Environment.Exit(1);
+                        }
+                     }
                      watchIndexCreate.Stop();
 
                      Console.WriteLine();
