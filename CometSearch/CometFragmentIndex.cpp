@@ -72,8 +72,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    // it already did against the pre-unification plain-index format -- no PermuteIndexPeptideMods()
    // call needed here, before or after this unification. g_vDBIndexVariants also gets
    // populated but is unused in this FI_DB path (PI_DB-only).
-   if (!g_bPlainPeptideIndexRead)
-      CometPeptideIndex::ReadPeptideIndex(bIsRTS);
+   if (!g_bPlainPeptideIndexRead && !CometPeptideIndex::ReadPeptideIndex(bIsRTS))
+      return false;   // ReadPeptideIndex() already reported the specific error
 
    // vFragmentPeptides is vector of modified peptides
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)

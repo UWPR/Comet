@@ -239,8 +239,14 @@ bool CometSearch::RunSearch(int iPercentStart,
 
       if (!g_bPlainPeptideIndexRead)
       {
-         CometPeptideIndex::ReadPeptideIndex(false);   // batch path
-         sqFI.CreateFragmentIndex(tp, false);
+         if (!CometPeptideIndex::ReadPeptideIndex(false)   // batch path
+            || !sqFI.CreateFragmentIndex(tp, false))
+         {
+            string strErrorMsg = " Error - failed to load/build fragment index for batch search.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
 
       ThreadPool* pSearchThreadPool = tp;

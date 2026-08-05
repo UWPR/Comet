@@ -2275,8 +2275,20 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
       if (g_staticParams.iDbType == DbType::FI_DB && !g_bPlainPeptideIndexRead)
       {
-         CometPeptideIndex::ReadPeptideIndex(true);   // RTS: InitializeSingleSpectrumSearch()
-         sqSearch.CreateFragmentIndex(tp, true);
+         if (!CometPeptideIndex::ReadPeptideIndex(true))   // RTS: InitializeSingleSpectrumSearch()
+         {
+            string strErrorMsg = " Error - failed to read fragment index in InitializeSingleSpectrumSearch().\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+         if (!sqSearch.CreateFragmentIndex(tp, true))
+         {
+            string strErrorMsg = " Error - failed to build in-memory fragment index in InitializeSingleSpectrumSearch().\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
 
          if (g_staticParams.options.iPrintAScoreProScore)
          {
