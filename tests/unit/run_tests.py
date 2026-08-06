@@ -1925,6 +1925,209 @@ def test_t24_index_parity(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T25 -- FI_DB variable-mod compacted-slot-index regression
+# ---------------------------------------------------------------------------
+#
+# CometFragmentIndex.cpp's AddFragments() (precursor-mass and fragment-ion-mass loops) and
+# AddFragmentsThreadProc() (protein-variable-mod-filter check) all read
+# MOD_NUMBERS[modNumIdx].modifications[] (aliased locally as "mods") and, until this fix, used
+# its values directly as raw varModList indices. Those values are actually 0-based indices into
+# a COMPACTED active-variable-mod-slot list (CometPeptideIndex::GetVModSlotForAllModsIdx()) --
+# they only coincide with the real varModList slot when every active variable_modNN among the
+# first FRAGINDEX_VMODS is contiguous starting at slot 0. A config with a gap (e.g.
+# variable_mod01 left unset while variable_mod02 carries the real modification) exposed this:
+# the precursor mass, the modified fragment-ion masses used for XCorr/SP scoring
+# (CometSearch.cpp's SearchFragmentIndex(), a separate, independent copy of the same
+# reconstruction logic), and the reported modification mass were all computed against the
+# wrong (unused, zero-mass) slot instead of the real one.
+#
+# This test deliberately configures the real mod in variable_mod02 (slot 1), leaving
+# variable_mod01 (slot 0) unused, so a regression here can't hide the way a slot-0 config
+# would (every mod in slot 0 trivially has compacted-index == real-slot-index == 0). Fixture:
+# ACDS[+79.966331]EFGHIK (10 residues, phospho-S at position 4, charge 2+), spectrum built from
+# monoisotopic residue masses independently in Python, not read back from Comet's own output.
+
+T25_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 0
+num_threads = 4
+peptide_mass_tolerance_upper = 20.0
+peptide_mass_tolerance_lower = -20.0
+peptide_mass_units = 2
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 0
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 0
+variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod02 = 79.966331 S 0 1 -1 0 0 0.0
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 1
+require_variable_mod = 0
+fragment_bin_tol = 0.02
+fragment_bin_offset = 0.0
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 1
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 2000.0
+peptide_length_range = 10 10
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = DECOY_
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 10
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+1.  Trypsin                1      KR          P
+2.  Trypsin/P              1      KR          -
+""")
+
+
+@register("t25_fi_mod_slot_gap")
+def test_t25_fi_mod_slot_gap(comet_exe):
+    """T25: FI_DB gap variable-mod-slot regression -- mod in variable_mod02 (slot 1),
+    variable_mod01 (slot 0) left unused; must not silently resolve to the wrong slot."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fi_mod_slot_gap.fasta"
+    ms2   = DATA_DIR / "t25_fi_mod_slot_gap.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created (peptide not found -- the old bug corrupted "
+                             f"the precursor mass for this gap config). Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDSEFGHIK",
+              f"plain_peptide: expected ACDSEFGHIK, got {row.get('plain_peptide')!r}", failures)
+        # The old bug resolved the compacted index (0) directly, pointing at the unused
+        # variable_mod01 slot (mass 0.0) instead of the real variable_mod02 slot (79.966331).
+        check("4_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected to contain 4_V_79.966331 (the real variable_mod02 "
+              f"mass, not the unused gap slot's 0.0), got {row.get('modifications')!r}",
+              failures)
+        check(int(row.get("ions_matched", "0")) == 14,
+              f"ions_matched: expected all 14 fragment ions matched, got "
+              f"{row.get('ions_matched')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
