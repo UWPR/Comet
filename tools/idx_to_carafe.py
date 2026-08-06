@@ -14,6 +14,28 @@ own AlphaBase-name convention: "<UniModTitle>@<Site>" / 1-based residue position
 len+1 = C-term), semicolon-separated, matching AIGear.load_mod_map()'s output and
 get_modified_peptide()'s "pos - 1" indexing (both in Carafe's AIGear.java).
 
+Alongside out_tsv, this script also writes a **variant map** TSV (default: out_tsv with
+".variants" inserted before the extension; override with --variant-map) with columns
+row_index/iWhichPeptide/modNumIdx/cNtermMod/cCtermMod. row_index is the 0-based index of the
+data row in out_tsv (matching the row order Carafe's ai_pred.py preserves in its own
+<prefix>_ms2_df.tsv/_ms2_pred.tsv output, via frag_start_idx/frag_stop_idx slicing). Each
+(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) is exactly one FI variant's identity tuple --
+the same fields CometFragmentIndex.cpp's FragmentPeptidesStruct carries, and the ONLY safe key
+for a predicted-fragment mask: the FI regenerates its own variant list independently of this
+.idx's on-disk compact variant array on every build (a different code path, CometFragmentIndex
+.cpp's AddFragmentsThreadProc() vs. CometPeptideIndex.cpp's EnumerateIndexPeptideMods()) and
+re-sorts by mass, so a variant's *position* here is NOT guaranteed to match its position at FI
+build time -- confirmed empirically to differ almost completely (docs/20260805_carafe.md
+Section 6.1: 250/250 tuples matched as a set, but only 2/250 positions coincided). Because
+--no-dedup is off by default, multiple source tuples can collapse onto one out_tsv row (same
+peptide/mods/mod_sites reached via different proteins or mod-permutation paths) -- the variant
+map is a long/repeated-row_index table (one line per (row_index, tuple) pair) precisely so a
+mask builder can fan one Carafe prediction back out to every tuple that shares it, without
+needing a second join key. Multiple charges of the same peptide are separate out_tsv rows
+(dedup key includes charge) that legitimately repeat the same tuple list -- expected, not a
+bug; see docs/20260805_carafe.md Section 8 item 1 for why the mask builder needs per-charge
+predictions of the same variant in the first place.
+
 The .idx binary format has no C++/Java API of its own -- this script is a from-scratch
 reimplementation of CometPeptideIndex::ReadPeptideIndex() / MaterializeOneEntry() (see
 CometSearch/CometPeptideIndex.cpp) in Python, decoding the same four sections (raw peptide
@@ -496,6 +518,13 @@ def is_decoy(protein_names, decoy_prefixes):
 # main
 # ---------------------------------------------------------------------------
 
+def default_variant_map_path(out_tsv):
+    """<out_tsv> with '.variants' inserted before the extension, e.g.
+    'carafe_peptides.tsv' -> 'carafe_peptides.variants.tsv'."""
+    root, ext = os.path.splitext(out_tsv)
+    return f"{root}.variants{ext or '.tsv'}"
+
+
 def find_default_carafe_tsv():
     candidates = [
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Carafe",
@@ -515,6 +544,12 @@ def main():
         epilog=__doc__)
     ap.add_argument("idx_file", help="Comet unified .idx file (PI_DB or FI_DB)")
     ap.add_argument("out_tsv", help="Output TSV path (sequence/mods/mod_sites/charge)")
+    ap.add_argument("--variant-map", default=None,
+                     help="Output path for the row_index -> (iWhichPeptide, modNumIdx, "
+                          "cNtermMod, cCtermMod) mapping TSV (default: out_tsv with "
+                          "'.variants' inserted before the extension). See module docstring "
+                          "for why this file, not row position in out_tsv itself, is the mask "
+                          "builder's only safe key back to a specific FI variant.")
     ap.add_argument("--charges", default="2,3",
                      help="Comma-separated charge states to emit per peptide (default: 2,3)")
     ap.add_argument("--carafe-mods-tsv", default=None,
@@ -534,8 +569,10 @@ def main():
                           "that doesn't match Carafe's mod table, instead of skipping that peptide")
     ap.add_argument("--max-peptides", type=int, default=None, help="Stop after N output rows (debugging)")
     ap.add_argument("--no-dedup", action="store_true",
-                     help="Don't collapse identical (sequence, mods, mod_sites) rows arising from "
-                          "different proteins/mod-combinations that produce the same peptide")
+                     help="Don't collapse identical (sequence, mods, mod_sites, charge) rows "
+                          "arising from different proteins/mod-combinations that produce the "
+                          "same peptide -- the variant map (see --variant-map) still records "
+                          "every source tuple's provenance either way")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -565,14 +602,20 @@ def main():
     mod_seq_start, mod_seq_cnt, peptide_mod_seq_idxs, mod_seqs, mod_numbers = \
         reader.read_permutation_tables()
 
+    variant_map_path = args.variant_map or default_variant_map_path(args.out_tsv)
+
     n_written = 0
+    n_variant_map_rows = 0
     n_skipped_decoy = 0
     n_skipped_unresolved = 0
     n_mass_mismatch = 0
-    seen = set()
+    seen = {}   # (sequence, mods, mod_sites, charge) -> row_index of the out_tsv row already
+                # written for this key, so later tuples that collapse onto it (dedup) still get
+                # their provenance recorded in the variant map without writing a duplicate row.
 
-    with open(args.out_tsv, "wb") as out:
+    with open(args.out_tsv, "wb") as out, open(variant_map_path, "wb") as vmap:
         out.write(b"sequence\tmods\tmod_sites\tcharge\r\n")
+        vmap.write(b"row_index\tiWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\r\n")
 
         for variant in reader.iter_variants():
             dmass, which_peptide, mod_num_idx, cn_term_mod, cc_term_mod = variant
@@ -624,18 +667,28 @@ def main():
 
             for charge in charges:
                 key = (raw.seq, mods_str, mod_sites_str, charge)
-                if not args.no_dedup:
-                    if key in seen:
-                        continue
-                    seen.add(key)
+                row_index = seen.get(key) if not args.no_dedup else None
 
-                out.write(f"{raw.seq}\t{mods_str}\t{mod_sites_str}\t{charge}\r\n".encode("ascii"))
-                n_written += 1
+                if row_index is None:
+                    row_index = n_written
+                    if not args.no_dedup:
+                        seen[key] = row_index
+                    out.write(f"{raw.seq}\t{mods_str}\t{mod_sites_str}\t{charge}\r\n".encode("ascii"))
+                    n_written += 1
+                # else: this (sequence, mods, mod_sites, charge) already has an out_tsv row from
+                # an earlier variant (dedup) -- no new row, but this tuple's provenance still
+                # needs recording below against that row's index.
+
+                vmap.write(f"{row_index}\t{which_peptide}\t{mod_num_idx}\t"
+                           f"{cn_term_mod}\t{cc_term_mod}\r\n".encode("ascii"))
+                n_variant_map_rows += 1
 
             if args.max_peptides is not None and n_written >= args.max_peptides:
                 break
 
     print(f"Wrote {n_written} rows to {args.out_tsv}", file=sys.stderr)
+    print(f"Wrote {n_variant_map_rows} row->variant provenance entries to {variant_map_path}",
+          file=sys.stderr)
     if n_skipped_decoy:
         print(f"Skipped {n_skipped_decoy} decoy-only peptide variant(s)", file=sys.stderr)
     if n_skipped_unresolved:
