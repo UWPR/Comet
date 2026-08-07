@@ -1617,9 +1617,10 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             {
                if (szPeptide[k] == modSeq[j])
                {
-                  if (mods[j] != -1)
+                  int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+                  if (iSlot >= 0)
                   {
-                     piVarModSites[k] = 1 + vModSlotForAllModsIdx[(size_t)mods[j]];
+                     piVarModSites[k] = 1 + iSlot;
                   }
                   j++;
                }

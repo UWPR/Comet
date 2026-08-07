@@ -1947,102 +1947,21 @@ def test_t24_index_parity(comet_exe):
 # ACDS[+79.966331]EFGHIK (10 residues, phospho-S at position 4, charge 2+), spectrum built from
 # monoisotopic residue masses independently in Python, not read back from Comet's own output.
 
-T25_PARAMS_TEMPLATE = textwrap.dedent("""\
-# comet_version {comet_version}
-database_name = {database}
-decoy_search = 0
-num_threads = 4
-peptide_mass_tolerance_upper = 20.0
-peptide_mass_tolerance_lower = -20.0
-peptide_mass_units = 2
-precursor_tolerance_type = 1
-isotope_error = 0
-search_enzyme_number = 0
-search_enzyme2_number = 0
-sample_enzyme_number = 0
-num_enzyme_termini = 2
-allowed_missed_cleavage = 0
-variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
-variable_mod02 = 79.966331 S 0 1 -1 0 0 0.0
-variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
-variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
-variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
-max_variable_mods_in_peptide = 1
-require_variable_mod = 0
-fragment_bin_tol = 0.02
-fragment_bin_offset = 0.0
-theoretical_fragment_ions = 0
-use_A_ions = 0
-use_B_ions = 1
-use_C_ions = 0
-use_X_ions = 0
-use_Y_ions = 1
-use_Z_ions = 0
-use_Z1_ions = 0
-use_NL_ions = 0
-output_sqtfile = 0
-output_txtfile = 1
-output_pepxmlfile = 0
-output_mzidentmlfile = 0
-output_percolatorfile = 0
-num_output_lines = 1
-scan_range = 0 0
-precursor_charge = 0 0
-override_charge = 0
-ms_level = 2
-activation_method = ALL
-digest_mass_range = 200.0 2000.0
-peptide_length_range = 10 10
-max_duplicate_proteins = -1
-max_fragment_charge = 3
-min_precursor_charge = 1
-max_precursor_charge = 6
-clip_nterm_methionine = 0
-spectrum_batch_size = 15000
-decoy_prefix = DECOY_
-equal_I_and_L = 0
-mass_offsets =
-minimum_peaks = 10
-minimum_intensity = 0
-remove_precursor_peak = 0
-remove_precursor_tolerance = 1.5
-clear_mz_range = 0.0 0.0
-percentage_base_peak = 0.0
-add_Cterm_peptide = 0.0
-add_Nterm_peptide = 0.0
-add_Cterm_protein = 0.0
-add_Nterm_protein = 0.0
-add_G_glycine = 0.0
-add_A_alanine = 0.0
-add_S_serine = 0.0
-add_P_proline = 0.0
-add_V_valine = 0.0
-add_T_threonine = 0.0
-add_C_cysteine = 0.0
-add_L_leucine = 0.0
-add_I_isoleucine = 0.0
-add_N_asparagine = 0.0
-add_D_aspartic_acid = 0.0
-add_Q_glutamine = 0.0
-add_K_lysine = 0.0
-add_E_glutamic_acid = 0.0
-add_M_methionine = 0.0
-add_H_histidine = 0.0
-add_F_phenylalanine = 0.0
-add_U_selenocysteine = 0.0
-add_R_arginine = 0.0
-add_Y_tyrosine = 0.0
-add_W_tryptophan = 0.0
-add_O_pyrrolysine = 0.0
-add_B_user_amino_acid = 0.0
-add_J_user_amino_acid = 0.0
-add_X_user_amino_acid = 0.0
-add_Z_user_amino_acid = 0.0
-[COMET_ENZYME_INFO]
-0.  Cut_everywhere         0      -           -
-1.  Trypsin                1      KR          P
-2.  Trypsin/P              1      KR          -
-""")
+# T25 reuses T19_PARAMS_TEMPLATE (byte-identical schema otherwise) instead of maintaining a
+# second ~95-line near-copy of it -- a code review of this branch flagged the duplicate as a
+# maintenance risk (any future change to the shared params schema, e.g. a new required key or
+# an enzyme table update, would need to be hand-applied to both). Three targeted differences
+# from T19's template: no print_ascorepro_score line (T25 doesn't exercise AScorePro), the gap
+# variable-mod config itself (T19's {mod1}/{ascorepro} placeholders aren't used here -- T25's
+# mod config is fixed: variable_mod01 unused, real mod in variable_mod02), and a longer
+# peptide_length_range (10 vs T19's 8) to fit the 10-residue ACDSEFxHIK-style test peptides.
+T25_PARAMS_TEMPLATE = (
+   T19_PARAMS_TEMPLATE
+   .replace("print_ascorepro_score = {ascorepro}\n", "")
+   .replace("variable_mod01 = {mod1}\nvariable_mod02 = 0.0 X 0 3 -1 0 0 0.0",
+            "variable_mod01 = 0.0 X 0 3 -1 0 0 0.0\nvariable_mod02 = 79.966331 S 0 1 -1 0 0 0.0")
+   .replace("peptide_length_range = 8 8", "peptide_length_range = 10 10")
+)
 
 
 @register("t25_fi_mod_slot_gap")
