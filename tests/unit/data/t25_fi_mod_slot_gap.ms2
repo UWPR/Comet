@@ -1,0 +1,25 @@
+H	CreationDate	synthetic
+H	Comment	FI_DB gap variable-mod-slot regression fixture: ACDS[+79.966331]EFGHIK, charge 2+
+H	Comment	Variable-mod GAP config on purpose: the real mod is configured in variable_mod02
+H	Comment	(slot 1), leaving variable_mod01 (slot 0) unused. Regression-tests
+H	Comment	CometFragmentIndex.cpp's AddFragments()/AddFragmentsThreadProc() correctly
+H	Comment	translating MOD_NUMBERS[].modifications[]'s compacted slot indices through
+H	Comment	CometPeptideIndex::GetVModSlotForAllModsIdx() before use as a varModList index.
+H	Comment	14 b/y ions, precomputed from monoisotopic residue masses. Phospho on S at
+H	Comment	position 4 (1-based).
+S	1	1	593.733554
+Z	2	1186.459832
+290.080516	100.0
+397.255771	100.0
+454.277231	100.0
+457.078877	100.0
+586.121467	100.0
+601.345641	100.0
+730.388231	100.0
+733.189877	100.0
+790.211337	100.0
+897.386592	100.0
+927.270247	100.0
+1012.413532	100.0
+1040.354307	100.0
+1115.422722	100.0

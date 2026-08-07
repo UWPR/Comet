@@ -88,6 +88,30 @@ public:
    // could silently violate.
    static const vector<int>& GetVModSlotForAllModsIdx();
 
+   // Translates a single compacted variable-mod-slot index (as read from
+   // MOD_NUMBERS[...].modifications[]) into the real varModList[] slot it refers to, via
+   // GetVModSlotForAllModsIdx()'s translation table above. Returns -1, uniformly, for both
+   // legitimate cases callers must treat as "no real slot here": compactedIdx == -1 (the
+   // ordinary "not modified at this candidate position in this combination" sentinel) and
+   // compactedIdx out of range for vModSlotForAllModsIdx (only reachable via a corrupt/
+   // mismatched on-disk .idx, or the compaction order here and in
+   // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop falling out of
+   // sync -- a logic bug, not user input). A prior version of this codebase had five near-
+   // identical copies of this translate-or-skip logic hand-copied across CometPeptideIndex.cpp
+   // and CometFragmentIndex.cpp/CometSearch.cpp, each with a different guard/bounds-checking
+   // policy (guarded+.at(), guarded+unchecked[], unguarded+unchecked[]) -- that inconsistency
+   // is exactly how one copy shipped with its -1 guard missing entirely. Single shared,
+   // exception-free implementation now used everywhere instead.
+   static int TranslateVarModSlot(const vector<int>& vModSlotForAllModsIdx, int compactedIdx);
+
+   // Returns true if every candidate position actually modified in this combination (i.e.
+   // mods[i] != -1, for i in [0, modStringLen)) translates to a slot allowed by
+   // siVarModProteinFilter's bitmask -- the protein-level variable-mod restriction feature.
+   // Shared by PI_DB's EnumerateIndexPeptideMods() and FI_DB's AddFragmentsThreadProc(), which
+   // previously carried two independently-maintained copies of this exact check.
+   static bool PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
+      const char* mods, int modStringLen, unsigned short siVarModProteinFilter);
+
 };
 
 #endif // _COMETPEPTIDEINDEX_H_
