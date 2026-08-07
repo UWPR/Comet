@@ -621,13 +621,22 @@ if (!(iWhichPeptide%1000))
             // (e.g. variable_mod01 unused, variable_mod02 set), the equivalent bug (using the
             // compacted index directly rather than the real slot) applied the wrong mod's
             // mass instead of crashing.
-            dBion += g_staticParams.variableModParameters.varModList[vModSlotForAllModsIdx[(size_t)mods[j]]].dVarModMass;
+            //
+            // Bugfix: mods[j] == -1 is the normal case for a modifiable candidate residue
+            // that isn't modified in this particular combination (CometModificationsPermuter::
+            // combine() leaves it at its initialized -1) -- e.g. any peptide with more
+            // modifiable sites than max_variable_mods_in_peptide allows. Casting -1 to size_t
+            // and indexing vModSlotForAllModsIdx with it read far outside the vector's buffer.
+            // Mirror the guard the precursor-mass loop above already uses.
+            if (mods[j] != -1)
+               dBion += g_staticParams.variableModParameters.varModList[vModSlotForAllModsIdx[(size_t)mods[j]]].dVarModMass;
             j++;
          }
 
          if (sPeptide[iPosReverse] == modSeq[k])
          {
-            dYion += g_staticParams.variableModParameters.varModList[vModSlotForAllModsIdx[(size_t)mods[k]]].dVarModMass;  // see bugfix note above
+            if (mods[k] != -1)  // see bugfix note above
+               dYion += g_staticParams.variableModParameters.varModList[vModSlotForAllModsIdx[(size_t)mods[k]]].dVarModMass;
             k--;
          }
       }

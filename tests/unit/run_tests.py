@@ -2127,6 +2127,96 @@ def test_t25_fi_mod_slot_gap(comet_exe):
     return failures
 
 
+@register("t25_fi_mod_slot_ambig")
+def test_t25_fi_mod_slot_ambig(comet_exe):
+    """T25: FI_DB gap variable-mod-slot regression with a genuinely AMBIGUOUS second
+    modifiable site (peptide has 2 candidate S residues, max_variable_mods_in_peptide=1).
+    Unlike t25_fi_mod_slot_gap (only 1 modifiable residue -- MOD_NUMBERS[].modifications[]
+    is never -1 there), this fixture forces AddFragments() to enumerate a combination
+    where the OTHER candidate site's compacted mod index is the -1 "not modified in this
+    combination" sentinel while translating a fragment mass through
+    vModSlotForAllModsIdx -- the specific unguarded array access that crashed/corrupted
+    memory before the fix. Regresses cleanly if the build+search complete and localize the
+    real mod to S4 (not S7)."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fi_mod_slot_ambig.fasta"
+    ms2   = DATA_DIR / "t25_fi_mod_slot_ambig.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}) -- the unguarded "
+                             f"vModSlotForAllModsIdx[(size_t)mods[j]] access on a -1 "
+                             f"sentinel likely crashed or hung the build:\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created (peptide not found). Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDSEFSHIK",
+              f"plain_peptide: expected ACDSEFSHIK, got {row.get('plain_peptide')!r}", failures)
+        check("4_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected phospho localized to position 4 (4_V_79.966331), "
+              f"got {row.get('modifications')!r}", failures)
+        check("7_V_79.966331" not in row.get("modifications", ""),
+              f"modifications: unexpectedly localized to position 7 as well/instead, "
+              f"got {row.get('modifications')!r}", failures)
+        check(int(row.get("ions_matched", "0")) == 14,
+              f"ions_matched: expected all 14 fragment ions matched, got "
+              f"{row.get('ions_matched')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------

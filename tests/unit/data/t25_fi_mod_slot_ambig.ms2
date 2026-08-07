@@ -1,0 +1,27 @@
+H	CreationDate	synthetic
+H	Comment	FI_DB gap variable-mod-slot AMBIGUOUS-site regression fixture: peptide has TWO
+H	Comment	modifiable S residues (position 4 and position 7) but max_variable_mods_in_peptide=1,
+H	Comment	so index build enumerates both the "S4 modified / S7 unmodified" and "S4 unmodified /
+H	Comment	S7 modified" combinations. For whichever candidate site is NOT modified in a given
+H	Comment	combination, MOD_NUMBERS[].modifications[] is -1 for that site -- this fixture
+H	Comment	specifically regression-tests AddFragments()'s b/y-ion mass loop guarding that -1
+H	Comment	before translating it through vModSlotForAllModsIdx (the unguarded lookup previously
+H	Comment	read far out of the compacted-slot vector's bounds). Spectrum is ACDS[+79.966331]EFSHIK,
+H	Comment	charge 2+, phospho localized to S4 (S7 unmodified). 14 b/y ions (b3-b9, y3-y9),
+H	Comment	precomputed from monoisotopic residue masses, sorted ascending.
+S	1	1	608.738846
+Z	2	1216.470416
+290.080518	100.0
+397.255780	100.0
+457.078877	100.0
+484.287808	100.0
+586.121470	100.0
+631.356222	100.0
+733.189884	100.0
+760.398815	100.0
+820.221912	100.0
+927.397174	100.0
+957.280824	100.0
+1042.424117	100.0
+1070.364888	100.0
+1145.433302	100.0
