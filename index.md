@@ -2,8 +2,8 @@
 
 <div id="sidebar">
   <h2>News</h2>
+  <h3>2026/86/10: <a href="/Comet/releases/release_202602.html">Release 2026.02 rev. 2</a> is now available.</h3>
   <h3>2026/07/29: <a href="/Comet/releases/release_202602.html">Release 2026.02 rev. 1</a> is now available.</h3>
-  <h3>2026/06/10: <a href="/Comet/releases/release_202602.html">Release 2026.02 rev. 0</a> is now available.</h3>
   <h3>2021/09/17: The Comet repository has migrated to GitHub from <a href="https://sourceforge.net/projects/comet-ms/">SourceForge</a>.</h3>
   <h2>Keep Updated</h2>
   <h3>Subscribe to <a href="http://groups.google.com/group/comet-ms">Comet's Google group</a> for announcements, issues, questions.</h3>

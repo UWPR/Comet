@@ -64,7 +64,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html)
 - [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html)
 
-
 #### Output
 
 - [output_mzidentmlfile](output_mzidentmlfile.html)
@@ -96,6 +95,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [equal_I_and_L](equal_I_and_L.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
+- [index_search_type](index_search_type.html) <font color="red">\*\*</font> (v2026.02.2)
 - [mango_search](mango_search.html)
 - [mass_offsets](mass_offsets.html)
 - [max_duplicate_proteins](max_duplicate_proteins.html)
