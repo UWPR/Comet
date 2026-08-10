@@ -5,6 +5,74 @@ here](/Comet/parameters/parameters_202602/).
 
 Download release [here](https://github.com/UWPR/Comet/releases).
 
+#### release 2026.02 rev. 2 (2026.02.2), release date 2026/08/10
+
+## What's Changed
+
+This release fixes a bug in fragment-ion-index (FI) variable-modification handling that could silently mis-score modified peptides, and unifies the on-disk index format across both index search modes with a substantial reduction in peptide-index (PI) memory usage.
+
+## Bug Fixes
+
+**Fragment-ion-index modification scoring:**
+
+- Fixed FI (`AddFragments()`, `AddFragmentsThreadProc()`) using a compacted internal variable-mod-slot index directly as a raw `variable_modNN` slot index. The two only coincide when a peptide's active modifications happen to be contiguous starting at `variable_mod01` — any other combination (e.g. a lower-numbered `variable_modNN` left unused, or simply a peptide carrying more than one modification type at once) silently computed the precursor mass and modified fragment-ion masses against the wrong modification. A fourth, independent copy of the same bug existed in `CometSearch.cpp`'s `SearchFragmentIndex()`, the per-query FI scoring function — affecting every FI search with more than a trivial single-slot modification config, not just gap configs.
+  - **Both XCorr and SP were corrupted for affected hits, confirmed by tracing the actual data flow**: `SearchFragmentIndex()` builds `piVarModSites[]` (using the buggy translation) and passes it directly into `XcorrScoreI()` for XCorr in the same call; when a hit becomes the new top score, that same array is copied verbatim into the stored result, which `CometPostAnalysis::CalculateSP()` later reads as-is for SP — one bad array, propagated into both scores, not two independent bugs.
+  - **Scope: FI only.** PI (`CometPeptideIndex::MaterializeOneEntry()`/`EnumerateIndexPeptideMods()`) already performed the correct compacted-to-real-slot translation before this fix — confirmed by diff, this release only refactors that already-correct PI logic into shared helpers, with no behavior change. Plain, non-indexed search never uses the compacted-slot representation at all — it assigns real `variable_modNN` indices directly during on-the-fly digestion, so this bug class was structurally impossible there. **PI and non-indexed scoring were unaffected throughout.**
+  - Real-world impact, measured against the v2026.02.1 release binary on a human phosphoproteomics FI search (Met-oxidation + STY-phosphorylation, 54,445 spectra, MM2_R1.raw): **+4.6% more PSMs at 1% FDR by xcorr** (16,009 → 16,745) and **+4.0% by E-value** (16,238 → 16,891), concentrated almost entirely in multiply-modified peptides — exactly the population most exposed to this bug.
+- Fixed an accompanying out-of-bounds read: the fragment-ion b/y-ion mass loop indexed the mod-slot translation table with `-1` (the ordinary "not modified in this particular combination" sentinel) for peptides with more modifiable sites than `max_variable_mods_in_peptide` allows — confirmed as a real heap-buffer-overflow under AddressSanitizer.
+- New regression test (`t25_fi_mod_slot_gap`) added to `tests/unit/run_tests.py`, deliberately configured with a non-contiguous modification slot so this class of bug can't hide behind an all-slot-0 test config again.
+
+
+Bug fix analysis:  IMAC enriched sample, human canonical target-decoy, 16M, 80STY, 1% FDR cutoff by E-value
+
+|   # variable mods  | v2026.02.1 (prev) | v2026.02.2 (current) | Δ |
+|:---:|---:|---:|:---:|
+| 0 (unmodified) | 304 | 256 | −48 |
+| 1 | 13,123 | 13,397 | +274 |
+| 2 | 2,656 | 3,019 | +363 |
+| 3 | 153 | 210| +57 |
+| 4 | 2 | 9 |   +7 |
+| Total | 16,238 |  16,891 | +653 |
+
+Composition:
+
+| Phospho | Ox-Met | v2026.02.1 (prev) |  v2026.02.2 (current) |
+|:---:|:---:|---:|---:|
+|       0 |      0 |        304 |      256 |
+|       1 |      0 |     13,112 |   13,382 |
+|       2 |      0 |      1,889 |    2,093 |
+|       0 |      1 |         11 |       15 |
+|       1 |      1 |        765 |      924 |
+|       2 |      1 |        141 |      181 |
+|       0 |      2 |          2 |        2 |
+|       1 |      2 |         12 |       29 |
+|       2 |      2 |          2 |        9 |
+
+**Corrupt/truncated index-file hardening** (carried over from PR #121):
+
+- `ReadPeptideIndex()` now validates footer offsets and per-entry length fields against the file's actual size before trusting them for allocation or `memcpy` sizing, instead of risking a multi-GB allocation attempt or an out-of-bounds read on a truncated or corrupted `.idx` file.
+- Fixed 4 call sites (`CreateFragmentIndex()`, `RunSearch()`'s legacy batch overload, `FiStrategy::initialize()`, `InitializeSingleSpectrumSearch()`'s FI branch) that never checked `ReadPeptideIndex()`'s return value — a corrupt-file error previously printed a clean message and then the search proceeded anyway with an uninitialized index, segfaulting.
+- Hardened `MaterializeOneEntry()` and `SearchPeptideIndex()` against out-of-range indices from a corrupt `.idx`, failing the one affected candidate cleanly instead of risking an uncaught exception mid-search.
+
+## Performance Improvements
+
+- PI memory usage reduced ~1.6× by splitting the in-memory index into a shared raw-peptide table plus a compact 24-byte-per-variant array, materializing full peptide records on demand during search instead of pre-expanding every modified variant up front — mirroring the approach FI already used. Measured on a 125M-variant real-world index: RTS memory 10.48GB → 6.58GB, index build time 3m30s → 46s, build peak memory 22.8GB → 7.6GB.
+- `MaterializeOneEntry()`'s per-candidate modification-slot table is now built once per search (thread-safe one-time init) instead of being recomputed on every mass-window candidate in the search hot path.
+
+## Breaking Changes
+
+- PI and FI now share a single unified `.idx` file format and reader/writer (`-i`/`-j` are now synonyms at build time; which mode a *search* uses is selected explicitly via the new `index_search_type` parameter). **The on-disk format version changed — existing `.idx` files built with v2026.02.1 or earlier must be rebuilt.** Comet detects and rejects old-format files with a clear error rather than misreading them.
+
+## Tools and Build
+
+- `comet.exe -D<database>.idx -i`/`-j`-built index now correctly enforces the `digest_mass_range`/`peptide_length_range` set at search time (previously written to the `.idx` header but never read back, so a narrower search-time range had no effect on PI and only a coincidental effect on FI).
+- Migrated the ~21 hand-run functional test cases into `tests/unit/run_tests.py` (T21), and added automated RTS FI/PI single-spectrum regression coverage (T22) plus full-scale internal-decoy/target-decoy and FI/PI-vs-plain-FASTA parity checks against real data (T23/T24, opt-in via `--bigdata`).
+- T23/T24 now also compare every config against the v2025.03.0 release binary (auto-downloaded on first use) to catch cross-version regressions in both result counts and search/build timing.
+
+**Full Changelog**: https://github.com/UWPR/Comet/compare/v2026.02.1...v2026.02.2
+
+---
+
 #### release 2026.02 rev. 1 (2026.02.1), release date 2026/07/29
 
 **What's Changed**
