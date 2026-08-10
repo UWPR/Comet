@@ -202,7 +202,7 @@ def _diff_for_method(by: str, score_field: int, score_fmt,
             for (scan, charge) in sorted(entries):
                 psm = entries[(scan, charge)]
                 print(f"    scan {scan:6d}  z={charge}"
-                      f"  {by}={score_fmt(psm[score_field])}  {psm[_F_PEP][:55]}")
+                      f"  {by}={score_fmt(psm[score_field])}  {psm[_F_PEP]}")
         else:
             print(f"\n  No entries exclusively in [{tag}]")
 
