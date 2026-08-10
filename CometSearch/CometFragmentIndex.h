@@ -48,7 +48,8 @@ private:
                             int modNumIdx,
                             char cNtermMod,
                             char cCtermMod,
-                            bool bCountOnly);
+                            bool bCountOnly,
+                            const vector<int>& vModSlotForAllModsIdx);
    static void AddFragmentsThreadProc(bool bCountOnly,
                                       ThreadPool *tp);
 

@@ -1925,6 +1925,234 @@ def test_t24_index_parity(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T25 -- FI_DB variable-mod compacted-slot-index regression
+# ---------------------------------------------------------------------------
+#
+# CometFragmentIndex.cpp's AddFragments() (precursor-mass and fragment-ion-mass loops) and
+# AddFragmentsThreadProc() (protein-variable-mod-filter check) all read
+# MOD_NUMBERS[modNumIdx].modifications[] (aliased locally as "mods") and, until this fix, used
+# its values directly as raw varModList indices. Those values are actually 0-based indices into
+# a COMPACTED active-variable-mod-slot list (CometPeptideIndex::GetVModSlotForAllModsIdx()) --
+# they only coincide with the real varModList slot when every active variable_modNN among the
+# first FRAGINDEX_VMODS is contiguous starting at slot 0. A config with a gap (e.g.
+# variable_mod01 left unset while variable_mod02 carries the real modification) exposed this:
+# the precursor mass, the modified fragment-ion masses used for XCorr/SP scoring
+# (CometSearch.cpp's SearchFragmentIndex(), a separate, independent copy of the same
+# reconstruction logic), and the reported modification mass were all computed against the
+# wrong (unused, zero-mass) slot instead of the real one.
+#
+# This test deliberately configures the real mod in variable_mod02 (slot 1), leaving
+# variable_mod01 (slot 0) unused, so a regression here can't hide the way a slot-0 config
+# would (every mod in slot 0 trivially has compacted-index == real-slot-index == 0). Fixture:
+# ACDS[+79.966331]EFGHIK (10 residues, phospho-S at position 4, charge 2+), spectrum built from
+# monoisotopic residue masses independently in Python, not read back from Comet's own output.
+
+# T25 reuses T19_PARAMS_TEMPLATE (byte-identical schema otherwise) instead of maintaining a
+# second ~95-line near-copy of it -- a code review of this branch flagged the duplicate as a
+# maintenance risk (any future change to the shared params schema, e.g. a new required key or
+# an enzyme table update, would need to be hand-applied to both). Three targeted differences
+# from T19's template: no print_ascorepro_score line (T25 doesn't exercise AScorePro), the gap
+# variable-mod config itself (T19's {mod1}/{ascorepro} placeholders aren't used here -- T25's
+# mod config is fixed: variable_mod01 unused, real mod in variable_mod02), and a longer
+# peptide_length_range (10 vs T19's 8) to fit the 10-residue ACDSEFxHIK-style test peptides.
+T25_PARAMS_TEMPLATE = (
+   T19_PARAMS_TEMPLATE
+   .replace("print_ascorepro_score = {ascorepro}\n", "")
+   .replace("variable_mod01 = {mod1}\nvariable_mod02 = 0.0 X 0 3 -1 0 0 0.0",
+            "variable_mod01 = 0.0 X 0 3 -1 0 0 0.0\nvariable_mod02 = 79.966331 S 0 1 -1 0 0 0.0")
+   .replace("peptide_length_range = 8 8", "peptide_length_range = 10 10")
+)
+
+# Sanity-check the .replace() chain above actually fired -- if a future edit to
+# T19_PARAMS_TEMPLATE changes any of the three literal snippets being matched (whitespace,
+# reordering, a renamed key, ...), each .replace() silently becomes a no-op instead of raising,
+# and T25 would run against T19's unmodified/still-templated params instead of its intended gap
+# config. Fail loudly here rather than let that surface later as a confusing T25 assertion
+# failure (or, worse, a silent false pass).
+assert "{ascorepro}" not in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: print_ascorepro_score replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "{mod1}" not in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: variable_mod01/02 gap replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "variable_mod01 = 0.0 X 0 3 -1 0 0 0.0\nvariable_mod02 = 79.966331 S 0 1 -1 0 0 0.0" \
+    in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: variable_mod01/02 gap replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 10 10" in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+
+
+@register("t25_fi_mod_slot_gap")
+def test_t25_fi_mod_slot_gap(comet_exe):
+    """T25: FI_DB gap variable-mod-slot regression -- mod in variable_mod02 (slot 1),
+    variable_mod01 (slot 0) left unused; must not silently resolve to the wrong slot."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fi_mod_slot_gap.fasta"
+    ms2   = DATA_DIR / "t25_fi_mod_slot_gap.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created (peptide not found -- the old bug corrupted "
+                             f"the precursor mass for this gap config). Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDSEFGHIK",
+              f"plain_peptide: expected ACDSEFGHIK, got {row.get('plain_peptide')!r}", failures)
+        # The old bug resolved the compacted index (0) directly, pointing at the unused
+        # variable_mod01 slot (mass 0.0) instead of the real variable_mod02 slot (79.966331).
+        check("4_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected to contain 4_V_79.966331 (the real variable_mod02 "
+              f"mass, not the unused gap slot's 0.0), got {row.get('modifications')!r}",
+              failures)
+        check(int(row.get("ions_matched", "0")) == 14,
+              f"ions_matched: expected all 14 fragment ions matched, got "
+              f"{row.get('ions_matched')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+@register("t25_fi_mod_slot_ambig")
+def test_t25_fi_mod_slot_ambig(comet_exe):
+    """T25: FI_DB gap variable-mod-slot regression with a genuinely AMBIGUOUS second
+    modifiable site (peptide has 2 candidate S residues, max_variable_mods_in_peptide=1).
+    Unlike t25_fi_mod_slot_gap (only 1 modifiable residue -- MOD_NUMBERS[].modifications[]
+    is never -1 there), this fixture forces AddFragments() to enumerate a combination
+    where the OTHER candidate site's compacted mod index is the -1 "not modified in this
+    combination" sentinel while translating a fragment mass through
+    vModSlotForAllModsIdx -- the specific unguarded array access that crashed/corrupted
+    memory before the fix. Regresses cleanly if the build+search complete and localize the
+    real mod to S4 (not S7)."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fi_mod_slot_ambig.fasta"
+    ms2   = DATA_DIR / "t25_fi_mod_slot_ambig.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}) -- the unguarded "
+                             f"vModSlotForAllModsIdx[(size_t)mods[j]] access on a -1 "
+                             f"sentinel likely crashed or hung the build:\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    if txt.exists():
+        txt.unlink()
+
+    search_params = T25_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created (peptide not found). Comet output:\n{out}")
+            return failures
+
+        lines  = txt.read_text().splitlines()
+        rows   = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "ACDSEFSHIK",
+              f"plain_peptide: expected ACDSEFSHIK, got {row.get('plain_peptide')!r}", failures)
+        check("4_V_79.966331" in row.get("modifications", ""),
+              f"modifications: expected phospho localized to position 4 (4_V_79.966331), "
+              f"got {row.get('modifications')!r}", failures)
+        check("7_V_79.966331" not in row.get("modifications", ""),
+              f"modifications: unexpectedly localized to position 7 as well/instead, "
+              f"got {row.get('modifications')!r}", failures)
+        check(int(row.get("ions_matched", "0")) == 14,
+              f"ions_matched: expected all 14 fragment ions matched, got "
+              f"{row.get('ions_matched')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 

@@ -501,6 +501,27 @@ const vector<int>& CometPeptideIndex::GetVModSlotForAllModsIdx()
 }
 
 
+int CometPeptideIndex::TranslateVarModSlot(const vector<int>& vModSlotForAllModsIdx, int compactedIdx)
+{
+   if (compactedIdx < 0 || (size_t)compactedIdx >= vModSlotForAllModsIdx.size())
+      return -1;
+   return vModSlotForAllModsIdx[(size_t)compactedIdx];
+}
+
+
+bool CometPeptideIndex::PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
+   const char* mods, int modStringLen, unsigned short siVarModProteinFilter)
+{
+   for (int i = 0; i < modStringLen; ++i)
+   {
+      int iSlot = TranslateVarModSlot(vModSlotForAllModsIdx, mods[i]);
+      if (iSlot >= 0 && !cometbitcheck(siVarModProteinFilter, iSlot))
+         return false;
+   }
+   return true;
+}
+
+
 bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants)
 {
    const vector<int>& vModSlotForAllModsIdx = GetVModSlotForAllModsIdx();
@@ -527,9 +548,9 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
          {
             if (raw.szPeptide[i] == modSeq[j])
             {
-               if (mods[j] != -1)
+               int iSlot = TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+               if (iSlot >= 0)
                {
-                  int iSlot = vModSlotForAllModsIdx.at((size_t)mods[j]);
                   dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
                   ++cNumSites;
                }
@@ -629,16 +650,9 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
 
          if (g_staticParams.variableModParameters.bVarModProteinFilter)
          {
-            char* mods = MOD_NUMBERS.at(modNumIdx).modifications;
-            for (int i = 0; i < MOD_NUMBERS.at(modNumIdx).modStringLen; ++i)
-            {
-               if (mods[i] != -1
-                  && !cometbitcheck(raw.siVarModProteinFilter, vModSlotForAllModsIdx.at((size_t)mods[i])))
-               {
-                  bPass = false;
-                  break;
-               }
-            }
+            const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
+            bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, modNum.modifications,
+               modNum.modStringLen, raw.siVarModProteinFilter);
          }
 
          if (!bPass)
@@ -773,11 +787,15 @@ bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx,
             // false-positive path.
             if (j >= modNum.modStringLen)
                return false;
-            if (mods[j] != -1)
+            // TranslateVarModSlot() returns -1 for both mods[j] == -1 (ordinary "not modified
+            // here") and mods[j] out of range (corrupt/mismatched .idx) -- the two are
+            // distinguished explicitly below because only the latter should reject this whole
+            // candidate; the former is normal and simply contributes no mass/site here.
+            int iSlot = TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+            if (mods[j] != -1 && iSlot < 0)
+               return false;
+            if (iSlot >= 0)
             {
-               if (mods[j] < 0 || (size_t)mods[j] >= vModSlotForAllModsIdx.size())
-                  return false;
-               int iSlot = vModSlotForAllModsIdx[(size_t)mods[j]];
                dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
                if (!pcVarModSites.set(i, (char)(iSlot + 1)))
                   return false;
