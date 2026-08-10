@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2026.02.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">\*</font> are new parameters.
-Entries marked with an <font color="red">\*\*</font> are modified parameters.
+Entries marked with an <font color="red">*</font> are new parameters.
+Entries marked with an <font color="red">**</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -95,7 +95,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [equal_I_and_L](equal_I_and_L.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
-- [index_search_type](index_search_type.html) <font color="red">\*\*</font> (v2026.02.2)
+- [index_search_type](index_search_type.html) <font color="red">**</font> (v2026.02.2)
 - [mango_search](mango_search.html)
 - [mass_offsets](mass_offsets.html)
 - [max_duplicate_proteins](max_duplicate_proteins.html)

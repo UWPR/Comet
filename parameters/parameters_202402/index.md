@@ -3,8 +3,8 @@
 Comet search parameters are defined here. These are valid for Comet version 2024.02.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
-Entries marked with an <font color="red">\*</font> are new parameters.
-Entries marked with an <font color="red">\*\*</font> are modified parameters.
+Entries marked with an <font color="red">*</font> are new parameters.
+Entries marked with an <font color="red">**</font> are modified parameters.
 
 To generate a comet.params file appropriate for your Comet binary, issue the command "comet -p".
 
@@ -57,12 +57,12 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Fragment-ion index
 
-- [fragindex_max_fragmentmass](fragindex_max_fragmentmass.html) <font color="red">\*</font>
-- [fragindex_min_fragmentmass](fragindex_min_fragmentmass.html) <font color="red">\*</font>
-- [fragindex_min_ions_report](fragindex_min_ions_report.html) <font color="red">\*</font>
-- [fragindex_min_ions_score](fragindex_min_ions_score.html) <font color="red">\*</font>
-- [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html) <font color="red">\*</font>
-- [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html) <font color="red">\*</font>
+- [fragindex_max_fragmentmass](fragindex_max_fragmentmass.html) <font color="red">*</font>
+- [fragindex_min_fragmentmass](fragindex_min_fragmentmass.html) <font color="red">*</font>
+- [fragindex_min_ions_report](fragindex_min_ions_report.html) <font color="red">*</font>
+- [fragindex_min_ions_score](fragindex_min_ions_score.html) <font color="red">*</font>
+- [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html) <font color="red">*</font>
+- [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html) <font color="red">*</font>
 
 
 #### Output
@@ -130,7 +130,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)
-- [protein_modslist_file](protein_modslist_file.html) <font color="red">\*</font>
+- [protein_modslist_file](protein_modslist_file.html) <font color="red">*</font>
 
 #### Static modifications
 
