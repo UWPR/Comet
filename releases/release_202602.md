@@ -7,11 +7,11 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 #### release 2026.02 rev. 2 (2026.02.2), release date 2026/08/10
 
-## What's Changed
+**What's Changed**
 
 This release fixes a bug in fragment-ion-index (FI) variable-modification handling that could silently mis-score modified peptides, and unifies the on-disk index format across both index search modes with a substantial reduction in peptide-index (PI) memory usage.
 
-## Bug Fixes
+#### Bug Fixes
 
 **Fragment-ion-index modification scoring:**
 
@@ -54,16 +54,16 @@ Composition:
 - Fixed 4 call sites (`CreateFragmentIndex()`, `RunSearch()`'s legacy batch overload, `FiStrategy::initialize()`, `InitializeSingleSpectrumSearch()`'s FI branch) that never checked `ReadPeptideIndex()`'s return value — a corrupt-file error previously printed a clean message and then the search proceeded anyway with an uninitialized index, segfaulting.
 - Hardened `MaterializeOneEntry()` and `SearchPeptideIndex()` against out-of-range indices from a corrupt `.idx`, failing the one affected candidate cleanly instead of risking an uncaught exception mid-search.
 
-## Performance Improvements
+#### Performance Improvements
 
 - PI memory usage reduced ~1.6× by splitting the in-memory index into a shared raw-peptide table plus a compact 24-byte-per-variant array, materializing full peptide records on demand during search instead of pre-expanding every modified variant up front — mirroring the approach FI already used. Measured on a 125M-variant real-world index: RTS memory 10.48GB → 6.58GB, index build time 3m30s → 46s, build peak memory 22.8GB → 7.6GB.
 - `MaterializeOneEntry()`'s per-candidate modification-slot table is now built once per search (thread-safe one-time init) instead of being recomputed on every mass-window candidate in the search hot path.
 
-## Breaking Changes
+#### Breaking Changes
 
 - PI and FI now share a single unified `.idx` file format and reader/writer (`-i`/`-j` are now synonyms at build time; which mode a *search* uses is selected explicitly via the new `index_search_type` parameter). **The on-disk format version changed — existing `.idx` files built with v2026.02.1 or earlier must be rebuilt.** Comet detects and rejects old-format files with a clear error rather than misreading them.
 
-## Tools and Build
+#### Tools and Build
 
 - `comet.exe -D<database>.idx -i`/`-j`-built index now correctly enforces the `digest_mass_range`/`peptide_length_range` set at search time (previously written to the `.idx` header but never read back, so a narrower search-time range had no effect on PI and only a coincidental effect on FI).
 - Migrated the ~21 hand-run functional test cases into `tests/unit/run_tests.py` (T21), and added automated RTS FI/PI single-spectrum regression coverage (T22) plus full-scale internal-decoy/target-decoy and FI/PI-vs-plain-FASTA parity checks against real data (T23/T24, opt-in via `--bigdata`).
@@ -136,7 +136,7 @@ This release combines a Thermo raw file reading infrastructure migration, RTS pe
 
 #### release 2026.02 rev. 0 (2026.02.0), release date 2026/06/10
 
-New Features
+#### New Features
 
 - Concurrent multi-threaded real-time search (RTS)
   - The RTS path (`RealtimeSearch.exe`) now supports *N* concurrent C# Task threads sharing a single `CometSearchManagerWrapper` instance. The MS2 fragment index search and MS1 spectral library alignment are both thread-safe: preprocessing uses per-thread `RtsScratch` scratch pools, `DoSingleSpectrumSearchMultiResults` operates on a thread-local `Query*` without touching `g_pvQuery`, and `DoMS1SearchMultiResults` serializes only the RT alignment history update. This delivers significant throughput improvement for MS2 RTS searches on multi-core hardware.
@@ -150,7 +150,7 @@ New Features
 - Python q-value / FDR tool
   -  A new `tools/qvalue.py` script computes q-values from Comet tab-delimited output and supports side-by-side comparison of two result files with an optional `--diff` flag to list differing PSMs.
 
-Performance Improvements
+#### Performance Improvements
 
 - Parallel .idx index building
     -  `GeneratePlainPeptideIndex` now uses a parallel per-length sort+dedup phase followed by a k-way heap merge write. On benchmarks with the human proteome this reduces index creation time by 1.3× (tryptic) to 1.9× (no-enzyme/MHC) compared to v2026.01.1.
@@ -172,7 +172,7 @@ Performance Improvements
 - `AcquirePoolSlot()` contention reduction
     -  The previous busy-spin wait on `_pbSearchMemoryPool` is replaced by a `std::condition_variable::wait_for` with proper lock/notify at all release sites, eliminating CPU waste under thread contention.
 
-Bug Fixes
+#### Bug Fixes
 
 - I/L deduplication: When `equal_I_and_L=1`, the FASTA-original (L-containing) peptide sequence is now preserved in the index; the I-containing variant is the one discarded. Previously the choice was arbitrary, causing extra spurious entries in the index.
 - `g_pvProteinsList` heap-allocation storm: Replaced element-by-element vector growth with a CSR (compressed sparse row) pre-allocation, eliminating O(N²) reallocation behavior on large databases.
@@ -181,7 +181,7 @@ Bug Fixes
 - Peptide length range error message: Was displaying scan range values instead of peptide length values.
 - `logout()` routing: All `logout()` calls now go to `stdout` instead of `stderr`.
 
-Tools and Build
+#### Tools and Build
 
 - Fragment ion index parameters added to the params file generated by `comet -p`.
 - Visual Studio Clean Solution now removes Linux-built expat and zlib directories, preventing stale headers from interfering with subsequent builds.
