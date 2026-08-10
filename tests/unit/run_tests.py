@@ -1963,6 +1963,22 @@ T25_PARAMS_TEMPLATE = (
    .replace("peptide_length_range = 8 8", "peptide_length_range = 10 10")
 )
 
+# Sanity-check the .replace() chain above actually fired -- if a future edit to
+# T19_PARAMS_TEMPLATE changes any of the three literal snippets being matched (whitespace,
+# reordering, a renamed key, ...), each .replace() silently becomes a no-op instead of raising,
+# and T25 would run against T19's unmodified/still-templated params instead of its intended gap
+# config. Fail loudly here rather than let that surface later as a confusing T25 assertion
+# failure (or, worse, a silent false pass).
+assert "{ascorepro}" not in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: print_ascorepro_score replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "{mod1}" not in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: variable_mod01/02 gap replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "variable_mod01 = 0.0 X 0 3 -1 0 0 0.0\nvariable_mod02 = 79.966331 S 0 1 -1 0 0 0.0" \
+    in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: variable_mod01/02 gap replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 10 10" in T25_PARAMS_TEMPLATE, \
+    "T25_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+
 
 @register("t25_fi_mod_slot_gap")
 def test_t25_fi_mod_slot_gap(comet_exe):
