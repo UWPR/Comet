@@ -46,6 +46,9 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
+        # This is the one workflow (of the 5 platform builds) that uploads
+        # README.md as a release asset, so it's created exactly once instead
+        # of racing with the other platform jobs to overwrite the same asset.
         file: release/*
         overwrite: true
         file_glob: true

@@ -44,6 +44,8 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}
-        file: release/*
+        # Only the platform binary is uploaded here -- README.md is uploaded
+        # once, by linux-build.yml, to avoid all five platform jobs racing
+        # to create/overwrite the same-named release asset concurrently.
+        file: release/comet.aarch64.linux.exe
         overwrite: true
-        file_glob: true
