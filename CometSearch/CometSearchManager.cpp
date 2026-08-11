@@ -1957,6 +1957,55 @@ bool CometSearchManager::CreatePeptideIndex()
    return bRet;
 }
 
+bool CometSearchManager::ExportPeptideIndexVariants(const std::string &strOutputFile)
+{
+   g_cometStatus.ResetStatus();
+
+   // Deliberately narrow and separate from DoSearch()'s full pipeline (no thread pool, no
+   // spectra input, no strategy/writer dispatch) -- this is a read-.idx-and-dump operation,
+   // not a search, mirroring how -p/-q's PrintParams() short-circuits before DoSearch() in
+   // Comet.cpp rather than going through it. Must NOT rebuild the .idx (bCreatePeptideIndex/
+   // bCreateFragmentIndex both stay false, matching ValidateSequenceDatabaseFile()'s own
+   // "file already exists" branch).
+   if (!InitializeStaticParams())
+      return false;
+
+   if (strlen(g_staticParams.databaseInfo.szDatabase) == 0)
+   {
+      string strErrorMsg = " Error - no database_name set; cannot export peptide index variants.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   if (!ValidateSequenceDatabaseFile())
+      return false;
+
+   // This export has no FI_DB analog (g_vDBIndexVariants is PI_DB-only -- see
+   // CometPeptideIndex::ReadPeptideIndex()'s GenerateVariantArray() gate) -- force PI_DB
+   // regardless of what index_search_type says, since a mis-set index_search_type would
+   // otherwise silently produce an empty export instead of a clear error.
+   g_staticParams.iDbType = DbType::PI_DB;
+   g_staticParams.options.bCreatePeptideIndex = false;
+   g_staticParams.options.bCreateFragmentIndex = false;
+
+   // DoSearch() and InitializeSingleSpectrumSearch() both set this explicitly themselves
+   // (it's not derived automatically by InitializeStaticParams()) -- CometPeptideIndex::
+   // EnumerateIndexPeptideMods()'s tryPush lambda rejects any candidate whose mass falls
+   // outside [g_massRange.dMinMass, dMaxMass], so leaving these at their zero-initialized
+   // default here would silently reject every variable-mod-modified variant (the fully
+   // unmodified baseline survives regardless -- GenerateVariantArray()'s own first loop has
+   // no mass check at all -- which is exactly what made this easy to miss: the export
+   // "succeeds" with a plausible-looking single-row file instead of failing loudly).
+   g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
+   g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
+
+   if (!CometPeptideIndex::ReadPeptideIndex(false))
+      return false;
+
+   return CometPeptideIndex::ExportVariants(strOutputFile);
+}
+
 bool CometSearchManager::DoSearch()
 {
    string strOut;

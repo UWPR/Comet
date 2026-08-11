@@ -2419,6 +2419,140 @@ def test_t25_fragment_nl(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T26 -- comet.exe -x peptide-index variant export (docs/20260805_carafe.md Section 6.9/9)
+# ---------------------------------------------------------------------------
+#
+# Phase 0.5 stopped persisting MOD_NUMBERS/MOD_SEQS/the compact variant array in the .idx
+# file -- variable-mod info is regenerated fresh each session from live comet.params instead.
+# This broke tools/idx_to_carafe.py (Carafe integration, `carafe` branch), since it used to
+# read that enumeration directly off disk. The fix: `comet.exe -x<file>` (CometSearchManager::
+# ExportPeptideIndexVariants(), CometPeptideIndex::ExportVariants()) reuses the same live
+# session (PermuteIndexPeptideMods()/GenerateVariantArray()/MaterializeOneEntry()) a real PI_DB
+# search would use, and dumps its (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, mass,
+# sequence, sites) enumeration to a TSV -- guaranteeing the numbering matches what a live FI
+# build would independently regenerate for the same .idx + comet.params, by construction.
+#
+# Reuses T25's gap-config fixture (t25_fi_mod_slot_gap.fasta/.ms2, ACDSEFGHIK, real mod in
+# variable_mod02/slot 1, variable_mod01/slot 0 left unused) -- deliberately, not a fresh
+# fixture, since the gap config is exactly what caught the *other* three compacted-slot-index
+# bugs in this codebase (Sections 6.6-6.8); reusing it here cheaply re-exercises that same
+# translation inside MaterializeOneEntry() from a fourth call site.
+#
+# While first implementing -x, an entirely separate bug was found and fixed: every entry
+# point that reaches CometPeptideIndex::EnumerateIndexPeptideMods() (DoSearch(),
+# InitializeSingleSpectrumSearch()) explicitly sets g_massRange.dMinMass/dMaxMass from
+# comet.params' digest_mass_range itself -- ExportPeptideIndexVariants() initially didn't,
+# leaving them at their zero-initialized default. EnumerateIndexPeptideMods()'s tryPush
+# lambda rejects any candidate whose mass falls outside [dMinMass, dMaxMass], so every
+# variable-mod-modified variant was silently dropped (only the always-included unmodified
+# baseline survived -- GenerateVariantArray()'s first loop has no mass check at all), while
+# the export still "succeeded" with a plausible-looking single-row file instead of failing
+# loudly. This test's row-count/site assertions below are exactly what would have caught it.
+T26_PARAMS_TEMPLATE = T25_PARAMS_TEMPLATE
+
+
+@register("t26_export_peptide_index_variants")
+def test_t26_export_peptide_index_variants(comet_exe):
+    """T26: comet.exe -x exports the live-session peptide-mod variant enumeration a real
+    PI_DB search would use -- regression-tests both the feature itself and the
+    g_massRange.dMinMass/dMaxMass initialization bug found while building it (see module-level
+    comment above)."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fi_mod_slot_gap.fasta"
+    idx   = fasta.with_suffix(".fasta.idx")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    if idx.exists():
+        idx.unlink()
+
+    build_params = T26_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    export_params = T26_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(idx))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(export_params)
+        export_params_file = Path(pf.name)
+
+    export_tsv = DATA_DIR / "t26_export.tsv"
+    export_tsv.unlink(missing_ok=True)
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-x{fmt(export_tsv)}", f"-P{fmt(export_params_file)}"])
+        if rc != 0:
+            failures.append(f"export failed (rc={rc}):\n{out}")
+            return failures
+        if not export_tsv.exists():
+            failures.append(f"export file not created. Comet output:\n{out}")
+            return failures
+
+        lines = export_tsv.read_text().splitlines()
+        header = lines[0].split("\t")
+        rows = [dict(zip(header, l.split("\t"))) for l in lines[1:] if l.strip()]
+
+        # Exactly 2 variants expected: the unmodified baseline plus the one phospho-modified
+        # combination (single candidate S, max_variable_mods_in_peptide=1) -- if the
+        # g_massRange bug regresses, this drops to 1 (unmodified only survives).
+        check(len(rows) == 2, f"expected exactly 2 variants, got {len(rows)}:\n{rows}", failures)
+        if len(rows) != 2:
+            return failures
+
+        by_mod = {int(r["modNumIdx"]): r for r in rows}
+        check(-1 in by_mod and 0 in by_mod,
+              f"expected modNumIdx -1 (unmodified) and 0 (phospho) rows, got {sorted(by_mod)}", failures)
+        if -1 not in by_mod or 0 not in by_mod:
+            return failures
+
+        unmod, mod = by_mod[-1], by_mod[0]
+        check(unmod["sequence"] == "ACDSEFGHIK", f"unmodified sequence: got {unmod['sequence']!r}", failures)
+        check(unmod["sites"] == "", f"unmodified row should have empty sites, got {unmod['sites']!r}", failures)
+        check(mod["sequence"] == "ACDSEFGHIK", f"modified sequence: got {mod['sequence']!r}", failures)
+        check(mod["sites"] == "3:79.966331",
+              f"modified row: expected site '3:79.966331' (0-based S at index 3), got {mod['sites']!r}",
+              failures)
+        mass_delta = float(mod["mass"]) - float(unmod["mass"])
+        check(abs(mass_delta - 79.966331) < 1e-6,
+              f"mass delta between modified/unmodified rows: expected 79.966331, got {mass_delta}", failures)
+
+        # Determinism (matches T18's own "two independent builds produce byte-identical output"
+        # standard, applied here to two independent -x runs against the same already-built
+        # .idx/comet.params instead of two -j builds): iWhichPeptide/modNumIdx numbering is
+        # exactly what tools/idx_to_carafe.py's Carafe integration depends on staying stable
+        # across separate `comet.exe -x` invocations.
+        export_tsv2 = DATA_DIR / "t26_export2.tsv"
+        export_tsv2.unlink(missing_ok=True)
+        rc2, out2 = _run_t19_step(comet_exe, [f"-x{fmt(export_tsv2)}", f"-P{fmt(export_params_file)}"])
+        try:
+            check(rc2 == 0 and export_tsv2.exists(), f"second export failed (rc={rc2}):\n{out2}", failures)
+            if export_tsv2.exists():
+                check(export_tsv.read_text() == export_tsv2.read_text(),
+                      "two independent -x exports against the same .idx/comet.params must be "
+                      "byte-identical (numbering determinism)", failures)
+        finally:
+            export_tsv2.unlink(missing_ok=True)
+    finally:
+        export_params_file.unlink(missing_ok=True)
+        export_tsv.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 

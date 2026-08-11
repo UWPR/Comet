@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 """
-Read a Comet unified .idx file (PI_DB/FI_DB, "Comet index database v1") and export every
-peptide it encodes -- sequence plus static and variable modifications -- to a TSV that
-Carafe's ai_pred.py can consume directly for in-silico MS2 (and RT/CCS) prediction:
+Read a Comet unified .idx file (PI_DB/FI_DB, "Comet index database v2") plus a companion
+peptide-mod-variant export from `comet.exe -x` (see below), and produce a TSV that Carafe's
+ai_pred.py can consume directly for in-silico MS2 (and RT/CCS) prediction:
 
+    # 1. Build the PI_DB (once; variable mods here don't matter -- see step 2)
+    comet.exe -j -Pcomet.params
+
+    # 2. Export the peptide-mod variant enumeration using the REAL variable mods you want
+    #    predictions for (docs/20260805_carafe.md Section 6.9/9: Phase 0.5 stopped persisting
+    #    MOD_NUMBERS/MOD_SEQS/the variant array in the .idx itself, so this is now the only
+    #    source of "what mods does this .idx represent" -- comet.params, not the .idx file)
+    comet.exe -xvariants_export.tsv -Pcomet.params
+
+    # 3. This script: combine the .idx (sequence/protein/static-mod data) with the export
+    #    (which variants exist, and their variable-mod sites) into Carafe's input format
+    python idx_to_carafe.py test.fasta.idx variants_export.tsv carafe_peptides.tsv
+
+    # 4. Predict
     python ai_pred.py --model_dir generic --mode general \
         --in_file carafe_peptides.tsv --out_dir out/ --out_prefix mylib \
         --device cpu --instrument Lumos --nce 27 --tf_type ms2
@@ -36,22 +50,34 @@ needing a second join key. Multiple charges of the same peptide are separate out
 bug; see docs/20260805_carafe.md Section 8 item 1 for why the mask builder needs per-charge
 predictions of the same variant in the first place.
 
-The .idx binary format has no C++/Java API of its own -- this script is a from-scratch
-reimplementation of CometPeptideIndex::ReadPeptideIndex() / MaterializeOneEntry() (see
-CometSearch/CometPeptideIndex.cpp) in Python, decoding the same four sections (raw peptide
-table, protein list, mod-permutation tables, compact per-variant array) that the C++ reader
-does. See the format notes above each _read_* function below for the exact byte layout each
-one depends on -- keep those in sync with CometPeptideIndex.cpp if the .idx format ever
-changes.
+The .idx binary format has no C++/Java API of its own -- the .idx-reading half of this script
+(IdxReader) is a from-scratch reimplementation of CometPeptideIndex::ReadPeptideIndex() in
+Python, decoding the two sections that are still persisted on disk (raw peptide table, protein
+list). See the format notes above each _read_* method for the exact byte layout each one
+depends on -- keep those in sync with CometPeptideIndex.cpp if the .idx format ever changes.
+As of Phase 0.5 (docs/20260730_PI_reduction.md, landed on master while this project was in
+progress -- see docs/20260805_carafe.md Section 6.9 for the discovery/fix), variable-mod
+settings and the modified-peptide variant enumeration (MOD_NUMBERS/MOD_SEQS/the compact
+variant array) are NOT persisted in the .idx at all any more -- they're regenerated fresh each
+session from live comet.params, the same as a non-indexed FASTA search. This script therefore
+no longer reimplements that enumeration itself (previously a second, independently-maintained
+copy of CometPeptideIndex::EnumerateIndexPeptideMods()'s combinatorics -- a correctness-
+critical mapping not worth duplicating twice); instead it reads `comet.exe -x`'s own canonical
+export of that same enumeration (read_exported_variants() below), guaranteeing the
+(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) numbering this script emits always matches
+what a live Comet session (including Phase 3's eventual FI build) would independently
+regenerate for the same .idx + comet.params, by construction rather than by hoping two
+separate implementations stay in lockstep.
 
 Known limitation: Comet's variable-mod terminal flag (protein-N-term vs. plain peptide-N-term,
-etc.) is NOT persisted in the .idx header -- only whether a mod is N-term/C-term at all. Every
-N-term/C-term variable mod is therefore exported using the generic "@N-term"/"@C-term" site
-(matching what AIGear.load_mod_map() itself produces for non-protein-term unimod entries);
-a mod that was configured in comet.params as specifically protein-terminal will still be
-tagged "@N-term"/"@C-term" here rather than "@Protein_N-term"/"@Protein_C-term". Peptides that
-happen to sit at a protein terminus (cPrevAA/cNextAA == '-') are still detected correctly for
-applying *static* protein-terminal mods (add_Nterm_protein/add_Cterm_protein).
+etc.) is NOT persisted in the .idx header -- only whether a mod is N-term/C-term at all, and
+that information doesn't survive into the -x export either. Every N-term/C-term variable mod
+is therefore exported using the generic "@N-term"/"@C-term" site (matching what
+AIGear.load_mod_map() itself produces for non-protein-term unimod entries); a mod that was
+configured in comet.params as specifically protein-terminal will still be tagged
+"@N-term"/"@C-term" here rather than "@Protein_N-term"/"@Protein_C-term". Peptides that happen
+to sit at a protein terminus (cPrevAA/cNextAA == '-') are still detected correctly for applying
+*static* protein-terminal mods (add_Nterm_protein/add_Cterm_protein).
 
 Modification NAMES (the "<UniModTitle>@<Site>" string) are resolved by matching each Comet
 mod's mass + affected residue/terminus against Carafe's own top_modifications.tsv -- the
@@ -69,11 +95,6 @@ import sys
 from collections import namedtuple
 
 WIDTH_REFERENCE = 256      # CometSearch/core/Constants.h -- protein name block size
-FRAGINDEX_VMODS = 5        # CometSearch/core/Constants.h -- only the first 5 variable_modNN
-                            # slots participate in index builds/searches (PermuteIndexPeptideMods,
-                            # EnumerateIndexPeptideMods both loop 0..FRAGINDEX_VMODS-1)
-VMODS = 15                 # CometSearch/core/Constants.h -- total variable_modNN slots the
-                            # header's "VariableMod:" line always writes
 
 # UniMod accession -> the short/PSI-MS title AlphaBase mod names use (the string before '@').
 # Covers exactly the unimod_accession values appearing in Carafe's top_modifications.tsv.
@@ -132,8 +153,10 @@ BUILTIN_TOP_MODIFICATIONS_TSV = """mod_id\tmod_name\tmod_mass\tmod_type\tmod_cat
 RawPeptide = namedtuple("RawPeptide",
     "seq prevAA nextAA mass sivar protein_row")
 
-VarModSlot = namedtuple("VarModSlot",
-    "chars mass nl nl2 is_nterm is_cterm active")
+# One row of comet.exe -x's export -- see read_exported_variants() below. var_sites is already
+# fully decoded: list of (0-based residue index, OR the literal string 'nterm'/'cterm', mass).
+ExportedVariant = namedtuple("ExportedVariant",
+    "iWhichPeptide modNumIdx cNtermMod cCtermMod mass sequence var_sites")
 
 
 # ---------------------------------------------------------------------------
@@ -232,21 +255,23 @@ class IdxReader:
         self.static_cterm_pep = 0.0
         self.static_nterm_prot = 0.0
         self.static_cterm_prot = 0.0
-        self.var_mods = []         # VMODS entries, index 0..VMODS-1
-        self.slot_map = []         # vModSlotForAllModsIdx: compacted list of active slot indices, FRAGINDEX_VMODS scope only
 
         self._read_header()
         self._read_footer()
 
     # -- header: text lines up to and including the first blank line. Field formats mirror
-    # CometPeptideIndex::WritePeptideIndex()'s fprintf calls exactly. --
+    # CometPeptideIndex::WritePeptideIndex()'s fprintf calls exactly. Phase 0.5 (see module
+    # docstring): no VariableMod:/ProteinModList:/RequireVariableMod: lines any more -- static
+    # mods are still here (they're baked into the raw peptide masses at build time and don't
+    # depend on comet.params at search time the way variable mods now do). --
     def _read_header(self):
         self.f.seek(0)
         magic = self.f.readline()
-        if not magic.startswith(b"Comet index database v1"):
+        if not magic.startswith(b"Comet index database v2"):
             raise ValueError(
-                f"{self.path!r} is not a 'Comet index database v1' unified .idx file "
-                "(old-format PI_DB/FI_DB files aren't supported -- rebuild with a current Comet).")
+                f"{self.path!r} is not a 'Comet index database v2' unified .idx file "
+                "(old v1-format PI_DB/FI_DB files aren't supported -- rebuild with a current "
+                "Comet; see module docstring for what changed in v2).")
 
         while True:
             line = self.f.readline()
@@ -271,30 +296,16 @@ class IdxReader:
                 self.static_cterm_pep = vals[27]
                 self.static_nterm_prot = vals[28]
                 self.static_cterm_prot = vals[29]
-            elif text.startswith("VariableMod:"):
-                toks = text[len("VariableMod:"):].split()
-                for i, tok in enumerate(toks[:VMODS]):
-                    chars, mass, nl, nl2 = tok.split(":")
-                    mass = float(mass)
-                    active = (mass != 0.0) and (chars[:1] != "-")
-                    self.var_mods.append(VarModSlot(
-                        chars=chars, mass=mass, nl=float(nl), nl2=float(nl2),
-                        is_nterm=("n" in chars), is_cterm=("c" in chars), active=active))
-                while len(self.var_mods) < VMODS:
-                    self.var_mods.append(VarModSlot("-", 0.0, 0.0, 0.0, False, False, False))
 
-        # CometFragmentIndex::PermuteIndexPeptideMods()/EnumerateIndexPeptideMods() only ever
-        # consider the first FRAGINDEX_VMODS slots -- MOD_NUMBERS[].modifications[] values are
-        # indices into this compacted list, and FragmentPeptidesStruct.cNtermMod/cCtermMod are
-        # raw slot indices already restricted to this same range.
-        self.slot_map = [i for i in range(FRAGINDEX_VMODS) if i < len(self.var_mods) and self.var_mods[i].active]
-
+    # -- Footer @ EOF: clPeptidesFilePos(i64) clProteinsFilePos(i64) -- just two pointers as of
+    # Phase 0.5 (the old v1 format's perm_pos/var_pos are gone; the protein list is now the
+    # last section, running up to footer_pos). --
     def _read_footer(self):
         self.f.seek(0, os.SEEK_END)
         file_size = self.f.tell()
-        self.f.seek(-4 * 8, os.SEEK_END)
-        (self.pep_pos, self.prot_pos, self.perm_pos, self.var_pos) = struct.unpack("<qqqq", self.f.read(32))
-        self.footer_pos = file_size - 4 * 8
+        self.f.seek(-2 * 8, os.SEEK_END)
+        (self.pep_pos, self.prot_pos) = struct.unpack("<qq", self.f.read(16))
+        self.footer_pos = file_size - 2 * 8
 
     # -- Raw peptide table @ pep_pos: count(u64), then per-entry iLen(i32) szPeptide(iLen)
     # cPrevAA(c) cNextAA(c) dPepMass(d) siVarModProteinFilter(u16) lIndexProteinFilePosition(i64) --
@@ -317,12 +328,13 @@ class IdxReader:
             raw.append(RawPeptide(seq, prevAA, nextAA, mass, sivar, protrow))
         return raw
 
-    # -- Protein list (CSR) @ prot_pos: count(i64) then per-row count(i64) + offsets(i64 x count) --
+    # -- Protein list (CSR) @ prot_pos: count(i64) then per-row count(i64) + offsets(i64 x count),
+    # running to footer_pos (the last section in the file as of Phase 0.5). --
     def read_protein_list(self):
         f = self.f
         f.seek(self.prot_pos)
         (num_rows,) = struct.unpack("<q", f.read(8))
-        section_size = self.perm_pos - self.prot_pos - 8
+        section_size = self.footer_pos - self.prot_pos - 8
         buf = f.read(section_size)
         rows = []
         p = 0
@@ -341,54 +353,52 @@ class IdxReader:
         cache[file_offset] = name
         return name
 
-    # -- Permutation tables @ perm_pos: ulSizeModSeqs/ulSizeRaw/ulModNumSize(u64 x3), then
-    # MOD_SEQ_MOD_NUM_START[ulSizeModSeqs](i32), MOD_SEQ_MOD_NUM_CNT[ulSizeModSeqs](i32),
-    # PEPTIDE_MOD_SEQ_IDXS[ulSizeRaw](i32), then MOD_SEQS as (len(i32), bytes) x ulSizeModSeqs,
-    # then MOD_NUMBERS as (modStringLen(i32), signed-char bytes) x ulModNumSize --
-    def read_permutation_tables(self):
-        f = self.f
-        f.seek(self.perm_pos)
-        n_modseqs, n_raw, n_modnums = struct.unpack("<QQQ", f.read(24))
-        mod_seq_start = struct.unpack(f"<{n_modseqs}i", f.read(4 * n_modseqs))
-        mod_seq_cnt = struct.unpack(f"<{n_modseqs}i", f.read(4 * n_modseqs))
-        peptide_mod_seq_idxs = struct.unpack(f"<{n_raw}i", f.read(4 * n_raw))
 
-        remaining = self.var_pos - f.tell()
-        buf = f.read(remaining)
-        p = 0
-        mod_seqs = []
-        for _ in range(n_modseqs):
-            (l,) = struct.unpack_from("<i", buf, p); p += 4
-            mod_seqs.append(buf[p:p + l].decode("ascii")); p += l
-        mod_numbers = []
-        for _ in range(n_modnums):
-            (l,) = struct.unpack_from("<i", buf, p); p += 4
-            mod_numbers.append(struct.unpack_from(f"<{l}b", buf, p)); p += l
+# ---------------------------------------------------------------------------
+# comet.exe -x export reader (docs/20260805_carafe.md Section 6.9/9)
+# ---------------------------------------------------------------------------
 
-        return mod_seq_start, mod_seq_cnt, peptide_mod_seq_idxs, mod_seqs, mod_numbers
+def read_exported_variants(path):
+    """Reads comet.exe -x's TSV export: iWhichPeptide/modNumIdx/cNtermMod/cCtermMod/mass/
+    sequence/sites, one row per PI_DB variant (CometPeptideIndex::ExportVariants()). Yields
+    ExportedVariant with `sites` already decoded into (pos, mass) pairs -- pos is a 0-based
+    residue index, or the literal string 'nterm'/'cterm' (derived here from VarModSites'
+    position convention: position == len(sequence) means n-term, len(sequence)+1 means
+    c-term, matching CometPeptideIndex.h's VarModSites::position doc comment exactly, same
+    convention CometSearch.cpp's piVarModSites has always used)."""
+    with open(path, "r", newline="") as f:
+        header = f.readline().rstrip("\r\n").split("\t")
+        col = {name: i for i, name in enumerate(header)}
+        for line in f:
+            line = line.rstrip("\r\n")
+            if not line:
+                continue
+            parts = line.split("\t")
+            sequence = parts[col["sequence"]]
+            n = len(sequence)
+            sites_field = parts[col["sites"]] if col["sites"] < len(parts) else ""
 
-    # -- Compact variant array @ var_pos: count(u64), then per-entry dPepMass(d)
-    # iWhichPeptide(u32) modNumIdx(i32) cNtermMod(signed char) cCtermMod(signed char) --
-    def iter_variants(self, chunk_size=1 << 20):
-        f = self.f
-        f.seek(self.var_pos)
-        (num_variants,) = struct.unpack("<Q", f.read(8))
-        entry_fmt = "<dIibb"
-        entry_size = struct.calcsize(entry_fmt)
-        remaining = num_variants
-        while remaining > 0:
-            n = min(chunk_size, remaining)
-            buf = f.read(entry_size * n)
-            for i in range(n):
-                yield struct.unpack_from(entry_fmt, buf, i * entry_size)
-            remaining -= n
-        return num_variants
+            var_sites = []
+            if sites_field:
+                for tok in sites_field.split(";"):
+                    pos_str, mass_str = tok.split(":")
+                    pos = int(pos_str)
+                    mass = float(mass_str)
+                    if pos == n:
+                        var_sites.append(("nterm", mass))
+                    elif pos == n + 1:
+                        var_sites.append(("cterm", mass))
+                    else:
+                        var_sites.append((pos, mass))
 
-    def num_variants(self):
-        f = self.f
-        f.seek(self.var_pos)
-        (num_variants,) = struct.unpack("<Q", f.read(8))
-        return num_variants
+            yield ExportedVariant(
+                iWhichPeptide=int(parts[col["iWhichPeptide"]]),
+                modNumIdx=int(parts[col["modNumIdx"]]),
+                cNtermMod=int(parts[col["cNtermMod"]]),
+                cCtermMod=int(parts[col["cCtermMod"]]),
+                mass=float(parts[col["mass"]]),
+                sequence=sequence,
+                var_sites=var_sites)
 
 
 # ---------------------------------------------------------------------------
@@ -399,29 +409,13 @@ class ModResolutionError(Exception):
     pass
 
 
-def decode_variable_mods(raw, mod_num_idx, cn_term_mod, cc_term_mod,
-                          peptide_mod_seq_idxs, mod_seqs, mod_numbers, slot_map, var_mods,
-                          which_peptide):
-    """Returns list of (0-based position OR 'nterm'/'cterm', VarModSlot) -- mirrors
-    CometPeptideIndex::MaterializeOneEntry()'s reconstruction exactly."""
-    sites = []
-    seq = raw.seq
-    if mod_num_idx >= 0:
-        mods = mod_numbers[mod_num_idx]
-        mod_seq_idx = peptide_mod_seq_idxs[which_peptide]
-        mod_seq = mod_seqs[mod_seq_idx]
-        j = 0
-        for i, c in enumerate(seq):
-            if j < len(mod_seq) and c == mod_seq[j]:
-                if mods[j] != -1:
-                    slot = slot_map[mods[j]]
-                    sites.append((i, var_mods[slot]))
-                j += 1
-    if cn_term_mod >= 0:
-        sites.append(("nterm", var_mods[cn_term_mod]))
-    if cc_term_mod >= 0:
-        sites.append(("cterm", var_mods[cc_term_mod]))
-    return sites
+# Variable-mod sites no longer need decoding here at all -- comet.exe -x's export
+# (read_exported_variants() above) already hands back ExportedVariant.var_sites as
+# (pos, mass) pairs, resolved by the same canonical C++ (MaterializeOneEntry()) that a live
+# FI build will independently re-derive. Previously this module had its own from-scratch
+# reimplementation of that reconstruction (MOD_NUMBERS/MOD_SEQS/slot_map decoding); removed
+# rather than adapted, since there is no combinatorics left on the Python side to keep in
+# sync (see module docstring).
 
 
 def decode_static_mods(raw, static_mods, static_nterm_pep, static_cterm_pep,
@@ -482,21 +476,21 @@ def build_mods_mod_sites(raw, static_sites, var_sites, mod_table, mass_tol, unre
     # for static sites above -- CarafeModTable.resolve() then only hands back a "Protein_"
     # name when that's actually true, and reports unresolved (rather than a wrong name)
     # otherwise for mods (like Acetyl) with no generic non-protein-specific table entry.
-    for pos, slot in var_sites:
+    for pos, mass in var_sites:
         if pos == "nterm":
-            name = mod_table.resolve(slot.mass, "nterm", is_protein_terminal=(raw.prevAA == "-"))
+            name = mod_table.resolve(mass, "nterm", is_protein_terminal=(raw.prevAA == "-"))
             site_val = 0
         elif pos == "cterm":
-            name = mod_table.resolve(slot.mass, "cterm", is_protein_terminal=(raw.nextAA == "-"))
+            name = mod_table.resolve(mass, "cterm", is_protein_terminal=(raw.nextAA == "-"))
             site_val = len(raw.seq) + 1
         else:
-            name = mod_table.resolve(slot.mass, "residue", residue=raw.seq[pos])
+            name = mod_table.resolve(mass, "residue", residue=raw.seq[pos])
             site_val = pos + 1
         if name is None:
             if unresolved_name_fmt:
-                name = unresolved_name_fmt.format(mass=slot.mass, residue=raw.seq[pos] if isinstance(pos, int) else pos)
+                name = unresolved_name_fmt.format(mass=mass, residue=raw.seq[pos] if isinstance(pos, int) else pos)
             else:
-                unresolved.append((pos, slot.mass))
+                unresolved.append((pos, mass))
                 continue
         tokens.append((sort_key(pos), site_val, name))
 
@@ -542,7 +536,12 @@ def main():
         description="Export peptides + modifications from a Comet .idx to a Carafe ai_pred.py input TSV.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__)
-    ap.add_argument("idx_file", help="Comet unified .idx file (PI_DB or FI_DB)")
+    ap.add_argument("idx_file", help="Comet unified .idx file (PI_DB, built via comet.exe -j)")
+    ap.add_argument("variants_export_tsv",
+                     help="comet.exe -x's peptide-mod-variant export for this SAME .idx, built "
+                          "with the variable mods you want predictions for (see module "
+                          "docstring step 2) -- Phase 0.5 removed variable-mod info from the "
+                          ".idx itself, so this is the only source of it now")
     ap.add_argument("out_tsv", help="Output TSV path (sequence/mods/mod_sites/charge)")
     ap.add_argument("--variant-map", default=None,
                      help="Output path for the row_index -> (iWhichPeptide, modNumIdx, "
@@ -587,8 +586,6 @@ def main():
     reader = IdxReader(args.idx_file)
     if args.verbose:
         print(f"Header: {reader.header}", file=sys.stderr)
-        active = [(i, m) for i, m in enumerate(reader.var_mods) if m.active]
-        print(f"Active variable mods: {active}", file=sys.stderr)
         print(f"Static AA mods: {reader.static_mods}", file=sys.stderr)
 
     raw_peptides = reader.read_raw_peptides()
@@ -598,9 +595,6 @@ def main():
     name_cache = {}
     if not args.include_decoys:
         protein_rows = reader.read_protein_list()
-
-    mod_seq_start, mod_seq_cnt, peptide_mod_seq_idxs, mod_seqs, mod_numbers = \
-        reader.read_permutation_tables()
 
     variant_map_path = args.variant_map or default_variant_map_path(args.out_tsv)
 
@@ -617,13 +611,32 @@ def main():
         out.write(b"sequence\tmods\tmod_sites\tcharge\r\n")
         vmap.write(b"row_index\tiWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\r\n")
 
-        for variant in reader.iter_variants():
-            dmass, which_peptide, mod_num_idx, cn_term_mod, cc_term_mod = variant
+        for variant in read_exported_variants(args.variants_export_tsv):
+            which_peptide = variant.iWhichPeptide
+            mod_num_idx = variant.modNumIdx
+            cn_term_mod = variant.cNtermMod
+            cc_term_mod = variant.cCtermMod
+            var_sites = variant.var_sites
 
             if args.unmodified_only and (mod_num_idx >= 0 or cn_term_mod >= 0 or cc_term_mod >= 0):
                 continue
 
+            if which_peptide >= len(raw_peptides):
+                raise ValueError(
+                    f"{args.variants_export_tsv!r} row references iWhichPeptide={which_peptide}, "
+                    f"but {args.idx_file!r} only has {len(raw_peptides)} raw peptides -- the "
+                    f"export doesn't match this .idx (rebuild both from the same .idx in one go).")
             raw = raw_peptides[which_peptide]
+
+            # Cheap cross-check that the export and .idx actually agree on the peptide at this
+            # index -- catches a mismatched (different-build, or even different-FASTA) pairing
+            # loudly instead of silently annotating the wrong sequence's mods (mirrors the
+            # fingerprint check tools/carafe_ms2_to_fi_mask.py does for its own .idx pairing).
+            if variant.sequence != raw.seq:
+                raise ValueError(
+                    f"{args.variants_export_tsv!r} row for iWhichPeptide={which_peptide} has "
+                    f"sequence {variant.sequence!r}, but {args.idx_file!r} has {raw.seq!r} at "
+                    f"that index -- the export doesn't match this .idx.")
 
             if not args.include_decoys:
                 offsets = protein_rows[raw.protein_row] if 0 <= raw.protein_row < len(protein_rows) else ()
@@ -635,10 +648,6 @@ def main():
             static_sites = decode_static_mods(
                 raw, reader.static_mods, reader.static_nterm_pep, reader.static_cterm_pep,
                 reader.static_nterm_prot, reader.static_cterm_prot)
-            var_sites = decode_variable_mods(
-                raw, mod_num_idx, cn_term_mod, cc_term_mod,
-                peptide_mod_seq_idxs, mod_seqs, mod_numbers, reader.slot_map, reader.var_mods,
-                which_peptide)
 
             # Self-consistency check: raw.mass (the unmodified-variant baseline read from the
             # raw-peptide table) already has every static mod baked in -- pdAAMassFragment/
@@ -648,13 +657,16 @@ def main():
             # raw.dPepMass and add ONLY variable-mod deltas on top (CometPeptideIndex.cpp). So the
             # check below adds variable-mod deltas only; adding static_sites' masses again here
             # would double-count them even though static_sites is exactly what's needed for the
-            # mods/mod_sites annotation below.
-            expected_mass = raw.mass + sum(s.mass for _, s in var_sites)
-            if abs(expected_mass - dmass) > 0.01:
+            # mods/mod_sites annotation below. Less critical than before (variant.mass comes
+            # from the same canonical C++ that computed var_sites, not a second Python-side
+            # reconstruction), but still catches a genuinely corrupt/truncated export file.
+            expected_mass = raw.mass + sum(mass for _, mass in var_sites)
+            if abs(expected_mass - variant.mass) > 0.01:
                 n_mass_mismatch += 1
                 if args.verbose:
                     print(f"WARNING: mass mismatch for {raw.seq}: reconstructed {expected_mass:.5f} "
-                          f"vs stored {dmass:.5f} (delta {expected_mass - dmass:+.5f})", file=sys.stderr)
+                          f"vs exported {variant.mass:.5f} (delta {expected_mass - variant.mass:+.5f})",
+                          file=sys.stderr)
 
             mods_str, mod_sites_str, unresolved = build_mods_mod_sites(
                 raw, static_sites, var_sites, mod_table, args.mass_tol, args.unresolved_mod_name)

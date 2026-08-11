@@ -74,6 +74,18 @@ public:
    static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
       char cCtermMod, DBIndex& out);
 
+   // docs/20260805_carafe.md Section 6.9/9: dumps g_vDBIndexVariants (already populated by a
+   // prior ReadPeptideIndex() call, PI_DB mode) to strOutputFile as a TSV -- one row per
+   // variant: iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, the plain peptide sequence, and
+   // a semicolon-separated "pos:mass" list of every variable-mod site MaterializeOneEntry()
+   // resolves for that variant (pos is 0-based residue index, or len/len+1 for n-term/c-term,
+   // matching VarModSites::position's own convention -- callers already familiar with that
+   // convention, e.g. tools/idx_to_carafe.py, need no new mapping to consume it). This is the
+   // sole source of the (iWhichPeptide, modNumIdx, ...) enumeration for external tools now
+   // that Phase 0.5 stopped persisting it in the .idx file -- see ExportPeptideIndexVariants()
+   // in CometSearchManager for the public entry point (Comet's -x<file> CLI flag).
+   static bool ExportVariants(const string& strOutputFile);
+
 
 
    // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,

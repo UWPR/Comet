@@ -709,6 +709,73 @@ bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx,
 }
 
 
+bool CometPeptideIndex::ExportVariants(const string& strOutputFile)
+{
+   if (g_staticParams.iDbType != DbType::PI_DB || g_vDBIndexVariants.empty())
+   {
+      string strErrorMsg = " Error - ExportVariants() requires a PI_DB session with a "
+         "populated variant array (ReadPeptideIndex() must have run in PI_DB mode first).\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   FILE* fp = fopen(strOutputFile.c_str(), "w");
+   if (fp == NULL)
+   {
+      string strErrorMsg = " Error - cannot open \"" + strOutputFile + "\" for writing.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   fprintf(fp, "iWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\tmass\tsequence\tsites\n");
+
+   DBIndex entry;
+   std::ostringstream oss;
+   for (const FragmentPeptidesStruct& variant : g_vDBIndexVariants)
+   {
+      if (!MaterializeOneEntry(variant.iWhichPeptide, variant.modNumIdx, variant.cNtermMod,
+         variant.cCtermMod, entry))
+      {
+         string strErrorMsg = " Error - failed to materialize variant (iWhichPeptide="
+            + std::to_string(variant.iWhichPeptide) + ", modNumIdx=" + std::to_string(variant.modNumIdx)
+            + ", cNtermMod=" + std::to_string((int)variant.cNtermMod)
+            + ", cCtermMod=" + std::to_string((int)variant.cCtermMod) + ") during export.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         fclose(fp);
+         return false;
+      }
+
+      oss.str("");
+      oss.clear();
+      // pcVarModSites entries are already in ascending position order (VarModSites::set()'s
+      // own contract, see core/Types.h) -- not required for correctness here (Python parses
+      // each "pos:mass" token independently) but kept for readable/diffable output.
+      for (unsigned char i = 0; i < entry.pcVarModSites.cNumSites; ++i)
+      {
+         int iSlot = (int)entry.pcVarModSites.residue[i] - 1;   // see MaterializeOneEntry()'s set(pos, slot+1)
+         double dMass = g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+         if (i > 0)
+            oss << ";";
+         oss << (int)entry.pcVarModSites.position[i] << ":" << std::setprecision(10) << dMass;
+      }
+
+      fprintf(fp, "%u\t%d\t%d\t%d\t%.10f\t%s\t%s\n",
+         variant.iWhichPeptide, variant.modNumIdx, (int)variant.cNtermMod, (int)variant.cCtermMod,
+         entry.dPepMass, entry.sPeptide, oss.str().c_str());
+   }
+
+   fclose(fp);
+
+   logout("   - exported " + std::to_string(g_vDBIndexVariants.size()) + " peptide-index variants to \""
+      + strOutputFile + "\"\n");
+
+   return true;
+}
+
+
 // docs/20260730_PI_reduction.md Phase 0.5. PI_DB's counterpart to what used to be part of
 // WritePeptideIndex()'s build-time work -- builds the compact per-variant array
 // (g_vDBIndexVariants) from g_vRawPeptides + the mod-permutation tables a prior call to

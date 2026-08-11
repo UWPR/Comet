@@ -52,6 +52,21 @@ int main(int argc, char *argv[])
    ProcessCmdLine(argc, argv, szParamsFile, pvInputFiles, pCometSearchMgr);
    pCometSearchMgr->AddInputFiles(pvInputFiles);
 
+   // -x<file>: export an existing PI_DB .idx's peptide-mod variant enumeration and exit,
+   // short-circuiting DoSearch()'s full pipeline entirely (no spectra input, no thread pool,
+   // no search) -- mirrors how -p/-q's PrintParams()/exit(0) in ProcessCmdLine() above never
+   // reaches DoSearch() either. Checked here (after ProcessCmdLine(), i.e. after
+   // LoadParameters() has already run) since -x needs comet.params' database_name and
+   // variable mods, unlike -p/-q which need neither.
+   string strExportVariantsFile;
+   if (pCometSearchMgr->GetParamValue("export_peptide_index_variants_file", strExportVariantsFile)
+      && !strExportVariantsFile.empty())
+   {
+      bool bExportSucceeded = pCometSearchMgr->ExportPeptideIndexVariants(strExportVariantsFile);
+      CometInterfaces::ReleaseCometSearchManager();
+      exit(bExportSucceeded ? 0 : 1);
+   }
+
    bool bSearchSucceeded;
 
    bSearchSucceeded = pCometSearchMgr->DoSearch();
@@ -94,6 +109,10 @@ void Usage(char *pszCmd)
    logout("                            (-L option is required if -F option is used)\n");
    logout("                 -i         create .idx file for fragment ion indexing\n");
    logout("                 -j         create .idx file for peptide indexing\n");
+   logout("                 -x<file>   export an existing PI_DB .idx's peptide-mod variant\n");
+   logout("                            enumeration (iWhichPeptide/modNumIdx/.../sequence/sites)\n");
+   logout("                            to <file>, using live comet.params variable mods; does\n");
+   logout("                            not search or rebuild the .idx (docs/20260805_carafe.md)\n");
    logout("\n");
    snprintf(szTmp, iSize, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
    logout(szTmp);
@@ -200,6 +219,15 @@ void SetOptions(char *arg,
          pSearchMgr->SetParam("create_fragment_index", szParamStringVal, 0);
          snprintf(szParamStringVal, iSize, "1");
          pSearchMgr->SetParam("create_peptide_index", szParamStringVal, 1);
+         break;
+      case 'x':   // Export an existing PI_DB .idx's peptide-mod variant enumeration (docs/20260805_carafe.md)
+         strncpy(szTmp, arg+2, 511);
+         szTmp[511]='\0';
+
+         if (strlen(szTmp) == 0 )
+            logout("Missing text for parameter option -x<file>.  Ignored.\n");
+         else
+            pSearchMgr->SetParam("export_peptide_index_variants_file", szTmp, std::string(szTmp));
          break;
       default:
          break;

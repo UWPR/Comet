@@ -31,6 +31,15 @@ public:
       virtual ~ICometSearchManager() {}
       virtual bool CreateFragmentIndex() = 0;
       virtual bool CreatePeptideIndex() = 0;
+      // Reads an existing PI_DB .idx (built earlier via CreatePeptideIndex()/-j) plus whatever
+      // variable mods are live in comet.params right now, and dumps the canonical per-variant
+      // (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, sequence, mod sites) enumeration to
+      // strOutputFile -- docs/20260805_carafe.md Section 6.9/9: since Phase 0.5 stopped
+      // persisting MOD_NUMBERS/MOD_SEQS/the variant array in the .idx file, this is the only
+      // way for an external tool (tools/idx_to_carafe.py) to learn that enumeration without
+      // re-implementing CometPeptideIndex::EnumerateIndexPeptideMods()'s combinatorics itself.
+      // Forces PI_DB mode regardless of index_search_type (this export has no FI_DB analog).
+      virtual bool ExportPeptideIndexVariants(const string &strOutputFile) = 0;
       virtual bool DoSearch() = 0;
       virtual bool InitializeSingleSpectrumSearch() = 0;
       virtual void FinalizeSingleSpectrumSearch() = 0;

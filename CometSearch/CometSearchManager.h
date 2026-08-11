@@ -54,6 +54,7 @@ public:
    // Methods inherited from ICometSearchManager
    virtual bool CreateFragmentIndex();
    virtual bool CreatePeptideIndex();
+   virtual bool ExportPeptideIndexVariants(const std::string &strOutputFile);
    virtual bool DoSearch();
    virtual bool InitializeSingleSpectrumSearch();
    virtual void FinalizeSingleSpectrumSearch();
