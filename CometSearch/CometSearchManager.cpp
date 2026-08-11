@@ -210,10 +210,12 @@ static bool ValidateSequenceDatabaseFile()
          {
             fclose(fpcheck);
 
-            // Which index format to auto-build (and which mode to search it as
-            // afterward) comes from index_search_type, same as the "file already
-            // exists" branch below -- both bCreate*Index and iDbType need setting here
-            // since this is the only place either gets set when the .idx is missing.
+            // The .idx doesn't exist yet, so there's nothing to read a mode from --
+            // index_search_type is the only remaining consumer of that parameter
+            // (docs/20260811_restore_idx_header_mods.md): it picks which format to
+            // auto-build here. Once written, the file records its own mode in its
+            // IndexSearchType: header line and no parameter is needed to search it
+            // (see the "file already exists" branch below).
             if (g_staticParams.options.iIndexSearchType == 0)
             {
                g_staticParams.options.bCreatePeptideIndex = true;
@@ -229,12 +231,12 @@ static bool ValidateSequenceDatabaseFile()
       }
       else
       {
-         // Search mode against this (now-shared-format) .idx file comes from
-         // index_search_type, not the file itself (docs/20260730_PI_reduction.md Phase 0) --
-         // unset (-1) defaults to FI_DB, matching the pre-unification default for this
-         // "ambiguous .idx specified" case.
+         // The file already exists, so it's self-describing: g_staticParams.iDbType was
+         // already set from its own IndexSearchType: header line by InitializeStaticParams()
+         // (which always runs before this function -- see its ".idx extension" block), via
+         // CometPeptideIndex::ParsePeptideIndexHeader(). No index_search_type parameter is
+         // consulted here.
          fclose(fpcheck);
-         g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
          g_staticParams.options.bCreateFragmentIndex = false;
          g_staticParams.options.bCreatePeptideIndex = false;
          return true;
@@ -1508,45 +1510,33 @@ bool CometSearchManager::InitializeStaticParams()
    size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
    if (databaseLen >= 4 && !strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
    {
-      // Has .idx extension. Which search mode to run against it (PI_DB vs FI_DB) comes from
-      // index_search_type (docs/20260730_PI_reduction.md Phase 0), not the file's own header
-      // -- PI_DB and FI_DB now share one on-disk format/header, so the file itself no longer
-      // implies a mode. Unset (-1) defaults to FI_DB, matching the pre-unification default
-      // for the "ambiguous .idx specified" case below.
-      char szTmp[512];
+      // Has .idx extension. If the file doesn't exist yet, index_search_type
+      // (docs/20260811_restore_idx_header_mods.md) picks which format to auto-build; if it
+      // does exist, the file is self-describing -- ParsePeptideIndexHeader() below reads
+      // its IndexSearchType: line (and static/variable mod settings) directly, no parameter
+      // needed.
       FILE *fp;
-
-      g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
 
       // If .idx specified but does not exist, Comet will generate the index for the search
       // (both -i and -j build the same unified format; see CometPeptideIndex::WritePeptideIndex()).
       if ( (fp=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
+         g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
+
          if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
       else
       {
-         if (fgets(szTmp, 512, fp) == NULL) // grab first line of the index file
+         // Validates the magic string/version and sets g_staticParams.iDbType (plus static/
+         // variable mods) from the file's own header -- see ParsePeptideIndexHeader()'s
+         // doc comment.
+         if (!CometPeptideIndex::ParsePeptideIndexHeader(fp))
          {
-            string strErrorMsg = " Error - .idx file is blank?? \"" + std::string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
          fclose(fp);
-
-         // Sanity check only -- confirms this is a valid unified index file; does not
-         // determine PI_DB vs FI_DB (that's already decided above).
-         if (strncmp(szTmp, "Comet index database", sizeof("Comet index database") - 1) != 0)
-         {
-            string strErrorMsg = " Error - \"" + std::string(g_staticParams.databaseInfo.szDatabase)
-               + "\" is not a valid Comet index file (first line: " + std::string(szTmp) + ").\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
 
          // This clamp only matters for the legacy load-all-then-search-all path
          // (PiStrategy falls back to it for Mango/speclib runs; see
@@ -2194,45 +2184,32 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    if (!ValidateSequenceDatabaseFile())
       return false;
 
-   // Which search mode to run against this (shared-format) .idx file comes from
-   // index_search_type, not the file's own header (docs/20260730_PI_reduction.md Phase 0)
-   // -- RTS sets this via CometSearchManagerWrapper::SetParam("index_search_type", ...) in
-   // RealtimeSearch/SearchMS1MS2.cs, since it has no comet.params file to read it from.
-   // Unset (-1) defaults to FI_DB, matching the pre-unification default.
+   // g_staticParams.iDbType is already set by this point: InitializeStaticParams() (called
+   // just above) reads an existing .idx file's own IndexSearchType: header line via
+   // CometPeptideIndex::ParsePeptideIndexHeader(), or ValidateSequenceDatabaseFile() (also
+   // already called) set it from index_search_type for the "auto-build a missing .idx"
+   // case -- see docs/20260811_restore_idx_header_mods.md. Nothing here re-derives the mode;
+   // this block only clears the build-request flags once the mode is known, for the "file
+   // already exists" case (an auto-build still in progress has no file yet, so fpCheck below
+   // fails to open and this is a no-op, leaving bCreate*Index as ValidateSequenceDatabaseFile()
+   // set them).
    size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
    if (databaseLen >= 4 && strstr(g_staticParams.databaseInfo.szDatabase + databaseLen - 4, ".idx"))
    {
       FILE* fpCheck = fopen(g_staticParams.databaseInfo.szDatabase, "rb");
       if (fpCheck)
       {
-         char szHeader[256];
-         if (fgets(szHeader, sizeof(szHeader), fpCheck))
-         {
-            // Sanity check only -- confirms this is a valid unified index file; does not
-            // determine PI_DB vs FI_DB.
-            if (strncmp(szHeader, "Comet index database", sizeof("Comet index database") - 1) != 0)
-            {
-               string strErrorMsg = " Error - unrecognized .idx file header in file \"" + string(g_staticParams.databaseInfo.szDatabase) + "\".\n";
-               strErrorMsg += " Found header: \"" + string(szHeader) + "\"\n";
-               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-               logerr(strErrorMsg);
-               fclose(fpCheck);
-               return false;
-            }
-
-            if (g_staticParams.options.iIndexSearchType == 0)
-            {
-               g_staticParams.iDbType = DbType::PI_DB;
-               g_staticParams.options.bCreatePeptideIndex = false;
-               g_bPeptideIndexRead = false;
-            }
-            else
-            {
-               g_staticParams.iDbType = DbType::FI_DB;
-               g_staticParams.options.bCreateFragmentIndex = false;
-            }
-         }
          fclose(fpCheck);
+
+         if (g_staticParams.iDbType == DbType::PI_DB)
+         {
+            g_staticParams.options.bCreatePeptideIndex = false;
+            g_bPeptideIndexRead = false;
+         }
+         else if (g_staticParams.iDbType == DbType::FI_DB)
+         {
+            g_staticParams.options.bCreateFragmentIndex = false;
+         }
       }
    }
 

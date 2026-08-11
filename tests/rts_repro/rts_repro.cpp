@@ -142,9 +142,10 @@ static bool SetRangesFromIndexHeader(ICometSearchManager* mgr, const string& szD
       }
       else if (tag == "StaticMod:")
       {
-         // StaticMod: is now the last header line before the blank-line separator
-         // (docs/20260730_PI_reduction.md Phase 0.5 removed VariableMod:/
-         // ProteinModList:/RequireVariableMod: from the header entirely).
+         // Both fields this function wants (MassRange:/LengthRange:) are already found
+         // by the time StaticMod: appears; no need to keep scanning through the
+         // VariableMod:/ProteinModList:/RequireVariableMod: lines that follow it
+         // (docs/20260811_restore_idx_header_mods.md).
          break;
       }
    }
@@ -213,23 +214,43 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "print_ascorepro_score", bEnableAScorePro ? -1 : 0);
    SetIntParam(mgr, "index_search_type", iIndexSearchType);
 
-   // Variable mods: no longer available from the .idx header (docs/20260730_PI_reduction.md
-   // Phase 0.5 removed VariableMod:/ProteinModList:/RequireVariableMod: from it entirely), so
-   // this driver -- like RTS itself -- must set them explicitly on every run. T22's ground-truth
-   // check needs the same phospho-S mod the fixture's index was built with (see
-   // tests/unit/run_tests.py's T19_PARAMS_TEMPLATE usage in _test_rts_index_type()).
+   // Variable mods: mod IDENTITY (chars/mass/neutral-loss) is available from the .idx
+   // header again (docs/20260811_restore_idx_header_mods.md restored VariableMod:/
+   // ProteinModList:/RequireVariableMod:) and CometPeptideIndex::ParsePeptideIndexHeader()
+   // overwrites whatever's set here with it -- so these SetParam calls are moot for
+   // identity. What the header does NOT carry (neither in the restored format nor
+   // pre-121's) is iMaxNumVarModAAPerMod/max_variable_mods_in_peptide -- those still come
+   // from live params on every run, same as RTS itself, and must be configured wide enough
+   // to cover whichever .idx this process ends up searching: T22's ground-truth check
+   // (tests/unit/data/t19_ascore_fidb.fasta.idx, a single phospho-S mod, max 1) and its
+   // determinism check (human.small.fasta built from data/comet_phospho.params: M
+   // oxidation + STY phospho with a neutral loss, max 4 total) both run through this same
+   // binary with the same fixed param set. The wider (comet_phospho.params) config is a
+   // strict superset that's also safe against the simpler ground-truth index -- extra
+   // permitted-but-inactive mod slots and a higher per-peptide cap don't change which
+   // candidate scores best for an unambiguous 8-residue peptide with one phospho-acceptor.
    {
-      VarMods phosphoS;
-      phosphoS.dVarModMass = 79.966331;
-      strcpy(phosphoS.szVarModChar, "S");
-      phosphoS.iMaxNumVarModAAPerMod = 1;
-      phosphoS.iRequireThisMod = 0;
-      phosphoS.iVarModTermDistance = -1;
-      phosphoS.iWhichTerm = 0;
-      phosphoS.dNeutralLoss = 0.0;
-      mgr->SetParam("variable_mod01", "79.966331 S 0 1 -1 0 0 0.0", phosphoS);
+      VarMods oxM;
+      oxM.dVarModMass = 15.9949;
+      strcpy(oxM.szVarModChar, "M");
+      oxM.iMaxNumVarModAAPerMod = 2;
+      oxM.iRequireThisMod = 0;
+      oxM.iVarModTermDistance = -1;
+      oxM.iWhichTerm = 0;
+      oxM.dNeutralLoss = 0.0;
+      mgr->SetParam("variable_mod01", "15.9949 M 0 2 -1 0 0 0.0", oxM);
+
+      VarMods phosphoSTY;
+      phosphoSTY.dVarModMass = 79.966331;
+      strcpy(phosphoSTY.szVarModChar, "STY");
+      phosphoSTY.iMaxNumVarModAAPerMod = 2;
+      phosphoSTY.iRequireThisMod = 0;
+      phosphoSTY.iVarModTermDistance = -1;
+      phosphoSTY.iWhichTerm = 0;
+      phosphoSTY.dNeutralLoss = 97.976896;
+      mgr->SetParam("variable_mod02", "79.966331 STY 0 2 -1 0 0 97.976896", phosphoSTY);
    }
-   SetIntParam(mgr, "max_variable_mods_in_peptide", 1);
+   SetIntParam(mgr, "max_variable_mods_in_peptide", 4);
 
    if (!SetRangesFromIndexHeader(mgr, szDB))
    {

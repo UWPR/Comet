@@ -947,21 +947,21 @@ def test_t18(comet_exe):
 
 # ---------------------------------------------------------------------------
 # T19 -- AScore + FI_DB regression (docs/20260617_codereview3.md issue 2a;
-# search-time-mod behavior updated for docs/20260730_PI_reduction.md Phase 0.5)
+# .idx-header-mod precedence restored by docs/20260811_restore_idx_header_mods.md)
 # ---------------------------------------------------------------------------
 #
 # CometSearchManager::SetAScoreOptions() reads g_staticParams.variableModParameters.
-# varModList[] to configure AScorePro's differential-mod list. Originally (before
-# Phase 0.5) this test proved that an FI_DB search picks up its variable mod from the
-# .idx file's "VariableMod:" header line even when search-time params left
-# variable_mod01 blank, and that AScore is configured *after* that header-driven
-# overwrite (see the ordering comment in CometSearch/search/Pipeline.cpp). Phase 0.5
-# removed VariableMod:/ProteinModList:/RequireVariableMod: from the .idx header
-# entirely -- mods now come solely from live comet.params, the .idx no longer carries
-# them at all, so the test is inverted: it builds the index with a *blank* mod (proving
-# build-time mod settings are irrelevant now) and searches it with the real phospho-S
-# mod declared in search-time params (the only source left), checking that AScorePro
-# runs and localizes correctly from that.
+# varModList[] to configure AScorePro's differential-mod list. This test proves that
+# an FI_DB search picks up its variable mod from the .idx file's own VariableMod:
+# header line -- overwriting whatever (or nothing) search-time comet.params declared
+# -- and that AScore is configured *after* that header-driven overwrite (see the
+# ordering comment in CometSearch/search/Pipeline.cpp). PR121's Phase 0.5 had
+# temporarily dropped VariableMod:/ProteinModList:/RequireVariableMod: from the
+# header entirely (mods came solely from live comet.params); docs/20260811_
+# restore_idx_header_mods.md put them back so an .idx is self-contained again, no
+# search-time variable_modNN params required. Build with the real phospho-S mod,
+# search with variable_mod01 left *blank* in search-time params -- the header must
+# still win for AScore to localize correctly.
 #
 # Fixture peptide: ACDEFGS[+79.966331]K (charge 2+), the only candidate in the index
 # within the configured mass range, with a single phospho-acceptor S so localization
@@ -1077,8 +1077,8 @@ def _run_t19_step(comet_exe, args, timeout=120):
 
 @register("t19")
 def test_t19(comet_exe):
-    """T19: AScore + FI_DB regression -- AScore must use the search-time params'
-    variable mod (Phase 0.5: the .idx file no longer carries one at all)."""
+    """T19: AScore + FI_DB regression -- AScore must use the .idx header's
+    variable mod even when search-time params leave it blank."""
     failures = []
 
     fasta = DATA_DIR / "t19_ascore_fidb.fasta"
@@ -1089,14 +1089,15 @@ def test_t19(comet_exe):
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
-    # Step 1: build an FI_DB index with a blank variable_mod01 -- proves build-time
-    # mod settings no longer matter (Phase 0.5 doesn't persist them at all).
+    # Step 1: build an FI_DB index with the real phospho-S mod -- this is now the
+    # only place the mod is declared; it gets baked into the .idx's VariableMod:
+    # header line (docs/20260811_restore_idx_header_mods.md).
     if idx.exists():
         idx.unlink()
 
     build_params = T19_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta),
-        ascorepro=0, mod1="0.0 X 0 3 -1 0 0 0.0",
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 0.0",
     )
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -1112,14 +1113,16 @@ def test_t19(comet_exe):
     finally:
         build_params_file.unlink(missing_ok=True)
 
-    # Step 2: search the index with print_ascorepro_score enabled and the real
-    # phospho-S mod declared in search-time params -- the only source left.
+    # Step 2: search the index with print_ascorepro_score enabled and variable_mod01
+    # left blank in search-time params -- the .idx header's VariableMod: line must
+    # still be what AScore configures from (ParsePeptideIndexHeader() overwrites
+    # whatever comet.params supplied, the same precedent StaticMod: already set).
     if txt.exists():
         txt.unlink()
 
     search_params = T19_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(idx),
-        ascorepro=1, mod1="79.966331 S 0 1 -1 0 0 0.0",
+        ascorepro=1, mod1="0.0 X 0 3 -1 0 0 0.0",
     )
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -1154,8 +1157,9 @@ def test_t19(comet_exe):
 
         ascorepro = float(row.get("ascorepro", "0") or "0")
         check(ascorepro > 0.0,
-              f"ascorepro: expected > 0 (AScore must run using the search-time params' "
-              f"mod -- the .idx file no longer carries one), got {ascorepro}", failures)
+              f"ascorepro: expected > 0 (AScore must run using the .idx header's "
+              f"VariableMod: line even though search-time params left it blank), "
+              f"got {ascorepro}", failures)
     finally:
         search_params_file.unlink(missing_ok=True)
         idx.unlink(missing_ok=True)
@@ -1194,15 +1198,16 @@ def test_t20(comet_exe):
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
-    # Step 1: build a PI_DB (peptide index) with a blank variable_mod01 -- build-time
-    # mod settings don't matter any more (Phase 0.5). "-j" selects create_peptide_index,
-    # unlike T19's "-i" (create_fragment_index).
+    # Step 1: build a PI_DB (peptide index) with the real phospho-S mod -- like T19,
+    # this is now the only place the mod is declared; it's baked into the .idx's
+    # VariableMod: header line (docs/20260811_restore_idx_header_mods.md). "-j"
+    # selects create_peptide_index, unlike T19's "-i" (create_fragment_index).
     if idx.exists():
         idx.unlink()
 
     build_params = T19_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta),
-        ascorepro=0, mod1="0.0 X 0 3 -1 0 0 0.0",
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 0.0",
     )
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -1218,17 +1223,18 @@ def test_t20(comet_exe):
     finally:
         build_params_file.unlink(missing_ok=True)
 
-    # Step 2: search the PI_DB index with the real phospho-S mod declared in
-    # search-time params (the only source left, Phase 0.5). This is also the call
-    # sequence that previously segfaulted inside CometSearch::BinarySearchMass()
-    # before any output was written, so a non-crashing exit with the expected PSM
-    # is the regression check.
+    # Step 2: search the PI_DB index with variable_mod01 left blank in search-time
+    # params -- the .idx header's VariableMod: line must still be what's applied
+    # (ParsePeptideIndexHeader() overwrites whatever comet.params supplied). This is
+    # also the call sequence that previously segfaulted inside
+    # CometSearch::BinarySearchMass() before any output was written, so a
+    # non-crashing exit with the expected PSM is the regression check.
     if txt.exists():
         txt.unlink()
 
     search_params = T19_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(idx),
-        ascorepro=1, mod1="79.966331 S 0 1 -1 0 0 0.0",
+        ascorepro=1, mod1="0.0 X 0 3 -1 0 0 0.0",
     )
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -1264,7 +1270,9 @@ def test_t20(comet_exe):
 
         ascorepro = float(row.get("ascorepro", "0") or "0")
         check(ascorepro > 0.0,
-              f"ascorepro: expected > 0, got {ascorepro}", failures)
+              f"ascorepro: expected > 0 (AScore must use the .idx header's "
+              f"VariableMod: line even though search-time params left it blank), "
+              f"got {ascorepro}", failures)
     finally:
         search_params_file.unlink(missing_ok=True)
         idx.unlink(missing_ok=True)
