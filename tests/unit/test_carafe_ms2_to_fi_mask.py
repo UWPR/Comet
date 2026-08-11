@@ -234,9 +234,9 @@ def test_floor_never_pads_beyond_available_candidates(failures):
           f"bModlossMask={bModlossMask:#x} yModlossMask={yModlossMask:#x}", failures)
 
 
-def test_mask_file_roundtrip_v2(failures):
-    """write_mask_file/read_mask_file must round-trip the v2 8-field entry struct exactly,
-    including nonzero modloss masks, and the magic line must be the v2 string."""
+def test_mask_file_roundtrip_v3(failures):
+    """write_mask_file/read_mask_file must round-trip the v3 8-field entry struct exactly,
+    including nonzero modloss masks, and the magic line must be the v3 string."""
     with tempfile.TemporaryDirectory() as tmp:
         path = str(Path(tmp) / "test.mask")
         entries = [
@@ -244,7 +244,8 @@ def test_mask_file_roundtrip_v2(failures):
             (10, -1, 0, -1, 0x0, 0x0, 0x0, 0x0),
         ]
         m.write_mask_file(path, "deadbeef" * 8, 12345, "/some/path.idx",
-                           0.10, 6, general_mode=False, entries=entries)
+                           0.10, 6, general_mode=False, var_mod_config="79.966331S--0.000000",
+                           entries=entries)
 
         with open(path, "rb") as f:
             magic = f.readline()
@@ -254,18 +255,30 @@ def test_mask_file_roundtrip_v2(failures):
         check(header.get("GeneralMode") == "0", f"GeneralMode header wrong: {header.get('GeneralMode')!r}", failures)
         check(header.get("SourceIdxNumRawPeptides") == "12345",
               f"SourceIdxNumRawPeptides header wrong: {header.get('SourceIdxNumRawPeptides')!r}", failures)
+        check(header.get("VarModConfig") == "79.966331S--0.000000",
+              f"VarModConfig header wrong: {header.get('VarModConfig')!r}", failures)
         check(sorted(read_entries) == sorted(entries),
               f"entries didn't round-trip: wrote {entries}, read {read_entries}", failures)
 
         # general_mode=True path too, since GeneralMode's value is derived (not just echoed).
         path2 = str(Path(tmp) / "test2.mask")
         m.write_mask_file(path2, "cafef00d" * 8, 1, "/x.idx", 0.10, 6,
-                           general_mode=True, entries=[(1, -1, -1, -1, 0x1, 0x1, 0x0, 0x0)])
+                           general_mode=True, var_mod_config="",
+                           entries=[(1, -1, -1, -1, 0x1, 0x1, 0x0, 0x0)])
         header2, _ = m.read_mask_file(path2)
         check(header2.get("GeneralMode") == "1", f"GeneralMode=True should write '1', got {header2.get('GeneralMode')!r}", failures)
 
+        # var_mod_config=None must raise -- Section 8 items 12-14's guard is required, not optional.
+        raised = False
+        try:
+            m.write_mask_file(str(Path(tmp) / "test3.mask"), "abc", 1, "/x.idx", 0.10, 6,
+                               general_mode=True, var_mod_config=None, entries=[])
+        except ValueError:
+            raised = True
+        check(raised, "var_mod_config=None should raise ValueError, didn't", failures)
+
         check(m.ENTRY_SIZE == struct.calcsize("<IibbQQQQ"),
-              f"ENTRY_SIZE should match the 8-field v2 struct, got {m.ENTRY_SIZE}", failures)
+              f"ENTRY_SIZE should match the 8-field v3 struct, got {m.ENTRY_SIZE}", failures)
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +292,7 @@ TESTS = [
     test_modloss_mask_independent_from_unshifted,
     test_modloss_skipped_for_unmodified_variant,
     test_floor_never_pads_beyond_available_candidates,
-    test_mask_file_roundtrip_v2,
+    test_mask_file_roundtrip_v3,
 ]
 
 

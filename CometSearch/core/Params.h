@@ -92,6 +92,9 @@ struct Options
    double dMinimumXcorr;         // set the minimum xcorr to report (default is 1e-8)
    double dFragIndexMaxMass;     // fragment index maximum fragment mass
    double dFragIndexMinMass;     // fragment index minimum fragment mass
+   string sFragIndexPredictedMaskFile; // path to a Carafe predicted-fragment keep/drop mask file
+                                  // (tools/carafe_ms2_to_fi_mask.py, docs/20260805_carafe.md);
+                                  // empty = disabled (default, matches sCompoundModsFile's convention)
    double dMS1MinMass;           // low mass cutoff in MS1 query/library spectra
    double dMS1MaxMass;           // high mass cutoff in MS1 query/library spectra
    IntRange scanRange;
@@ -422,6 +425,7 @@ struct StaticParams
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
+      options.sFragIndexPredictedMaskFile = "";
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

@@ -15,6 +15,7 @@
 
 #include "CometFragmentIndex.h"
 #include "CometPeptideIndex.h"
+#include "CometPredictedMask.h"
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
@@ -77,6 +78,13 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    // FI_DB path.
    if (!g_bPlainPeptideIndexRead && !CometPeptideIndex::ReadPeptideIndex(bIsRTS))
       return false;   // ReadPeptideIndex() already reported the specific error
+
+   // Phase 3 (docs/20260805_carafe.md Section 4.4/9): load the predicted-fragment mask, if
+   // configured, once g_vRawPeptides/MOD_NUMBERS/MOD_SEQS are populated (needed for the .idx
+   // fingerprint and VarModConfig checks) and before GenerateFragmentIndex() below reads it
+   // per-variant. A no-op (returns true) when fragment_index_predicted_mask_file is unset.
+   if (!CometPredictedMask::Load(g_staticParams.options.sFragIndexPredictedMaskFile))
+      return false;   // CometPredictedMask::Load() already reported the specific error
 
    // vFragmentPeptides is vector of modified peptides
    // - raw peptide via iWhichPeptide referencing entry in g_vRawPeptides to access peptide and protein(s)
@@ -248,6 +256,31 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    }
    pFragmentIndexPool->wait_on_threads();
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
+
+   // Hardening check (docs/20260805_carafe.md Section 7): every bin's write cursor must land
+   // EXACTLY on the next bin's CSR offset -- proving the fill pass wrote precisely as many
+   // entries into this bin as the count pass reserved for it, no more (which would silently
+   // overflow into the next bin's region, corrupting unrelated masses) and no fewer (which
+   // would leave stale/uninitialized entries in this bin's tail). This is the single highest-
+   // severity correctness risk Phase 3's predicted-fragment masking introduces (a count/fill
+   // mismatch doesn't crash cleanly), but the check itself is generic -- it catches a
+   // count/fill divergence from ANY cause, not just masking, and costs O(bins), negligible
+   // next to the O(peptides) fill pass it follows.
+   for (unsigned int iBin = 0; iBin < g_massRange.uiMaxFragmentArrayIndex; ++iBin)
+   {
+      if (s_iWritePos[iBin] != g_iFragmentIndexOffset[iBin + 1])
+      {
+         string strErrorMsg = " Error - fragment index count/fill mismatch at bin " + std::to_string(iBin)
+            + ": fill pass wrote to offset " + std::to_string(s_iWritePos[iBin])
+            + " but count pass reserved up to " + std::to_string(g_iFragmentIndexOffset[iBin + 1])
+            + " -- the index is corrupt. This should be unreachable (the mask check, if any, "
+            + "sits before the bCountOnly branch so both passes see identical logic); please "
+            + "report this.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         exit(1);
+      }
+   }
 
    // Write positions no longer needed after fill.
    delete[] s_iWritePos;
@@ -619,6 +652,24 @@ if (!(iWhichPeptide%1000))
       }
    }
 
+   // Phase 3 predicted-fragment masking (docs/20260805_carafe.md Section 4.4/9): looked up
+   // ONCE per call (the tuple key is constant for this whole variant, unlike the per-ladder-
+   // index bit test below) rather than once per fragment -- this function runs potentially
+   // hundreds of millions of times for a whole-proteome no-enzyme build, so a per-fragment
+   // lookup would multiply that by ~(peptide length) for no benefit. Default to all-bits-set
+   // ("fully unfiltered") so the SAME bit-test code below runs unconditionally whether masking
+   // is disabled, this variant has no mask entry (Section 8 item 2's fallback), or a real mask
+   // was found -- no separate "is masking active here" branch needed at any insertion site.
+   uint64_t maskB = ~0ULL, maskY = ~0ULL, maskBModloss = ~0ULL, maskYModloss = ~0ULL;
+   if (CometPredictedMask::IsEnabled())
+   {
+      CometPredictedMask::Lookup(static_cast<unsigned int>(iWhichPeptide), modNumIdx, cNtermMod, cCtermMod,
+         maskB, maskY, maskBModloss, maskYModloss);
+      // Lookup() leaves maskB/maskY/maskBModloss/maskYModloss untouched (still all-bits-set)
+      // when it returns false -- deliberately not checked here; "not found" and "found,
+      // fully-unfiltered" are handled identically by construction.
+   }
+
    for (int i = 0; i < iEndPos; ++i)
    {
       iPosReverse = iEndPos - i;
@@ -692,7 +743,16 @@ if (!(iWhichPeptide%1000))
 
       if (i > 1)  // skip first two low mass b- and y-ions
       {
-         if (dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
+         // Phase 3 predicted-fragment mask bit for this ladder position (docs/20260805_carafe.md
+         // Section 4.4/9) -- bit (i-2), matching tools/carafe_ms2_to_fi_mask.py's documented
+         // convention exactly (bit 0 == i==2 == length 3). maskB/maskY/maskBModloss/
+         // maskYModloss default to all-bits-set (see this function's setup above), so this
+         // check is always a no-op unless masking is actually enabled AND this variant has a
+         // real mask entry AND that entry actually clears this specific bit.
+         uint64_t maskBit = 1ULL << (i - 2);
+
+         if ((maskB & maskBit)
+            && dBion > g_staticParams.options.dFragIndexMinMass && dBion < g_staticParams.options.dFragIndexMaxMass)
          {
             int iBinBion = BIN(dBion);
 
@@ -708,7 +768,8 @@ if (!(iWhichPeptide%1000))
                g_iFragmentIndex[s_iWritePos[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
          }
 
-         if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
+         if ((maskY & maskBit)
+            && dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
          {
             int iBinYion = BIN(dYion);
 
@@ -728,7 +789,10 @@ if (!(iWhichPeptide%1000))
          // unshifted ones above (decision: insert both, docs/20260805_carafe.md Section 8
          // item 11), one per NL-bearing variable-mod slot whose nearest relevant-terminus
          // occurrence this fragment already reaches. Primary loss (dNeutralLoss) only --
-         // dNeutralLoss2 deferred (Section 8 item 10).
+         // dNeutralLoss2 deferred (Section 8 item 10). Gated by maskBModloss/maskYModloss
+         // (Phase 3, Section 8 items 12-14) -- an INDEPENDENT bit pool from maskB/maskY at this same bit
+         // position, matching the mask builder's own independent thresholding of the
+         // unshifted vs. modloss channels.
          if (bFragmentNL)
          {
             for (int x = 0; x < FRAGINDEX_VMODS; ++x)
@@ -737,7 +801,7 @@ if (!(iWhichPeptide%1000))
                if (dNL == 0.0)
                   continue;
 
-               if (iPositionNLB[x] <= i)
+               if ((maskBModloss & maskBit) && iPositionNLB[x] <= i)
                {
                   double dNLBion = dBion - dNL;
                   if (dNLBion > g_staticParams.options.dFragIndexMinMass && dNLBion < g_staticParams.options.dFragIndexMaxMass)
@@ -757,7 +821,7 @@ if (!(iWhichPeptide%1000))
                   }
                }
 
-               if (iPositionNLY[x] <= i)
+               if ((maskYModloss & maskBit) && iPositionNLY[x] <= i)
                {
                   double dNLYion = dYion - dNL;
                   if (dNLYion > g_staticParams.options.dFragIndexMinMass && dNLYion < g_staticParams.options.dFragIndexMaxMass)

@@ -358,6 +358,25 @@ class IdxReader:
 # comet.exe -x export reader (docs/20260805_carafe.md Section 6.9/9)
 # ---------------------------------------------------------------------------
 
+def read_var_mod_config(path):
+    """Reads the leading "# VarModConfig: <string>" comment line comet.exe -x writes before
+    its TSV header (CometPeptideIndex::ExportVariants()) -- a serialization of the
+    FRAGINDEX_VMODS variable-mod slots active in the comet.params session that produced this
+    export. Propagated by main() into the variant-map sidecar's own leading comment line so
+    tools/carafe_ms2_to_fi_mask.py can embed it in the mask file header, letting Phase 3's
+    CometPredictedMask::Load() reject a mask built against different variable mods than are
+    live in the search consuming it (docs/20260805_carafe.md Section 8 items 12-14; Section 6.10's closing
+    note -- modNumIdx numbering isn't provable safe from the .idx fingerprint alone). Returns
+    None if the file has no such line (shouldn't happen against a current comet.exe -x, but
+    fail soft here and let the mask builder's own validation reject a stale export instead)."""
+    with open(path, "r", newline="") as f:
+        first = f.readline().rstrip("\r\n")
+    prefix = "# VarModConfig: "
+    if first.startswith(prefix):
+        return first[len(prefix):]
+    return None
+
+
 def read_exported_variants(path):
     """Reads comet.exe -x's TSV export: iWhichPeptide/modNumIdx/cNtermMod/cCtermMod/mass/
     sequence/sites, one row per PI_DB variant (CometPeptideIndex::ExportVariants()). Yields
@@ -367,7 +386,10 @@ def read_exported_variants(path):
     c-term, matching CometPeptideIndex.h's VarModSites::position doc comment exactly, same
     convention CometSearch.cpp's piVarModSites has always used)."""
     with open(path, "r", newline="") as f:
-        header = f.readline().rstrip("\r\n").split("\t")
+        header = f.readline().rstrip("\r\n")
+        if header.startswith("# VarModConfig: "):
+            header = f.readline().rstrip("\r\n")
+        header = header.split("\t")
         col = {name: i for i, name in enumerate(header)}
         for line in f:
             line = line.rstrip("\r\n")
@@ -598,6 +620,13 @@ def main():
 
     variant_map_path = args.variant_map or default_variant_map_path(args.out_tsv)
 
+    var_mod_config = read_var_mod_config(args.variants_export_tsv)
+    if var_mod_config is None:
+        print(f"WARNING: {args.variants_export_tsv!r} has no '# VarModConfig:' line -- "
+              f"was it produced by an older comet.exe -x? tools/carafe_ms2_to_fi_mask.py's "
+              f"output mask will be missing the VarModConfig guard (docs/20260805_carafe.md "
+              f"Section 8 items 12-14); Phase 3 will refuse to load it.", file=sys.stderr)
+
     n_written = 0
     n_variant_map_rows = 0
     n_skipped_decoy = 0
@@ -609,6 +638,12 @@ def main():
 
     with open(args.out_tsv, "wb") as out, open(variant_map_path, "wb") as vmap:
         out.write(b"sequence\tmods\tmod_sites\tcharge\r\n")
+        # Propagated straight through from comet.exe -x's own leading comment line (see
+        # read_var_mod_config()) -- tools/carafe_ms2_to_fi_mask.py reads it from here rather
+        # than needing its own --idx-file-adjacent lookup, since this variant map is already
+        # one of its required inputs.
+        if var_mod_config is not None:
+            vmap.write(f"# VarModConfig: {var_mod_config}\r\n".encode("ascii"))
         vmap.write(b"row_index\tiWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\r\n")
 
         for variant in read_exported_variants(args.variants_export_tsv):

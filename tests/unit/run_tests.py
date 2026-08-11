@@ -1576,6 +1576,7 @@ def test_t22_rts_pi(comet_exe):
 
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 import qvalue  # noqa: E402
+import carafe_ms2_to_fi_mask as fi_mask  # noqa: E402
 
 
 def _q1pct_counts(txt_path):
@@ -2501,6 +2502,17 @@ def test_t26_export_peptide_index_variants(comet_exe):
             return failures
 
         lines = export_tsv.read_text().splitlines()
+        var_mod_config_line = None
+        if lines and lines[0].startswith("# VarModConfig: "):
+            var_mod_config_line = lines[0][len("# VarModConfig: "):]
+            lines = lines[1:]
+        check(var_mod_config_line is not None,
+              "export file missing '# VarModConfig:' leading comment line "
+              "(docs/20260805_carafe.md Section 8 items 12-14)", failures)
+        if var_mod_config_line is not None:
+            check("79.966331S" in var_mod_config_line,
+                  f"VarModConfig should reflect the real phospho mod (79.966331 S) somewhere "
+                  f"in its serialization, got {var_mod_config_line!r}", failures)
         header = lines[0].split("\t")
         rows = [dict(zip(header, l.split("\t"))) for l in lines[1:] if l.strip()]
 
@@ -2548,6 +2560,195 @@ def test_t26_export_peptide_index_variants(comet_exe):
         export_params_file.unlink(missing_ok=True)
         export_tsv.unlink(missing_ok=True)
         idx.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T27 -- CometFragmentIndex.cpp predicted-fragment mask integration (docs/20260805_carafe.md
+# Section 4.4/9, Phase 3)
+# ---------------------------------------------------------------------------
+#
+# Reuses t25_fragment_nl's own fixture/template (t25_fragment_nl.fasta/.ms2, ACDSEFGHIK, real
+# mod in variable_mod02/slot 1 WITH a real 97.976896 Da neutral loss configured -- Section
+# 6.6/6.7's own fixture is exactly what's needed here too, already proven to produce 28 FI
+# entries with NL off / 37 with NL on) rather than T25/T26's plain gap-config fixture, which
+# has NL=0.0 and so never exercises the NL-shifted-entry code path masking needs to prove it
+# can filter independently of the unshifted one. The mask itself is hand-constructed via
+# tools/carafe_ms2_to_fi_mask.py's write_mask_file()/idx_fingerprint() directly -- no real
+# Carafe/torch dependency, matching tests/unit/test_carafe_ms2_to_fi_mask.py's own
+# hand-computed-intensities philosophy -- with specific, hand-verifiable bit patterns:
+#
+#   - The UNMODIFIED variant (iWhichPeptide=0, modNumIdx=-1) is OMITTED from the mask entirely
+#     -- tests Section 8 item 2's "not found -> fully unfiltered" fallback. If that fallback
+#     ever regressed to "not found -> everything masked out", this variant's 14 FI entries
+#     would silently drop to 0 and the total-count assertion below would catch it.
+#   - The MODIFIED variant (modNumIdx=0) gets bMask=yMask=0x7F (all 7 eligible b/y ions for
+#     this 10-residue peptide, i=2..8 -> bits 0..6) and bModlossMask=yModlossMask=0 (every
+#     NL-shifted entry masked out).
+#
+# Expected FI entries: unmasked 37 (14 unmodified + 14 modified-unshifted + 9 modified-NL-
+# shifted, matching t25_fragment_nl's own with-NL count exactly); masked 28 (14 unmodified,
+# unfiltered via the fallback + 14 modified-unshifted, all kept + 0 modified-NL, all dropped)
+# -- an exact, hand-derived count, not just "some difference" (matches this project's
+# established T25-style standard for FI entry counts). Every one of the spectrum's 14 real
+# (unshifted) ions stays in the masked index, so the peptide must still be found with
+# identical scoring to the unmasked search -- proving masking is purely a candidate-recall
+# filter (matching classic search's own NL-scoring precedent: XcorrScoreI() always scores the
+# full theoretical spectrum regardless of what's in the FI), not a scoring-accuracy one.
+T27_NEUTRAL_LOSS = "97.976896"
+T27_VAR_MOD_CONFIG = ("0.000000X--0.000000|79.966331S--" + T27_NEUTRAL_LOSS + "|"
+                      "0.000000X--0.000000|0.000000X--0.000000|0.000000X--0.000000")
+
+
+def _t27_write_hand_mask(idx_path, mask_path):
+    """Builds a mask file directly (no idx_to_carafe.py/Carafe involved) with the exact bit
+    patterns documented above. Returns (fingerprint, num_raw_peptides) for the caller's own
+    mismatch-rejection sub-test."""
+    fingerprint, num_raw_peptides = fi_mask.idx_fingerprint(str(idx_path))
+    entries = [
+        # (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, bMask, yMask, bModlossMask, yModlossMask)
+        (0, 0, -1, -1, 0x7F, 0x7F, 0x0, 0x0),
+    ]
+    fi_mask.write_mask_file(
+        str(mask_path), fingerprint, num_raw_peptides, str(idx_path),
+        threshold=0.10, min_kept_peaks=6, general_mode=False,
+        var_mod_config=T27_VAR_MOD_CONFIG,
+        entries=entries)
+    return fingerprint, num_raw_peptides
+
+
+@register("t27_predicted_mask_integration")
+def test_t27_predicted_mask_integration(comet_exe):
+    """T27: CometFragmentIndex.cpp actually applies a predicted-fragment mask -- fewer FI
+    entries with masking, identical scoring for a peptide whose real ions survive the mask,
+    the Section 8 item 2 "not found -> unfiltered" fallback, and rejection of a mask that
+    doesn't match the currently-loaded .idx/comet.params (Section 8 items 12-14's VarModConfig guard)."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fragment_nl.fasta"
+    ms2   = DATA_DIR / "t25_fragment_nl.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    mask_path = DATA_DIR / "t27_predicted.mask"
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx.unlink(missing_ok=True)
+    build_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=T27_NEUTRAL_LOSS)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    try:
+        fingerprint, num_raw_peptides = _t27_write_hand_mask(idx, mask_path)
+
+        search_params_common = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+            comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T27_NEUTRAL_LOSS)
+
+        def run_search(mask_file, tag):
+            params = search_params_common
+            if mask_file is not None:
+                # Inserted before [COMET_ENZYME_INFO] -- a key=value line appearing after that
+                # section marker is silently ignored by Comet's params parser (found the hard
+                # way while writing this test: an appended-at-EOF line never took effect).
+                params = params.replace(
+                    "[COMET_ENZYME_INFO]",
+                    f"fragment_index_predicted_mask_file = {fmt(mask_file)}\n[COMET_ENZYME_INFO]")
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+                pf.write(params)
+                pf_path = Path(pf.name)
+            txt.unlink(missing_ok=True)
+            try:
+                rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pf_path)}", fmt(ms2)])
+                m = re.search(r"([\d.eE+]+) FI entries", out)
+                fi_entries = int(float(m.group(1))) if m else None
+                rows = None
+                if txt.exists():
+                    lines = txt.read_text().splitlines()
+                    rows = [l.split("\t") for l in lines[2:] if l.strip()]
+                return rc, out, fi_entries, rows
+            finally:
+                pf_path.unlink(missing_ok=True)
+                txt.unlink(missing_ok=True)
+
+        # --- Unmasked baseline ---
+        rc_u, out_u, fi_u, rows_u = run_search(None, "unmasked")
+        check(rc_u == 0, f"unmasked search failed (rc={rc_u}):\n{out_u}", failures)
+        check(fi_u == 37, f"unmasked: expected exactly 37 FI entries, got {fi_u}", failures)
+        check(rows_u is not None and len(rows_u) == 1,
+              f"unmasked: expected exactly 1 PSM row, got {rows_u}", failures)
+
+        # --- Masked: fewer entries, same match ---
+        rc_m, out_m, fi_m, rows_m = run_search(mask_path, "masked")
+        check(rc_m == 0, f"masked search failed (rc={rc_m}):\n{out_m}", failures)
+        check("loaded 1 predicted-fragment mask entries" in out_m,
+              f"expected Comet to log loading the mask, didn't find it in:\n{out_m}", failures)
+        check(fi_m == 28,
+              f"masked: expected exactly 28 FI entries (14 unmodified via the 'not found -> "
+              f"unfiltered' fallback + 14 modified-unshifted, all kept + 0 of 9 modified-NL, "
+              f"all masked out), got {fi_m}", failures)
+        check(rows_u is not None and rows_m is not None and rows_u == rows_m,
+              f"masked search should find the identical PSM row as unmasked (masking is a "
+              f"candidate-recall filter, not a scoring filter) -- unmasked={rows_u}, "
+              f"masked={rows_m}", failures)
+
+        # --- Determinism: two independent masked searches byte-identical ---
+        _, _, fi_m2, rows_m2 = run_search(mask_path, "masked run 2")
+        check(fi_m2 == fi_m and rows_m2 == rows_m,
+              f"two independent masked searches against the same .idx/mask must be identical "
+              f"-- run1 fi={fi_m} rows={rows_m}, run2 fi={fi_m2} rows={rows_m2}", failures)
+
+        # --- Mismatch rejection: a mask with the wrong fingerprint must be rejected loudly,
+        # not silently ignored or misapplied. ---
+        bad_mask_path = DATA_DIR / "t27_bad_fingerprint.mask"
+        fi_mask.write_mask_file(
+            str(bad_mask_path), "deadbeef", num_raw_peptides, str(idx),
+            threshold=0.10, min_kept_peaks=6, general_mode=False,
+            var_mod_config="0.000000X--0.000000|79.966331S--97.976896|0.000000X--0.000000|"
+                           "0.000000X--0.000000|0.000000X--0.000000",
+            entries=[(0, 0, -1, -1, 0x7F, 0x7F, 0x0, 0x0)])
+        try:
+            rc_bad, out_bad, _, rows_bad = run_search(bad_mask_path, "bad fingerprint")
+            check(rc_bad != 0,
+                  f"a mask with a mismatched fingerprint must fail the search (rc != 0), got "
+                  f"rc={rc_bad}:\n{out_bad}", failures)
+            check("does not match" in out_bad.lower() or "does not match" in out_bad,
+                  f"expected a clear fingerprint-mismatch error message, got:\n{out_bad}", failures)
+        finally:
+            bad_mask_path.unlink(missing_ok=True)
+
+        # --- Mismatch rejection: a mask with the wrong VarModConfig (right .idx, different
+        # variable mods) must also be rejected -- Section 8 items 12-14's closing-the-gap guard. ---
+        bad_varmod_path = DATA_DIR / "t27_bad_varmod.mask"
+        fi_mask.write_mask_file(
+            str(bad_varmod_path), fingerprint, num_raw_peptides, str(idx),
+            threshold=0.10, min_kept_peaks=6, general_mode=False,
+            var_mod_config="15.994915M--0.000000|0.000000X--0.000000|0.000000X--0.000000|"
+                           "0.000000X--0.000000|0.000000X--0.000000",
+            entries=[(0, 0, -1, -1, 0x7F, 0x7F, 0x0, 0x0)])
+        try:
+            rc_bv, out_bv, _, _ = run_search(bad_varmod_path, "bad varmod")
+            check(rc_bv != 0,
+                  f"a mask with a mismatched VarModConfig must fail the search (rc != 0), got "
+                  f"rc={rc_bv}:\n{out_bv}", failures)
+            check("different variable mods" in out_bv,
+                  f"expected a clear VarModConfig-mismatch error message, got:\n{out_bv}", failures)
+        finally:
+            bad_varmod_path.unlink(missing_ok=True)
+    finally:
+        mask_path.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
 
     return failures
 

@@ -14,6 +14,7 @@
 
 
 #include "CometPeptideIndex.h"
+#include "CometPredictedMask.h"
 
 extern comet_fileoffset_t clSizeCometFileOffset;
 
@@ -729,6 +730,14 @@ bool CometPeptideIndex::ExportVariants(const string& strOutputFile)
       return false;
    }
 
+   // Leading comment line, read by tools/idx_to_carafe.py and propagated through into
+   // tools/carafe_ms2_to_fi_mask.py's mask-file header (docs/20260805_carafe.md Section 8 items 12-14) --
+   // lets Phase 3's CometPredictedMask::Load() reject a mask built against different variable
+   // mods than are live in the search that's about to consume it, since modNumIdx numbering
+   // (unlike iWhichPeptide) isn't provable safe from the .idx fingerprint alone any more
+   // (Section 6.10's closing note). Written here, not derived after the fact, since this
+   // export IS the live comet.params session whose variable mods define modNumIdx numbering.
+   fprintf(fp, "# VarModConfig: %s\n", CometPredictedMask::ComputeVarModConfigString().c_str());
    fprintf(fp, "iWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\tmass\tsequence\tsites\n");
 
    DBIndex entry;

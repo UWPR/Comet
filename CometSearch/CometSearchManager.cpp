@@ -440,6 +440,9 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("compoundmods_file", strData))
       g_staticParams.variableModParameters.sCompoundModsFile = strData;
 
+   if (GetParamValue("fragment_index_predicted_mask_file", strData))
+      g_staticParams.options.sFragIndexPredictedMaskFile = strData;
+
    GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 
    GetParamValue("mass_offsets", g_staticParams.vectorMassOffsets);

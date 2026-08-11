@@ -370,6 +370,7 @@ void LoadParameters(char* pszParamsFile,
       {"database_name",                { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("database_name", szFile, szFile); }}},
       {"peff_obo",                     { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("peff_obo", szFile, szFile); }}},
       {"compoundmods_file",            { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("compoundmods_file", szFile, szFile); }}},
+      {"fragment_index_predicted_mask_file", { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("fragment_index_predicted_mask_file", szFile, szFile); }}},
       {"spectral_library_name",        { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("spectral_library_name", szFile, szFile); }}},
       // Simple strings
       {"activation_method",            { [&]() { parse_string("activation_method", 23); }}},
@@ -960,6 +961,9 @@ peff_format = 0                        # 0=no (normal fasta, default), 1=PEFF PS
 peff_obo =                             # path to PSI Mod or Unimod OBO file\n\
 \n\
 compoundmods_file =                    # path to compound mods mass file, one mass per line, for multi-mod search on 'J' residues\n\
+fragment_index_predicted_mask_file =   # path to a Carafe predicted-fragment keep/drop mask file for FI_DB\n\
+                                        # builds (tools/carafe_ms2_to_fi_mask.py, docs/20260805_carafe.md);\n\
+                                        # empty = disabled (default)\n\
 spectral_library_name = /some/path/speclib.file\n\
 spectral_library_ms_level = 1\n\n");
    }

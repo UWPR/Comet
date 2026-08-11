@@ -104,10 +104,10 @@ the ms2_pred.tsv read. Not attempted here -- revisit if Phase 5 benchmarking sho
 
 import argparse
 import csv
-import hashlib
 import os
 import struct
 import sys
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import idx_to_carafe as itc
@@ -128,10 +128,14 @@ CHANNELS = ("b_z1", "b_z2", "y_z1", "y_z2",
             "b_modloss_z1", "b_modloss_z2", "y_modloss_z1", "y_modloss_z2")
 MODLOSS_CHANNELS = CHANNELS[4:]
 
-# Bumped from v1 (Phase 2a) since the on-disk entry struct gained two u64 fields -- a v1 reader
-# must not silently misinterpret v2 bytes (or vice versa), hence the magic-line version bump
-# rather than a header flag alone.
-MASK_FILE_MAGIC = b"Comet Carafe FI mask v2\n"
+# Bumped from v1 (Phase 2a, general-mode only) to v2 (Phase 2c: on-disk entry struct gained
+# two u64 fields for bModlossMask/yModlossMask) to v3 (Phase 3, docs/20260805_carafe.md
+# Section 8 item 13: the fingerprint algorithm changed from SHA-256 to CRC-32 -- see idx_fingerprint()
+# below for why -- a second breaking change to what SourceIdxFingerprint means, not just to
+# the entry byte layout). Each bump means a stale-version reader must not silently
+# misinterpret newer bytes (or vice versa), hence the magic-line version bump rather than a
+# header flag alone.
+MASK_FILE_MAGIC = b"Comet Carafe FI mask v3\n"
 
 
 # ---------------------------------------------------------------------------
@@ -141,30 +145,37 @@ MASK_FILE_MAGIC = b"Comet Carafe FI mask v2\n"
 # ---------------------------------------------------------------------------
 
 def idx_fingerprint(idx_path, chunk_size=1 << 20):
-    """SHA-256 over the .idx byte range [pep_pos, footer_pos) -- the raw peptide table and
-    protein list, i.e. everything the v2 unified .idx format still persists (docs/20260805_
-    carafe.md Section 6.9: Phase 0.5 dropped MOD_NUMBERS/MOD_SEQS/the compact variant array
-    from disk entirely). This fully determines iWhichPeptide numbering, but -- unlike the v1
-    format this was originally written against -- NOT modNumIdx numbering any more: that now
-    also depends on whichever comet.params variable mods were live when `comet.exe -x`
-    produced the variant export this mask's tuples were built from (docs/20260805_carafe.md
-    Section 9). A mask built against this exact .idx but a DIFFERENT comet.params would still
-    pass this fingerprint check while carrying stale/meaningless modNumIdx keys -- Phase 3
-    (not yet built) will need its own guard for that (e.g. verifying a looked-up mask entry's
-    tuple still resolves to the same sequence it's about to mask, mirroring the sequence
-    cross-check idx_to_carafe.py now does against its own export file) rather than relying on
-    this fingerprint alone."""
+    """CRC-32 (zlib.crc32(), matching CometPredictedMask.cpp's ComputeIdxFingerprint() on the
+    C++ side -- Phase 3, docs/20260805_carafe.md Section 8 items 12-14) over the .idx byte range
+    [pep_pos, footer_pos) -- the raw peptide table and protein list, i.e. everything the v2
+    unified .idx format still persists (Section 6.9: Phase 0.5 dropped MOD_NUMBERS/MOD_SEQS/
+    the compact variant array from disk entirely). Switched from SHA-256 (Phase 2a/2c) to
+    CRC-32 when Phase 3 needed to compute the identical fingerprint on the C++ side too: this
+    is a "did I point the mask at the wrong .idx" sanity check, not a security boundary, and
+    zlib is already a linked dependency of Comet's C++ build (Python's zlib module wraps the
+    same C library), whereas matching a from-scratch/vendored SHA-256 implementation bit-for-
+    bit across two independent languages would be new correctness-critical code for a check
+    that doesn't need cryptographic strength.
+
+    This fully determines iWhichPeptide numbering, but -- unlike the v1 format this was
+    originally written against -- NOT modNumIdx numbering any more: that now also depends on
+    whichever comet.params variable mods were live when `comet.exe -x` produced the variant
+    export this mask's tuples were built from (docs/20260805_carafe.md Section 8 items 12-14). A mask
+    built against this exact .idx but a DIFFERENT comet.params would still pass this
+    fingerprint check while carrying stale/meaningless modNumIdx keys -- CometPredictedMask::
+    Lookup()'s "not found -> fully unfiltered" fallback (Section 8 item 2) is Phase 3's actual
+    guard against that, not this fingerprint."""
     reader = itc.IdxReader(idx_path)
     f = reader.f
     f.seek(reader.pep_pos)
     remaining = reader.footer_pos - reader.pep_pos
-    h = hashlib.sha256()
+    crc = 0
     while remaining > 0:
         n = min(chunk_size, remaining)
         buf = f.read(n)
         if not buf:
             break
-        h.update(buf)
+        crc = zlib.crc32(buf, crc)
         remaining -= len(buf)
 
     # Cheap, human-readable cross-check alongside the hash: NumRawPeptides, read directly
@@ -173,12 +184,27 @@ def idx_fingerprint(idx_path, chunk_size=1 << 20):
     f.seek(reader.pep_pos)
     (num_raw,) = struct.unpack("<Q", f.read(8))
 
-    return h.hexdigest(), num_raw
+    return f"{crc & 0xffffffff:08x}", num_raw
 
 
 # ---------------------------------------------------------------------------
 # Input readers
 # ---------------------------------------------------------------------------
+
+def read_variant_map_var_mod_config(path):
+    """Reads the leading "# VarModConfig: <string>" comment line tools/idx_to_carafe.py
+    propagates from comet.exe -x's own export (see that script's read_var_mod_config()) --
+    embedded verbatim in this mask's own file header so Phase 3's CometPredictedMask::Load()
+    can reject a mask built against different variable mods than are live in the search
+    consuming it (docs/20260805_carafe.md Section 8 items 12-14). Returns None if absent (older
+    idx_to_carafe.py, or its own export lacked the line -- see that script's warning)."""
+    with open(path, "r", newline="") as f:
+        first = f.readline().rstrip("\r\n")
+    prefix = "# VarModConfig: "
+    if first.startswith(prefix):
+        return first[len(prefix):]
+    return None
+
 
 def read_variant_map(path):
     """row_index -> list of (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuples, grouped
@@ -186,6 +212,9 @@ def read_variant_map(path):
     pair) -- callers here want tuple -> [row_index, ...] instead, built by the caller from this."""
     rows = []   # (row_index, tuple)
     with open(path, "r", newline="") as f:
+        first_line = f.readline()
+        if not first_line.startswith("# VarModConfig: "):
+            f.seek(0)   # no comment line -- let DictReader see the real header itself
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             row_index = int(row["row_index"])
@@ -356,11 +385,21 @@ ENTRY_SIZE = struct.calcsize(ENTRY_FMT)
 
 
 def write_mask_file(path, fingerprint, num_raw_peptides, idx_path, threshold, min_kept_peaks,
-                     general_mode, entries):
+                     general_mode, var_mod_config, entries):
     """entries: iterable of (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, bMask, yMask,
     bModlossMask, yModlossMask), NOT required to be pre-sorted -- sorted here so the file is
     binary-searchable at FI build time (Section 4.3). general_mode: True iff the source
-    prediction had no modloss columns at all (i.e. every entry's modloss masks are 0)."""
+    prediction had no modloss columns at all (i.e. every entry's modloss masks are 0).
+    var_mod_config: the "# VarModConfig: ..." string read from the variant map (see
+    read_variant_map_var_mod_config()) -- required (not optional) so Phase 3's
+    CometPredictedMask::Load() always has it to check against live comet.params (Section 8 items 12-14);
+    a caller with None here (an export from an old comet.exe -x) gets a loud error instead of
+    silently producing a mask Phase 3 will refuse to load anyway."""
+    if var_mod_config is None:
+        raise ValueError(
+            "var_mod_config is required (docs/20260805_carafe.md Section 8 items 12-14) -- the variant "
+            "map has no '# VarModConfig:' line, meaning it came from an older comet.exe -x. "
+            "Rebuild the export with the current comet.exe.")
     entries = sorted(entries, key=lambda e: e[:4])
     with open(path, "wb") as f:
         f.write(MASK_FILE_MAGIC)
@@ -370,6 +409,7 @@ def write_mask_file(path, fingerprint, num_raw_peptides, idx_path, threshold, mi
         f.write(f"MinRelativeIntensity: {threshold}\n".encode("ascii"))
         f.write(f"MinKeptPeaks: {min_kept_peaks}\n".encode("ascii"))
         f.write(f"GeneralMode: {1 if general_mode else 0}\n".encode("ascii"))
+        f.write(f"VarModConfig: {var_mod_config}\n".encode("ascii"))
         f.write(b"\n")
         f.write(struct.pack("<Q", len(entries)))
         for e in entries:
@@ -436,6 +476,12 @@ def main():
 
     if args.verbose:
         print(f"Reading {args.variant_map_tsv} ...", file=sys.stderr)
+    var_mod_config = read_variant_map_var_mod_config(args.variant_map_tsv)
+    if var_mod_config is None:
+        print(f"WARNING: {args.variant_map_tsv!r} has no '# VarModConfig:' line -- was "
+              f"tools/idx_to_carafe.py run against an older comet.exe -x export? The output "
+              f"mask will fail to write (Section 8 items 12-14's VarModConfig guard is required).",
+              file=sys.stderr)
     vmap_rows = read_variant_map(args.variant_map_tsv)
 
     if args.verbose:
@@ -510,7 +556,7 @@ def main():
 
     write_mask_file(args.out_mask_file, fingerprint, num_raw_peptides, args.idx_file,
                      args.min_relative_intensity, args.min_kept_peaks,
-                     general_mode=not has_modloss, entries=entries)
+                     general_mode=not has_modloss, var_mod_config=var_mod_config, entries=entries)
 
     avg_kept = (n_kept_total / n_variants) if n_variants else 0.0
     avg_candidates = (n_candidates_total / n_variants) if n_variants else 0.0
