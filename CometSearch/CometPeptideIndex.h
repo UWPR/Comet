@@ -76,16 +76,19 @@ public:
 
 
 
-   // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,
-   // Enzyme2 lines, terminated by the blank line separating the header from
-   // the protein-name section) from an already-open file pointer. Updates
-   // g_staticParams in-place. As of Phase 0.5 (docs/20260730_PI_reduction.md)
-   // this no longer touches variable-mod settings (VariableMod:/
-   // ProteinModList:/RequireVariableMod: are gone from the header) -- those
-   // are read live from comet.params instead, the same as a non-indexed
-   // FASTA search already does. Called by both EnsurePeptideIndexLoaded() (via
-   // ReadPeptideIndex()) and InitializeMassesFromPeptideIndex() to avoid
-   // duplication.
+   // Validates the magic string/version and parses the .idx text header (IndexSearchType,
+   // MassType, StaticMod, VariableMod, ProteinModList, RequireVariableMod,
+   // MaxVariableModsInPeptide, DecoySearch, Enzyme, Enzyme2 lines, terminated by the blank
+   // line separating the header from the protein-name section) from an already-open file
+   // pointer. Updates g_staticParams in-place, including g_staticParams.iDbType (PI_DB vs
+   // FI_DB) from IndexSearchType -- the .idx file is fully self-describing
+   // (docs/20260811_restore_idx_header_mods.md), no index_search_type/variable_modNN/
+   // require_variable_mod/protein_modslist_file/max_variable_mods_in_peptide params needed
+   // to search an existing index. iVarModTermDistance/iWhichTerm remain unsupported for
+   // FI_DB/PI_DB and are not part of the header. Called by both EnsurePeptideIndexLoaded()
+   // (via ReadPeptideIndex()) and InitializeMassesFromPeptideIndex() to avoid duplication,
+   // and by CometSearchManager.cpp wherever it needs to peek a file's mode before deciding
+   // which of ReadPeptideIndex()/CreateFragmentIndex() to call.
    static bool ParsePeptideIndexHeader(FILE* fp);
 
    // Compacted list of active variable_modNN slot indices (0-based into

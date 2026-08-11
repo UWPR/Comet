@@ -1,5 +1,14 @@
 # PI_DB memory reduction: splitting DBIndex into a raw-peptide table + compact per-variant record
 
+> **Phase 0.5's mod-header removal and Phase 0's `index_search_type`-only dispatch were
+> partially reverted on 2026-08-11 -- see `docs/20260811_restore_idx_header_mods.md`.**
+> The `.idx` header carries `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` again
+> (overwriting `comet.params`/RTS `SetParam()`, same as `StaticMod:` always did) and is
+> self-describing for PI_DB vs. FI_DB via a new `IndexSearchType:` line -- `index_search_type`
+> is now consulted only when auto-building a missing `.idx`. Everything below this notice
+> describes the Phase 0/0.5 state as originally implemented; the PI_DB memory-reduction
+> storage layout itself (Sections 1-3 below) is unaffected and still current.
+
 Status: Phases 1-3 (Section 4), Phase 0 (Section 4, "unify the PI_DB/FI_DB on-disk format"), and
 Phase 0.5 (Section 4, "drop persisted mod-permutation tables and compact variant array") are all
 **IMPLEMENTED (2026-07-31).** PI_DB and FI_DB share one `.idx` file, one builder, one reader, and
