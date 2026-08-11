@@ -154,13 +154,44 @@ requirement (RTS needing its own correct explicit mod config, independent of the
 Not touched here since it's demo/example code with an existing, acknowledged TODO, not a
 regression this change introduces -- flagged for whoever picks that TODO up next.
 
+### v4 addendum (same day): mod *count* limits also persisted
+
+The gap above -- `iMaxNumVarModAAPerMod`/`max_variable_mods_in_peptide` never being part
+of the header, only mod *identity* -- was closed the same day, going one step past a pure
+revert of #121. Checked against `v2025.03.0` (the true pre-121 baseline, both its
+now-retired separate PI_DB and FI_DB formats) first: neither ever persisted these two
+fields either -- `CometFragmentIndex::PermuteIndexPeptideMods()`/
+`CometModificationsPermuter` always read them from whatever was live in `g_staticParams`
+at search time, from `comet.params`/`SetParam()`, for the entire history of this codebase
+up to and including that tag. So this is a genuine new capability, not a restoration.
+
+Format bumped to **v4** (`Comet index database v4`) since the header shape changed again:
+
+- `VariableMod:` gained a 5th `:`-delimited field per slot, `iMaxNumVarModAAPerMod`:
+  `S:79.966331:0.000000:0.000000:2` (chars:mass:NL1:NL2:maxPerMod).
+- New `MaxVariableModsInPeptide: N` line, right after `RequireVariableMod:` and now the
+  last populated header line (loop terminator).
+
+Both parsed into `g_staticParams.variableModParameters` by `ParsePeptideIndexHeader()`,
+overwriting live params -- same precedent as everything else in the header. Confirmed via
+`CometFragmentIndex.cpp`/`CometModificationsPermuter.cpp` that both fields are already
+fully consumed by the FI/PI enumeration path (`vMaxNumVarModsPerMod` built straight from
+`varModList[i].iMaxNumVarModAAPerMod`; the global cap enforced as a hard bit-count check)
+-- no enumeration-side changes needed, purely a persist-and-restore addition.
+
+`iVarModTermDistance`/`iWhichTerm` (peptide/protein N/C-term mod restriction) remain
+**unsupported for FI_DB/PI_DB** and are not part of the header -- confirmed zero references
+to either field in `CometFragmentIndex.cpp`, `CometModificationsPermuter.cpp`, or
+`CometPeptideIndex.cpp`, at this tag or `v2025.03.0`. Only the plain-FASTA search path
+(`CometSearch.cpp`) has ever enforced them.
+
 ### Fixture/test fallout
 
 - `tests/unit/compare_idx.py` is unaffected -- it derives section boundaries from
   the footer pointers, not header content, so a longer header doesn't need any
   changes there.
 - `tests/unit/data/*.idx` committed fixtures (t1-t16 etc.) needed rebuilding under
-  the v3 format.
+  the v4 format (v3 initially, then v4 same day).
 - T19/T20 were inverted back from their Phase-0.5 form: build with the real
   phospho-S mod, search with `variable_mod01` left blank -- proving the header
   wins, the same direction these tests had pre-121.

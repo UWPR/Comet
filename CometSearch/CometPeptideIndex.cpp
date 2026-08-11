@@ -873,10 +873,11 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // existing .idx reads that line back and needs no index_search_type parameter of its own --
    // that parameter is only consulted when a .idx named on the command line/comet.params
    // doesn't exist yet and must be auto-built first (CometSearchManager.cpp), since there's
-   // nothing to read the mode from until then. Old-format files (v2's index_search_type-only
-   // dispatch, or anything pre-unification) are rejected by the version check in
-   // ParsePeptideIndexHeader() with a clear rebuild message rather than being misread.
-   fprintf(fptr, "Comet index database v3.  Comet version %s\n", g_sCometVersion.c_str());
+   // nothing to read the mode from until then. Old-format files (v3's per-slot-only VariableMod:
+   // line, v2's index_search_type-only dispatch, or anything pre-unification) are rejected by
+   // the version check in ParsePeptideIndexHeader() with a clear rebuild message rather than
+   // being misread.
+   fprintf(fptr, "Comet index database v4.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fptr, "IndexSearchType: %s\n",
       g_staticParams.options.bCreatePeptideIndex ? "peptide index" : "fragment ion index");
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
@@ -905,17 +906,30 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 
    // Restore of the pre-Phase-0.5 variable-mod header lines (docs/20260811_restore_idx_header_mods.md)
    // -- an .idx built from these settings carries them permanently, so a later search against
-   // this file needs no variable_modNN/require_variable_mod/protein_modslist_file params of its
-   // own (ParsePeptideIndexHeader() below overwrites whatever comet.params/RTS SetParam() supplied,
-   // the same override precedent StaticMod: above already established).
+   // this file needs no variable_modNN/require_variable_mod/protein_modslist_file/
+   // max_variable_mods_in_peptide params of its own (ParsePeptideIndexHeader() below overwrites
+   // whatever comet.params/RTS SetParam() supplied, the same override precedent StaticMod: above
+   // already established).
+   //
+   // v4 adds a 5th :-delimited field per slot -- iMaxNumVarModAAPerMod, the per-mod count cap --
+   // and the new MaxVariableModsInPeptide: line below for the global cap. Neither pre-121 format
+   // nor this format's own v3 predecessor ever persisted these (confirmed against v2025.03.0):
+   // CometFragmentIndex::PermuteIndexPeptideMods()/CometModificationsPermuter always read them
+   // from whatever was live in g_staticParams at search time, from comet.params/SetParam() --
+   // this is the first version where an index is self-consistent for its own mod *counts*, not
+   // just mod *identity*. iVarModTermDistance/iWhichTerm (peptide/protein N/C-term mod
+   // restriction) remain unsupported for FI_DB/PI_DB and are not persisted here either --
+   // CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp have never
+   // referenced either field; only the plain-FASTA search path (CometSearch.cpp) enforces them.
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
    {
-      fprintf(fptr, " %s:%lf:%lf:%lf",
+      fprintf(fptr, " %s:%lf:%lf:%lf:%d",
          g_staticParams.variableModParameters.varModList[x].szVarModChar,
          g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
-         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2);
+         g_staticParams.variableModParameters.varModList[x].dNeutralLoss2,
+         g_staticParams.variableModParameters.varModList[x].iMaxNumVarModAAPerMod);
    }
    fprintf(fptr, "\n");
 
@@ -924,7 +938,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    fprintf(fptr, "RequireVariableMod: %d", g_staticParams.variableModParameters.iRequireVarMod);
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       fprintf(fptr, " %d", g_staticParams.variableModParameters.varModList[x].iRequireThisMod);
-   fprintf(fptr, "\n\n");
+   fprintf(fptr, "\n");
+
+   fprintf(fptr, "MaxVariableModsInPeptide: %d\n\n", g_staticParams.variableModParameters.iMaxVarModPerPeptide);
 
    int iTmp = (int)g_pvProteinNames.size();
    comet_fileoffset_t* lProteinIndex = new comet_fileoffset_t[iTmp];
@@ -1041,15 +1057,20 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 
 // Parses the .idx text header (magic/version, IndexSearchType:, MassRange:,
 // LengthRange:, MassType:, StaticMod:, VariableMod:, ProteinModList:,
-// RequireVariableMod:, DecoySearch:, Enzyme:, Enzyme2:) from fp into g_staticParams.
-// Reads until the blank line that separates the header from the protein-name section.
-// Restored by docs/20260811_restore_idx_header_mods.md to be the single authoritative
-// source for both static AND variable-mod settings (Phase 0.5 had dropped the latter,
-// requiring search-time comet.params/RTS SetParam() calls instead -- an .idx built
-// today is self-contained again and needs none of that at search time).
+// RequireVariableMod:, MaxVariableModsInPeptide:, DecoySearch:, Enzyme:, Enzyme2:) from
+// fp into g_staticParams. Reads until the blank line that separates the header from the
+// protein-name section. Restored by docs/20260811_restore_idx_header_mods.md to be the
+// single authoritative source for static AND variable-mod settings, including (v4) the
+// per-mod/global mod *count* limits (Phase 0.5 had dropped the mod-identity lines
+// entirely, requiring search-time comet.params/RTS SetParam() calls instead; the count
+// limits were never persisted even pre-121 -- see that doc's history section) -- an .idx
+// built today is fully self-contained and needs none of that at search time.
+// iVarModTermDistance/iWhichTerm remain unsupported for FI_DB/PI_DB (never referenced by
+// CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp) and are
+// not part of the header.
 //
 // Also validates the magic string/version (rejecting anything other than the current
-// "Comet index database v3" with a clear rebuild message) and parses IndexSearchType:
+// "Comet index database v4" with a clear rebuild message) and parses IndexSearchType:
 // into g_staticParams.iDbType (PI_DB vs FI_DB), so this same helper is what makes an
 // existing .idx file self-describing -- see WritePeptideIndex()'s header-writing
 // comment for the full rationale.
@@ -1078,30 +1099,33 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       g_staticParams.variableModParameters.varModList[x].dNeutralLoss = 0.0;
       g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 = 0.0;
       g_staticParams.variableModParameters.varModList[x].iRequireThisMod = 0;
+      g_staticParams.variableModParameters.varModList[x].iMaxNumVarModAAPerMod = 0;
       strcpy(g_staticParams.variableModParameters.varModList[x].szVarModChar, "X");
    }
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bUseFragmentNeutralLoss = false;
    g_staticParams.variableModParameters.bVarModProteinFilter = false;
    g_staticParams.variableModParameters.iRequireVarMod = 0;
+   g_staticParams.variableModParameters.iMaxVarModPerPeptide = 0;
 
    rewind(fp);
 
    if (fgets(szBuf, SIZE_BUF, fp) == NULL
-      || strncmp(szBuf, "Comet index database v3", sizeof("Comet index database v3") - 1) != 0)
+      || strncmp(szBuf, "Comet index database v4", sizeof("Comet index database v4") - 1) != 0)
    {
       string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
-         + "\" is not a v3 unified index file; rebuild it with -i or -j.\n";
+         + "\" is not a v4 unified index file; rebuild it with -i or -j.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
    }
 
    bool bFoundIndexSearchType = false;
+   bool bFoundMaxVarModsInPeptide = false;
 
    while (fgets(szBuf, SIZE_BUF, fp))
    {
-      // Blank line: end of header, start of the protein-name section. RequireVariableMod:
+      // Blank line: end of header, start of the protein-name section. MaxVariableModsInPeptide:
       // is always the last populated header line now, so this is the only terminator this
       // loop needs.
       if (szBuf[0] == '\n' || szBuf[0] == '\r')
@@ -1222,13 +1246,14 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
          {
             string subStr;
 
-            iss >> subStr;   // colon-delimited quadruplet: mod_chars:mass:NL1:NL2
+            iss >> subStr;   // colon-delimited quintuplet (v4): mod_chars:mass:NL1:NL2:maxPerMod
             std::replace(subStr.begin(), subStr.end(), ':', ' ');
-            sscanf(subStr.c_str(), "%s %lf %lf %lf",
+            sscanf(subStr.c_str(), "%s %lf %lf %lf %d",
                g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
                &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
                &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
-               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2));
+               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
+               &(g_staticParams.variableModParameters.varModList[iNumMods].iMaxNumVarModAAPerMod));
 
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass, 0.0))
                g_staticParams.variableModParameters.bVarModSearch = true;
@@ -1286,6 +1311,11 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
 
          } while (iss);
       }
+      else if (!strncmp(szBuf, "MaxVariableModsInPeptide:", 25))
+      {
+         sscanf(szBuf + 25, "%d", &(g_staticParams.variableModParameters.iMaxVarModPerPeptide));
+         bFoundMaxVarModsInPeptide = true;
+      }
       else if (!strncmp(szBuf, "DecoySearch:", 12))
       {
          sscanf(szBuf, "DecoySearch: %d", &(g_staticParams.options.iDecoySearch));
@@ -1318,6 +1348,13 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
    if (!bFoundStatic)
    {
       string strErrorMsg = " Error with index database format. StaticMod: line not found.\n";
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   if (!bFoundMaxVarModsInPeptide)
+   {
+      string strErrorMsg = " Error with index database format. MaxVariableModsInPeptide: line not found.\n";
       logerr(strErrorMsg);
       return false;
    }
