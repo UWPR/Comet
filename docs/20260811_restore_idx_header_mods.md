@@ -29,14 +29,17 @@ same PR (`g_vRawPeptides` + on-the-fly `MaterializeOneEntry()` instead of the ol
 per-variant `DBIndex` table) is **kept** -- this change only touches the text
 header and the PI_DB/FI_DB mode-selection wiring around it.
 
-**`.idx` format bumped to v3** (magic string `Comet index database v3`; v1/v2 files
+**`.idx` format bumped to v4** (magic string `Comet index database v4`; v1-v3 files
 are rejected with a "rebuild it with -i or -j" message, same policy PR121 itself
-used for its v1->v2 bump). New/restored header layout, written by
+used for its v1->v2 bump). v3 was this same day's intermediate step -- mod
+*identity* only, no `IndexSearchType:`/count-limit fields below yet -- superseded
+before landing by the v4 addendum further down this doc; v4 is the format this PR
+actually ships and enforces. New/restored header layout, written by
 `CometPeptideIndex::WritePeptideIndex()` and parsed by
 `CometPeptideIndex::ParsePeptideIndexHeader()`:
 
 ```
-Comet index database v3.  Comet version <version>
+Comet index database v4.  Comet version <version>
 IndexSearchType: peptide index          <- or "fragment ion index"
 InputDB:  <path>
 MassRange: ...
@@ -47,9 +50,10 @@ Enzyme: ...
 Enzyme2: ...
 NumPeptides: ...
 StaticMod: ...
-VariableMod: ...
+VariableMod: S:79.966331:0.000000:0.000000:2 ...   <- chars:mass:NL1:NL2:maxPerMod
 ProteinModList: ...
 RequireVariableMod: ...
+MaxVariableModsInPeptide: ...
 
 <protein names / raw peptide table / proteins list / footer, unchanged>
 ```
@@ -59,12 +63,14 @@ RequireVariableMod: ...
   `fragment ion index`) rather than a numeric code, placed right after the magic
   line so it's cheap to peek. Set at build time from whichever of `-i`
   (`bCreateFragmentIndex`) / `-j` (`bCreatePeptideIndex`) triggered the build.
-- `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` are restored verbatim from
-  the pre-Phase-0.5 FI_DB header format (the fuller of the two pre-unification
-  formats, since PI_DB now reuses FI_DB's peptide-generation path anyway). Parsed
-  back into `g_staticParams.variableModParameters`, **overwriting** whatever
-  comet.params/RTS supplied -- the same override precedent `StaticMod:` already
-  established for static mods.
+- `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` are restored from the
+  pre-Phase-0.5 FI_DB header format (the fuller of the two pre-unification formats,
+  since PI_DB now reuses FI_DB's peptide-generation path anyway), with one change:
+  `VariableMod:` gains a 5th `:`-delimited field per slot (`iMaxNumVarModAAPerMod`),
+  and a new `MaxVariableModsInPeptide:` line carries the global cap -- see the v4
+  addendum below for why. Parsed back into `g_staticParams.variableModParameters`,
+  **overwriting** whatever comet.params/RTS supplied -- the same override precedent
+  `StaticMod:` already established for static mods.
 
 **`index_search_type` param is kept, but narrowed in scope.** Once an `.idx` file
 exists, its own `IndexSearchType:` line is authoritative -- no parameter is
@@ -184,6 +190,27 @@ fully consumed by the FI/PI enumeration path (`vMaxNumVarModsPerMod` built strai
 to either field in `CometFragmentIndex.cpp`, `CometModificationsPermuter.cpp`, or
 `CometPeptideIndex.cpp`, at this tag or `v2025.03.0`. Only the plain-FASTA search path
 (`CometSearch.cpp`) has ever enforced them.
+
+### Hardening the parse (post-review)
+
+Copilot's review of the PR flagged that `VariableMod:`/`RequireVariableMod:` parsing
+didn't validate token extraction or `sscanf` field counts -- a truncated/corrupt line
+could silently leave a slot at its reset-to-default identity (harmless-looking, but
+now that the header is authoritative there's no comet.params fallback to catch it) --
+and that `RealtimeSearch/SearchMS1MS2.cs`'s own `MassRange:` scan would throw on the
+blank line terminating the header before its own "missing MassRange header" error
+ever got a chance to fire. Both fixed:
+
+- `ParsePeptideIndexHeader()`'s `VariableMod:`/`RequireVariableMod:`/
+  `MaxVariableModsInPeptide:` parsing now checks `iss >> subStr` succeeded (loop
+  condition, not do/while) and that `sscanf` matched every expected field, rejecting
+  the file with a clear error instead of silently accepting a short/malformed line.
+  `VariableMod:`'s `%s` also gained a `%31s` width cap matching `szVarModChar`'s
+  declared size (`MAX_VARMOD_AA`, `CometData.h`) -- unbounded before, and that field
+  comes straight from the file.
+- `SearchMS1MS2.cs`'s header scan now checks `strParsed.Length == 0` (guarding the
+  blank-line case) before indexing, and validates `MassRange:` has both numeric
+  fields via `TryParse` rather than assuming they're present.
 
 ### Fixture/test fallout
 

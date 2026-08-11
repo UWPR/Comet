@@ -773,11 +773,27 @@ namespace RealTimeSearch
                      while ((strLine = dbFile.ReadLine()) != null)
                      {
                         string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        // Blank line: end of header, start of the protein-name section
+                        // (matches CometPeptideIndex::ParsePeptideIndexHeader()'s own loop
+                        // terminator on the C++ side). Also guards strParsed[0] below --
+                        // Split(...RemoveEmptyEntries) on a blank line returns an empty
+                        // array, which would otherwise throw here on a malformed/truncated
+                        // .idx before the "missing MassRange header" error ever got a
+                        // chance to report it.
+                        if (strParsed.Length == 0)
+                           break;
+
                         if (strParsed[0].Equals("MassRange:"))
                         {
-                           dPeptideMassLow = double.Parse(strParsed[1]);
-                           dPeptideMassHigh = double.Parse(strParsed[2]);
-                           bFoundMassRange = true;
+                           if (strParsed.Length >= 3
+                              && double.TryParse(strParsed[1], out double dLow)
+                              && double.TryParse(strParsed[2], out double dHigh))
+                           {
+                              dPeptideMassLow = dLow;
+                              dPeptideMassHigh = dHigh;
+                              bFoundMassRange = true;
+                           }
                            break;
                         }
                      }

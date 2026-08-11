@@ -1241,19 +1241,33 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
          string strMods = szBuf + 13;
          istringstream iss(strMods);
          int iNumMods = 0;
+         string subStr;
 
-         do
+         // while (iss >> subStr), not do/while: extraction failure (fewer tokens than
+         // FRAGINDEX_VMODS on a truncated line) must stop the loop immediately rather than
+         // running the body once more on an empty subStr -- the header is authoritative now
+         // (docs/20260811_restore_idx_header_mods.md), so a malformed line has to fail the
+         // parse, not silently leave a slot at its reset-to-default identity.
+         while (iNumMods < FRAGINDEX_VMODS && (iss >> subStr))
          {
-            string subStr;
-
-            iss >> subStr;   // colon-delimited quintuplet (v4): mod_chars:mass:NL1:NL2:maxPerMod
+            // colon-delimited quintuplet (v4): mod_chars:mass:NL1:NL2:maxPerMod. %31s caps
+            // szVarModChar's write at its declared size (MAX_VARMOD_AA, CometData.h) --
+            // sscanf's %s is otherwise unbounded and this field comes straight from the file.
             std::replace(subStr.begin(), subStr.end(), ':', ' ');
-            sscanf(subStr.c_str(), "%s %lf %lf %lf %d",
-               g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
-               &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
-               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
-               &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
-               &(g_staticParams.variableModParameters.varModList[iNumMods].iMaxNumVarModAAPerMod));
+            if (sscanf(subStr.c_str(), "%31s %lf %lf %lf %d",
+                  g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].iMaxNumVarModAAPerMod)) != 5)
+            {
+               string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+                  + "\" has a malformed VariableMod: entry (slot " + to_string(iNumMods)
+                  + "): \"" + subStr + "\".\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               return false;
+            }
 
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass, 0.0))
                g_staticParams.variableModParameters.bVarModSearch = true;
@@ -1262,11 +1276,17 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
                g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
             iNumMods++;
+         }
 
-            if (iNumMods == FRAGINDEX_VMODS)
-               break;
-
-         } while (iss);
+         if (iNumMods != FRAGINDEX_VMODS)
+         {
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" has a truncated VariableMod: line (expected " + to_string(FRAGINDEX_VMODS)
+               + " entries, found " + to_string(iNumMods) + ").\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
       else if (!strncmp(szBuf, "ProteinModList:", 15))
       {
@@ -1281,14 +1301,24 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
          string strMods = szBuf + 20;
          istringstream iss(strMods);
          int iNumMods = 0;
+         string subStr;
 
-         do
+         // while (iss >> subStr), not do/while -- see the identical comment on VariableMod:'s
+         // parse above for why: a truncated line must fail the parse, not silently stop mid-way
+         // through with iRequireVarMod/iRequireThisMod partially populated.
+         while (iNumMods < FRAGINDEX_VMODS + 1 && (iss >> subStr))
          {
-            string subStr;
             int iIntData = 0;
 
-            iss >> subStr;
-            sscanf(subStr.c_str(), "%d", &iIntData);
+            if (sscanf(subStr.c_str(), "%d", &iIntData) != 1)
+            {
+               string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+                  + "\" has a malformed RequireVariableMod: entry (slot " + to_string(iNumMods)
+                  + "): \"" + subStr + "\".\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               return false;
+            }
 
             if (iNumMods == 0)   // first value is the global require-variable-mod flag
             {
@@ -1305,15 +1335,28 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
             }
 
             iNumMods++;
+         }
 
-            if (iNumMods == FRAGINDEX_VMODS + 1)
-               break;
-
-         } while (iss);
+         if (iNumMods != FRAGINDEX_VMODS + 1)
+         {
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" has a truncated RequireVariableMod: line (expected " + to_string(FRAGINDEX_VMODS + 1)
+               + " entries, found " + to_string(iNumMods) + ").\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
       }
       else if (!strncmp(szBuf, "MaxVariableModsInPeptide:", 25))
       {
-         sscanf(szBuf + 25, "%d", &(g_staticParams.variableModParameters.iMaxVarModPerPeptide));
+         if (sscanf(szBuf + 25, "%d", &(g_staticParams.variableModParameters.iMaxVarModPerPeptide)) != 1)
+         {
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" has a malformed MaxVariableModsInPeptide: line.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
          bFoundMaxVarModsInPeptide = true;
       }
       else if (!strncmp(szBuf, "DecoySearch:", 12))
