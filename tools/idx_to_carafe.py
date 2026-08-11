@@ -4,13 +4,23 @@ Read a Comet unified .idx file (PI_DB/FI_DB, "Comet index database v4") plus a c
 peptide-mod-variant export from `comet.exe -x` (see below), and produce a TSV that Carafe's
 ai_pred.py can consume directly for in-silico MS2 (and RT/CCS) prediction:
 
-    # 1. Build the PI_DB (once; variable mods here don't matter -- see step 2)
+    # 1. Build the PI_DB with the REAL variable mods you want predictions for. As of
+    #    docs/20260811_restore_idx_header_mods.md (master, merged into carafe 2026-08-11),
+    #    an .idx is self-describing again: whatever comet.params has active at build time is
+    #    baked into the .idx's own header permanently (VariableMod:/RequireVariableMod:/
+    #    MaxVariableModsInPeptide:, alongside enzyme/static mods/mass range) and stays fixed
+    #    from then on -- it can no longer be varied independently at step 2. Rebuilding is
+    #    cheap (a few seconds even for a whole-proteome fasta, docs/20260730_PI_reduction.md
+    #    Phase 0.5), so there's no real cost to a fresh build per mod config any more; this
+    #    reverses the "build once, mods don't matter" advice this docstring used to give.
     comet.exe -j -Pcomet.params
 
-    # 2. Export the peptide-mod variant enumeration using the REAL variable mods you want
-    #    predictions for (docs/20260805_carafe.md Section 6.9/9: Phase 0.5 stopped persisting
-    #    MOD_NUMBERS/MOD_SEQS/the variant array in the .idx itself, so this is now the only
-    #    source of "what mods does this .idx represent" -- comet.params, not the .idx file)
+    # 2. Export the peptide-mod variant enumeration this .idx actually represents. -P here
+    #    can point at the SAME comet.params from step 1, or any other syntactically valid one
+    #    -- its enzyme/static-mod/variable-mod/mass-range settings are ignored either way,
+    #    overwritten from the .idx's own header the moment CometPeptideIndex::
+    #    ReadPeptideIndex() runs (step 1's build is what decided them). Only database_name
+    #    (pointing at this .idx) actually matters here.
     comet.exe -xvariants_export.tsv -Pcomet.params
 
     # 3. This script: combine the .idx (sequence/protein/static-mod data) with the export
@@ -564,10 +574,10 @@ def main():
         epilog=__doc__)
     ap.add_argument("idx_file", help="Comet unified .idx file (PI_DB, built via comet.exe -j)")
     ap.add_argument("variants_export_tsv",
-                     help="comet.exe -x's peptide-mod-variant export for this SAME .idx, built "
-                          "with the variable mods you want predictions for (see module "
-                          "docstring step 2) -- Phase 0.5 removed variable-mod info from the "
-                          ".idx itself, so this is the only source of it now")
+                     help="comet.exe -x's peptide-mod-variant export for this SAME .idx (see "
+                          "module docstring step 2) -- the variable mods it reflects are "
+                          "whatever this .idx was built with (step 1), not anything -x's own "
+                          "-P comet.params supplies")
     ap.add_argument("out_tsv", help="Output TSV path (sequence/mods/mod_sites/charge)")
     ap.add_argument("--variant-map", default=None,
                      help="Output path for the row_index -> (iWhichPeptide, modNumIdx, "

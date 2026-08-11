@@ -147,24 +147,31 @@ MASK_FILE_MAGIC = b"Comet Carafe FI mask v3\n"
 def idx_fingerprint(idx_path, chunk_size=1 << 20):
     """CRC-32 (zlib.crc32(), matching CometPredictedMask.cpp's ComputeIdxFingerprint() on the
     C++ side -- Phase 3, docs/20260805_carafe.md Section 8 items 12-14) over the .idx byte range
-    [pep_pos, footer_pos) -- the raw peptide table and protein list, i.e. everything the v2
-    unified .idx format still persists (Section 6.9: Phase 0.5 dropped MOD_NUMBERS/MOD_SEQS/
-    the compact variant array from disk entirely). Switched from SHA-256 (Phase 2a/2c) to
-    CRC-32 when Phase 3 needed to compute the identical fingerprint on the C++ side too: this
-    is a "did I point the mask at the wrong .idx" sanity check, not a security boundary, and
-    zlib is already a linked dependency of Comet's C++ build (Python's zlib module wraps the
-    same C library), whereas matching a from-scratch/vendored SHA-256 implementation bit-for-
-    bit across two independent languages would be new correctness-critical code for a check
-    that doesn't need cryptographic strength.
+    [pep_pos, footer_pos) -- the raw peptide table and protein list, i.e. everything the v4
+    unified .idx format persists at that fixed byte range (Section 6.9: Phase 0.5 dropped
+    MOD_NUMBERS/MOD_SEQS/the compact variant array from disk entirely -- still true post-
+    docs/20260811_restore_idx_header_mods.md, which restored mod identity to the TEXT header,
+    not the variant array). Switched from SHA-256 (Phase 2a/2c) to CRC-32 when Phase 3 needed to
+    compute the identical fingerprint on the C++ side too: this is a "did I point the mask at
+    the wrong .idx" sanity check, not a security boundary, and zlib is already a linked
+    dependency of Comet's C++ build (Python's zlib module wraps the same C library), whereas
+    matching a from-scratch/vendored SHA-256 implementation bit-for-bit across two independent
+    languages would be new correctness-critical code for a check that doesn't need
+    cryptographic strength.
 
     This fully determines iWhichPeptide numbering, but -- unlike the v1 format this was
     originally written against -- NOT modNumIdx numbering any more: that now also depends on
-    whichever comet.params variable mods were live when `comet.exe -x` produced the variant
-    export this mask's tuples were built from (docs/20260805_carafe.md Section 8 items 12-14). A mask
-    built against this exact .idx but a DIFFERENT comet.params would still pass this
-    fingerprint check while carrying stale/meaningless modNumIdx keys -- CometPredictedMask::
-    Lookup()'s "not found -> fully unfiltered" fallback (Section 8 item 2) is Phase 3's actual
-    guard against that, not this fingerprint."""
+    which variable mods were baked into this .idx's own header at BUILD time (`comet.exe -j`/
+    `-i`, docs/20260811_restore_idx_header_mods.md), since ReadPeptideIndex() overwrites live
+    g_staticParams.variableModParameters from the .idx before `comet.exe -x` ever runs -- the
+    -P comet.params passed to -x no longer has any influence on this. The peptide/protein table
+    this fingerprint covers can still be byte-identical across two builds of the same FASTA that
+    used DIFFERENT variable mods (e.g. re-running -j with an edited comet.params over the same
+    output filename), so a mask built against an EARLIER build of this .idx can still pass this
+    fingerprint check today while carrying stale/meaningless modNumIdx keys -- CometPredictedMask::
+    Load()'s VarModConfig comparison (Section 8 item 13) and Lookup()'s "not found -> fully
+    unfiltered" fallback (Section 8 item 2) are Phase 3's actual guards against that, not this
+    fingerprint."""
     reader = itc.IdxReader(idx_path)
     f = reader.f
     f.seek(reader.pep_pos)
