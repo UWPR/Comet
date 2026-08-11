@@ -2016,32 +2016,45 @@ bool CometSearchManager::DoSearch()
    // same unified index format via CometPeptideIndex::WritePeptideIndex() further below, so
    // there's no separate early-return path here any more -- a -j build now goes through the
    // same protein-var-mod-filter-file/compound-mods-file setup a -i build always did.
+   //
+   // This used to be gated to bCreateFragmentIndex/FASTA_DB only, on the theory that a PI_DB/
+   // FI_DB search against an existing .idx got its ProteinModList:/bVarModProteinFilter
+   // setting from the index header instead. Phase 0.5 (docs/20260730_PI_reduction.md) removed
+   // ProteinModList: from the header entirely -- variable-mod settings are search-time-only
+   // now, the same as a non-indexed FASTA search -- but left this gate unwidened, which
+   // silently disabled protein_modslist_file filtering for every indexed search: iDbType is
+   // never FASTA_DB there and bCreateFragmentIndex is false once the .idx already exists, so
+   // ReadProteinVarModFilterFile() never ran and bVarModProteinFilter stayed at its default
+   // (false) regardless of what the search-time comet.params specified. ValidateSequenceDatabaseFile()
+   // above has already set iDbType by this point (PI_DB/FI_DB/FASTA_DB, whether the .idx
+   // exists yet or needs building), so this now runs unconditionally: the per-peptide
+   // siVarModProteinFilter bitmask each raw peptide carries was computed once at build time
+   // from whatever protein_modslist_file was active then and is unaffected by this change
+   // (see g_vRawPeptides in core/Types.h) -- a build/search protein_modslist_file mismatch is
+   // the same category of caveat as MassRange:/LengthRange:/mod-mass mismatches already are
+   // for this format, not something this fix introduces.
 
-   if (g_staticParams.options.bCreateFragmentIndex || g_staticParams.iDbType == DbType::FASTA_DB)
+   // If specified, read in the protein variable mod filter file content.
+   if (g_staticParams.variableModParameters.sProteinLModsListFile.length() > 0)
    {
-      // If specified, read in the protein variable mod filter file content.
-      // Do this here only for classic search or if creating the plain peptide index.
-      if (g_staticParams.variableModParameters.sProteinLModsListFile.length() > 0)
+      bool bVarModUsed = false;
+
+      // Do a quick check to confirm there's a variable mod specified,
+      // otherwise there's no point in parsing the file.
+      for (int iMod = 0; iMod < VMODS; ++iMod)
       {
-         bool bVarModUsed = false;
-
-         // Do a quick check to confirm there's a variable mod specified,
-         // otherwise there's no point in parsing the file.
-         for (int iMod = 0; iMod < VMODS; ++iMod)
+         if (g_staticParams.variableModParameters.varModList[iMod].dVarModMass != 0.0)
          {
-            if (g_staticParams.variableModParameters.varModList[iMod].dVarModMass != 0.0)
-            {
-               bVarModUsed = true;
-               break;
-            }
+            bVarModUsed = true;
+            break;
          }
+      }
 
-         if (bVarModUsed)
-         {
-            bSucceeded = ReadProteinVarModFilterFile();
-            if (!bSucceeded)
-               return bSucceeded;
-         }
+      if (bVarModUsed)
+      {
+         bSucceeded = ReadProteinVarModFilterFile();
+         if (!bSucceeded)
+            return bSucceeded;
       }
    }
 
@@ -2399,6 +2412,14 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 }
 
 
+// Does NOT reset g_bPeptideIndexRead/g_bPlainPeptideIndexRead or free
+// g_vRawPeptides/MOD_SEQS/MOD_NUMBERS/g_vDBIndexVariants/CometPeptideIndex::
+// GetVModSlotForAllModsIdx()'s cached slot map -- see the PROCESS-LIFETIME note above
+// CometPeptideIndex::ReadPeptideIndex()'s PermuteIndexPeptideMods() call for why a partial
+// reset here (clearing just the two guard bools) would be actively worse than the current
+// behavior, not better. Every current caller (RealtimeSearch.exe, rts_repro.cpp, batch
+// comet.exe) calls Initialize.../Finalize... exactly once, immediately before the process
+// exits, so this is a documented process-lifetime limitation, not a live bug.
 void CometSearchManager::FinalizeSingleSpectrumSearch()
 {
    if (singleSearchInitializationComplete.load(std::memory_order_acquire))

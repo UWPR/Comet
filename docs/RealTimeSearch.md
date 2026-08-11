@@ -98,9 +98,14 @@ slow path: mutex-guarded check + initialization
          CometPeptideIndex::ReadPeptideIndex(true)   loads g_vRawPeptides from the .idx file,
                                                       then (Phase 0.5) regenerates
                                                       MOD_SEQS/MOD_NUMBERS/etc. in memory from
-                                                      g_vRawPeptides + whatever variable mods
-                                                      comet.params has active right now --
-                                                      neither is read from disk any more
+                                                      g_vRawPeptides + whatever variable mods are
+                                                      active in g_staticParams right now --
+                                                      neither is read from disk any more. RTS
+                                                      never loads comet.params (see "RTS
+                                                      variable-mod source" below): those active
+                                                      mods came from the explicit SetParam()
+                                                      calls SearchMS1MS2.cs made before this
+                                                      point, not from a params file
          sqSearch.CreateFragmentIndex(tp, true)       builds g_iFragmentIndex /
                                                       g_iFragmentIndexOffset in memory
                                                       (CSR posting lists) from those
@@ -123,7 +128,9 @@ slow path: mutex-guarded check + initialization
                                                        MOD_SEQS/MOD_NUMBERS/etc. and
                                                        g_vDBIndexVariants in memory from
                                                        g_vRawPeptides + whatever variable mods
-                                                       comet.params has active right now
+                                                       are active in g_staticParams right now
+                                                       (RTS: from SetParam(), never comet.params
+                                                       -- see "RTS variable-mod source" below)
        CometSearch::InitializeMassesFromPeptideIndex() re-parses the .idx header
                                                         (MassType/StaticMod/DecoySearch/
                                                         Enzyme/Enzyme2 -- no variable-mod
@@ -135,7 +142,7 @@ slow path: mutex-guarded check + initialization
                                                         values may have double-applied them);
                                                         does not touch variable mods, which
                                                         ReadPeptideIndex() already regenerated
-                                                        from live comet.params above
+                                                        from the active params above
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
@@ -163,6 +170,18 @@ memory, then returns early (skipping the spec-lib and batch-search logic that fo
 directly (no `DoSearch()`/`m_bRTSIndexBuild` involved). Either way,
 `InitializeSingleSpectrumSearch()` re-allocates the search pool before proceeding to load
 the index it just built.
+
+**RTS variable-mod source:** RTS never loads a `comet.params` file -- `SearchMS1MS2.cs`'s
+`Main()` sets every search parameter via explicit `SearchMgr.SetParam()` calls instead,
+including `variable_mod01`/`variable_mod02`/`max_variable_mods_in_peptide`
+(`RealtimeSearch/SearchMS1MS2.cs`, the unconditional block right before
+`InitializeSingleSpectrumSearch()`). Those calls populate the same
+`g_staticParams.variableModParameters` that a batch search populates by parsing
+`comet.params`, so by the time `ReadPeptideIndex()` regenerates `MOD_SEQS`/`MOD_NUMBERS`/etc.
+(Phase 0.5, above) the two paths converge on the same in-memory state -- "comet.params" in
+the flow diagrams above always means "whatever populated `g_staticParams` for this run",
+RTS's `SetParam()` calls or batch's `comet.params` parse, not literally a params file in the
+RTS case.
 
 ### MS1 (`InitializeSingleSpectrumMS1Search`)
 

@@ -260,9 +260,33 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 
    // Phase 0.5 (docs/20260730_PI_reduction.md): regenerate the mod-permutation tables --
    // and, for PI_DB, the compact variant array -- fresh from g_vRawPeptides + whatever
-   // comet.params has active right now. Neither is persisted in the .idx file any more.
-   // This runs once per search session: g_bPeptideIndexRead below guards ReadPeptideIndex()
-   // itself against re-entry, so this only happens the first time a session reaches here.
+   // variable mods are active in g_staticParams right now (comet.params for batch; RTS's
+   // explicit SetParam() calls for RTS, which never loads a params file -- see
+   // docs/RealTimeSearch.md's "RTS variable-mod source"). Neither is persisted in the .idx
+   // file any more.
+   //
+   // PROCESS-LIFETIME, NOT PER-SESSION: g_bPeptideIndexRead/g_bPlainPeptideIndexRead below
+   // guard ReadPeptideIndex() against re-entry for as long as the process lives -- neither
+   // FinalizeSingleSpectrumSearch() nor anything else ever clears them, so a hypothetical
+   // second InitializeSingleSpectrumSearch() call in the same process (after Finalize) would
+   // skip this regeneration and keep serving whatever the first call built, even if
+   // g_staticParams' variable mods had since changed. This is not new: g_staticParams itself
+   // is documented process-lifetime-immutable-after-init (CLAUDE.md's Key Globals table),
+   // and every current caller (RealtimeSearch.exe's Main(), tests/rts_repro/rts_repro.cpp,
+   // batch comet.exe) calls Initialize.../Finalize... exactly once each, right before the
+   // process exits -- so this is unreachable today, not merely untested. It also isn't a
+   // one-line fix: CometFragmentIndex::PermuteIndexPeptideMods() and
+   // GenerateVariantArray()/EnumerateIndexPeptideMods() below allocate MOD_NUMBERS[].
+   // modifications, MOD_SEQ_MOD_NUM_START/CNT, and PEPTIDE_MOD_SEQ_IDXS with raw new[]/new
+   // that nothing currently frees, and GetVModSlotForAllModsIdx() caches its result in a
+   // function-local static for the same reason -- all three would need an explicit,
+   // ordered teardown (not just clearing these two bools) to support real re-parameterization
+   // safely. Do not "fix" this by resetting only the two bools below: that would make a
+   // reused process regenerate MOD_SEQS/MOD_NUMBERS/g_vDBIndexVariants against the new
+   // params while GetVModSlotForAllModsIdx() kept translating them with the OLD compacted
+   // mod-slot mapping -- silently wrong scoring, worse than today's clean (if surprising)
+   // stale-reuse.
+   //
    // FI_DB doesn't need an equivalent call for its own posting list -- GenerateFragmentIndex()
    // (via AddFragmentsThreadProc()) already consumes MOD_NUMBERS/MOD_SEQS/etc. from wherever
    // they came from, unchanged whether that's a disk read (pre-Phase-0.5) or this in-memory
@@ -333,7 +357,10 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 // CLAUDE.md's Key Globals table), so this only ever needs to be computed once. Computed via
 // a function-local static under C++11's thread-safe "magic statics" guarantee, since
 // MaterializeOneEntry() (called through this function) runs concurrently across PI_DB's
-// search threads.
+// search threads. "Once" here means once per process, not once per search session -- see
+// the PROCESS-LIFETIME note above ReadPeptideIndex()'s PermuteIndexPeptideMods() call; a
+// process that re-parameterized variable mods and re-entered ReadPeptideIndex() would still
+// get this magic static's first-call value here.
 const vector<int>& CometPeptideIndex::GetVModSlotForAllModsIdx()
 {
    static const vector<int> vModSlotForAllModsIdx = []
@@ -864,7 +891,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // a clear rebuild message rather than being misread.
    //
    // No VariableMod:/ProteinModList:/RequireVariableMod: lines (Phase 0.5) -- variable-mod
-   // settings are read live from comet.params at search time instead, never persisted here.
+   // settings are read live from the active search parameters at search time instead, never
+   // persisted here (comet.params for batch; RTS's explicit SetParam() calls, since RTS
+   // never loads a params file -- see docs/RealTimeSearch.md's "RTS variable-mod source").
    fprintf(fptr, "Comet index database v2.  Comet version %s\n", g_sCometVersion.c_str());
    fprintf(fptr, "InputDB:  %s\n", g_staticParams.databaseInfo.szDatabase);
    fprintf(fptr, "MassRange: %lf %lf\n", g_staticParams.options.dPeptideMassLow, g_staticParams.options.dPeptideMassHigh);
