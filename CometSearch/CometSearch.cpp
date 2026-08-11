@@ -1599,14 +1599,28 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
             modSeq = MOD_SEQS.at(modSeqIdx);
 
+            // Bugfix: mods[j] (MOD_NUMBERS[modNumIdx].modifications[j]) is a 0-based
+            // COMPACTED variable-mod-slot index -- an index into
+            // CometPeptideIndex::GetVModSlotForAllModsIdx()'s compacted active-slot list --
+            // not a raw varModList index. "1 + mods[j]" only coincided with the "1 + realSlot"
+            // convention downstream code (XcorrScoreI(), further below in this file) expects
+            // when every active variable_modNN among the first FRAGINDEX_VMODS is contiguous
+            // from slot 0; a config with a gap (e.g. variable_mod01 unused, variable_mod02
+            // set) silently scored the WRONG modification's mass for every FI_DB search hit on
+            // that peptide (not just a display issue -- piVarModSites feeds directly into this
+            // function's own fragment-mass accumulation used for XCorr/SP scoring).
+            // CometPeptideIndex.cpp's MaterializeOneEntry() (the PI_DB-mode equivalent) already
+            // does this translation correctly; this mirrors it.
+            const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
             int j = 0;
             for (int k = 0; k <= iEndPos; ++k)
             {
                if (szPeptide[k] == modSeq[j])
                {
-                  if (mods[j] != -1)
+                  int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+                  if (iSlot >= 0)
                   {
-                     piVarModSites[k] = 1 + (int)mods[j];
+                     piVarModSites[k] = 1 + iSlot;
                   }
                   j++;
                }

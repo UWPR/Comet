@@ -783,7 +783,11 @@ namespace RealTimeSearch
 
                         iLineCount++;
 
-                        if (strParsed[0].Equals("VariableMod:"))
+                        // StaticMod: is now the last header line before the blank-line
+                        // separator (docs/20260730_PI_reduction.md Phase 0.5 removed
+                        // VariableMod:/ProteinModList:/RequireVariableMod: from the header
+                        // entirely), so it's the sentinel that stops this scan.
+                        if (strParsed[0].Equals("StaticMod:"))
                            break;
                      }
                      dbFile.Close();
@@ -822,37 +826,6 @@ namespace RealTimeSearch
                   iTmp = 1;  // 0=average, 1=monoisotopic
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("mass_type_fragment", sTmp, iTmp);
-
-                  // variable mods
-                  VarModsWrapper varMods = new VarModsWrapper();
-                  //sTmp = "15.9949 M 0 2 -1 0 0 0.0";
-                  sTmp = "0.00 M 0 2 -1 0 0 0.0";
-                  varMods.set_VarModMass(0.00);
-                  varMods.set_VarModChar("M");
-                  varMods.set_BinaryMod(0);
-                  varMods.set_MaxNumVarModAAPerMod(2);
-                  varMods.set_RequireThisMod(0);
-                  varMods.set_VarModTermDistance(-1);
-                  varMods.set_WhichTerm(0);
-                  varMods.set_VarNeutralLoss(0.0);
-                  SearchMgr.SetParam("variable_mod01", sTmp, varMods);
-
-                  /*
-                  sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
-                  varMods.set_VarModMass(79.9663);
-                  varMods.set_VarModChar("STY");
-                  varMods.set_BinaryMod(0);
-                  varMods.set_MaxNumVarModAAPerMod(2);
-                  varMods.set_RequireThisMod(0);
-                  varMods.set_VarModTermDistance(-1);
-                  varMods.set_WhichTerm(0);
-                  varMods.set_VarNeutralLoss(97.976896);
-                  SearchMgr.SetParam("variable_mod02", sTmp, varMods);
-                  */
-
-                  iTmp = 4;
-                  sTmp = iTmp.ToString();
-                  SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
 
                   // static mods
                   dTmp = 57.021464;
@@ -896,6 +869,48 @@ namespace RealTimeSearch
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("fragindex_skipreadprecursors", sTmp, iTmp);
                }
+
+               // Variable mods: set unconditionally, whether or not the .idx already exists.
+               // docs/20260730_PI_reduction.md Phase 0.5 removed VariableMod:/
+               // ProteinModList:/RequireVariableMod: from the .idx header -- variable mods are
+               // no longer baked into the index at all, so there's no "already-existing .idx
+               // supplies them" case to fall back on the way there is for MassRange:/
+               // LengthRange:/StaticMod:/Enzyme:. This block previously lived only in the
+               // "index doesn't exist yet" branch above, which meant it was silently never
+               // applied on a run against a pre-existing .idx; every RTS run now needs its own
+               // explicit variable-mod settings, exactly like a live comet.params-based batch
+               // search already does. TODO(user): extend this to optionally load these (and
+               // other) settings from an actual comet.params file instead of hardcoding them
+               // here.
+               VarModsWrapper varMods = new VarModsWrapper();
+               //sTmp = "15.9949 M 0 2 -1 0 0 0.0";
+               sTmp = "0.00 M 0 2 -1 0 0 0.0";
+               varMods.set_VarModMass(0.00);
+               varMods.set_VarModChar("M");
+               varMods.set_BinaryMod(0);
+               varMods.set_MaxNumVarModAAPerMod(2);
+               varMods.set_RequireThisMod(0);
+               varMods.set_VarModTermDistance(-1);
+               varMods.set_WhichTerm(0);
+               varMods.set_VarNeutralLoss(0.0);
+               SearchMgr.SetParam("variable_mod01", sTmp, varMods);
+
+               /*
+               sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
+               varMods.set_VarModMass(79.9663);
+               varMods.set_VarModChar("STY");
+               varMods.set_BinaryMod(0);
+               varMods.set_MaxNumVarModAAPerMod(2);
+               varMods.set_RequireThisMod(0);
+               varMods.set_VarModTermDistance(-1);
+               varMods.set_WhichTerm(0);
+               varMods.set_VarNeutralLoss(97.976896);
+               SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+               */
+
+               iTmp = 4;
+               sTmp = iTmp.ToString();
+               SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
             }
 
             return true;

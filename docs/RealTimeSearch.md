@@ -95,15 +95,21 @@ slow path: mutex-guarded check + initialization
                                        before returning
          CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
        if !g_bPlainPeptideIndexRead:
-         CometPeptideIndex::ReadPeptideIndex(true)   loads g_vRawPeptides + the persisted
-                                                      MOD_SEQS/MOD_NUMBERS/etc. permutation
-                                                      tables from the .idx file (also sets
-                                                      g_vDBIndexVariants, unused here)
+         CometPeptideIndex::ReadPeptideIndex(true)   loads g_vRawPeptides from the .idx file,
+                                                      then (Phase 0.5) regenerates
+                                                      MOD_SEQS/MOD_NUMBERS/etc. in memory from
+                                                      g_vRawPeptides + whatever variable mods are
+                                                      active in g_staticParams right now --
+                                                      neither is read from disk any more. RTS
+                                                      never loads comet.params (see "RTS
+                                                      variable-mod source" below): those active
+                                                      mods came from the explicit SetParam()
+                                                      calls SearchMS1MS2.cs made before this
+                                                      point, not from a params file
          sqSearch.CreateFragmentIndex(tp, true)       builds g_iFragmentIndex /
                                                       g_iFragmentIndexOffset in memory
-                                                      (CSR posting lists) from those tables
-                                                      -- no header re-parse or mod-table
-                                                      recompute needed at this point
+                                                      (CSR posting lists) from those
+                                                      just-regenerated tables
          if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
        g_bPlainPeptideIndexRead = true
   -> if iDbType == PI_DB and !g_bPeptideIndexRead:
@@ -117,18 +123,26 @@ slow path: mutex-guarded check + initialization
                                                       CometSearch::DeallocateMemory()
                                                       internally before returning
          CometSearch::AllocateMemory()               re-allocate search pool freed above
-       CometPeptideIndex::ReadPeptideIndex(true)      loads g_vRawPeptides +
-                                                       g_vDBIndexVariants + the persisted
-                                                       permutation tables from the .idx file
+       CometPeptideIndex::ReadPeptideIndex(true)      loads g_vRawPeptides from the .idx file,
+                                                       then (Phase 0.5) regenerates
+                                                       MOD_SEQS/MOD_NUMBERS/etc. and
+                                                       g_vDBIndexVariants in memory from
+                                                       g_vRawPeptides + whatever variable mods
+                                                       are active in g_staticParams right now
+                                                       (RTS: from SetParam(), never comet.params
+                                                       -- see "RTS variable-mod source" below)
        CometSearch::InitializeMassesFromPeptideIndex() re-parses the .idx header
-                                                        (MassType/StaticMod/VariableMod/etc.)
-                                                        into g_staticParams so fragment
-                                                        masses match the mods baked into the
-                                                        index (otherwise InitializeStaticParams()'s
-                                                        values may have double-applied static
-                                                        mods); does NOT recompute mod-permutation
-                                                        tables -- ReadPeptideIndex() already
-                                                        read them directly, see its own comment
+                                                        (MassType/StaticMod/DecoySearch/
+                                                        Enzyme/Enzyme2 -- no variable-mod
+                                                        fields, Phase 0.5 removed those from
+                                                        the header entirely) into
+                                                        g_staticParams so fragment masses match
+                                                        the static mods baked into the index
+                                                        (otherwise InitializeStaticParams()'s
+                                                        values may have double-applied them);
+                                                        does not touch variable mods, which
+                                                        ReadPeptideIndex() already regenerated
+                                                        from the active params above
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
@@ -156,6 +170,18 @@ memory, then returns early (skipping the spec-lib and batch-search logic that fo
 directly (no `DoSearch()`/`m_bRTSIndexBuild` involved). Either way,
 `InitializeSingleSpectrumSearch()` re-allocates the search pool before proceeding to load
 the index it just built.
+
+**RTS variable-mod source:** RTS never loads a `comet.params` file -- `SearchMS1MS2.cs`'s
+`Main()` sets every search parameter via explicit `SearchMgr.SetParam()` calls instead,
+including `variable_mod01`/`variable_mod02`/`max_variable_mods_in_peptide`
+(`RealtimeSearch/SearchMS1MS2.cs`, the unconditional block right before
+`InitializeSingleSpectrumSearch()`). Those calls populate the same
+`g_staticParams.variableModParameters` that a batch search populates by parsing
+`comet.params`, so by the time `ReadPeptideIndex()` regenerates `MOD_SEQS`/`MOD_NUMBERS`/etc.
+(Phase 0.5, above) the two paths converge on the same in-memory state -- "comet.params" in
+the flow diagrams above always means "whatever populated `g_staticParams` for this run",
+RTS's `SetParam()` calls or batch's `comet.params` parse, not literally a params file in the
+RTS case.
 
 ### MS1 (`InitializeSingleSpectrumMS1Search`)
 
@@ -294,8 +320,8 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensiti
 |-------|:--------:|-------|
 | `g_staticParams` | Read-only [x] | Set once at init; never written during search. |
 | `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
-| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | Loaded at init; never modified. FI_DB uses `g_vFragmentPeptides` for its own posting-list resolution; `g_vRawPeptides` is shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). |
-| `g_vDBIndexVariants` | Read-only [x] | PI_DB's compact per-variant array (mass-sorted), loaded at init alongside `g_vRawPeptides`; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Populated but unused when `iDbType == FI_DB`. |
+| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_vFragmentPeptides` is built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
+| `g_vDBIndexVariants` | Read-only [x] | PI_DB's compact per-variant array (mass-sorted), built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then read-only for the rest of the session; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Only populated when `iDbType == PI_DB`. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
 | `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |

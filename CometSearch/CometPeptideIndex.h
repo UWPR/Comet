@@ -40,13 +40,21 @@ public:
    static bool ReadPeptideIndex(bool bIsRTS);
    static bool WritePeptideIndex(ThreadPool* tp);
 
+   // docs/20260730_PI_reduction.md Phase 0.5: builds g_vDBIndexVariants (PI_DB mode only)
+   // from g_vRawPeptides + the mod-permutation tables built by a prior call to
+   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Called once per search
+   // session from ReadPeptideIndex(), not from WritePeptideIndex() -- nothing about the
+   // modified-peptide variant list is persisted to disk any more, so it must be regenerated
+   // fresh every time a session starts, from whatever comet.params says at that moment.
+   static bool GenerateVariantArray();
+
    // Phase B (docs/20260713_PIidxformat.md, docs/20260730_PI_reduction.md Phase 1): walks
    // g_vRawPeptides x valid mod combinations (mirroring
    // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and appends a
    // compact FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
    // dPepMass} per valid combination, using the combinatorics tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include the
-   // fully-unmodified variant for each raw peptide -- see WritePeptideIndex() for that.
+   // fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for that.
    static bool EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants);
 
    // Single-entry version of EnumerateIndexPeptideMods()'s tryPush lambda,
@@ -69,11 +77,15 @@ public:
 
 
    // Parses the .idx text header (MassType, StaticMod, DecoySearch, Enzyme,
-   // Enzyme2, VariableMod lines) from an already-open file pointer.
-   // Updates g_staticParams in-place and must only be called once per index
-   // load (guarded by g_bPeptideIndexRead). Called by both
-   // SearchPeptideIndex(ThreadPool*) and InitializeMassesFromPeptideIndex()
-   // to avoid duplication.
+   // Enzyme2 lines, terminated by the blank line separating the header from
+   // the protein-name section) from an already-open file pointer. Updates
+   // g_staticParams in-place. As of Phase 0.5 (docs/20260730_PI_reduction.md)
+   // this no longer touches variable-mod settings (VariableMod:/
+   // ProteinModList:/RequireVariableMod: are gone from the header) -- those
+   // are read live from comet.params instead, the same as a non-indexed
+   // FASTA search already does. Called by both EnsurePeptideIndexLoaded() (via
+   // ReadPeptideIndex()) and InitializeMassesFromPeptideIndex() to avoid
+   // duplication.
    static bool ParsePeptideIndexHeader(FILE* fp);
 
    // Compacted list of active variable_modNN slot indices (0-based into
@@ -87,6 +99,30 @@ public:
    // comment asking future edits to keep them in sync, which a change to either copy alone
    // could silently violate.
    static const vector<int>& GetVModSlotForAllModsIdx();
+
+   // Translates a single compacted variable-mod-slot index (as read from
+   // MOD_NUMBERS[...].modifications[]) into the real varModList[] slot it refers to, via
+   // GetVModSlotForAllModsIdx()'s translation table above. Returns -1, uniformly, for both
+   // legitimate cases callers must treat as "no real slot here": compactedIdx == -1 (the
+   // ordinary "not modified at this candidate position in this combination" sentinel) and
+   // compactedIdx out of range for vModSlotForAllModsIdx (only reachable via a corrupt/
+   // mismatched on-disk .idx, or the compaction order here and in
+   // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop falling out of
+   // sync -- a logic bug, not user input). A prior version of this codebase had five near-
+   // identical copies of this translate-or-skip logic hand-copied across CometPeptideIndex.cpp
+   // and CometFragmentIndex.cpp/CometSearch.cpp, each with a different guard/bounds-checking
+   // policy (guarded+.at(), guarded+unchecked[], unguarded+unchecked[]) -- that inconsistency
+   // is exactly how one copy shipped with its -1 guard missing entirely. Single shared,
+   // exception-free implementation now used everywhere instead.
+   static int TranslateVarModSlot(const vector<int>& vModSlotForAllModsIdx, int compactedIdx);
+
+   // Returns true if every candidate position actually modified in this combination (i.e.
+   // mods[i] != -1, for i in [0, modStringLen)) translates to a slot allowed by
+   // siVarModProteinFilter's bitmask -- the protein-level variable-mod restriction feature.
+   // Shared by PI_DB's EnumerateIndexPeptideMods() and FI_DB's AddFragmentsThreadProc(), which
+   // previously carried two independently-maintained copies of this exact check.
+   static bool PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
+      const char* mods, int modStringLen, unsigned short siVarModProteinFilter);
 
 };
 

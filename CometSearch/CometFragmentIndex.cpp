@@ -14,6 +14,7 @@
 
 
 #include "CometFragmentIndex.h"
+#include "CometPeptideIndex.h"
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
@@ -66,12 +67,14 @@ CometFragmentIndex::~CometFragmentIndex()
 
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
-   // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0) --
-   // g_vRawPeptides plus the persisted MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
-   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below, exactly as
-   // it already did against the pre-unification plain-index format -- no PermuteIndexPeptideMods()
-   // call needed here, before or after this unification. g_vDBIndexVariants also gets
-   // populated but is unused in this FI_DB path (PI_DB-only).
+   // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0/0.5) --
+   // g_vRawPeptides plus the MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
+   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below.
+   // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
+   // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
+   // longer persisted in the .idx file), so no separate call is needed here. g_vDBIndexVariants
+   // also gets populated (by ReadPeptideIndex(), for PI_DB mode only) but is unused on this
+   // FI_DB path.
    if (!g_bPlainPeptideIndexRead && !CometPeptideIndex::ReadPeptideIndex(bIsRTS))
       return false;   // ReadPeptideIndex() already reported the specific error
 
@@ -235,10 +238,13 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    // now populate the fragment index vector
    tStartTime = chrono::steady_clock::now();
    cout <<  "   - populate index ... "; fflush(stdout);
+   // Fetched once for this whole fill pass rather than once per AddFragments() call below (a
+   // hot loop over every fragment-peptide variant, potentially millions of calls).
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
    for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
    {
       auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
-      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0);
+      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0, vModSlotForAllModsIdx);
    }
    pFragmentIndexPool->wait_on_threads();
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
@@ -271,12 +277,20 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
 {
    size_t iWhichFragmentPeptide = 0;  // unused here for counting only
 
+   // mods[]/MOD_NUMBERS[].modifications[] values are 0-based COMPACTED variable-mod-slot
+   // indices requiring translation through this compacted-to-real-slot map before use as a
+   // varModList index or an siVarModProteinFilter bit position (both real-slot-indexed) --
+   // see AddFragments()'s own copy of this note for the full explanation. Fetched once here,
+   // used below at the protein-mod-filter check (the one place in this function that still
+   // needs it -- ctNtermMod/ctCtermMod elsewhere in this function are already raw slots).
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
+
    // each thread will loop through a subset of the g_vRawPeptides
    for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
    {
       // AddFragments for unmodified peptide; only if no variable mods are required
       if (!g_staticParams.variableModParameters.iRequireVarMod)
-         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, bCountOnly);
+         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, bCountOnly, vModSlotForAllModsIdx);
 
       // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
@@ -291,7 +305,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, bCountOnly);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
             }
          }
 
@@ -302,7 +316,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, bCountOnly);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
             }
          }
 
@@ -317,7 +331,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                         && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                {
-                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, bCountOnly);
+                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
                }
             }
          }
@@ -341,25 +355,21 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
          {
             bool bPass = true;
 
-            // if protein variable mod filter is applied, check mods[] against the peptides siVarModProteinFilter
+            // if protein variable mod filter is applied, check mods[] against the peptide's
+            // siVarModProteinFilter -- shared with CometPeptideIndex.cpp's EnumerateIndexPeptideMods(),
+            // which previously carried its own independent (and briefly inconsistent -- see
+            // CometPeptideIndex::PassesVarModProteinFilter()'s doc comment) copy of this exact check.
             if (g_staticParams.variableModParameters.bVarModProteinFilter)
             {
-               char* mods = MOD_NUMBERS.at(modNumIdx).modifications;
-
-               for (int i = 0; i < MOD_NUMBERS.at(modNumIdx).modStringLen; ++i)
-               {
-                  // if mods[i] is not set to 1 in siVarModProteinFilter, do not apply this mod
-                  if (!cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, mods[i]))
-                  {
-                     bPass = false;
-                     break;
-                  }
-               }
+               const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
+               bPass = CometPeptideIndex::PassesVarModProteinFilter(vModSlotForAllModsIdx,
+                  modNum.modifications, modNum.modStringLen,
+                  g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
             }
 
             if (bPass)
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, bCountOnly);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, bCountOnly, vModSlotForAllModsIdx);
 
                if (g_staticParams.variableModParameters.bVarTermModSearch)
                {
@@ -369,7 +379,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, bCountOnly);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
                      }
                   }
 
@@ -379,7 +389,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, bCountOnly);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
                      }
                   }
 
@@ -394,7 +404,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                               (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                                  && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                         {
-                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly);
+                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
                         }
                      }
                   }
@@ -412,7 +422,8 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       int modNumIdx,
                                       char cNtermMod,
                                       char cCtermMod,
-                                      bool bCountOnly)
+                                      bool bCountOnly,
+                                      const vector<int>& vModSlotForAllModsIdx)
 {
    string sPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
 
@@ -421,6 +432,13 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    int modSeqIdx = -1;
    string modSeq;
 
+   // mods[] (MOD_NUMBERS[modNumIdx].modifications[]) values are 0-based indices into this
+   // COMPACTED active-variable-mod-slot list, not raw varModList indices -- see
+   // CometPeptideIndex::GetVModSlotForAllModsIdx()'s own doc comment, and its
+   // MaterializeOneEntry() (the PI_DB-mode equivalent of this function), which already
+   // performs this same translation correctly. Passed in by both callers (which fetch it once
+   // per thread/pass rather than this function re-fetching it on every one of the millions of
+   // per-peptide-variant calls in a full index build).
    if (modNumIdx >= 0)  // set modified peptide info
    {
       modNum = MOD_NUMBERS.at(modNumIdx);
@@ -459,10 +477,15 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       {
          if (sPeptide[i] == modSeq[j])
          {
-            if (mods[j] != -1)
-            {
-               dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)mods[j]].dVarModMass;
-            }
+            // Bugfix: mods[j] is a compacted index (see the note above this function's
+            // declaration) -- using it directly as a varModList index only coincided with
+            // the real slot when every active variable_modNN among the first
+            // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
+            // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
+            // mass to this peptide's precursor mass.
+            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+            if (iSlot >= 0)
+               dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
             j++;
          }
       }
@@ -578,13 +601,34 @@ if (!(iWhichPeptide%1000))
       {
          if (sPeptide[i] == modSeq[j])
          {
-            dBion += g_staticParams.variableModParameters.varModList[mods[j] - 1].dVarModMass;
+            // Bugfix: mods[j] is a compacted index (see the note above this function's
+            // declaration), not a raw varModList index -- the previous
+            // "varModList[mods[j] - 1]" read varModList[-1] (undefined behavior --
+            // empirically dVarModMass=0.0 observed) whenever the first configured
+            // variable-mod type applied, silently computing modified b/y ion fragment masses
+            // as if unmodified. For configs with more than one active mod type and a gap
+            // (e.g. variable_mod01 unused, variable_mod02 set), the equivalent bug (using the
+            // compacted index directly rather than the real slot) applied the wrong mod's
+            // mass instead of crashing.
+            //
+            // Bugfix: mods[j] == -1 is the normal case for a modifiable candidate residue
+            // that isn't modified in this particular combination (CometModificationsPermuter::
+            // combine() leaves it at its initialized -1) -- e.g. any peptide with more
+            // modifiable sites than max_variable_mods_in_peptide allows. Casting -1 to size_t
+            // and indexing vModSlotForAllModsIdx with it directly read far outside the
+            // vector's buffer; TranslateVarModSlot() now guards this uniformly everywhere.
+            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+            if (iSlot >= 0)
+               dBion += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
             j++;
          }
 
          if (sPeptide[iPosReverse] == modSeq[k])
          {
-            dYion += g_staticParams.variableModParameters.varModList[mods[k] - 1].dVarModMass;
+            // see bugfix note above
+            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
+            if (iSlot >= 0)
+               dYion += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
             k--;
          }
       }
