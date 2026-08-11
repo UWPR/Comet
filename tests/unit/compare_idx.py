@@ -36,35 +36,30 @@ PROGRESS_EVERY = 5_000_000
 # File header / offset helpers
 # ---------------------------------------------------------------------------
 
-def _skip_header(f):
-    while True:
-        line = f.readline()
-        if not line or line.startswith(b"RequireVariableMod:"):
-            f.readline()
-            break
-
-
 def _section_offsets(f):
-    """Return (pep_pos, prot_pos, perm_pos) from the footer.
+    """Return (pep_pos, prot_pos, end_pos) from the footer.
 
-    docs/20260730_PI_reduction.md Phase 0: the footer grew from 3 pointers (peptides,
-    proteins, permutations) to 4 (+ variants, PI_DB-mode search data this FI_DB-focused
-    comparison doesn't need) when PI_DB and FI_DB were unified onto one .idx format.
+    docs/20260730_PI_reduction.md Phase 0.5: the footer is 2 pointers (peptides,
+    proteins) -- the permutation-table and compact-variant-array sections (and their
+    footer pointers) were removed; modified-peptide data is regenerated in memory each
+    search session rather than persisted. end_pos (the footer's own start, i.e. EOF - 16)
+    is the exclusive upper bound of the proteins-list section, taking the place of the old
+    permutations-section pointer for that purpose.
     """
-    f.seek(-32, 2)
-    pep_pos, prot_pos, perm_pos, _variants_pos = struct.unpack("<qqqq", f.read(32))
-    return pep_pos, prot_pos, perm_pos
+    f.seek(-16, 2)
+    end_pos = f.tell()
+    pep_pos, prot_pos = struct.unpack("<qq", f.read(16))
+    return pep_pos, prot_pos, end_pos
 
 
 def _open_idx(path):
     f = open(path, "rb")
-    _skip_header(f)
-    pep_pos, prot_pos, perm_pos = _section_offsets(f)
+    pep_pos, prot_pos, end_pos = _section_offsets(f)
     f.seek(pep_pos)
     (num_pep,)   = struct.unpack("<Q", f.read(8))
     f.seek(prot_pos)
     (num_lists,) = struct.unpack("<q", f.read(8))
-    return f, num_pep, num_lists, pep_pos, prot_pos, perm_pos
+    return f, num_pep, num_lists, pep_pos, prot_pos, end_pos
 
 
 # ---------------------------------------------------------------------------
@@ -148,12 +143,12 @@ def _read_prot_counts(f, prot_pos, prot_section_size, num_lists):
 def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
                       pep_pos_o, pep_pos_n,
                       prot_pos_o, prot_pos_n,
-                      perm_pos_o, perm_pos_n, verbose):
+                      end_pos_o, end_pos_n, verbose):
     failures = 0
     warnings = 0
 
-    prot_sec_o = perm_pos_o - prot_pos_o
-    prot_sec_n = perm_pos_n - prot_pos_n
+    prot_sec_o = end_pos_o - prot_pos_o
+    prot_sec_n = end_pos_n - prot_pos_n
 
     if verbose:
         print("  Reading protein-list counts (old) ...")
@@ -248,8 +243,8 @@ def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
 # ---------------------------------------------------------------------------
 
 def compare(old_path, new_path, verbose=True):
-    fo, num_pep_o, num_lists_o, pep_pos_o, prot_pos_o, perm_pos_o = _open_idx(old_path)
-    fn, num_pep_n, num_lists_n, pep_pos_n, prot_pos_n, perm_pos_n = _open_idx(new_path)
+    fo, num_pep_o, num_lists_o, pep_pos_o, prot_pos_o, end_pos_o = _open_idx(old_path)
+    fn, num_pep_n, num_lists_n, pep_pos_n, prot_pos_n, end_pos_n = _open_idx(new_path)
 
     failures = 0
 
@@ -276,7 +271,7 @@ def compare(old_path, new_path, verbose=True):
     pep_match = _sections_identical(fo, fn, pep_pos_o, prot_pos_o)
     if verbose:
         print("Binary comparison: protein-list section ...")
-    prot_match = _sections_identical(fo, fn, prot_pos_o, perm_pos_o)
+    prot_match = _sections_identical(fo, fn, prot_pos_o, end_pos_o)
 
     if pep_match and prot_match:
         fo.close(); fn.close()
@@ -295,7 +290,7 @@ def compare(old_path, new_path, verbose=True):
         num_pep_o, num_lists_o, num_lists_n,
         pep_pos_o, pep_pos_n,
         prot_pos_o, prot_pos_n,
-        perm_pos_o, perm_pos_n,
+        end_pos_o, end_pos_n,
         verbose)
 
     fo.close(); fn.close()
@@ -309,7 +304,7 @@ def compare(old_path, new_path, verbose=True):
 
 
 def dump_idx(path, max_rows=50):
-    f, num_pep, num_lists, pep_pos, prot_pos, perm_pos = _open_idx(path)
+    f, num_pep, num_lists, pep_pos, prot_pos, end_pos = _open_idx(path)
     print(f"Peptides: {num_pep:,}   ProtLists: {num_lists:,}")
     print(f"{'#':<6} {'Peptide':<30} {'Mass':>14}  Prev Next  siVar  pidx")
     print("-" * 80)
