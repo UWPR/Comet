@@ -704,9 +704,17 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("minimum_peaks", sTmp, iTmp);
 
+            dTmp = 0.0; // intensity cutoff for each peak (default)
+            sTmp = dTmp.ToString();
+            SearchMgr.SetParam("minimum_intensity", sTmp, dTmp);
+
             iTmp = 3; // maximum fragment charge
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("max_fragment_charge", sTmp, iTmp);
+
+            iTmp = 1; // minimum precursor charge
+            sTmp = iTmp.ToString();
+            SearchMgr.SetParam("min_precursor_charge", sTmp, iTmp);
 
             iTmp = 6; // maximum precursor charge
             sTmp = iTmp.ToString();
@@ -742,53 +750,52 @@ namespace RealTimeSearch
 
             if (bDatabaseSearch)
             {
-               // If the .idx file already exists, read the mass and length ranges from it.
-               // Otherwise set those here (before index is created automatically)
-
                if (System.IO.File.Exists(sDB))
                {
+                  // The .idx already exists and is fully self-describing as of
+                  // docs/20260811_restore_idx_header_mods.md's v4 format:
+                  // CometPeptideIndex::ParsePeptideIndexHeader() reads enzyme, static mods,
+                  // variable mods (identity AND count limits), decoy mode, and mass/length
+                  // range straight from the file's own header on the C++ side and overwrites
+                  // whatever comet.params/SetParam() supplied -- nothing needs to be set here
+                  // for any of that any more. The one thing still needed on the C# side is
+                  // dPeptideMassLow/dPeptideMassHigh themselves: they're used above (as a
+                  // cheap pre-filter to skip spectra outside the index's mass range before
+                  // ever calling into the search) independently of anything forwarded to
+                  // SearchMgr, so this still peeks MassRange: directly, but no longer
+                  // forwards it (or LengthRange:, which nothing on the C# side needs) via
+                  // SetParam -- the C++ side already has its own copy.
                   using (System.IO.StreamReader dbFile = new System.IO.StreamReader(sDB))
                   {
-                     // Now actually open the .idx database to read mass range from it
-                     int iLineCount = 0;
                      bool bFoundMassRange = false;
                      string strLine;
 
                      while ((strLine = dbFile.ReadLine()) != null)
                      {
                         string[] strParsed = strLine.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        // Blank line: end of header, start of the protein-name section
+                        // (matches CometPeptideIndex::ParsePeptideIndexHeader()'s own loop
+                        // terminator on the C++ side). Also guards strParsed[0] below --
+                        // Split(...RemoveEmptyEntries) on a blank line returns an empty
+                        // array, which would otherwise throw here on a malformed/truncated
+                        // .idx before the "missing MassRange header" error ever got a
+                        // chance to report it.
+                        if (strParsed.Length == 0)
+                           break;
+
                         if (strParsed[0].Equals("MassRange:"))
                         {
-                           dPeptideMassLow = double.Parse(strParsed[1]);
-                           dPeptideMassHigh = double.Parse(strParsed[2]);
-
-                           var digestMassRange = new DoubleRangeWrapper(dPeptideMassLow, dPeptideMassHigh);
-                           string digestMassRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
-                           SearchMgr.SetParam("digest_mass_range", digestMassRangeString, digestMassRange);
-
-                           bFoundMassRange = true;
-                        }
-
-                        if (strParsed[0].Equals("LengthRange:"))
-                        {
-                           int iLengthMin = int.Parse(strParsed[1]);
-                           int iLengthMax = int.Parse(strParsed[2]);
-
-                           var peptideLengthRange = new IntRangeWrapper(iLengthMin, iLengthMax);
-                           string peptideLengthRangeString = dPeptideMassLow.ToString() + " " + dPeptideMassHigh.ToString();
-                           SearchMgr.SetParam("peptide_length_range", peptideLengthRangeString, peptideLengthRange);
-
-                           bFoundMassRange = true;
-                        }
-
-                        iLineCount++;
-
-                        // StaticMod: is now the last header line before the blank-line
-                        // separator (docs/20260730_PI_reduction.md Phase 0.5 removed
-                        // VariableMod:/ProteinModList:/RequireVariableMod: from the header
-                        // entirely), so it's the sentinel that stops this scan.
-                        if (strParsed[0].Equals("StaticMod:"))
+                           if (strParsed.Length >= 3
+                              && double.TryParse(strParsed[1], out double dLow)
+                              && double.TryParse(strParsed[2], out double dHigh))
+                           {
+                              dPeptideMassLow = dLow;
+                              dPeptideMassHigh = dHigh;
+                              bFoundMassRange = true;
+                           }
                            break;
+                        }
                      }
                      dbFile.Close();
 
@@ -797,12 +804,16 @@ namespace RealTimeSearch
                         Console.WriteLine(" Error with indexed database format; missing MassRange header.\n");
                         System.Environment.Exit(1);
                      }
-
                   }
                }
                else
                {
-                  // .idx file does not exist so set appropriate parameters here for generating fragment ion indexing's plain peptide .idx
+                  // .idx file does not exist so set appropriate parameters here for generating
+                  // fragment ion indexing's plain peptide .idx -- everything in this branch
+                  // only matters at build time; once the .idx exists, its own header carries
+                  // all of it and none of this runs again. TODO(user): extend this to
+                  // optionally load these settings from an actual comet.params file instead
+                  // of hardcoding them here.
 
                   // digest mass range
                   dPeptideMassLow = 800.0;
@@ -849,6 +860,22 @@ namespace RealTimeSearch
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("allowed_missed_cleavage", sTmp, iTmp);
 
+                  iTmp = 2; // 1=semi-digested, 2=fully-digested (default), 8=C-term unspecific, 9=N-term unspecific
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("num_enzyme_termini", sTmp, iTmp);
+
+                  iTmp = 0; // 0=no decoys (default), 1=internal decoy concatenated, 2=internal decoy separate
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("decoy_search", sTmp, iTmp);
+
+                  iTmp = 0; // 0=leave protein sequences alone (default), 1=also consider w/o N-term methionine
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("clip_nterm_methionine", sTmp, iTmp);
+
+                  iTmp = 20; // maximum number of duplicate proteins to report/store per peptide (default)
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("max_duplicate_proteins", sTmp, iTmp);
+
                   // FI setting
                   iTmp = 3;
                   sTmp = iTmp.ToString();
@@ -868,49 +895,38 @@ namespace RealTimeSearch
                   iTmp = 1;
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("fragindex_skipreadprecursors", sTmp, iTmp);
+
+                  // Variable mods: only matter here, at build time -- baked into the new .idx's
+                  // own header (docs/20260811_restore_idx_header_mods.md v4) and never needed
+                  // again for any subsequent run against it. M oxidation + STY phospho (with
+                  // phospho's neutral loss), matching data/comet_phospho.params.
+                  VarModsWrapper varMods = new VarModsWrapper();
+                  sTmp = "15.9949 M 0 2 -1 0 0 0.0";
+                  varMods.set_VarModMass(15.9949);
+                  varMods.set_VarModChar("M");
+                  varMods.set_BinaryMod(0);
+                  varMods.set_MaxNumVarModAAPerMod(2);
+                  varMods.set_RequireThisMod(0);
+                  varMods.set_VarModTermDistance(-1);
+                  varMods.set_WhichTerm(0);
+                  varMods.set_VarNeutralLoss(0.0);
+                  SearchMgr.SetParam("variable_mod01", sTmp, varMods);
+
+                  sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
+                  varMods.set_VarModMass(79.9663);
+                  varMods.set_VarModChar("STY");
+                  varMods.set_BinaryMod(0);
+                  varMods.set_MaxNumVarModAAPerMod(2);
+                  varMods.set_RequireThisMod(0);
+                  varMods.set_VarModTermDistance(-1);
+                  varMods.set_WhichTerm(0);
+                  varMods.set_VarNeutralLoss(97.976896);
+                  SearchMgr.SetParam("variable_mod02", sTmp, varMods);
+
+                  iTmp = 4;
+                  sTmp = iTmp.ToString();
+                  SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
                }
-
-               // Variable mods: set unconditionally, whether or not the .idx already exists.
-               // docs/20260730_PI_reduction.md Phase 0.5 removed VariableMod:/
-               // ProteinModList:/RequireVariableMod: from the .idx header -- variable mods are
-               // no longer baked into the index at all, so there's no "already-existing .idx
-               // supplies them" case to fall back on the way there is for MassRange:/
-               // LengthRange:/StaticMod:/Enzyme:. This block previously lived only in the
-               // "index doesn't exist yet" branch above, which meant it was silently never
-               // applied on a run against a pre-existing .idx; every RTS run now needs its own
-               // explicit variable-mod settings, exactly like a live comet.params-based batch
-               // search already does. TODO(user): extend this to optionally load these (and
-               // other) settings from an actual comet.params file instead of hardcoding them
-               // here.
-               VarModsWrapper varMods = new VarModsWrapper();
-               //sTmp = "15.9949 M 0 2 -1 0 0 0.0";
-               sTmp = "0.00 M 0 2 -1 0 0 0.0";
-               varMods.set_VarModMass(0.00);
-               varMods.set_VarModChar("M");
-               varMods.set_BinaryMod(0);
-               varMods.set_MaxNumVarModAAPerMod(2);
-               varMods.set_RequireThisMod(0);
-               varMods.set_VarModTermDistance(-1);
-               varMods.set_WhichTerm(0);
-               varMods.set_VarNeutralLoss(0.0);
-               SearchMgr.SetParam("variable_mod01", sTmp, varMods);
-
-               /*
-               sTmp = "79.9663 STY 0 2 -1 0 0 97.976896";
-               varMods.set_VarModMass(79.9663);
-               varMods.set_VarModChar("STY");
-               varMods.set_BinaryMod(0);
-               varMods.set_MaxNumVarModAAPerMod(2);
-               varMods.set_RequireThisMod(0);
-               varMods.set_VarModTermDistance(-1);
-               varMods.set_WhichTerm(0);
-               varMods.set_VarNeutralLoss(97.976896);
-               SearchMgr.SetParam("variable_mod02", sTmp, varMods);
-               */
-
-               iTmp = 4;
-               sTmp = iTmp.ToString();
-               SearchMgr.SetParam("max_variable_mods_in_peptide", sTmp, iTmp);
             }
 
             return true;

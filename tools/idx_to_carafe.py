@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Read a Comet unified .idx file (PI_DB/FI_DB, "Comet index database v2") plus a companion
+Read a Comet unified .idx file (PI_DB/FI_DB, "Comet index database v4") plus a companion
 peptide-mod-variant export from `comet.exe -x` (see below), and produce a TSV that Carafe's
 ai_pred.py can consume directly for in-silico MS2 (and RT/CCS) prediction:
 
@@ -260,18 +260,22 @@ class IdxReader:
         self._read_footer()
 
     # -- header: text lines up to and including the first blank line. Field formats mirror
-    # CometPeptideIndex::WritePeptideIndex()'s fprintf calls exactly. Phase 0.5 (see module
-    # docstring): no VariableMod:/ProteinModList:/RequireVariableMod: lines any more -- static
-    # mods are still here (they're baked into the raw peptide masses at build time and don't
-    # depend on comet.params at search time the way variable mods now do). --
+    # CometPeptideIndex::WritePeptideIndex()'s fprintf calls exactly. docs/20260811_
+    # restore_idx_header_mods.md (master, merged into carafe) restored VariableMod:/
+    # ProteinModList:/RequireVariableMod: (identity + v4's new per-mod/global count-limit
+    # fields) and added IndexSearchType:/MaxVariableModsInPeptide: -- this reader doesn't
+    # need any of them (still gets variable-mod identity from `comet.exe -x`'s export, see
+    # module docstring: modNumIdx numbering is still regenerated per-session, never
+    # persisted, on both branches) so they're silently skipped by the generic
+    # blank-line-terminated scan below, same as any other unrecognized prefix.
     def _read_header(self):
         self.f.seek(0)
         magic = self.f.readline()
-        if not magic.startswith(b"Comet index database v2"):
+        if not magic.startswith(b"Comet index database v4"):
             raise ValueError(
-                f"{self.path!r} is not a 'Comet index database v2' unified .idx file "
-                "(old v1-format PI_DB/FI_DB files aren't supported -- rebuild with a current "
-                "Comet; see module docstring for what changed in v2).")
+                f"{self.path!r} is not a 'Comet index database v4' unified .idx file "
+                "(older-format PI_DB/FI_DB files aren't supported -- rebuild with a current "
+                "Comet; see module docstring for what changed in v4).")
 
         while True:
             line = self.f.readline()

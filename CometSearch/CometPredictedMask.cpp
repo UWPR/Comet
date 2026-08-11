@@ -89,13 +89,15 @@ bool CometPredictedMask::ComputeIdxFingerprint(unsigned long& fingerprint, uint6
    // Mirrors CometPeptideIndex::ReadPeptideIndex()'s own magic/footer read exactly -- kept as
    // an independent, minimal re-read here (not routed through ReadPeptideIndex(), which
    // doesn't keep the file open or expose these offsets afterward) rather than threading new
-   // output parameters through that already-large function for a single caller.
+   // output parameters through that already-large function for a single caller. Version
+   // pinned to the exact current format (v4, docs/20260811_restore_idx_header_mods.md), same
+   // policy ParsePeptideIndexHeader() uses -- keep both in sync on any future header bump.
    char szMagic[32] = { 0 };
    if (fread(szMagic, 1, sizeof(szMagic) - 1, fp) == 0
-      || strncmp(szMagic, "Comet index database v2", strlen("Comet index database v2")) != 0)
+      || strncmp(szMagic, "Comet index database v4", strlen("Comet index database v4")) != 0)
    {
       string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
-         + "\" is not a v2 unified .idx file; cannot fingerprint for predicted-mask validation.\n";
+         + "\" is not a v4 unified .idx file; cannot fingerprint for predicted-mask validation.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       fclose(fp);

@@ -189,8 +189,10 @@ reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on 
 a `g_vDBIndexVariants` entry for each mass-window candidate PI_DB search scores, then
 discards it. Since Phase 0.5, `g_vDBIndexVariants` itself is also transient in a different
 sense: it's rebuilt once per search session (`CometPeptideIndex::GenerateVariantArray()`,
-called from `ReadPeptideIndex()`) from `g_vRawPeptides` + whatever variable mods
-`comet.params` has active, rather than read from disk.
+called from `ReadPeptideIndex()`) from `g_vRawPeptides` + whichever variable mods are
+active in `g_staticParams.variableModParameters`, rather than read from disk. As of
+`docs/20260811_restore_idx_header_mods.md`, that active-mods source is the `.idx` file's
+own `VariableMod:` header line again, not live `comet.params`.
 
 ```cpp
 struct DBIndex  // core/Types.h
@@ -217,9 +219,14 @@ both search modes. Same core fields as `DBIndex` but without the `VarModSites` m
 field (only unmodified peptides are stored here; modifications are layered on in
 `g_vFragmentPeptides` for FI_DB, or the structurally-identical `g_vDBIndexVariants` for
 PI_DB). As of Phase 0.5, `g_vRawPeptides` is the *only* peptide-level data persisted in the
-`.idx` file at all -- `g_vFragmentPeptides`/`g_vDBIndexVariants` and the mod-permutation
+`.idx` file -- `g_vFragmentPeptides`/`g_vDBIndexVariants` and the mod-permutation
 tables (`MOD_NUMBERS`/`MOD_SEQS`/etc.) are generated fresh from it, once per search
-session, from live `comet.params` rather than read back from disk.
+session, rather than read back from disk. The variable mods driving that regeneration do
+come from the `.idx` file again, though: `docs/20260811_restore_idx_header_mods.md`
+restored the header's text `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` lines
+(alongside `StaticMod:`, never removed), parsed into `g_staticParams.variableModParameters`
+before the tables above are built -- `comet.params`/RTS `SetParam()` mod values are
+overwritten, not consulted, for an indexed search.
 
 ```cpp
 struct PlainPeptideIndexStruct  // core/Types.h
@@ -327,7 +334,7 @@ class Pipeline         // search/Pipeline.h
 | `FastaStrategy` | `search/FastaStrategy.cpp` | `FASTA_DB` | Classic three-sweep (load -> allocate -> RunSearch -> PostAnalysis). |
 | `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
 
-**AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. Historically this ordering was required because, for `FI_DB`, `FiStrategy::initialize()`'s call to `CometPeptideIndex::ReadPeptideIndex()` overwrote `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header, so `SetAScoreOptions()` had to run after that overwrite or it would configure AScore from stale/default mod values. As of Phase 0.5 (`docs/20260730_PI_reduction.md`) the `.idx` header no longer carries variable-mod settings at all -- `varModList[]` comes entirely from `comet.params`, stable well before this point -- so the ordering is no longer strictly required, but is left as-is since it's already correct. (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate AScore setup and was never affected by this.)
+**AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering is required because, for `FI_DB`, `FiStrategy::initialize()`'s call to `CometPeptideIndex::ReadPeptideIndex()` overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header, so `SetAScoreOptions()` must run after that overwrite or it would configure AScore from stale/default mod values. (Phase 0.5, `docs/20260730_PI_reduction.md`, briefly removed variable-mod settings from the `.idx` header entirely, making this ordering non-strict for a window; `docs/20260811_restore_idx_header_mods.md` restored the header-driven overwrite, so the ordering matters again -- and always did for `StaticMod:`, which Phase 0.5 never touched.) (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate AScore setup and was never affected by this.)
 
 **`_pQueries` discipline (FASTA only):** `CometSearch::BinarySearchMass()` reads the query list through the `CometSearch` member `_pQueries` rather than a parameter; `CometSearch::DoSearch()` (the FASTA path) sets `_pQueries = &queries` at entry before any call into it. This is FASTA-specific -- the PI_DB path was refactored away from `_pQueries`: `CometSearch::SearchPeptideIndex(Query*, bool*, int)` and its `AnalyzePeptideIndex(Query*, const DBIndex&, bool*, sDBEntry*, int)` overload both take the `Query*` directly as a parameter and never touch `_pQueries` or `BinarySearchMass()`. Any new code path that calls into `BinarySearchMass()` still needs `_pQueries` assigned first; PI_DB code does not.
 

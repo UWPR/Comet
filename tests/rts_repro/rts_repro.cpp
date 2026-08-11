@@ -142,9 +142,10 @@ static bool SetRangesFromIndexHeader(ICometSearchManager* mgr, const string& szD
       }
       else if (tag == "StaticMod:")
       {
-         // StaticMod: is now the last header line before the blank-line separator
-         // (docs/20260730_PI_reduction.md Phase 0.5 removed VariableMod:/
-         // ProteinModList:/RequireVariableMod: from the header entirely).
+         // Both fields this function wants (MassRange:/LengthRange:) are already found
+         // by the time StaticMod: appears; no need to keep scanning through the
+         // VariableMod:/ProteinModList:/RequireVariableMod: lines that follow it
+         // (docs/20260811_restore_idx_header_mods.md).
          break;
       }
    }
@@ -213,23 +214,15 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "print_ascorepro_score", bEnableAScorePro ? -1 : 0);
    SetIntParam(mgr, "index_search_type", iIndexSearchType);
 
-   // Variable mods: no longer available from the .idx header (docs/20260730_PI_reduction.md
-   // Phase 0.5 removed VariableMod:/ProteinModList:/RequireVariableMod: from it entirely), so
-   // this driver -- like RTS itself -- must set them explicitly on every run. T22's ground-truth
-   // check needs the same phospho-S mod the fixture's index was built with (see
-   // tests/unit/run_tests.py's T19_PARAMS_TEMPLATE usage in _test_rts_index_type()).
-   {
-      VarMods phosphoS;
-      phosphoS.dVarModMass = 79.966331;
-      strcpy(phosphoS.szVarModChar, "S");
-      phosphoS.iMaxNumVarModAAPerMod = 1;
-      phosphoS.iRequireThisMod = 0;
-      phosphoS.iVarModTermDistance = -1;
-      phosphoS.iWhichTerm = 0;
-      phosphoS.dNeutralLoss = 0.0;
-      mgr->SetParam("variable_mod01", "79.966331 S 0 1 -1 0 0 0.0", phosphoS);
-   }
-   SetIntParam(mgr, "max_variable_mods_in_peptide", 1);
+   // Variable mods: as of docs/20260811_restore_idx_header_mods.md's v4 format, the .idx
+   // header carries mod IDENTITY (chars/mass/neutral-loss, restored from Phase 0.5) *and*
+   // the count limits (iMaxNumVarModAAPerMod/max_variable_mods_in_peptide -- new; neither
+   // this restored format's own v3 predecessor nor pre-121 ever persisted those, confirmed
+   // against v2025.03.0). CometPeptideIndex::ParsePeptideIndexHeader() overwrites
+   // g_staticParams.variableModParameters from the file entirely, so no variable_modNN/
+   // max_variable_mods_in_peptide SetParam calls are needed here at all -- whichever .idx
+   // this process searches (T22's single-mod ground-truth fixture or its two-mod
+   // determinism fixture) is self-consistent on its own.
 
    if (!SetRangesFromIndexHeader(mgr, szDB))
    {

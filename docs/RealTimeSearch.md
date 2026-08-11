@@ -61,12 +61,15 @@ Uses a double-checked locking pattern with `std::atomic<bool> singleSearchInitia
 
 **PI_DB and FI_DB share one unified `.idx` format and one builder/reader**
 (`CometPeptideIndex::WritePeptideIndex()` / `ReadPeptideIndex()`;
-`docs/20260730_PI_reduction.md` Phase 0). Since the file no longer implies a mode on its
-own, which mode to build/search comes from `g_staticParams.options.iIndexSearchType`
-(`0`=PI_DB, `1`=FI_DB, default when unset) -- for RTS this is set via a
-`CometSearchManagerWrapper::SetParam("index_search_type", ...)` call in
-`RealtimeSearch/SearchMS1MS2.cs` (a new `[index_search_type]` CLI argument), since RTS has
-no `comet.params` file to read a `index_search_type` key from the way batch does.
+`docs/20260730_PI_reduction.md` Phase 0). An existing `.idx` is self-describing again
+(`docs/20260811_restore_idx_header_mods.md`): its own `IndexSearchType:` header line says
+which mode to search it as, read via `CometPeptideIndex::ParsePeptideIndexHeader()`.
+`g_staticParams.options.iIndexSearchType` (`0`=PI_DB, `1`=FI_DB, default when unset) is
+consulted only when the requested `.idx` doesn't exist yet and must be auto-built from a
+FASTA first -- for RTS this is set via a `CometSearchManagerWrapper::SetParam(
+"index_search_type", ...)` call in `RealtimeSearch/SearchMS1MS2.cs` (an `[index_search_type]`
+CLI argument), since RTS has no `comet.params` file to read a `index_search_type` key from
+the way batch does.
 
 ```
 fast path: singleSearchInitializationComplete.load(acquire) -> return true if set
