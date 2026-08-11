@@ -2160,6 +2160,264 @@ def test_t25_fi_mod_slot_ambig(comet_exe):
     return failures
 
 
+# T25 -- FI_DB fragment neutral loss (docs/20260805_carafe.md Section 6.6/6.7)
+# ---------------------------------------------------------------------------
+#
+# Regression-tests three things at once, all uncovered while implementing/validating the
+# `carafe` branch's Phase 2b (predicted-fragment FI masking needs a real neutral-loss ion
+# class in the FI to filter against):
+#
+#   1. CometFragmentIndex.cpp's AddFragments() correctly inserts NL-shifted b/y ion entries
+#      into the FI's posting list for an NL-bearing variable mod (the actual Phase 2b feature).
+#   2. A real, pre-existing bug (NOT introduced by Phase 2b) in AddFragments()'s own precursor-
+#      mass and fragment-ion-mass loops: mods[]/MOD_NUMBERS[].modifications[] values are 0-based
+#      indices into CometPeptideIndex::GetVModSlotForAllModsIdx()'s COMPACTED active-slot list,
+#      not raw varModList indices -- using them directly (or with a naive "-1") only happened to
+#      work when every active variable_modNN among the first FRAGINDEX_VMODS is contiguous from
+#      slot 0, which every fixture in this repo used before this one. This test deliberately
+#      configures the real mod in variable_mod02 (slot 1) with variable_mod01 left unused (slot
+#      0, a "gap"), so a regression here can't hide the way T19's slot-0 config would.
+#   3. A third, independent instance of the exact same compacted-vs-real-slot bug in
+#      CometSearch.cpp's SearchFragmentIndex() (FI_DB's per-query scoring function) -- affects
+#      not just the reported "modifications" text but the actual mass used for XCorr/SP scoring
+#      of every FI_DB hit against a gap-configured variable mod.
+#
+# Fixture: ACDS[+79.966331]EFGHIK (10 residues, phospho-S at position 4, charge 2+), built
+# specifically so both NL-eligible and NL-ineligible fragments exist on both the b and y sides
+# (mod roughly a third of the way in, not at either extreme) -- see
+# tests/unit/data/t25_fragment_nl.ms2's header comments for the exact peak provenance. The
+# spectrum contains all 14 normal (correctly-modified, unshifted) b/y ions AND all 9 genuine
+# NL-shifted (-97.976896 Da H3PO4 loss) ions a peptide this size/mod-position combination makes
+# eligible -- computed independently in Python from monoisotopic residue masses, not read back
+# from Comet's own output, so this test can't just be confirming Comet agrees with itself.
+#
+# Both a "no NL" (neutral_loss=0.0) and a "with NL" build are searched against the *same*
+# spectrum: "no NL" isolates bugs 2/3 above (mod mass/display must already be correct with the
+# NL feature off), while comparing xcorr/e-value between the two isolates bug/feature 1 (only
+# "with NL" can match the 9 NL-shifted peaks, so its xcorr must be meaningfully higher).
+
+T25_FRAGMENT_NL_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 0
+num_threads = 4
+peptide_mass_tolerance_upper = 20.0
+peptide_mass_tolerance_lower = -20.0
+peptide_mass_units = 2
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 0
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 0
+variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod02 = 79.966331 S 0 1 -1 0 0 {neutral_loss}
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 1
+require_variable_mod = 0
+fragment_bin_tol = 0.02
+fragment_bin_offset = 0.0
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 1
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 2000.0
+peptide_length_range = 10 10
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = DECOY_
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 10
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+1.  Trypsin                1      KR          P
+2.  Trypsin/P              1      KR          -
+""")
+
+
+def _t25_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
+    """Build a fresh .idx with the given neutral_loss value, search it, return
+    (rc, out, txt_path, fi_entries) -- caller does all assertions."""
+    idx = fasta.with_suffix(".fasta.idx")
+    idx.unlink(missing_ok=True)
+
+    build_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=neutral_loss)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            return rc, f"[{tag}] index build failed (rc={rc}):\n{out}", None, None
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    # "FI entries" is only printed at search time (when the FI is regenerated in memory from
+    # the .idx), not during -i build -- see docs/20260805_carafe.md Section 2.2.
+    fi_entries = None
+
+    txt = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    search_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=neutral_loss)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+    try:
+        rc, out2 = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        m2 = re.search(r"([\d.eE+]+) FI entries", out2)
+        if m2:
+            fi_entries = int(float(m2.group(1)))
+        return rc, out2, (txt if rc == 0 and txt.exists() else None), fi_entries
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+
+@register("t25_fragment_nl")
+def test_t25_fragment_nl(comet_exe):
+    """T25: FI_DB fragment neutral loss -- gap variable-mod-slot config (mod in
+    variable_mod02, variable_mod01 unused) regression-tests both the FI-construction
+    fix (CometFragmentIndex.cpp) and the FI-query-scoring fix (CometSearch.cpp)."""
+    failures = []
+
+    fasta = DATA_DIR / "t25_fragment_nl.fasta"
+    ms2   = DATA_DIR / "t25_fragment_nl.ms2"
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    results = {}
+    for label, nl in (("no_nl", "0.0"), ("with_nl", "97.976896")):
+        rc, out, txt, fi_entries = _t25_build_and_search(comet_exe, fasta, ms2, nl, fmt, label)
+        if rc != 0 or txt is None:
+            failures.append(f"[{label}] search failed (rc={rc}):\n{out}")
+            continue
+
+        rows = [l.split("\t") for l in txt.read_text().splitlines()[2:] if l.strip()]
+        txt.unlink(missing_ok=True)
+        if not check(len(rows) == 1, f"[{label}] expected exactly 1 PSM row, got {len(rows)}", failures):
+            continue
+
+        results[label] = {"fi_entries": fi_entries, "row": rows[0]}
+
+    if "no_nl" not in results or "with_nl" not in results:
+        return failures
+
+    # Column order comes from T25_FRAGMENT_NL_PARAMS_TEMPLATE's shared txt output format (same as
+    # T19_PARAMS_TEMPLATE's), fixed and hardcoded here rather than re-derived from the actual
+    # header line since both templates emit the identical column set.
+    COLS = ("scan", "num", "charge", "exp_neutral_mass", "calc_neutral_mass", "e-value",
+            "xcorr", "delta_cn", "sp_score", "ions_matched", "ions_total", "plain_peptide",
+            "modified_peptide", "prev_aa", "next_aa", "protein", "protein_count",
+            "modifications", "retention_time_sec", "sp_rank")
+
+    parsed = {}
+    for label in ("no_nl", "with_nl"):
+        row = dict(zip(COLS, results[label]["row"]))
+        parsed[label] = row
+
+        check(row.get("plain_peptide") == "ACDSEFGHIK",
+              f"[{label}] plain_peptide: expected ACDSEFGHIK, got {row.get('plain_peptide')!r}",
+              failures)
+        # Bugfix 3 (CometSearch.cpp SearchFragmentIndex()): must report the real slot-1 mod
+        # mass, not the gap slot 0's (unused, mass 0.0) -- regardless of whether NL is on.
+        check("4_V_79.966331" in row.get("modifications", ""),
+              f"[{label}] modifications: expected to contain 4_V_79.966331 (not the gap "
+              f"slot's 0.0), got {row.get('modifications')!r}", failures)
+
+    # Bugfix/feature 2 (CometFragmentIndex.cpp AddFragments()): FI entry counts must match the
+    # hand-derived expectation exactly -- 28 = 2 peptides x 14 (7 cleavage positions x b/y) with
+    # NL off; +9 (6 eligible b + 3 eligible y NL-shifted entries for the modified variant only)
+    # with NL on. An exact count, not just "some difference", is the point -- see
+    # docs/20260805_carafe.md Section 6.1 for why this project treats FI entry counts as a
+    # precise, hand-verifiable signal rather than a fuzzy one.
+    check(results["no_nl"]["fi_entries"] == 28,
+          f"no_nl: expected exactly 28 FI entries, got {results['no_nl']['fi_entries']}", failures)
+    check(results["with_nl"]["fi_entries"] == 37,
+          f"with_nl: expected exactly 37 FI entries (28 + 9 NL-shifted), got "
+          f"{results['with_nl']['fi_entries']}", failures)
+
+    # Feature 1, matching signal (CometSearch::SearchFragmentIndex()'s XCorr scoring, which
+    # bins NL-shifted candidate masses on the fly regardless of what's in the FI's posting
+    # list -- the FI entries above only affect *candidate recall*, not per-candidate scoring
+    # accuracy): with the spectrum's 9 genuine NL-shifted peaks actually matchable, xcorr must
+    # be meaningfully higher than with NL scoring disabled. Empirically 3.42 (no_nl) vs 5.39
+    # (with_nl) on this fixture; +1.0 is a wide, non-flaky margin around that gap.
+    xcorr_no_nl = float(parsed["no_nl"]["xcorr"])
+    xcorr_with_nl = float(parsed["with_nl"]["xcorr"])
+    check(xcorr_with_nl > xcorr_no_nl + 1.0,
+          f"xcorr should be meaningfully higher with NL-shifted peaks matchable: "
+          f"no_nl={xcorr_no_nl:.4f}, with_nl={xcorr_with_nl:.4f}", failures)
+
+
+    return failures
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------

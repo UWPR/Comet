@@ -1,0 +1,33 @@
+H	CreationDate	synthetic
+H	Comment	T25 fragment-neutral-loss regression fixture: peptide ACDS[+79.966331]EFGHIK, charge 2+
+H	Comment	Variable-mod GAP config on purpose: real usage puts this mod in variable_mod02
+H	Comment	(slot 1), leaving variable_mod01 (slot 0) unused -- exercises the compacted-vs-real
+H	Comment	variable-mod-slot bug fixed in CometFragmentIndex.cpp and CometSearch.cpp
+H	Comment	(docs/20260805_carafe.md Section 6.6/6.7), not just the neutral-loss feature itself.
+H	Comment	14 normal (correctly-modified) b/y ions + 9 genuine NL-shifted (-97.976896 Da) ions,
+H	Comment	precomputed from monoisotopic residue masses. Phospho applied to S at position 4 (1-based).
+S	1	1	593.733554
+Z	2	1186.459832
+290.080516	100.0
+359.101981	80.0
+397.255771	110.0
+454.277231	110.0
+457.078877	100.0
+488.144571	80.0
+586.121467	100.0
+601.345641	110.0
+635.212981	80.0
+692.234441	80.0
+730.388231	110.0
+733.189877	100.0
+790.211337	100.0
+799.409696	90.0
+829.293351	80.0
+897.386592	110.0
+914.436636	90.0
+927.270247	100.0
+942.377411	80.0
+1012.413532	110.0
+1017.445826	90.0
+1040.354307	100.0
+1115.422722	110.0

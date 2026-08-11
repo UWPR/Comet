@@ -590,6 +590,35 @@ if (!(iWhichPeptide%1000))
    j = 0;
    k = (int)modSeq.size() - 1;
 
+   // Fragment neutral loss (docs/20260805_carafe.md Section 6.5 / Phase 2b): mirrors
+   // CometSearch.cpp's iPositionNLB/iPositionNLY exactly in effect (single loss event per
+   // eligible fragment, gated on the nearest occurrence of an NL-bearing variable mod from the
+   // relevant terminus -- first-from-N-term for b, first-from-C-term for y), but computed
+   // incrementally in this loop's own ladder-index space rather than classic search's separate
+   // residue-position pre-scan. Verified algebraically and against 10 hand-checked cases
+   // (including multi-occurrence and edge-of-peptide mods) to produce identical eligibility
+   // decisions to the residue-position form -- see the Phase 0-style validation script this
+   // change was derived from, referenced in the commit message.
+   //
+   // Both arrays use the SAME sentinel (999, larger than any real ladder index) and the SAME
+   // "<= i" eligibility test, unlike classic search's asymmetric sentinels (999 for NLB, -1 for
+   // NLY) -- a deliberate simplification enabled by working in ladder-index space instead of
+   // residue-position space, not a behavioral difference. Indexed by raw variable-mod slot
+   // (0..FRAGINDEX_VMODS-1, matching cNtermMod/cCtermMod's own convention), scope is
+   // residue-based variable mods only (terminal mods cNtermMod/cCtermMod are not NL-eligible --
+   // classic search's iPositionNLB/iPositionNLY have no terminal-mod input either).
+   int iPositionNLB[FRAGINDEX_VMODS];
+   int iPositionNLY[FRAGINDEX_VMODS];
+   bool bFragmentNL = g_staticParams.variableModParameters.bUseFragmentNeutralLoss && modNumIdx >= 0;
+   if (bFragmentNL)
+   {
+      for (int x = 0; x < FRAGINDEX_VMODS; ++x)
+      {
+         iPositionNLB[x] = 999;
+         iPositionNLY[x] = 999;
+      }
+   }
+
    for (int i = 0; i < iEndPos; ++i)
    {
       iPosReverse = iEndPos - i;
@@ -617,18 +646,43 @@ if (!(iWhichPeptide%1000))
             // modifiable sites than max_variable_mods_in_peptide allows. Casting -1 to size_t
             // and indexing vModSlotForAllModsIdx with it directly read far outside the
             // vector's buffer; TranslateVarModSlot() now guards this uniformly everywhere.
-            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
-            if (iSlot >= 0)
-               dBion += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+            int slotB = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+            if (slotB >= 0)
+            {
+               dBion += g_staticParams.variableModParameters.varModList[slotB].dVarModMass;
+
+               // Fragment neutral loss (docs/20260805_carafe.md Section 6.5 / Phase 2b):
+               // record the nearest-from-N-term ladder index at which this NL-bearing slot
+               // first becomes part of the b-ion, for the NL-shifted-entry insertion below.
+               if (bFragmentNL)
+               {
+                  if (iPositionNLB[slotB] == 999
+                     && g_staticParams.variableModParameters.varModList[slotB].dNeutralLoss != 0.0)
+                  {
+                     iPositionNLB[slotB] = i;
+                  }
+               }
+            }
             j++;
          }
 
          if (sPeptide[iPosReverse] == modSeq[k])
          {
             // see bugfix note above
-            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
-            if (iSlot >= 0)
-               dYion += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+            int slotY = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
+            if (slotY >= 0)
+            {
+               dYion += g_staticParams.variableModParameters.varModList[slotY].dVarModMass;
+
+               if (bFragmentNL)
+               {
+                  if (iPositionNLY[slotY] == 999
+                     && g_staticParams.variableModParameters.varModList[slotY].dNeutralLoss != 0.0)
+                  {
+                     iPositionNLY[slotY] = i;
+                  }
+               }
+            }
             k--;
          }
       }
@@ -668,6 +722,61 @@ if (!(iWhichPeptide%1000))
                g_iFragmentIndexOffset[iBinYion] += 1;
             else
                g_iFragmentIndex[s_iWritePos[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+         }
+
+         // Neutral-loss-shifted variants: inserted as SEPARATE FI entries alongside the
+         // unshifted ones above (decision: insert both, docs/20260805_carafe.md Section 8
+         // item 11), one per NL-bearing variable-mod slot whose nearest relevant-terminus
+         // occurrence this fragment already reaches. Primary loss (dNeutralLoss) only --
+         // dNeutralLoss2 deferred (Section 8 item 10).
+         if (bFragmentNL)
+         {
+            for (int x = 0; x < FRAGINDEX_VMODS; ++x)
+            {
+               double dNL = g_staticParams.variableModParameters.varModList[x].dNeutralLoss;
+               if (dNL == 0.0)
+                  continue;
+
+               if (iPositionNLB[x] <= i)
+               {
+                  double dNLBion = dBion - dNL;
+                  if (dNLBion > g_staticParams.options.dFragIndexMinMass && dNLBion < g_staticParams.options.dFragIndexMaxMass)
+                  {
+                     int iBinNLBion = BIN(dNLBion);
+
+                     if ((unsigned int)iBinNLBion >= g_massRange.uiMaxFragmentArrayIndex)
+                     {
+                        printf(" Error: FI dNLBion %lf too large, pep %s\n", dNLBion, sPeptide.c_str());
+                        exit(1);
+                     }
+
+                     if (bCountOnly)
+                        g_iFragmentIndexOffset[iBinNLBion] += 1;
+                     else
+                        g_iFragmentIndex[s_iWritePos[iBinNLBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+                  }
+               }
+
+               if (iPositionNLY[x] <= i)
+               {
+                  double dNLYion = dYion - dNL;
+                  if (dNLYion > g_staticParams.options.dFragIndexMinMass && dNLYion < g_staticParams.options.dFragIndexMaxMass)
+                  {
+                     int iBinNLYion = BIN(dNLYion);
+
+                     if ((unsigned int)iBinNLYion >= g_massRange.uiMaxFragmentArrayIndex)
+                     {
+                        printf(" Error: FI dNLYion %lf too large, pep %s\n", dNLYion, sPeptide.c_str());
+                        exit(1);
+                     }
+
+                     if (bCountOnly)
+                        g_iFragmentIndexOffset[iBinNLYion] += 1;
+                     else
+                        g_iFragmentIndex[s_iWritePos[iBinNLYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+                  }
+               }
+            }
          }
       }
    }
