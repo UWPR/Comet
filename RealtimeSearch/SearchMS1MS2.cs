@@ -59,73 +59,131 @@ namespace RealTimeSearch
          public bool Valid;
       }
 
+      // Pulls the value following a recognized flag out of args, advancing i past it.
+      // Exits (rather than throwing/returning a sentinel) on a dangling flag with no value,
+      // matching how int.TryParse failures below are handled -- a bad CLI invocation should
+      // stop the process with a clear message, not silently fall through with a null/garbage
+      // value that surfaces confusingly much later.
+      private static string NextArg(string[] args, ref int i, string flagName)
+      {
+         if (i + 1 >= args.Length)
+         {
+            Console.WriteLine(" Error: {0} requires a value", flagName);
+            Environment.Exit(1);
+         }
+         return args[++i];
+      }
+
+      private static void PrintUsage()
+      {
+         Console.WriteLine(" RTS MS1/MS2\n");
+         Console.WriteLine("    USAGE:  {0} --query <query.raw> --ms1ref <MS1reference.raw> [options]\n",
+            System.AppDomain.CurrentDomain.FriendlyName);
+         Console.WriteLine("    Required:");
+         Console.WriteLine("      --query <path>             raw file supplying the query MS2 spectra");
+         Console.WriteLine("      --ms1ref <path>            raw file containing MS1 scans for MS1 alignment\n");
+         Console.WriteLine("    Optional:");
+         Console.WriteLine("      --db <path>                Comet .idx database to search (omit to skip MS2 database search)");
+         Console.WriteLine("      --threads <n>              number of search threads (default: processor count)");
+         Console.WriteLine("      --ascorepro <0|1>          0=off, 1=localize all variable mods (default: 1)");
+         Console.WriteLine("      --index-search-type <0|1>  0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default: 1)");
+         Console.WriteLine("      --mask <path>              Carafe predicted-fragment mask file");
+         Console.WriteLine("                                 (fragment_index_predicted_mask_file); FI_DB only, omit/empty = disabled");
+         Console.WriteLine("      -h, --help                 show this message");
+      }
+
       static void Main(string[] args)
       {
-         if (args.Length < 2)
+         string rawFileName = null;          // raw file that will supply the query spectra
+         string sRawFileReference = null;     // raw file containing MS1 scans to search for MS1 alignment
+         string sDB = "tmp";
+         bool bDatabaseSearch = false;
+
+         int defaultNumThreads = Environment.ProcessorCount;
+         int numThreads = defaultNumThreads;
+         bool bEnableAScorePro = true;         // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally)
+         int iIndexSearchType = 1;             // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default)
+         string sPredictedMaskFile = "";       // fragment_index_predicted_mask_file; FI_DB only, empty = disabled
+
+         for (int i = 0; i < args.Length; ++i)
          {
-            Console.WriteLine(" RTS MS1/MS2\n");
-            Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro] [index_search_type]\n",
-               System.AppDomain.CurrentDomain.FriendlyName);
-            Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
-            Console.WriteLine("    index_search_type: 0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default)\n");
+            string arg = args[i];
+
+            switch (arg)
+            {
+               case "-h":
+               case "--help":
+                  PrintUsage();
+                  return;
+
+               case "--query":
+                  rawFileName = NextArg(args, ref i, arg);
+                  break;
+
+               case "--ms1ref":
+                  sRawFileReference = NextArg(args, ref i, arg);
+                  break;
+
+               case "--db":
+                  sDB = NextArg(args, ref i, arg);
+                  bDatabaseSearch = true;
+                  break;
+
+               case "--threads":
+                  {
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!int.TryParse(sVal, out numThreads) || numThreads < 1)
+                     {
+                        Console.WriteLine(" Warning: Invalid --threads '{0}', using {1} threads", sVal, defaultNumThreads);
+                        numThreads = defaultNumThreads;
+                     }
+                  }
+                  break;
+
+               case "--ascorepro":
+                  {
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!int.TryParse(sVal, out int iAScoreProArg) || (iAScoreProArg != 0 && iAScoreProArg != 1))
+                        Console.WriteLine(" Warning: Invalid --ascorepro '{0}', using default (1, on)", sVal);
+                     else
+                        bEnableAScorePro = (iAScoreProArg == 1);
+                  }
+                  break;
+
+               case "--index-search-type":
+                  {
+                     // docs/20260730_PI_reduction.md Phase 0: matches the pre-unification
+                     // default for an ambiguous .idx.
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!int.TryParse(sVal, out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
+                     {
+                        Console.WriteLine(" Warning: Invalid --index-search-type '{0}', using default (1, FI_DB)", sVal);
+                        iIndexSearchType = 1;
+                     }
+                  }
+                  break;
+
+               case "--mask":
+                  // docs/20260805_carafe.md Phase 4.
+                  sPredictedMaskFile = NextArg(args, ref i, arg);
+                  break;
+
+               default:
+                  Console.WriteLine(" Error: unrecognized argument '{0}'\n", arg);
+                  PrintUsage();
+                  Environment.Exit(1);
+                  break;
+            }
+         }
+
+         if (rawFileName == null || sRawFileReference == null)
+         {
+            PrintUsage();
             return;
          }
 
          Console.WriteLine("\n RTS MS1/MS2\n");
-
-         string rawFileName = args[0];       // raw file that will supply the query spectra
-         string sRawFileReference = args[1]; // raw file containing MS1 scans to search for MS1 alignment
-         string sDB = "tmp";
-
-         bool bDatabaseSearch = false;
-
-         if (args.Length >= 3)
-         {
-            sDB = args[2];
-            bDatabaseSearch = true;
-         }
-
-         // Parse number of threads (default to processor count)
-         int defaultNumThreads = Environment.ProcessorCount;
-         int numThreads = defaultNumThreads;
-         if (args.Length >= 4)
-         {
-            if (!int.TryParse(args[3], out numThreads) || numThreads < 1)
-            {
-               Console.WriteLine(" Warning: Invalid num_threads '{0}', using {1} threads", args[3], defaultNumThreads);
-               numThreads = defaultNumThreads;
-            }
-         }
-
          Console.WriteLine(" Using {0} search threads\n", numThreads);
-
-         // Parse ascorepro flag (default on: localize all variable mods).
-         // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally).
-         bool bEnableAScorePro = true;
-         if (args.Length >= 5)
-         {
-            if (!int.TryParse(args[4], out int iAScoreProArg) || (iAScoreProArg != 0 && iAScoreProArg != 1))
-            {
-               Console.WriteLine(" Warning: Invalid ascorepro '{0}', using default (1, on)", args[4]);
-            }
-            else
-            {
-               bEnableAScorePro = (iAScoreProArg == 1);
-            }
-         }
-
-         // Parse index_search_type (default 1, FI_DB -- matches the pre-unification default
-         // for an ambiguous .idx; docs/20260730_PI_reduction.md Phase 0).
-         // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index).
-         int iIndexSearchType = 1;
-         if (args.Length >= 6)
-         {
-            if (!int.TryParse(args[5], out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
-            {
-               Console.WriteLine(" Warning: Invalid index_search_type '{0}', using default (1, FI_DB)", args[5]);
-               iIndexSearchType = 1;
-            }
-         }
 
          // Create SINGLE global search manager
          CometSearchManagerWrapper globalSearchMgr = new CometSearchManagerWrapper();
@@ -143,7 +201,8 @@ namespace RealTimeSearch
             ref numThreads,
             bDatabaseSearch,
             bEnableAScorePro,
-            iIndexSearchType);
+            iIndexSearchType,
+            sPredictedMaskFile);
 
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
@@ -631,7 +690,8 @@ namespace RealTimeSearch
             ref int numThreads,
             bool bDatabaseSearch,
             bool bEnableAScorePro,
-            int iIndexSearchType)
+            int iIndexSearchType,
+            string sPredictedMaskFile)
          {
             String sTmp;
             int iTmp;
@@ -747,6 +807,16 @@ namespace RealTimeSearch
             // this is the RTS-side equivalent of batch's index_search_type comet.params key.
             sTmp = iIndexSearchType.ToString();
             SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
+
+            // docs/20260805_carafe.md Phase 4: Carafe predicted-fragment mask
+            // (fragment_index_predicted_mask_file). Unlike the mods/enzyme/etc. settings
+            // below, which only matter the one time a missing .idx gets auto-built, the mask
+            // is consumed by CometFragmentIndex::CreateFragmentIndex() -- which runs on
+            // EVERY process start against an FI_DB .idx, not just the one that wrote the file
+            // -- so this must be set unconditionally here, outside the
+            // System.IO.File.Exists(sDB) branch below. A no-op on the native side (empty
+            // string, or a PI_DB search) -- see CometPredictedMask::Load()'s own doc comment.
+            SearchMgr.SetParam("fragment_index_predicted_mask_file", sPredictedMaskFile, sPredictedMaskFile);
 
             if (bDatabaseSearch)
             {

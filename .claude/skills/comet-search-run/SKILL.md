@@ -32,13 +32,16 @@ Comet.exe -D<database.fasta> -k
 ## Real-time search (RTS)
 
 ```bash
-RealtimeSearch.exe <query.raw> <ms1_reference.raw> <database.idx> <num_threads>
+RealtimeSearch.exe --query <query.raw> --ms1ref <ms1_reference.raw> --db <database.idx> --threads <num_threads>
 ```
 
-- `query.raw` — file containing MS2 spectra to search
-- `ms1_reference.raw` — file containing MS1 scans for RT alignment (can be the same file)
-- `database.idx` — fragment ion index database
-- `num_threads` — number of parallel search threads (typically 20)
+- `--query <path>` — file containing MS2 spectra to search
+- `--ms1ref <path>` — file containing MS1 scans for RT alignment (can be the same file)
+- `--db <path>` — fragment ion index database
+- `--threads <n>` — number of parallel search threads (typically 20; default: processor count)
+- `--ascorepro <0|1>`, `--index-search-type <0|1>`, `--mask <path>` — see `--help` for the
+  full flag list (docs/20260805_carafe.md Phase 4: `--mask` points at a Carafe
+  predicted-fragment mask file, FI_DB only)
 
 Output is written to `rts.out` in the working directory.
 

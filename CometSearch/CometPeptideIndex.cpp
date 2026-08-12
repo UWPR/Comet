@@ -74,7 +74,7 @@ CometPeptideIndex::~CometPeptideIndex()
 // Old-format files (the pre-Phase-0.5 unified format, the pre-unification PI_DB-only v2
 // format, or FI_DB's separate pre-unification plain-index format) are rejected by the
 // header check below with a clear rebuild message rather than being misread.
-bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
+bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
 {
    (void)bIsRTS;   // reserved for RTS-vs-batch-specific behavior; not yet used
 
@@ -103,6 +103,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       fclose(fp);
       return false;
    }
+
+   // See the bForceExportMode doc comment in CometPeptideIndex.h: ParsePeptideIndexHeader()
+   // just unconditionally set g_staticParams.iDbType from this file's own IndexSearchType:
+   // line, undoing ExportPeptideIndexVariants()'s explicit PI_DB force for an FI_DB-tagged
+   // .idx. Re-apply it here so the "iDbType == PI_DB" gate below (and ExportVariants()'s own
+   // check) see what the caller actually asked for.
+   if (bForceExportMode)
+      g_staticParams.iDbType = DbType::PI_DB;
 
    // --- Read the two-pointer footer at true EOF ---
    comet_fseek(fp, 0, SEEK_END);

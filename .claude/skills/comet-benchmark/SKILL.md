@@ -23,8 +23,11 @@ Key output line: `searching "20170103_HelaQC_01" ... 10s (39970 spectra, 0.25ms/
 
 ```bash
 cd /mnt/c/Work/Comet-master/RealtimeSearch/bin/x64/Release
-./RealtimeSearch.exe 20170103_HelaQC_01.raw 20170103_HelaQC_01.raw human.target-decoy.fasta.idx 20
+./RealtimeSearch.exe --query 20170103_HelaQC_01.raw --ms1ref 20170103_HelaQC_01.raw --db human.target-decoy.fasta.idx --threads 20
 ```
+
+(As of docs/20260805_carafe.md Phase 4, args are flags, not positional -- `--help` lists all of
+them, including `--mask <path>` for a Carafe predicted-fragment mask file, FI_DB only.)
 
 (Or run via PowerShell from that directory.)
 

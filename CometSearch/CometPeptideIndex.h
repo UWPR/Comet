@@ -37,7 +37,20 @@ public:
    // (InitializeSingleSpectrumSearch()), false if called from the batch
    // search path (via CometSearch::EnsurePeptideIndexLoaded()). Reserved for
    // RTS-vs-batch-specific behavior (e.g. logging); no such behavior exists yet.
-   static bool ReadPeptideIndex(bool bIsRTS);
+   //
+   // bForceExportMode: CometSearchManager::ExportPeptideIndexVariants() sets
+   // g_staticParams.iDbType = DbType::PI_DB before calling this (docs/20260805_carafe.md
+   // Phase 4: -x's variant export has no FI_DB analog and wants the PI_DB-shaped variant
+   // array regardless of what this .idx's own IndexSearchType: header says -- the raw
+   // peptide/protein table this function reads is identical either way, only the header tag
+   // differs). Without this flag, ParsePeptideIndexHeader() below unconditionally re-sets
+   // iDbType from that tag and silently undoes the caller's force for an FI_DB-tagged .idx,
+   // so GenerateVariantArray() never runs and ExportVariants() fails with a "requires a
+   // PI_DB session" error -- a real bug found exporting variants from a real FI_DB .idx
+   // (Phase 3's own earlier validation only ever exercised a PI_DB-built .idx, so this went
+   // uncaught until Phase 4's real-data test). Default false preserves normal
+   // self-describing behavior for every other caller.
+   static bool ReadPeptideIndex(bool bIsRTS, bool bForceExportMode = false);
    static bool WritePeptideIndex(ThreadPool* tp);
 
    // docs/20260730_PI_reduction.md Phase 0.5: builds g_vDBIndexVariants (PI_DB mode only)

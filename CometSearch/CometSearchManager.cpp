@@ -1993,7 +1993,7 @@ bool CometSearchManager::ExportPeptideIndexVariants(const std::string &strOutput
    g_massRange.dMinMass = g_staticParams.options.dPeptideMassLow;
    g_massRange.dMaxMass = g_staticParams.options.dPeptideMassHigh;
 
-   if (!CometPeptideIndex::ReadPeptideIndex(false))
+   if (!CometPeptideIndex::ReadPeptideIndex(false, true))   // true: force PI_DB variant array even for an FI_DB-tagged .idx
       return false;
 
    return CometPeptideIndex::ExportVariants(strOutputFile);
