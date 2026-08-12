@@ -1521,7 +1521,11 @@ bool CometSearchManager::InitializeStaticParams()
       FILE *fp;
 
       // If .idx specified but does not exist, Comet will generate the index for the search
-      // (both -i and -j build the same unified format; see CometPeptideIndex::WritePeptideIndex()).
+      // (-i and -j both build via the one shared CometPeptideIndex::WritePeptideIndex(), but the
+      // file each produces is NOT byte-identical: WritePeptideIndex() writes a different
+      // IndexSearchType: header line -- "peptide index" vs. "fragment ion index" -- depending on
+      // which flag triggered the build (docs/20260811_restore_idx_header_mods.md), and that line
+      // is what a later search against this same file dispatches on, not index_search_type).
       if ( (fp=fopen(g_staticParams.databaseInfo.szDatabase, "r")) == NULL)
       {
          g_staticParams.iDbType = (g_staticParams.options.iIndexSearchType == 0) ? DbType::PI_DB : DbType::FI_DB;
@@ -2054,10 +2058,16 @@ bool CometSearchManager::DoSearch()
       return false;
    }
 
-   // -i and -j are now synonyms (docs/20260730_PI_reduction.md Phase 0): both flags build the
-   // same unified index format via CometPeptideIndex::WritePeptideIndex() further below, so
+   // -i and -j both go through this same setup now (docs/20260730_PI_reduction.md Phase 0): both
+   // flags build via the one shared CometPeptideIndex::WritePeptideIndex() further below, so
    // there's no separate early-return path here any more -- a -j build now goes through the
-   // same protein-var-mod-filter-file/compound-mods-file setup a -i build always did.
+   // same protein-var-mod-filter-file/compound-mods-file setup a -i build always did. This is
+   // narrower than "-i and -j build the same file" -- they don't any more:
+   // WritePeptideIndex() writes a different IndexSearchType: header line depending on which flag
+   // triggered the build (docs/20260811_restore_idx_header_mods.md), and a later search against
+   // an existing .idx dispatches on that line, not on index_search_type. The point here is just
+   // that this particular setup code no longer has a -j-skips-it gate, not that the two flags'
+   // output is interchangeable.
    //
    // This used to be gated to bCreateFragmentIndex/FASTA_DB only, on the theory that a PI_DB/
    // FI_DB search against an existing .idx got its ProteinModList:/bVarModProteinFilter
@@ -2147,9 +2157,10 @@ bool CometSearchManager::DoSearch()
    if (g_bPerformDatabaseSearch
       && (g_staticParams.options.bCreateFragmentIndex || g_staticParams.options.bCreatePeptideIndex)) //index
    {
-       // write out the unified .idx file (docs/20260730_PI_reduction.md Phase 0; -i and -j
-       // are now synonyms, both handled by this one builder); this calls RunSearch just to
-       // query fasta and generate uniq peptide list
+       // write out the unified .idx file (docs/20260730_PI_reduction.md Phase 0; -i and -j are
+       // both handled by this one builder, though the file each produces differs in its
+       // IndexSearchType: header line -- see WritePeptideIndex()'s own doc comment); this calls
+       // RunSearch just to query fasta and generate uniq peptide list
        bSucceeded = CometPeptideIndex::WritePeptideIndex(tp);
        if (!bSucceeded)
           return bSucceeded;
