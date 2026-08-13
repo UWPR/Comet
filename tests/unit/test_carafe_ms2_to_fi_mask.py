@@ -70,8 +70,12 @@ def test_read_ms2_pred_mode_detection(failures):
         general_tsv.write_text("b_z1\tb_z2\ty_z1\ty_z2\n0.1\t0.2\t0.3\t0.4\n")
         rows, has_modloss = m.read_ms2_pred(str(general_tsv))
         check(has_modloss is False, "general-mode file: has_modloss should be False", failures)
-        check(rows == [(0.1, 0.2, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0)],
-              f"general-mode row not zero-padded correctly: {rows}", failures)
+        check(len(rows) == 1, f"expected 1 fragment row, got {len(rows)}", failures)
+        # FragmentTable (see module) has no __eq__ of its own -- rows[:] materializes the
+        # list-of-tuples view its __getitem__ builds on demand, same shape the old plain-list
+        # return used to have.
+        check(rows[:] == [(0.1, 0.2, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0)],
+              f"general-mode row not zero-padded correctly: {rows[:]}", failures)
 
         phospho_tsv = tmp / "phospho.tsv"
         phospho_tsv.write_text(
@@ -79,8 +83,8 @@ def test_read_ms2_pred_mode_detection(failures):
             "0.1\t0.2\t0.3\t0.4\t0.5\t0.6\t0.7\t0.8\n")
         rows, has_modloss = m.read_ms2_pred(str(phospho_tsv))
         check(has_modloss is True, "phospho-mode file: has_modloss should be True", failures)
-        check(rows == [(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)],
-              f"phospho-mode row parsed wrong: {rows}", failures)
+        check(rows[:] == [(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)],
+              f"phospho-mode row parsed wrong: {rows[:]}", failures)
 
         malformed_tsv = tmp / "malformed.tsv"
         malformed_tsv.write_text(
@@ -234,6 +238,69 @@ def test_floor_never_pads_beyond_available_candidates(failures):
           f"bModlossMask={bModlossMask:#x} yModlossMask={yModlossMask:#x}", failures)
 
 
+def test_content_join_survives_ms2_df_reordering(failures):
+    """Regression test for the row-order bug found 2026-08-12: Carafe's ai_pred.py sorts its
+    input dataframe by nAA in-place (AlphaBase's ModelInterface.predict()) whenever the caller
+    doesn't already supply an 'nAA' column, so <prefix>_ms2_df.tsv's Nth data row is NOT
+    guaranteed to be out_tsv's Nth row at real scale -- confirmed broken at every scale this
+    project tested (92,741 / 197,782 / 7,130,366 rows). read_out_tsv()/read_ms2_df() must join
+    on the (sequence, mods, mod_sites, charge) content tuple instead of file position. This test
+    builds a tiny out_tsv (2 peptides) and an ms2_df.tsv whose rows are deliberately written in
+    the OPPOSITE order -- exactly what a naive positional join would get backwards -- and
+    confirms the content-keyed lookup still recovers the correct (nAA, frag_start_idx,
+    frag_stop_idx) for each out_tsv row_index."""
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+
+        out_tsv = tmp / "carafe_peptides.tsv"
+        # row_index 0: AAAK (nAA=4), row_index 1: DEFGHIK (nAA=7) -- different lengths so a
+        # length-based sort would visibly reorder them, matching the real-world mechanism.
+        out_tsv.write_text(
+            "sequence\tmods\tmod_sites\tcharge\n"
+            "AAAK\t\t\t2\n"
+            "DEFGHIK\t\t\t2\n")
+
+        # Carafe's echo, written with row_index 1 FIRST (simulating the nAA sort) -- and using
+        # its own internal (post-sort) frag_start_idx/frag_stop_idx numbering, which is
+        # positionally consistent with THIS file's own row order, not out_tsv's.
+        ms2_df_tsv = tmp / "ms2_df.tsv"
+        ms2_df_tsv.write_text(
+            "sequence\tmods\tmod_sites\tcharge\tnAA\tfrag_start_idx\tfrag_stop_idx\n"
+            "DEFGHIK\t\t\t2\t7\t0\t6\n"
+            "AAAK\t\t\t2\t4\t6\t9\n")
+
+        out_tsv_rows = m.read_out_tsv(str(out_tsv))
+        ms2_df_by_content = m.read_ms2_df(str(ms2_df_tsv))
+
+        check(out_tsv_rows == [("AAAK", "", "", 2), ("DEFGHIK", "", "", 2)],
+              f"read_out_tsv row order/content wrong: {out_tsv_rows}", failures)
+
+        # The bug this guards against: a positional join (old ms2_df[row_index]) would hand
+        # row_index 0 (AAAK) the DEFGHIK entry and vice versa. The content join must not.
+        entry_for_row0 = ms2_df_by_content[out_tsv_rows[0]]   # out_tsv row_index 0 == AAAK
+        entry_for_row1 = ms2_df_by_content[out_tsv_rows[1]]   # out_tsv row_index 1 == DEFGHIK
+        check(entry_for_row0 == (4, 6, 9),
+              f"row_index 0 (AAAK) should resolve to its OWN ms2_df entry (4, 6, 9) despite "
+              f"being written second in ms2_df.tsv, got {entry_for_row0}", failures)
+        check(entry_for_row1 == (7, 0, 6),
+              f"row_index 1 (DEFGHIK) should resolve to its OWN ms2_df entry (7, 0, 6) despite "
+              f"being written first in ms2_df.tsv, got {entry_for_row1}", failures)
+
+        # Duplicate content tuple in ms2_df.tsv must raise -- can't join unambiguously.
+        dup_tsv = tmp / "ms2_df_dup.tsv"
+        dup_tsv.write_text(
+            "sequence\tmods\tmod_sites\tcharge\tnAA\tfrag_start_idx\tfrag_stop_idx\n"
+            "AAAK\t\t\t2\t4\t0\t3\n"
+            "AAAK\t\t\t2\t4\t3\t6\n")
+        raised = False
+        try:
+            m.read_ms2_df(str(dup_tsv))
+        except ValueError:
+            raised = True
+        check(raised, "duplicate (sequence, mods, mod_sites, charge) in ms2_df.tsv should raise "
+                       "ValueError, didn't", failures)
+
+
 def test_mask_file_roundtrip_v3(failures):
     """write_mask_file/read_mask_file must round-trip the v3 8-field entry struct exactly,
     including nonzero modloss masks, and the magic line must be the v3 string."""
@@ -292,6 +359,7 @@ TESTS = [
     test_modloss_mask_independent_from_unshifted,
     test_modloss_skipped_for_unmodified_variant,
     test_floor_never_pads_beyond_available_candidates,
+    test_content_join_survives_ms2_df_reordering,
     test_mask_file_roundtrip_v3,
 ]
 

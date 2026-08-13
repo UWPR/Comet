@@ -6,24 +6,44 @@ Comet's fragment ion index (FI) -- Phase 2a/2c of docs/20260805_carafe.md. Phase
 (b_modloss_z1/b_modloss_z2/y_modloss_z1/y_modloss_z2), gated on Phase 2b having added a real
 neutral-loss ion class to the FI itself (CometFragmentIndex.cpp's AddFragments(), Section 6.6).
 
-Inputs (three files from a single tools/idx_to_carafe.py export + Carafe ai_pred.py run
-against it, all still row-aligned with each other -- see docs/20260805_carafe.md Section 6.3
-for the empirical confirmation that Carafe preserves row order end-to-end):
+Inputs (four files from a single tools/idx_to_carafe.py export + Carafe ai_pred.py run against
+it -- NOT row-position-aligned with each other; see "Row-order correctness" below):
 
-  1. <out_tsv>.variants.tsv  -- tools/idx_to_carafe.py's sidecar: row_index -> the FI variant
+  1. <out_tsv>               -- tools/idx_to_carafe.py's main output: sequence/mods/mod_sites/
+     charge, one row per (peptide, charge) combination, the direct input fed to ai_pred.py.
+     row_index below is the 0-based data-row position in THIS file.
+  2. <out_tsv>.variants.tsv  -- tools/idx_to_carafe.py's sidecar: row_index -> the FI variant
      identity tuple (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod). Multiple row_index values
      can belong to one tuple (one per predicted charge state -- idx_to_carafe.py emits one
      out_tsv row per configured charge); multiple tuples can point at the SAME row_index
      (idx_to_carafe.py's dedup collapsing identical sequence/mods/mod_sites/charge rows).
-  2. <prefix>_ms2_df.tsv     -- Carafe's echoed-back input rows, augmented with nAA and
-     frag_start_idx/frag_stop_idx (AlphaBase convention: row_index's fragments occupy
-     [frag_start_idx, frag_stop_idx) in ms2_pred.tsv, one row per cleavage site, nAA-1 rows).
-  3. <prefix>_ms2_pred.tsv   -- the flat fragment table. Columns b_z1/b_z2/y_z1/y_z2 always;
+  3. <prefix>_ms2_df.tsv     -- Carafe's echoed-back input rows (sequence/mods/mod_sites/charge
+     verbatim, PLUS nAA and frag_start_idx/frag_stop_idx it adds). AlphaBase convention: a row's
+     fragments occupy [frag_start_idx, frag_stop_idx) in ms2_pred.tsv, one row per cleavage
+     site, nAA-1 rows.
+  4. <prefix>_ms2_pred.tsv   -- the flat fragment table. Columns b_z1/b_z2/y_z1/y_z2 always;
      additionally b_modloss_z1/b_modloss_z2/y_modloss_z1/y_modloss_z2 when Carafe was run with
      `--mode phosphorylation` (`ai_pred.py`'s `mode_type != 'general'` output shape, Section
      2.3). Mode is auto-detected here from this file's header -- no CLI flag needed (matches
      Section 8 item 6's minimal-surface philosophy): the file itself unambiguously says which
      channels it has.
+
+Row-order correctness: an earlier version of this script assumed <prefix>_ms2_df.tsv's Nth
+data row was out_tsv's Nth row (a claim docs/20260805_carafe.md Section 6.3 believed it had
+empirically confirmed). That is FALSE at real scale: AlphaBase's ModelInterface.predict() (the
+base class Carafe's MS2/RT models share) does `precursor_df.sort_values('nAA', inplace=True)`
++ `reset_index(drop=True, inplace=True)` on the caller's own dataframe whenever the input lacks
+a pre-existing 'nAA' column -- and since ai_pred.py passes its input dataframe by reference and
+later writes that SAME (now sorted) object out as _ms2_df.tsv, the echoed file ends up ordered
+by peptide length, not input order. Confirmed broken at every real scale this project has
+tested (92,741 / 197,782 / 7,130,366-row runs); only the original 250-row Phase 0 spike ever
+looked order-preserving, because it happened to check exclusively row 0, which a stable sort
+trivially leaves in place. Fixed here by joining <out_tsv> and <prefix>_ms2_df.tsv on the
+(sequence, mods, mod_sites, charge) content tuple instead of file position -- that tuple is
+unique across out_tsv by tools/idx_to_carafe.py's own dedup step (confirmed empirically:
+zero collisions at all three scales above) and Carafe echoes those four columns verbatim, so
+this join is correct regardless of whatever internal reordering ai_pred.py does. See
+read_out_tsv()/read_ms2_df() below.
 
 For every FI variant tuple, across however many charge states were predicted for it:
 
@@ -94,15 +114,20 @@ can test with `mask & (1ULL << (i - 2))`. MAX_PEPTIDE_LEN is 51 (CometSearch/cor
 so i ranges over at most 0..48 after the -2 shift -- comfortably inside one uint64_t; no need
 for two words per mask.
 
-Known Phase 2a scale limitation: this script loads the full <prefix>_ms2_pred.tsv into memory
-(plain Python lists, no pandas/numpy dependency -- matching tools/idx_to_carafe.py's
-zero-external-dependency convention). Fine at the scale tested so far; a genuinely
-hundreds-of-millions-of-row FASTA-scale run (docs/20260805_carafe.md Section 7's own noted
-scale concern for the Carafe inference step itself) would need a chunked/streaming rewrite of
-the ms2_pred.tsv read. Not attempted here -- revisit if Phase 5 benchmarking shows it matters.
+Memory note: this script still loads the full <prefix>_ms2_pred.tsv into memory (no
+pandas/numpy dependency -- matching tools/idx_to_carafe.py's zero-external-dependency
+convention), but as of the row-order fix above (2026-08-12) stores it as one array.array('d')
+per channel (FragmentTable below) rather than a Python list of 8-tuples. The original list-of-
+tuples form swap-thrashed a 31GB-RAM machine to a near-standstill on the ~87M-fragment-row full
+human-proteome oxmet run (~28GB of pure per-row Python-object overhead for data that's ~5.5GB
+as raw float64); the array-of-columns form holds the same data at close to its raw size (same
+double precision throughout, no numeric behavior change) and comfortably fit that same run in
+memory. A genuinely larger (e.g. multi-hundred-million-row) run would still eventually need a
+chunked/streaming rewrite of the ms2_pred.tsv read itself -- not attempted here.
 """
 
 import argparse
+import array
 import csv
 import os
 import struct
@@ -231,25 +256,79 @@ def read_variant_map(path):
     return rows
 
 
-def read_ms2_df(path):
-    """row_index -> (nAA, frag_start_idx, frag_stop_idx). row_index is the 0-based data-row
-    position in this file, matching tools/idx_to_carafe.py's out_tsv row order exactly
-    (docs/20260805_carafe.md Section 6.3 confirms Carafe preserves this end to end)."""
+def read_out_tsv(path):
+    """row_index -> (sequence, mods, mod_sites, charge), exactly as tools/idx_to_carafe.py wrote
+    <out_tsv> (the direct input fed to Carafe's ai_pred.py). row_index is the 0-based data-row
+    position in THIS file -- the same row_index tools/idx_to_carafe.py's variant-map sidecar
+    references, since both were written from the same in-memory loop in that script. Used to
+    join against read_ms2_df()'s content-keyed dict below; see module docstring's "Row-order
+    correctness" section for why a positional join with Carafe's own echoed file is wrong."""
     out = []
     with open(path, "r", newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
-            out.append((int(row["nAA"]), int(row["frag_start_idx"]), int(row["frag_stop_idx"])))
+            out.append((row["sequence"], row["mods"], row["mod_sites"], int(row["charge"])))
     return out
 
 
+def read_ms2_df(path):
+    """(sequence, mods, mod_sites, charge) -> (nAA, frag_start_idx, frag_stop_idx), keyed by
+    content rather than this file's row position -- Carafe's ai_pred.py does not preserve input
+    row order in its own echo at real scale (module docstring's "Row-order correctness"
+    section). Raises if the same tuple appears twice: tools/idx_to_carafe.py's out_tsv is
+    deduped on exactly this tuple, so a real collision here would mean this file wasn't produced
+    from that out_tsv (or the two have desynced some other way)."""
+    out = {}
+    with open(path, "r", newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            key = (row["sequence"], row["mods"], row["mod_sites"], int(row["charge"]))
+            if key in out:
+                raise ValueError(f"{path!r}: duplicate (sequence, mods, mod_sites, charge) "
+                                  f"{key!r} -- expected unique per tools/idx_to_carafe.py's own "
+                                  f"out_tsv dedup guarantee; can't join unambiguously")
+            out[key] = (int(row["nAA"]), int(row["frag_start_idx"]), int(row["frag_stop_idx"]))
+    return out
+
+
+class FragmentTable:
+    """Compact column-oriented storage for read_ms2_pred()'s flat fragment table -- one
+    array.array('d') per channel instead of a Python list of 8-tuples. A list of N 8-tuples of
+    Python floats costs ~300+ bytes/row in pure object/container overhead; N float64s packed 8
+    per row in array.array cost 64 bytes/row -- roughly a 5x reduction (same double precision,
+    no numeric behavior change), the difference between fitting a real ~87M-row full-proteome
+    ms2_pred.tsv in RAM and swap-thrashing a 31GB machine to a standstill (confirmed both ways
+    empirically 2026-08-12). table[start:stop] still
+    returns a plain list of CHANNELS-order tuples -- same external shape callers (e.g.
+    max_across_charges(), compute_variant_mask()) already expect -- built on demand only for
+    the (small, per-variant) slice asked for, not materialized up front."""
+    __slots__ = ("_cols", "n_channels")
+
+    def __init__(self, n_channels):
+        self.n_channels = n_channels
+        self._cols = [array.array('d') for _ in range(n_channels)]
+
+    def append(self, values):
+        for col, v in zip(self._cols, values):
+            col.append(v)
+
+    def __len__(self):
+        return len(self._cols[0])
+
+    def __getitem__(self, sl):
+        if isinstance(sl, slice):
+            return list(zip(*(col[sl] for col in self._cols)))
+        return tuple(col[sl] for col in self._cols)
+
+
 def read_ms2_pred(path):
-    """Flat fragment table -> (rows, has_modloss). rows is a list of 8-tuples in CHANNELS
-    order, one per cleavage-site row, in file order (sliced per-precursor via ms2_df's
-    frag_start_idx/frag_stop_idx). has_modloss is True iff the file's header has all four
-    modloss columns (Carafe run with `--mode phosphorylation`); when False, the modloss
-    positions of every returned tuple are 0.0 (never read -- see compute_variant_mask's
-    modloss-skip logic, which gates on has_modloss rather than on these zeros)."""
+    """Flat fragment table -> (table, has_modloss). table is a FragmentTable (see above);
+    table[start:stop] returns a list of 8-tuples in CHANNELS order, one per cleavage-site row,
+    in file order (sliced per-precursor via ms2_df's frag_start_idx/frag_stop_idx). has_modloss
+    is True iff the file's header has all four modloss columns (Carafe run with
+    `--mode phosphorylation`); when False, the modloss positions of every returned tuple are 0.0
+    (never read -- see compute_variant_mask's modloss-skip logic, which gates on has_modloss
+    rather than on these zeros)."""
     with open(path, "r", newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
         fieldnames = set(reader.fieldnames or ())
@@ -260,13 +339,14 @@ def read_ms2_pred(path):
                               f"modloss columns -- expected all or none (missing: {missing})")
         has_modloss = n_modloss_present == len(MODLOSS_CHANNELS)
 
-        out = []
+        table = FragmentTable(len(CHANNELS))
+        zero_modloss = (0.0, 0.0, 0.0, 0.0)
         for row in reader:
             if has_modloss:
-                out.append(tuple(float(row[c]) for c in CHANNELS))
+                table.append(tuple(float(row[c]) for c in CHANNELS))
             else:
-                out.append(tuple(float(row[c]) for c in CHANNELS[:4]) + (0.0, 0.0, 0.0, 0.0))
-    return out, has_modloss
+                table.append(tuple(float(row[c]) for c in CHANNELS[:4]) + zero_modloss)
+    return table, has_modloss
 
 
 # ---------------------------------------------------------------------------
@@ -456,6 +536,10 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__)
     ap.add_argument("idx_file", help="The same Comet .idx file idx_to_carafe.py exported from")
+    ap.add_argument("out_tsv", help="idx_to_carafe.py's main output (sequence/mods/mod_sites/"
+                                     "charge) -- the file fed directly to Carafe's ai_pred.py; "
+                                     "needed to join against ms2_df_tsv by content since Carafe "
+                                     "doesn't preserve row order at scale (see module docstring)")
     ap.add_argument("variant_map_tsv", help="idx_to_carafe.py's --variant-map output")
     ap.add_argument("ms2_df_tsv", help="Carafe ai_pred.py's <prefix>_ms2_df.tsv output")
     ap.add_argument("ms2_pred_tsv", help="Carafe ai_pred.py's <prefix>_ms2_pred.tsv output "
@@ -482,6 +566,10 @@ def main():
         print(f"  fingerprint {fingerprint}, {num_raw_peptides} raw peptides", file=sys.stderr)
 
     if args.verbose:
+        print(f"Reading {args.out_tsv} ...", file=sys.stderr)
+    out_tsv_rows = read_out_tsv(args.out_tsv)   # row_index -> (sequence, mods, mod_sites, charge)
+
+    if args.verbose:
         print(f"Reading {args.variant_map_tsv} ...", file=sys.stderr)
     var_mod_config = read_variant_map_var_mod_config(args.variant_map_tsv)
     if var_mod_config is None:
@@ -493,7 +581,12 @@ def main():
 
     if args.verbose:
         print(f"Reading {args.ms2_df_tsv} ...", file=sys.stderr)
-    ms2_df = read_ms2_df(args.ms2_df_tsv)
+    ms2_df_by_content = read_ms2_df(args.ms2_df_tsv)
+    if len(ms2_df_by_content) != len(out_tsv_rows):
+        print(f"WARNING: {args.out_tsv!r} has {len(out_tsv_rows)} rows but "
+              f"{args.ms2_df_tsv!r} has {len(ms2_df_by_content)} distinct rows -- expected "
+              f"equal counts (every out_tsv row should be echoed back exactly once)",
+              file=sys.stderr)
 
     if args.verbose:
         print(f"Reading {args.ms2_pred_tsv} ...", file=sys.stderr)
@@ -522,7 +615,14 @@ def main():
         frag_rows_per_charge = []
         nAA_seen = None
         for row_index in row_indices:
-            nAA, start, stop = ms2_df[row_index]
+            content_key = out_tsv_rows[row_index]
+            ms2_entry = ms2_df_by_content.get(content_key)
+            if ms2_entry is None:
+                print(f"WARNING: out_tsv row_index {row_index} {content_key!r} (tuple {key}) "
+                      f"not found in {args.ms2_df_tsv!r} -- skipping", file=sys.stderr)
+                frag_rows_per_charge = None
+                break
+            nAA, start, stop = ms2_entry
             if nAA_seen is None:
                 nAA_seen = nAA
             elif nAA_seen != nAA:
