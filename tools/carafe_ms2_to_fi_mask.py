@@ -114,16 +114,47 @@ can test with `mask & (1ULL << (i - 2))`. MAX_PEPTIDE_LEN is 51 (CometSearch/cor
 so i ranges over at most 0..48 after the -2 shift -- comfortably inside one uint64_t; no need
 for two words per mask.
 
+--ignore-modloss / building a "without neutral loss" mask from a phospho-mode Carafe run
+(2026-08-14): a phospho analysis wants both a "with NL" and a "without NL" comparison, but
+running Carafe's expensive `--mode phosphorylation` inference twice (once for real, once just
+to get a general-mode-shaped prediction of the identical peptide population) is pure waste --
+the modloss channels are simply unused input for a "without NL" mask, not a different
+prediction. `--ignore-modloss` makes this script treat a phospho-mode ms2_pred_tsv as if it
+were general-mode: base_peak/threshold computed from the 4 unshifted channels only (see the
+has_modloss gate added to compute_variant_mask()'s base_peak calculation below -- without this
+gate, a genuinely high-intensity modloss prediction could inflate/deflate the threshold used for
+the UNSHIFTED masks too, which would make "with NL" and "without NL" not actually comparable to
+a true general-mode baseline), modloss masks always 0, GeneralMode: 1 in the output header --
+byte-for-byte what a real `--mode general` Carafe run against the same peptides would produce
+(confirmed: the two differ only in wasted modloss compute, never in the resulting mask). One
+Carafe inference run therefore feeds two `carafe_ms2_to_fi_mask.py` invocations (one plain, one
+with --ignore-modloss) to produce both masks. Important companion requirement, NOT solved by
+this flag alone: CometFragmentIndex.cpp's `bUseFragmentNeutralLoss` is baked into a .idx's own
+header from its variable_mod config's neutral-loss field at BUILD time (ParsePeptideIndexHeader(),
+docs/20260811_restore_idx_header_mods.md) and CometPredictedMask::Load()'s VarModConfig check
+(ComputeVarModConfigString(), which includes dNeutralLoss per slot) will hard-reject a mask
+whose embedded VarModConfig doesn't match the live search's -- so a genuine "without NL" search
+needs its OWN .idx build (same mod residues/mass/max-per-mod, neutral_loss field zeroed) and its
+own `comet.exe -x` / idx_to_carafe.py export (for the matching VarModConfig string), even though
+peptide/modNumIdx enumeration and the Carafe predictions themselves are identical between the two
+-- only the .idx build and export are cheap enough (minutes, not hours) to duplicate; Carafe
+inference is not, hence this flag.
+
 Memory note: this script still loads the full <prefix>_ms2_pred.tsv into memory (no
 pandas/numpy dependency -- matching tools/idx_to_carafe.py's zero-external-dependency
-convention), but as of the row-order fix above (2026-08-12) stores it as one array.array('d')
-per channel (FragmentTable below) rather than a Python list of 8-tuples. The original list-of-
-tuples form swap-thrashed a 31GB-RAM machine to a near-standstill on the ~87M-fragment-row full
-human-proteome oxmet run (~28GB of pure per-row Python-object overhead for data that's ~5.5GB
-as raw float64); the array-of-columns form holds the same data at close to its raw size (same
-double precision throughout, no numeric behavior change) and comfortably fit that same run in
-memory. A genuinely larger (e.g. multi-hundred-million-row) run would still eventually need a
-chunked/streaming rewrite of the ms2_pred.tsv read itself -- not attempted here.
+convention), but as of the row-order fix above (2026-08-12) stores it as one array.array per
+channel (FragmentTable below) rather than a Python list of 8-tuples. The original list-of-
+tuples form swap-thrashed a 31GB-RAM machine to a near-standstill on the ~87M-fragment-row
+target-only full-proteome oxmet run (~28GB of pure per-row Python-object overhead for data
+that's ~5.5GB as raw float64); the array-of-columns form (initially float64, 'd') fixed that
+run. Re-run 2026-08-13 at ~174M fragment rows (Section 6.16/6.18's target+decoy population,
+2x the target-only run), the double-precision array itself pushed total process memory back
+past 31GB during the mask-computation loop that follows the read -- switched to float32 ('f')
+at that point (see FragmentTable's own docstring for why the precision loss is safe here),
+roughly halving that structure's footprint. A genuinely larger (e.g. multi-hundred-million-row)
+run beyond that would still eventually need a chunked/streaming rewrite of the ms2_pred.tsv
+read itself, and/or reducing the other loaded structures' overhead (out_tsv_rows,
+ms2_df_by_content) -- not attempted here.
 """
 
 import argparse
@@ -293,20 +324,29 @@ def read_ms2_df(path):
 
 class FragmentTable:
     """Compact column-oriented storage for read_ms2_pred()'s flat fragment table -- one
-    array.array('d') per channel instead of a Python list of 8-tuples. A list of N 8-tuples of
-    Python floats costs ~300+ bytes/row in pure object/container overhead; N float64s packed 8
-    per row in array.array cost 64 bytes/row -- roughly a 5x reduction (same double precision,
-    no numeric behavior change), the difference between fitting a real ~87M-row full-proteome
-    ms2_pred.tsv in RAM and swap-thrashing a 31GB machine to a standstill (confirmed both ways
-    empirically 2026-08-12). table[start:stop] still
-    returns a plain list of CHANNELS-order tuples -- same external shape callers (e.g.
-    max_across_charges(), compute_variant_mask()) already expect -- built on demand only for
-    the (small, per-variant) slice asked for, not materialized up front."""
+    array.array('f') per channel instead of a Python list of 8-tuples. A list of N 8-tuples of
+    Python floats costs ~300+ bytes/row in pure object/container overhead; N float32s packed 8
+    per row in array.array cost 32 bytes/row -- roughly a 10x reduction, the difference between
+    fitting a real ms2_pred.tsv in RAM and swap-thrashing a 31GB machine to a standstill
+    (confirmed empirically twice, 2026-08-12/13: the original double-precision ('d') version
+    handled the ~87M-row target-only oxmet run fine, but the ~174M-row target+decoy run --
+    Section 6.16/6.18-style full-database coverage, twice the rows -- pushed total process
+    memory (FragmentTable plus the other loaded structures) past 31GB and into real swap
+    thrashing during the mask-computation loop that follows the read; switching to float32 here
+    was the fix). float32 loses precision below ~7 significant digits, which does not matter for
+    this data: predicted intensities are normalized 0..1 fractions thresholded at 10%-relative-
+    intensity granularity (DEFAULT_MIN_RELATIVE_INTENSITY), many orders of magnitude coarser
+    than float32's resolution -- no threshold/floor decision can flip because of this. Not
+    threaded through to any other float64 data in this script (out_tsv/variant-map/mask-file
+    fields are all integers or already-quantized bits, not float32-sensitive).
+    table[start:stop] still returns a plain list of CHANNELS-order tuples -- same external shape
+    callers (e.g. max_across_charges(), compute_variant_mask()) already expect -- built on
+    demand only for the (small, per-variant) slice asked for, not materialized up front."""
     __slots__ = ("_cols", "n_channels")
 
     def __init__(self, n_channels):
         self.n_channels = n_channels
-        self._cols = [array.array('d') for _ in range(n_channels)]
+        self._cols = [array.array('f') for _ in range(n_channels)]
 
     def append(self, values):
         for col, v in zip(self._cols, values):
@@ -408,8 +448,16 @@ def compute_variant_mask(merged_rows, nAA, min_relative_intensity, min_kept_peak
         raise ValueError(f"nAA={nAA} implies {nAA - 1} fragment rows, got {len(merged_rows)}")
 
     # Base peak: max over every predicted channel (Section 8 item 3), including modloss when
-    # present -- not just the 4 (or up to 4 more) channels the FI can actually insert.
-    base_peak = max((v for row in merged_rows for v in row), default=0.0)
+    # present -- not just the 4 (or up to 4 more) channels the FI can actually insert. Gated on
+    # has_modloss (2026-08-14, --ignore-modloss below): a caller building a mask meant to behave
+    # like a genuine general-mode Carafe run (no modloss data at all) must also exclude modloss
+    # VALUES from this reference, not just skip the modloss pool -- otherwise a real, high-
+    # intensity modloss prediction could inflate the threshold and silently drop unshifted ions
+    # a true general-mode run would have kept (or the reverse). For an actually general-mode
+    # source this is a no-op: read_ms2_pred() zero-pads modloss channels when has_modloss is
+    # False, and 0.0 can never win a max() against non-negative real intensities.
+    base_rows = merged_rows if has_modloss else [row[:4] for row in merged_rows]
+    base_peak = max((v for row in base_rows for v in row), default=0.0)
     threshold = min_relative_intensity * base_peak
 
     # AlphaBase row r's own columns give b_{r+1} and y_{nAA-r-1} directly -- relabel into
@@ -556,6 +604,19 @@ def main():
                           f"independently to the unshifted and modloss pools (default: "
                           f"{DEFAULT_MIN_KEPT_PEAKS}; mirrors the eventual "
                           f"FRAGINDEX_CARAFE_MIN_KEPT_PEAKS C++ constant)")
+    ap.add_argument("--ignore-modloss", action="store_true",
+                     help="Build a mask that ignores Carafe's modloss (neutral-loss) "
+                          "predictions even when ms2_pred_tsv has modloss columns (phospho "
+                          "mode) -- produces a mask functionally equivalent to running Carafe "
+                          "in general mode against the same peptide population (base_peak/"
+                          "threshold computed from the unshifted channels only, modloss masks "
+                          "always 0, GeneralMode: 1 in the output header). Lets one phospho-"
+                          "mode Carafe run feed both a 'with neutral loss' and a 'without "
+                          "neutral loss' mask build without re-running Carafe -- pair with an "
+                          "idx_file/variant_map_tsv built from a .idx whose neutral-loss mod "
+                          "config was disabled (dNeutralLoss 0.0), since CometPredictedMask::"
+                          "Load()'s VarModConfig check will otherwise reject a mask whose "
+                          "embedded VarModConfig doesn't match the live search's.")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -594,6 +655,16 @@ def main():
     if args.verbose:
         print(f"  mode: {'phospho (modloss channels present)' if has_modloss else 'general'}",
               file=sys.stderr)
+
+    # --ignore-modloss: mask computation below treats the source as general-mode regardless of
+    # what read_ms2_pred() actually detected -- see the flag's own help text. has_modloss itself
+    # (above) still reflects the true file contents for the printed message; effective_has_modloss
+    # is what actually drives masking/output from here on.
+    effective_has_modloss = has_modloss and not args.ignore_modloss
+    if args.ignore_modloss and has_modloss and args.verbose:
+        print("  --ignore-modloss: building a general-mode-equivalent mask from this "
+              "phospho-mode prediction (modloss values excluded from base_peak too, not just "
+              "from the modloss pool)", file=sys.stderr)
 
     # Group variant-map rows by tuple -> [row_index, ...] (one row_index per predicted charge
     # state that ended up sharing this tuple's (sequence, mods, mod_sites) -- see module
@@ -642,14 +713,14 @@ def main():
         (bMask, yMask, bModlossMask, yModlossMask,
          n_candidates, n_kept, n_modloss_candidates, n_modloss_kept, base_peak) = compute_variant_mask(
             max_across_charges(frag_rows_per_charge), nAA_seen,
-            args.min_relative_intensity, args.min_kept_peaks, has_modloss, is_modified)
+            args.min_relative_intensity, args.min_kept_peaks, effective_has_modloss, is_modified)
 
         n_variants += 1
         n_candidates_total += n_candidates
         n_kept_total += n_kept
         entries.append((key[0], key[1], key[2], key[3], bMask, yMask, bModlossMask, yModlossMask))
 
-        if has_modloss and is_modified:
+        if effective_has_modloss and is_modified:
             n_modloss_variants += 1
             n_modloss_candidates_total += n_modloss_candidates
             n_modloss_kept_total += n_modloss_kept
@@ -663,7 +734,8 @@ def main():
 
     write_mask_file(args.out_mask_file, fingerprint, num_raw_peptides, args.idx_file,
                      args.min_relative_intensity, args.min_kept_peaks,
-                     general_mode=not has_modloss, var_mod_config=var_mod_config, entries=entries)
+                     general_mode=not effective_has_modloss, var_mod_config=var_mod_config,
+                     entries=entries)
 
     avg_kept = (n_kept_total / n_variants) if n_variants else 0.0
     avg_candidates = (n_candidates_total / n_variants) if n_variants else 0.0
@@ -671,7 +743,7 @@ def main():
     print(f"Average {avg_kept:.2f} of {avg_candidates:.2f} eligible fragments kept per variant "
           f"({100.0 * n_kept_total / n_candidates_total:.1f}% overall)"
           if n_candidates_total else "No eligible fragments seen", file=sys.stderr)
-    if has_modloss:
+    if effective_has_modloss:
         avg_modloss_kept = (n_modloss_kept_total / n_modloss_variants) if n_modloss_variants else 0.0
         avg_modloss_candidates = (n_modloss_candidates_total / n_modloss_variants) if n_modloss_variants else 0.0
         print(f"Modloss: average {avg_modloss_kept:.2f} of {avg_modloss_candidates:.2f} eligible "

@@ -10,6 +10,7 @@ Does NOT need REPO/COMET setup (unlike test_il_sequence.py) since nothing here s
 comet.exe -- this is pure in-process Python logic.
 """
 
+import math
 import os
 import struct
 import sys
@@ -40,6 +41,21 @@ def check(cond, msg, failures):
     if not cond:
         failures.append(msg)
     return cond
+
+
+def rows_approx_equal(actual, expected, rel_tol=1e-6):
+    """FragmentTable stores float32 (2026-08-13 memory fix -- see its own docstring), so a
+    round-tripped value like 0.1 no longer compares == to the Python (float64) literal 0.1.
+    Used wherever a test wants to assert on read_ms2_pred()'s actual channel values."""
+    if len(actual) != len(expected):
+        return False
+    for a_row, e_row in zip(actual, expected):
+        if len(a_row) != len(e_row):
+            return False
+        for a, e in zip(a_row, e_row):
+            if not math.isclose(a, e, rel_tol=rel_tol, abs_tol=1e-9):
+                return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -73,8 +89,9 @@ def test_read_ms2_pred_mode_detection(failures):
         check(len(rows) == 1, f"expected 1 fragment row, got {len(rows)}", failures)
         # FragmentTable (see module) has no __eq__ of its own -- rows[:] materializes the
         # list-of-tuples view its __getitem__ builds on demand, same shape the old plain-list
-        # return used to have.
-        check(rows[:] == [(0.1, 0.2, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0)],
+        # return used to have. Approximate comparison, not ==: FragmentTable stores float32
+        # (2026-08-13 memory fix), so a round-tripped 0.1 no longer equals the float64 literal.
+        check(rows_approx_equal(rows[:], [(0.1, 0.2, 0.3, 0.4, 0.0, 0.0, 0.0, 0.0)]),
               f"general-mode row not zero-padded correctly: {rows[:]}", failures)
 
         phospho_tsv = tmp / "phospho.tsv"
@@ -83,7 +100,7 @@ def test_read_ms2_pred_mode_detection(failures):
             "0.1\t0.2\t0.3\t0.4\t0.5\t0.6\t0.7\t0.8\n")
         rows, has_modloss = m.read_ms2_pred(str(phospho_tsv))
         check(has_modloss is True, "phospho-mode file: has_modloss should be True", failures)
-        check(rows[:] == [(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)],
+        check(rows_approx_equal(rows[:], [(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)]),
               f"phospho-mode row parsed wrong: {rows[:]}", failures)
 
         malformed_tsv = tmp / "malformed.tsv"
@@ -169,25 +186,71 @@ def test_modloss_mask_independent_from_unshifted(failures):
     check(bModlossMask == bit(3), f"bModlossMask should be only bit(3) (b4), got {bModlossMask:#x}", failures)
     check(yModlossMask == bit(4), f"yModlossMask should be only bit(4) (y5), got {yModlossMask:#x}", failures)
 
-    # And the unshifted result must be UNCHANGED by the modloss pool's presence -- re-run the
-    # exact same rows with has_modloss=False and confirm bMask/yMask/n_candidates/n_kept match.
+    # In THIS fixture the unshifted result happens to be unchanged if has_modloss is flipped,
+    # because the max modloss value (y5=1.00) ties the max unshifted value (b3=1.00) -- base_peak
+    # is 1.00 either way, so the threshold and hence bMask/yMask/n_candidates/n_kept all land the
+    # same. This is a property of the tie in this specific fixture, not a general guarantee --
+    # see test_ignore_modloss_excludes_modloss_from_base_peak below for a fixture where modloss
+    # strictly dominates and base_peak (and therefore the unshifted masks) DOES differ, which is
+    # exactly the behavior --ignore-modloss relies on (2026-08-14, module docstring).
     result_no_ml = m.compute_variant_mask(merged_rows, nAA=6, min_relative_intensity=0.50,
                                            min_kept_peaks=1, has_modloss=False, is_modified=True)
     check(result_no_ml[0] == bMask and result_no_ml[1] == yMask,
-          "unshifted bMask/yMask must be independent of has_modloss", failures)
+          "unshifted bMask/yMask happen to match here (base_peak tie, see comment above)", failures)
     check(result_no_ml[4] == n_candidates and result_no_ml[5] == n_kept,
-          "unshifted n_candidates/n_kept must be independent of has_modloss", failures)
-    # base_peak is purely a function of merged_rows' own contents (max over all 8 fields,
-    # unconditionally) -- NOT gated on has_modloss -- per Section 8 item 3's "the same
-    # reference regardless of search mode". In real usage this is moot (read_ms2_pred always
-    # zero-pads modloss fields when has_modloss is False, so there's no real signal to
-    # differ over); this direct call artificially keeps the modloss values present in
-    # merged_rows while flipping the flag, so base_peak legitimately stays 1.00 either way --
-    # confirming has_modloss only gates the modloss POOL's threshold/floor computation, not
-    # the base_peak reference itself.
+          "unshifted n_candidates/n_kept happen to match here (base_peak tie, see comment above)",
+          failures)
     check(result_no_ml[8] == base_peak,
-          f"base_peak must be identical regardless of has_modloss (both derived from the same "
-          f"merged_rows): with-flag={base_peak}, without-flag={result_no_ml[8]}", failures)
+          f"base_peak happens to match here (1.00 either way, due to the tie): "
+          f"with-flag={base_peak}, without-flag={result_no_ml[8]}", failures)
+
+
+def test_ignore_modloss_excludes_modloss_from_base_peak(failures):
+    """2026-08-14 fix: has_modloss=False must exclude modloss VALUES from base_peak too, not
+    just skip the modloss pool -- otherwise a --ignore-modloss mask built from real phospho-mode
+    predictions could have its UNSHIFTED threshold inflated (or deflated) by modloss intensities
+    it's supposed to be ignoring entirely, making it not actually equivalent to a true
+    general-mode Carafe run's mask. Fixture: a modloss value (1.00) strictly exceeds every
+    unshifted value (max 0.50), so base_peak -- and therefore which unshifted ions clear the
+    threshold -- must visibly differ between has_modloss=True and has_modloss=False."""
+    # nAA=6 -> 5 rows. b lengths 1..5 at rows 0..4; y lengths (nAA-r-1): 5,4,3,2,1 at rows 0..4.
+    merged_rows = [
+        row8(b_z1=0.05, y_z1=0.02, y_ml=1.00),   # row0: b1(ineligible)/y5 -- modloss peak here
+        row8(b_z1=0.10, y_z1=0.05),              # row1: b2(ineligible)/y4
+        row8(b_z1=0.50, y_z1=0.05),              # row2: b3 -- the max UNSHIFTED value
+        row8(b_z1=0.30, y_z1=0.05),              # row3: b4/y2(ineligible)
+        row8(b_z1=0.05, y_z1=0.05),              # row4: b5/y1(ineligible)
+    ]
+    result_with_ml = m.compute_variant_mask(merged_rows, nAA=6, min_relative_intensity=0.50,
+                                             min_kept_peaks=1, has_modloss=True, is_modified=True)
+    result_ignore_ml = m.compute_variant_mask(merged_rows, nAA=6, min_relative_intensity=0.50,
+                                               min_kept_peaks=1, has_modloss=False, is_modified=True)
+
+    check(result_with_ml[8] == 1.00,
+          f"has_modloss=True: base_peak should be 1.00 (the y5-modloss value), got {result_with_ml[8]}",
+          failures)
+    check(result_ignore_ml[8] == 0.50,
+          f"has_modloss=False: base_peak should be 0.50 (max UNSHIFTED value only, modloss "
+          f"excluded), got {result_ignore_ml[8]}", failures)
+
+    # has_modloss=True: threshold = 0.50*1.00 = 0.50 -> only b3 (0.50) clears; floor=1 already met.
+    check(result_with_ml[5] == 1, f"has_modloss=True should keep 1 unshifted ion (b3 only), "
+                                   f"got {result_with_ml[5]}", failures)
+    check(result_with_ml[0] == bit(2), f"has_modloss=True bMask should be only bit(2) (b3), "
+                                        f"got {result_with_ml[0]:#x}", failures)
+
+    # has_modloss=False: threshold = 0.50*0.50 = 0.25 -> b3 (0.50) AND b4 (0.30) both clear.
+    check(result_ignore_ml[5] == 2, f"has_modloss=False should keep 2 unshifted ions (b3, b4), "
+                                     f"got {result_ignore_ml[5]}", failures)
+    check(result_ignore_ml[0] == (bit(2) | bit(3)),
+          f"has_modloss=False bMask should be bit(2)|bit(3) (b3,b4), got {result_ignore_ml[0]:#x}",
+          failures)
+
+    # Both calls' modloss masks must be all-zero (has_modloss=False skips the modloss pool
+    # entirely, same as any other has_modloss=False caller).
+    check(result_ignore_ml[2] == 0 and result_ignore_ml[3] == 0,
+          f"has_modloss=False must still yield zero modloss masks, got "
+          f"{result_ignore_ml[2]:#x}/{result_ignore_ml[3]:#x}", failures)
 
 
 def test_modloss_skipped_for_unmodified_variant(failures):
@@ -357,6 +420,7 @@ TESTS = [
     test_read_ms2_pred_mode_detection,
     test_general_mode_unaffected_by_phase_2c,
     test_modloss_mask_independent_from_unshifted,
+    test_ignore_modloss_excludes_modloss_from_base_peak,
     test_modloss_skipped_for_unmodified_variant,
     test_floor_never_pads_beyond_available_candidates,
     test_content_join_survives_ms2_df_reordering,

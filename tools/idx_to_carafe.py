@@ -99,6 +99,7 @@ name instead so unmapped peptides aren't silently dropped).
 """
 
 import argparse
+import hashlib
 import os
 import struct
 import sys
@@ -531,8 +532,17 @@ def build_mods_mod_sites(raw, static_sites, var_sites, mod_table, mass_tol, unre
         tokens.append((sort_key(pos), site_val, name))
 
     tokens.sort(key=lambda t: t[0])
-    mods_str = ";".join(t[2] for t in tokens)
-    mod_sites_str = ";".join(str(t[1]) for t in tokens)
+    # sys.intern(): at real scale (Section on idx_to_carafe.py memory, 2026-08-14) these two
+    # strings are freshly allocated on EVERY call even though their content repeats constantly
+    # across peptides -- mods_str especially has low cardinality (bounded by the combinatorics
+    # of a handful of mod names across up to max_variable_mods_in_peptide slots), so without
+    # interning, millions of rows each allocate their own copy of what's really one of a few
+    # hundred distinct strings. Interning doesn't change equality/hashing semantics at all
+    # (two interned strings with equal content are the same object AND still compare equal to
+    # a non-interned string with the same content), so this is free memory reduction wherever
+    # these values end up as dict keys (main()'s `seen` dedup) or get held onto in bulk.
+    mods_str = sys.intern(";".join(t[2] for t in tokens))
+    mod_sites_str = sys.intern(";".join(str(t[1]) for t in tokens))
     return mods_str, mod_sites_str, unresolved
 
 
@@ -542,6 +552,48 @@ def is_decoy(protein_names, decoy_prefixes):
         if any(upper.startswith(p) for p in decoy_prefixes):
             return True
     return False
+
+
+def dedup_key(sequence, mods_str, mod_sites_str, charge):
+    """Compact, deterministic stand-in for the (sequence, mods_str, mod_sites_str, charge)
+    4-tuple as a key into main()'s `seen` dedup dict (2026-08-14, memory fix). At real scale
+    (phospho+oxMet, ~125M unique rows) that raw tuple costs ~268 bytes/entry in the dict --
+    dominated by per-entry Python object overhead (tuple wrapper + two freshly-rendered mod-
+    description strings, see sys.intern() above) -- extrapolating to ~33GB, over this box's
+    31GB WSL memory ceiling (2026-08-14; the underlying Windows host has 64GB, but the WSL VM
+    itself is capped at 31GB). A single 128-bit int key cuts that to ~114 bytes/entry
+    (~14.2GB at the same scale) independent of how much the string content actually repeats,
+    which sys.intern() alone can't guarantee (mods_str has low cardinality and interns well;
+    mod_sites_str's cardinality is data-dependent and less certain).
+
+    Uses BLAKE2b (16-byte/128-bit digest), not Python's built-in hash(): the latter is only
+    64 bits (a real birthday-bound collision risk at ~125M entries: p ~ n^2/2^65 ~ 2e-4, i.e.
+    roughly 1-in-5000 odds of ANY collision across a full run) AND is randomized per-process by
+    default (PYTHONHASHSEED), which would silently break this project's established byte-exact
+    determinism guarantees (T18-style rebuild comparisons) even before considering collisions.
+    BLAKE2b is already a hashlib-standard, dependency-free, fast, non-cryptographic-strength-
+    -required but well-distributed hash; at 128 bits the birthday-bound collision probability
+    across 125M entries is p ~ n^2/2^129 ~ 4e-19 -- for comparison, a single machine's
+    undetected-cosmic-ray-bit-flip rate over the same wall-clock runtime is many orders of
+    magnitude higher than this. A collision here would silently merge two DIFFERENT variants
+    onto one output row (silent data corruption, not a crash), so this is a correctness-
+    critical choice, not a performance-only one -- verified empirically (not just by this
+    argument) against the oxMet charge2+3+decoys case: see
+    tests/unit/test_idx_to_carafe_dedup_key.py and the byte-diff described in
+    docs/20260805_carafe.md's memory-fix section.
+
+    Returns a single Python int (not bytes/tuple) -- ints are the cheapest hashable object
+    CPython has for this purpose (no separate container-object overhead beyond the int itself,
+    unlike a bytes object of the same digest)."""
+    h = hashlib.blake2b(digest_size=16)
+    h.update(sequence.encode("utf-8"))
+    h.update(b"\x00")
+    h.update(mods_str.encode("utf-8"))
+    h.update(b"\x00")
+    h.update(mod_sites_str.encode("utf-8"))
+    h.update(b"\x00")
+    h.update(str(charge).encode("ascii"))
+    return int.from_bytes(h.digest(), "big")
 
 
 # ---------------------------------------------------------------------------
@@ -646,9 +698,13 @@ def main():
     n_skipped_decoy = 0
     n_skipped_unresolved = 0
     n_mass_mismatch = 0
-    seen = {}   # (sequence, mods, mod_sites, charge) -> row_index of the out_tsv row already
-                # written for this key, so later tuples that collapse onto it (dedup) still get
-                # their provenance recorded in the variant map without writing a duplicate row.
+    seen = {}   # dedup_key(sequence, mods, mod_sites, charge) -> row_index of the out_tsv row
+                # already written for this key, so later tuples that collapse onto it (dedup)
+                # still get their provenance recorded in the variant map without writing a
+                # duplicate row. Keyed on dedup_key()'s compact 128-bit hash rather than the raw
+                # 4-tuple directly (2026-08-14 memory fix, see that function's docstring) --
+                # collision risk is negligible (~4e-19 across a 125M-row run) and independently
+                # verified against the oxMet charge2+3+decoys case before trusting it at scale.
 
     with open(args.out_tsv, "wb") as out, open(variant_map_path, "wb") as vmap:
         out.write(b"sequence\tmods\tmod_sites\tcharge\r\n")
@@ -727,7 +783,7 @@ def main():
                 continue
 
             for charge in charges:
-                key = (raw.seq, mods_str, mod_sites_str, charge)
+                key = dedup_key(raw.seq, mods_str, mod_sites_str, charge)
                 row_index = seen.get(key) if not args.no_dedup else None
 
                 if row_index is None:
