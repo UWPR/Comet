@@ -56,8 +56,12 @@ int main(int argc, char *argv[])
    // short-circuiting DoSearch()'s full pipeline entirely (no spectra input, no thread pool,
    // no search) -- mirrors how -p/-q's PrintParams()/exit(0) in ProcessCmdLine() above never
    // reaches DoSearch() either. Checked here (after ProcessCmdLine(), i.e. after
-   // LoadParameters() has already run) since -x needs comet.params' database_name and
-   // variable mods, unlike -p/-q which need neither.
+   // LoadParameters() has already run) since -x needs comet.params' database_name, unlike
+   // -p/-q which need neither. Variable mods are NOT taken from comet.params here --
+   // ExportPeptideIndexVariants() -> ReadPeptideIndex() -> ParsePeptideIndexHeader()
+   // unconditionally discards whatever LoadParameters() just set and re-derives every
+   // varModList[] slot from the .idx's own baked-in header instead
+   // (docs/20260811_restore_idx_header_mods.md).
    string strExportVariantsFile;
    if (pCometSearchMgr->GetParamValue("export_peptide_index_variants_file", strExportVariantsFile)
       && !strExportVariantsFile.empty())
@@ -111,8 +115,9 @@ void Usage(char *pszCmd)
    logout("                 -j         create .idx file for peptide indexing\n");
    logout("                 -x<file>   export an existing PI_DB .idx's peptide-mod variant\n");
    logout("                            enumeration (iWhichPeptide/modNumIdx/.../sequence/sites)\n");
-   logout("                            to <file>, using live comet.params variable mods; does\n");
-   logout("                            not search or rebuild the .idx (docs/20260805_carafe.md)\n");
+   logout("                            to <file>, using this .idx's own baked-in variable mods;\n");
+   logout("                            -P comet.params is only read for database_name. Does not\n");
+   logout("                            search or rebuild the .idx (docs/20260805_carafe.md)\n");
    logout("\n");
    snprintf(szTmp, iSize, "       example:  %s file1.mzXML file2.mzXML\n", pszCmd);
    logout(szTmp);
