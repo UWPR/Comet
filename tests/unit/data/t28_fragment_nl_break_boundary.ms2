@@ -1,0 +1,39 @@
+H	CreationDate	synthetic
+H	Comment	T28 fragment-neutral-loss break-boundary regression fixture: peptide
+H	Comment	WWWWWWWS[+79.966331]WWWWWWW, charge 3+. Exercises CometFragmentIndex.cpp's
+H	Comment	AddFragments() early-exit break (old form: dBion > dFragIndexMaxMass &&
+H	Comment	dYion > dFragIndexMaxMass), which is unsound once NL-shifted insertions are in
+H	Comment	play: at ladder length 11, unshifted dBion=2028.7986 and dYion=2046.8091 both
+H	Comment	exceed the 2000 Da max, so the OLD break fired here -- but the NL-shifted forms
+H	Comment	(dBion-97.976896=1930.8219, dYion-97.976896=1948.8324) are both still inside
+H	Comment	[200,2000] and should have been inserted (docs/20260805_carafe.md Section 6.16-
+H	Comment	style bug). The fix subtracts the largest active neutral-loss delta from both
+H	Comment	sums before the break's own comparison. 16 normal (unshifted) b/y ions + 8
+H	Comment	NL-shifted ions, precomputed independently from monoisotopic residue masses, not
+H	Comment	read back from Comet's own output. Phospho applied to S at position 8 (1-based).
+S	1	1	931.047045
+Z	3	2791.126582
+559.245215	100.0
+577.255780	100.0
+745.324528	100.0
+763.335093	100.0
+931.403841	100.0
+949.414406	100.0
+1117.483154	100.0
+1135.493719	100.0
+1303.562467	100.0
+1321.573032	100.0
+1372.583931	90.0
+1390.594495	90.0
+1470.560827	100.0
+1488.571391	100.0
+1558.663244	90.0
+1576.673808	90.0
+1656.640140	100.0
+1674.650704	100.0
+1744.742557	90.0
+1762.753121	90.0
+1842.719453	100.0
+1860.730017	100.0
+1930.821870	90.0
+1948.832434	90.0

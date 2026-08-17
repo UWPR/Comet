@@ -643,12 +643,23 @@ if (!(iWhichPeptide%1000))
    int iPositionNLB[FRAGINDEX_VMODS];
    int iPositionNLY[FRAGINDEX_VMODS];
    bool bFragmentNL = g_staticParams.variableModParameters.bUseFragmentNeutralLoss && modNumIdx >= 0;
+   // Largest primary neutral-loss delta across active variable-mod slots -- used below to keep
+   // the below-loop's early-exit break sound once NL-shifted insertions are in play (a
+   // NL-shifted ion can still land inside [min, max] even after its unshifted parent has
+   // crossed max, as long as it hasn't crossed by more than dMaxNL; see the break itself for
+   // the full explanation). 0.0 when bFragmentNL is false, which reduces the break to its
+   // original, pre-Phase-2b form.
+   double dMaxNL = 0.0;
    if (bFragmentNL)
    {
       for (int x = 0; x < FRAGINDEX_VMODS; ++x)
       {
          iPositionNLB[x] = 999;
          iPositionNLY[x] = 999;
+
+         double dNL = g_staticParams.variableModParameters.varModList[x].dNeutralLoss;
+         if (dNL > dMaxNL)
+            dMaxNL = dNL;
       }
    }
 
@@ -738,7 +749,14 @@ if (!(iWhichPeptide%1000))
          }
       }
 
-      if (dBion > g_staticParams.options.dFragIndexMaxMass && dYion > g_staticParams.options.dFragIndexMaxMass)
+      // Early-exit once neither ion can still land in [min, max] -- but a NL-shifted insertion
+      // (below) uses dBion-dNL/dYion-dNL, not dBion/dYion directly, so an unshifted sum that's
+      // crossed dFragIndexMaxMass by less than dMaxNL can still produce a valid in-window
+      // NL-shifted entry at this or a later ladder position. Subtracting dMaxNL here (0.0 when
+      // bFragmentNL is false, making this identical to the original unshifted-only check) keeps
+      // the exit sound in both cases instead of silently dropping those later NL-shifted
+      // insertions.
+      if (dBion - dMaxNL > g_staticParams.options.dFragIndexMaxMass && dYion - dMaxNL > g_staticParams.options.dFragIndexMaxMass)
          break;
 
       if (i > 1)  // skip first two low mass b- and y-ions

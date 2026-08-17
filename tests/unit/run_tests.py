@@ -2774,6 +2774,160 @@ def test_t27_predicted_mask_integration(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T28 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
+# ---------------------------------------------------------------------------
+#
+# Found by a 2026-08-13 code review of the Carafe integration branch: AddFragments()'s early
+# exit (`if (dBion > dFragIndexMaxMass && dYion > dFragIndexMaxMass) break;`) predates Phase 2b's
+# NL-shifted b/y insertions and is no longer sound against them. The NL-shifted insertions use
+# dBion-dNL/dYion-dNL, not dBion/dYion directly, so once dBion or dYion has crossed
+# dFragIndexMaxMass by LESS than the largest active neutral-loss delta, a valid in-window
+# NL-shifted entry can still exist at that ladder position -- but the break already fired and
+# the whole loop exited, silently dropping it (and anything after it). Fix: subtract the
+# largest active neutral-loss delta (dMaxNL, 0.0 when no NL mod is active) from both sums before
+# the break's comparison.
+#
+# Fixture: WWWWWWWS[+79.966331]WWWWWWW (15 residues, all-Trp filler with phospho-S dead center
+# at 0-based position 7) -- deliberately chosen so dBion(i) and dYion(i) stay almost exactly in
+# lockstep (differing only by the water-mass gap between dNtermProton and dCtermOH2Proton) at
+# every ladder position, making it easy to land BOTH sums in the same narrow
+# (dFragIndexMaxMass, dFragIndexMaxMass+dNL) window simultaneously. Independently verified in
+# Python (monoisotopic residue masses, no static mods) that at ladder length 11 (i=10):
+# unshifted dBion=2028.7986, dYion=2046.8091 (both > 2000, so the OLD break fires here) but
+# dBion-97.976896=1930.8219 and dYion-97.976896=1948.8324 (both still inside [200,2000], and
+# both NL-eligible since the mod at position 7 is within reach from both termini by this ladder
+# position) -- exactly the entries the old break silently dropped.
+#
+# Same digest_mass_range/peptide_length_range-widened derivative of T25_FRAGMENT_NL_PARAMS_
+# TEMPLATE as T25 itself is a derivative of T19's (see that comment for the maintenance-risk
+# rationale) -- T25's own 200-2000 Da/10-10 residue ranges are far too narrow for this fixture's
+# ~2710-2790 Da peptide.
+T28_PARAMS_TEMPLATE = (
+    T25_FRAGMENT_NL_PARAMS_TEMPLATE
+    .replace("digest_mass_range = 200.0 2000.0", "digest_mass_range = 200.0 3000.0")
+    .replace("peptide_length_range = 10 10", "peptide_length_range = 15 15")
+)
+
+assert "digest_mass_range = 200.0 3000.0" in T28_PARAMS_TEMPLATE, \
+    "T28_PARAMS_TEMPLATE: digest_mass_range replacement didn't fire -- T25_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 15 15" in T28_PARAMS_TEMPLATE, \
+    "T28_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T25_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
+
+
+def _t28_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
+    """Same shape as _t25_build_and_search() but against T28_PARAMS_TEMPLATE's wider mass/length
+    ranges -- kept as its own function rather than parameterizing _t25_build_and_search() so T25
+    itself can't be accidentally affected by a change made for T28's sake."""
+    idx = fasta.with_suffix(".fasta.idx")
+    idx.unlink(missing_ok=True)
+
+    build_params = T28_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=neutral_loss)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            return rc, f"[{tag}] index build failed (rc={rc}):\n{out}", None, None
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    fi_entries = None
+
+    txt = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    search_params = T28_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=neutral_loss)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+    try:
+        rc, out2 = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        m2 = re.search(r"([\d.eE+]+) FI entries", out2)
+        if m2:
+            fi_entries = int(float(m2.group(1)))
+        return rc, out2, (txt if rc == 0 and txt.exists() else None), fi_entries
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+
+@register("t28_fragment_nl_break_boundary")
+def test_t28_fragment_nl_break_boundary(comet_exe):
+    """T28: CometFragmentIndex.cpp AddFragments()'s early-exit break must stay sound once
+    NL-shifted insertions are in play (2026-08-13 code review finding)."""
+    failures = []
+
+    fasta = DATA_DIR / "t28_fragment_nl_break_boundary.fasta"
+    ms2   = DATA_DIR / "t28_fragment_nl_break_boundary.ms2"
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    rc, out, txt, fi_entries = _t28_build_and_search(comet_exe, fasta, ms2, "97.976896", fmt, "t28")
+    if rc != 0 or txt is None:
+        failures.append(f"search failed (rc={rc}):\n{out}")
+        return failures
+
+    rows = [l.split("\t") for l in txt.read_text().splitlines()[2:] if l.strip()]
+    txt.unlink(missing_ok=True)
+    if not check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures):
+        return failures
+
+    COLS = ("scan", "num", "charge", "exp_neutral_mass", "calc_neutral_mass", "e-value",
+            "xcorr", "delta_cn", "sp_score", "ions_matched", "ions_total", "plain_peptide",
+            "modified_peptide", "prev_aa", "next_aa", "protein", "protein_count",
+            "modifications", "retention_time_sec", "sp_rank")
+    row = dict(zip(COLS, rows[0]))
+
+    check(row.get("plain_peptide") == "WWWWWWWSWWWWWWW",
+          f"plain_peptide: expected WWWWWWWSWWWWWWW, got {row.get('plain_peptide')!r}", failures)
+    check("8_V_79.966331" in row.get("modifications", ""),
+          f"modifications: expected to contain 8_V_79.966331, got {row.get('modifications')!r}",
+          failures)
+
+    # The headline assertion. Both the unmodified (modNumIdx=-1, bFragmentNL always False, so
+    # this fix is a no-op there -- 18 entries either way) and modified (phospho + NL, where the
+    # fix matters) variants of this one peptide get indexed together (search_enzyme_number=0
+    # "cut everywhere" digests it as a single candidate, same as T25's own single-peptide FASTA).
+    # Independently hand-derived in Python (see module comment above) by walking the exact same
+    # ladder AddFragments() walks:
+    #   unmodified: 18 (9 unshifted b + 9 unshifted y, length>=3 through the full 14-position
+    #     ladder -- no NL, so this fix cannot change it)
+    #   modified:   24 with the FIX (8 unshifted b + 8 unshifted y + 4 NL-shifted b +
+    #     4 NL-shifted y) vs. 22 with the OLD buggy break (same unshifted counts, but only
+    #     3+3 NL-shifted -- missing exactly the length-11 NLb/NLy pair the break drops)
+    #   total: 42 with the fix, 40 with the old bug -- an exact, hand-verifiable difference of 2,
+    #   not just "some difference" (matches this project's T25/T27 precedent for FI-entry-count
+    #   assertions).
+    check(fi_entries == 42,
+          f"expected exactly 42 FI entries (18 unmodified + 24 modified-with-fix; would be 40 "
+          f"-- 18 + 22 -- under the pre-fix break), got {fi_entries}", failures)
+
+    # Matching signal (mirrors T25's own xcorr check): CometSearch.cpp's SearchFragmentIndex()
+    # bins NL-shifted candidate masses on the fly regardless of what's in the FI's posting
+    # list -- the FI entries above only affect *candidate recall*, not per-candidate scoring
+    # accuracy. So this can't distinguish the fix from the bug on its own (a low-recall FI can
+    # still find the same best-scoring PSM via full theoretical-spectrum scoring once the
+    # peptide is a candidate at all) -- it's a sanity check that the spectrum's fragments,
+    # including the two recovered ones, are genuinely real/matchable, not that recall itself
+    # improved. ions_matched should be most (not necessarily all -- fragment_bin_tol binning
+    # can miss a peak or two even when the underlying mass is exactly right) of the spectrum's
+    # 24 real peaks; empirically 19/24 on this fixture.
+    ions_matched = int(row.get("ions_matched", "0"))
+    check(ions_matched >= 15,
+          f"expected most of the 24 real fragment peaks to match (>=15), got "
+          f"ions_matched={ions_matched}", failures)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
