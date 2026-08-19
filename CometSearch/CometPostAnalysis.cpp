@@ -1216,7 +1216,11 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
       }
    }
 
-   iStartCorr = iNextCorr - 5;
+   iStartCorr = 0;
+   if (iNextCorr >= 30)
+      iStartCorr = (int)(iNextCorr - iNextCorr * 0.25);
+   else if (iNextCorr >= 15)
+      iStartCorr = (int)(iNextCorr - iNextCorr * 0.5);
    if (iStartCorr < 0)
       iStartCorr = 0;
    int iNumZeroes = 0;
