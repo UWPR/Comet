@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{1BA9307B-4D9B-4791-9999-A89D57FD4A42}</ProjectGuid>
+    <RootNamespace>MSToolkitCore</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\MSToolkitCore\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\MSToolkitCore\</IntDir>
+  </PropertyGroup>
+  <!--
+    MSToolkitCore is a plain-native sibling of MSToolkit for CometWrapperCore (net8.0) to link
+    against. It compiles every MSToolkit source file EXCEPT RAWReader.cpp, unmodified, via
+    relative Include paths back into ../MSToolkit; no source is duplicated or edited.
+
+    RAWReader.cpp itself is intentionally NOT compiled here. It is classic-/clr-only-free (it does
+    not require classic /clr specifically), but a C++/CLI file with CLRSupport=NetCore cannot
+    live in a StaticLibrary project at all (MSBuild error NETSDK1116: "C++/CLI projects targeting
+    .NET Core must be dynamic libraries"), so it cannot be given its own project-level netcore-CLR
+    static-lib home the way MSToolkit.vcxproj hosts it for classic /clr. Instead, RAWReader.cpp is
+    compiled directly inside CometWrapperCore.vcxproj (which is already a DynamicLibrary with
+    CLRSupport=NetCore), alongside CometWrapper.cpp itself. RAWReader.h still declares the same
+    plain-native RAWReader class (a native RAWReaderImpl* pImpl, per
+    docs/20260618_RawFileReaderMigration.md) regardless of which project compiles RAWReader.cpp,
+    so MSReader's layout here is unchanged and stays link-compatible with the existing, unmodified
+    CometSearch.lib; Thermo .raw support is fully retained, just relocated to where /clr:netcore
+    is actually allowed to live.
+  -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>$(PreDef)</AdditionalOptions>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;XML_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\MSToolkit\include;..\MSToolkit\include\extern;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalOptions>$(PreDef)</AdditionalOptions>
+      <StringPooling>true</StringPooling>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <FloatingPointModel>Fast</FloatingPointModel>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\MSToolkit\src\MSToolkit\MSObject.cpp" />
+    <ClCompile Include="..\MSToolkit\src\MSToolkit\MSReader.cpp" />
+    <ClCompile Include="..\MSToolkit\src\MSToolkit\Spectrum.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\BasicChromatogram.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\BasicSpectrum.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\Czran.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\MSNumpress.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mz5handler.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mzMLReader.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mzParser.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mzpMz5Config.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mzpMz5Structs.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\mzp_base64.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\PWIZface.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\RAMPface.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\saxhandler.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\saxmzmlhandler.cpp" />
+    <ClCompile Include="..\MSToolkit\src\mzParser\saxmzxmlhandler.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\MSToolkit\include\MSNumpress.hpp" />
+    <ClInclude Include="..\MSToolkit\include\MSObject.h" />
+    <ClInclude Include="..\MSToolkit\include\MSReader.h" />
+    <ClInclude Include="..\MSToolkit\include\MSToolkitTypes.h" />
+    <ClInclude Include="..\MSToolkit\include\mzParser.h" />
+    <ClInclude Include="..\MSToolkit\include\RAWReader.h" />
+    <ClInclude Include="..\MSToolkit\include\Spectrum.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
