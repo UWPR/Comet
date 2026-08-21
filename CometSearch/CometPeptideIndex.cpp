@@ -978,6 +978,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    fprintf(fptr, "LengthRange: %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fptr, "DecoySearch: %d\n", g_staticParams.options.iDecoySearch);
+   // AnalyzePeptideIndex() (PI_DB) classifies a candidate as target vs. decoy purely by
+   // matching its stored protein name against g_staticParams.szDecoyPrefix -- unlike every
+   // other build-time-baked identity in this header (Enzyme:, StaticMod:, VariableMod:),
+   // decoy_prefix was never persisted, so a PI_DB target-decoy .idx searched later with a
+   // mismatched (or default) decoy_prefix would silently score every real decoy as a
+   // target. Restored here for the same reason StaticMod:/VariableMod: are authoritative.
+   fprintf(fptr, "DecoyPrefix: %s\n", g_staticParams.szDecoyPrefix);
    fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
       g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
       g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
@@ -986,6 +993,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
       g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
       g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+   // Digestion-time settings baked into which peptides exist in the raw-peptide table below;
+   // restored so pepXML/mzIdentML's search_summary/SpectrumIdentificationProtocol enzyme
+   // metadata (which reads these live at search time) can't silently disagree with what this
+   // .idx was actually built with.
+   fprintf(fptr, "NumEnzymeTermini: %d\n", g_staticParams.options.iEnzymeTermini);
+   fprintf(fptr, "AllowedMissedCleavage: %d\n", g_staticParams.enzymeInformation.iAllowedMissedCleavage);
+   fprintf(fptr, "ClipNtermMethionine: %d\n", g_staticParams.options.bClipNtermMet ? 1 : 0);
    fprintf(fptr, "NumPeptides: %ld\n", (long)g_vRawPeptides.size());
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
@@ -1168,14 +1182,25 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 
 // Parses the .idx text header (magic/version, IndexSearchType:, MassRange:,
 // LengthRange:, MassType:, StaticMod:, VariableMod:, ProteinModList:,
-// RequireVariableMod:, MaxVariableModsInPeptide:, DecoySearch:, Enzyme:, Enzyme2:) from
-// fp into g_staticParams. Reads until the blank line that separates the header from the
+// RequireVariableMod:, MaxVariableModsInPeptide:, DecoySearch:, DecoyPrefix:, Enzyme:,
+// Enzyme2:, NumEnzymeTermini:, AllowedMissedCleavage:, ClipNtermMethionine:) from fp into
+// g_staticParams. Reads until the blank line that separates the header from the
 // protein-name section. Restored by docs/20260811_restore_idx_header_mods.md to be the
 // single authoritative source for static AND variable-mod settings, including (v4) the
 // per-mod/global mod *count* limits (Phase 0.5 had dropped the mod-identity lines
 // entirely, requiring search-time comet.params/RTS SetParam() calls instead; the count
 // limits were never persisted even pre-121 -- see that doc's history section) -- an .idx
 // built today is fully self-contained and needs none of that at search time.
+// DecoyPrefix:/NumEnzymeTermini:/AllowedMissedCleavage:/ClipNtermMethionine: are a later
+// addition (2026-08-21) closing a gap the original restoration left: decoy_prefix is
+// what AnalyzePeptideIndex() (PI_DB) uses to classify a candidate as target vs. decoy by
+// its stored protein name, and the other three are digestion-time settings already baked
+// into which peptides exist -- none of the four were previously self-describing, so a
+// search-time comet.params/SetParam() mismatch could silently corrupt the PI_DB target/
+// decoy split (decoy_prefix) or misreport enzyme metadata in pepXML/mzIdentML output
+// (the other three). All four are optional in the parse (no bFound.../error-if-missing
+// gate, matching DecoySearch:/Enzyme:/Enzyme2:'s existing precedent) so older .idx files
+// built before this addition still load, just without this restore.
 // iVarModTermDistance/iWhichTerm remain unsupported for FI_DB/PI_DB (never referenced by
 // CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp) and are
 // not part of the header.
@@ -1496,6 +1521,21 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       {
          sscanf(szBuf, "DecoySearch: %d", &(g_staticParams.options.iDecoySearch));
       }
+      else if (!strncmp(szBuf, "DecoyPrefix:", 12))
+      {
+         // Authoritative for PI_DB: AnalyzePeptideIndex() classifies a candidate as
+         // target vs. decoy by matching its stored protein name against this prefix, so
+         // it must match what the .idx was actually built with, not whatever comet.params/
+         // SetParam() happens to supply at search time (see the write-side comment above).
+         char szTmp[256] = "";
+         if (sscanf(szBuf + 12, " %255[^\n\r]", szTmp) == 1)
+         {
+            strncpy(g_staticParams.szDecoyPrefix, szTmp, sizeof(g_staticParams.szDecoyPrefix) - 1);
+            g_staticParams.szDecoyPrefix[sizeof(g_staticParams.szDecoyPrefix) - 1] = '\0';
+            g_staticParams.sDecoyPrefix = g_staticParams.szDecoyPrefix;
+            CometMassSpecUtils::EscapeString(g_staticParams.sDecoyPrefix);
+         }
+      }
       else if (!strncmp(szBuf, "Enzyme:", 7))
       {
          // Width-limited like the VariableMod:/RequireVariableMod: parses above --
@@ -1515,6 +1555,23 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
             &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
             g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
             g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+      }
+      else if (!strncmp(szBuf, "NumEnzymeTermini:", 17))
+      {
+         // Digestion-time only (baked into which peptides exist in the raw-peptide table);
+         // restored purely so pepXML/mzIdentML's enzyme metadata can't disagree with what
+         // this .idx was actually built with (see the write-side comment above).
+         sscanf(szBuf + 17, "%d", &(g_staticParams.options.iEnzymeTermini));
+      }
+      else if (!strncmp(szBuf, "AllowedMissedCleavage:", 22))
+      {
+         sscanf(szBuf + 22, "%d", &(g_staticParams.enzymeInformation.iAllowedMissedCleavage));
+      }
+      else if (!strncmp(szBuf, "ClipNtermMethionine:", 20))
+      {
+         int iTmp = 0;
+         if (sscanf(szBuf + 20, "%d", &iTmp) == 1)
+            g_staticParams.options.bClipNtermMet = (iTmp != 0);
       }
    }
 

@@ -1002,6 +1002,7 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <= 12
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern std::map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
+extern std::unordered_map<comet_fileoffset_t, std::string> g_pvProteinNameCache;  // populated at index load; protein name by file offset for search-time lookups
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

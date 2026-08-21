@@ -2148,6 +2148,15 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    // Determine if this peptide is a decoy based on its protein name.
    // In the .idx file, decoy peptides are stored with their protein names
    // prefixed by g_staticParams.szDecoyPrefix.
+   //
+   // g_pvProteinNames (map<file offset, IndexProteinStruct>) is populated only while
+   // *building* a .idx (CometSearch.cpp's digestion path/WritePeptideIndex()) -- it is
+   // never repopulated when an existing .idx is read back for a search, so this lookup
+   // always missed and bDecoyPep was unconditionally false for every PI_DB search of an
+   // already-built .idx. g_pvProteinNameCache (map<file offset, string>) is the cache
+   // ReadPeptideIndex() actually fills at load time for exactly this purpose (see its
+   // other search-time consumer, CometSearchManager.cpp's protein-name resolution for
+   // output writers) -- use that instead.
    bool bDecoyPep = false;
    if (g_staticParams.options.iDecoySearch)
    {
@@ -2157,10 +2166,10 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       {
          // Check the first protein in the list for the decoy prefix
          comet_fileoffset_t lProtFilePos = g_pvProteinsList[lProtIdx][0];
-         auto it = g_pvProteinNames.find(lProtFilePos);
-         if (it != g_pvProteinNames.end())
+         auto it = g_pvProteinNameCache.find(lProtFilePos);
+         if (it != g_pvProteinNameCache.end())
          {
-            if (strncmp(it->second.szProt, g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
+            if (strncmp(it->second.c_str(), g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
                bDecoyPep = true;
          }
       }
