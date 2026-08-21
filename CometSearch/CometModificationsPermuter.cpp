@@ -418,22 +418,20 @@ bool ModificationsPermuter::combine(int* modNumbers,
 
    unsigned long long combinedBitmasks = 0;  // use this combined bitmask to check total # of mods
 
+   // Any pairwise overlap between two masks shows up when the later of the two is OR'd
+   // against the accumulated union of all earlier ones, so a single running-union pass
+   // detects the same conflicts an all-pairs (j, k) comparison would, in O(n) instead of
+   // O(n^2), while also leaving combinedBitmasks holding the union of every mask (not just
+   // the last pair visited).
    for (int j = 0; j < modNumCount; ++j)
    {
-      for (int k = j+1; k < modNumCount; ++k)
+      if ((combinedBitmasks & bitmasks[j]) != 0)
       {
-         // cout << "1: "; printBits(bitmasks[j]);
-         // cout << "2: "; printBits(bitmasks[k]);
-         unsigned long long combined = bitmasks[j] & bitmasks[k];
-         combinedBitmasks = bitmasks[j] | bitmasks[k];
-         // cout << "3: "; printBits(combined);
-         if (combined != 0)
-         {
-            // If any two modification combinations have the same bit set then this is not a valid combination.
-            // This can happen when more than one modification is defined on the same amino acid.
-            return false;
-         }
+         // If any two modification combinations have the same bit set then this is not a valid combination.
+         // This can happen when more than one modification is defined on the same amino acid.
+         return false;
       }
+      combinedBitmasks |= bitmasks[j];
    }
 
    // now check if number of mods after combining is greater than total allowed in peptide
@@ -516,7 +514,18 @@ void ModificationsPermuter::generateModifications(string* sequence,
             return; 
          }
 
-         int combinationCount = CombinatoricsUtils::getCombinationCount(int(bitCount), vMaxNumVarModsPerMod[m]); // nCk + nCk-1 +...+nC1
+         long long llCombinationCount = CombinatoricsUtils::getCombinationCount(int(bitCount), vMaxNumVarModsPerMod[m]); // nCk + nCk-1 +...+nC1
+
+         // Clamp into the int this and downstream code use for FRAGINDEX_MAX_COMBINATIONS
+         // comparisons/sizing. getCombinationCount() returns int64_t precisely because
+         // C(44,10) and up overflow int, but any value this large is functionally "far more
+         // than FRAGINDEX_MAX_COMBINATIONS" to every caller here -- clamp to a sentinel just
+         // above the cap so the guard right below (and the mirroring one in
+         // getModificationCombinations()) correctly fires instead of silently truncating/
+         // wrapping a huge value into a small or negative int.
+         int combinationCount = (llCombinationCount > FRAGINDEX_MAX_COMBINATIONS)
+            ? (FRAGINDEX_MAX_COMBINATIONS + 1)
+            : (int)llCombinationCount;
 
          if (ignorePeptidesWithTooManyMods() && combinationCount > FRAGINDEX_MAX_COMBINATIONS)
          {

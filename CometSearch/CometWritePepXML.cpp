@@ -126,6 +126,17 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    else
       strcpy(szResolvedOutputBaseName, g_staticParams.inputFile.szBaseName);
 
+   // Escape values pulled from file paths / instrument metadata before writing
+   // them into XML attribute values -- e.g. a path containing '&' or '"' would
+   // otherwise produce malformed XML.
+   string strResolvedOutputBaseName = szResolvedOutputBaseName;
+   CometMassSpecUtils::EscapeString(strResolvedOutputBaseName);
+   string strResolvedInputBaseName = szResolvedInputBaseName;
+   CometMassSpecUtils::EscapeString(strResolvedInputBaseName);
+   string strManufacturer = szManufacturer;
+   CometMassSpecUtils::EscapeString(strManufacturer);
+   string strModel = szModel;
+   CometMassSpecUtils::EscapeString(strModel);
 
    // Write out pepXML header.
    fprintf(fpout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -134,11 +145,11 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    fprintf(fpout, "xmlns=\"http://regis-web.systemsbiology.net/pepXML\" ");
    fprintf(fpout, "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ");
    fprintf(fpout, "xsi:schemaLocation=\"http://sashimi.sourceforge.net/schema_revision/pepXML/pepXML_v120.xsd\" ");
-   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", szResolvedOutputBaseName);
+   fprintf(fpout, "summary_xml=\"%s.pep.xml\">\n", strResolvedOutputBaseName.c_str());
 
-   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", szResolvedInputBaseName);
-   fprintf(fpout, "msManufacturer=\"%s\" ", szManufacturer);
-   fprintf(fpout, "msModel=\"%s\" ", szModel);
+   fprintf(fpout, " <msms_run_summary base_name=\"%s\" ", strResolvedInputBaseName.c_str());
+   fprintf(fpout, "msManufacturer=\"%s\" ", strManufacturer.c_str());
+   fprintf(fpout, "msModel=\"%s\" ", strModel.c_str());
 
    // Grab file extension from file name
    if ( (pStr = strrchr(g_staticParams.inputFile.szFileName, '.')) == NULL)
@@ -156,8 +167,10 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
       while(*pStr!='.') pStr--;
    }
 
+   string strRawData = pStr;
+   CometMassSpecUtils::EscapeString(strRawData);
    fprintf(fpout, "raw_data_type=\"raw\" ");
-   fprintf(fpout, "raw_data=\"%s\">\n", pStr);
+   fprintf(fpout, "raw_data=\"%s\">\n", strRawData.c_str());
 
    if (!strncmp(g_staticParams.enzymeInformation.szSampleEnzymeBreakAA, "-", 1)
          && !strncmp(g_staticParams.enzymeInformation.szSampleEnzymeNoBreakAA, "-", 1))
@@ -174,13 +187,15 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
          g_staticParams.enzymeInformation.iSampleEnzymeOffSet?'C':'N');
    fprintf(fpout, " </sample_enzyme>\n");
 
-   fprintf(fpout, " <search_summary base_name=\"%s\"", szResolvedOutputBaseName);
+   fprintf(fpout, " <search_summary base_name=\"%s\"", strResolvedOutputBaseName.c_str());
    fprintf(fpout, " search_engine=\"Comet\" search_engine_version=\"%s%s\"", (g_staticParams.options.bMango?"Mango ":""), g_sCometVersion.c_str());
    fprintf(fpout, " precursor_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesParent?"monoisotopic":"average");
    fprintf(fpout, " fragment_mass_type=\"%s\"", g_staticParams.massUtility.bMonoMassesFragment?"monoisotopic":"average");
    fprintf(fpout, " search_id=\"1\">\n");
 
-   fprintf(fpout, "  <search_database local_path=\"%s\"", g_staticParams.databaseInfo.szDatabase);
+   string strDatabase = g_staticParams.databaseInfo.szDatabase;
+   CometMassSpecUtils::EscapeString(strDatabase);
+   fprintf(fpout, "  <search_database local_path=\"%s\"", strDatabase.c_str());
    fprintf(fpout, " type=\"%s\"/>\n", g_staticParams.options.iWhichReadingFrame==0?"AA":"NA");
 
    fprintf(fpout, "  <enzymatic_search_constraint enzyme=\"%s\" max_num_internal_cleavages=\"%d\" min_number_termini=\"%d\"/>\n",
@@ -214,7 +229,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    WriteStaticMod(fpout, searchMgr, "add_L_leucine");
    WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
    WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
-   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
+   WriteStaticMod(fpout, searchMgr, "add_O_pyrrolysine");
    WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
    WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
    WriteStaticMod(fpout, searchMgr, "add_K_lysine");
@@ -227,7 +242,7 @@ bool CometWritePepXML::WritePepXMLHeader(FILE *fpout,
    WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
    WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
    WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_U_selenocysteine");
    WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
    WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
 

@@ -460,8 +460,12 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 
       iSize = pQuery->iDecoyMatchPeptideCount;
 
-      if (iSize > g_staticParams.options.iNumPeptideOutputLines)
-         iSize = g_staticParams.options.iNumPeptideOutputLines;
+      // Must match the target branch's cap (iNumStored, not iNumPeptideOutputLines) above --
+      // iNumStored is deliberately sized larger than iNumPeptideOutputLines (see
+      // CometSearchManager.cpp), so capping decoys to the smaller value here ranked them
+      // over a systematically truncated pool relative to targets, compressing decoy sp_rank.
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
 
       CalculateSP(pQuery->_pDecoys, pQuery, iSize);
 
@@ -1047,7 +1051,14 @@ bool CometPostAnalysis::SortFnSp(const Results& a,
          return false;
       else  // same peptide, check mod state
       {
-         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         // Must be a.usiLenPeptide + 2 (this peptide's own length), matching
+         // SortFnXcorr()/SortFnMod() below -- the configured peptideLengthRange.iEnd is
+         // whatever max length the search allows, not this peptide's actual length, so
+         // ties on a peptide shorter than that max compared past its real piVarModSites
+         // content, and ties on one at exactly the max could still miss the C-term slot
+         // depending on how iEnd was set. Either way it made max-length/terminal-mod ties
+         // order nondeterministically differently from the other two sort functions.
+         for (int i = 0; i < a.usiLenPeptide + 2; ++i)
          {
             if (a.piVarModSites[i] < b.piVarModSites[i])
                return true;
@@ -1255,10 +1266,14 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
       else
          Mx = My = 0.0;
 
-      // Calculate sum of squares.
+      // Calculate sum of squares. Must select the same point subset as the means loop
+      // above (piHistogram[i] > 0, the raw cumulative count) -- pdCumulative[i] > 0 tests
+      // the *log10* of that count, which is false whenever the cumulative count is exactly
+      // 1 (log10(1) == 0) even though that point has real data and was included in Mx/My,
+      // silently skewing the slope on sparse histograms where such points are common.
       for (i = iStartCorr; i <= iNextCorr; ++i)
       {
-         if (pdCumulative[i] > 0)
+         if (piHistogram[i] > 0)
          {
             double dX;
             double dY;

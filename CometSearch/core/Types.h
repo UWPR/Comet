@@ -877,7 +877,7 @@ struct Query
    ~Query()
    {
       int i;
-      if (!bSparseFromPool)
+      if (!bSparseFromPool && ppfSparseSpScoreData != NULL)
       {
          for (i = 0; i < iSpScoreData; ++i)
          {
@@ -894,7 +894,7 @@ struct Query
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         if (!bSparseFromPool)
+         if (!bSparseFromPool && ppfSparseFastXcorrData != NULL && ppfSparseFastXcorrDataNL != NULL)
          {
             for (i = 0; i < iFastXcorrDataSize; ++i)
             {
@@ -910,7 +910,7 @@ struct Query
       }
       else
       {
-         if (!bSparseFromPool)
+         if (!bSparseFromPool && ppfSparseFastXcorrData != NULL)
          {
             for (i = 0; i < iFastXcorrDataSize; ++i)
             {

@@ -354,8 +354,11 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                   iRet = fscanf(fpdb, szFormat, szProteinName);
                szProteinName[WIDTH_REFERENCE - 1] = '\0';
 
-               // remove all terminating chars
-               while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))
+               // remove all terminating chars. strlen(...) > 0 first: an empty szProteinName
+               // (empty FASTA description, or fscanf failing to populate it at all) otherwise
+               // underflowed strlen()-1 to a huge size_t, reading (and writing) index [-1].
+               while (strlen(szProteinName) > 0
+                     && (szProteinName[strlen(szProteinName) - 1] == '\n' || szProteinName[strlen(szProteinName) - 1] == '\r'))
                   szProteinName[strlen(szProteinName) - 1] = '\0';
 
                vProteinTargets.push_back(szProteinName);
@@ -389,8 +392,11 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                   iRet = fscanf(fpdb, szFormat, szProteinName);
                szProteinName[WIDTH_REFERENCE - 1] = '\0';
 
-               // remove all terminating chars
-               while ((szProteinName[strlen(szProteinName) - 1] == '\n') || (szProteinName[strlen(szProteinName) - 1] == '\r'))
+               // remove all terminating chars. strlen(...) > 0 first: an empty szProteinName
+               // (empty FASTA description, or fscanf failing to populate it at all) otherwise
+               // underflowed strlen()-1 to a huge size_t, reading (and writing) index [-1].
+               while (strlen(szProteinName) > 0
+                     && (szProteinName[strlen(szProteinName) - 1] == '\n' || szProteinName[strlen(szProteinName) - 1] == '\r'))
                   szProteinName[strlen(szProteinName) - 1] = '\0';
 
                if (strlen(szProteinName) + iLenDecoyPrefix >= WIDTH_REFERENCE)

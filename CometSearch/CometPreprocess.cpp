@@ -1105,6 +1105,15 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    // scale the RT to query gradient length
    pTmp.fRTime = (float)(pTmp.fRTime * dMaxQueryRT / dMaxSpecLibRT);
 
+   if (pTmp.iNumPeaks <= 0)
+   {
+      // Empty MS1 spectrum -- nothing to bin/normalize; skip it rather than
+      // underflowing the "iNumPeaks - 1" index into mstSpectrum below.
+      delete pPreprocessThreadDataMS1;
+      pPreprocessThreadDataMS1 = NULL;
+      return;
+   }
+
    double dLargestMass = pPreprocessThreadDataMS1->mstSpectrum.at(pTmp.iNumPeaks - 1).mz;
    if (dLargestMass > g_staticParams.options.dMS1MaxMass)
       dLargestMass = g_staticParams.options.dMS1MaxMass;
@@ -1141,7 +1150,11 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    dMagnitude = sqrt(dMagnitude);
    for (int i = 0; i < iArraySizeMS1; ++i)
    {
-      pdTmpFastXcorrData[i] = pdTmpRawData[i] / dMagnitude;
+      // dMagnitude is 0 when every binned intensity is 0 (e.g. all peaks fell
+      // outside [dMS1MinMass, dMS1MaxMass]) -- leave the bin at 0 rather than
+      // dividing 0/0 into NaN.
+      if (dMagnitude > 0.0)
+         pdTmpFastXcorrData[i] = pdTmpRawData[i] / dMagnitude;
 
       if (pdTmpFastXcorrData[i] > dMaxInten)
          dMaxInten = pdTmpFastXcorrData[i];
@@ -1193,8 +1206,11 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   // initialize these temporary arrays before re-using
-   size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
+   // initialize these temporary arrays before re-using. Must cover the same
+   // iArraySizeGlobal + iXcorrProcessingOffset pad AllocateMemory() now allocates these pool
+   // slots with, not just iArraySizeGlobal -- otherwise the pad region keeps whatever a
+   // previous spectrum on this pool slot left there instead of being zeroed like the rest.
+   size_t iTmp = (size_t)((g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset) * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);
@@ -1583,6 +1599,18 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                                                      double *pdTmpSpectrum,
                                                      bool bUseThreadLocalPool)
 {
+   // Unlike the batch/fused charge-guessing loops (which only ever generate charges already
+   // bounded by iMaxPrecursorCharge before creating a Query), this RTS single-spectrum entry
+   // takes iPrecursorCharge straight from the caller (e.g. a C# RTS host) with no bounds check
+   // of its own. usiChargeState drives loop bounds and array indices sized up to
+   // MAX_PRECURSOR_CHARGE (uiBinnedPrecursorNL et al.) further downstream, so an unclamped
+   // charge >= that limit -- or <= 0, which would wrap huge when stored into the unsigned
+   // usiChargeState -- would index past those arrays.
+   if (iPrecursorCharge < 1)
+      iPrecursorCharge = 1;
+   else if (iPrecursorCharge > MAX_PRECURSOR_CHARGE)
+      iPrecursorCharge = MAX_PRECURSOR_CHARGE;
+
    double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
 
    Query *pScoring = new Query();
@@ -1642,6 +1670,15 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
    pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
+
+   // This RTS single-spectrum path takes dMZ/iPrecursorCharge straight from the caller with
+   // no mass-range check of its own (see CometSearchManager.cpp's DoSingleSpectrumSearch...()
+   // entry gate, which checks the upper bound before ever reaching here but isn't a substitute
+   // for clamping the array this function itself allocates against) -- clamp defensively so an
+   // out-of-configured-range precursor can't drive downstream pool-array writes/reads past
+   // iArraySizeGlobal, the size those pools are actually allocated to.
+   if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
+      pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
 
    if (!AdjustMassTol(pScoring))
    {
@@ -2052,11 +2089,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       }
       catch (std::bad_alloc&)
       {
-         delete[] pdTmpFastXcorrData;
-         delete[] pdTmpCorrelationData;
-         delete[] pfFastXcorrData;
-         delete[] pfFastXcorrDataNL;
-         delete[] pfSpScoreData;
+         if (!bUseThreadLocalPool)
+         {
+            delete[] pdTmpFastXcorrData;
+            delete[] pdTmpCorrelationData;
+            delete[] pfFastXcorrData;
+            delete[] pfFastXcorrDataNL;
+            delete[] pfSpScoreData;
+         }
          delete pScoring;
          return nullptr;
       }
@@ -2605,6 +2645,16 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
             pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
 
+            // peptide_mass_low = 0.0 makes the mass-range check above an unconditional pass
+            // (isEqual(dPeptideMassLow, 0.0) short-circuits the "<= dPeptideMassHigh" test
+            // entirely), so a precursor mass far above dPeptideMassHigh would otherwise
+            // compute an iArraySize larger than the iArraySizeGlobal-sized pool arrays
+            // LoadIons() and friends write into. Clamp directly rather than trying to patch
+            // the isEqual() bypass, since it's the array size -- not just this one gate -- that
+            // has to stay in bounds.
+            if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
+               pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
+
             Threading::LockMutex(_maxChargeMutex);
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
             if (pScoring->_spectrumInfoInternal.usiMaxFragCharge > g_massRange.usiMaxFragmentCharge)
@@ -3034,18 +3084,27 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       pbMemoryPool[i] = false;
    }
 
+   // Preprocess()'s sliding-window XCorr loop reads pdTmpRawData/pdTmpFastXcorrData/
+   // pdTmpCorrelationData up to iArraySize + iXcorrProcessingOffset - 1 (default offset 75),
+   // but iArraySize can equal iArraySizeGlobal for a precursor at peptide_mass_high -- so
+   // these three pool arrays need the same "+ iXcorrProcessingOffset" pad the RTS thread-local
+   // pool already uses for the identical reason (CometPreprocess.cpp's RtsScratch::
+   // EnsureInitialized(), iXcorrPad), or any such precursor reads past the end of the heap
+   // allocation.
+   const int iArraySizePadded = g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset;
+
    //MH: Allocate arrays
    ppdTmpRawDataArr = new double* [maxNumThreads]();
    for (i = 0; i < maxNumThreads; ++i)
    {
       try
       {
-         ppdTmpRawDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
+         ppdTmpRawDataArr[i] = new double[iArraySizePadded]();
       }
       catch (std::bad_alloc& ba)
       {
          string strErrorMsg = " Error - new(ppdTmpRawDataArr["
-            + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + std::to_string(iArraySizePadded) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -3060,12 +3119,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         ppdTmpFastXcorrDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
+         ppdTmpFastXcorrDataArr[i] = new double[iArraySizePadded]();
       }
       catch (std::bad_alloc& ba)
       {
          string strErrorMsg = " Error - new(ppdTmpFastXcorrDataArr["
-            + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + std::to_string(iArraySizePadded) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -3080,12 +3139,12 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    {
       try
       {
-         ppdTmpCorrelationDataArr[i] = new double[g_staticParams.iArraySizeGlobal]();
+         ppdTmpCorrelationDataArr[i] = new double[iArraySizePadded]();
       }
       catch (std::bad_alloc& ba)
       {
          string strErrorMsg = " Error - new(ppdTmpCorrelationDataArr["
-            + std::to_string(g_staticParams.iArraySizeGlobal) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+            + std::to_string(iArraySizePadded) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
             + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
             + "parameters to address mitigate memory use.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -3277,6 +3336,9 @@ QueryMS1* CometPreprocess::PreprocessMS1SingleSpectrumThreadLocal(double* pdMass
                                                                   double* pdInten,
                                                                   int iNumPeaks)
 {
+   if (iNumPeaks <= 0)
+      return nullptr;
+
    // Match the original PreprocessMS1SingleSpectrum: use the largest mass
    // actually present in the spectrum (capped at dMS1MaxMass) to size the array,
    // exactly as PreprocessThreadProcMS1 does for library entries.
@@ -3507,6 +3569,11 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
             double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
             pScoring->_spectrumInfoInternal.iArraySize =
                (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
+
+            // Same peptide_mass_low = 0.0 / isEqual() bypass and same clamp as the batch path
+            // above.
+            if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
+               pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
 
             if (!AdjustMassTol(pScoring))
             {

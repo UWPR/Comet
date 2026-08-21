@@ -13,6 +13,7 @@
 // limitations under the License.
 
 
+#include <cstdarg>
 #include "Common.h"
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
@@ -394,6 +395,24 @@ CometSearchManager::~CometSearchManager()
    _tp = NULL;
 }
 
+// Appends to g_staticParams.szMod[512], bounded by its remaining space. The chain of
+// sprintf(szMod + strlen(szMod), ...) calls this replaces below had no such bound: with a
+// fully-populated 15-variable-mod (some with multi-character szVarModChar) + several
+// static-mod + long-enzyme-name config, the cumulative appended length can exceed 512 bytes,
+// overflowing this fixed global buffer. Truncates rather than errors, matching szMod's
+// existing role as a display/output string (sqt header), not search-correctness state.
+static void AppendSzMod(const char* fmt, ...)
+{
+   size_t len = strlen(g_staticParams.szMod);
+   if (len >= sizeof(g_staticParams.szMod) - 1)
+      return;
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(g_staticParams.szMod + len, sizeof(g_staticParams.szMod) - len, fmt, args);
+   va_end(args);
+}
+
 bool CometSearchManager::InitializeStaticParams()
 {
    int iIntData;
@@ -418,7 +437,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("spectral_library_name", strData))
       g_staticParams.speclibInfo.strSpecLibFile = strData;
 
-   if (GetParamValue("spectraL_library_ms_level", iIntData))
+   if (GetParamValue("spectral_library_ms_level", iIntData))
    {
       // FIX add check that input value is some sane range
       g_staticParams.options.iSpecLibMSLevel = iIntData;
@@ -809,7 +828,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_J_user_amino_acid", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'J'] = dDoubleData;
 
-   if (GetParamValue("add_U_user_amino_acid", dDoubleData))
+   if (GetParamValue("add_U_selenocysteine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'U'] = dDoubleData;
 
    if (GetParamValue("add_X_user_amino_acid", dDoubleData))
@@ -1368,7 +1387,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ",
+         AppendSzMod("(%s%c %+0.6f) ",
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
                g_staticParams.variableModParameters.cModCode[i],
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
@@ -1415,25 +1434,25 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ",
+      AppendSzMod("+ct=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ",
+      AppendSzMod("+nt=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ",
+      AppendSzMod("+ctprot=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusProtein);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ",
+      AppendSzMod("+ntprot=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
@@ -1441,7 +1460,7 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0))
       {
-         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "%c=%0.6f ", i,
+         AppendSzMod("%c=%0.6f ", i,
                g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
          g_staticParams.massUtility.pdAAMassFragment[i] += g_staticParams.staticModifications.pdStaticMods[i];
       }
@@ -1461,14 +1480,14 @@ bool CometSearchManager::InitializeStaticParams()
       if (g_staticParams.options.iEnzymeTermini != 2)
          sprintf(szTmp, ":%d", g_staticParams.options.iEnzymeTermini);
 
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s (%d%s)",
+      AppendSzMod("Enzyme:%s (%d%s)",
             g_staticParams.enzymeInformation.szSearchEnzymeName,
             g_staticParams.enzymeInformation.iAllowedMissedCleavage,
             szTmp);
    }
    else
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s",
+      AppendSzMod("Enzyme:%s",
             g_staticParams.enzymeInformation.szSearchEnzymeName);
    }
 
@@ -1559,13 +1578,15 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      g_bIndexPrecursors = (bool*)malloc(BIN(g_staticParams.options.dPeptideMassHigh) * sizeof(bool));
+      // +1: ReadPrecursors() clamps its fill range to BIN(dPeptideMassHigh) inclusive,
+      // so the array needs a valid slot at that top index, not just 0..BIN(...)-1.
+      g_bIndexPrecursors = (bool*)malloc((BIN(g_staticParams.options.dPeptideMassHigh) + 1) * sizeof(bool));
       if (g_bIndexPrecursors == NULL)
       {
-         printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh));
+         printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh) + 1);
          return false;
       }
-      for (int x = 0; x < BIN(g_staticParams.options.dPeptideMassHigh); ++x)
+      for (int x = 0; x <= BIN(g_staticParams.options.dPeptideMassHigh); ++x)
       {
          if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
             g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
@@ -1578,7 +1599,14 @@ bool CometSearchManager::InitializeStaticParams()
    {
       // set this such that can access all SpecLib entries at specific precursor mass bin
       // by accessing g_vulSpecLibPrecursorIndex.at(massbin)
-      g_vulSpecLibPrecursorIndex.resize(BINPREC(g_staticParams.options.dPeptideMassHigh));
+      // +1: SetSpecLibPrecursorIndex() clamps its fill range to BINPREC(dPeptideMassHigh)
+      // inclusive (iMaxBin), so index iMaxBin itself must be valid -- without the +1 this
+      // sized only 0..iMaxBin-1, and .at(iMaxBin) threw std::out_of_range during LoadSpecLib()
+      // for any library entry whose tolerance window reached the configured mass ceiling
+      // (this runs for every entry regardless of MS level, so it could throw even in an
+      // MS1-only run). Matches the +1 convention used elsewhere, e.g.
+      // uiMaxFragmentArrayIndex = BIN(dFragIndexMaxMass) + 1 above.
+      g_vulSpecLibPrecursorIndex.resize(BINPREC(g_staticParams.options.dPeptideMassHigh) + 1);
    }
 
    if (g_staticParams.tolerances.dInputToleranceMinus > g_staticParams.tolerances.dInputTolerancePlus)

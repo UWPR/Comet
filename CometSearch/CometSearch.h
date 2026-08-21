@@ -207,7 +207,11 @@ private:
                            int *piVarModSites,
                            struct sDBEntry *dbe,
                            unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2],
-                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                           // +1 like uiBinnedIonMasses above: charge states are 1-indexed and
+                           // max_precursor_charge is explicitly allowed up to MAX_PRECURSOR_CHARGE
+                           // (CometSearchManager.cpp's clamp), so index MAX_PRECURSOR_CHARGE itself
+                           // must be valid, not one past the end.
+                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE+1],
                            int iNumMatchedFragmentIons);
 /*
    static double GetFragmentIonMass(int iWhichIonSeries,
@@ -394,8 +398,12 @@ private:
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];   // +2 for two fragment NL series
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
-   unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   // +1: charge states are 1-indexed and max_precursor_charge is explicitly allowed up to
+   // MAX_PRECURSOR_CHARGE (CometSearchManager.cpp's clamp), so index MAX_PRECURSOR_CHARGE
+   // itself must be a valid slot, not one past the end -- matches _uiBinnedIonMasses's own
+   // MAX_FRAGMENT_CHARGE + 1 convention above.
+   unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
+   unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
 
    static int  AcquirePoolSlot();       // Spin-wait for a free slot; returns index or -1 on timeout
 

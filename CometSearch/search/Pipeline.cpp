@@ -284,14 +284,16 @@ bool Pipeline::run(SearchSession&                     session,
          }
       }
 
-      _strategy->closeFiles(fpfasta, fpidx);
-
-      // Finalize and close writers.
+      // Finalize and close writers before closing the db/idx file handles --
+      // MzIdentMlWriter::close() performs a deferred merge that reads back
+      // through an aliased FILE* and must run while that handle is still open.
       {
          bool bEmpty = (iTotalSpectraSearched == 0);
          for (auto& pw : _writers)
             pw->close(bSucceeded, bEmpty);
       }
+
+      _strategy->closeFiles(fpfasta, fpidx);
 
       iTotalAllFiles += iTotalSpectraSearched;
       g_staticParams.inputFile.szBaseName[0] = '\0';

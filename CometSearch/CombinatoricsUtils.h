@@ -23,8 +23,11 @@ public:
    ~CombinatoricsUtils();
 
    static int** makeCombinations(int n, int r, int count);
-   static int nChooseK(int n, int k);
-   static int getCombinationCount(int n, int k);
+   // int64_t, not int: C(44,10) alone is ~2.48 billion, already past INT_MAX, and
+   // initBinomialCoefficients()'s default (n=50, k=10) builds rows well past that -- see the
+   // .cpp for the full explanation.
+   static long long nChooseK(int n, int k);
+   static long long getCombinationCount(int n, int k);
    static void initBinomialCoefficients(const int n, const int k);
 };
 

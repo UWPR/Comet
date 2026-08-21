@@ -44,11 +44,21 @@ CometSearch::CometSearch()
 
    _usiSizepiVarModSites = (unsigned short)(sizeof(int)*MAX_PEPTIDE_LEN_P2);
    _usiSizepdVarModSites = (unsigned short)(sizeof(double)*MAX_PEPTIDE_LEN_P2);
+
+   // ProteinInfo is a plain struct with no constructor of its own; pszProteinSeq/
+   // iAllocatedProtSeqLength must be zeroed here so TranslateNA2AA()'s
+   // realloc(_proteinInfo.pszProteinSeq, ...) starts from a well-defined nullptr (equivalent
+   // to malloc) instead of whatever garbage this CometSearch instance's own freshly-`new`'d
+   // (and, for the one-per-protein nucleotide search path, potentially recycled-heap-block)
+   // memory happened to contain.
+   _proteinInfo.pszProteinSeq = nullptr;
+   _proteinInfo.iAllocatedProtSeqLength = 0;
 }
 
 
 CometSearch::~CometSearch()
 {
+   free(_proteinInfo.pszProteinSeq);
 }
 
 
@@ -58,7 +68,10 @@ bool CometSearch::AllocateMemory(int maxNumThreads)
       return true;
 
    size_t nBinnedIonMassesElems = (size_t)(MAX_FRAGMENT_CHARGE + 1) * NUM_ION_SERIES * MAX_PEPTIDE_LEN * (VMODS + 2);
-   size_t nBinnedPrecursorNLElems = (size_t)MAX_PRECURSOR_NL_SIZE * MAX_PRECURSOR_CHARGE;
+   // +1 like nBinnedIonMassesElems above: charge states are 1-indexed and max_precursor_charge
+   // is explicitly allowed up to MAX_PRECURSOR_CHARGE, so index MAX_PRECURSOR_CHARGE itself
+   // must be valid.
+   size_t nBinnedPrecursorNLElems = (size_t)MAX_PRECURSOR_NL_SIZE * (MAX_PRECURSOR_CHARGE + 1);
 
    if (!s_pool.allocate(maxNumThreads, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems))
       return false;
@@ -487,7 +500,16 @@ bool CometSearch::RunSearch(int iPercentStart,
                      szPeffLine[0]='\0';
                      if (fgets(szPeffLine, iLenSzLine, fp) == NULL)
                      {
-                        // throw error
+                        // fgets failing here (EOF/read error right after the '\' that
+                        // triggered this branch) previously fell through with szPeffLine
+                        // still the empty string set above -- the while condition below then
+                        // computed strlen(szPeffLine)-1 on an empty string, underflowing to a
+                        // huge size_t and reading szPeffLine at that wild offset.
+                        string strErrorMsg = " Error - unexpected EOF/read failure reading PEFF description line.\n";
+                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                        logerr(strErrorMsg);
+                        std::fclose(fp);
+                        return false;
                      }
                      while (!feof(fp) && szPeffLine[strlen(szPeffLine)-1]!='\n')
                      {
@@ -522,7 +544,10 @@ bool CometSearch::RunSearch(int iPercentStart,
                         int iTmp=0;  // count of number of open parenthesis
                         while (1)
                         {
-                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                           // '\0' must stop the scan too, not just ' '/'\r'/'\n' -- without
+                           // it, a line missing a proper closing delimiter ran pStr2 straight
+                           // past the string's null terminator into adjacent heap memory.
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n' || *pStr2=='\0')
                               break;
                            else if (*pStr2 == '(')
                               iTmp++;
@@ -534,7 +559,11 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                         iLen = pStr2 - pStr;
 
-                        if ( iLen > iLenAllocMods)
+                        // >=, not >: the buffer must hold iLen characters plus the '\0'
+                        // written just below, so iLen == iLenAllocMods (buffer exactly full)
+                        // still needs a realloc -- otherwise that '\0' write is one byte past
+                        // the allocation.
+                        if ( iLen >= iLenAllocMods)
                         {
                            char *pTmp;
 
@@ -655,7 +684,10 @@ bool CometSearch::RunSearch(int iPercentStart,
                         int iTmp=0;  // count of number of open parenthesis
                         while (1)
                         {
-                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n')
+                           // '\0' must stop the scan too, not just ' '/'\r'/'\n' -- without
+                           // it, a line missing a proper closing delimiter ran pStr2 straight
+                           // past the string's null terminator into adjacent heap memory.
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2=='\n' || *pStr2=='\0')
                               break;
                            else if (*pStr2 == '(')
                               iTmp++;
@@ -667,7 +699,11 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                         iLen = pStr2 - pStr;
 
-                        if ( iLen > iLenAllocMods)
+                        // >=, not >: the buffer must hold iLen characters plus the '\0'
+                        // written just below, so iLen == iLenAllocMods (buffer exactly full)
+                        // still needs a realloc -- otherwise that '\0' write is one byte past
+                        // the allocation.
+                        if ( iLen >= iLenAllocMods)
                         {
                            char *pTmp;
                            iLenAllocMods = iLen + 1000;
@@ -766,7 +802,10 @@ bool CometSearch::RunSearch(int iPercentStart,
                         int iTmp = 0;  // count of number of open parenthesis
                         while (1)
                         {
-                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n')
+                           // '\0' must stop the scan too, not just ' '/'\r'/'\n' -- without
+                           // it, a line missing a proper closing delimiter ran pStr2 straight
+                           // past the string's null terminator into adjacent heap memory.
+                           if ((iTmp == 0 && *pStr2 == ' ') || *pStr2 == '\r' || *pStr2 == '\n' || *pStr2 == '\0')
                               break;
                            else if (*pStr2 == '(')
                               iTmp++;
@@ -777,8 +816,12 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
 
                         iLen = pStr2 - pStr;
- 
-                        if (iLen > iLenAllocMods)
+
+                        // >=, not >: the buffer must hold iLen characters plus the '\0'
+                        // written just below, so iLen == iLenAllocMods (buffer exactly full)
+                        // still needs a realloc -- otherwise that '\0' write is one byte past
+                        // the allocation.
+                        if (iLen >= iLenAllocMods)
                         {
                            char* pTmp;
                            iLenAllocMods = iLen + 1000;
@@ -1097,9 +1140,12 @@ bool CometSearch::RunMS1Search(QueryMS1* pQueryMS1,
       unsigned int uiLibArraySize = libEntry.uiArraySizeMS1;
       unsigned int uiMinSize = (uiQueryArraySize < uiLibArraySize) ? uiQueryArraySize : uiLibArraySize;
 
-      // Compute dot product between query unit vector and library unit vector
+      // Compute dot product between query unit vector and library unit vector. Must start at
+      // the same low-mass bin the batch path uses (SearchMS1Library() above,
+      // BINPREC(dMS1MinMass)), not bin 0 -- otherwise RTS and batch score the same
+      // query/library pair differently by including/excluding the below-dMS1MinMass bins.
       double dDotProduct = 0.0;
-      for (unsigned int j = 0; j < uiMinSize; ++j)
+      for (unsigned int j = BINPREC(g_staticParams.options.dMS1MinMass); j < uiMinSize; ++j)
          dDotProduct += (double)pQueryMS1->pfFastXcorrData[j] * (double)libEntry.pfUnitVector[j];
 
       if ((float)dDotProduct > fBestDotProduct)
@@ -1453,7 +1499,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    unsigned int uiFragmentMass;
 
    unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
 
    mPeptides.clear();
 
@@ -1665,7 +1711,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
             if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
             {
-               if (i > iStartPos)
+               if (i > 0)
                {
                   for (int x = 0; x < FRAGINDEX_VMODS; ++x)
                   {
@@ -1803,6 +1849,26 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                         }
                      }
                   }
+               }
+            }
+         }
+
+         // Precursor NL peaks: unlike SearchForPeptides()/CalcVarModIons(), this function
+         // processes one query/candidate at a time (no cross-query caching), so it's safe to
+         // bound directly by this query's own charge, matching AnalyzePeptideIndex()'s PI_DB
+         // equivalent. uiBinnedPrecursorNL was previously only memset to zero above and never
+         // actually filled, so precursor_NL_ions silently contributed nothing to FI_DB scoring.
+         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+         {
+            for (ctCharge = pQuery->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+            {
+               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+               int iVal = BIN(dNLMass);
+
+               if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
+               {
+                  uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
+                  pbDuplFragment[iVal] = true;
                }
             }
          }
@@ -2021,7 +2087,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    // Pool-backed (sized once per thread in AllocateMemory()) instead of stack-local,
    // so this ~142 KB array isn't re-declared on the stack for every candidate.
    auto& uiBinnedIonMasses = *reinterpret_cast<unsigned int(*)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(s_pool.binnedIonMasses(iSlot));
-   auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]>(s_pool.binnedPrecursorNL(iSlot));
+   auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNL(iSlot));
 
    char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
 
@@ -2341,7 +2407,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       double pdAAforwardDecoy[MAX_PEPTIDE_LEN];
       double pdAAreverseDecoy[MAX_PEPTIDE_LEN];
       auto& uiBinnedIonMassesDecoy = *reinterpret_cast<unsigned int(*)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(s_pool.binnedIonMassesDecoy(iSlot));
-      auto& uiBinnedPrecursorNLDecoy = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE]>(s_pool.binnedPrecursorNLDecoy(iSlot));
+      auto& uiBinnedPrecursorNLDecoy = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNLDecoy(iSlot));
       int iFoundVariableModDecoy = 0;
 
       // Reverse the peptide sequence, keeping the terminal residue fixed
@@ -2647,7 +2713,14 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
    int ctLen;
    int ctCharge;
    double dCalcPepMass = 0.0;
-   int piVarModSites[4]; // This is unused variable mod placeholder to pass into XcorrScore.
+   // Unmodified-peptide placeholder passed into XcorrScore()/StorePeptide(). Must be sized
+   // (and zero-initialized) like every other real piVarModSites array here (MAX_PEPTIDE_LEN_P2),
+   // not a fixed 4 elements: StorePeptide()'s tie-break loop reads indices 0..iLenPeptide+1
+   // whenever bVarModSearch is on (i.e. the search has variable mods configured at all, not
+   // whether *this* peptide has one) and this candidate ties an existing stored one -- for any
+   // peptide longer than 2 residues that was an out-of-bounds stack read of uninitialized
+   // memory, deciding the tie on garbage instead of "neither side has a mod here."
+   int piVarModSites[MAX_PEPTIDE_LEN_P2] = {0};
    int i;
 
    int iFoundVariableMod = 0;
@@ -3136,9 +3209,21 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                            }
                         }
 
+                        // Zero/fill up through the global max precursor charge (not just this
+                        // first-matching query's own charge): this ladder is built once per
+                        // peptide and reused for every subsequently matching query, which can
+                        // have a higher charge than the one that happened to trigger this block --
+                        // bounding the loop to iWhichQuery's charge left higher-charge slots
+                        // holding stale bins from whatever peptide last touched them.
+                        // No clamp needed against MAX_PRECURSOR_CHARGE itself here (C8): the
+                        // _uiBinnedPrecursorNL/Decoy arrays are now sized MAX_PRECURSOR_CHARGE + 1,
+                        // so index MAX_PRECURSOR_CHARGE -- the max charge max_precursor_charge is
+                        // explicitly allowed to reach -- is a valid slot.
+                        int iPrecursorNLMaxCharge = g_staticParams.options.iMaxPrecursorCharge;
+
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3178,7 +3263,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry dbe,
                         // Precursor NL peaks added here
                         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                         {
-                           for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                           for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
                            {
                               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                               int iVal = BIN(dNLMass);
@@ -3836,7 +3921,12 @@ bool CometSearch::CheckEnzymeStartTermini(const char* szProteinSeq,
    if (g_staticParams.options.bClipNtermAA)
       iStartPos -= 1;
 
-   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+   // Must be || like CheckEnzymeTermini() above, not && -- a single-enzyme search leaves
+   // enzyme2 at its "Cut_everywhere" default (bNoEnzyme2Selected == true), so && made this
+   // whole check a no-op (falling through to the unconditional "return true" below) whenever
+   // only one real enzyme was configured, silently disabling PEFF variant flank-cleavage
+   // validation for the common single-enzyme case.
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bBeginCleavage = 0;
 
@@ -3863,7 +3953,9 @@ bool CometSearch::CheckEnzymeStartTermini(const char* szProteinSeq,
 bool CometSearch::CheckEnzymeEndTermini(const char* szProteinSeq,
                                         int iEndPos) const
 {
-   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected && !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
+   // Same fix and rationale as CheckEnzymeStartTermini() above: must be || to match
+   // CheckEnzymeTermini(), not &&.
+   if (!g_staticParams.enzymeInformation.bNoEnzymeSelected || !g_staticParams.enzymeInformation.bNoEnzyme2Selected)
    {
       bool bEndCleavage = 0;
 
@@ -4350,7 +4442,7 @@ void CometSearch::XcorrScore(char* szProteinSeq,
 
    // Pointer to either regular or decoy uiBinnedIonMasses[][][][][].
    unsigned int (*p_uiBinnedIonMasses)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int (*p_uiBinnedPrecursorNL)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   unsigned int (*p_uiBinnedPrecursorNL)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
 
    // Point to right set of arrays depending on target or decoy search.
    if (bDecoyPep)
@@ -5164,8 +5256,22 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                            break;
                         }
                      }
-                     else
-                        pQuery->_pDecoys[i].pdVarModSites[i] = 0.0;
+                     else // iVal == 0 -- stored decoy has no PEFF mod at this position
+                     {
+                        // Was: `pQuery->_pDecoys[i].pdVarModSites[i] = 0.0;` -- wrote into
+                        // pdVarModSites using the stored-entry index i (loop variable of the
+                        // enclosing for) as if it were a position index, instead of checking
+                        // anything; a check function shouldn't write at all, and with
+                        // num_results > 53 that write ran past pdVarModSites's fixed
+                        // double[53]. The missing comparison here also let a candidate with a
+                        // real mod at this site (piVarModSites[ii] != 0) merge with a stored
+                        // decoy that has none.
+                        if (piVarModSites[ii] != 0)
+                        {
+                           bIsDuplicate = 0;
+                           break;
+                        }
+                     }
                   }
                }
                else
@@ -5257,7 +5363,10 @@ int CometSearch::CheckDuplicate(int iWhichQuery,
                if (g_staticParams.peffInfo.iPeffSearch)
                {
                   int iVal;
-                  for (int ii = 0; ii <= pQuery->_pResults[i].usiLenPeptide; ++ii)
+                  // +2, not <=usiLenPeptide: the latter omits the C-term mod slot at index
+                  // len+1 (matches the decoy branch's loop bound above), so two IDs differing
+                  // only in C-term mod state were incorrectly merged as duplicates.
+                  for (int ii = 0; ii < pQuery->_pResults[i].usiLenPeptide + 2; ++ii)
                   {
                      iVal = pQuery->_pResults[i].piVarModSites[ii];
 
@@ -5780,7 +5889,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
                         for (i8 = 0; i8 <= numVarModCounts[VMOD_8_INDEX]; ++i8)
                         {
-                           int iSum8 = i9 + i8;
+                           int iSum8 = iSum9 + i8;
 
                            if (iSum8 > g_staticParams.variableModParameters.iMaxVarModPerPeptide)
                               break;
@@ -6949,8 +7058,12 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
                      iWhichQuery = BinarySearchMass(0, (int)_pQueries->size(), dTmpCalcPepMass);
 
                      // Seek back to first peptide entry that matches mass tolerance in case binary
-                     // search doesn't hit the first entry.
-                     while (iWhichQuery > 0 && _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+                     // search doesn't hit the first entry. Must compare against dTmpCalcPepMass
+                     // (the PEFF-adjusted mass the binary search above was keyed on), not the
+                     // pre-PEFF dCalcPepMass -- negative-mass PEFF mods (e.g. amidation, -0.98)
+                     // otherwise stop the walk-back early and miss queries between the true
+                     // first match and this point. Matches WithinMassTolerancePeff()'s pattern.
+                     while (iWhichQuery > 0 && _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dTmpCalcPepMass)
                         iWhichQuery--;
 
                      // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
@@ -7292,9 +7405,21 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
             }
 
             // initialize precursorNL
+            // Zero/fill up through the global max precursor charge (not just this
+            // first-matching query's own charge): this ladder is built once per peptide and
+            // reused for every subsequently matching query, which can have a higher charge
+            // than the one that happened to trigger this block -- bounding the loop to
+            // iWhichQuery's charge left higher-charge slots holding stale bins from whatever
+            // peptide last touched them.
+            // No clamp needed against MAX_PRECURSOR_CHARGE itself here (C8): the
+            // _uiBinnedPrecursorNL array is now sized MAX_PRECURSOR_CHARGE + 1, so index
+            // MAX_PRECURSOR_CHARGE -- the max charge max_precursor_charge is explicitly
+            // allowed to reach -- is a valid slot.
+            int iPrecursorNLMaxCharge = g_staticParams.options.iMaxPrecursorCharge;
+
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                   int iVal = BIN(dNLMass);
@@ -7377,7 +7502,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
             // Precursor NL peaks added here
             for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
             {
-               for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+               for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
                {
                   double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
 
@@ -7531,8 +7656,6 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
                         if (iPosForward < iPositionNLB[iMod])
                            iPositionNLB[iMod] = iPosForward; // set smallest/first position with mod
-
-                        break;
                      }
                   }
                   else if (piVarModSitesDecoy[iPosForward] < 0)
@@ -7628,9 +7751,17 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
                }
 
                // initialize precursorNL for decoy
+               // Same fix as the target ladder above: this decoy ladder is also cached
+               // (bFirstTimeThroughLoopForPeptide) and reused for every subsequently matching
+               // query, so it must zero/fill up through the global max precursor charge, not
+               // just this first-matching query's own charge.
+               // No clamp needed against MAX_PRECURSOR_CHARGE itself here (C8): the
+               // _uiBinnedPrecursorNLDecoy array is now sized MAX_PRECURSOR_CHARGE + 1.
+               int iPrecursorNLMaxChargeDecoy = g_staticParams.options.iMaxPrecursorCharge;
+
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = iPrecursorNLMaxChargeDecoy; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -7702,7 +7833,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
                // Precursor NL peaks added here
                for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
                {
-                  for (ctCharge = _pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+                  for (ctCharge = iPrecursorNLMaxChargeDecoy; ctCharge >= 1; ctCharge--)
                   {
                      double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
                      int iVal = BIN(dNLMass);
@@ -7891,7 +8022,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
                               int* piVarModSites,
                               struct sDBEntry* dbe,
                               unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
-                              unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                              unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1],
                               int iNumMatchedFragmentIons)
 {
    int ctLen,
@@ -8054,7 +8185,8 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       // tie-break logic downstream. Confirmed empirically: for a large sample of
       // 3-decimal-rounded xcorr values, "dXcorr >= (double)(float)dXcorr" is false
       // ~50% of the time.
-      if (iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
+      if (dXcorr >= g_staticParams.options.dMinimumXcorr
+         && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
          && dXcorr + 0.00005 >= pQuery->dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
@@ -8873,6 +9005,45 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
                      }
                   }
 
+                  // Precursor NL peaks: this ladder is cached (bFirstTime) and reused for every
+                  // subsequently matching query, so zero/fill up through the global max precursor
+                  // charge here just like SearchForPeptides()/CalcVarModIons() -- previously
+                  // _uiBinnedPrecursorNL was never touched in this function at all, so XcorrScore()'s
+                  // unconditional precursor-NL read picked up stale bins left by whatever peptide
+                  // (from any search path) last populated the array.
+                  // No clamp needed against MAX_PRECURSOR_CHARGE itself here (C8): the
+                  // _uiBinnedPrecursorNL array is now sized MAX_PRECURSOR_CHARGE + 1.
+                  int iPrecursorNLMaxCharge = g_staticParams.options.iMaxPrecursorCharge;
+
+                  for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+                  {
+                     for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
+                     {
+                        double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+                        int iVal = BIN(dNLMass);
+
+                        if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                        {
+                           pbDuplFragment[iVal] = false;
+                           _uiBinnedPrecursorNL[ctNL][ctCharge] = 0;
+                        }
+                     }
+                  }
+                  for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+                  {
+                     for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
+                     {
+                        double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+                        int iVal = BIN(dNLMass);
+
+                        if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
+                        {
+                           _uiBinnedPrecursorNL[ctNL][ctCharge] = iVal;
+                           pbDuplFragment[iVal] = true;
+                        }
+                     }
+                  }
+
                   // Build decoy fragment ions (once per compound-mod/J-position combo)
                   if (g_staticParams.options.iDecoySearch)
                   {
@@ -8994,6 +9165,36 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
                                  _uiBinnedIonMassesDecoy[ctCharge][ctIonSeries][ctLen][0] = iVal;
                                  pbDuplFragment[iVal] = true;
                               }
+                           }
+                        }
+                     }
+
+                     // Precursor NL peaks for decoy -- same fix and rationale as the target ladder above.
+                     for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
+                        {
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+                           int iVal = BIN(dNLMass);
+
+                           if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                           {
+                              pbDuplFragment[iVal] = false;
+                              _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = 0;
+                           }
+                        }
+                     }
+                     for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+                     {
+                        for (ctCharge = iPrecursorNLMaxCharge; ctCharge >= 1; ctCharge--)
+                        {
+                           double dNLMass = (dModMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+                           int iVal = BIN(dNLMass);
+
+                           if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal && pbDuplFragment[iVal] == false)
+                           {
+                              _uiBinnedPrecursorNLDecoy[ctNL][ctCharge] = iVal;
+                              pbDuplFragment[iVal] = true;
                            }
                         }
                      }

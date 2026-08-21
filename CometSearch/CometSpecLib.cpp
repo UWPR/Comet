@@ -385,20 +385,33 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
          if (szBuf[strlen(szBuf) - 1] != '\n') // really long Name: line, parse to newline char
          {
-            char cChar;
-            cChar = szBuf[strlen(szBuf)-1];
-            while (cChar != '\n')
+            int iChar;
+            do
             {
-               cChar = getc(fp);
-            }
+               iChar = getc(fp);
+            } while (iChar != '\n' && iChar != EOF);   // EOF check: getc() returns EOF forever
+                                                        // at end of file, so a Name: line that
+                                                        // never reaches a newline before EOF
+                                                        // used to hang here indefinitely.
          }
          while (szBuf[strlen(szBuf) - 1] == '\r' || szBuf[strlen(szBuf) - 1] == '\n')
             szBuf[strlen(szBuf) - 1] = '\0';
 
-         sscanf(szBuf + 6, "%s", szTmp);
+         // A bare "Name:" line (5 chars, no name following) is shorter than szBuf+6, which
+         // would otherwise read past the terminator into whatever szBuf happened to hold from
+         // a previous, longer line.
+         if (strlen(szBuf) > 6)
+            sscanf(szBuf + 6, "%s", szTmp);
+         else
+            szTmp[0] = '\0';
 
          struct SpecLibStruct pTmp;
          pTmp.strName = szTmp;
+         pTmp.fRTime = 0.0f;
+         pTmp.fScaleMinInten = 0.0f;
+         pTmp.fScaleMaxInten = 0.0f;
+         pTmp.pfUnitVector = nullptr;
+         pTmp.uiArraySizeMS1 = 0;
          pTmp.iLibEntry = iWhichLibEntry;
          pTmp.iSpecLibCharge = 0;
          pTmp.dSpecLibMW = 0;

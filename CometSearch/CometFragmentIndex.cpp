@@ -623,7 +623,7 @@ if (!(iWhichPeptide%1000))
             j++;
          }
 
-         if (sPeptide[iPosReverse] == modSeq[k])
+         if (k >= 0 && sPeptide[iPosReverse] == modSeq[k])
          {
             // see bugfix note above
             int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
@@ -790,6 +790,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          };
 
          vector<comet_fileoffset_t> prot;
+         // OR'd (not just the representative's) across every occurrence in the dedup run:
+         // with protein_modslist_file active, a peptide shared between a listed and an
+         // unlisted protein must not silently lose the listed protein's allowed-mod bits just
+         // because the unlisted protein happened to sort first (smallest file offset) and
+         // become buf[iRunStart]. Bit i allowed by ANY occurrence should stay allowed for the
+         // merged peptide -- the per-protein occurrence list (prot/prots_flat above) already
+         // records which specific proteins back this peptide.
+         unsigned short siVarModFilterUnion = 0;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
@@ -810,15 +818,19 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
-               dbi.siVarModProteinFilter     = rep.siVarModProteinFilter;
+               dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
                r.dbIdx.push_back(dbi);
 
                iRunStart = i;
+               siVarModFilterUnion = 0;
             }
             if (i < buf.size())
+            {
                prot.push_back(buf[i].lProteinFileOffset);
+               siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+            }
          }
 
          vector<PepGenTuple>().swap(buf);
@@ -858,6 +870,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<comet_fileoffset_t> prot;
+         // Same fix as the long-length path above: OR the mask across the whole dedup run
+         // instead of taking only the representative occurrence's mask.
+         unsigned short siVarModFilterUnion = 0;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
@@ -882,15 +897,19 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
-               dbi.siVarModProteinFilter     = rep.siVarModProteinFilter;
+               dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
                r.dbIdx.push_back(dbi);
 
                iRunStart = i;
+               siVarModFilterUnion = 0;
             }
             if (i < buf.size())
+            {
                prot.push_back(buf[i].lProteinFileOffset);
+               siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+            }
          }
 
          vector<PepGenTupleShort>().swap(buf);
