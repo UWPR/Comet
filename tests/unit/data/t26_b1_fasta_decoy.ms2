@@ -1,0 +1,26 @@
+H	CreationDate	synthetic
+H	Comment	B1 regression (CalcVarModIons decoy ladder): target ACDSEFGHIK,
+H	Comment	decoy IHGFESDCAK (reverse, C-term K kept), phospho+NL on the decoy's
+H	Comment	S at local position 6 of 10 -- NOT the last residue, so a regressed
+H	Comment	early break in the decoy b-ion ladder would leave positions 7-10
+H	Comment	stale/unfilled, dropping several of the 18 b/y ions below.
+S	1	1	593.733554
+Z	2	1186.459832
+114.0913	100.0
+147.1128	100.0
+218.1499	100.0
+251.1502	100.0
+308.1717	100.0
+321.1591	100.0
+436.1860	100.0
+455.2401	100.0
+584.2827	100.0
+603.1844	100.0
+732.2270	100.0
+751.2811	100.0
+866.3080	100.0
+879.2954	100.0
+936.3169	100.0
+969.3172	100.0
+1040.3543	100.0
+1073.3758	100.0

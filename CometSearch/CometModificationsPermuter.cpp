@@ -195,9 +195,14 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
             k++;
          }
          
+         // The previous allCombos buffer (either the very first iteration's `combos`
+         // array or an earlier iteration's `temp`) is now fully superseded by `temp` --
+         // nothing else references it, so it must be freed here or it leaks on every
+         // iteration but the last (~70 MB per index build at default params).
+         delete[] allCombos;
          allCombos = temp;
 
-         delete[] combos;  //FIX: confirm this is correct delete to avoid memory leak
+         delete[] combos;
       }
       currentAllCount = totalCount;
       i--;

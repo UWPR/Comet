@@ -1,0 +1,33 @@
+H	CreationDate	synthetic
+H	Comment	B2 regression (SearchFragmentIndex NL running count): FASTA digests to
+H	Comment	AK / ACDFWYYK / SPEPTIDEK. ACDFWYYK (plain, preceded by K in-protein --
+H	Comment	a non-'-' cPrevAA) and SPEPTIDEK+phospho[0] (mass 1094.453145 vs
+H	Comment	1094.453266) land in the same FI precursor-mass bin, so both are
+H	Comment	candidates for this one query. Phospho is on S at position 0, so every
+H	Comment	b-ion (b1-b8) has an NL variant; a regressed guard drops all of them.
+S	1	1	548.233909
+Z	2	1095.460542
+70.0287	100.0
+147.1128	100.0
+167.0815	100.0
+168.0056	100.0
+265.0584	100.0
+276.1554	100.0
+296.1241	100.0
+391.1823	100.0
+393.1769	100.0
+394.1010	100.0
+491.1537	100.0
+494.2245	100.0
+504.2664	100.0
+592.2014	100.0
+605.3141	100.0
+607.3086	100.0
+702.3668	100.0
+705.2855	100.0
+722.3355	100.0
+820.3124	100.0
+831.4094	100.0
+851.3781	100.0
+928.4622	100.0
+949.3550	100.0

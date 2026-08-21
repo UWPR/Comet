@@ -68,7 +68,7 @@ review describes have moved or hardened.
 | B6 | ✅ **FIXED** (2026-08-19) | `CometSearch.cpp:3139-3192` etc. | Confirmed byte-identical. **Fix applied** (see the B6 write-up below for full before/after code and reasoning): (1) `SearchForPeptides()`'s and `CalcVarModIons()`'s target-ladder precursor-NL zero/fill loops now bound on `min(g_staticParams.options.iMaxPrecursorCharge, MAX_PRECURSOR_CHARGE-1)` instead of the first-matching query's own charge, so every charge a later query might read is freshly zeroed/filled, not left stale from a prior peptide; (2) found and fixed the identical bug in `CalcVarModIons()`'s *decoy* branch (not explicitly cited by the original review, but same cache-once-reuse-per-query shape); (3) `CompoundModSearch()` — which the review flagged as never touching the array at all — now zeroes+fills it properly for both target and decoy, closing a real read-garbage risk, not just a missing feature; (4) `SearchFragmentIndex()` (FI_DB) — which only `memset`-zeroed but never filled — now fills it per-candidate using the same formula as the PI_DB path, so `precursor_NL_ions` finally has an effect in FI_DB searches. Deliberately did **not** touch `MAX_PRECURSOR_CHARGE`-boundary behavior itself (charge-9 array indexing) — that's C8, a separate open finding; the clamp to `MAX_PRECURSOR_CHARGE-1` keeps this fix from widening C8's blast radius. Verified: full clean `make` build (no new warnings), 42/42 unit tests, and a functional smoke test — a plain-FASTA search with `precursor_NL_ions` configured and two spectra (charge 2 and charge 4) matching the same candidate peptide in one batch (the exact scenario that triggers the bug) — completed cleanly with sane, charge-appropriate scores for both. |
 | B7 | ✅ **FIXED** (2026-08-19) | `CometSearch.cpp:6983` (was cited as `6953`, the binary search one line above) | Confirmed byte-identical. **Fix applied:** the seek-back `while` loop compared `dCalcPepMass` (pre-PEFF) while the binary search immediately above it keyed on `dTmpCalcPepMass` (post-PEFF); changed the comparison to `dTmpCalcPepMass`, matching the already-correct pattern in `WithinMassTolerancePeff()` (line 3743) which uses the same combined mass consistently in both steps. |
 | B8 | ✅ **FIXED** (2026-08-19) | Target loop bound `CometSearch.cpp:5290` (was cited as `5260`, the length/mass pre-check a few lines above the actual loop); decoy stray write `CometSearch.cpp:5198` | Confirmed byte-identical. **Fix applied, both sub-bugs:** (1) target loop widened from `ii <= usiLenPeptide` to `ii < usiLenPeptide + 2`, matching the decoy branch's already-correct bound, so two IDs differing only in C-term mod state are no longer merged; (2) decoy branch's `pQuery->_pDecoys[i].pdVarModSites[i] = 0.0;` (using the *stored-entry* index `i` as a *position* index into an unrelated `double[MAX_PEPTIDE_LEN_P2]` array — meaningless at best, an OOB write past that array once `num_results` exceeds its size at worst) replaced with the missing comparison `if (piVarModSites[ii] != 0) { bIsDuplicate = 0; break; }`, mirroring how the target branch already folds the `iVal == 0` case into its `>= 0` comparison correctly. |
-| B9 | applies unchanged (renumbered); **scope note from Jimmy (2026-08-19): AScorePro was only ever intended to be applied for `variable_mod01`-`variable_mod05` — the modifications limit for FI** | `CometSearchManager.cpp:3336` and `:3359` (both `setSymbol(i + 1 + '0')` call sites — the review only cited one), `CometPostAnalysis.cpp:920` unchanged | Same bug at two call sites, not one. Given the 1-5 design intent, the review's framing ("corrupts mod sites for `variable_mod10`-`15`") describes a config that was never a supported combination in the first place — AScorePro + slots beyond 5 isn't a regression to fix so much as an unsupported configuration that fails silently instead of loudly. The slot-15/`'?'` PEFF-placeholder collision is a separate concern and still real regardless of the 1-5 scoping. **Not fixed yet** — the actionable shape this now points to is validation/a loud error when `print_ascorepro_score` is enabled alongside any active `variable_mod06`-`15`, rather than the review's original "shared alphabet across all 15 slots" suggestion; left open pending a decision on whether to add that guard. |
+| B9 | ✅ **FIXED (guard, 2026-08-21)** | `CometSearchManager.cpp:3336` and `:3359` (both `setSymbol(i + 1 + '0')` call sites — the review only cited one), `CometPostAnalysis.cpp:920` unchanged | Same bug at two call sites, not one. Given the 1-5 design intent (scope note from Jimmy, 2026-08-19: AScorePro was only ever intended for `variable_mod01`-`variable_mod05`, the modifications limit for FI), the review's framing ("corrupts mod sites for `variable_mod10`-`15`") describes a config that was never a supported combination in the first place — AScorePro + slots beyond 5 isn't a regression to fix so much as an unsupported configuration that should fail loudly instead of silently. **Fix applied:** `InitializeStaticParams()` now rejects (via `g_cometStatus`/`logerr`, `return false`) any search with `print_ascorepro_score != 0` (covers both a specific slot 1-5 and `-1`/"all mods") alongside an active `variable_mod06`-`15`. Verified with a 4-case differential test. The slot-15/`'?'` PEFF-placeholder collision is a separate concern, unaffected by this guard, and remains open. |
 | B10 | ✅ **FIXED** (2026-08-19) | `add_U_selenocysteine` defined `Comet.cpp:441`, printed `Comet.cpp:1127`; actually-read name `add_U_user_amino_acid` at `CometSearchManager.cpp:812`; writer mismatches `CometWritePepXML.cpp:217,230` / `CometWriteMzIdentML.cpp:609,622` (unchanged files, confirmed identical); `speclib_ms_level` template text `Comet.cpp:938`, parser registration `Comet.cpp:404`, typo'd consumer `spectraL_library_ms_level` at `CometSearchManager.cpp:421` | All sub-findings confirmed present verbatim, just at new line numbers in the two changed files. **Fix applied:** `add_U_user_amino_acid` is the legacy/dead name — `add_U_selenocysteine` is the one actually registered by the CLI and printed in the params template, so `CometSearchManager.cpp:812` was changed to read `add_U_selenocysteine` (not the reverse). Found the same bug shape on the `O` slot while in there: the writers queried `add_O_ornithine`, which isn't registered anywhere — the real, live param is `add_O_pyrrolysine` (`Comet.cpp:435`) — so both writer call sites were corrected too (`CometWritePepXML.cpp:217`, `CometWriteMzIdentML.cpp:609`). Also fixed the `speclib_ms_level` three-way mismatch by standardizing on the template's existing name, `spectral_library_ms_level`: renamed the parser registration at `Comet.cpp:404` and fixed the `CometSearchManager.cpp:421` typo (`spectraL_...` → `spectral_...`) to match. |
 | B11 | ✅ **FIXED** (2026-08-19) | Sentinel init now `Comet.cpp:644-651` (on `enzymeInformation.*` directly); checks unchanged at `Comet.cpp:~699-720` | Confirmed: `szSearchEnzymeName`/`szSearchEnzyme2Name`/`szSampleEnzymeName` were local arrays sentinel-initialized to `"-"`, but the parse loop and later `strcmp` checks both operate on `enzymeInformation.*` members instead, whose `EnzymeInfo` default constructor (`CometData.h`, unchanged) never sets that sentinel — checks could never fire. **Fix applied:** deleted the three unused local arrays and sentinel-initialize `enzymeInformation.szSearchEnzymeName`/`.szSearchEnzyme2Name`/`.szSampleEnzymeName` directly instead, so the existing `strcmp(..., "-")` checks now actually test what got written (or didn't) by the parse loop. Verified: `search_enzyme_number = 99` now exits 1 with "Error - search_enzyme_number 99 is missing definition in params file."; `search_enzyme_number = 1` (a valid entry) still runs with no false-positive error. |
 | B12 | ✅ **FIXED** (2026-08-19) | `CometFragmentIndex.cpp:806-816` (long path, representative assign at 813), `:874-885` (short path, at 885) | Confirmed: dedup kept only the smallest-file-offset occurrence's `siVarModProteinFilter`. **Fix applied (both the long and short paths):** replaced `dbi.siVarModProteinFilter = rep.siVarModProteinFilter` (the representative-only assignment) with an `unsigned short siVarModFilterUnion` accumulated via `\|=` over every entry in the dedup run (reset to 0 after each flush), then assigned to `dbi.siVarModProteinFilter` — mirroring how the per-protein occurrence list (`prot`/`prots_flat`) already accumulates across the whole run rather than keeping only the representative's. A peptide shared between a listed and an unlisted protein now keeps every mod bit any of its occurrences allows. |
@@ -711,7 +711,7 @@ agrees with baseline within tolerance) — 48/48 tests total.
 
 ## 2. Crashes and memory-safety bugs
 
-### C1. `g_bIndexPrecursors` off-by-one heap write/read **[x3]** (high)
+### C1. `g_bIndexPrecursors` off-by-one heap write/read **[x3]** (high) — ✅ FIXED 2026-08-19 (found already applied 2026-08-21; doc status was stale)
 Allocation `malloc(BIN(dPeptideMassHigh) * sizeof(bool))`
 (`CometSearchManager.cpp:1569`) gives valid indices `0..BIN(high)-1`, but
 `ReadPrecursors` clamps `iEnd` to `iMaxBin = BIN(dPeptideMassHigh)`
@@ -725,6 +725,14 @@ byte nondeterministically includes/excludes top-bin peptides from the index.
 Found independently by three reviews. **Fix:** allocate `BIN(high) + 1`
 (matching the `uiMaxFragmentArrayIndex = BIN(...)+1` pattern at
 `CometSearchManager.cpp:1510`) and initialize the extra slot.
+
+**Status (confirmed 2026-08-21):** already fixed, in the same `5cc3be9b`
+commit as B1-B13/C2/C3/C7/C8/C10-C12 — this item's header was simply never
+updated to say so. Current code (`CometSearchManager.cpp:1630-1638`):
+allocation is `(BIN(dPeptideMassHigh) + 1) * sizeof(bool)`, the error-path
+`printf` and the initialization loop (`x <= BIN(...)`) both cover the extra
+slot too. Covered going forward by the existing FI_DB-path integration tests
+(T22-T24); no new fixture added for this pass.
 
 ### C2. Batch XCorr loop reads up to 75 doubles past the pooled arrays (high) — ✅ FIXED 2026-08-19
 `CometPreprocess.cpp:1228-1237` reads `pdTmpCorrelationData[i]` up to
@@ -749,7 +757,7 @@ entirely, so a 6,000 Da precursor yields `iArraySize > iArraySizeGlobal` and
 entry gates at `CometSearchManager.cpp:2551`). **Fix:** clamp `iArraySize` to
 `iArraySizeGlobal` where computed (1644, 2606, 3508).
 
-### C4. RTS OOM handler frees the thread-local pool — use-after-free + double free **[x2]** (high impact, OOM-only trigger)
+### C4. RTS OOM handler frees the thread-local pool — use-after-free + double free **[x2]** (high impact, OOM-only trigger) — ✅ FIXED 2026-08-19 (found already applied 2026-08-21; doc status was stale)
 `CometPreprocess.cpp:2053-2061`: the first of three `bad_alloc` catches in
 `PreprocessSingleSpectrumCore` unconditionally `delete[]`s the five buffers
 that, on the RTS path, alias `g_rtsScratch` members. `iAllocSize` is
@@ -757,6 +765,17 @@ unchanged, so `EnsureInitialized()` won't re-allocate: the next spectrum on
 that thread writes freed memory, and thread exit double-frees. The two
 sibling catches (2088-2095, 2125-2132) have the correct
 `if (!bUseThreadLocalPool)` guard — this one is missing it. One-line fix.
+
+**Status (confirmed 2026-08-21):** already fixed, in the same `5cc3be9b`
+commit — the missing guard was added, so all three `bad_alloc` catches in
+`PreprocessSingleSpectrumCore` (now at `CometPreprocess.cpp:2117, 2153, 2190`
+after the later Section-3 dead-code deletions shifted line numbers) are
+consistently gated on `if (!bUseThreadLocalPool)`. The 2026-08-21 Section 3
+pass separately found and fixed a related-but-distinct leak in the same
+struct — `AllocSparseChild()`'s rare pool-exhausted fallback block was never
+freed (`vFallbackSparseChildren`, committed `31b3575a`) — which is a
+different bug from this one, not a duplicate. No new fixture added for this
+pass; an OOM-triggered path is impractical to exercise in the unit suite.
 
 ### C5. Spectral-library MS2 search segfaults on its first stored hit (critical for that path) — re-scoped 2026-08-19; sizing bug ✅ FIXED, MS2 NULL-deref left as-is by request
 `CometSpecLib.cpp:935` reads `pQuery->_pSpecLibResults[0].fSpecLibScore`, but
@@ -817,7 +836,7 @@ preempts the entire search, not just the MS2 scoring path. Post-fix, the
 identical run completes cleanly through "Search end" with no crash. Full
 unit suite (42/42) also still passes.
 
-### C6. `AddFragments()` reverse mod scan runs `k` to -1 — OOB reads in the FI-build hot loop (high)
+### C6. `AddFragments()` reverse mod scan runs `k` to -1 — OOB reads in the FI-build hot loop (high) — ✅ FIXED 2026-08-19 (found already applied 2026-08-21; doc status was stale)
 `CometFragmentIndex.cpp:731-748`: the reverse scan visits positions
 `iEndPos..1`; once every `modSeq` entry is consumed, `k` hits -1 and each
 remaining iteration evaluates `modSeq[(size_t)-1]` (UB read). Fires on
@@ -827,6 +846,11 @@ modifiable residues) a chance byte match then reads `mods[-1]` and can add a
 wrong mod mass to the y-ion ladder. Direct sibling of the fixed T25 sentinel
 bug. **Fix:** `if (k >= 0 && ...)` (mirroring `MaterializeOneEntry()`'s
 guard at `CometPeptideIndex.cpp:650`).
+
+**Status (confirmed 2026-08-21):** already fixed, in the same `5cc3be9b`
+commit. Current code (`CometFragmentIndex.cpp`, `AddFragments()` reverse
+scan): `if (k >= 0 && sPeptide[iPosReverse] == modSeq[k])` — guard present.
+No new fixture added for this pass.
 
 ### C7. Binomial-coefficient int overflow at default peptide length (high, opened by MAX_BITCOUNT 24→50) — ✅ FIXED 2026-08-19
 `CombinatoricsUtils.cpp:52`: Pascal's triangle in `int` with
@@ -855,7 +879,7 @@ arbitrary OOB writes in `AnalyzePeptideIndex` and OOB reads in `XcorrScoreI`.
 **Fix:** dimension `MAX_PRECURSOR_CHARGE + 1` or clamp the loops, and clamp
 the RTS input charge.
 
-### C9. Pipeline regression: db `FILE*` closed before the mzIdentML merge reads it (high)
+### C9. Pipeline regression: db `FILE*` closed before the mzIdentML merge reads it (high) — ✅ FIXED 2026-08-19 (found already applied 2026-08-21; doc status was stale)
 `search/Pipeline.cpp:287` calls `_strategy->closeFiles(fpfasta, fpidx)`
 *before* the writer-close loop at 290-294; `MzIdentMlWriter::close()`
 (`output/MzIdentMlWriter.h:66,127`) then runs the deferred merge on `_fpdb` —
@@ -866,6 +890,11 @@ does stdio on a freed `FILE*` — crash or garbage protein names. Regression
 from the legacy ordering (merge ran before `fclose` in
 `45cfa421~1:CometSearchManager.cpp`). **Fix:** close writers before
 `closeFiles` (one-line move).
+
+**Status (confirmed 2026-08-21):** already fixed, in the same `5cc3be9b`
+commit. Current code (`search/Pipeline.cpp:290-296`): the writer-close loop
+now runs before `_strategy->closeFiles(fpfasta, fpidx)`, with a comment
+explaining why the order matters. No new fixture added for this pass.
 
 ### C10. Param-file parsing: stack smash and hang — ✅ FIXED 2026-08-19 (4 of 5 sub-issues; see Section 0/table for the one that doesn't apply)
 - `Comet.cpp:581`: `strcpy(szParamVal, pStr + 1)` copies up to ~8 KB of
@@ -1109,22 +1138,49 @@ original one-line summary suggested), then all 8 were fixed the same day
 at your "fix all" request. Verified with a clean `make` build (zero new
 warnings) and the full 42/42 unit suite.
 
-### C13. Operational traps (medium/low)
+### C13. Operational traps (medium/low) — ✅ FIXED 2026-08-21
 - `-F` without `-L`: the skip-to-start loop can't advance when scan `iFirstScan`
   isn't MS/MS (`CometPreprocess.cpp:858`; `iLastScan` still 0 per the code's
   own comment) — search silently ends with zero spectra. `ReadPrecursors`
   handles the same case correctly via `iFileLastScan` (430). The fused-path
   copy (3832) inherits it.
+  **Fix:** all 4 sites (`CometPreprocess.cpp:457, 890, 3843, 4045` post-fix)
+  now bound the advance loop on `iFileLastScan`, not `iLastScan`; only the
+  first was already correct and served as the reference pattern for the
+  other 3.
 - Preprocessing pool "wait" spins 240 s while *holding*
   `g_preprocessMemoryPoolMutex` — slot release needs that mutex, so the wait
   can never succeed; on timeout the spectrum is silently dropped and
   `pPreprocessThreadData` leaks (`CometPreprocess.cpp:1000-1027`, MS1 variant
   1056-1084). Unreachable today only because pool size == thread count.
+  **Fix:** `PreprocessThreadProc`/`PreprocessThreadProcMS1` now lock the
+  mutex only around each individual poll (with a 1ms sleep between failed
+  polls) instead of holding it for the whole spin, so a slot-releasing
+  destructor on another thread can actually acquire it; the timeout path now
+  also `delete`s the leaked `PreprocessThreadData`/`PreprocessThreadDataMS1`.
 - Manager reuse: `staticParamsInitializationComplete` is one-shot
   (`CometSearchManager.cpp:1613`) so post-run `SetParam`s are silently
   ignored, and `FiStrategy::finalize()` frees `g_bIndexPrecursors`
   (`search/FiStrategy.cpp:174,182`) that only `InitializeStaticParams` ever
   allocates — a second FI_DB search in the same process null-derefs.
+  **Fix:** `InitializeStaticParams()`'s early-return path now re-allocates
+  `g_bIndexPrecursors` if it's `NULL` (i.e. freed by a prior
+  `FiStrategy::finalize()`) before returning, using whatever param values
+  are already live in `g_staticParams` — scoped narrowly to the null-deref;
+  the broader "post-run `SetParam`s are silently ignored" limitation of this
+  one-shot design is unchanged and out of scope for this fix.
+
+**Verified 2026-08-21:** full clean rebuild, 52/52 unit tests, and a full
+`--integration` run (T17/T18/T19/T20/T22/T23/T24, 57/57 passed on that run;
+one single-sample `_check_timing` flake on T24's FI_DB index-build time in
+an earlier run reproduced as a pass on re-run — machine noise, not a
+regression from these changes, none of which touch the index-build path).
+No new fixture added for these 3 items — the first two require host-
+specific -F/-L CLI conditions and OOM-adjacent thread-pool exhaustion that
+aren't practical to reproduce deterministically in the unit suite; the third
+(manager reuse) would need a new test harness entry point that issues two
+successive `DoSearch()` calls on one `CometSearchManager`, which the current
+`run_tests.py` (subprocess-per-invocation) can't exercise.
 
 ---
 
@@ -1372,24 +1428,48 @@ gates its decoy build on `bFirstTimeThroughLoopForPeptide` (7399). Matters
 for wide-tolerance/DIA-style searches with decoys. (Interacts with B6 if
 fixed.)
 
-### P8. Mod-permuter subset enumeration
+### P8. Mod-permuter subset enumeration — 2 of 3 sub-items ✅ FIXED 2026-08-21
 `CometModificationsPermuter.cpp:574-589`: step 2 scans all of
 `ALL_COMBINATIONS` (~2.4M entries for a 50-residue modifiable string) per mod
 per unique sequence; direct subset enumeration of `modBitmask`
 (`sub = (sub - 1) & mask`) is exactly `2^bitCount` iterations and removes the
-`ALL_COMBINATIONS` dependence for this step. Also: `initCombinations` leaks
-every intermediate merge buffer (~70 MB per index build at defaults;
-162-200), and the variable-mod merge loop never considers slot 15
-(`CometSearchManager.cpp:1330`, `ii < VMODS-1`).
+`ALL_COMBINATIONS` dependence for this step. **Still open** — this is the
+largest sub-item and the one genuine algorithmic rewrite here; not attempted
+this pass.
 
-### P9. Preprocessing micro-wins
+Also: `initCombinations` leaks every intermediate merge buffer (~70 MB per
+index build at defaults; 162-200), and the variable-mod merge loop never
+considers slot 15 (`CometSearchManager.cpp:1330`, `ii < VMODS-1`). **Both
+fixed 2026-08-21:**
+- `initCombinations`: the previous `allCombos` buffer (the first iteration's
+  `combos` array, or a prior iteration's `temp`) is now `delete[]`d right
+  before being superseded by the new merge result, instead of being silently
+  overwritten and leaked on every iteration but the last.
+- Merge loop: `for (int ii=i+1; ii<VMODS-1; ++ii)` → `ii<VMODS` — slot 15
+  (`variable_mod15`) is now eligible to be detected as a duplicate of an
+  earlier slot and merged in, same as every other slot. Verified
+  results-preserving (not just non-crashing) with a differential test: ran
+  the same phospho+NL search once with the mod in slot 1 only and once with
+  an identical duplicate additionally placed in slot 15, and diffed the
+  `.txt` output — byte-identical (peptide, score, mod position all match),
+  confirming the merge is transparent to search results as intended.
+
+Full 52-test unit suite still passes after both fixes.
+
+### P9. Preprocessing micro-wins — 1 of 3 sub-items ✅ FIXED 2026-08-21
 Batch memsets 3 x `iArraySizeGlobal` doubles per charge state
 (`CometPreprocess.cpp:1197-1200`) though only `[0, iArraySize + offset)` is
 touched — the RTS `iZeroBound` logic (1691-1728) already implements the tight
 version (~6 MB less traffic per charge state at `fragment_bin_tol 0.02`).
-RTS FI top-N peak selection full-sorts all peaks (1802-1808) —
-`std::nth_element` + small sort. MS1 batch memsets three full arrays and
-never touches one of them (1094-1097; the `// FIX` comment already flags it).
+**Still open.** RTS FI top-N peak selection full-sorts all peaks
+(1802-1808) — `std::nth_element` + small sort. **Still open.**
+
+MS1 batch memsets three full arrays and never touches one of them
+(1094-1097; the `// FIX` comment already flags it). **Fixed 2026-08-21:**
+`pdTmpCorrelationData` is fetched from the pool and `memset`, but
+`PreprocessThreadProcMS1` never reads it afterward (only `pdTmpRawData` and
+`pdTmpFastXcorrData` feed the unit-vector computation) — removed both the
+fetch and the memset. Full 52-test unit suite still passes.
 
 ### P10. Concurrency scaling ceilings (RTS)
 - `SearchMemoryPool::acquireSlot/releaseSlot` global mutex+CV taken twice per
@@ -1434,13 +1514,14 @@ Small, high-payoff, low-risk first:
    `g_bIndexPrecursors` allocation), C6 (`k >= 0` guard).
 2. **Localized logic fixes:** B4, C2, C7, C8, C10 all ✅ **DONE** 2026-08-19
    (committed `5cc3be9b`); **B5 ✅ DONE 2026-08-21** (derive terminal flags
-   from the header; committed `194ef3e7`) — see its Section 1 entry; C5
-   (+ speclib index sizing), B9 (shared symbol alphabet — see B9's note on
-   scope) still open.
+   from the header; committed `194ef3e7`) — see its Section 1 entry; **B9 ✅
+   DONE 2026-08-21** (loud-error guard, not the original shared-alphabet fix
+   — see B9's note on scope; committed `31b3575a`); C5's MS2 NULL-deref half
+   (the sizing half is done — see step 3) still open.
 3. **Param plumbing:** B10, B11, B12 all ✅ **DONE** 2026-08-19 (committed
    `5cc3be9b`); the C12 robustness cluster is also ✅ **DONE** 2026-08-19
    (audited, then fixed the same day — see Section 0/2, committed
-   `5cc3be9b`).
+   `5cc3be9b`); C5's speclib index sizing (only) also ✅ **DONE** 2026-08-19.
 4. **`.idx` header self-description gaps — ✅ DONE 2026-08-21 (new findings,
    not in the original review; committed `194ef3e7`):** B14 (persist
    `decoy_prefix`/`num_enzyme_termini`/`allowed_missed_cleavage`/
@@ -1448,17 +1529,49 @@ Small, high-payoff, low-risk first:
    classification read the wrong map, `g_pvProteinNames` instead of
    `g_pvProteinNameCache` — found while verifying B14; independently
    severe on its own). See their Section 1 write-ups above.
-5. **Perf, in payoff order:** P1 → P2 → P3 → P4 → P5.
+5. **Section 3 (latent/concurrency/dead-code) — ✅ DONE 2026-08-21, all 10
+   items (committed `31b3575a`):** see Section 3's own entries for full
+   per-item detail.
+6. **C13 (operational traps) — ✅ DONE 2026-08-21, all 3 items:** see its
+   Section 2 entry for full per-item detail. Only C5's MS2 NULL-deref half
+   (left as-is by request — unfinished/unused feature path) remains open in
+   Section 2.
+7. **Perf, small mechanical sub-items — ✅ DONE 2026-08-21:** P9's unused
+   MS1 memset (removed) and P8's `initCombinations` leak + merge-loop slot-15
+   off-by-one (both fixed) — see their Section 4 entries. P11's missing
+   `g_vFragmentPeptides.reserve()` was scoped for this same pass but turned
+   out to need an accurate pre-pass upper-bound estimate (the real
+   contributing paths are the nested unmodified/modified/n-term/c-term/combo
+   branches in `AddFragmentsThreadProc()`, not a single count) rather than a
+   one-line addition — **deferred, not done**.
+8. **Perf, in payoff order:** P1 → P2 → P3 → P4 → P5 (P11's `.reserve()` item
+   folds in here too now). **Still fully open.**
 
-Suggested regression tests (T25-style crafted fixtures): phospho +
-`decoy_search = 2` FASTA vs FI parity (catches B1/B2); 3-mod-type cap
-violation fixture (B4, B3 with slots 10-15); `.idx`-only search with an
-n-term/c-term variable mod (B5 — verified manually this session, but not
-yet captured as a committed test fixture); a target-decoy PI_DB `.idx`
-searched with a mismatched `decoy_prefix` (B14/B15 — likewise verified
-manually, not yet a committed fixture); precursor at `peptide_mass_high`
-under ASan (C1/C2); a minimal `.msp` speclib MS2 run (C5);
-`search_enzyme_number = 99` must error (B11); a params file with a 600-char
-value and a malformed `mass_offsets` must error, not crash/hang (C10). An
-ASan/UBSan CI leg over the existing T21/T23 suites would have caught
-roughly half of section 2 automatically.
+Suggested regression tests (T25-style crafted fixtures) — ✅ **DONE 2026-08-21**,
+all 8 implemented as committed fixtures `T26`-`T33` in `tests/unit/run_tests.py`
+(10 registered test functions; T26 and T27 each split into two):
+
+- **T26** (`t26_b1_fasta_decoy`, `t26_b2_fi_nl_order`): phospho + `decoy_search = 2`
+  FASTA-path decoy ladder and FI NL running-count order (B1/B2).
+- **T27** (`t27_modcap_fasta`, `t27_modcap_fi`): 3-mod-type cap violation on
+  variable-mod slots 10-15, FASTA and FI paths (B3/B4).
+- **T28** (`t28_idx_cterm_mod`): `.idx`-only search with a C-term variable mod,
+  confirming the header-restore path sets the terminal-mod flags (B5).
+- **T29** (`t29_decoyprefix`): target-decoy PI_DB `.idx` search with the correct
+  `decoy_prefix`, confirming the decoy row is classified correctly and the
+  internally-generated on-the-fly reversed decoy doesn't leak into rank-1
+  output at `num_output_lines = 1` (B14/B15).
+- **T30** (`t30_mass_boundary`): precursor at the `digest_mass_range` upper
+  boundary, exercising the C1/C2 array-sizing paths.
+- **T31** (`t31_speclib_sizing`): a minimal `.msp` speclib MS2 run (C5 sizing).
+- **T32** (`t32_bad_enzyme_number`): `search_enzyme_number = 99` must error
+  (B11).
+- **T33** (`t33_param_robustness`): a params file with a 600-char value and a
+  malformed `mass_offsets` must error, not crash/hang (C10).
+
+All 10 pass individually and as part of the full 52-test suite
+(`python3 tests/unit/run_tests.py --comet <path>`), with regression-catching
+power spot-verified for T26-B2 and T31 by temporarily reverting the
+underlying fix and confirming the test fails. An ASan/UBSan CI leg over the
+existing T21/T23 suites would still catch roughly half of section 2
+automatically — that remains open.

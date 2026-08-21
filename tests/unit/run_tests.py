@@ -2169,6 +2169,1025 @@ def test_t25_fi_mod_slot_ambig(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T26 -- docs/20260819_fablereview.md B1/B2 regression: phospho + decoy_search
+# fragment-ion-ladder correctness (FASTA decoy ladder / FI candidate ordering)
+# ---------------------------------------------------------------------------
+#
+# B1: CalcVarModIons()'s decoy b-ion branch (CometSearch.cpp, reached from
+# MergeVarMods()/PermuteMods() -- the general FASTA variable-mod permutation path,
+# not PEFF-only despite bDoPeffAnalysis/vPeffArray being threaded through the same
+# call chain) had a bare `break;` that exited the whole per-position decoy ladder loop
+# the first time a decoy residue carried a fragment-neutral-loss variable mod, leaving
+# _pdAAforwardDecoy/_pdAAreverseDecoy stale for every later position. Fixed by
+# deleting the break (mirroring the target ladder and the decoy y-branch, neither of
+# which ever had one).
+#
+# B2: SearchFragmentIndex()'s cumulative NL-count carry-forward
+# (iCountNLB[x][iPosForward] = iCountNLB[x][iPosForward-1]) was gated on
+# `i > iStartPos`, an outer-scope variable this function also mutates elsewhere from a
+# *previous* FI candidate's flanking residue -- not the loop's own index. Fixed to
+# `i > 0`.
+
+T26_PARAMS_TEMPLATE = (
+    T19_PARAMS_TEMPLATE
+    .replace("search_enzyme_number = 0", "search_enzyme_number = 1")
+    .replace("decoy_search = 0", "decoy_search = {decoy_search}")
+    .replace("peptide_length_range = 8 8", "peptide_length_range = {len_min} {len_max}")
+)
+assert "search_enzyme_number = 1" in T26_PARAMS_TEMPLATE, \
+    "T26_PARAMS_TEMPLATE: search_enzyme_number replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "decoy_search = {decoy_search}" in T26_PARAMS_TEMPLATE, \
+    "T26_PARAMS_TEMPLATE: decoy_search replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = {len_min} {len_max}" in T26_PARAMS_TEMPLATE, \
+    "T26_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+
+
+@register("t26_b1_fasta_decoy")
+def test_t26_b1_fasta_decoy(comet_exe):
+    """T26: B1 regression -- FASTA decoy phospho ladder must not break early on the
+    residue carrying a fragment-neutral-loss variable mod."""
+    failures = []
+
+    fasta     = DATA_DIR / "t26_b1_fasta_decoy.fasta"
+    ms2       = DATA_DIR / "t26_b1_fasta_decoy.ms2"
+    txt       = ms2.with_suffix(".txt")
+    txt_decoy = ms2.with_suffix(".decoy.txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    for f in (txt, txt_decoy):
+        f.unlink(missing_ok=True)
+
+    search_params = T26_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 97.976896",
+        decoy_search=2, len_min=10, len_max=10,
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt_decoy.exists():
+            failures.append(f"decoy .txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt_decoy.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) == 1, f"expected exactly 1 decoy PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "IHGFESDCAK",
+              f"plain_peptide: expected the decoy IHGFESDCAK, got {row.get('plain_peptide')!r}",
+              failures)
+        # The bug left _pdAAforwardDecoy/_pdAAreverseDecoy stale for every position
+        # after the phospho S (local index 5 of 10) -- a regression would score well
+        # below the full 18 b/y ions.
+        check(int(row.get("ions_matched", "0")) == 18,
+              f"ions_matched: expected all 18 b/y ions matched, got "
+              f"{row.get('ions_matched')!r} (a regressed early break would silently "
+              f"drop several of the ions past the phospho residue)", failures)
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        txt_decoy.unlink(missing_ok=True)
+
+    return failures
+
+
+@register("t26_b2_fi_nl_order")
+def test_t26_b2_fi_nl_order(comet_exe):
+    """T26: B2 regression -- SearchFragmentIndex()'s NL running-count carry-forward
+    must key off the loop's own index (i > 0), not a stale outer-scope variable a
+    previous FI candidate mutated."""
+    failures = []
+
+    fasta = DATA_DIR / "t26_b2_fi_nl_order.fasta"
+    ms2   = DATA_DIR / "t26_b2_fi_nl_order.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx.unlink(missing_ok=True)
+    build_params = T26_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 97.976896",
+        decoy_search=0, len_min=8, len_max=9,
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    txt.unlink(missing_ok=True)
+    search_params = T26_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx),
+        ascorepro=0, mod1="79.966331 S 0 1 -1 0 0 97.976896",
+        decoy_search=0, len_min=8, len_max=9,
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "SPEPTIDEK",
+              f"plain_peptide: expected SPEPTIDEK, got {row.get('plain_peptide')!r}",
+              failures)
+        # ions_matched/ions_total only ever count the 16 base b/y ion slots (NL-bin
+        # matches don't show up in those two columns at all -- confirmed empirically,
+        # not a bug), so the observable signal for "were the NL peaks actually
+        # matched" is xcorr, not ions_matched. With this spectrum's 8 extra NL-shifted
+        # b-ion peaks (phospho on S at residue 0, so every b1-b8 has one), a correct
+        # search scores xcorr ~5.9; with the guard regressed back to `i > iStartPos`,
+        # those NL bins are silently never generated and xcorr drops to ~4.0 (the
+        # same score an identical spectrum stripped of the NL peaks gets) -- verified
+        # directly against both builds while writing this test.
+        check(float(row.get("xcorr", "0")) > 5.0,
+              f"xcorr: expected > 5.0 (NL-shifted peaks contributing), got "
+              f"{row.get('xcorr')!r} (a regressed guard silently drops the NL bins, "
+              f"scoring ~4.0 as if those 8 extra peaks weren't there)", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T27 -- docs/20260819_fablereview.md B3/B4 regression: variable-mod combinatorial
+# cap must not be escaped by mods configured in slots 10-15.
+# ---------------------------------------------------------------------------
+#
+# B3 (FASTA path, CometSearch.cpp's PermuteMods()/nested iSumN accumulation) and B4
+# (FI/PI path, CometModificationsPermuter.cpp's combine()) each independently failed
+# to correctly enforce max_variable_mods_in_peptide once mods live in slots 10-15 (the
+# 15-mod extension). This fixture configures three single-residue mods in slots
+# 10/11/12 (arbitrary masses 10/20/30 Da, chosen so no subset of {10,20,30} other than
+# all three sums to their total of 60) on a peptide with one modifiable residue of
+# each type, capped at max_variable_mods_in_peptide=2 -- a query precursor mass that's
+# only explained by all three mods simultaneously must find zero valid candidates.
+
+T27_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 0
+num_threads = 1
+print_ascorepro_score = 0
+peptide_mass_tolerance_upper = 3.0
+peptide_mass_tolerance_lower = -3.0
+peptide_mass_units = 0
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 1
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 0
+variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod02 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod06 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod07 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod08 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod09 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod10 = 10.0 S 0 1 -1 0 0 0.0
+variable_mod11 = 20.0 T 0 1 -1 0 0 0.0
+variable_mod12 = 30.0 Y 0 1 -1 0 0 0.0
+variable_mod13 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod14 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod15 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 2
+require_variable_mod = 0
+fragment_bin_tol = 0.02
+fragment_bin_offset = 0.0
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 5
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 2000.0
+peptide_length_range = 6 6
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = DECOY_
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 1
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+1.  Trypsin                1      KR          P
+""")
+
+
+def _t27_run(comet_exe, database, ms2_path):
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    params = T27_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(database))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+    try:
+        return _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2_path)])
+    finally:
+        params_file.unlink(missing_ok=True)
+
+
+@register("t27_modcap_fasta")
+def test_t27_modcap_fasta(comet_exe):
+    """T27: B3 regression -- FASTA search must not report a peptide with 3
+    simultaneous variable mods in slots 10-15 when max_variable_mods_in_peptide=2."""
+    failures = []
+    fasta = DATA_DIR / "t27_modcap.fasta"
+    ms2   = DATA_DIR / "t27_modcap.ms2"
+    txt   = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    try:
+        rc, out = _t27_run(comet_exe, fasta, ms2)
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        rows = []
+        if txt.exists():
+            lines = txt.read_text().splitlines()
+            rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) == 0,
+              f"expected zero PSM rows (the only mass match requires all 3 mods, "
+              f"exceeding the cap of 2), got {len(rows)}: {rows}", failures)
+    finally:
+        txt.unlink(missing_ok=True)
+    return failures
+
+
+@register("t27_modcap_fi")
+def test_t27_modcap_fi(comet_exe):
+    """T27: B4 regression -- same scenario as t27_modcap_fasta, but for FI_DB's
+    CometModificationsPermuter::combine() cap enforcement."""
+    failures = []
+    fasta = DATA_DIR / "t27_modcap.fasta"
+    ms2   = DATA_DIR / "t27_modcap.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx.unlink(missing_ok=True)
+    build_params = T27_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    txt.unlink(missing_ok=True)
+    try:
+        rc, out = _t27_run(comet_exe, idx, ms2)
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        rows = []
+        if txt.exists():
+            lines = txt.read_text().splitlines()
+            rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) == 0,
+              f"expected zero PSM rows (the only mass match requires all 3 mods, "
+              f"exceeding the cap of 2), got {len(rows)}: {rows}", failures)
+    finally:
+        txt.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T28 -- docs/20260819_fablereview.md B5 regression: .idx header restore must set
+# bNtermMod/bCtermMod/bVarTermModSearch, not just szVarModChar/mass.
+# ---------------------------------------------------------------------------
+
+@register("t28_idx_cterm_mod")
+def test_t28_idx_cterm_mod(comet_exe):
+    """T28: B5 regression -- an FI_DB .idx built with a real c-term variable mod must
+    still apply that mod when searched with variable_mod01/02 left blank."""
+    failures = []
+
+    fasta = legacy_cases.LEGACY_DIR / "db" / "epgc_9entry.fasta"
+    ms2   = legacy_cases.LEGACY_DIR / "ctermmod" / "input.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    CTERM_MODS = ("15.9949 M 0 3 -1 0 0 0.0", "128.094963050 c 0 3 -1 0 0 0.0")
+
+    idx.unlink(missing_ok=True)
+    build_params = legacy_cases.build_params(
+        database=fmt(fasta), enzyme1=1, ntt=1, mods=CTERM_MODS)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    txt.unlink(missing_ok=True)
+    # variable_mod01/02 left blank (mods=()) at search time -- the .idx header's own
+    # VariableMod: entries must be what actually gets applied.
+    search_params = legacy_cases.build_params(database=fmt(idx), enzyme1=1, ntt=1, mods=())
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) >= 1, f"expected at least 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+
+        check(row.get("plain_peptide") == "YFDSFGDLSSASAIMGNP",
+              f"plain_peptide: expected the c-term-modified YFDSFGDLSSASAIMGNP, got "
+              f"{row.get('plain_peptide')!r} (a regression leaves bVarTermModSearch "
+              f"false, so this variant is never enumerated and a different, "
+              f"coincidentally-same-mass peptide ranks first instead)", failures)
+        check("128.094963_c" in row.get("modifications", ""),
+              f"modifications: expected the c-term mod (128.094963_c), got "
+              f"{row.get('modifications')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T29 -- docs/20260819_fablereview.md B14/B15 regression: PI_DB target-decoy
+# classification must use the .idx header's decoy_prefix, and the protein-name cache
+# actually populated at search time.
+# ---------------------------------------------------------------------------
+
+T29_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 2
+num_threads = 1
+print_ascorepro_score = 0
+peptide_mass_tolerance_upper = 5.0
+peptide_mass_tolerance_lower = -5.0
+peptide_mass_units = 0
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 1
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 0
+variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod02 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 1
+require_variable_mod = 0
+fragment_bin_tol = 1.0005
+fragment_bin_offset = 0.4
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 1
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 2000.0
+peptide_length_range = 5 20
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = {decoy_prefix}
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 1
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+1.  Trypsin                1      KR          P
+""")
+
+
+@register("t29_decoyprefix")
+def test_t29_decoyprefix(comet_exe):
+    """T29: B14/B15 regression -- a PI_DB .idx built with decoy_prefix=REV_ must still
+    classify the decoy protein's peptide as a decoy when searched with decoy_prefix
+    left at the mismatched default (DECOY_)."""
+    failures = []
+
+    fasta     = DATA_DIR / "t29_decoyprefix.fasta"
+    ms2       = DATA_DIR / "t29_decoyprefix.ms2"
+    idx       = fasta.with_suffix(".fasta.idx")
+    txt       = ms2.with_suffix(".txt")
+    txt_decoy = ms2.with_suffix(".decoy.txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx.unlink(missing_ok=True)
+    build_params = T29_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), decoy_prefix="REV_")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    for f in (txt, txt_decoy):
+        f.unlink(missing_ok=True)
+
+    # decoy_prefix left at the mismatched default (DECOY_, not REV_) -- the .idx
+    # header's own DecoyPrefix: entry must be what actually gets used.
+    search_params = T29_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), decoy_prefix="DECOY_")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed (rc={rc}):\n{out}")
+            return failures
+
+        target_rows = []
+        decoy_rows  = []
+        decoy_lines = []
+        if txt.exists():
+            lines = txt.read_text().splitlines()
+            target_rows = [l.split("\t") for l in lines[2:] if l.strip()]
+        if txt_decoy.exists():
+            decoy_lines = txt_decoy.read_text().splitlines()
+            decoy_rows  = [l.split("\t") for l in decoy_lines[2:] if l.strip()]
+
+        check(len(target_rows) == 0,
+              f"expected zero TARGET rows (the only mass match is the decoy "
+              f"protein's peptide; a regression would misclassify it as a target), "
+              f"got {len(target_rows)}: {target_rows}", failures)
+        check(len(decoy_rows) == 1,
+              f"expected exactly 1 DECOY row for SEATENCEK, got {len(decoy_rows)}: "
+              f"{decoy_rows}", failures)
+        if decoy_rows:
+            decoy_header = decoy_lines[1].split("\t")
+            row = dict(zip(decoy_header, decoy_rows[0]))
+            check(row.get("plain_peptide") == "SEATENCEK",
+                  f"plain_peptide: expected SEATENCEK, got {row.get('plain_peptide')!r}",
+                  failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        txt_decoy.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T30 -- docs/20260819_fablereview.md C1/C2 regression: a precursor whose mass sits
+# exactly at the configured top of the mass range must not corrupt the heap.
+# ---------------------------------------------------------------------------
+#
+# C1: g_bIndexPrecursors was allocated BIN(dPeptideMassHigh) bools (valid indices
+# 0..BIN(high)-1) but ReadPrecursors()/AddFragments() read/write index BIN(high)
+# itself when a precursor+tolerance window reaches the top of the configured mass
+# range -- a 1-byte heap OOB read/write. C2: the batch XCorr pool arrays were sized
+# exactly iArraySizeGlobal with no padding, but the XCorr loop reads up to
+# iXcorrProcessingOffset doubles past that for a precursor at the top of the range.
+# Both fixed by a +1/+offset allocation. This fixture sets digest_mass_range's upper
+# bound to exactly this peptide's mass and requires fragindex_skipreadprecursors=0
+# (the FI_DB precursor-index-limited build path C1 lives in; the param defaults to 1,
+# skipping that path entirely, so it must be set explicitly here).
+
+T30_PARAMS_TEMPLATE = (
+    T19_PARAMS_TEMPLATE
+    .replace("search_enzyme_number = 0", "search_enzyme_number = 1")
+    .replace("digest_mass_range = 200.0 2000.0",
+             "digest_mass_range = 200.0 1019.462\nfragindex_skipreadprecursors = 0")
+    .replace("peptide_length_range = 8 8", "peptide_length_range = 9 9")
+)
+assert "search_enzyme_number = 1" in T30_PARAMS_TEMPLATE, \
+    "T30_PARAMS_TEMPLATE: search_enzyme_number replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "fragindex_skipreadprecursors = 0" in T30_PARAMS_TEMPLATE, \
+    "T30_PARAMS_TEMPLATE: digest_mass_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 9 9" in T30_PARAMS_TEMPLATE, \
+    "T30_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+
+
+@register("t30_mass_boundary")
+def test_t30_mass_boundary(comet_exe):
+    """T30: C1/C2 regression -- FI_DB build+search with a precursor exactly at
+    digest_mass_range's upper bound must not crash or silently miss the peptide."""
+    failures = []
+
+    fasta = DATA_DIR / "t30_massboundary.fasta"
+    ms2   = DATA_DIR / "t30_massboundary.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx.unlink(missing_ok=True)
+    build_params = T30_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+    finally:
+        build_params_file.unlink(missing_ok=True)
+
+    txt.unlink(missing_ok=True)
+    search_params = T30_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        search_params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed/crashed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        check(len(rows) == 1, f"expected exactly 1 PSM row, got {len(rows)}", failures)
+        if not rows:
+            return failures
+
+        header = lines[1].split("\t")
+        row = dict(zip(header, rows[0]))
+        check(row.get("plain_peptide") == "ACDEFGHIK",
+              f"plain_peptide: expected ACDEFGHIK, got {row.get('plain_peptide')!r}",
+              failures)
+        check(int(row.get("ions_matched", "0")) == 16,
+              f"ions_matched: expected all 16 b/y ions matched, got "
+              f"{row.get('ions_matched')!r}", failures)
+    finally:
+        search_params_file.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T31 -- docs/20260819_fablereview.md C5 regression (sizing bug only; the MS2
+# StoreSpecLib() NULL-deref is unfinished-feature scaffolding left as-is by request):
+# g_vulSpecLibPrecursorIndex must be sized to allow writes up to and including
+# BINPREC(dPeptideMassHigh).
+# ---------------------------------------------------------------------------
+#
+# The library's one entry has a wide-enough peptide_mass_tolerance window around its
+# own mass to reach exactly the top bin of digest_mass_range -- pre-fix, this aborted
+# LoadSpecLib() itself (before any spectra are even read) with std::out_of_range. The
+# query spectrum's own precursor mass is deliberately far from both the library entry
+# and the FASTA's own peptide, so no MS2 library scoring is ever attempted --
+# StoreSpecLib()'s known, separately-scoped NULL-deref (unfinished MS2 speclib search,
+# left unfixed per Jimmy's 2026-08-19 note) is never reached by this test.
+
+T31_PARAMS_TEMPLATE = textwrap.dedent("""\
+# comet_version {comet_version}
+database_name = {database}
+decoy_search = 0
+num_threads = 1
+print_ascorepro_score = 0
+spectral_library_name = {speclib}
+peptide_mass_tolerance_upper = 20.0
+peptide_mass_tolerance_lower = -20.0
+peptide_mass_units = 0
+precursor_tolerance_type = 1
+isotope_error = 0
+search_enzyme_number = 0
+search_enzyme2_number = 0
+sample_enzyme_number = 0
+num_enzyme_termini = 2
+allowed_missed_cleavage = 2
+variable_mod01 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod02 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod03 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod04 = 0.0 X 0 3 -1 0 0 0.0
+variable_mod05 = 0.0 X 0 3 -1 0 0 0.0
+max_variable_mods_in_peptide = 3
+require_variable_mod = 0
+fragment_bin_tol = 1.0005
+fragment_bin_offset = 0.4
+theoretical_fragment_ions = 0
+use_A_ions = 0
+use_B_ions = 1
+use_C_ions = 0
+use_X_ions = 0
+use_Y_ions = 1
+use_Z_ions = 0
+use_Z1_ions = 0
+use_NL_ions = 0
+output_sqtfile = 0
+output_txtfile = 1
+output_pepxmlfile = 0
+output_mzidentmlfile = 0
+output_percolatorfile = 0
+num_output_lines = 1
+scan_range = 0 0
+precursor_charge = 0 0
+override_charge = 0
+ms_level = 2
+activation_method = ALL
+digest_mass_range = 200.0 1200.0
+peptide_length_range = 5 20
+max_duplicate_proteins = -1
+max_fragment_charge = 3
+min_precursor_charge = 1
+max_precursor_charge = 6
+clip_nterm_methionine = 0
+spectrum_batch_size = 15000
+decoy_prefix = DECOY_
+equal_I_and_L = 0
+mass_offsets =
+minimum_peaks = 1
+minimum_intensity = 0
+remove_precursor_peak = 0
+remove_precursor_tolerance = 1.5
+clear_mz_range = 0.0 0.0
+percentage_base_peak = 0.0
+add_Cterm_peptide = 0.0
+add_Nterm_peptide = 0.0
+add_Cterm_protein = 0.0
+add_Nterm_protein = 0.0
+add_G_glycine = 0.0
+add_A_alanine = 0.0
+add_S_serine = 0.0
+add_P_proline = 0.0
+add_V_valine = 0.0
+add_T_threonine = 0.0
+add_C_cysteine = 0.0
+add_L_leucine = 0.0
+add_I_isoleucine = 0.0
+add_N_asparagine = 0.0
+add_D_aspartic_acid = 0.0
+add_Q_glutamine = 0.0
+add_K_lysine = 0.0
+add_E_glutamic_acid = 0.0
+add_M_methionine = 0.0
+add_H_histidine = 0.0
+add_F_phenylalanine = 0.0
+add_U_selenocysteine = 0.0
+add_R_arginine = 0.0
+add_Y_tyrosine = 0.0
+add_W_tryptophan = 0.0
+add_O_pyrrolysine = 0.0
+add_B_user_amino_acid = 0.0
+add_J_user_amino_acid = 0.0
+add_X_user_amino_acid = 0.0
+add_Z_user_amino_acid = 0.0
+[COMET_ENZYME_INFO]
+0.  Cut_everywhere         0      -           -
+""")
+
+
+@register("t31_speclib_sizing")
+def test_t31_speclib_sizing(comet_exe):
+    """T31: C5 regression (sizing bug only) -- LoadSpecLib() must not throw
+    std::out_of_range when a library entry's tolerance window reaches exactly
+    digest_mass_range's top bin."""
+    failures = []
+
+    fasta   = DATA_DIR / "t31_speclib.fasta"
+    speclib = DATA_DIR / "t31_speclib.msp"
+    ms2     = DATA_DIR / "t31_speclib.ms2"
+    txt     = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    txt.unlink(missing_ok=True)
+    search_params = T31_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), speclib=fmt(speclib))
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(search_params)
+        params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        check(rc == 0,
+              f"expected a clean exit (rc=0); a regression throws std::out_of_range "
+              f"while loading the library, before any spectra are even read "
+              f"(rc={rc}):\n{out}", failures)
+        check("out_of_range" not in out,
+              f"unexpected std::out_of_range in output:\n{out}", failures)
+        check(txt.exists(), f".txt not created. Comet output:\n{out}", failures)
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T32 -- docs/20260819_fablereview.md B11 regression: search_enzyme_number with no
+# matching [COMET_ENZYME_INFO] definition must error, not silently run with an
+# empty/garbage enzyme.
+# ---------------------------------------------------------------------------
+
+@register("t32_bad_enzyme_number")
+def test_t32_bad_enzyme_number(comet_exe):
+    """T32: B11 regression -- search_enzyme_number = 99 (undefined in
+    [COMET_ENZYME_INFO]) must be rejected with a clear error, not silently accepted."""
+    failures = []
+    try:
+        run_comet_index(comet_exe, DATA_DIR / "t1_basic.fasta", {
+            "enzyme": 99, "missed_cleavage": 0,
+            "len_min": 8, "len_max": 10, "mass_low": 200.0,
+            "equal_IL": 0, "static_C": 0.0,
+        })
+        failures.append("expected Comet to fail with search_enzyme_number=99, but it "
+                         "succeeded")
+    except RuntimeError as e:
+        msg = str(e)
+        check("search_enzyme_number 99" in msg and "missing definition" in msg,
+              f"expected a 'search_enzyme_number 99 ... missing definition' error, "
+              f"got: {msg[:300]}", failures)
+    finally:
+        idx_path = (DATA_DIR / "t1_basic.fasta").with_suffix(".fasta.idx")
+        idx_path.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T33 -- docs/20260819_fablereview.md C10 regression: a very long param value and a
+# malformed mass_offsets entry must not overflow a stack buffer or hang.
+# ---------------------------------------------------------------------------
+
+@register("t33_param_robustness")
+def test_t33_param_robustness(comet_exe):
+    """T33: C10 regression -- a 600-char param value (szParamVal is 512 bytes) and a
+    malformed mass_offsets token (a non-numeric token that used to stall strtok()
+    forever) must not crash or hang; either a clean error or a graceful skip is fine."""
+    failures = []
+
+    fasta = DATA_DIR / "t1_basic.fasta"
+    ms2   = legacy_cases.LEGACY_DIR / "plain" / "input.ms2"
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    long_value = "x" * 600
+    params_text = PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta),
+        enzyme=0, missed_cleavage=0, len_min=8, len_max=10, mass_low=200.0,
+        equal_IL=0, static_C=0.0,
+    )
+    # Inserted before [COMET_ENZYME_INFO] (not appended at the very end) so these
+    # remain ordinary key=value lines, not enzyme-table rows; Comet's param parser
+    # takes the last occurrence of a repeated key, so these override the template's
+    # own decoy_prefix/mass_offsets lines above them.
+    overrides = (f"decoy_prefix = {long_value}\n"
+                 "mass_offsets = 10.0 garbageTOKEN 20.0\n")
+    assert "[COMET_ENZYME_INFO]" in params_text
+    params_text = params_text.replace("[COMET_ENZYME_INFO]", overrides + "[COMET_ENZYME_INFO]")
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params_text)
+        params_file = Path(pf.name)
+
+    txt = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    try:
+        try:
+            result = subprocess.run(
+                [str(comet_exe), f"-P{fmt(params_file)}", fmt(ms2)],
+                capture_output=True, text=True, timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            failures.append("Comet did not exit within 30s -- the malformed "
+                             "mass_offsets token likely stalled strtok() in an "
+                             "infinite loop")
+            return failures
+
+        out = result.stdout + result.stderr
+        # A crash (killed by a signal, e.g. stack smashing from the 600-char value)
+        # shows up as a negative returncode on POSIX. A clean error exit (nonzero,
+        # positive) or a clean success are both acceptable -- the bug was a hang or a
+        # crash, not "must succeed".
+        check(result.returncode >= 0,
+              f"Comet exited via signal (returncode={result.returncode}), suggesting "
+              f"a crash:\n{out}", failures)
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 

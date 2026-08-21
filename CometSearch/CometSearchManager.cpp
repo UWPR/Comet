@@ -443,7 +443,37 @@ bool CometSearchManager::InitializeStaticParams()
    DoubleRange doubleRangeData;
 
    if (staticParamsInitializationComplete)
+   {
+      // FiStrategy::finalize() frees g_bIndexPrecursors and nulls it out at the end of
+      // every FI_DB search specifically so a subsequent search in the same process
+      // rebuilds it -- but staticParamsInitializationComplete is intentionally never
+      // reset (re-running the rest of this function on a second call risks double-
+      // applying cumulative state such as static-mod residue-mass deltas), so the
+      // one-time allocation block below never gets a second chance to run and the
+      // second FI_DB search null-derefs on g_bIndexPrecursors. Re-run just that
+      // allocation here, using whatever param values are already live in
+      // g_staticParams (a second SetParam("peptide_mass_high", ...) between searches
+      // is silently ignored either way, same as every other post-first-search param
+      // change under this one-shot design).
+      if (g_staticParams.iDbType == DbType::FI_DB && g_bIndexPrecursors == NULL)
+      {
+         g_bIndexPrecursors = (bool*)malloc((BIN(g_staticParams.options.dPeptideMassHigh) + 1) * sizeof(bool));
+         if (g_bIndexPrecursors == NULL)
+         {
+            printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh) + 1);
+            return false;
+         }
+         for (int x = 0; x <= BIN(g_staticParams.options.dPeptideMassHigh); ++x)
+         {
+            if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
+               g_bIndexPrecursors[x] = true;
+            else
+               g_bIndexPrecursors[x] = false;
+         }
+      }
+
       return true;
+   }
 
    if (GetParamValue("database_name", strData))
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
@@ -1364,7 +1394,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         for (int ii=i+1; ii<VMODS-1; ++ii)
+         for (int ii=i+1; ii<VMODS; ++ii)
          {
             if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
                   && (g_staticParams.variableModParameters.varModList[ii].szVarModChar[0]!='-'))

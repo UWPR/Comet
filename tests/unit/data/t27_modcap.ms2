@@ -1,0 +1,19 @@
+H	CreationDate	synthetic
+H	Comment	B3/B4 regression: precursor mass = ASTYGK + all three of
+H	Comment	variable_mod10(S,+10)/mod11(T,+20)/mod12(Y,+30) simultaneously (+60 Da),
+H	Comment	which exceeds max_variable_mods_in_peptide=2. No 1- or 2-mod combination
+H	Comment	of these three masses (0,10,20,30,30,40,50) equals 60, so this precursor
+H	Comment	mass is uniquely explained by the capped-out 3-mod combination -- a
+H	Comment	correct search must report zero PSMs for this scan.
+S	1	1	343.660843
+Z	2	686.314411
+72.0444	100.0
+159.0764	100.0
+260.1241	100.0
+423.1874	100.0
+480.2089	100.0
+147.1128	100.0
+204.1343	100.0
+367.1976	100.0
+468.2453	100.0
+555.2773	100.0

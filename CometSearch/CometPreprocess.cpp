@@ -881,8 +881,13 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
          iScanNumber = mstSpectrum.getScanNumber();
 
          // iScanNumber will equal 0 if iFirstScan is not the right scan level
-         // So need to keep reading the next scan until we get a non-zero scan number
-         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         // So need to keep reading the next scan until we get a non-zero scan number.
+         // Must bound on iFileLastScan (the file's actual last scan), not iLastScan
+         // (the -L/scanRange.iEnd option) -- iLastScan is still 0 whenever -F is given
+         // without -L, which would make this loop body unreachable and leave iScanNumber
+         // stuck at 0 for the rest of the search (see ReadPrecursors()'s equivalent loop,
+         // which already bounds on iFileLastScan).
+         while (iScanNumber == 0 && iFirstScan < iFileLastScan)
          {
             iFirstScan++;
             PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
@@ -1024,12 +1029,18 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
    int i;
 
    //MH: Grab available array from shared memory pool.
-   Threading::LockMutex(g_preprocessMemoryPoolMutex);
+   // Must release the mutex between polls: a slot is only ever released by a
+   // PreprocessThreadData destructor (CometPreprocess.h) that itself locks this
+   // same mutex, so holding it across the whole spin would make that release
+   // (and therefore this wait) unable to ever succeed -- currently unreachable
+   // only because the pool is always sized to iNumThreads, so a slot is always
+   // immediately free.
    auto tStartTime = std::chrono::high_resolution_clock::now();
    const auto timeout_duration = std::chrono::seconds(240);
 
    while (true)
    {
+      Threading::LockMutex(g_preprocessMemoryPoolMutex);
       for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
       {
          if (pbMemoryPool[i] == false)
@@ -1038,18 +1049,22 @@ void CometPreprocess::PreprocessThreadProc(PreprocessThreadData *pPreprocessThre
             break;
          }
       }
+      Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
       if (i < g_staticParams.options.iNumThreads
          || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
       {
          break;
       }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
    }
-   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
    if (i == g_staticParams.options.iNumThreads)
    {
       logerr(" Error - could not find available memory pool for MS2 preprocessing thread.\n");
+      delete pPreprocessThreadData;
+      pPreprocessThreadData = NULL;
       return;
    }
 
@@ -1080,13 +1095,15 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
 
    int i;
 
-   Threading::LockMutex(g_preprocessMemoryPoolMutex);
+   // See the equivalent wait in PreprocessThreadProc() above: the mutex must be
+   // released between polls, not held for the whole spin, since a slot is only
+   // released by a PreprocessThreadData destructor that locks this same mutex.
    auto tStartTime = std::chrono::high_resolution_clock::now();
    const auto timeout_duration = std::chrono::seconds(240);
 
-
    while (true)
    {
+      Threading::LockMutex(g_preprocessMemoryPoolMutex);
       for (i = 0; i < g_staticParams.options.iNumThreads; ++i)
       {
          if (pbMemoryPool[i] == false)
@@ -1095,18 +1112,22 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
             break;
          }
       }
+      Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
       if (i < g_staticParams.options.iNumThreads
          || std::chrono::high_resolution_clock::now() - tStartTime > timeout_duration)
       {
          break;
       }
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
    }
-   Threading::UnlockMutex(g_preprocessMemoryPoolMutex);
 
    if (i == g_staticParams.options.iNumThreads)
    {
       logerr(" Error - could not find available memory pool for MS1 preprocessing thread.\n");
+      delete pPreprocessThreadDataMS1;
+      pPreprocessThreadDataMS1 = NULL;
       return;
    }
 
@@ -1115,13 +1136,10 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
 
    double* pdTmpRawData = ppdTmpRawDataArr[i];
    double* pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[i];
-   double* pdTmpCorrelationData = ppdTmpCorrelationDataArr[i];
 
-   // FIX remove unused arrays
    size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
-   memset(pdTmpCorrelationData, 0, iTmp);
 
    // take pPreprocessThreadData->mstSpectrum and store in g_vSpecLib
 
@@ -3833,7 +3851,9 @@ bool CometPreprocess::FusedLoadAndSearchSpectra(MSReader& mstReader,
             PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
             iScanNumber = mstSpectrum.getScanNumber();
 
-            while (iScanNumber == 0 && iFirstScan < iLastScan)
+            // Bound on iFileLastScan, not iLastScan -- see the equivalent loop
+            // in LoadAndPreprocessSpectra() above for why.
+            while (iScanNumber == 0 && iFirstScan < iFileLastScan)
             {
                iFirstScan++;
                PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
@@ -4033,7 +4053,9 @@ bool CometPreprocess::FusedPreloadThenSearch(MSReader& mstReader,
          PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
          iScanNumber = mstSpectrum.getScanNumber();
 
-         while (iScanNumber == 0 && iFirstScan < iLastScan)
+         // Bound on iFileLastScan, not iLastScan -- see the equivalent loop
+         // in LoadAndPreprocessSpectra() above for why.
+         while (iScanNumber == 0 && iFirstScan < iFileLastScan)
          {
             iFirstScan++;
             PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
