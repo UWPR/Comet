@@ -55,6 +55,22 @@ comet_fileoffset_t clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t)
 comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
 #endif
 
+// .idx binary I/O throughout CometPeptideIndex.cpp reads/writes size_t objects
+// (tNumRaw, tNumProteinEntries, tNumProteins, ProteinsListCSR row sizes, etc.) using
+// clSizeCometFileOffset (== sizeof(comet_fileoffset_t), always 8) as the byte count for
+// both fread() and fwrite() -- e.g. fwrite(&tTmp, clSizeCometFileOffset, 1, fptr) where
+// tTmp is size_t. That's only correct if sizeof(size_t) itself is also 8: on a
+// hypothetical 32-bit build (sizeof(size_t) == 4), fwrite would read 4 bytes past the
+// variable (heap/stack overread) and fread would write 4 bytes past it (memory
+// corruption) instead of failing loudly. Comet has only ever shipped 64-bit builds, so
+// this is unreachable today -- catch it at compile time if that ever changes, rather
+// than relying on it staying unreachable by convention.
+static_assert(sizeof(size_t) == sizeof(comet_fileoffset_t),
+   "CometPeptideIndex.cpp's .idx binary I/O reads/writes size_t objects using "
+   "clSizeCometFileOffset (sizeof(comet_fileoffset_t)) as the byte count; this build's "
+   "sizeof(size_t) doesn't match, which would silently overread/overwrite past those "
+   "variables during .idx read/write.");
+
 
 CometFragmentIndex::CometFragmentIndex()
 {
@@ -555,7 +571,17 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
 
       // Store the current peptide; iWhichFragmentPeptide references this peptide entry
       // for use in the g_iFragmentIndex fragment index.  As this is a global list of
-      // peptides, need to lock when updating to avoid thread conflicts
+      // peptides, need to lock when updating to avoid thread conflicts.
+      //
+      // AddFragmentsThreadProc() currently runs this single-threaded regardless of the
+      // ThreadPool it's handed (see P1 in docs/20260819_fablereview.md -- the count/fill
+      // passes don't actually use the pool yet), so this push_back has no live
+      // concurrent caller today and the lock below is a no-op in practice. Locking
+      // anyway rather than leaving it as dead-code-shaped: whenever P1 gets fixed and
+      // this pass is genuinely parallelized, this is the one place that would otherwise
+      // silently start racing (concurrent vector::push_back is undefined behavior --
+      // lost elements or reallocation corruption, not a clean crash).
+      Threading::LockMutex(_vFragmentPeptidesMutex);
       if (g_vFragmentPeptides.size() >= UINT_MAX)
       {
          printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
@@ -563,6 +589,7 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       }
       // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
       g_vFragmentPeptides.push_back(sTmp);
+      Threading::UnlockMutex(_vFragmentPeptidesMutex);
    }
 
 /*

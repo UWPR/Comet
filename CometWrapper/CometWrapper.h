@@ -34,6 +34,10 @@ namespace CometWrapper {
     public:
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
+        !CometSearchManagerWrapper();   // finalizer: GC safety net that releases the
+                                         // native _pSearchMgr/_pvInputFilesList even if
+                                         // the C# host never calls Dispose()/the
+                                         // destructor (e.g. no `using`/explicit Dispose())
 
         bool CreateFragmentIndex();
         bool CreatePeptideIndex();

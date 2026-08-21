@@ -14,17 +14,11 @@
 
 
 #include "Threading.h"
-#include <thread>
-#include <chrono>
-#include <memory>
 #include <mutex>
-#include <condition_variable>
 
 ///////////////////////////////////////////////////////////////
 // Cross-platform implementations using C++ standard library
 ///////////////////////////////////////////////////////////////
-
-ThreadId Threading::_threadId;
 
 Threading::Threading()
 {
@@ -57,64 +51,4 @@ void Threading::DestroyMutex(Mutex& /*mutex*/)
     // std::mutex destructor handles cleanup automatically
     // Ensure mutex is unlocked before destruction
     // (caller's responsibility to ensure proper unlocking)
-}
-
-// Thread-specific methods
-void Threading::BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId)
-{
-   std::thread t([pFunction, arg]() { pFunction(arg); });
-
-   ThreadId newThreadId = t.get_id();
-
-   if (pThreadId != nullptr)
-      *pThreadId = newThreadId;
-   _threadId = newThreadId;
-
-   t.detach();
-}
-
-void Threading::ThreadSleep(unsigned long dwMilliseconds)
-{
-    std::this_thread::sleep_for(std::chrono::milliseconds(dwMilliseconds));
-}
-
-// Semaphore methods
-void Threading::InitSemaphore(Semaphore* pSem)
-{
-    // Semaphore members are already initialized by the constructor
-    // Just ensure the condition flag is set to false
-    if (pSem != nullptr)
-    {
-        pSem->conditionSet = false;
-    }
-}
-
-void Threading::WaitSemaphore(Semaphore& sem)
-{
-    std::unique_lock<std::mutex> lock(sem.mutex);
-    // Wait until condition is set
-    sem.condition.wait(lock, [&sem] { return sem.conditionSet; });
-    // Reset the condition after being signaled
-    sem.conditionSet = false;
-}
-
-void Threading::SignalSemaphore(Semaphore& sem)
-{
-    {
-        std::lock_guard<std::mutex> lock(sem.mutex);
-        sem.conditionSet = true;
-    }
-    // Notify one waiting thread
-    sem.condition.notify_one();
-}
-
-void Threading::DestroySemaphore(Semaphore& sem)
-{
-    // std::condition_variable and std::mutex destructors handle cleanup automatically
-    // Wake up any waiting threads before destruction
-    {
-        std::lock_guard<std::mutex> lock(sem.mutex);
-        sem.conditionSet = true;
-    }
-    sem.condition.notify_all();
 }

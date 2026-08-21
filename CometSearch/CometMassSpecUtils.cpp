@@ -161,22 +161,23 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpfasta,
       while (((iTmpCh = getc(fpfasta)) != '\n') && (iTmpCh != '\r') && (iTmpCh != EOF));
 
       // load sequence
+      //
+      // Does NOT increment g_staticParams.databaseInfo.uliTotAACount, unlike the
+      // near-identical digestion loop this was copied from (CometSearch.cpp) -- that
+      // counter is the one-time, whole-database residue count computed during initial
+      // digestion and reported in SQT's "DBSeqLength" header line; this function instead
+      // runs during OUTPUT WRITING (CometWriteMzIdentML.cpp, fetching one matched
+      // protein's sequence per PSM for the report), so incrementing it here re-counted
+      // residues on every mzIdentML-output run, silently inflating the SQT header's
+      // count whenever both output_mzidentmlfile and output_sqtfile were enabled together.
       while (((iTmpCh=getc(fpfasta)) != '>') && (iTmpCh != EOF))
       {
          if ('a'<=iTmpCh && iTmpCh<='z')
-         {
             strSeq += iTmpCh - 32;  // convert toupper case so subtract 32 (i.e. 'A'-'a')
-            g_staticParams.databaseInfo.uliTotAACount++;
-         }
          else if ('A'<=iTmpCh && iTmpCh<='Z')
-         {
             strSeq += iTmpCh;
-            g_staticParams.databaseInfo.uliTotAACount++;
-         }
          else if (iTmpCh == '*')  // stop codon
-         {
             strSeq += iTmpCh;
-         }
       }
    }
 }
@@ -458,31 +459,6 @@ void CometMassSpecUtils::EscapeString(std::string& data)
       }
       data.swap(buffer);
    }
-}
-
-
-// input dVal should range from dMin to dMax
-char CometMassSpecUtils::NormalizeDoubleToChar(double dVal, double dMin, double dMax)
-{
-   if (dMax <= dMin)
-      return static_cast<char>(-127); // Handle invalid range
-
-   // Normalize dVal to the range [0.0, 1.0] based on dMin and dMax
-   double normalizedValue = (dVal - dMin) / (dMax - dMin);
-
-   // Scale to the range [0.0, 255.0]
-   double scaledValue = normalizedValue * 255.0;
-
-   // Offset to the char range [-127, 128]
-   int charIntValue = static_cast<int>(scaledValue - 127.0);
-
-   // Clamp the value to the valid char range
-   if (charIntValue < -127)
-      return static_cast<char>(-127);
-   else if (charIntValue > 128)
-      return static_cast<char>(128);
-   else
-      return static_cast<char>(charIntValue);
 }
 
 

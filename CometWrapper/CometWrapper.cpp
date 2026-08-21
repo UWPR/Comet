@@ -47,6 +47,19 @@ CometSearchManagerWrapper::CometSearchManagerWrapper()
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
+    // Destructor (Dispose()): deterministic cleanup path when the C# host calls
+    // Dispose() or uses a `using` block. Delegates to the finalizer for the actual
+    // native release so that path also runs cleanup if Dispose() is skipped -- the
+    // compiler-generated Dispose() suppresses the finalizer afterward either way, so
+    // this doesn't double-release.
+    this->!CometSearchManagerWrapper();
+}
+
+CometSearchManagerWrapper::!CometSearchManagerWrapper()
+{
+    // Finalizer: GC safety net. Runs even if the C# host never calls Dispose() --
+    // without this, _pSearchMgr/_pvInputFilesList (both native, unmanaged heap
+    // allocations the GC knows nothing about) leaked for the life of the process.
     ReleaseCometSearchManager();
 
     // CometSearchManager releases all the objects stored in the vector, we just

@@ -14,7 +14,6 @@
 
 #include "Common.h"
 #include "CometSearch.h"
-#include "CometFragmentIndexReader.h"
 #include "threading/SearchMemoryPool.h"
 #include <atomic>
 #include <unordered_map>
@@ -127,13 +126,23 @@ int CometSearch::AcquirePoolSlot()
 // but if it didn't (or this is called before init), load it now.
 // Shared by the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB
 // path (SearchPeptideIndex(ThreadPool*, vector<Query*>&)).
+//
+// Gates on g_bPeptideIndexFullyInitialized, NOT g_bPeptideIndexRead: ReadPeptideIndex()
+// sets the latter at its own end, before this function goes on to also call
+// InitializeMassesFromPeptideIndex() and (if enabled) create the AScorePro interface --
+// if the unlocked fast-path check below trusted g_bPeptideIndexRead directly, a second
+// caller (e.g. another RTS Task's thread, which the API allows to call this concurrently
+// with the first) could see it already true while the first caller is still inside the
+// locked block finishing mass-init/AScorePro setup, and proceed to search with masses that
+// aren't ready yet. g_bPeptideIndexFullyInitialized is set only once everything below has
+// actually finished.
 bool CometSearch::EnsurePeptideIndexLoaded(bool bIsRTS)
 {
-   if (g_bPeptideIndexRead)
+   if (g_bPeptideIndexFullyInitialized)
       return true;
 
    Threading::LockMutex(g_pvDBIndexMutex);
-   if (!g_bPeptideIndexRead)  // re-check under lock
+   if (!g_bPeptideIndexFullyInitialized)  // re-check under lock
    {
       if (!CometPeptideIndex::ReadPeptideIndex(bIsRTS))
       {
@@ -173,6 +182,11 @@ bool CometSearch::EnsurePeptideIndexLoaded(bool bIsRTS)
             return false;
          }
       }
+
+      // Only now -- after the read, mass-init, and AScorePro setup above have all
+      // succeeded -- is it safe for another thread's unlocked fast-path check (above) to
+      // treat this as fully done.
+      g_bPeptideIndexFullyInitialized = true;
    }
    Threading::UnlockMutex(g_pvDBIndexMutex);
 

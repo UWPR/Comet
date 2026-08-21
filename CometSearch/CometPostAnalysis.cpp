@@ -30,6 +30,8 @@
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 #include <mutex>    // std::once_flag, std::call_once
+#include <cassert>
+#include <algorithm>  // std::max
 
 // --- Pre-computed decoy fragment-ion bin table ---
 // Built once per process after g_staticParams is fully initialised.
@@ -44,6 +46,16 @@ static int s_pdNIonSeries = 0;   // iNumIonSeriesUsed at init time
 static int s_pdMaxCharge  = 0;   // options.iMaxFragmentCharge at init time
 static int s_pdNPerPos    = 0;   // s_pdNIonSeries * s_pdMaxCharge
 static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
+
+// Fingerprint of the params InitPrecomputedDecoyBins() actually baked the table from --
+// compared against current live params on every GenerateXcorrDecoys() call (not just the
+// first) so an RTS process that re-initializes with different ion-series/charge/bin-width
+// params after the table was already built asserts loudly instead of silently scoring
+// every decoy against stale bins (wrong E-values, no error). std::call_once itself can't
+// express "rebuild if params changed" -- it only guarantees "run exactly once ever" -- so
+// this check has to live outside it.
+static double s_dFingerprintInvBW  = 0.0;
+static double s_dFingerprintBinOff = 0.0;
 
 // Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
@@ -163,6 +175,11 @@ static void InitPrecomputedDecoyBins()
          }
       }
    }
+
+   // Record what this table was actually built from, so GenerateXcorrDecoys() can catch
+   // (rather than silently score against) a later param change in the same process.
+   s_dFingerprintInvBW  = dInvBW;
+   s_dFingerprintBinOff = dBinOff;
 }
 
 
@@ -1320,6 +1337,19 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
 bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
 {
    std::call_once(s_preDecoyOnce, InitPrecomputedDecoyBins);
+
+   // std::call_once only guarantees InitPrecomputedDecoyBins() ran exactly once ever --
+   // it can't detect a later param change in the same process (RTS re-initializing with
+   // a different ion series/max fragment charge/bin width via SetParam()) and rebuild.
+   // Assert loudly instead of silently scoring every decoy against a now-stale table.
+   assert(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
+      && s_pdMaxCharge == std::max(g_staticParams.options.iMaxFragmentCharge, 1)
+      && isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
+      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)
+      && "Precomputed decoy-bin table is stale: ion series/max fragment charge/bin width "
+         "changed since InitPrecomputedDecoyBins() first built it in this process. Decoy "
+         "E-values would silently use the wrong bins -- restart the process instead of "
+         "re-initializing with different search params.");
 
    int *piHistogram = pQuery->iXcorrHistogram;
    const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;

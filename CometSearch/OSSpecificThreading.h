@@ -17,25 +17,8 @@
 
 // Modern C++ cross-platform threading using standard library
 #include <mutex>
-#include <condition_variable>
-#include <thread>
 
 // Type definitions for cross-platform threading
 using Mutex = std::mutex;
-using ThreadId = std::thread::id;
-
-// Thread procedure signature
-// Returns void* for compatibility with existing code
-using ThreadProc = void* (*)(void*);
-
-// Semaphore implementation using C++ standard library primitives
-struct Semaphore
-{
-	std::condition_variable condition;
-	std::mutex mutex;
-	bool conditionSet;
-
-	Semaphore() : conditionSet(false) {}
-};
 
 #endif // _OSSPECIFICTHREADING_H_

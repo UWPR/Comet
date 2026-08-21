@@ -719,6 +719,9 @@ extern int MOD_NUM;
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
+extern std::atomic<bool> g_bPeptideIndexFullyInitialized;  // set true only once EnsurePeptideIndexLoaded()'s
+                                        // mass-init/AScorePro setup has also completed, not just the raw
+                                        // .idx read -- see CometSearch.cpp's EnsurePeptideIndexLoaded()
 extern std::atomic<bool> g_bSpecLibRead;             // set to true if spectral library file is read
 
 // g_bPerformSpecLibSearch, g_bPerformDatabaseSearch, g_bIdxNoFasta moved to SearchSession

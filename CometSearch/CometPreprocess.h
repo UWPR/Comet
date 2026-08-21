@@ -87,14 +87,6 @@ public:
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   static bool PreprocessSingleSpectrum(int iPrecursorCharge,
-                                        double dMZ,
-                                        double *pdMass,
-                                        double *pdInten,
-                                        int iNumPeaks,
-                                        double *pdTmpSpectrum,
-                                        SearchSession& session);
-
    // Thread-local version: returns Query* without touching g_pvQuery.
    // Caller owns the returned Query* and must delete it when done.
    static Query* PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge,
@@ -104,10 +96,6 @@ public:
                                                      int iNumPeaks,
                                                      double *pdTmpSpectrum);
 
-   static bool PreprocessMS1SingleSpectrum(double* pdMass,
-                                           double* pdInten,
-                                           int iNumPeaks,
-                                           SearchSession& session);
    // Thread-local version: returns QueryMS1* without touching g_pvQueryMS1.
    // Caller owns the returned QueryMS1* and must delete it when done.
    static QueryMS1* PreprocessMS1SingleSpectrumThreadLocal(double* pdMass,

@@ -87,7 +87,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
    char szModel[SIZE_FILE];
 
    time(&tTime);
-   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", comet_localtime(&tTime));
 
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    CometWritePepXML::ReadInstrument(szManufacturer, szModel);
@@ -1395,7 +1395,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
    time_t tTime;
    char szDate[48];
    time(&tTime);
-   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", comet_localtime(&tTime));
 
    fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001035\" name=\"date / time search performed\" value=\"%s\" />\n", szDate);
    fprintf(fpout, "   </SpectrumIdentificationList>\n");

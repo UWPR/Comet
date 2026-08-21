@@ -69,6 +69,15 @@ struct RtsScratch
    int     iSparsePoolCapacity;    // total number of SPARSE_MATRIX_SIZE blocks in pool
    int     iSparsePoolUsed;        // blocks handed out during current call
 
+   // AllocSparseChild()'s rare pool-exhausted fallback returns a plain new[] instead of a
+   // pool slice. Those aren't covered by the pool's own bulk memset/free, and
+   // Query::~Query() never frees them either -- it only knows "this whole Query's children
+   // are pool-owned, don't touch them" (bSparseFromPool), with no per-child distinction for
+   // the rare one that wasn't. Tracked here so something eventually does: freed at the start
+   // of the next ResetForNewSpectrum() (the owning Query has finished scoring and been
+   // destroyed by then) and before EnsureInitialized()/~RtsScratch() free/resize the pool.
+   vector<float*> vFallbackSparseChildren;
+
    int     iAllocSize;             // 0 = not yet initialised
 
    // _pResults / _pDecoys pool: avoids a ~160 KB new[]/delete[] of Results[iNumStored]
@@ -97,6 +106,8 @@ struct RtsScratch
       delete[] pSparseChildPool;
       delete[] pResults;
       delete[] pDecoys;
+      for (float* p : vFallbackSparseChildren)
+         delete[] p;
    }
 
    // Called once on first use (or if global array size changes at re-init).
@@ -113,6 +124,9 @@ struct RtsScratch
       delete[] pfFastXcorrDataNL;
       delete[] pfSpScoreData;
       delete[] pSparseChildPool;
+      for (float* p : vFallbackSparseChildren)
+         delete[] p;
+      vFallbackSparseChildren.clear();
 
       const int iXcorrPad = g_staticParams.iXcorrProcessingOffset;
       pdTmpRawData         = new double[iSize + iXcorrPad];
@@ -141,6 +155,17 @@ struct RtsScratch
                 (size_t)iSparsePoolUsed * SPARSE_MATRIX_SIZE * sizeof(float));
          iSparsePoolUsed = 0;
       }
+
+      // Free any AllocSparseChild() fallback blocks the previous spectrum's Query used --
+      // safe here (not at that Query's own destruction) because this only runs at the
+      // start of the next spectrum on this thread, by which point that Query has already
+      // finished scoring and been destroyed.
+      if (!vFallbackSparseChildren.empty())
+      {
+         for (float* p : vFallbackSparseChildren)
+            delete[] p;
+         vFallbackSparseChildren.clear();
+      }
    }
 
    // Return a zeroed float[SPARSE_MATRIX_SIZE] block from the pool.
@@ -150,7 +175,9 @@ struct RtsScratch
    {
       if (iSparsePoolUsed < iSparsePoolCapacity)
          return pSparseChildPool + (size_t)iSparsePoolUsed++ * SPARSE_MATRIX_SIZE;
-      return new float[SPARSE_MATRIX_SIZE]();   // safety fallback
+      float* p = new float[SPARSE_MATRIX_SIZE]();   // safety fallback
+      vFallbackSparseChildren.push_back(p);
+      return p;
    }
 
    // Called once on first use (or if iNumStored / decoy-search config changes).
@@ -2298,26 +2325,6 @@ double* CometPreprocess::GetRtsRawDataBuffer()
 }
 
 
-// Original public entry point: builds Query* via Core, then pushes into session.queries.
-bool CometPreprocess::PreprocessSingleSpectrum(int iPrecursorCharge,
-                                               double dMZ,
-                                               double *pdMass,
-                                               double *pdInten,
-                                               int iNumPeaks,
-                                               double *pdTmpSpectrum,
-                                               SearchSession& session)
-{
-   Query* pScoring = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
-
-   if (pScoring == nullptr)
-      return false;
-
-   std::lock_guard<std::mutex> lk(session.queriesMutex);
-   session.queries.push_back(pScoring);
-
-   return true;
-}
-
 //-->MH
 // Loads spectrum into spectrum object.
 void CometPreprocess::PreloadIons(MSReader &mstReader,
@@ -3256,79 +3263,9 @@ bool CometPreprocess::IsValidInputType(int inputType)
 }
 
 
-bool CometPreprocess::PreprocessMS1SingleSpectrum(double* pdMass,
-                                                  double* pdInten,
-                                                  int iNumPeaks,
-                                                  SearchSession& session)
-{
-   QueryMS1* pScoringMS1 = new QueryMS1();
-
-   //preprocess here
-   int i;
-   double dLargestMass = pdMass[iNumPeaks - 1];  // expect pdMass array to be in ascending order
-   if (dLargestMass > g_staticParams.options.dMS1MaxMass)
-      dLargestMass = g_staticParams.options.dMS1MaxMass;
-   int iArraySizeMS1 = BINPREC(dLargestMass) + 1;
-
-   // initialize these temporary arrays before re-using
-   double* pdTmpRawData = ppdTmpRawDataArr[0];
-   double* pdTmpFastXcorrData = ppdTmpFastXcorrDataArr[0];
-   double* pdTmpCorrelationData = ppdTmpCorrelationDataArr[0];
-
-   size_t iTmp = (size_t)(iArraySizeMS1 * sizeof(double));
-   memset(pdTmpRawData, 0, iTmp);
-   memset(pdTmpFastXcorrData, 0, iTmp);
-   memset(pdTmpCorrelationData, 0, iTmp);
-
-   // Loop through single spectrum and store in pdTmpRawData array
-   double dMass;
-   double dInten;
-
-   for (i = 0; i < iNumPeaks; ++i)
-   {
-      dMass = pdMass[i];
-      dInten = sqrt(pdInten[i]);
-
-      if (g_staticParams.options.dMS1MinMass <= dMass && dMass <= g_staticParams.options.dMS1MaxMass)
-      {
-         int iBinMass = BINPREC(dMass);
-
-         if (pdTmpRawData[iBinMass] < dInten)
-            pdTmpRawData[iBinMass] = dInten;
-      }
-   }
-
-   // make the spectrum a unit vector
-   double dMagnitude = 0.0;
-   double dMaxInten = -1e9;
-   for (i = 0; i < iArraySizeMS1; ++i)
-      dMagnitude += pdTmpRawData[i] * pdTmpRawData[i];
-   dMagnitude = std::sqrt(dMagnitude);
-   for (i = 0; i < iArraySizeMS1; ++i)
-   {
-      pdTmpCorrelationData[i] = pdTmpRawData[i] / dMagnitude;
-
-      if (pdTmpCorrelationData[i] > dMaxInten)
-         dMaxInten = pdTmpCorrelationData[i];
-   }
-
-   pScoringMS1->pfFastXcorrData = new float[iArraySizeMS1]();
-
-   for (i = 0; i < iArraySizeMS1; ++i)
-   {
-      pScoringMS1->pfFastXcorrData[i] = (float)pdTmpCorrelationData[i];
-   }
-
-   pScoringMS1->iArraySizeMS1 = iArraySizeMS1;
-
-   std::lock_guard<std::mutex> lk(session.queriesMutex);
-   session.ms1Queries.push_back(pScoringMS1);
-
-   return true;
-}
-
-
-// Thread-local version of PreprocessMS1SingleSpectrum.
+// Thread-local version of the retired PreprocessMS1SingleSpectrum (deleted -- it had no
+// callers anywhere in the repo, and its unguarded dMagnitude==0.0 division carried the same
+// NaN-unit-vector risk fixed below for the thread-local path it duplicated).
 // Returns a heap-allocated QueryMS1* with pfFastXcorrData filled as a unit vector.
 // Caller owns the returned object and must free pfFastXcorrData and delete pQueryMS1.
 // Does NOT touch g_pvQueryMS1 or any other global mutable state.

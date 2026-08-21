@@ -1326,6 +1326,7 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       else if (!strncmp(szBuf, "StaticMod:", 10))
       {
          char* tok;
+         char* saveptr = NULL;   // strtok_r context, not shared/reentrant-unsafe like plain strtok's
          char  delims[] = " ";
          int   x = 65;  // ASCII 'A'
 
@@ -1342,13 +1343,13 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
             &g_staticParams.massUtility.dOH2parent);
 
          bFoundStatic = true;
-         tok = strtok(szBuf + 11, delims);
+         tok = strtok_r(szBuf + 11, delims, &saveptr);
          while (tok != NULL)
          {
             sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
             g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
             g_staticParams.massUtility.pdAAMassParent[x] += g_staticParams.staticModifications.pdStaticMods[x];
-            tok = strtok(NULL, delims);
+            tok = strtok_r(NULL, delims, &saveptr);
             x++;
             // 65-90 = A-Z; 91-94 = n/c-term peptide, n/c-term protein
             if (x == 95)
