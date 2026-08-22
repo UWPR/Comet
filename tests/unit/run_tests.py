@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Comet plain-peptide index unit tests (T1-T7, T11-T16) and integration tests (T17-T18).
+Comet plain-peptide index unit tests (T1-T7, T11-T16, T19-T21, T25-T33) and
+integration tests (T17, T18, T22-T24).
 
 Runs Comet.exe -i on each crafted FASTA and verifies expected properties.
 
@@ -10,7 +11,7 @@ Usage:
     --comet       path to Comet binary (default: ../../comet.exe); repeatable
     --integration also run T17, T18, T22-T24 (require human.small.fasta and/or --bigdata)
     --baseline    path to a previous-Comet-version binary for T23/T24's cross-version
-                  checks (default: tests/regression/baselines/v2025.03.0/comet,
+                  checks (default: tests/regression/baselines/v2026.02.2/comet,
                   auto-downloaded from GitHub Releases on first use if missing)
     test_id       one or more test IDs (default: all non-integration tests)
 
@@ -52,7 +53,7 @@ COMET_EXE            = REPO_ROOT / "comet.exe"
 # setup_baselines.py already knows how to fetch this tag's release asset; reusing
 # it here means run_tests.py always gets the same comet.linux.exe/win64.exe naming
 # convention without duplicating the download logic.
-BASELINE_TAG         = "v2025.03.0"
+BASELINE_TAG         = "v2026.02.2"
 DEFAULT_BASELINE_EXE = setup_baselines.BASELINES_DIR / BASELINE_TAG / setup_baselines.asset_url(BASELINE_TAG)[1]
 
 MASS_TOL        = 0.002   # Da -- loose tolerance for monoisotopic masses
@@ -1785,7 +1786,7 @@ def test_t23_decoy_modes(comet_exe):
           f"internal-decoy ({cx1:,}) and target-decoy ({cx2:,}) agree within 5% "
           f"at 1% FDR xcorr (ratio {ratio:.3f})", failures)
 
-    # --- Cross-version: same two configs against the v2025.03.0 baseline ---
+    # --- Cross-version: same two configs against the BASELINE_TAG baseline ---
     baseline_exe = _ensure_baseline()
     if baseline_exe is None:
         print(f"  SKIP cross-version checks: {BASELINE_TAG} baseline unavailable")
@@ -1901,7 +1902,7 @@ def test_t24_index_parity(comet_exe):
 
     idx_path.unlink(missing_ok=True)
 
-    # --- Cross-version: same three modes against the v2025.03.0 baseline ---
+    # --- Cross-version: same three modes against the BASELINE_TAG baseline ---
     baseline_exe = _ensure_baseline()
     if baseline_exe is None:
         print(f"  SKIP cross-version checks: {BASELINE_TAG} baseline unavailable")

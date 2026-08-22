@@ -2506,8 +2506,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          // Mirrors the FI_DB branch above -- without this, g_AScoreInterface stays
          // NULL for the entire session (CometSearch::EnsurePeptideIndexLoaded()'s own
          // AScoreInterface-creation code never runs for RTS PI_DB, since it's gated on
-         // g_bPeptideIndexRead being false, and this function already set it to true
-         // above before that code path is ever reached).
+         // g_bPeptideIndexFullyInitialized being false, and this function already set
+         // it to true above before that code path is ever reached).
          SetAScoreOptions(g_AScoreOptions);
 
          g_AScoreInterface = CreateAScoreDllInterface();

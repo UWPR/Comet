@@ -220,7 +220,7 @@ private:
                             int iHighestIon,
                             double dHighestIntensity);
 
-   // Shared core of PreprocessSingleSpectrum and PreprocessSingleSpectrumThreadLocal.
+   // Core of PreprocessSingleSpectrumThreadLocal.
    // Builds a fully preprocessed Query* from the input spectrum data.
    // Does NOT push the Query* into g_pvQuery.
    // When bUseThreadLocalPool=true the five scratch buffers and sparse child arrays

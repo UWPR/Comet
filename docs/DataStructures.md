@@ -259,11 +259,18 @@ fragment-ion posting list.
 struct FragmentPeptidesStruct  // core/Types.h
 ```
 
+Field order is deliberately packing-optimized, not declaration-convenience order:
+`dPepMass` (8-byte aligned) first, then the two 4-byte fields, then the two 1-byte
+fields, with no internal padding -- 24 bytes total vs. 32 bytes for the original
+size_t-first ordering. At 80M+ entries for a heavily-modified fragment index build,
+that's a real reduction (see `docs/20260715_fusedflush.md`'s follow-up investigation
+for the sizing rationale).
+
 | Field | Purpose |
 |-------|---------|
-| `iWhichPeptide` | Index into `g_vRawPeptides`; provides sequence and protein info. |
-| `modNumIdx` | Index into `MOD_NUMBERS`; 0 = unmodified. |
 | `dPepMass` | Modified MH+ mass (= unmodified mass + sum of applied mod masses). |
+| `iWhichPeptide` | Index into `g_vRawPeptides`; provides sequence and protein info. Narrowed to `unsigned int` from `size_t` since `g_vRawPeptides.size()` is checked to fit before this struct is ever populated. |
+| `modNumIdx` | Index into `MOD_NUMBERS`; 0 = unmodified. |
 | `cNtermMod` / `cCtermMod` | N/C-terminal variable mod codes (index into `varModList`). |
 
 ---

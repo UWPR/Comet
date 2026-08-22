@@ -260,7 +260,10 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
    {
       auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
-      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0, vModSlotForAllModsIdx);
+      // P2: fp.dPepMass was already computed (and hardening-checked) for this exact
+      // variant during the count pass -- pass it through so the fill pass doesn't redo
+      // the O(peptide length) recompute a second time for every one of g_vFragmentPeptides.
+      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0, vModSlotForAllModsIdx, fp.dPepMass);
    }
    pFragmentIndexPool->wait_on_threads();
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
@@ -439,14 +442,24 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       char cNtermMod,
                                       char cCtermMod,
                                       bool bCountOnly,
-                                      const vector<int>& vModSlotForAllModsIdx)
+                                      const vector<int>& vModSlotForAllModsIdx,
+                                      double dKnownPepMass)
 {
-   string sPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
+   // P2: was `string sPeptide = ...szPeptide;`, a heap-backed copy on every one of the
+   // 10^8+ calls a whole-proteome build makes (twice per accepted variant: once in the
+   // count pass, once in the fill pass). szPeptide is already a NUL-terminated char[] on
+   // the raw-peptide entry, so read it directly instead of copying it into a std::string.
+   const char* pszPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
    int modSeqIdx = -1;
-   string modSeq;
+
+   // Same reasoning as pszPeptide above: MOD_SEQS is a read-only global table for the
+   // duration of the fill/count passes, so reference its entry directly rather than
+   // copying it into a local std::string per call.
+   static const string s_EmptyModSeq;
+   const string* pModSeq = &s_EmptyModSeq;
 
    // mods[] (MOD_NUMBERS[modNumIdx].modifications[]) values are 0-based indices into this
    // COMPACTED active-variable-mod-slot list, not raw varModList indices -- see
@@ -460,17 +473,18 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       modNum = MOD_NUMBERS.at(modNumIdx);
       mods = modNum.modifications;
       modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-      modSeq = MOD_SEQS.at(modSeqIdx);
+      pModSeq = &MOD_SEQS.at(modSeqIdx);
    }
+   const string& modSeq = *pModSeq;
 
-   double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+   double dCalcPepMass;
    double dBion = g_staticParams.precalcMasses.dNtermProton;
    double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
    int iPosReverse;  // points to residue in reverse order
 
    int j = 0; // track count of each modifiable residue
    int k = 0; // track count of each modifiable residue in reverse
-   int iEndPos = (int)sPeptide.length() - 1;
+   int iEndPos = (int)strlen(pszPeptide) - 1;
 
    // Search-time peptide_length_range narrower than what's baked into g_vRawPeptides (see
    // ParsePeptideIndexHeader()'s inward-only clamp of peptideLengthRange from the .idx's
@@ -481,73 +495,90 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       || iEndPos + 1 > g_staticParams.options.peptideLengthRange.iEnd)
       return;
 
-   // first calculate peptide mass as that's needed in fragment loop
-   j = 0;
-   double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
-   for (int i = 0; i <= iEndPos; ++i)
+   // P2: the fill pass (bCountOnly == false) calls this with the exact same
+   // (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple the count pass already
+   // accepted, mass, range/precursor filters, and hardening-check included -- the caller
+   // (GenerateFragmentIndex()) passes that already-computed mass back in as dKnownPepMass
+   // (fp.dPepMass) instead of leaving this function to redo the full O(peptide length)
+   // residue-by-residue recompute a second time. The count pass (dKnownPepMass < 0,
+   // its default) still computes it fresh, since that's the one place it's not yet known.
+   if (dKnownPepMass >= 0.0)
    {
-      dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-
-      if (modNumIdx >= 0) // handle the variable mods if present on peptide
+      dCalcPepMass = dKnownPepMass;
+   }
+   else
+   {
+      // first calculate peptide mass as that's needed in fragment loop
+      j = 0;
+      dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+      double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+      for (int i = 0; i <= iEndPos; ++i)
       {
-         if (sPeptide[i] == modSeq[j])
+         dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+         dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+
+         if (modNumIdx >= 0) // handle the variable mods if present on peptide
          {
-            // Bugfix: mods[j] is a compacted index (see the note above this function's
-            // declaration) -- using it directly as a varModList index only coincided with
-            // the real slot when every active variable_modNN among the first
-            // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
-            // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
-            // mass to this peptide's precursor mass.
-            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
-            if (iSlot >= 0)
-               dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
-            j++;
+            if (pszPeptide[i] == modSeq[j])
+            {
+               // Bugfix: mods[j] is a compacted index (see the note above this function's
+               // declaration) -- using it directly as a varModList index only coincided with
+               // the real slot when every active variable_modNN among the first
+               // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
+               // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
+               // mass to this peptide's precursor mass.
+               int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+               if (iSlot >= 0)
+                  dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+               j++;
+            }
          }
       }
-   }
 
-   // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
-   // recomputed here from sPeptide (a NUL-terminated string reconstructed from the
-   // stored szPeptide char[]) must match the authoritative unmodified mass that was
-   // computed directly from the protein sequence at digestion time and stored
-   // independently on the raw-peptide entry (CometSearch.cpp:3446-3488). A large
-   // divergence means szPeptide was truncated/corrupted after storage -- exactly how
-   // the 'U'/B/J/O/X/Z packing-table bug in core/Types.h manifested (see
-   // docs/20260709_sprankjitter.md) -- rather than a benign mono/avg mass-type or
-   // protein-terminal-mod difference, which is at most a few Da for realistic
-   // peptide lengths. Non-fatal: logs and continues so a batch build doesn't abort
-   // over a single bad entry.
-   if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
-   {
-      constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
-      double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
-      double dDelta = fabs(dResidueOnlyMass - dStoredMass);
-      if (dDelta > MASS_CHECK_TOL)
+      // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
+      // recomputed here from pszPeptide (the raw-peptide entry's stored szPeptide char[])
+      // must match the authoritative unmodified mass that was computed directly from the
+      // protein sequence at digestion time and stored independently on the raw-peptide
+      // entry (CometSearch.cpp:3446-3488). A large divergence means szPeptide was
+      // truncated/corrupted after storage -- exactly how the 'U'/B/J/O/X/Z packing-table
+      // bug in core/Types.h manifested (see docs/20260709_sprankjitter.md) -- rather than a
+      // benign mono/avg mass-type or protein-terminal-mod difference, which is at most a
+      // few Da for realistic peptide lengths. Non-fatal: logs and continues so a batch
+      // build doesn't abort over a single bad entry. Only reachable here (the fresh-compute
+      // path) -- the fill pass's dKnownPepMass already went through this exact check once,
+      // during the count pass, for this same peptide variant.
+      if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
       {
-         logerr(" Warning - AddFragments mass mismatch for peptide '" + sPeptide
-            + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
-            + "): recomputed mass " + std::to_string(dResidueOnlyMass)
-            + " vs stored " + std::to_string(dStoredMass)
-            + ", delta " + std::to_string(dDelta)
-            + ". Possible truncated/corrupted peptide string.\n");
+         constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
+         double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
+         double dDelta = fabs(dResidueOnlyMass - dStoredMass);
+         if (dDelta > MASS_CHECK_TOL)
+         {
+            logerr(" Warning - AddFragments mass mismatch for peptide '" + string(pszPeptide)
+               + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
+               + "): recomputed mass " + std::to_string(dResidueOnlyMass)
+               + " vs stored " + std::to_string(dStoredMass)
+               + ", delta " + std::to_string(dDelta)
+               + ". Possible truncated/corrupted peptide string.\n");
+         }
       }
+
+      if (cNtermMod >= 0)  // if -1, unused
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+      if (cCtermMod >= 0)  // if -1, unused
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
    }
 
+   // dBion/dYion's own terminal-mod contribution is needed for the fragment ladder built
+   // below regardless of which branch above computed dCalcPepMass.
    if (cNtermMod >= 0)  // if -1, unused
-   {
       dBion += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-   }
    if (cCtermMod >= 0)  // if -1, unused
-   {
       dYion += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
-   }
 
    if (dCalcPepMass > 99999.9)
    {
-      printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, sPeptide.c_str(), modNumIdx);
+      printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, pszPeptide, modNumIdx);
       exit(1);
    }
 
@@ -600,8 +631,8 @@ if (!(iWhichPeptide%1000))
    j=0;
    for (int i = 0; i <= iEndPos; ++i)
    {
-      printf("%c", (char)sPeptide[i]);
-      if (sPeptide[i] == modSeq[j])
+      printf("%c", (char)pszPeptide[i]);
+      if (pszPeptide[i] == modSeq[j])
       {
          if (modNumIdx != -1 && mods[j] != -1)
          {
@@ -621,12 +652,12 @@ if (!(iWhichPeptide%1000))
    {
       iPosReverse = iEndPos - i;
 
-      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
+      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[iPosReverse]];
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
-         if (sPeptide[i] == modSeq[j])
+         if (pszPeptide[i] == modSeq[j])
          {
             // Bugfix: mods[j] is a compacted index (see the note above this function's
             // declaration), not a raw varModList index -- the previous
@@ -650,7 +681,7 @@ if (!(iWhichPeptide%1000))
             j++;
          }
 
-         if (k >= 0 && sPeptide[iPosReverse] == modSeq[k])
+         if (k >= 0 && pszPeptide[iPosReverse] == modSeq[k])
          {
             // see bugfix note above
             int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
@@ -671,7 +702,7 @@ if (!(iWhichPeptide%1000))
 
             if ((unsigned int)iBinBion >= g_massRange.uiMaxFragmentArrayIndex)
             {
-               printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
+               printf(" Error: FI dBion %lf too large, pep %s\n", dBion, pszPeptide);
                exit(1);
             }
 
@@ -687,7 +718,7 @@ if (!(iWhichPeptide%1000))
 
             if ((unsigned int)iBinYion >= g_massRange.uiMaxFragmentArrayIndex)
             {
-               printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
+               printf(" Error: FI dYion %lf too large, pep %s\n", dYion, pszPeptide);
                exit(1);
             }
 

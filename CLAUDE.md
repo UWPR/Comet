@@ -84,19 +84,22 @@ The codebase has three layers:
 |--------|-------------|-------|
 | `g_staticParams` | [x] Read-only after init | All search parameters |
 | `g_iFragmentIndex`, `g_vFragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
-| `g_pvProteinNames`, `g_pvProteinsList` | [x] Read-only after init | |
+| `g_pvProteinsList` | [x] Read-only after init | Populated on both a fresh build and a search-only read-back of an existing `.idx` |
+| `g_pvProteinNames` | [ ] Build-time only | **Not** search-time readable: populated only while *building* a `.idx`, never repopulated when an existing `.idx` is read back for a search -- reading it during a search-only run silently finds nothing (this exact confusion caused a real bug, decoy peptides misclassified as targets in every PI_DB search of a pre-built index). Use `g_pvProteinNameCache` for search-time protein-name lookups instead. |
+| `g_pvProteinNameCache` | [x] Read-only after index load | File-offset -> protein-name string; populated whenever an index is loaded (build or read-back) -- the search-time-safe counterpart to `g_pvProteinNames` above |
+| `g_bIndexPrecursors` | [x] Read-only after init | Per-mass-bin bool array sized `BIN(dPeptideMassHigh) + 1`; freed and nulled by `FiStrategy::finalize()` at the end of a search |
 | `g_vSpecLib` | [x] Read-only after init | MS1 spectral library |
-| `g_pvQuery` | [ ] Shared mutable | Batch search path only |
-| `g_pvQueryMS1` | [ ] Shared mutable | Batch MS1 path only |
+| `SearchSession::queries` | [ ] Shared mutable | Batch search path only; guarded by `SearchSession::queriesMutex`. Formerly the bare global `g_pvQuery` -- moved into `SearchSession` by the OOP architecture migration (`docs/20260612_architecture_migration.md`); `core/Types.h` still has a comment noting the move, but plenty of code comments across the tree still say `g_pvQuery` informally. |
+| `SearchSession::ms1Queries` | [ ] Shared mutable | Batch MS1 path only; same `queriesMutex`. Formerly the bare global `g_pvQueryMS1`, same migration as above. |
 | `g_cometStatus` | [ ] Shared mutable | Error reporting |
 
 ### Threading Model (RTS path)
 
 The real-time search (`DoSingleSpectrumSearchMultiResults` and `DoMS1SearchMultiResults`) is designed for concurrent calls from C# Task threads:
 
-- **MS2 RTS**: `PreprocessSingleSpectrumThreadLocal()` creates a caller-owned `Query*`; `CometSearch::RunSearch(Query*, time_point)` searches against the read-only fragment index; thread-local `CalculateSP/CalculateEValue/CalculateDeltaCn(Query*)` do post-analysis. No `g_pvQuery` access.
-- **MS1 RTS**: `PreprocessMS1SingleSpectrumThreadLocal()` creates a caller-owned `QueryMS1*`; `RunMS1Search(QueryMS1*, ...)` scores against read-only `g_vSpecLib`. No `g_pvQueryMS1` access. Reference library is loaded once in `InitializeSingleSpectrumMS1Search()`.
-- **Batch search**: Still uses `g_pvQuery` / `g_pvQueryMS1` with the original mutex-guarded path.
+- **MS2 RTS**: `PreprocessSingleSpectrumThreadLocal()` creates a caller-owned `Query*`; `CometSearch::RunSearch(Query*, time_point)` searches against the read-only fragment index; thread-local `CalculateSP/CalculateEValue/CalculateDeltaCn(Query*)` do post-analysis. No `SearchSession::queries` access.
+- **MS1 RTS**: `PreprocessMS1SingleSpectrumThreadLocal()` creates a caller-owned `QueryMS1*`; `RunMS1Search(QueryMS1*, ...)` scores against read-only `g_vSpecLib`. No `SearchSession::ms1Queries` access. Reference library is loaded once in `InitializeSingleSpectrumMS1Search()`.
+- **Batch search**: Still uses `SearchSession::queries` / `ms1Queries` with the original mutex-guarded path.
 
 For a file-by-file ownership map, the full global-variable table, and RTS/batch call-path
 diagrams, use the `comet-codebase` skill.
@@ -108,7 +111,7 @@ diagrams, use the `comet-codebase` skill.
 Tests live in `tests/unit/`. The runner is `run_tests.py`.
 
 ```bash
-# Run all unit tests (T1-T7, T11-T16, T19-T21) -- fast, no large data required
+# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T33) -- fast, no large data required
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
 
 # Run a specific test by ID
@@ -170,10 +173,10 @@ build-then-search sequence, FI_DB has run correctly every time. See the comment 
 **Cross-version comparison against a previous Comet release.** Both T23 and T24 also run
 every one of their configs (T23: both decoy modes; T24: plain-FASTA, FI_DB, PI_DB --
 each built fresh with the baseline binary, since `.idx` formats aren't guaranteed
-compatible across versions) against a pinned previous release, `v2025.03.0`
+compatible across versions) against a pinned previous release, `v2026.02.2`
 (`BASELINE_TAG` in `run_tests.py`), fetched automatically on first use via
 `tests/regression/setup_baselines.py`'s download logic into
-`tests/regression/baselines/v2025.03.0/comet` (gitignored, like all fetched baselines --
+`tests/regression/baselines/v2026.02.2/comet` (gitignored, like all fetched baselines --
 override with `--baseline PATH` to point at something else; cross-version checks skip
 cleanly, without failing the test, if no baseline is available). Same-version comparisons
 (internal-vs-target-decoy, FI/PI-vs-plain-FASTA) use a 5% tolerance; current-vs-baseline
@@ -182,7 +185,7 @@ different peptide population.
 
 **Runtime regression check.** Each search and index build is timed, and every
 current-vs-baseline pairing also asserts current isn't more than `TIMING_NOISE_TOLERANCE`
-(currently 25%) slower than `v2025.03.0`'s wall-clock time for the same operation, via
+(currently 25%) slower than `v2026.02.2`'s wall-clock time for the same operation, via
 `_check_timing()`. That threshold is deliberately generous: these are multi-minute,
 single-sample wall-clock measurements on real (possibly shared) hardware, and run-to-run
 variance from machine noise alone can plausibly reach 10-20% with no code change at all.

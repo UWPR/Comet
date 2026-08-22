@@ -49,7 +49,8 @@ private:
                             char cNtermMod,
                             char cCtermMod,
                             bool bCountOnly,
-                            const vector<int>& vModSlotForAllModsIdx);
+                            const vector<int>& vModSlotForAllModsIdx,
+                            double dKnownPepMass = -1.0);
    static void AddFragmentsThreadProc(bool bCountOnly,
                                       ThreadPool *tp);
 

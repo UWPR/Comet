@@ -1795,14 +1795,103 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             iMaxFragmentCharge = 2;
 
          // Now get the set of binned fragment ions once to compare this peptide against all matching spectra.
-         // First initialize pbDuplFragment and uiBinnedIonMasses
+         // First initialize pbDuplFragment and uiBinnedIonMasses.
+         //
+         // P3: pbDuplFragment is a thread-local scratch buffer sized iArraySizeGlobal
+         // (hundreds of KB at small fragment_bin_tol) that's reused across every
+         // candidate this query matches (up to FRAGINDEX_MAX_NUMSCORED); a full memset
+         // per candidate was tens of MB of avoidable writes per spectrum. Instead, clear
+         // exactly the bins this candidate's own ion ladder is about to touch -- mirrors
+         // AnalyzePeptideIndex()'s equivalent two-pass clear/set below in this file.
+         // uiBinnedIonMasses (also reused across candidates) keeps its existing tight
+         // per-row memset, bounded by what's actually read: charges [1..usiMaxFragCharge],
+         // ion series [0..iNumIonSeriesUsed), full VMODS+2 mod dimension per row.
+         for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+         {
+            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+               memset(uiBinnedIonMasses[ctCharge][ctIonSeries], 0, sizeof(unsigned int) * iLenMinus1 * (VMODS + 2));
+         }
 
-         memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
-         memset(uiBinnedIonMasses, 0, sizeof(uiBinnedIonMasses));
          if (g_staticParams.iPrecursorNLSize > 0)
             memset(uiBinnedPrecursorNL, 0, sizeof(uiBinnedPrecursorNL));
 
-         // set pbDuplFragment[bin] to true for each fragment ion bin
+         // First pass: clear. Mirrors the set pass's loop nest exactly but without its
+         // pbDuplFragment dedup gate -- that gate must not gate the clear pass too, or a
+         // bin left "true" by an unrelated earlier candidate would never get reset here.
+         for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+         {
+            for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+            {
+               iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+               for (ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+               {
+                  double dFragMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, pdAAforward, pdAAreverse);
+                  int iVal = BIN(dFragMass);
+
+                  if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                  {
+                     pbDuplFragment[iVal] = false;
+
+                     if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+                     {
+                        for (int x = 0; x < FRAGINDEX_VMODS; ++x)
+                        {
+                           for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
+                           {
+                              if (iWhichNL == 0 && g_staticParams.variableModParameters.varModList[x].dNeutralLoss == 0.0)
+                                 continue;
+                              else if (iWhichNL == 1 && g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 == 0.0)
+                                 continue;
+
+                              if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLB[x])
+                                 || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1 - ctLen <= iPositionNLY[x]))
+                              {
+                                 int iScaleFactor;
+
+                                 if (iWhichIonSeries <= 2)
+                                    iScaleFactor = iCountNLB[x][ctLen];
+                                 else
+                                    iScaleFactor = iCountNLY[x][ctLen];
+
+                                 double dNewMass;
+
+                                 if (iWhichNL == 0)
+                                    dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge);
+                                 else
+                                    dNewMass = dFragMass - (iScaleFactor * g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 / ctCharge);
+
+                                 if (dNewMass >= 0.0)
+                                 {
+                                    iVal = BIN(dNewMass);
+
+                                    if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                                       pbDuplFragment[iVal] = false;
+                                 }
+                              }
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+
+         // Precursor NL - first pass (clear). Same reasoning as the fragment-ion clear
+         // pass above; must run before the set passes below since both share pbDuplFragment.
+         for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+         {
+            for (ctCharge = pQuery->_spectrumInfoInternal.usiChargeState; ctCharge >= 1; ctCharge--)
+            {
+               double dNLMass = (dCalcPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctCharge * PROTON_MASS) / ctCharge;
+               int iVal = BIN(dNLMass);
+
+               if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                  pbDuplFragment[iVal] = false;
+            }
+         }
+
+         // Second pass: set. set pbDuplFragment[bin] to true for each fragment ion bin
          for (ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
          {
             for (ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
@@ -2265,9 +2354,13 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    }
 
    // Build binned ion masses - two-pass approach matching batch path
-   // First pass: clear
-   memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
-
+   // First pass: clear. pbDuplFragment itself is cleared bin-by-bin in the loop
+   // below (P3) rather than with a full iArraySizeGlobal memset here -- every bin
+   // this candidate's own ion ladder could touch gets explicitly reset to false
+   // there before the second (set) pass runs, which is exactly the guarantee a
+   // full memset would have provided, without the hundreds-of-KB-per-candidate
+   // cost at small bins.
+   //
    // Only clear the sub-range XcorrScoreI() will actually read: charges
    // [1..usiMaxFragCharge] and ion series [0..iNumIonSeriesUsed) (both loop
    // ranges below), with lengths [0..iLenMinus1) rather than the full
@@ -2554,12 +2647,12 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
          pdAAreverseDecoy[i] = dYionDecoy;
       }
 
-      // Build binned ion masses for decoy (single-pass; memset covers the clear)
-      // Right-sized the same way as the target-peptide clear above: only the
-      // [1..usiMaxFragCharge] x [0..iNumIonSeriesUsed) x [0..iLenMinus1) sub-range
-      // is ever read by XcorrScoreI().
-      memset(pbDuplFragment, 0, sizeof(bool) * g_staticParams.iArraySizeGlobal);
-
+      // Build binned ion masses for decoy - two-pass approach matching the
+      // target-peptide clear above (P3): clear exactly the pbDuplFragment bins
+      // this decoy's own ion ladder is about to touch, instead of a full
+      // iArraySizeGlobal memset (hundreds of KB at small bins, x FRAGINDEX_MAX_NUMSCORED
+      // candidates per query). uiBinnedIonMassesDecoy/uiBinnedPrecursorNLDecoy are
+      // still cleared with their existing tight per-row memsets below.
       for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
       {
          for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
@@ -2568,6 +2661,68 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
 
       if (g_staticParams.iPrecursorNLSize > 0)
          memset(uiBinnedPrecursorNLDecoy, 0, sizeof(uiBinnedPrecursorNLDecoy));
+
+      // First pass: clear. Mirrors the set pass's loop nest exactly but without its
+      // pbDuplFragment dedup gate -- that gate must not gate the clear pass too, or a
+      // bin left "true" by an unrelated earlier candidate would never get reset here.
+      for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
+      {
+         for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+         {
+            int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+
+            for (int ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+            {
+               double dFragMass = CometMassSpecUtils::GetFragmentIonMass(iWhichIonSeries, ctLen, ctCharge, pdAAforwardDecoy, pdAAreverseDecoy);
+               int iVal = BIN(dFragMass);
+
+               if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+               {
+                  pbDuplFragment[iVal] = false;
+
+                  if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
+                  {
+                     for (int x = 0; x < VMODS; ++x)
+                     {
+                        for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
+                        {
+                           if (iWhichNL == 0 && g_staticParams.variableModParameters.varModList[x].dNeutralLoss == 0.0)
+                              continue;
+                           else if (iWhichNL == 1 && g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 == 0.0)
+                              continue;
+
+                           if ((iWhichIonSeries <= 2 && ctLen >= iPositionNLBDecoy[x])
+                              || (iWhichIonSeries >= 3 && iWhichIonSeries <= 5 && iLenMinus1 - ctLen <= iPositionNLYDecoy[x]))
+                           {
+                              double dNewMass;
+                              if (iWhichNL == 0)
+                                 dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss / ctCharge;
+                              else
+                                 dNewMass = dFragMass - g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 / ctCharge;
+
+                              iVal = BIN(dNewMass);
+                              if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+                                 pbDuplFragment[iVal] = false;
+                           }
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+
+      // Precursor NL - first pass (clear)
+      for (int ctNL = 0; ctNL < g_staticParams.iPrecursorNLSize; ++ctNL)
+      {
+         for (int ctZ = pQuery->_spectrumInfoInternal.usiChargeState; ctZ >= 1; --ctZ)
+         {
+            double dNLMass = (sDBI.dPepMass - PROTON_MASS - g_staticParams.precursorNLIons[ctNL] + ctZ * PROTON_MASS) / ctZ;
+            int iVal = BIN(dNLMass);
+            if (iVal > 0 && iVal < g_staticParams.iArraySizeGlobal)
+               pbDuplFragment[iVal] = false;
+         }
+      }
 
       for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
       {

@@ -55,6 +55,16 @@ Scores against the in-memory spectral library (`g_vSpecLib`). Also safe for conc
 
 ## Initialization
 
+Both `InitializeSingleSpectrumSearch()` and `InitializeSingleSpectrumMS1Search()`
+serialize their slow (first-caller) path through one shared `static std::mutex
+g_initSingleSpectrumMutex` in `CometSearchManager.cpp` -- previously each had its
+own separate mutex, so a concurrent first-time MS1+MS2 init from two C# Tasks
+(which the API permits, even though the shipped driver happens to init
+sequentially) could run both functions' bodies at once, racing on the shared
+`InitializeStaticParams()` call (guarded only by a plain, non-atomic bool) and
+the shared `ThreadPool::fillPool()` call. The two atomic completion flags
+below remain separate; only the slow-path lock is shared.
+
 ### MS2 (`InitializeSingleSpectrumSearch`)
 
 Uses a double-checked locking pattern with `std::atomic<bool> singleSearchInitializationComplete`:
@@ -149,9 +159,20 @@ slow path: mutex-guarded check + initialization
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
-                                gated on g_bPeptideIndexRead being false, and this branch
-                                already sets it true below)
+                                gated on g_bPeptideIndexFullyInitialized being false, and
+                                this branch already sets it true below)
        g_bPeptideIndexRead = true
+       g_bPeptideIndexFullyInitialized = true   <- gates EnsurePeptideIndexLoaded()'s own
+                                                    fast path (see the per-call flow's
+                                                    "EnsurePeptideIndexLoaded(true)" step
+                                                    below); deliberately separate from, and
+                                                    set after, g_bPeptideIndexRead -- the
+                                                    latter alone would let a second RTS
+                                                    thread's EnsurePeptideIndexLoaded() call
+                                                    see the index as "read" while this thread
+                                                    is still inside the mass-init/AScorePro
+                                                    setup above, before it's actually safe
+                                                    to search against
   -> singleSearchInitializationComplete.store(true, release)
 ```
 
@@ -466,7 +487,10 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
 
 1. Declare the method in `CometInterfaces.h` (`ICometSearchManager`).
 2. Implement in `CometSearchManager.cpp` using the thread-local pattern:
-   - Use `PreprocessSingleSpectrumThreadLocal()` (not `PreprocessSingleSpectrum()`).
+   - Use `PreprocessSingleSpectrumThreadLocal()` -- the old non-thread-local
+     `PreprocessSingleSpectrum()`/`PreprocessMS1SingleSpectrum()` entry points that pushed
+     directly into `SearchSession` were dead code (carrying a batch-only NaN transient) and
+     have been deleted.
    - Set `pQuery->tSearchStart` right after preprocessing, then call `CometSearch::RunSearch(pQuery)` (not `RunSearch(ThreadPool*)` or the pre-assigned-slot `RunSearch(Query*, int iSlot)` overload used by the fused batch path).
    - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
