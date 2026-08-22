@@ -1361,16 +1361,85 @@ list of exceptions/latencies found, and all are now fixed.
 
 ## 4. Performance opportunities (ranked by expected payoff)
 
-### P1. Parallelize the fragment-index build passes (largest win: ~4-6x FI build)
+### P1. Parallelize the fragment-index build passes — ✅ FIXED 2026-08-22 (largest win: ~4-6x FI build)
 `CometFragmentIndex.cpp:202-203` (count), 252-257 (fill), 308-449: despite the
 ThreadPool being plumbed through, `AddFragmentsThreadProc(bool, ThreadPool*
-/*tp*/)` ignores the pool and loops over *all* of `g_vRawPeptides` on the
-calling thread; both `wait_on_threads()` calls are no-ops and the comments
-describe a threaded design that no longer exists. Count and fill are each
+/*tp*/)` ignored the pool and looped over *all* of `g_vRawPeptides` on the
+calling thread; both `wait_on_threads()` calls were no-ops and the comments
+described a threaded design that no longer existed. Count and fill are each
 O(variants x peptide length) — the dominant cost of a large FI build — and
-embarrassingly parallel (count: per-thread bin arrays merged at the end;
-fill: partition `g_vFragmentPeptides` with per-partition pre-counts as write
-cursors).
+embarrassingly parallel.
+
+**Fix:** partitioned both passes across `g_staticParams.options.iNumThreads`
+threads, one contiguous index range per thread, using the existing `ThreadPool`
+(`doJob()`/`wait_on_threads()`):
+- **Count** (`AddFragmentsThreadProcRange()`, replacing `AddFragmentsThreadProc()`):
+  each thread enumerates its own range of `g_vRawPeptides` into its own local
+  `vector<FragmentPeptidesStruct>` (no lock — previously mutex-guarded, now
+  each thread owns a disjoint vector outright); per-bin counts fold into the
+  shared `g_iFragmentIndexOffset` via `std::atomic_ref<uint64_t>` (safe: a
+  commutative sum, increment order doesn't affect the result). After
+  `wait_on_threads()`, the per-thread vectors are concatenated **in ascending
+  partition order** — identical to the old single-threaded traversal order —
+  before the subsequent mass sort, so the sort's input (and therefore its
+  output, including tie-breaking among equal-mass entries) is byte-identical
+  to before.
+- **Fill**: splitting this pass safely is less obvious than count, since
+  multiple partitions can produce b/y ions landing in the *same* bin, and the
+  old code's single shared `s_iWritePos[bin]++` cursor would race across
+  threads. Naively fixing the race with `std::atomic_ref` on the cursor itself
+  would work but makes the *order* of entries within a bin's segment depend on
+  thread-scheduling timing — silently breaking T18's byte-identical-rebuild
+  guarantee. Used a two-sub-pass design instead: a **fill-count** sub-pass
+  where each thread walks its own partition of the now mass-sorted
+  `g_vFragmentPeptides` purely to learn how many b/y ions it contributes to
+  each bin (into a local `uint64_t` array, no atomics needed), followed by a
+  sequential (cheap: O(bins x threads)) prefix sum that gives each partition
+  its own starting cursor per bin — partition 0's contributions first, then
+  partition 1's, etc., regardless of actual thread scheduling — then a
+  **fill-write** sub-pass where each thread writes using only its own local
+  cursor array. No lock or atomic RMW is needed on `g_iFragmentIndex` itself,
+  and the relative order within every bin exactly matches the old
+  single-threaded fill loop.
+
+`AddFragments()` gained three destination parameters
+(`pLocalFragPeptides`/`pFillBinCounts`/`pFillWriteCursor`) selecting which of
+the three call sites above is active; see its doc comment in
+`CometFragmentIndex.h` for the full contract. The now-dead
+`_vFragmentPeptidesMutex` and `s_iWritePos` were removed.
+
+**Verification:**
+- Compiles clean (zero warnings) standalone and as part of the full build.
+- Full 52-test unit suite and full 58-test `--integration` suite (including
+  T17 peptide-count stability and **T18 build-determinism** at real scale)
+  pass. T18 is the test this design was specifically built not to break.
+- Extra determinism checks beyond T18: two independent 8-thread builds of
+  `human.small.fasta` are byte-identical; a 1-thread build and an 8-thread
+  build of the same FASTA are *also* byte-identical (T18 itself doesn't vary
+  thread count between its two builds, so this specifically confirms the
+  result doesn't depend on thread count, not just that it's stable run-to-run
+  at a fixed count).
+- Correctness: a real 8000-scan FI_DB search (`comet-debug3`'s HeLa QC
+  dataset) run once against a pre-P1 binary and once against the fixed
+  binary produced byte-identical PSM output (1190 result lines identical;
+  the only diff was the trailing `CometVersion` metadata line, which
+  necessarily differs because the two runs used different output basenames).
+- **Performance** (isolated pairwise A/B rebuild, same machine, same dataset,
+  P1 the only difference): the initial attempt to time this via `-i` index
+  *building* showed no improvement (~119s vs ~109s, within noise) — turned
+  out to be the wrong operation to measure, since `docs/20260730_PI_reduction.md`
+  Phase 0.5 already made the fragment index itself regenerate fresh every
+  *search* session rather than persist in the `.idx` file, so
+  `GenerateFragmentIndex()` never runs during `-i`/`-j` building at all, only
+  at the start of an actual FI_DB search. Re-measured against a real FI_DB
+  search session instead (small scan range, so the one-time regeneration
+  cost dominates the timing): the fragment-index generation step itself
+  (`store peptide list` + `sort` + `populate index`) dropped from ~6s to
+  sub-second — at least the ~4-6x this item's title always claimed — and
+  total session wall clock for that small search dropped from 10.3s to 5.1s
+  (~2x), while `user` (CPU-seconds summed across threads) *rose* from 8.1s to
+  15.3s — the expected signature of trading aggregate CPU time for wall-clock
+  latency via genuine parallelism, not a fluke.
 
 ### P2. `AddFragments()` per-call churn (double-digit % of both build passes) — ✅ FIXED 2026-08-21
 `CometFragmentIndex.cpp:461` (heap-backed `string sPeptide` copy per call),

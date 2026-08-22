@@ -21,6 +21,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometModificationsPermuter.h"
 
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -38,11 +39,6 @@ int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides t
 int MOD_NUM = 0;
 size_t tTmp;
 
-Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
-
-// Temporary write-position array used only during the index fill pass.
-// Initialized to g_iFragmentIndexOffset[0..n-1] before filling, freed after.
-static uint64_t* s_iWritePos = nullptr;
 
 
 #ifdef _WIN32
@@ -85,7 +81,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
    // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0/0.5) --
    // g_vRawPeptides plus the MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
-   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below.
+   // GenerateFragmentIndex() (via AddFragmentsThreadProcRange()) reads directly below.
    // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
    // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
    // longer persisted in the .idx file), so no separate call is needed here. g_vDBIndexVariants
@@ -194,24 +190,72 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    auto tFIGlobalStartTime = chrono::steady_clock::now();
 
-   Threading::InitMutex(&_vFragmentPeptidesMutex);
-
    ThreadPool *pFragmentIndexPool = tp;
+   const int iNumThreads = g_staticParams.options.iNumThreads;
 
-   // Create N number of threads, each of which will iterate through
-   // a subset of peptides to calculate their fragment ions
+   // Fetched once for the whole build rather than once per AddFragments() call below (a
+   // hot loop over every raw peptide/fragment-peptide variant, potentially millions of calls).
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
 
-   // Sort the peptides by mass
+   // P1: count and fill passes are each O(variants x peptide length) -- the dominant cost
+   // of a large FI build -- and embarrassingly parallel: count partitions g_vRawPeptides by
+   // peptide-index range, one thread per range, each accumulating into its own local
+   // FragmentPeptidesStruct vector (no lock) with bin counts folded into the shared
+   // g_iFragmentIndexOffset via std::atomic_ref (safe -- a commutative sum, order doesn't
+   // matter); fill partitions the now mass-sorted g_vFragmentPeptides the same way, using a
+   // fill-count sub-pass to give each partition its own disjoint, deterministically-ordered
+   // write-cursor range per bin (see AddFragments()'s doc comment in the header for the full
+   // per-sub-pass destination-pointer contract) before the fill-write sub-pass actually
+   // populates g_iFragmentIndex -- so no partition ever needs a lock or an atomic RMW on the
+   // fragment-index array itself, and the result is byte-identical to the old single-threaded
+   // traversal (T18's build-determinism guarantee), just computed on iNumThreads threads.
 
    cout <<  "   - store peptide list and reserve memory ... "; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
-   // stupid workaround for Windows/Visual Studio performance ... first calculate all
-   // fragments to find size of each fragment on index vector
-   AddFragmentsThreadProc(1, pFragmentIndexPool);
+
+   const size_t iNumRawPeptides = g_vRawPeptides.size();
+   vector<pair<size_t,size_t>> vCountRanges(iNumThreads);
+   vector<vector<FragmentPeptidesStruct>> vLocalFragPeptides(iNumThreads);
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      vCountRanges[t].first  = t * iNumRawPeptides / iNumThreads;
+      vCountRanges[t].second = (t + 1) * iNumRawPeptides / iNumThreads;
+   }
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vCountRanges, &vLocalFragPeptides]()
+      {
+         AddFragmentsThreadProcRange(vCountRanges[t].first, vCountRanges[t].second, vLocalFragPeptides[t]);
+      });
+   }
    pFragmentIndexPool->wait_on_threads();
 
-   // Convert per-bin counts (stored in g_iFragmentIndexOffset[0..n-1] during count pass)
-   // to CSR prefix-sum offsets, then allocate the single flat data array.
+   // Concatenate in ascending partition order (== ascending raw-peptide-index order), the
+   // exact traversal order the old single-threaded AddFragmentsThreadProc() produced, so the
+   // subsequent mass sort below sees byte-identical input to before.
+   {
+      size_t iTotal = 0;
+      for (auto& v : vLocalFragPeptides)
+         iTotal += v.size();
+
+      if (iTotal >= UINT_MAX)
+      {
+         printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
+         exit(1);
+      }
+
+      g_vFragmentPeptides.reserve(iTotal);
+      for (auto& v : vLocalFragPeptides)
+      {
+         g_vFragmentPeptides.insert(g_vFragmentPeptides.end(),
+            make_move_iterator(v.begin()), make_move_iterator(v.end()));
+         vector<FragmentPeptidesStruct>().swap(v);
+      }
+      vector<vector<FragmentPeptidesStruct>>().swap(vLocalFragPeptides);
+   }
+
+   // Convert per-bin counts (accumulated into g_iFragmentIndexOffset[0..n-1] during the
+   // count pass above) to CSR prefix-sum offsets, then allocate the single flat data array.
    // Use uint64_t accumulator: non-enzymatic searches against large databases can
    // exceed UINT_MAX total entries, silently corrupting the index with unsigned int.
    {
@@ -226,13 +270,9 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       g_iFragmentIndex = new unsigned int[uiTotal];
    }
 
-   // Initialize per-bin write positions as a copy of the base offsets.
-   s_iWritePos = new uint64_t[g_massRange.uiMaxFragmentArrayIndex];
-   memcpy(s_iWritePos, g_iFragmentIndexOffset, sizeof(uint64_t) * g_massRange.uiMaxFragmentArrayIndex);
-
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
-   // now sort g_vFragmentPeptides by mass; this was filled in the above AddFragmentsThreadProc calls
+   // now sort g_vFragmentPeptides by mass; this was filled in the above count pass
    tStartTime = chrono::steady_clock::now();
    cout << "   - sort peptides by mass ... "; fflush(stdout);
    sort(g_vFragmentPeptides.begin(), g_vFragmentPeptides.end(), [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
@@ -251,28 +291,77 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       throw std::overflow_error(" Error: g_vFragmentPeptides.size() too large for unsigned int");
    }
 
-   // now populate the fragment index vector
+   // now populate the fragment index vector -- two parallel sub-passes over the same
+   // mass-sorted-array partitioning (see the P1 comment above this function)
    tStartTime = chrono::steady_clock::now();
    cout <<  "   - populate index ... "; fflush(stdout);
-   // Fetched once for this whole fill pass rather than once per AddFragments() call below (a
-   // hot loop over every fragment-peptide variant, potentially millions of calls).
-   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
-   for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
+
+   const size_t iNumFragPeptides = g_vFragmentPeptides.size();
+   const uint64_t uiNumBins = g_massRange.uiMaxFragmentArrayIndex;
+   vector<pair<size_t,size_t>> vFillRanges(iNumThreads);
+   for (int t = 0; t < iNumThreads; ++t)
    {
-      auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
-      // P2: fp.dPepMass was already computed (and hardening-checked) for this exact
-      // variant during the count pass -- pass it through so the fill pass doesn't redo
-      // the O(peptide length) recompute a second time for every one of g_vFragmentPeptides.
-      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0, vModSlotForAllModsIdx, fp.dPepMass);
+      vFillRanges[t].first  = t * iNumFragPeptides / iNumThreads;
+      vFillRanges[t].second = (t + 1) * iNumFragPeptides / iNumThreads;
+   }
+
+   // Fill-count sub-pass: each thread re-walks its own partition's already-known
+   // (peptide, mods, mass) entries -- no recomputation of dPepMass itself (P2's
+   // dKnownPepMass short-circuit still applies) -- purely to learn how many b/y ions
+   // its partition contributes to each bin.
+   vector<vector<uint64_t>> vPartitionBinCounts(iNumThreads, vector<uint64_t>(uiNumBins, 0));
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionBinCounts, &vModSlotForAllModsIdx]()
+      {
+         uint64_t* pLocalCounts = vPartitionBinCounts[t].data();
+         for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
+         {
+            auto& fp = g_vFragmentPeptides[i];
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+               false, vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
+         }
+      });
+   }
+   pFragmentIndexPool->wait_on_threads();
+
+   // Prefix sum across partitions (in the same fixed partition order used above), per bin:
+   // the write-cursor partition t should start at is the bin's base CSR offset plus every
+   // earlier partition's contribution to that bin. This gives every partition a disjoint
+   // sub-range within each bin, and the relative order across partitions is fixed
+   // (partition 0's entries first, then partition 1's, ...) regardless of actual thread
+   // scheduling -- the same order the old single-threaded fill loop produced, since it also
+   // processed iWhichFragmentPeptide in ascending (== partition-ascending) order.
+   vector<vector<uint64_t>> vPartitionWriteCursor(iNumThreads, vector<uint64_t>(uiNumBins));
+   for (uint64_t bin = 0; bin < uiNumBins; ++bin)
+   {
+      uint64_t cursor = g_iFragmentIndexOffset[bin];
+      for (int t = 0; t < iNumThreads; ++t)
+      {
+         vPartitionWriteCursor[t][bin] = cursor;
+         cursor += vPartitionBinCounts[t][bin];
+      }
+   }
+   vector<vector<uint64_t>>().swap(vPartitionBinCounts);
+
+   // Fill-write sub-pass: each thread re-walks the same partition a second time, this time
+   // actually writing, using only its own local write-cursor array -- no shared cursor, so
+   // no lock/atomic needed on g_iFragmentIndex itself.
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionWriteCursor, &vModSlotForAllModsIdx]()
+      {
+         uint64_t* pLocalCursor = vPartitionWriteCursor[t].data();
+         for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
+         {
+            auto& fp = g_vFragmentPeptides[i];
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+               false, vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
+         }
+      });
    }
    pFragmentIndexPool->wait_on_threads();
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
-
-   // Write positions no longer needed after fill.
-   delete[] s_iWritePos;
-   s_iWritePos = nullptr;
-
-   Threading::DestroyMutex(_vFragmentPeptidesMutex);
 
    // Total entry count is the CSR sentinel value.
    unsigned long long ullCount = g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex];
@@ -291,8 +380,9 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 }
 
 
-void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
-                                                ThreadPool* /*tp*/)
+void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
+                                                      size_t iPeptideEnd,
+                                                      vector<FragmentPeptidesStruct>& localFragPeptides)
 {
    size_t iWhichFragmentPeptide = 0;  // unused here for counting only
 
@@ -304,12 +394,14 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
    // needs it -- ctNtermMod/ctCtermMod elsewhere in this function are already raw slots).
    const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
 
-   // each thread will loop through a subset of the g_vRawPeptides
-   for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
+   // P1: this thread owns [iPeptideStart, iPeptideEnd) exclusively -- every accepted
+   // variant goes into this thread's own localFragPeptides (see AddFragments()'s doc
+   // comment), so there's no shared state here to race on.
+   for (size_t iWhichPeptide = iPeptideStart; iWhichPeptide < iPeptideEnd; ++iWhichPeptide)
    {
       // AddFragments for unmodified peptide; only if no variable mods are required
       if (!g_staticParams.variableModParameters.iRequireVarMod)
-         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, bCountOnly, vModSlotForAllModsIdx);
+         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
       // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
@@ -324,7 +416,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -335,7 +427,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -350,7 +442,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                         && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                {
-                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                }
             }
          }
@@ -388,7 +480,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
 
             if (bPass)
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
                if (g_staticParams.variableModParameters.bVarTermModSearch)
                {
@@ -398,7 +490,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -408,7 +500,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -423,7 +515,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                               (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                                  && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                         {
-                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                         }
                      }
                   }
@@ -443,7 +535,10 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       char cCtermMod,
                                       bool bCountOnly,
                                       const vector<int>& vModSlotForAllModsIdx,
-                                      double dKnownPepMass)
+                                      double dKnownPepMass,
+                                      vector<FragmentPeptidesStruct>* pLocalFragPeptides,
+                                      uint64_t* pFillBinCounts,
+                                      uint64_t* pFillWriteCursor)
 {
    // P2: was `string sPeptide = ...szPeptide;`, a heap-backed copy on every one of the
    // 10^8+ calls a whole-proteome build makes (twice per accepted variant: once in the
@@ -600,27 +695,11 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       sTmp.cNtermMod = cNtermMod;
       sTmp.cCtermMod = cCtermMod;
 
-      // Store the current peptide; iWhichFragmentPeptide references this peptide entry
-      // for use in the g_iFragmentIndex fragment index.  As this is a global list of
-      // peptides, need to lock when updating to avoid thread conflicts.
-      //
-      // AddFragmentsThreadProc() currently runs this single-threaded regardless of the
-      // ThreadPool it's handed (see P1 in docs/20260819_fablereview.md -- the count/fill
-      // passes don't actually use the pool yet), so this push_back has no live
-      // concurrent caller today and the lock below is a no-op in practice. Locking
-      // anyway rather than leaving it as dead-code-shaped: whenever P1 gets fixed and
-      // this pass is genuinely parallelized, this is the one place that would otherwise
-      // silently start racing (concurrent vector::push_back is undefined behavior --
-      // lost elements or reallocation corruption, not a clean crash).
-      Threading::LockMutex(_vFragmentPeptidesMutex);
-      if (g_vFragmentPeptides.size() >= UINT_MAX)
-      {
-         printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
-         exit(1);
-      }
-      // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
-      g_vFragmentPeptides.push_back(sTmp);
-      Threading::UnlockMutex(_vFragmentPeptidesMutex);
+      // P1: pLocalFragPeptides is this calling thread's own vector (one per
+      // AddFragmentsThreadProcRange() partition) -- no lock needed since no other thread
+      // ever touches it; the caller concatenates all partitions' vectors, in partition
+      // order, into g_vFragmentPeptides once every thread has finished (GenerateFragmentIndex()).
+      pLocalFragPeptides->push_back(sTmp);
    }
 
 /*
@@ -706,10 +785,14 @@ if (!(iWhichPeptide%1000))
                exit(1);
             }
 
+            // P1: three mutually-exclusive destinations selected by which pointer the
+            // caller supplied -- see this function's doc comment in the header.
             if (bCountOnly)
-               g_iFragmentIndexOffset[iBinBion] += 1;
+               std::atomic_ref<uint64_t>(g_iFragmentIndexOffset[iBinBion]).fetch_add(1, std::memory_order_relaxed);
+            else if (pFillWriteCursor != nullptr)
+               g_iFragmentIndex[pFillWriteCursor[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
-               g_iFragmentIndex[s_iWritePos[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+               pFillBinCounts[iBinBion] += 1;
          }
 
          if (dYion > g_staticParams.options.dFragIndexMinMass && dYion < g_staticParams.options.dFragIndexMaxMass)
@@ -723,9 +806,11 @@ if (!(iWhichPeptide%1000))
             }
 
             if (bCountOnly)
-               g_iFragmentIndexOffset[iBinYion] += 1;
+               std::atomic_ref<uint64_t>(g_iFragmentIndexOffset[iBinYion]).fetch_add(1, std::memory_order_relaxed);
+            else if (pFillWriteCursor != nullptr)
+               g_iFragmentIndex[pFillWriteCursor[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
-               g_iFragmentIndex[s_iWritePos[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+               pFillBinCounts[iBinYion] += 1;
          }
       }
    }

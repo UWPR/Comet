@@ -42,6 +42,28 @@ public:
 private:
 
    static void GenerateFragmentIndex(ThreadPool *tp);
+
+   // P1: destination for a qualifying b/y ion (or, for the count pass, a qualifying
+   // peptide variant) is selected by exactly one of the three trailing pointer
+   // parameters being non-null -- see the three callers below for which one each
+   // pass/sub-pass supplies:
+   //   pLocalFragPeptides non-null (count pass): push the accepted variant onto this
+   //     thread's own local vector (no lock -- each thread owns a disjoint vector,
+   //     concatenated in partition order by the caller after wait_on_threads() so the
+   //     result is byte-identical to the old single-threaded traversal order); bin
+   //     counts go into the shared g_iFragmentIndexOffset via std::atomic_ref (safe:
+   //     the final per-bin count is a commutative sum, so increment order doesn't
+   //     affect the result or determinism).
+   //   pFillBinCounts non-null (fill-count sub-pass): accumulate into this thread's own
+   //     local per-bin counter array (no atomics needed -- exclusively owned by the
+   //     calling partition).
+   //   pFillWriteCursor non-null (fill-write sub-pass): write into g_iFragmentIndex at
+   //     this thread's own local per-bin cursor (pre-seeded by the caller from a
+   //     prefix sum over pFillBinCounts across partitions in a fixed partition order --
+   //     see GenerateFragmentIndex() -- so the physical write ranges per bin are
+   //     disjoint across threads and the relative order within a bin is deterministic
+   //     regardless of actual thread scheduling, preserving T18's byte-identical-build
+   //     guarantee).
    static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
                             size_t iWhichPeptide,
                             size_t iWhichFragmentPeptide,
@@ -50,14 +72,22 @@ private:
                             char cCtermMod,
                             bool bCountOnly,
                             const vector<int>& vModSlotForAllModsIdx,
-                            double dKnownPepMass = -1.0);
-   static void AddFragmentsThreadProc(bool bCountOnly,
-                                      ThreadPool *tp);
+                            double dKnownPepMass,
+                            vector<FragmentPeptidesStruct>* pLocalFragPeptides,
+                            uint64_t* pFillBinCounts,
+                            uint64_t* pFillWriteCursor);
+
+   // Count pass, one raw-peptide index range per thread. Enumerates every mod
+   // combination for peptides [iPeptideStart, iPeptideEnd) exactly as the old
+   // single-threaded AddFragmentsThreadProc() did, but writes accepted variants into
+   // this thread's own localFragPeptides instead of the (formerly mutex-guarded)
+   // global g_vFragmentPeptides.
+   static void AddFragmentsThreadProcRange(size_t iPeptideStart,
+                                           size_t iPeptideEnd,
+                                           vector<FragmentPeptidesStruct>& localFragPeptides);
 
    static bool *_pbSearchMemoryPool;    // Pool of memory to be shared by search threads
    static bool **_ppbDuplFragmentArr;   // Number of arrays equals number of threads
-
-   static Mutex _vFragmentPeptidesMutex;
 };
 
 #endif // _COMETFRAGMENTINDEX_H_
