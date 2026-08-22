@@ -1372,7 +1372,7 @@ embarrassingly parallel (count: per-thread bin arrays merged at the end;
 fill: partition `g_vFragmentPeptides` with per-partition pre-counts as write
 cursors).
 
-### P2. `AddFragments()` per-call churn (double-digit % of both build passes)
+### P2. `AddFragments()` per-call churn (double-digit % of both build passes) — ✅ FIXED 2026-08-21
 `CometFragmentIndex.cpp:461` (heap-backed `string sPeptide` copy per call),
 480 (`modSeq` string copy per call), 502-525 (full residue-by-residue
 precursor-mass recompute in the fill pass even though `fp.dPepMass` already
@@ -1380,7 +1380,19 @@ holds it from the count pass). Called twice per variant, potentially 10^8+
 times on whole-proteome builds. Use `const&`/`const char*` and pass the known
 mass into the fill pass.
 
-### P3. Per-candidate full-array memsets in FI/PI search (direct RTS Hz win)
+**Fix applied:** `sPeptide` replaced with a `const char* pszPeptide` read
+directly from the raw-peptide entry's `szPeptide` char[]; `modSeq` replaced
+with a `const string&` bound to the existing `MOD_SEQS` entry (or a shared
+static empty string) instead of copying it. Added a `dKnownPepMass`
+parameter (default `-1.0`, sentinel for "not yet known"); the fill pass's
+single call site (`GenerateFragmentIndex()`) now passes `fp.dPepMass`
+through, so `AddFragments()` skips the entire O(peptide length) mass
+recompute and its hardening check on that second call — both already ran
+once during the count pass for this exact variant. The 8 count-pass call
+sites (inside `AddFragmentsThreadProc()`) are untouched, since that's the
+one place the mass genuinely isn't known yet.
+
+### P3. Per-candidate full-array memsets in FI/PI search (direct RTS Hz win) — ✅ FIXED 2026-08-21
 `CometSearch.cpp:1740-1741` (`SearchFragmentIndex`), 2180 and 2472
 (`AnalyzePeptideIndex`): each scored candidate memsets the whole
 `pbDuplFragment` (`iArraySizeGlobal` bools — hundreds of KB at small bins)
@@ -1391,7 +1403,22 @@ of MB of avoidable memset per spectrum. Adopt the FASTA path's memset-free
 two-pass clear (3116-3152); preserve the `iFoundVariableMod = 2` side effect
 at 2238.
 
-### P4. Spectrum deep copies and per-charge redundant preprocessing
+**Fix applied:** `SearchFragmentIndex()` now clears `pbDuplFragment` via a
+fine-grained pass mirroring the set pass's own loop nest (same technique the
+FASTA path already used), instead of a full-array memset; `uiBinnedIonMasses`
+kept its existing tight per-row memset. `AnalyzePeptideIndex()`'s target-peptide
+path already had this fine-grained clear -- removed its now-redundant full
+memset. Its **decoy** path had no fine-grained clear at all (relied entirely
+on the full memset) -- added one, mirroring the target path's pattern.
+
+**Verified 2026-08-21:** full clean rebuild, 52/52 unit tests, and a full
+`--integration` run (T17-T24, 58/58 passed both times P2/P3 were tested,
+including an exact FI_DB PSM-count match against the `v2026.02.2` baseline,
+ratio 1.000) -- confirming both fixes are results-identical, with a real,
+consistent speedup: FI_DB index build 0.895x, PI_DB index build 0.794x,
+FI_DB search 0.878x, PI_DB search 0.749x the baseline's wall-clock time.
+
+### P4. Spectrum deep copies and per-charge redundant preprocessing — ✅ FIXED 2026-08-21 (copy-elimination half only)
 `CometPreprocess.h:216-229`: `Preprocess()` takes `Spectrum` by value and
 `LoadIons()` copies it again — two full peak-vector copies per charge state
 (4 per spectrum for a 2+/3+ guess) in batch, fused, and MS1 paths. Pass
@@ -1401,7 +1428,28 @@ pipeline repeats per charge state (the comment at 2622-2624 already notes
 it); hoisting charge-independent work nearly halves preprocessing for
 charge-guessed spectra.
 
-### P5. Protein-name resolution I/O (multi-x on the output phase)
+**Fix applied (copy-elimination only):** `Preprocess()`/`LoadIons()` now take
+`Spectrum&` (not `const Spectrum&` — MSToolkit's `Spectrum` class has no
+`const`-qualified accessors at all, e.g. `size()`/`at()`/`getMZ()`, so a
+`const&` parameter can't call any of them without modifying that
+third-party-adapted header; a plain non-const reference achieves the same
+copy-elimination without touching MSToolkit). `LoadIons()`'s conditional
+`sortIntensity()` now makes exactly one local copy only when that branch
+actually triggers (FI/PI mode with more peaks than
+`fragindex_numpeaks`), reading through a `Spectrum*` pointing at whichever
+one (the caller's reference, or the freshly-sorted local copy) is current,
+instead of unconditionally copying on every call regardless of whether
+sorting is even needed.
+
+**Not attempted — "hoist charge-independent work":** investigated and found
+substantially harder than it first reads. Almost the entire downstream
+pipeline (bin cutoffs, `iArraySize`, the `dExpPepMass+50` peak window) is
+keyed off the *guessed* neutral mass, which is genuinely different per
+charge guess — not superficially redundant work, a real per-charge
+recomputation. Left open; flagged here rather than forcing a risky
+restructure.
+
+### P5. Protein-name resolution I/O (multi-x on the output phase) — ✅ FIXED 2026-08-21 (2 of 3 sub-issues)
 Three compounding issues: (a) each enabled writer independently calls
 `GetProteinNameString` per PSM (`CometWriteTxt.cpp:423`,
 `CometWritePepXML.cpp:535`, `CometWritePercolator.cpp:132`,
@@ -1414,19 +1462,86 @@ Resolve names once per result batch into a map keyed on the protein offset
 and hand it to all writers; extend the cache to the RTS FASTA path, which
 currently re-opens the db per spectrum (`CometSearchManager.cpp:2789-2798`).
 
-### P6. `sDBEntry` copied by value 2-4x per protein, with redundant re-sorts
+**Fix applied (a+b, indexed-DB mode only):** discovered `g_pvProteinNameCache`
+(the same process-wide, in-memory, offset->name cache the RTS path already
+uses) is a ready-made drop-in for exactly this -- `GetProteinNameString()`'s
+3 indexed-DB (FI_DB/PI_DB) read blocks now resolve through a shared
+`resolveIndexedProteinName` lambda that looks up the cache (falling back to
+the original `fseek`+`fgets`/`fscanf` only on a cache miss, which shouldn't
+normally happen once an index is loaded) instead of doing its own
+`fseek`+`fgets`/`fscanf` per protein per call. This eliminates both (a) and
+(b) simultaneously for indexed-DB batch search -- every enabled writer now
+reads from the same in-memory cache instead of each independently hitting
+the file. Verified all 4 writers (txt/sqt/pep.xml/pin) resolve the correct
+name with a manual PI_DB smoke test with all 5 output formats enabled at
+once.
+
+**Fix applied (c):** `.idx` name-cache build (`CometPeptideIndex.cpp`) now
+collects the distinct offsets actually referenced, sorts them, and does ONE
+sequential `fread` spanning `[min, max + WIDTH_REFERENCE)` instead of one
+`fseek`+`fread` per protein -- safe because `WritePeptideIndex()` writes
+every protein's name back-to-back in one contiguous section (verified
+against its write-loop directly).
+
+**Not attempted:** extending the cache to the RTS FASTA-path (batch-search
+writers only; RTS's inline resolution logic in `CometSearchManager.cpp` is a
+separate code path not touched here).
+
+### P6. `sDBEntry` copied by value 2-4x per protein, with redundant re-sorts — ✅ FIXED 2026-08-21
 `CometSearch.cpp:1276, 2633, 3481` plus the `SearchThreadData` copy
 (`CometSearch.h:45-47`): full sequence + PEFF vectors deep-copied per call
 layer; `SearchForPeptides` runs up to 3x per protein and re-sorts the
 already-sorted PEFF vectors each time (2674-2681). Pass `const sDBEntry&`.
 
-### P7. Decoy work redone per matching query
+**Fix applied:** `DoSearch()`/`SearchForPeptides()`/`SearchForVariants()` all
+take `sDBEntry&` now (not `const&` -- `SearchForPeptides()` sorts
+`dbe.vectorPeffMod`/`vectorPeffVariantSimple`/`vectorPeffVariantComplex` in
+place, and `SearchForVariants()` forwards its own `dbe` into
+`SearchForPeptides()`, so neither can be const). `SearchThreadData`'s own
+copy (necessary -- it's heap-allocated and handed to a thread pool, so it
+needs an owned copy independent of the caller's loop variable) is
+unaffected; every *subsequent* by-value hop on top of that is eliminated.
+The 3 PEFF-vector sorts are now guarded with `is_sorted()` first, so the
+second `SearchForPeptides()` call for the N-term-Met-clipped variant (same
+`dbe`, already sorted by the first call) pays an O(n) check instead of
+another O(n log n) sort.
+
+### P7. Decoy work redone per matching query — ✅ FIXED 2026-08-21
 `CometSearch.cpp:3202-3345`: for unmodified peptides the target ion set is
 computed once per peptide but the entire decoy construction + ladder + two
 binning passes re-run for every matching query; `CalcVarModIons` already
 gates its decoy build on `bFirstTimeThroughLoopForPeptide` (7399). Matters
 for wide-tolerance/DIA-style searches with decoys. (Interacts with B6 if
 fixed.)
+
+**Fix applied:** the decoy ladder (`szDecoyPeptide`,
+`_pdAAforwardDecoy`/`_pdAAreverseDecoy`, `_uiBinnedIonMassesDecoy`,
+`_uiBinnedPrecursorNLDecoy`) is now built once per peptide, gated by
+`bFirstTimeThroughLoopForPeptide` exactly like the target ladder just above
+it -- `szDecoyPeptide` moved from a per-iteration stack declaration inside
+the `while` loop to a per-peptide one outside it, so it stays valid across
+every matching query after the first. Also had to fix the decoy's two
+precursor-NL binning loops, which bounded on
+`_pQueries->at(iWhichQuery)->_spectrumInfoInternal.usiChargeState` (the
+*current* query's own charge) instead of the global max charge the target
+side's analogous loops already use (`iPrecursorNLMaxCharge =
+g_staticParams.options.iMaxPrecursorCharge`) -- without this, a peptide's
+first-matching query at a lower charge would leave higher-charge slots
+unfilled for every later query that reuses the now-cached ladder.
+
+**Caught and fixed during verification, not shipped:** the first version of
+this fix flipped `bFirstTimeThroughLoopForPeptide` to `false` in its
+original location (right after the target block, before the decoy block's
+own gate check) -- meaning the decoy gate always saw `false` and never
+built its ladder at all, `XcorrScore()` scoring every decoy candidate
+against uninitialized/stale leftover data. Caught by `t21_autodecoy`
+(migrated legacy case, `decoy_search=1`) failing with a completely wrong
+peptide/protein reported. Fixed by moving the flip to after *both* the
+target and decoy one-time blocks, but still outside the
+`if (iDecoySearch)` conditional (a non-decoy search must still flip it, or
+the target block's own preexisting one-time-per-peptide optimization
+regresses). Full 52-test unit suite passes after the fix, including
+`t21_autodecoy`.
 
 ### P8. Mod-permuter subset enumeration — 2 of 3 sub-items ✅ FIXED 2026-08-21
 `CometModificationsPermuter.cpp:574-589`: step 2 scans all of
@@ -1544,8 +1659,14 @@ Small, high-payoff, low-risk first:
    contributing paths are the nested unmodified/modified/n-term/c-term/combo
    branches in `AddFragmentsThreadProc()`, not a single count) rather than a
    one-line addition — **deferred, not done**.
-8. **Perf, in payoff order:** P1 → P2 → P3 → P4 → P5 (P11's `.reserve()` item
-   folds in here too now). **Still fully open.**
+8. **P2 and P3 — ✅ DONE 2026-08-21:** `AddFragments()` per-call churn (heap
+   copies + redundant fill-pass mass recompute) and the FI/PI per-candidate
+   full-array memsets — see their Section 4 entries for fix detail and
+   verification. Both confirmed results-identical against the `v2026.02.2`
+   baseline with a real, consistent speedup (FI_DB/PI_DB index build and
+   search wall-clock all faster than baseline).
+9. **Perf, in payoff order:** P1 → P4 → P5 → P6 → P7 (P11's `.reserve()` item
+   folds in here too). **Still fully open.**
 
 Suggested regression tests (T25-style crafted fixtures) — ✅ **DONE 2026-08-21**,
 all 8 implemented as committed fixtures `T26`-`T33` in `tests/unit/run_tests.py`

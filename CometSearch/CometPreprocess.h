@@ -201,8 +201,13 @@ private:
    // docs/20260723_ExtendFusedBatchPath.md). Currently only the fused batch path
    // (FusedSearchSpectrum) passes non-null for either; nullptr preserves the
    // prior per-spectrum-heap-allocation behavior for any other caller.
+   // P4: mstSpectrum is a reference, not a by-value copy -- Preprocess() is called once
+   // per guessed charge state (up to 2x/spectrum for a 2+/3+ guess), and previously
+   // copied the whole peak vector on every call just to hand it straight to LoadIons(),
+   // which copied it again. Neither function needs to mutate the caller's spectrum (see
+   // LoadIons()'s own comment on its conditional sortIntensity() copy).
    static bool Preprocess(struct Query *pScoring,
-                          Spectrum mstSpectrum,
+                          Spectrum& mstSpectrum,
                           double *pdTmpRawData,
                           double *pdTmpFastXcorrData,
                           double *pdTmpCorrelationData,
@@ -213,7 +218,7 @@ private:
                           FusedPointerArena *pPtrArena = nullptr);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
-                        Spectrum mstSpectrum,
+                        Spectrum& mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double* pdTmpRawData,
                             double* pdTmpCorrelationData,

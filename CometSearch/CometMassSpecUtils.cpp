@@ -203,6 +203,44 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    *uiNumTotProteins = 0;
 
+   // P5: g_pvProteinNameCache (built once at index load, see CometPeptideIndex.cpp) already
+   // holds every indexed-DB protein's full name string in memory -- resolve from that instead
+   // of a fresh fseek+fgets/fscanf per protein per result. Without this, every enabled output
+   // writer (txt/pepxml/percolator/sqt) independently re-does this same random-access I/O for
+   // the same result. Falls back to the old direct-file read only on a cache miss (shouldn't
+   // normally happen once an index is loaded, but stay correct rather than silently dropping
+   // a name).
+   auto resolveIndexedProteinName = [&](comet_fileoffset_t lOffset) -> string
+   {
+      auto itCache = g_pvProteinNameCache.find(lOffset);
+      if (itCache != g_pvProteinNameCache.end())
+      {
+         if (bReturnFullProteinString)
+            return itCache->second;
+
+         // accession-only: first whitespace-delimited token, matching fscanf("%s", ...)
+         // (isspace() under the "C" locale: space, \t, \n, \v, \f, \r)
+         size_t tPos = itCache->second.find_first_of(" \t\n\v\f\r");
+         return (tPos == string::npos) ? itCache->second : itCache->second.substr(0, tPos);
+      }
+
+      comet_fseek(fpdb, lOffset, SEEK_SET);
+
+      char szProteinNameLocal[WIDTH_REFERENCE];
+      if (bReturnFullProteinString)
+      {
+         if (fgets(szProteinNameLocal, WIDTH_REFERENCE, fpdb) == NULL)
+            szProteinNameLocal[0] = '\0';
+      }
+      else
+      {
+         if (fscanf(fpdb, szFormat, szProteinNameLocal) != 1)
+            szProteinNameLocal[0] = '\0';
+      }
+      szProteinNameLocal[WIDTH_REFERENCE - 1] = '\0';
+      return string(szProteinNameLocal);
+   };
+
    // FIX:  protein references is so convoluted with the restoration of peptide index.  This
    // seems to work now but definitely needs to be revisited to be cleaned up.
    // Look into lProteinFilePosition and lWhichProtein with Results struct.
@@ -233,20 +271,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
             {
-               comet_fseek(fpdb, *it, SEEK_SET);
-
-               if (bReturnFullProteinString)
-               {
-                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
-                  {
-                     // throw error
-                  }
-               }
-               else
-                  iRet = fscanf(fpdb, szFormat, szProteinName);
-
-               szProteinName[WIDTH_REFERENCE - 1] = '\0';
-               vProteinTargets.push_back(szProteinName);
+               vProteinTargets.push_back(resolveIndexedProteinName(*it));
 
                iPrintDuplicateProteinCt++;
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -264,20 +289,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
          for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
          {
-            comet_fseek(fpdb, *it, SEEK_SET);
-
-            if (bReturnFullProteinString)
-            {
-               if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
-               {
-                  // throw error
-               }
-            }
-            else
-               iRet = fscanf(fpdb, szFormat, szProteinName);
-
-            szProteinName[WIDTH_REFERENCE - 1] = '\0';
-            vProteinTargets.push_back(szProteinName);
+            vProteinTargets.push_back(resolveIndexedProteinName(*it));
 
             iPrintDuplicateProteinCt++;
             if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -297,20 +309,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
             {
-               comet_fseek(fpdb, *it, SEEK_SET);
-
-               if (bReturnFullProteinString)
-               {
-                  if (fgets(szProteinName, WIDTH_REFERENCE, fpdb) == NULL)
-                  {
-                     // throw error
-                  }
-               }
-               else
-                  iRet = fscanf(fpdb, szFormat, szProteinName); // must be less than WIDTH_REFERENCE
-
-               szProteinName[WIDTH_REFERENCE - 1] = '\0';
-               vProteinDecoys.push_back(szProteinName);
+               vProteinDecoys.push_back(resolveIndexedProteinName(*it));
 
                iPrintDuplicateProteinCt++;
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)

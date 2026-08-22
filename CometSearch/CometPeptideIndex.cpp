@@ -296,22 +296,47 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    }
 
    // Build in-memory protein name cache before closing the file.
+   //
+   // P5: every protein's szProt block was written back-to-back in one contiguous section
+   // by WritePeptideIndex() (see the file-layout comment at the top of this file), so a
+   // per-protein fseek+fread here is random-access I/O against what's actually a fully
+   // sequential region -- each seek also discards this stdio stream's buffered state.
+   // Collect the distinct offsets actually referenced, then do ONE sequential read
+   // spanning [min, max + WIDTH_REFERENCE) and slice each name out of that in-memory
+   // buffer instead of seeking to it individually.
    {
-      char szProtBuf[WIDTH_REFERENCE];
       g_pvProteinNameCache.clear();
+
+      vector<comet_fileoffset_t> vDistinctOffsets;
       for (const auto& vProts : g_pvProteinsList)
       {
          for (const comet_fileoffset_t lOffset : vProts)
+            vDistinctOffsets.push_back(lOffset);
+      }
+
+      sort(vDistinctOffsets.begin(), vDistinctOffsets.end());
+      vDistinctOffsets.erase(unique(vDistinctOffsets.begin(), vDistinctOffsets.end()), vDistinctOffsets.end());
+
+      if (!vDistinctOffsets.empty())
+      {
+         comet_fileoffset_t lMin = vDistinctOffsets.front();
+         comet_fileoffset_t lMax = vDistinctOffsets.back();
+         size_t tSpan = (size_t)(lMax - lMin) + WIDTH_REFERENCE;
+
+         vector<char> vNameBuf(tSpan);
+         comet_fseek(fp, lMin, SEEK_SET);
+         if (fread(vNameBuf.data(), sizeof(char), tSpan, fp) == tSpan)
          {
-            if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
             {
-               comet_fseek(fp, lOffset, SEEK_SET);
-               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == (size_t)WIDTH_REFERENCE)
-               {
-                  szProtBuf[WIDTH_REFERENCE - 1] = '\0';
-                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
-               }
+               const char* pProtBuf = vNameBuf.data() + (size_t)(lOffset - lMin);
+               g_pvProteinNameCache.emplace(lOffset, string(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1)));
             }
+         }
+         else
+         {
+            logout(" Warning - failed to read protein-name section from .idx file; protein"
+               " names may be missing from output.\n");
          }
       }
    }

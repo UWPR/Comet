@@ -110,7 +110,10 @@ public:
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
 
-   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment, const vector<Query*>& queries);
+   // P6: dbe is a reference to the caller's (SearchThreadProc's) own SearchThreadData::dbEntry,
+   // which is already a per-thread owned copy and stable for this call's whole duration --
+   // no need for DoSearch to make its own second copy just to read/pass it onward.
+   bool DoSearch(sDBEntry& dbe, bool* pbDuplFragment, const vector<Query*>& queries);
 
    // Performance: Mark as const where possible
    bool CheckEnzymeTermini(const char* szProteinSeq,
@@ -315,11 +318,17 @@ private:
                                    struct sDBEntry* dbe,
                                    int iSlot);
 
-   bool SearchForPeptides(struct sDBEntry dbe,
+   // P6: dbe taken by reference, not by value -- DoSearch calls this up to twice per
+   // protein (once for the full sequence, once more for the N-term-Met-clipped variant),
+   // and a fresh sDBEntry copy (full sequence string + all PEFF vectors) on every call was
+   // pure overhead layered on top of DoSearch's own copy. The one-time PEFF-vector sort
+   // below now guards on is_sorted() so the second call doesn't redundantly re-sort what
+   // the first call already sorted on this same dbe.
+   bool SearchForPeptides(struct sDBEntry& dbe,
                           char* szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
                           bool* pbDuplFragment);
-   void SearchForVariants(struct sDBEntry dbe,
+   void SearchForVariants(struct sDBEntry& dbe,
                           char* szProteinSeq,
                           bool* pbDuplFragment);
    void CompoundModSearch(char *szProteinSeq,

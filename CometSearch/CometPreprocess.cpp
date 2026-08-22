@@ -1233,7 +1233,7 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 
 
 bool CometPreprocess::Preprocess(struct Query *pScoring,
-                                 Spectrum mstSpectrum,
+                                 Spectrum& mstSpectrum,
                                  double *pdTmpRawData,
                                  double *pdTmpFastXcorrData,
                                  double *pdTmpCorrelationData,
@@ -2860,7 +2860,7 @@ double CometPreprocess::GetMassCushion(double dMass)
 //  Reads MSMS data file as ASCII mass/intensity pairs.
 bool CometPreprocess::LoadIons(struct Query *pScoring,
                                double *pdTmpRawData,
-                               Spectrum mstSpectrum,
+                               Spectrum& mstSpectrum,
                                struct PreprocessStruct *pPre)
 {
    int  i;
@@ -2888,10 +2888,21 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    int iNumFragmentPeaks = 0;
 
+   // P4: mstSpectrum is now the caller's own spectrum object (a reference, not a copy),
+   // reused across every charge-state guess for this scan -- sortIntensity() below must
+   // not reorder it in place, or the next charge guess's LoadIons() call would see an
+   // already-sorted spectrum instead of the original order it expects to sort itself.
+   // Only make a local copy (and only sort that copy) when this branch actually needs
+   // sorted order; read through pSpec (whichever one is current) from here on.
+   Spectrum mstSpectrumSorted;
+   Spectrum* pSpec = &mstSpectrum;
+
    if (g_staticParams.iDbType != DbType::FASTA_DB && mstSpectrum.size() > g_staticParams.options.iFragIndexNumSpectrumPeaks)
    {
       // sorts spectrum in ascending order by intensity
-      mstSpectrum.sortIntensity();
+      mstSpectrumSorted = mstSpectrum;
+      mstSpectrumSorted.sortIntensity();
+      pSpec = &mstSpectrumSorted;
    }
 
    pPre->iHighestIon = 0;
@@ -2899,10 +2910,10 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
    // read peaks in reverse order as they're possibly sorted in ascending order by
    // intensity and vfRawFragmentPeakMass needs most intense peaks
-   for (i = mstSpectrum.size() - 1; i >= 0; --i)
+   for (i = pSpec->size() - 1; i >= 0; --i)
    {
-      dIon = mstSpectrum.at(i).mz;
-      dIntensity = mstSpectrum.at(i).intensity;
+      dIon = pSpec->at(i).mz;
+      dIntensity = pSpec->at(i).intensity;
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 
