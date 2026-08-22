@@ -1251,11 +1251,20 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    pPre.iHighestIon = 0;
    pPre.dHighestIntensity = 0;
 
-   // initialize these temporary arrays before re-using. Must cover the same
-   // iArraySizeGlobal + iXcorrProcessingOffset pad AllocateMemory() now allocates these pool
-   // slots with, not just iArraySizeGlobal -- otherwise the pad region keeps whatever a
-   // previous spectrum on this pool slot left there instead of being zeroed like the rest.
-   size_t iTmp = (size_t)((g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset) * sizeof(double));
+   // P9: only zero the region MakeCorrData()/the xcorr-building loop below can actually
+   // read or write, not the full iArraySizeGlobal -- these buffers are a per-thread batch
+   // scratch pool reused across many spectra, so under-zeroing risks the exact stale-data
+   // bug docs/20260714_EvalueJitter.md Phase 3 already found and fixed for the RTS
+   // thread-local-pool path (PreprocessSingleSpectrumCore's iZeroBound): MakeCorrData()
+   // reads/writes up to pPre.iHighestIon, which the peak-loading loop below can push past
+   // iArraySize for any peak below dExpPepMass+50 -- not yet known at this point in the
+   // function, so this mirrors iZeroBound's formula directly from dExpPepMass+50 rather
+   // than depending on a value computed later.
+   const int iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
+   const int iZeroBound = std::min(
+      std::max(iArraySize, BIN(pScoring->_pepMassInfo.dExpPepMass + 50.0) + 1),
+      g_staticParams.iArraySizeGlobal);
+   size_t iTmp = (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset) * sizeof(double);
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
    memset(pdTmpCorrelationData, 0, iTmp);

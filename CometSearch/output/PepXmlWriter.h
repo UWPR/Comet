@@ -33,6 +33,8 @@ public:
          ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
+      // P11: see TxtWriter.h's identical setvbuf comment.
+      setvbuf(_fpout, NULL, _IOFBF, 1 << 20);
       if (!CometWritePepXML::WritePepXMLHeader(_fpout, *ctx.pMgr))
          return false;
 
@@ -44,6 +46,7 @@ public:
             ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
             return false;
          }
+         setvbuf(_fpoutd, NULL, _IOFBF, 1 << 20);
          if (!CometWritePepXML::WritePepXMLHeader(_fpoutd, *ctx.pMgr))
             return false;
       }

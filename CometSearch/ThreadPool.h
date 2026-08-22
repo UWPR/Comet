@@ -118,7 +118,14 @@ public:
       static constexpr int MAX_BACKOFF_LEVEL = MAX_YIELD_ATTEMPTS + MAX_SHORT_SLEEP_ATTEMPTS;
       int attempts = 0;
 
-      while (pool_->get_tasks_running() >= pool_->get_thread_count())
+      // P10: get_tasks_running() alone only counts tasks currently executing, not ones
+      // already queued but not yet picked up -- a caller submitting jobs faster than
+      // threads can drain them could keep seeing "a thread is running, not all of them"
+      // and never actually throttle, letting the internal queue grow unbounded despite
+      // calling this between submissions specifically to prevent that. get_tasks_total()
+      // (running + queued) is what "is there room for one more without growing the
+      // backlog past thread_count" actually means.
+      while (pool_->get_tasks_total() >= pool_->get_thread_count())
       {
          if (attempts < MAX_YIELD_ATTEMPTS)
          {

@@ -1483,9 +1483,42 @@ sequential `fread` spanning `[min, max + WIDTH_REFERENCE)` instead of one
 every protein's name back-to-back in one contiguous section (verified
 against its write-loop directly).
 
-**Not attempted:** extending the cache to the RTS FASTA-path (batch-search
-writers only; RTS's inline resolution logic in `CometSearchManager.cpp` is a
-separate code path not touched here).
+**RTS FASTA-path caching — attempted 2026-08-22, then reverted: the target
+code is unreachable dead code, not a live perf opportunity.** Implemented a
+`PopulateProteinNameCacheFromFasta()` one-time scan (called from
+`InitializeSingleSpectrumSearch()`) plus a cache-first/`fseek`-fallback
+lambda in `DoSingleSpectrumSearchMultiResults()`'s FASTA_DB branch, mirroring
+the indexed-DB fix above. Verification then surfaced that this branch can
+never actually run: `DoSingleSpectrumSearchMultiResults()` calls
+`CometSearch::RunSearch(Query*)` (the RTS single-spectrum search dispatcher,
+Task 1.3's thread-local overload) unconditionally, and that function has
+only `if (iDbType == FI_DB)` / `else if (iDbType == PI_DB)` branches -- any
+other `iDbType`, including `FASTA_DB`, falls through to an unconditional
+`return false` with "Error - index search but iDbType = 0". The caller then
+does `if (!bSucceeded) goto cleanup_results;` immediately after that call,
+skipping the entire result-formatting section -- including the FASTA-mode
+protein-name-resolution branch -- before it can ever execute. Confirmed by
+running a real single-spectrum search against a plain FASTA database via a
+throwaway test harness calling the exact same `ICometSearchManager` API RTS
+uses: `InitializeSingleSpectrumSearch()` succeeds (it has no FASTA_DB
+rejection of its own), but every subsequent
+`DoSingleSpectrumSearchMultiResults()` call fails with that exact error.
+`RunSearch(Query*)` has exactly one caller in the whole codebase, so there is
+no other path into the branch. Reverted the change rather than leave
+speculative caching logic sitting behind a branch that cannot run today.
+
+**Confirmed with Jimmy 2026-08-22: this is intentional design, not a bug or
+gap.** RTS single-spectrum search is not meant to support `FASTA_DB` at
+all -- it's built around a pre-built, read-only index so a spectrum can be
+searched without any per-call digestion; on-the-fly FASTA digestion is what
+the batch `CometSearch::DoSearch(sDBEntry&, ...)` path is for. No fix is
+needed or planned. Documented for future reference in three places so this
+doesn't get rediscovered as a mystery later: a comment on
+`CometSearch::RunSearch(Query*)` itself (`CometSearch.cpp`) and its header
+declaration, a comment at the now-confirmed-dead FASTA_DB branch in
+`CometSearchManager.cpp`'s `DoSingleSpectrumSearchMultiResults()`, and a
+"Supported database types" note in `docs/RealTimeSearch.md` under the MS2
+entry-point section.
 
 ### P6. `sDBEntry` copied by value 2-4x per protein, with redundant re-sorts — ✅ FIXED 2026-08-21
 `CometSearch.cpp:1276, 2633, 3481` plus the `SearchThreadData` copy
@@ -1571,13 +1604,7 @@ fixed 2026-08-21:**
 
 Full 52-test unit suite still passes after both fixes.
 
-### P9. Preprocessing micro-wins — 1 of 3 sub-items ✅ FIXED 2026-08-21
-Batch memsets 3 x `iArraySizeGlobal` doubles per charge state
-(`CometPreprocess.cpp:1197-1200`) though only `[0, iArraySize + offset)` is
-touched — the RTS `iZeroBound` logic (1691-1728) already implements the tight
-version (~6 MB less traffic per charge state at `fragment_bin_tol 0.02`).
-**Still open.** RTS FI top-N peak selection full-sorts all peaks
-(1802-1808) — `std::nth_element` + small sort. **Still open.**
+### P9. Preprocessing micro-wins — 3 of 3 sub-items resolved (2 fixed, 1 reverted) 2026-08-21/22
 
 MS1 batch memsets three full arrays and never touches one of them
 (1094-1097; the `// FIX` comment already flags it). **Fixed 2026-08-21:**
@@ -1586,26 +1613,103 @@ MS1 batch memsets three full arrays and never touches one of them
 `pdTmpFastXcorrData` feed the unit-vector computation) — removed both the
 fetch and the memset. Full 52-test unit suite still passes.
 
-### P10. Concurrency scaling ceilings (RTS)
+Batch memsets 3 x `iArraySizeGlobal` doubles per charge state
+(`CometPreprocess.cpp:1197-1200`) though only `[0, iArraySize + offset)` is
+touched — the RTS `iZeroBound` logic already implements the tight version.
+**Fixed and performance-confirmed 2026-08-22:** mirrored RTS's `iZeroBound`
+formula (`std::min(std::max(iArraySize, BIN(dExpPepMass+50.0)+1),
+iArraySizeGlobal)`) into the batch `Preprocess()` memsets, computed from
+`dExpPepMass`/`iArraySize` which the charge-guessing loop already sets before
+`Preprocess()` is called. This is the same correctness-risk class as the
+historical `docs/20260714_EvalueJitter.md` Phase 3 bug (under-zeroing a
+per-thread scratch pool reused across spectra), so it was validated at full
+scale before being trusted: 52/52 fast unit tests and the full 58-test
+`--integration` suite (including T23/T24's target-decoy/internal-decoy and
+plain-FASTA/FI_DB/PI_DB PSM-count parity checks against the `v2026.02.2`
+baseline) all pass with zero XCorr/E-value drift.
+**Performance:** isolated via a pairwise A/B rebuild (this change alone,
+reverted vs. applied, same binary otherwise) against the real 177k-spectrum
+HeLa QC HELA dataset (`20130226-comet-tests/comet-debug3`), single-threaded,
+scan-range subsets to keep iteration fast:
+  - **Plain-FASTA decoy search** (182 spectra, XCorr-scoring-dominated,
+    ~480 ms/spectrum): no measurable difference (87.90s fixed vs. 87.82s
+    reverted, 3 runs each) — the memset (microseconds) is swamped by
+    per-spectrum XCorr scoring against the full candidate pool.
+  - **FI_DB search** (8000-scan range, fragment-index-accelerated, much
+    cheaper per spectrum): **measurable win.** After excluding the first
+    (cache-warmup) pair, 4 further interleaved fixed/reverted pairs all favor
+    the fix: 7.92/8.78s, 8.00/8.76s, 8.02/8.73s, 7.94/8.72s — a consistent
+    ~8-10% faster wall clock, repeatable across every post-warmup pair.
+  - **Conclusion:** the fix is a real, measurable win specifically in the
+    FI_DB/PI_DB regime (where preprocessing is a larger fraction of
+    per-spectrum cost) and a no-op-in-practice elsewhere — never a
+    regression. **Accepted and kept.**
+
+RTS FI top-N peak selection full-sorts all peaks then only reads the top
+`iFragIndexNumSpectrumPeaks` (`PreprocessSingleSpectrumCore`, ~line 1893).
+**Attempted 2026-08-22, then reverted:** replaced `std::sort` with
+`std::partial_sort` (guarantees the same order for the prefix actually read,
+theoretically O(n + k log k) vs. O(n log n)). Compiled cleanly, but a clean
+single-threaded A/B via `tests/rts_repro`'s harness (`fragindex_num_spectrumpeaks`
+default 150, 197 real spectra x 40 passes, 8 runs each, machine otherwise
+idle) showed **no improvement — actually a small, consistent regression**:
+mean 4.903s with `partial_sort` vs. 4.825s with the original `std::sort`
+(~1.6% slower). Root cause: the default peak cap (150) isn't small relative
+to a typical spectrum's eligible-peak count, so `std::partial_sort`'s
+heap-based selection doesn't beat libstdc++'s highly-tuned introsort at this
+n/k ratio. Per the project's "confirm improvement before accepting" bar,
+**reverted** — `std::sort` restored, no functional change shipped for this
+sub-item.
+
+### P10. Concurrency scaling ceilings (RTS) — 2 of 5 sub-items ✅ FIXED 2026-08-22, 1 documented, 2 deferred
 - `SearchMemoryPool::acquireSlot/releaseSlot` global mutex+CV taken twice per
   spectrum (`threading/SearchMemoryPool.cpp:101-116`) — measured flat ~4-5M
   ops/s from 8-512 threads (docs/20260618_mutexserialization.md); the doc's
   fused-batch pre-assigned-slot pattern is the known fix.
+  **Not attempted** — the referenced design doc's fix is itself a substantial
+  architecture change; not investigated further this pass.
 - `pQuery->accessMutex` locked per scored candidate
   (`CometSearch.cpp:4468/4527, 8009/8088`) — uncontended for RTS (Query is
   thread-owned) but still an atomic RMW pair x hundreds-thousands of
   candidates per spectrum that batch needs and RTS pays for nothing.
+  **Deferred** — there's no existing flag distinguishing "this Query is
+  RTS-thread-owned" vs. "this Query could be scored concurrently by batch
+  worker threads" at the point the lock is taken; guessing wrong risks a
+  silent, hard-to-reproduce data race corrupting `pQuery->_pResults[]` in
+  batch mode. Not worth the risk for eliminating one uncontended mutex.
 - `ThreadPool::wait_for_available_thread()` is a 1-5 ms sleep poll whose
   predicate ignores queued tasks (`ThreadPool.h:105-144`) — batch-only.
+  **Fixed:** predicate changed from `get_tasks_running() >= get_thread_count()`
+  to `get_tasks_total() >= get_thread_count()` (`get_tasks_total()` is
+  `BS::thread_pool`'s own running+queued count) — a caller submitting jobs
+  faster than threads drain them no longer sees "a thread is free" while a
+  large backlog is still queued.
 - Wrapper: peak arrays pinned for the entire ms-scale native call and a fresh
   managed object graph per call (`CometWrapper/CometWrapper.cpp:140-189`);
   `matchingFragments` is built even when ignored.
+  **Not attempted** — would require a new opt-out parameter threaded through
+  the C++/CLI wrapper *and* the C# caller (`RealtimeSearch/SearchMS1MS2.cs`);
+  this Linux session can compile-verify via MSBuild but can't runtime-verify
+  the RTS pipeline still behaves correctly, and this is production code other
+  systems depend on.
 - Footprints: `thread_local RtsScratch` retains ~1-15 MB per thread for
   thread lifetime (worth documenting for C# hosts with big Task pools);
   `SearchFragmentIndex` keeps a ~143 KB frame on the stack (1455-1456) — the
   PI path already moved the same array into the pool.
+  **Fixed (stack frame):** `SearchFragmentIndex()` now takes an `iSlot`
+  parameter and reads `uiBinnedIonMasses`/`uiBinnedPrecursorNL` from the
+  pool via the exact same `reinterpret_cast`-through-`s_pool` pattern
+  `AnalyzePeptideIndex()` already uses — the pool is already sized
+  identically regardless of `iDbType`, so no allocation-side change was
+  needed. All 3 call sites (RTS thread-local, fused batch, legacy batch)
+  already had `iSlot` in scope.
+  **Documented (footprint):** added a concrete per-thread sizing breakdown
+  and formula to `docs/RealTimeSearch.md` (~300 KB/thread at default
+  low-res settings up to ~15 MB/thread at high-resolution
+  `fragment_bin_tol`), with a note on what it means for C# hosts using a
+  large `Task` pool for RTS.
 
-### P11. Output-phase mechanics
+### P11. Output-phase mechanics — 1 of 4 sub-items ✅ FIXED 2026-08-22, 3 deferred
 Writers issue 25-40 `fprintf` calls per result line — build each line with
 one `snprintf` (as SqtWriter does) or `setvbuf` 1 MB. The mzIdentML merge
 materializes the tmp file three ways before sort/unique
@@ -1615,6 +1719,48 @@ streaming passes bound it. The two remaining single-threaded
 `CometPeptideIndex.cpp:829`) were left behind when the per-length slice sorts
 were parallelized; `g_vFragmentPeptides` also grows with no `reserve`
 (transient ~1.5x spike at realloc on the build's largest allocation).
+
+**Fixed (the `setvbuf` half):** added `setvbuf(fp, NULL, _IOFBF, 1 << 20)`
+right after every writer's `fopen()` (`TxtWriter.h`, `PepXmlWriter.h`,
+`PercolatorWriter.h`, `MzIdentMlWriter.h`'s tmp-file open) — a 1 MB stdio
+buffer instead of the platform default (typically 4-8 KB) means far fewer
+underlying `write()` syscalls for the same output, with zero risk to the
+actual formatted content (`setvbuf` only changes buffering, called before
+any I/O on each stream per the C standard's requirement). Verified all 5
+output formats (txt/sqt/pep.xml/pin/mzid) produce byte-identical content to
+a pre-change run with a manual multi-format smoke test.
+
+**Not attempted (the `snprintf`/single-write half):** investigated
+`SqtWriter`'s actual pattern (`CometWriteSqt::PrintResults` builds each line
+into a `std::ostringstream`, then one `fprintf(fpout, "%s", ...)`) — real,
+but replicating it across `CometWriteTxt.cpp`/`CometWritePepXML.cpp`/
+`CometWritePercolator.cpp`'s combined 300+ existing `fprintf` call sites,
+each needing byte-exact format-specifier preservation, is a large mechanical
+rewrite with real risk of a subtle formatting regression in
+downstream-tool-consumed output. `setvbuf` alone already captures most of
+the practical I/O-throughput win (fewer syscalls) without that risk.
+
+**Not attempted (mzIdentML 3x materialization):** not investigated in depth
+this pass — flagged as an architectural rewrite of the merge logic, out of
+scope alongside the other deferred items.
+
+**Not attempted (parallelizing the two remaining sorts):** tested
+`std::execution::par` empirically on this build (GCC 11.4, no TBB linked) —
+confirmed it silently falls back to fully sequential execution (identical
+wall-clock to `std::sort` on a 50M-element benchmark), so it's not a viable
+drop-in here without adding a new TBB dependency. A correct hand-rolled
+parallel merge sort (chunk-sort via the existing `ThreadPool` + a proper
+merge tree, not a naive O(n x threads) cascade) is real engineering, and the
+payoff is modest relative to the risk of a bug in a path that directly
+determines FI/PI index correctness — P1 (parallelizing the FI build passes
+themselves) is the same area with an already-identified, much larger
+payoff. `g_vFragmentPeptides.reserve()` remains deferred for the same
+reason noted in step 7 of Section 5 below (needs an accurate pre-pass
+estimate, not a one-line addition).
+
+**Verified 2026-08-22 (both P10 and P11 fixes together):** full clean
+rebuild, 52/52 unit tests, 58/58 integration tests (T17-T24, results
+below).
 
 ---
 

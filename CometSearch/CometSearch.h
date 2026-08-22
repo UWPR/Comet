@@ -80,6 +80,8 @@ public:
 
    // Task 1.3: Thread-local overload: searches a caller-owned Query* without
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
+   // FI_DB/PI_DB only, by design -- FASTA_DB always fails here; see this
+   // function's own comment in CometSearch.cpp.
    static bool RunSearch(Query* pQuery);
 
    // Fused batch FI_DB/PI_DB overload: skips AcquirePoolSlot by using a
@@ -300,8 +302,12 @@ private:
                        int iLenPeptide,
                        struct sDBEntry* dbe);
    
+   // P10: iSlot selects this thread's pool-backed uiBinnedIonMasses/uiBinnedPrecursorNL
+   // scratch buffers instead of declaring the ~143 KB array on the stack on every call
+   // (mirrors AnalyzePeptideIndex's identical pattern below).
    static void SearchFragmentIndex(Query* pQuery,
-                                   bool* pbDuplFragment);
+                                   bool* pbDuplFragment,
+                                   int iSlot);
 
    // Thread-local overload: searches a caller-owned Query* against the
    // read-only g_vDBIndexVariants. Does not access g_pvQuery. iSlot identifies the

@@ -2870,6 +2870,16 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
    // g_pvProteinNameCache populated at init -- no file I/O per spectrum.
    // For FASTA_DB, we still need to open the file.
+   //
+   // In practice this FASTA_DB branch (and the matching one in Step 6 below) never
+   // executes: RTS single-spectrum search doesn't support FASTA_DB at all, by design --
+   // CometSearch::RunSearch(Query*) only handles FI_DB/PI_DB and returns false for
+   // anything else, and this function's own bSucceeded check right after the RunSearch()
+   // call above goes to cleanup_results before ever reaching here. Confirmed with Jimmy
+   // 2026-08-22; see docs/20260819_fablereview.md's P5 write-up and
+   // docs/RealTimeSearch.md's supported-DB-types summary. Left as dead code rather than
+   // removed, since it costs nothing to keep and documents what *would* be needed if
+   // FASTA_DB RTS support were ever added.
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
 #endif
@@ -2982,7 +2992,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          }
          else
          {
-            // Non-indexed (FASTA) path: read protein names from the open file handle
+            // Non-indexed (FASTA) path: read protein names from the open file handle.
+            // Dead in practice -- see Step 5's comment above for why FASTA_DB never
+            // reaches this function's body at all.
             char szProteinName[WIDTH_REFERENCE];
             int iPrintDuplicateProteinCt = 0;
 

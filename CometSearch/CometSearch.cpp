@@ -195,6 +195,15 @@ bool CometSearch::EnsurePeptideIndexLoaded(bool bIsRTS)
 
 
 // Task 1.3: Thread-local overload.
+// By design, RTS single-spectrum search (this thread-local overload, the only caller of
+// which is CometSearchManager::DoSingleSpectrumSearchMultiResults()) supports FI_DB/PI_DB
+// only -- FASTA_DB falls through to the error branch below and always fails. This is
+// intentional, not a gap: RTS is built around a pre-built, read-only index so a spectrum
+// can be searched without any per-call digestion; on-the-fly FASTA digestion belongs to
+// the batch DoSearch(sDBEntry&, ...) path. Confirmed with Jimmy 2026-08-22 -- see P5's
+// write-up in docs/20260819_fablereview.md for how this was discovered (an RTS-FASTA_DB
+// protein-name-caching change turned out to target unreachable code for exactly this
+// reason) and docs/RealTimeSearch.md for the supported-DB-types summary.
 bool CometSearch::RunSearch(Query* pQuery)
 {
    if (g_staticParams.iDbType == DbType::FI_DB)  // fragment ion index
@@ -214,7 +223,7 @@ bool CometSearch::RunSearch(Query* pQuery)
          return false;
       }
       SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
-      SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+      SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot);
    }
    else if (g_staticParams.iDbType == DbType::PI_DB)  // peptide index
    {
@@ -246,7 +255,7 @@ bool CometSearch::RunSearch(Query* pQuery)
 bool CometSearch::RunSearch(Query* pQuery, int iSlot)
 {
    if (g_staticParams.iDbType == DbType::FI_DB)
-      SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot]);
+      SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot);
    else
       SearchPeptideIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot);
    return true;
@@ -292,7 +301,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                return;
             }
             SearchMemoryPoolSlotGuard guard{s_pool, iSlot};
-            SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot]);
+            SearchFragmentIndex(queries.at(iWhichQuery), _ppbDuplFragmentArr[iSlot], iSlot);
          });
       }
 
@@ -1503,7 +1512,8 @@ bool CometSearch::DoSearch(sDBEntry& dbe,
 
 
 void CometSearch::SearchFragmentIndex(Query* pQuery,
-                                      bool* pbDuplFragment)
+                                      bool* pbDuplFragment,
+                                      int iSlot)
 {
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
@@ -1512,8 +1522,12 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
 
-   unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
+   // P10: pool-backed (sized once per thread in AllocateMemory()) instead of stack-local,
+   // so this ~143 KB array isn't re-declared on the stack on every call -- same pattern
+   // AnalyzePeptideIndex() already uses for the PI_DB path; the pool is sized identically
+   // regardless of iDbType, so no allocation-side change is needed here.
+   auto& uiBinnedIonMasses = *reinterpret_cast<unsigned int(*)[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(s_pool.binnedIonMasses(iSlot));
+   auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNL(iSlot));
 
    mPeptides.clear();
 

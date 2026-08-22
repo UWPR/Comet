@@ -111,6 +111,9 @@ private:
          pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
+      // P11: see TxtWriter.h's identical setvbuf comment -- this tmp file is where the
+      // actual per-result-line writing happens (the final .mzid is assembled from it).
+      setvbuf(fp, NULL, _IOFBF, 1 << 20);
       return true;
    }
 

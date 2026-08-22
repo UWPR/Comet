@@ -36,6 +36,11 @@ public:
          ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
+      // P11: 1 MB stdio buffer instead of the platform default (typically 4-8 KB) --
+      // CometWriteTxt::WriteTxt() issues 25-40 fprintf calls per result line, and a
+      // bigger buffer means far fewer underlying write() syscalls for the same output,
+      // with zero risk to the actual formatted content (setvbuf only changes buffering).
+      setvbuf(_fpout, NULL, _IOFBF, 1 << 20);
       CometWriteTxt::PrintTxtHeader(_fpout);
       fflush(_fpout);
 
@@ -47,6 +52,7 @@ public:
             ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
             return false;
          }
+         setvbuf(_fpoutd, NULL, _IOFBF, 1 << 20);
          CometWriteTxt::PrintTxtHeader(_fpoutd);
       }
       return true;
