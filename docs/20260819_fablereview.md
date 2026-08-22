@@ -93,10 +93,10 @@ review describes have moved or hardened.
 | Section 3: `strtok`/`localtime` non-reentrant | location update only | `ParsePeptideIndexHeader`'s `strtok` now at `CometPeptideIndex.cpp:1206,1212` | Low priority; renumbered only. |
 | Section 3: 8-byte binary I/O assumes 64-bit | location stale, not re-verified | was `CometPeptideIndex.cpp:190,205,1064-1071` | File substantially changed (now uses explicit `uint64_t`/`clSizeCometFileOffset` in the areas spot-checked); low-priority `static_assert` suggestion still reasonable in principle but exact line refs need a fresh look before acting. |
 | Section 3: other items (dead code, `RtsScratch` leak, `SetParam` leak, `CometWrapper` finalizer, `InitPrecomputedDecoyBins`) | applies unchanged | as originally written | All in unchanged files. |
-| P1 | applies unchanged (renumbered) | `AddFragmentsThreadProc(bool, ThreadPool* /*tp*/)` `CometFragmentIndex.cpp:275-311` (param explicitly unused, param name itself is the tell); count call `:194`; fill loop `:244-249` | Confirmed still fully single-threaded. |
+| P1 | applies unchanged (renumbered) | `AddFragmentsThreadProc(bool, ThreadPool* /*tp*/)` `CometFragmentIndex.cpp:275-311` (param explicitly unused, param name itself is the tell); count call `:194`; fill loop `:244-249` | Confirmed still fully single-threaded. **Superseded 2026-08-22: ✅ FIXED** — see P1's Section 4 entry. |
 | P2 | applies unchanged (renumbered) | `sPeptide` copy `CometFragmentIndex.cpp:428`; `modSeq` copy `:433/447`; mass recompute `:469-492`; `fp.dPepMass` available but unused at call site `:247` | Confirmed. |
 | P3, P4, P6, P7, P9, P10 | applies unchanged | as originally written | All in unchanged files (`CometSearch.cpp`, `CometPreprocess.cpp`/`.h`, `output/*`, `threading/*`, `CometWrapper/*`). |
-| P5 | applies unchanged (renumbered) | RTS FASTA re-open per spectrum: `CometSearchManager.cpp:2728` (`fopen(...databaseInfo.szDatabase, "rb")`, `FASTA_DB` branch only) | Confirmed master already has `g_pvProteinNameCache` (declared line 70) serving FI_DB/PI_DB names with no per-spectrum I/O — the finding's ask (extend that cache to the RTS FASTA path) is still open, scoped down to just the FASTA_DB case. |
+| P5 | applies unchanged (renumbered) | RTS FASTA re-open per spectrum: `CometSearchManager.cpp:2728` (`fopen(...databaseInfo.szDatabase, "rb")`, `FASTA_DB` branch only) | Confirmed master already has `g_pvProteinNameCache` (declared line 70) serving FI_DB/PI_DB names with no per-spectrum I/O — the finding's ask (extend that cache to the RTS FASTA path) is still open, scoped down to just the FASTA_DB case. **Superseded 2026-08-22:** this specific ask turned out to target unreachable dead code — RTS single-spectrum search only ever supports FI_DB/PI_DB, never FASTA_DB (confirmed intentional design) — see P5's Section 4 entry and `docs/RealTimeSearch.md` for the full explanation. |
 | P8 | applies unchanged (renumbered) | `CometSearchManager.cpp:1327` (`for (int ii=i+1; ii<VMODS-1; ...)`) | Confirmed. |
 | P11 | **applies, modified** | `g_vFragmentPeptides` sort (no `.reserve()`) `CometFragmentIndex.cpp:222-227`; second sort moved to `CometPeptideIndex.cpp:745` inside `GenerateVariantArray()` | The `CometPeptideIndex.cpp` sort target changed: post-Phase-0.5 (`1fff1db2`), `g_vDBIndexVariants` regenerates every session rather than once at `.idx`-build time, and unlike `g_vFragmentPeptides` it **is** `.reserve()`d (line 706) before its sort — so the "no reserve" complaint applies only to the FI-build side now, not both sort sites as originally framed. |
 
@@ -1361,6 +1361,14 @@ list of exceptions/latencies found, and all are now fixed.
 
 ## 4. Performance opportunities (ranked by expected payoff)
 
+**Status as of 2026-08-22: all 11 items (P1-P11) addressed** — most fully
+fixed, a few partially fixed with the remainder explicitly deferred (P8, P10,
+P11) or reverted after measurement showed no improvement (one P9 sub-item,
+`std::partial_sort`). See the end-to-end RTS benchmark after P11 for the
+cumulative, real-world validation (~16x faster RTS session time, no memory
+regression, byte-identical peptide identifications vs. the `v2026.02.2`
+baseline).
+
 ### P1. Parallelize the fragment-index build passes — ✅ FIXED 2026-08-22 (largest win: ~4-6x FI build)
 `CometFragmentIndex.cpp:202-203` (count), 252-257 (fill), 308-449: despite the
 ThreadPool being plumbed through, `AddFragmentsThreadProc(bool, ThreadPool*
@@ -1831,6 +1839,67 @@ estimate, not a one-line addition).
 rebuild, 52/52 unit tests, 58/58 integration tests (T17-T24, results
 below).
 
+### Validation: end-to-end Windows RTS benchmark vs. `v2026.02.2` (2026-08-22)
+
+With all 11 items above addressed, ran a real, full-scale RTS (real-time
+search) benchmark on Windows to confirm the cumulative effect actually lands
+where it matters — the live RTS path, not just the unit/integration suites —
+and that none of it changed a single search result.
+
+**Setup:** `20170103_HelaQC_01.raw` (56,152 total scans, 40,302 MS2 scans)
+searched via `RealtimeSearch.exe` against a fresh FI_DB `.idx` built
+independently by each binary from the same `human.target-decoy.fasta`
+(211,090 protein entries, half decoy; 5,993,780 unmodified peptides in both
+builds, confirming identical digestion). 16 threads, AScorePro on, FI_DB
+mode. **Baseline** = `v2026.02.2` tag built fresh in an isolated `git
+worktree`; **current** = this branch (`fablereview`, all of P1-P11). Both
+built via a full MSBuild Release/x64 solution build (the baseline worktree
+needed its own NuGet-restored `packages/` directory and a serial rebuild to
+dodge the `CometWrapper`-before-`MSToolkit` project-ordering race the
+`comet-build` skill documents for parallel `/m` builds).
+
+| Metric | Baseline (`v2026.02.2`) | Current (`fablereview`) | Change |
+|---|---|---|---|
+| Initialize (index load + FI regen) | 351.85 s | 4.10 s | **~86x faster** |
+| Raw file preload | 3.99 s | 2.34 s | ~1.7x faster |
+| MS2 search elapsed | 18.54 s | 16.21 s | ~13% faster |
+| MS2 avg search speed | 0.46 ms/spec, 2174 Hz | 0.40 ms/spec, 2487 Hz | ~14% faster |
+| **Total elapsed** | **374.61 s** | **22.86 s** | **~16.4x faster** |
+| Peak memory | 2.8 GB | 2.8 GB | unchanged |
+
+The initialize-phase collapse (352s -> 4.1s) is the standout number: this is
+exactly the fragment-index regeneration step P1 parallelizes (the FI_DB/PI_DB
+index no longer persists the fragment index itself — `docs/20260730_PI_reduction.md`
+Phase 0.5 — so `GenerateFragmentIndex()` reruns at the start of every RTS/batch
+search session against this real, full-proteome-scale database), and it
+dominates total RTS startup cost far more than the smaller synthetic
+benchmarks used to verify P1 in isolation suggested. Search-phase throughput
+also improved (~13-14%), consistent with the smaller per-spectrum wins (P3,
+P4, P9, P10). Peak memory is unchanged, confirming none of the parallelization
+work (P1's per-thread scratch arrays, P10's pool-backed buffers) introduced a
+footprint regression at this scale.
+
+**Correctness at 1% FDR (rank-1 PSMs, target/decoy by `DECOY_`/`rev_` protein
+prefix, same methodology as `tools/qvalue.py`):**
+- 26,036 confident PSMs parsed from both runs' `rts.out` (of 40,302 MS2 scans
+  searched).
+- **12,542 target PSMs pass 1% FDR in both runs — identical count.**
+- Full scan-by-scan comparison (peptide + XCorr) across all 26,036 PSMs:
+  **zero differences** — every identification matches exactly between
+  baseline and current, not just the FDR-passing subset.
+- E-values differ on roughly half the PSMs (typically within a few-fold,
+  occasionally more) — this is the pre-existing, already-documented
+  "EvalueJitter" behavior (`docs/20260714_EvalueJitter.md`), caused by RTS's
+  concurrent decoy-histogram sampling order and unrelated to this session's
+  changes. Since FDR ranking is XCorr-based, not E-value-based, this has no
+  effect on peptide identification or the FDR-passing list.
+
+**Bottom line:** ~16x faster end-to-end RTS session time at real
+proteome/dataset scale, no memory regression, and byte-identical peptide
+identifications. This is the strongest evidence collected this session that
+the cumulative P1-P11 work is a pure win — faster with no observable change
+in search behavior.
+
 ---
 
 ## 5. Suggested fix order
@@ -1880,8 +1949,16 @@ Small, high-payoff, low-risk first:
    verification. Both confirmed results-identical against the `v2026.02.2`
    baseline with a real, consistent speedup (FI_DB/PI_DB index build and
    search wall-clock all faster than baseline).
-9. **Perf, in payoff order:** P1 → P4 → P5 → P6 → P7 (P11's `.reserve()` item
-   folds in here too). **Still fully open.**
+9. **Perf, in payoff order:** P1 → P4 → P5 → P6 → P7 — **✅ ALL DONE**
+   (P1 2026-08-22; P4-P7 2026-08-21; see their Section 4 entries). P11's
+   `.reserve()` sub-item, which was noted as folding in here, remains
+   **deferred** for the reason given in step 7 above (needs an accurate
+   pre-pass estimate, not a one-line addition). All 11 of Section 4's items
+   have now been addressed in some form (fixed, partially fixed with the
+   remainder explicitly deferred/documented, or — P9's `partial_sort`
+   sub-item — attempted and reverted after measurement showed no
+   improvement); see the end-to-end RTS validation benchmark at the end of
+   Section 4 for the cumulative real-world result.
 
 Suggested regression tests (T25-style crafted fixtures) — ✅ **DONE 2026-08-21**,
 all 8 implemented as committed fixtures `T26`-`T33` in `tests/unit/run_tests.py`
