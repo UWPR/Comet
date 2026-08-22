@@ -217,6 +217,35 @@ only if it cuts the high-water mark >=3x or stage-3 wall time >=10%, AND the add
 pyarrow/pandas dependency stays confined to `carafe_pred_to_cps.py` (never
 `carafe_ms2_to_fi_mask.py`'s mask-from-cps path, which stays stdlib-only).
 
+### 6.1 M1a RESULTS (measured 2026-08-22, this machine, `~/.carafe/.venv`)
+
+One constraint discovered before any numbers: **`--fast` is all-or-nothing** --
+`predict_rt()`/`predict_ms2()` read `--in_file` with `pd.read_parquet()` unconditionally in
+fast mode, so the INPUT chunk must itself be parquet (a TSV input fails with "Parquet magic
+bytes not found"). Input conversion is trivial (0.1s per 50K-row chunk via
+pandas.to_parquet, zstd) and itself wins ~14x on size (4.06MB TSV -> 281KB parquet).
+
+| File | chunk_00000 TSV -> parquet | chunk_01500 TSV -> parquet | reduction |
+|---|---|---|---|
+| ms2_df | 2.03MB -> 0.59MB | 5.70MB -> 0.69MB | 3.5-8.2x |
+| ms2_pred | 13.08MB -> 3.00MB | 61.26MB -> 7.51MB | 4.4-8.2x |
+| ms2_mz_df | 17.03MB -> 2.07MB | 114.24MB -> 10.74MB | 8.2-10.6x |
+| rt_pred | 3.65MB -> 1.39MB | 7.17MB -> 1.46MB | 2.6-4.9x |
+| **all outputs** | 35.78MB -> 7.05MB (**5.1x**) | 188.37MB -> 20.41MB (**9.2x**) | |
+
+- Byte-weighted overall reduction ~8-9x (large chunks dominate total bytes): the real 386GB
+  run would land around **~42-47GB** transient high-water mark.
+- **Zero inference-time cost**: 25s vs the chunk's original 27s, and 104s vs 108s -- within
+  ordinary run-to-run noise, matching the expectation that model inference (not
+  serialization) dominates per-chunk wall time.
+- Read-back (pandas): parquet 3-14x faster (biggest file: 0.06s vs 0.85s).
+
+**Decision (per the pre-committed rule above): ADOPT parquet for the transient stage** --
+the >=3x size threshold is exceeded ~3x over. pyarrow/pandas dependency confined to the
+stage-3/4 boundary (`run_carafe_chunked.sh` gains a parquet mode that converts each input
+chunk inline before invoking `ai_pred.py --fast`; `carafe_pred_to_cps.py` reads the parquet
+outputs); the mask-from-cps path stays stdlib-only as planned.
+
 ## 7. Search-time budget: measure, then (likely) fix the load path
 
 ### 7.1 What to measure first (M3 -- no code changes until these numbers exist)
@@ -262,13 +291,69 @@ Speeding up Carafe inference itself is out of scope here. It is the ahead-of-tim
 design; 26h on a modest GPU is acceptable for a per-database offline job, and the GPU
 benchmark doc already covers that axis.
 
+### 7.4 M1b RESULTS (measured 2026-08-22): budget PASSED, escalation ladder ends at "nothing"
+
+All measurements at full production scale: `phospho_noNL.idx` (full canonical human
+target+decoy proteome, 40,908 proteins, tryptic 2mc, len 7-50, 700-5000 Da, M-ox + STY-
+phospho max 3 -> 124,863,304 peptide-mod variants), the real 4.9GB / 124,863,304-entry
+noNL mask, real spectra (`20170103_HelaQC_01.mzXML` for batch, `20170103_Hela_01.raw` for
+RTS -- 40,302 MS2 spectra either way), 16 threads.
+
+| Path | Unmasked total | Masked total | Mask overhead | FI entries (un/masked) | Peak RSS (un/masked) |
+|---|---|---|---|---|---|
+| Batch, Linux/WSL binary, run 1 | 2m 38.9s | 2m 52.6s | +13.7s | 3.540e9 / 1.161e9 | 20.2GB / 16.8GB |
+| Batch, Linux/WSL binary, run 2 | 2m 06.2s | 2m 40.8s | +34.6s | identical | identical |
+| Batch, Windows binary (native NTFS) | 1m 29.4s | 1m 52.5s | +23.1s | identical | 19.3 / 16.0GB (comet self-report) |
+| **RTS init, Windows** (`RealtimeSearch.exe --mask`) | **init 79.2s** (total 85.3s) | **init 103.9s** (total 109.4s) | +24.7s init | identical | -- |
+
+Key findings:
+
+1. **The budget question is closed: worst observed masked startup is 2m 53s** -- ~2% of a
+   30-minute budget -- and the latency-critical RTS-init path is under 2 minutes masked.
+   **Section 7.2's escalation ladder ends at option 1 ("nothing")**: no merge-join, no mmap
+   v4 format, no persisted-FI fallback. Milestone M5 is unnecessary.
+2. **Mask load costs ~25s** (4.9GB sequential read + parse into the eager vector), the
+   only material masked-vs-unmasked overhead. The feared per-variant binary-search cost is
+   a non-issue: on Linux the masked FI populate is actually FASTER than unmasked (1m30 vs
+   1m44 -- inserting 3.05x fewer entries more than pays for the lookups); on Windows it's
+   mildly slower (1m28 vs 1m11) -- the balance tips per platform, but both are noise
+   against the budget.
+3. **Masking REDUCES peak memory** despite the ~6GB in-RAM mask vector: 16.8GB vs 20.2GB
+   (batch, Linux), because dropping 2.38e9 FI entries saves more than the mask costs.
+4. **Masking mildly speeds the search itself**: 1816 vs 1736 Hz (batch), 12,191 vs 11,513 Hz
+   (RTS) -- consistent with Sections 6.15-6.19's smaller-scale findings, now confirmed at
+   3.5-billion-entry scale.
+5. **Cross-platform determinism datapoint**: FI entry counts (3.540e9 unmasked / 1.161e9
+   masked, -67.2%) are bit-identical across the Linux and Windows binaries and across
+   repeat runs.
+6. **DrvFs variance is real, as predicted**: unmasked Linux totals swung 2m06-2m39 (21%)
+   between two same-day runs with no code change; the Windows binary on native NTFS is
+   ~40% faster than the same-source Linux binary on `/mnt/c`. Single-sample deltas smaller
+   than ~30s on this setup are noise.
+
+Measurement caveats, stated honestly: the two Linux runs were same-day, ~1h apart (the
+plan asked for non-consecutive -- the 21% swing already visible between them makes the
+point regardless); the Windows `Comet.exe` was built 2026-08-11 (2 days older than the
+Linux binary -- predates the T28 fix, which is provably behavior-identical for this no-NL
+config since dMaxNL=0.0 reduces the new break to the old one); `/usr/bin/time`'s RSS is
+not meaningful for Windows-interop processes, so Windows memory numbers are comet's own
+self-reported figures.
+
+Incidental finding: the `RealtimeSearch.exe` copy sitting in `20260420-human-phosho/`
+(2026-08-11 13:37) is a stale PRE-flag-conversion build (positional args, no `--mask`) --
+the first RTS measurement attempt failed confusingly against it ("Invalid
+index_search_type" swallowing the `--db` value). The current-interface binary lives at
+`RealtimeSearch/bin/x64/Release/RealtimeSearch.exe` (2026-08-11 21:12). Stale tool copies
+in scratch dirs are a recurring trap; the M4 driver script should always invoke tools by
+repo path, never rely on copies.
+
 ## 8. Milestones
 
-- **M1 -- Measurements, no code** (cheap, do first):
-  a. Parquet: the Section 6 protocol, 2 chunks, decision numbers recorded here.
-  b. Search-time: Section 7.1's four measurements, recorded here. **This is the
-     highest-priority unknown in the whole plan** -- it can invalidate or trivialize
-     Section 7.2 and it gates declaring the existing masks production-usable.
+- **M1 -- Measurements, no code** -- **DONE 2026-08-22**:
+  a. Parquet: Section 6.1. Decision: ADOPT for the transient stage (~8-9x size, no
+     inference-time cost).
+  b. Search-time: Section 7.4. Budget passed >10x on every path; the existing masks are
+     production-usable as-is and **M5 is unnecessary**.
 - **M2 -- `.cps` format + translator**: format spec finalized (quantization decided by the
   rebuild-diff experiment), `carafe_pred_to_cps.py` implemented + unit-tested (roundtrip,
   join correctness vs a deliberately reordered ms2_df, fingerprint rejection), real
@@ -279,8 +364,9 @@ benchmark doc already covers that axis.
   against the chunk-built originals; timing target: full-population mask build in minutes.
 - **M4 -- `carafe_prerun.sh` driver**: orchestration + resume + docs; end-to-end dry run on
   a small database (the 500-protein Phase 5 fixture) and stage-resume tests.
-- **M5 -- load-path work IF M1b demands it** (Section 7.2 options 2/3), with before/after
-  timings recorded here.
+- **M5 -- load-path work IF M1b demands it** (Section 7.2 options 2/3) -- **CANCELLED
+  2026-08-22**: M1b (Section 7.4) showed the existing load path passes the budget >10x on
+  every path; no optimization warranted.
 - **M6 -- housekeeping**: CLAUDE.md + `docs/20260805_carafe.md` cross-references, T-series
   regression coverage for the new tools (T29+: cps roundtrip + mask-from-cps equivalence on
   the committed small fixtures), delete the raw phospho prediction trees on both machines
