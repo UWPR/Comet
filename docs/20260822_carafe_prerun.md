@@ -354,11 +354,47 @@ repo path, never rely on copies.
      inference-time cost).
   b. Search-time: Section 7.4. Budget passed >10x on every path; the existing masks are
      production-usable as-is and **M5 is unnecessary**.
-- **M2 -- `.cps` format + translator**: format spec finalized (quantization decided by the
-  rebuild-diff experiment), `carafe_pred_to_cps.py` implemented + unit-tested (roundtrip,
-  join correctness vs a deliberately reordered ms2_df, fingerprint rejection), real
-  full-scale translation of the existing 386GB phospho predictions -> verified `.cps`
-  (-> raw TSVs become deletable, reclaiming ~380GB).
+- **M2 -- `.cps` format + translator** -- **DONE 2026-08-22**:
+  - Format implemented in `tools/carafe_cps.py` (writer/reader + `compute_variant_mask_from_cps()`,
+    which shares the TSV path's own threshold/floor/pack helpers so divergence can only come
+    from quantization); translator in `tools/carafe_pred_to_cps.py` (multiprocessing over the
+    existing prediction chunks); 7 unit tests in `tests/unit/test_carafe_cps.py`, all passing.
+  - **Quantization decided empirically (Section 5.4's experiment, 10 real chunks / 463,304
+    variants, full write->read roundtrip, diffed bit-for-bit against the on-disk ground-truth
+    noNL chunk masks): u8 diverges on 2.81% of variants -- too high; u16 on 0.0086%**
+    (40 variants, each a single fragment within ~0.0015% of the arbitrary 10% threshold;
+    kept-bit totals differ by +5 in 4.27M). **Decision: u16.** Notably u8's kept-bit totals
+    were also nearly identical (-17 in 4.27M) -- its differences are which marginal fragment
+    survives, not systematic mask shrinkage -- but 2.8% of variants differing is not
+    "equivalent" and u16's 2x size cost is cheap at this scale.
+  - Real full-scale translation: **124,863,304 rows in 25.4 min** (12 workers, ~97K rows/s
+    sustained) -> `phospho_charge2_withNL.cps`, **31.1GB** (12.4x under the 386GB raw;
+    larger than Section 5.3's 15-20GB u16 estimate because the variant-weighted mean peptide
+    length is ~30 residues, not the ~15-20 guessed -- combinatorial mod-site enumeration
+    skews variants long; Section 5.3's estimate is hereby corrected by measurement).
+  - Final-store verification: header/provenance checks pass (head-CRC + row count vs the
+    real out_tsv), and the rebuild-diff re-run THROUGH the final 31GB store (5 chunks /
+    213,304 variants, global row_index addressing) reproduces the experiment's rate:
+    **16 differ (0.0075%)**. Random access is fast: 213K variants read+rebuilt+diffed in 14s.
+  - **A real memory bug was found and fixed during the first full-scale attempt**: workers
+    returned each chunk's rows as Python object graphs (~150MB/chunk) to a parent that did
+    all struct-packing itself -- the slow consumer let `Pool.imap`'s in-order result buffer
+    accumulate dozens of chunks: **44.2GB parent RSS in 164s** (vs 54GB total; caught by
+    watching `free` mid-run, killed before OOM). Fix: pack bytes in the workers via a shared
+    `pack_row()` serializer (packed chunk ~7MB; parent write-only, no backlog possible;
+    proven byte-identical to the per-row path by a dedicated unit test) + the writer's
+    offsets ledger as `array.array('Q')` (1GB) instead of a Python int list (~4GB). Fixed-run
+    parent RSS: **0.4-1.1GB end to end**. Same lesson class as Section 6.16 Fix 2 in the
+    main Carafe doc: per-row Python object overhead is the recurring enemy at 1e8-row scale.
+  - Raw prediction TSVs on this machine are now deletable (M6, user sign-off) -- but note
+    the GPU-vs-CPU prediction diff (Section 9) wants the GPU machine's predictions
+    translated through this same tool first, and the CPU raw TSVs are the only local
+    fallback if that comparison surfaces questions -- reclaim the ~380GB only after the
+    diff is done or explicitly waived.
+  - Also survived, worth recording: the first fixed-run launch was killed ~45 min in by
+    another spontaneous WSL restart (the same environment failure mode that killed the
+    original 51h Carafe run on 2026-08-16) -- the two-phase writer left no misleading
+    half-store, exactly as designed; the rerun completed clean.
 - **M3 -- mask-from-cps**: `carafe_ms2_to_fi_mask.py --from-cps`, verified by rebuilding
   both real phospho masks and diffing byte-for-byte (or bit-flip-count, per Section 5.4)
   against the chunk-built originals; timing target: full-population mask build in minutes.
