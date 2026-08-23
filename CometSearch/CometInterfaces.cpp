@@ -15,13 +15,26 @@
 
 #include "CometInterfaces.h"
 #include "CometSearchManager.h"
+#include <mutex>
 
 using namespace CometInterfaces;
 
 CometSearchManager *g_pCometSearchManager = NULL;
 
+// Reference-counted: every CometSearchManagerWrapper instance calls
+// GetCometSearchManager() once (constructor) and ReleaseCometSearchManager() once
+// (destructor/Dispose), but they all share this one process-wide native singleton.
+// With no refcounting, disposing any one live wrapper deleted the singleton out from
+// under every other still-live wrapper -- a use-after-free on their next call. The
+// mutex guards both functions since multiple wrapper instances can construct/dispose
+// concurrently from different C# threads.
+static int g_iCometSearchManagerRefCount = 0;
+static std::mutex g_cometSearchManagerMutex;
+
 ICometSearchManager *CometInterfaces::GetCometSearchManager()
 {
+   std::lock_guard<std::mutex> lock(g_cometSearchManagerMutex);
+
    if (NULL == g_pCometSearchManager)
    {
       g_pCometSearchManager = new CometSearchManager();
@@ -30,16 +43,21 @@ ICometSearchManager *CometInterfaces::GetCometSearchManager()
       g_staticParams.RestoreDefaults();
    }
 
+   ++g_iCometSearchManagerRefCount;
+
    ICometSearchManager *pCometSearchMgr = static_cast<ICometSearchManager*>(g_pCometSearchManager);
    return pCometSearchMgr;
 }
 
 void CometInterfaces::ReleaseCometSearchManager()
 {
-   if (NULL != g_pCometSearchManager)
+   std::lock_guard<std::mutex> lock(g_cometSearchManagerMutex);
+
+   if (NULL != g_pCometSearchManager && --g_iCometSearchManagerRefCount <= 0)
    {
       delete g_pCometSearchManager;
       g_pCometSearchManager = NULL;
+      g_iCometSearchManagerRefCount = 0;
    }
 }
 

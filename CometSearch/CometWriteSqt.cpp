@@ -63,7 +63,7 @@ void CometWriteSqt::PrintSqtHeader(FILE *fpout,
    fprintf(fpout, "H\n");
    fprintf(fpout, "H\tStartTime\t%s\n", g_staticParams.szDate);
    time(&tTime);
-   strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", localtime(&tTime));
+   strftime(szEndDate, 26, "%m/%d/%Y, %I:%M:%S %p", comet_localtime(&tTime));
    fprintf(fpout, "H\tEndTime\t%s\n", szEndDate);
    fprintf(fpout, "H\n");
 

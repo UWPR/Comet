@@ -30,6 +30,8 @@
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
 
 #include <mutex>    // std::once_flag, std::call_once
+#include <cassert>
+#include <algorithm>  // std::max
 
 // --- Pre-computed decoy fragment-ion bin table ---
 // Built once per process after g_staticParams is fully initialised.
@@ -44,6 +46,16 @@ static int s_pdNIonSeries = 0;   // iNumIonSeriesUsed at init time
 static int s_pdMaxCharge  = 0;   // options.iMaxFragmentCharge at init time
 static int s_pdNPerPos    = 0;   // s_pdNIonSeries * s_pdMaxCharge
 static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
+
+// Fingerprint of the params InitPrecomputedDecoyBins() actually baked the table from --
+// compared against current live params on every GenerateXcorrDecoys() call (not just the
+// first) so an RTS process that re-initializes with different ion-series/charge/bin-width
+// params after the table was already built asserts loudly instead of silently scoring
+// every decoy against stale bins (wrong E-values, no error). std::call_once itself can't
+// express "rebuild if params changed" -- it only guarantees "run exactly once ever" -- so
+// this check has to live outside it.
+static double s_dFingerprintInvBW  = 0.0;
+static double s_dFingerprintBinOff = 0.0;
 
 // Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
@@ -163,6 +175,11 @@ static void InitPrecomputedDecoyBins()
          }
       }
    }
+
+   // Record what this table was actually built from, so GenerateXcorrDecoys() can catch
+   // (rather than silently score against) a later param change in the same process.
+   s_dFingerprintInvBW  = dInvBW;
+   s_dFingerprintBinOff = dBinOff;
 }
 
 
@@ -460,8 +477,12 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 
       iSize = pQuery->iDecoyMatchPeptideCount;
 
-      if (iSize > g_staticParams.options.iNumPeptideOutputLines)
-         iSize = g_staticParams.options.iNumPeptideOutputLines;
+      // Must match the target branch's cap (iNumStored, not iNumPeptideOutputLines) above --
+      // iNumStored is deliberately sized larger than iNumPeptideOutputLines (see
+      // CometSearchManager.cpp), so capping decoys to the smaller value here ranked them
+      // over a systematically truncated pool relative to targets, compressing decoy sp_rank.
+      if (iSize > g_staticParams.options.iNumStored)
+         iSize = g_staticParams.options.iNumStored;
 
       CalculateSP(pQuery->_pDecoys, pQuery, iSize);
 
@@ -1047,7 +1068,14 @@ bool CometPostAnalysis::SortFnSp(const Results& a,
          return false;
       else  // same peptide, check mod state
       {
-         for (int i = 0; i < g_staticParams.options.peptideLengthRange.iEnd; ++i)
+         // Must be a.usiLenPeptide + 2 (this peptide's own length), matching
+         // SortFnXcorr()/SortFnMod() below -- the configured peptideLengthRange.iEnd is
+         // whatever max length the search allows, not this peptide's actual length, so
+         // ties on a peptide shorter than that max compared past its real piVarModSites
+         // content, and ties on one at exactly the max could still miss the C-term slot
+         // depending on how iEnd was set. Either way it made max-length/terminal-mod ties
+         // order nondeterministically differently from the other two sort functions.
+         for (int i = 0; i < a.usiLenPeptide + 2; ++i)
          {
             if (a.piVarModSites[i] < b.piVarModSites[i])
                return true;
@@ -1259,10 +1287,14 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
       else
          Mx = My = 0.0;
 
-      // Calculate sum of squares.
+      // Calculate sum of squares. Must select the same point subset as the means loop
+      // above (piHistogram[i] > 0, the raw cumulative count) -- pdCumulative[i] > 0 tests
+      // the *log10* of that count, which is false whenever the cumulative count is exactly
+      // 1 (log10(1) == 0) even though that point has real data and was included in Mx/My,
+      // silently skewing the slope on sparse histograms where such points are common.
       for (i = iStartCorr; i <= iNextCorr; ++i)
       {
-         if (pdCumulative[i] > 0)
+         if (piHistogram[i] > 0)
          {
             double dX;
             double dY;
@@ -1309,6 +1341,28 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
 bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
 {
    std::call_once(s_preDecoyOnce, InitPrecomputedDecoyBins);
+
+   // std::call_once only guarantees InitPrecomputedDecoyBins() ran exactly once ever --
+   // it can't detect a later param change in the same process (RTS re-initializing with
+   // a different ion series/max fragment charge/bin width via SetParam()) and rebuild.
+   // Fail loudly through g_cometStatus instead of silently scoring every decoy against
+   // a now-stale table. This is a real error return (not an assert()): an assert would
+   // abort() an embedding RTS host outright, and would compile to nothing in any
+   // NDEBUG build -- leaving the silent-wrong-E-value hazard undetected in exactly the
+   // binaries users run.
+   if (!(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
+      && s_pdMaxCharge == std::max(g_staticParams.options.iMaxFragmentCharge, 1)
+      && isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
+      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)))
+   {
+      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/max"
+         " fragment charge/bin width changed since it was first built in this process."
+         " Decoy E-values would silently use the wrong bins -- restart the process"
+         " instead of re-initializing with different search params.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    int *piHistogram = pQuery->iXcorrHistogram;
    const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;

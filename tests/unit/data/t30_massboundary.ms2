@@ -1,0 +1,23 @@
+H	CreationDate	synthetic
+H	Comment	C1/C2 regression: digest_mass_range's upper bound is set to exactly
+H	Comment	this peptide's mass, so BIN(dPeptideMassHigh) == BIN(precursor mass) --
+H	Comment	the exact off-by-one boundary g_bIndexPrecursors (C1) and the batch
+H	Comment	XCorr pool padding (C2) were sized/read one bin short of.
+S	1	1	510.234374
+Z	2	1019.461471
+72.0444	100.0
+175.0536	100.0
+290.0805	100.0
+419.1231	100.0
+566.1915	100.0
+623.2130	100.0
+760.2719	100.0
+873.3559	100.0
+147.1128	100.0
+260.1969	100.0
+397.2558	100.0
+454.2772	100.0
+601.3456	100.0
+730.3882	100.0
+845.4152	100.0
+948.4244	100.0

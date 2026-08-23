@@ -31,7 +31,7 @@ BASELINES_DIR   = Path(__file__).parent / "baselines"
 
 # Tags to fetch by default; add new releases here as they are published.
 BASELINE_TAGS = [
-    "v2026.01.1",
+    "v2026.02.2",
 ]
 
 IS_WINDOWS = (platform.system() == "Windows") or (os.name == "nt")

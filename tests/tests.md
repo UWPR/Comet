@@ -30,7 +30,7 @@ T17/T18 (integration, require `data/human.small.fasta`). Always pass `--comet`
 as a full path; the default `../../comet.exe` only resolves correctly when
 invoked from inside `tests/unit/`.
 
-### `run_tests.py` -- T1-T20
+### `run_tests.py` -- T1-T33
 
 | ID | Summary |
 |---|---|
@@ -51,10 +51,23 @@ invoked from inside `tests/unit/`.
 | **T15a** (`t15_il_short`) | I/L canonicalization on the short (packed, <=12 AA) path: length-8 peptides differing only by I-vs-L merge under `equal_IL=1` and stay separate under `equal_IL=0`. |
 | **T15b** (`t15_il_long`) | Same as T15a but on the long (plain-string, >=13 AA) path, length 13. |
 | **T16** | Cross-path protein-list correctness: two identical 13-AA proteins, length range 8-13, so generated peptides span both the short and long index paths -- every peptide (either path) must map to both proteins. |
-| **T17** *(integration)* | Builds `data/human.small.fasta` with no-enzyme, length 8-13, `equal_IL=1` and checks the peptide count falls in `[8,800,000, 9,100,000]` and that peptide count equals protein-list count. Cross-version byte-exact comparison against the v2026.01.1 baseline is unreliable (known I/L long-path dedup differences), so this test uses a count-stability range instead -- see the comment block above the test in `run_tests.py` for the full rationale. Requires `--integration` and `data/human.small.fasta` (not in the repo). |
+| **T17** *(integration)* | Builds `data/human.small.fasta` with no-enzyme, length 8-13, `equal_IL=1` and checks the peptide count falls in `[8,800,000, 9,100,000]` and that peptide count equals protein-list count. An exact cross-version byte comparison is unreliable here (known I/L long-path dedup differences between versions), so this test uses a count-stability range instead -- see the comment block above the test in `run_tests.py` for the full rationale. Requires `--integration` and `data/human.small.fasta` (not in the repo). |
 | **T18** *(integration)* | Determinism: two independent builds of `data/human.small.fasta` (same no-enzyme len 8-13 config) must produce byte-identical `.idx` files. Requires `--integration` and `data/human.small.fasta`. |
 | **T19** | Regression test for the AScorePro + FI_DB mod-ordering bug (`docs/20260617_codereview3.md` issue 2a): builds an FI_DB index with a real phospho-S variable mod baked into the `.idx` header, then searches with `print_ascorepro_score=1` and a deliberately *blank* `variable_mod01` in the search-time params (the normal real-world case for FI_DB searches). Asserts the single expected PSM (`ACDEFGSK`, phospho at position 7) is found and `ascorepro > 0` -- i.e. AScore actually used the index's mod instead of being silently skipped because of the blank search-time mod. |
 | **T20** | Regression test for the PI_DB batch-search crash (`_pQueries` never assigned in `CometSearch::SearchPeptideIndex(ThreadPool*, vector<Query*>&)`, which segfaulted inside `BinarySearchMass()` on the first scored candidate). Reuses T19's phospho fixture but builds a PI_DB (`-j`, peptide index) instead of an FI_DB (`-i`, fragment index), then asserts the search exits cleanly (`rc=0`) and produces the correct PSM, rather than crashing silently after the "`- searching ...`" progress message. |
+| **T21** (`t21_*`, one per case) | Migrates the ~21 hand-run functional-correctness cases from `/mnt/c/Work/20130226-comet-tests/runall.sh` (originally judged by eye against each case's README). Fixtures live in `tests/unit/data/legacy/`; params are generated at runtime from `legacy_cases.py`'s template. No assertion checks an absolute xcorr/e-value/deltaCn/ion-count (those legitimately drift across versions) -- checks are limited to peptide identity, protein identity, modification presence, hit counts, and relative score comparisons. See `legacy_cases.py`'s module docstring for the full case table. |
+| **T22** *(integration)* (`t22_rts_fi`, `t22_rts_pi`) | Exercises the real-time search (RTS) single-spectrum path via `tests/rts_repro/` against an FI_DB and a PI_DB built from a small unambiguous fixture -- no C++/CLI or Thermo dependency, so it runs on Linux. Checks RTS finds the correct peptide, and that 1-thread and 8-thread runs over 197 real spectra are byte-identical (the determinism guarantee from `tests/rts_repro/README.md`). |
+| **T23** *(integration, `--bigdata`)* (`t23_decoy_modes`) | Migrates `comet-debug3`'s full-scale search (~177 MB mzXML + FASTAs). Checks internal-decoy and target-decoy searches agree on PSM counts at 1% FDR within 5%, plus a cross-version comparison (PSM count within 10%, wall-clock within 25%) against the pinned `BASELINE_TAG` release binary, auto-downloaded via `setup_baselines.py`. Skips cleanly if `--bigdata DIR` isn't present or the baseline can't be fetched. |
+| **T24** *(integration, `--bigdata`)* (`t24_index_parity`) | Migrates `comet-debug4`'s full-scale search. Checks plain-FASTA, FI_DB, and PI_DB searches agree on PSM counts at 1% FDR (within a few percent of each other), plus the same `BASELINE_TAG` cross-version comparison as T23 for all three modes (each rebuilt fresh with the baseline binary, since `.idx` formats aren't guaranteed compatible across versions). Same skip behavior as T23. |
+| **T25** (`t25_fi_mod_slot_gap`, `t25_fi_mod_slot_ambig`) | FI_DB variable-mod-slot regression: a mod configured in `variable_mod02` (slot 1) with `variable_mod01` (slot 0) left unused must resolve to the correct slot, not silently misread as slot 0. The `_ambig` variant forces a genuinely ambiguous second modifiable site (2 candidate S residues, `max_variable_mods_in_peptide=1`) to additionally exercise `AddFragments()`'s combination-enumeration path. |
+| **T26** (`t26_b1_fasta_decoy`, `t26_b2_fi_nl_order`) | B1/B2 regressions: FASTA-path decoy fragment ladder must not abort early on a phospho+NL residue, and FI_DB's neutral-loss running-count carry-forward must use the loop's own index rather than a stale outer-scope variable. |
+| **T27** (`t27_modcap_fasta`, `t27_modcap_fi`) | B3/B4 regressions: a 3-mod-type combination on variable-mod slots 10-15 that exceeds `max_variable_mods_in_peptide` must be rejected, on both the FASTA and FI_DB paths. |
+| **T28** (`t28_idx_cterm_mod`) | B5 regression: an `.idx`-only search (no search-time `variable_mod`) with a C-term variable mod baked into the header must still apply it -- confirms the header-restore path derives the terminal-mod flags rather than leaving them unset. |
+| **T29** (`t29_decoyprefix`) | B14/B15 regression: a target-decoy PI_DB `.idx` search with the correct `decoy_prefix` must classify the decoy row correctly, and the internally-generated on-the-fly reversed decoy must not leak into rank-1 output. |
+| **T30** (`t30_mass_boundary`) | C1/C2 regression: a precursor sitting exactly at the `digest_mass_range` upper boundary must be included and correctly identified, exercising the array-sizing fix at that boundary. |
+| **T31** (`t31_speclib_sizing`) | C5 regression: a minimal `.msp` spectral-library MS2 run must complete without the `std::out_of_range` crash from the precursor-index sizing bug. |
+| **T32** (`t32_bad_enzyme_number`) | B11 regression: `search_enzyme_number = 99` (undefined) must produce a params-file error, not silently proceed. |
+| **T33** (`t33_param_robustness`) | C10 regression: a params file with a 600-char value (`szParamVal` is 512 bytes) and a malformed `mass_offsets` entry must error or otherwise handle gracefully, not stack-smash or hang. |
 
 ### `test_il_sequence.py` (standalone, not part of `run_tests.py`)
 
@@ -104,7 +117,7 @@ python tests/regression/test_raw_vs_mzxml.py              # Windows-only: .raw f
 Downloads pre-built Comet release binaries from the `UWPR/Comet` GitHub
 Releases page (`comet.win64.exe` / `comet.linux.exe`) into
 `baselines/<tag>/`, for use as the "before" side of a regression comparison.
-Default tag list: `v2026.01.1`. `--list` shows configured tags and whether
+Default tag list: `v2026.02.2`. `--list` shows configured tags and whether
 each is already present; skips re-downloading if the binary already exists.
 
 ### `run_regression.py`

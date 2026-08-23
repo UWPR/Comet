@@ -122,9 +122,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // clean error. Requiring strict monotonic ordering within [0, clFooterPos] up front makes
    // every later subtraction between these values provably safe without re-checking each
    // one individually.
+   // clPeptidesFilePos must be at least sizeof(uint64_t) bytes before clProteinsFilePos, not
+   // just "before" it: the raw-peptide section-size computation below subtracts
+   // sizeof(uint64_t) (its own tNumRaw count field) from (clProteinsFilePos -
+   // clPeptidesFilePos), and a gap of 1-7 bytes -- still "before" under a plain >= check --
+   // would underflow that subtraction to a near-SIZE_MAX section size.
    if (clFileSize < 2 * (comet_fileoffset_t)clSizeCometFileOffset
       || clPeptidesFilePos < 0
-      || clPeptidesFilePos >= clProteinsFilePos
+      || clPeptidesFilePos + (comet_fileoffset_t)sizeof(uint64_t) > clProteinsFilePos
       || clProteinsFilePos >= clFooterPos)
    {
       string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
@@ -140,12 +145,35 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // memory (avoids tNumRaw individual small fread() calls). ---
    comet_fseek(fp, clPeptidesFilePos, SEEK_SET);
    uint64_t tNumRaw;
-   (void)fread(&tNumRaw, sizeof(uint64_t), 1, fp);
+   if (fread(&tNumRaw, sizeof(uint64_t), 1, fp) != 1)
+   {
+      fclose(fp);
+      logout(" Error - failed to read raw peptide count from .idx file; file may be truncated or corrupt.\n");
+      return false;
+   }
+
+   size_t tSectionSize = (size_t)(clProteinsFilePos - clPeptidesFilePos) - sizeof(uint64_t);
+
+   // Sanity-bound tNumRaw against the section it has to fit in before it ever reaches
+   // reserve()/the parse loop below: the smallest an on-disk entry can possibly be (an
+   // empty, iLen==0 peptide) bounds how large tNumRaw could legitimately be for a section
+   // of this size. A corrupt/garbage count otherwise reaches reserve() directly and throws
+   // std::length_error/bad_alloc instead of the clean error below.
+   const size_t tMinEntrySize = sizeof(int) + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset;
+   if (tNumRaw > tSectionSize / tMinEntrySize)
+   {
+      fclose(fp);
+      string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+         + "\" has an implausible raw peptide count in its .idx file; the file is likely "
+         + "truncated or corrupt. Rebuild it with -i or -j.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    g_vRawPeptides.clear();
    g_vRawPeptides.reserve((size_t)tNumRaw);
    {
-      size_t tSectionSize = (size_t)(clProteinsFilePos - clPeptidesFilePos) - sizeof(uint64_t);
       vector<char> vBuf(tSectionSize);
       if (fread(vBuf.data(), 1, tSectionSize, fp) != tSectionSize)
       {
@@ -154,15 +182,34 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
          return false;
       }
       const char* p = vBuf.data();
+      const char* pEnd = vBuf.data() + tSectionSize;
       for (uint64_t i = 0; i < tNumRaw; ++i)
       {
          PlainPeptideIndexStruct sRaw;
          int iLen;
+
+         if (p + sizeof(int) > pEnd)
+         {
+            fclose(fp);
+            logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
+            return false;
+         }
          memcpy(&iLen, p, sizeof(int)); p += sizeof(int);
          if (iLen < 0 || iLen >= MAX_PEPTIDE_LEN)
          {
             fclose(fp);
             logout(" Error - corrupt raw peptide entry " + to_string(i) + " in .idx file.\n");
+            return false;
+         }
+         // Every fixed-size field this entry still needs to read, checked in one shot: the
+         // peptide sequence itself (iLen bytes) plus cPrevAA/cNextAA/dPepMass/
+         // siVarModProteinFilter/lIndexProteinFilePosition. tNumRaw not matching what the
+         // section actually holds (a corrupt/truncated file) would otherwise walk p past
+         // vBuf's end -- a heap-buffer-overread -- instead of erroring cleanly here.
+         if (p + (size_t)iLen + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset > pEnd)
+         {
+            fclose(fp);
+            logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
          memcpy(sRaw.szPeptide, p, (size_t)iLen); sRaw.szPeptide[iLen] = '\0'; p += iLen;
@@ -178,7 +225,32 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // --- Proteins list (ProteinsListCSR) ---
    comet_fseek(fp, clProteinsFilePos, SEEK_SET);
    size_t tNumProteinEntries;
-   (void)fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp);
+   if (fread(&tNumProteinEntries, clSizeCometFileOffset, 1, fp) != 1)
+   {
+      fclose(fp);
+      logout(" Error - failed to read protein-entry count from .idx file; file may be truncated or corrupt.\n");
+      return false;
+   }
+
+   // Every count/offset in this section is bounded by the total bytes actually available
+   // (clFooterPos - clProteinsFilePos, already validated above): the whole section -- the
+   // tNumProteinEntries count itself, then one tNumProteins count plus that many
+   // clSizeCometFileOffset-sized entries per iteration -- has to fit in that many bytes, so
+   // no single count read from the file can legitimately need more than
+   // tMaxProteinSectionEntries clSizeCometFileOffset-sized slots. A corrupt/garbage count
+   // otherwise reaches reserve()/resize() directly and throws std::length_error/bad_alloc
+   // instead of the clean error below.
+   const size_t tMaxProteinSectionEntries = (size_t)(clFooterPos - clProteinsFilePos) / (size_t)clSizeCometFileOffset;
+   if (tNumProteinEntries > tMaxProteinSectionEntries)
+   {
+      fclose(fp);
+      string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+         + "\" has an implausible protein-entry count in its .idx file; the file is likely "
+         + "truncated or corrupt. Rebuild it with -i or -j.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    // Read directly into flat CSR staging buffers instead of one throwaway
    // vector<comet_fileoffset_t> per row -- avoids tNumProteinEntries individual
@@ -193,11 +265,27 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       for (size_t i = 0; i < tNumProteinEntries; ++i)
       {
          size_t tNumProteins;
-         (void)fread(&tNumProteins, clSizeCometFileOffset, 1, fp);
+         if (fread(&tNumProteins, clSizeCometFileOffset, 1, fp) != 1)
+         {
+            fclose(fp);
+            logout(" Error - failed to read protein count from .idx file at entry " + to_string(i) + ".\n");
+            return false;
+         }
+         if (tNumProteins > tMaxProteinSectionEntries)
+         {
+            fclose(fp);
+            logout(" Error - implausible protein count in .idx file at entry " + to_string(i) + "; file may be truncated or corrupt.\n");
+            return false;
+         }
 
          size_t tOldSize = vFlatProteinOffsets.size();
          vFlatProteinOffsets.resize(tOldSize + tNumProteins);
-         (void)fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp);
+         if (fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp) != tNumProteins)
+         {
+            fclose(fp);
+            logout(" Error - failed to read protein offsets from .idx file at entry " + to_string(i) + "; file may be truncated or corrupt.\n");
+            return false;
+         }
 
          vProteinCounts.push_back((uint32_t)tNumProteins);
       }
@@ -208,20 +296,92 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    }
 
    // Build in-memory protein name cache before closing the file.
+   //
+   // P5: every protein's szProt block was written back-to-back in one contiguous section
+   // by WritePeptideIndex() (see the file-layout comment at the top of this file), so a
+   // per-protein fseek+fread here is random-access I/O against what's actually a fully
+   // sequential region -- each seek also discards this stdio stream's buffered state.
+   // Collect the distinct offsets actually referenced, then do ONE sequential read
+   // spanning [min, max + WIDTH_REFERENCE) and slice each name out of that in-memory
+   // buffer instead of seeking to it individually.
    {
-      char szProtBuf[WIDTH_REFERENCE];
       g_pvProteinNameCache.clear();
+
+      vector<comet_fileoffset_t> vDistinctOffsets;
       for (const auto& vProts : g_pvProteinsList)
       {
          for (const comet_fileoffset_t lOffset : vProts)
+            vDistinctOffsets.push_back(lOffset);
+      }
+
+      sort(vDistinctOffsets.begin(), vDistinctOffsets.end());
+      vDistinctOffsets.erase(unique(vDistinctOffsets.begin(), vDistinctOffsets.end()), vDistinctOffsets.end());
+
+      if (!vDistinctOffsets.empty())
+      {
+         comet_fileoffset_t lMin = vDistinctOffsets.front();
+         comet_fileoffset_t lMax = vDistinctOffsets.back();
+
+         // These offsets come straight from the .idx protein-list section, not from a value
+         // this code computed itself, so a corrupt file can hand them arbitrary garbage --
+         // unlike clPeptidesFilePos/clProteinsFilePos above, nothing has bounded them yet.
+         // Every protein-name block is WIDTH_REFERENCE bytes and the whole name section lies
+         // before clPeptidesFilePos (see file-layout comment at the top of this file), so a
+         // legitimate offset must satisfy 0 <= lMin <= lMax <= clPeptidesFilePos -
+         // WIDTH_REFERENCE. Reject otherwise before lMax - lMin feeds tSpan's allocation size,
+         // the fseek below, and pProtBuf's pointer arithmetic.
+         if (lMin < 0 || clPeptidesFilePos < (comet_fileoffset_t)WIDTH_REFERENCE
+            || lMax > clPeptidesFilePos - (comet_fileoffset_t)WIDTH_REFERENCE)
          {
-            if (g_pvProteinNameCache.find(lOffset) == g_pvProteinNameCache.end())
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" has an out-of-range protein-name offset in its .idx file; the file is "
+               + "likely truncated or corrupt. Rebuild it with -i or -j.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            fclose(fp);
+            return false;
+         }
+
+         size_t tSpan = (size_t)(lMax - lMin) + WIDTH_REFERENCE;
+
+         vector<char> vNameBuf(tSpan);
+         comet_fseek(fp, lMin, SEEK_SET);
+         if (fread(vNameBuf.data(), sizeof(char), tSpan, fp) == tSpan)
+         {
+            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
+            {
+               const char* pProtBuf = vNameBuf.data() + (size_t)(lOffset - lMin);
+               g_pvProteinNameCache.emplace(lOffset, string(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1)));
+            }
+         }
+         else
+         {
+            // The one-shot bulk read failed (truncated .idx or a transient I/O error).
+            // Do NOT continue with an empty cache: decoy classification looks peptides'
+            // proteins up in g_pvProteinNameCache and treats a miss as "target", so an
+            // empty cache silently classifies every PSM as target and destroys the
+            // target/decoy split. Retry per-protein; if names still can't be read,
+            // fail the index load loudly instead.
+            logout(" Warning - bulk read of protein-name section from .idx file failed;"
+               " retrying per-protein.\n");
+
+            char szProtBuf[WIDTH_REFERENCE];
+            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
             {
                comet_fseek(fp, lOffset, SEEK_SET);
-               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == (size_t)WIDTH_REFERENCE)
+               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == WIDTH_REFERENCE)
                {
-                  szProtBuf[WIDTH_REFERENCE - 1] = '\0';
                   g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
+               }
+               else
+               {
+                  string strErrorMsg = " Error - cannot read protein name at offset "
+                     + to_string((long long)lOffset) + " from .idx file; the file is"
+                     " likely truncated or corrupt. Re-create the .idx file.\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  fclose(fp);
+                  return false;
                }
             }
          }
@@ -825,6 +985,11 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       string strErrorMsg = " Error in GeneratePlainPeptideIndex() for index creation.\n";
       logerr(strErrorMsg);
       CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      // fptr was opened above but nothing has been written to it yet on this path -- close
+      // and delete it rather than leaking the handle and leaving a 0-byte .idx on disk that
+      // a later run could mistake for a real (if empty) index.
+      fclose(fptr);
+      remove(strIndexFile.c_str());
       return false;
    }
 
@@ -885,6 +1050,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    fprintf(fptr, "LengthRange: %d %d\n", g_staticParams.options.peptideLengthRange.iStart, g_staticParams.options.peptideLengthRange.iEnd);
    fprintf(fptr, "MassType: %d %d\n", g_staticParams.massUtility.bMonoMassesParent, g_staticParams.massUtility.bMonoMassesFragment);
    fprintf(fptr, "DecoySearch: %d\n", g_staticParams.options.iDecoySearch);
+   // AnalyzePeptideIndex() (PI_DB) classifies a candidate as target vs. decoy purely by
+   // matching its stored protein name against g_staticParams.szDecoyPrefix -- unlike every
+   // other build-time-baked identity in this header (Enzyme:, StaticMod:, VariableMod:),
+   // decoy_prefix was never persisted, so a PI_DB target-decoy .idx searched later with a
+   // mismatched (or default) decoy_prefix would silently score every real decoy as a
+   // target. Restored here for the same reason StaticMod:/VariableMod: are authoritative.
+   fprintf(fptr, "DecoyPrefix: %s\n", g_staticParams.szDecoyPrefix);
    fprintf(fptr, "Enzyme: %s [%d %s %s]\n", g_staticParams.enzymeInformation.szSearchEnzymeName,
       g_staticParams.enzymeInformation.iSearchEnzymeOffSet,
       g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
@@ -893,6 +1065,13 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       g_staticParams.enzymeInformation.iSearchEnzyme2OffSet,
       g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
       g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+   // Digestion-time settings baked into which peptides exist in the raw-peptide table below;
+   // restored so pepXML/mzIdentML's search_summary/SpectrumIdentificationProtocol enzyme
+   // metadata (which reads these live at search time) can't silently disagree with what this
+   // .idx was actually built with.
+   fprintf(fptr, "NumEnzymeTermini: %d\n", g_staticParams.options.iEnzymeTermini);
+   fprintf(fptr, "AllowedMissedCleavage: %d\n", g_staticParams.enzymeInformation.iAllowedMissedCleavage);
+   fprintf(fptr, "ClipNtermMethionine: %d\n", g_staticParams.options.bClipNtermMet ? 1 : 0);
    fprintf(fptr, "NumPeptides: %ld\n", (long)g_vRawPeptides.size());
 
    // write out static mod params A to Z is ascii 65 to 90 then terminal mods
@@ -1002,6 +1181,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
             string strErrorMsg = " Error in WritePeptideIndex(): cannot find protein file position in protein names map.\n";
             logerr(strErrorMsg);
             fclose(fptr);
+            remove(strIndexFile.c_str());
             delete[] lProteinIndex;
             return false;
          }
@@ -1021,7 +1201,24 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    fwrite(&clPeptidesFilePos, clSizeCometFileOffset, 1, fptr);
    fwrite(&clProteinsFilePos, clSizeCometFileOffset, 1, fptr);
 
+   // ferror() reflects the OR of every fwrite/fprintf's error state since the stream was
+   // opened, so one check here covers the entire header/protein-name/raw-peptide/
+   // proteins-list/footer write sequence above without needing a per-call check on each of
+   // the dozens of individual fwrite()s -- disk-full (or any other write failure) mid-build
+   // previously went undetected, silently reporting success with a truncated index (the
+   // exact failure mode CLAUDE.md's T24 note describes).
+   bool bWriteError = (ferror(fptr) != 0);
    fclose(fptr);
+
+   if (bWriteError)
+   {
+      string strErrorMsg = " Error - failed writing \"" + strIndexFile + "\" (disk full?); "
+         "the partial file has been removed. Free up space and rebuild with -i or -j.\n";
+      logerr(strErrorMsg);
+      remove(strIndexFile.c_str());
+      CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+      return false;
+   }
 
    std::string strNumPeps;
    if (tNumRaw > 1e6)
@@ -1057,14 +1254,25 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 
 // Parses the .idx text header (magic/version, IndexSearchType:, MassRange:,
 // LengthRange:, MassType:, StaticMod:, VariableMod:, ProteinModList:,
-// RequireVariableMod:, MaxVariableModsInPeptide:, DecoySearch:, Enzyme:, Enzyme2:) from
-// fp into g_staticParams. Reads until the blank line that separates the header from the
+// RequireVariableMod:, MaxVariableModsInPeptide:, DecoySearch:, DecoyPrefix:, Enzyme:,
+// Enzyme2:, NumEnzymeTermini:, AllowedMissedCleavage:, ClipNtermMethionine:) from fp into
+// g_staticParams. Reads until the blank line that separates the header from the
 // protein-name section. Restored by docs/20260811_restore_idx_header_mods.md to be the
 // single authoritative source for static AND variable-mod settings, including (v4) the
 // per-mod/global mod *count* limits (Phase 0.5 had dropped the mod-identity lines
 // entirely, requiring search-time comet.params/RTS SetParam() calls instead; the count
 // limits were never persisted even pre-121 -- see that doc's history section) -- an .idx
 // built today is fully self-contained and needs none of that at search time.
+// DecoyPrefix:/NumEnzymeTermini:/AllowedMissedCleavage:/ClipNtermMethionine: are a later
+// addition (2026-08-21) closing a gap the original restoration left: decoy_prefix is
+// what AnalyzePeptideIndex() (PI_DB) uses to classify a candidate as target vs. decoy by
+// its stored protein name, and the other three are digestion-time settings already baked
+// into which peptides exist -- none of the four were previously self-describing, so a
+// search-time comet.params/SetParam() mismatch could silently corrupt the PI_DB target/
+// decoy split (decoy_prefix) or misreport enzyme metadata in pepXML/mzIdentML output
+// (the other three). All four are optional in the parse (no bFound.../error-if-missing
+// gate, matching DecoySearch:/Enzyme:/Enzyme2:'s existing precedent) so older .idx files
+// built before this addition still load, just without this restore.
 // iVarModTermDistance/iWhichTerm remain unsupported for FI_DB/PI_DB (never referenced by
 // CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp) and are
 // not part of the header.
@@ -1100,11 +1308,14 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       g_staticParams.variableModParameters.varModList[x].dNeutralLoss2 = 0.0;
       g_staticParams.variableModParameters.varModList[x].iRequireThisMod = 0;
       g_staticParams.variableModParameters.varModList[x].iMaxNumVarModAAPerMod = 0;
+      g_staticParams.variableModParameters.varModList[x].bNtermMod = false;
+      g_staticParams.variableModParameters.varModList[x].bCtermMod = false;
       strcpy(g_staticParams.variableModParameters.varModList[x].szVarModChar, "X");
    }
    g_staticParams.variableModParameters.bVarModSearch = false;
    g_staticParams.variableModParameters.bUseFragmentNeutralLoss = false;
    g_staticParams.variableModParameters.bVarModProteinFilter = false;
+   g_staticParams.variableModParameters.bVarTermModSearch = false;
    g_staticParams.variableModParameters.iRequireVarMod = 0;
    g_staticParams.variableModParameters.iMaxVarModPerPeptide = 0;
 
@@ -1187,6 +1398,7 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       else if (!strncmp(szBuf, "StaticMod:", 10))
       {
          char* tok;
+         char* saveptr = NULL;   // strtok_r context, not shared/reentrant-unsafe like plain strtok's
          char  delims[] = " ";
          int   x = 65;  // ASCII 'A'
 
@@ -1203,13 +1415,13 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
             &g_staticParams.massUtility.dOH2parent);
 
          bFoundStatic = true;
-         tok = strtok(szBuf + 11, delims);
+         tok = strtok_r(szBuf + 11, delims, &saveptr);
          while (tok != NULL)
          {
             sscanf(tok, "%lf", &(g_staticParams.staticModifications.pdStaticMods[x]));
             g_staticParams.massUtility.pdAAMassFragment[x] += g_staticParams.staticModifications.pdStaticMods[x];
             g_staticParams.massUtility.pdAAMassParent[x] += g_staticParams.staticModifications.pdStaticMods[x];
-            tok = strtok(NULL, delims);
+            tok = strtok_r(NULL, delims, &saveptr);
             x++;
             // 65-90 = A-Z; 91-94 = n/c-term peptide, n/c-term protein
             if (x == 95)
@@ -1274,6 +1486,25 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
 
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss, 0.0))
                g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
+
+            // bNtermMod/bCtermMod/bVarTermModSearch gate AddFragmentsThreadProc()'s and
+            // EnumerateIndexPeptideMods()'s terminal-mod enumeration (CometFragmentIndex.cpp,
+            // CometPeptideIndex.cpp) -- unlike iWhichTerm/iVarModTermDistance (peptide vs.
+            // protein N/C-term restriction), which FI_DB/PI_DB never reference at all, these
+            // three must be derived from the .idx header's szVarModChar the same way
+            // InitializeStaticParams() derives them from comet.params, or an index built with
+            // an n/c-term variable mod silently searches without it.
+            if (strchr(g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar, 'n'))
+            {
+               g_staticParams.variableModParameters.varModList[iNumMods].bNtermMod = true;
+               g_staticParams.variableModParameters.bVarTermModSearch = true;
+            }
+
+            if (strchr(g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar, 'c'))
+            {
+               g_staticParams.variableModParameters.varModList[iNumMods].bCtermMod = true;
+               g_staticParams.variableModParameters.bVarTermModSearch = true;
+            }
 
             iNumMods++;
          }
@@ -1363,9 +1594,28 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       {
          sscanf(szBuf, "DecoySearch: %d", &(g_staticParams.options.iDecoySearch));
       }
+      else if (!strncmp(szBuf, "DecoyPrefix:", 12))
+      {
+         // Authoritative for PI_DB: AnalyzePeptideIndex() classifies a candidate as
+         // target vs. decoy by matching its stored protein name against this prefix, so
+         // it must match what the .idx was actually built with, not whatever comet.params/
+         // SetParam() happens to supply at search time (see the write-side comment above).
+         char szTmp[256] = "";
+         if (sscanf(szBuf + 12, " %255[^\n\r]", szTmp) == 1)
+         {
+            strncpy(g_staticParams.szDecoyPrefix, szTmp, sizeof(g_staticParams.szDecoyPrefix) - 1);
+            g_staticParams.szDecoyPrefix[sizeof(g_staticParams.szDecoyPrefix) - 1] = '\0';
+            g_staticParams.sDecoyPrefix = g_staticParams.szDecoyPrefix;
+            CometMassSpecUtils::EscapeString(g_staticParams.sDecoyPrefix);
+         }
+      }
       else if (!strncmp(szBuf, "Enzyme:", 7))
       {
-         sscanf(szBuf, "Enzyme: %s [%d %s %s]",
+         // Width-limited like the VariableMod:/RequireVariableMod: parses above --
+         // szSearchEnzymeName is ENZYME_NAME_LEN (48) and szSearchEnzymeBreakAA/
+         // szSearchEnzymeNoBreakAA are MAX_ENZYME_AA (20); a bare %s here let an
+         // oversized file-supplied token overflow these fixed buffers.
+         sscanf(szBuf, "Enzyme: %47s [%d %19s %19s]",
             g_staticParams.enzymeInformation.szSearchEnzymeName,
             &(g_staticParams.enzymeInformation.iSearchEnzymeOffSet),
             g_staticParams.enzymeInformation.szSearchEnzymeBreakAA,
@@ -1373,11 +1623,28 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       }
       else if (!strncmp(szBuf, "Enzyme2:", 8))
       {
-         sscanf(szBuf, "Enzyme2: %s [%d %s %s]",
+         sscanf(szBuf, "Enzyme2: %47s [%d %19s %19s]",
             g_staticParams.enzymeInformation.szSearchEnzyme2Name,
             &(g_staticParams.enzymeInformation.iSearchEnzyme2OffSet),
             g_staticParams.enzymeInformation.szSearchEnzyme2BreakAA,
             g_staticParams.enzymeInformation.szSearchEnzyme2NoBreakAA);
+      }
+      else if (!strncmp(szBuf, "NumEnzymeTermini:", 17))
+      {
+         // Digestion-time only (baked into which peptides exist in the raw-peptide table);
+         // restored purely so pepXML/mzIdentML's enzyme metadata can't disagree with what
+         // this .idx was actually built with (see the write-side comment above).
+         sscanf(szBuf + 17, "%d", &(g_staticParams.options.iEnzymeTermini));
+      }
+      else if (!strncmp(szBuf, "AllowedMissedCleavage:", 22))
+      {
+         sscanf(szBuf + 22, "%d", &(g_staticParams.enzymeInformation.iAllowedMissedCleavage));
+      }
+      else if (!strncmp(szBuf, "ClipNtermMethionine:", 20))
+      {
+         int iTmp = 0;
+         if (sscanf(szBuf + 20, "%d", &iTmp) == 1)
+            g_staticParams.options.bClipNtermMet = (iTmp != 0);
       }
    }
 

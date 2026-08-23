@@ -14,13 +14,20 @@
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// This file defines an OS independent "interface" for threading-related
-// functionalities, such as creating/destroying mutexes, semaphores and
-// threads. It is meant to be used as a singleton - use Threading::Inst() to
-// get a pointer to the single instance of the Threading object and use it
+// This file defines an OS independent "interface" for mutex-related
+// functionality. It is meant to be used as a singleton - use Threading::Inst()
+// to get a pointer to the single instance of the Threading object and use it
 // to access the interface methods.
 //
 // Now implemented using C++ standard library for cross-platform consistency.
+//
+// Thread-creation and semaphore methods (BeginThread/ThreadSleep/*Semaphore)
+// were removed here (2026-08-21) -- dead code with no callers anywhere in the
+// repo, and the hand-rolled Semaphore was a lossy single-bit condition flag
+// (a second SignalSemaphore() before WaitSemaphore() wakes loses the first
+// signal, unlike a real counting semaphore) that would have bitten whoever
+// revived it. All real thread creation in this codebase goes through
+// ThreadPool/std::thread directly.
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _THREADING_H_
@@ -41,20 +48,6 @@ public:
     static void LockMutex(Mutex& mutex);
     static void UnlockMutex(Mutex& mutex);
     static void DestroyMutex(Mutex& mutex);
-
-    // Thread-specific methods
-    static void BeginThread(ThreadProc pFunction, void* arg, ThreadId* pThreadId);
-    static void ThreadSleep(unsigned long dwMilliseconds);
-
-    // Semaphore methods
-    // Renamed to avoid Windows API macro conflicts
-    static void InitSemaphore(Semaphore* pSem);
-    static void WaitSemaphore(Semaphore& sem);
-    static void SignalSemaphore(Semaphore& sem);
-    static void DestroySemaphore(Semaphore& sem);
-
-private:
-    static ThreadId _threadId;
 };
 
 #endif // ifndef _THREADING_H_

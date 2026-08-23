@@ -1,0 +1,26 @@
+H	CreationDate	synthetic
+H	Comment	B14/B15 regression: decoy protein REV_decoy_prot's peptide
+H	Comment	SEATENCEK is the only precursor-mass match in this 2-protein FASTA.
+H	Comment	Built into a PI_DB .idx with decoy_prefix=REV_ (B14: persisted in the
+H	Comment	header); searched with decoy_prefix left at the mismatched default
+H	Comment	DECOY_ to prove the header value wins. Must land in the decoy output,
+H	Comment	not the target output (B15: AnalyzePeptideIndex() must read the
+H	Comment	protein-name cache actually populated at search time).
+S	1	1	505.708393
+Z	2	1010.409511
+88.0393	100.0
+217.0819	100.0
+288.1190	100.0
+389.1667	100.0
+518.2093	100.0
+632.2522	100.0
+735.2614	100.0
+864.3040	100.0
+147.1128	100.0
+276.1554	100.0
+379.1646	100.0
+493.2075	100.0
+622.2501	100.0
+723.2978	100.0
+794.3349	100.0
+923.3775	100.0

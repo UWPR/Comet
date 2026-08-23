@@ -13,6 +13,7 @@
 // limitations under the License.
 
 
+#include <cstdarg>
 #include "Common.h"
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
@@ -91,6 +92,13 @@ vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLi
 
 std::atomic<bool> g_bPlainPeptideIndexRead = false;
 std::atomic<bool> g_bPeptideIndexRead = false;
+// Separate from g_bPeptideIndexRead: CometPeptideIndex::ReadPeptideIndex() sets that flag
+// at its own end, before EnsurePeptideIndexLoaded() (CometSearch.cpp) goes on to also run
+// InitializeMassesFromPeptideIndex() and (if enabled) create the AScorePro interface --
+// this flag is set only once ALL of that has completed, so EnsurePeptideIndexLoaded()'s
+// unlocked fast-path check can't observe "read" as true while masses/AScorePro are still
+// being set up on another thread. See EnsurePeptideIndexLoaded()'s own comment for detail.
+std::atomic<bool> g_bPeptideIndexFullyInitialized = false;
 std::atomic<bool> g_bSpecLibRead = false;
 bool g_bPerformSpecLibSearch = false;
 bool g_bPerformDatabaseSearch = false;
@@ -176,7 +184,11 @@ static bool ValidateSequenceDatabaseFile()
    string sTmpDB = g_staticParams.databaseInfo.szDatabase;
 
    size_t databaseLen = strlen(g_staticParams.databaseInfo.szDatabase);
-   if (databaseLen >= 4 && strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
+   // strcmp returns 0 (falsy) when the suffix IS ".idx" -- negate it so the erase actually
+   // runs on an .idx input (stripping the extension to get the plain FASTA name) instead of
+   // on every non-.idx input, which truncated a real FASTA path's last 4 characters. Inert
+   // today: sTmpDB only ever feeds g_bIdxNoFasta below, which has no readers.
+   if (databaseLen >= 4 && !strcmp(g_staticParams.databaseInfo.szDatabase + strlen(g_staticParams.databaseInfo.szDatabase) - 4, ".idx"))
       sTmpDB = sTmpDB.erase(sTmpDB.size() - 4); // need plain fasta if indexdb input
 
    if ((fpcheck = fopen(sTmpDB.c_str(), "r")) == NULL)
@@ -384,14 +396,72 @@ CometSearchManager::~CometSearchManager()
    // Destroy the mutex we used to protect the MS1 RT aligner
    Threading::DestroyMutex(g_ms1AlignerMutex);
 
-   //std::vector calls destructor of every element it contains when clear() is called
+   // g_pvInputFiles/_mapStaticParams are containers OF POINTERS (vector<InputFileInfo*>,
+   // map<string, CometParam*>) -- clear() destroys the pointers themselves, not what they
+   // point to (unlike a container of by-value objects, where the comment this replaces
+   // would have been correct). AddInputFiles()/SetParam() are the only places these
+   // pointers are ever created (Comet.cpp's ParseCmdLine() new's the InputFileInfo but
+   // never deletes it, handing ownership to whichever CometSearchManager it's added to;
+   // CometWrapper's AddInputFiles() likewise hands over deep copies it makes purely for
+   // this container -- it must NEVER pass the InputFileInfoWrapper-owned pointers
+   // themselves, which their managed wrappers also delete), so freeing them here
+   // doesn't risk a double-free.
+   for (InputFileInfo* p : g_pvInputFiles)
+      delete p;
    g_pvInputFiles.clear();
 
+   for (auto& kv : _mapStaticParams)
+      delete kv.second;
    _mapStaticParams.clear();
 
    if (_tp != NULL)
       delete _tp;
    _tp = NULL;
+}
+
+// Appends to g_staticParams.szMod[512], bounded by its remaining space. The chain of
+// sprintf(szMod + strlen(szMod), ...) calls this replaces below had no such bound: with a
+// fully-populated 15-variable-mod (some with multi-character szVarModChar) + several
+// static-mod + long-enzyme-name config, the cumulative appended length can exceed 512 bytes,
+// overflowing this fixed global buffer. Truncates rather than errors, matching szMod's
+// existing role as a display/output string (sqt header), not search-correctness state.
+static void AppendSzMod(const char* fmt, ...)
+{
+   size_t len = strlen(g_staticParams.szMod);
+   if (len >= sizeof(g_staticParams.szMod) - 1)
+      return;
+
+   va_list args;
+   va_start(args, fmt);
+   vsnprintf(g_staticParams.szMod + len, sizeof(g_staticParams.szMod) - len, fmt, args);
+   va_end(args);
+}
+
+// Shared by InitializeStaticParams() (FiStrategy::finalize()'s free-then-reinit path on a
+// second FI_DB search in the same process) and CreateFragmentIndex() (the first-run path):
+// both need this exact allocation. +1: ReadPrecursors() clamps its fill range to
+// BIN(dPeptideMassHigh) inclusive, so the array needs a valid slot at that top index, not
+// just 0..BIN(...)-1.
+static bool AllocateIndexPrecursors()
+{
+   int iNumBins = BIN(g_staticParams.options.dPeptideMassHigh) + 1;
+
+   g_bIndexPrecursors = (bool*)malloc(iNumBins * sizeof(bool));
+   if (g_bIndexPrecursors == NULL)
+   {
+      printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", iNumBins);
+      return false;
+   }
+
+   for (int x = 0; x < iNumBins; ++x)
+   {
+      if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
+         g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
+      else
+         g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
+   }
+
+   return true;
 }
 
 bool CometSearchManager::InitializeStaticParams()
@@ -403,7 +473,26 @@ bool CometSearchManager::InitializeStaticParams()
    DoubleRange doubleRangeData;
 
    if (staticParamsInitializationComplete)
+   {
+      // FiStrategy::finalize() frees g_bIndexPrecursors and nulls it out at the end of
+      // every FI_DB search specifically so a subsequent search in the same process
+      // rebuilds it -- but staticParamsInitializationComplete is intentionally never
+      // reset (re-running the rest of this function on a second call risks double-
+      // applying cumulative state such as static-mod residue-mass deltas), so the
+      // one-time allocation block below never gets a second chance to run and the
+      // second FI_DB search null-derefs on g_bIndexPrecursors. Re-run just that
+      // allocation here, using whatever param values are already live in
+      // g_staticParams (a second SetParam("peptide_mass_high", ...) between searches
+      // is silently ignored either way, same as every other post-first-search param
+      // change under this one-shot design).
+      if (g_staticParams.iDbType == DbType::FI_DB && g_bIndexPrecursors == NULL)
+      {
+         if (!AllocateIndexPrecursors())
+            return false;
+      }
+
       return true;
+   }
 
    if (GetParamValue("database_name", strData))
       strcpy(g_staticParams.databaseInfo.szDatabase, strData.c_str());
@@ -418,7 +507,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("spectral_library_name", strData))
       g_staticParams.speclibInfo.strSpecLibFile = strData;
 
-   if (GetParamValue("spectraL_library_ms_level", iIntData))
+   if (GetParamValue("spectral_library_ms_level", iIntData))
    {
       // FIX add check that input value is some sane range
       g_staticParams.options.iSpecLibMSLevel = iIntData;
@@ -809,7 +898,7 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("add_J_user_amino_acid", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'J'] = dDoubleData;
 
-   if (GetParamValue("add_U_user_amino_acid", dDoubleData))
+   if (GetParamValue("add_U_selenocysteine", dDoubleData))
       g_staticParams.staticModifications.pdStaticMods[(int)'U'] = dDoubleData;
 
    if (GetParamValue("add_X_user_amino_acid", dDoubleData))
@@ -1324,7 +1413,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         for (int ii=i+1; ii<VMODS-1; ++ii)
+         for (int ii=i+1; ii<VMODS; ++ii)
          {
             if (!isEqual(g_staticParams.variableModParameters.varModList[ii].dVarModMass, 0.0)
                   && (g_staticParams.variableModParameters.varModList[ii].szVarModChar[0]!='-'))
@@ -1368,7 +1457,7 @@ bool CometSearchManager::InitializeStaticParams()
       if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
             && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0]!='-'))
       {
-         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "(%s%c %+0.6f) ",
+         AppendSzMod("(%s%c %+0.6f) ",
                g_staticParams.variableModParameters.varModList[i].szVarModChar,
                g_staticParams.variableModParameters.cModCode[i],
                g_staticParams.variableModParameters.varModList[i].dVarModMass);
@@ -1406,6 +1495,35 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
+   // CometPostAnalysis.cpp's sequence handoff to AScorePro
+   // (`std::to_string(piVarModSites[i])`) embeds a raw mod-slot number (1-15) per
+   // modified residue directly into the peptide-string encoding it hands over, and
+   // AScorePro's single-char-per-position parser can't distinguish a two-digit slot
+   // number (e.g. "12") from two consecutive single-digit ones -- silently
+   // mis-localizing/corrupting mod sites onto the wrong slot's mass (see the review
+   // write-up this guard was added for). The ambiguity only exists for two-digit slot
+   // numbers: slots 1-9 encode as a single digit that round-trips exactly against
+   // SetAScoreOptions()'s registered symbols, so only variable_mod10-15 are refused.
+   // Loudly refuse that combination instead of letting it silently corrupt results.
+   if (g_staticParams.options.iPrintAScoreProScore != 0)
+   {
+      for (int i = 9; i < VMODS; ++i)   // variable_mod10 (index 9) .. variable_mod15 (index 14)
+      {
+         if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
+               && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
+         {
+            string strErrorMsg = " Error - print_ascorepro_score is enabled but variable_mod"
+               + to_string(i + 1)
+               + " is active; AScorePro localization is only supported for variable_mod01"
+               + " through variable_mod09. Disable print_ascorepro_score or remove/renumber"
+               + " the higher-numbered variable mod(s).\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+   }
+
    if (g_staticParams.options.iNumPeptideOutputLines < 1)
       g_staticParams.options.iNumPeptideOutputLines = 1;
 
@@ -1415,25 +1533,25 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ct=%0.6f ",
+      AppendSzMod("+ct=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+nt=%0.6f ",
+      AppendSzMod("+nt=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusPeptide);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddCterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ctprot=%0.6f ",
+      AppendSzMod("+ctprot=%0.6f ",
             g_staticParams.staticModifications.dAddCterminusProtein);
    }
 
    if (!isEqual(g_staticParams.staticModifications.dAddNterminusProtein, 0.0))
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "+ntprot=%0.6f ",
+      AppendSzMod("+ntprot=%0.6f ",
             g_staticParams.staticModifications.dAddNterminusProtein);
    }
 
@@ -1441,7 +1559,7 @@ bool CometSearchManager::InitializeStaticParams()
    {
       if (!isEqual(g_staticParams.staticModifications.pdStaticMods[i], 0.0))
       {
-         sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "%c=%0.6f ", i,
+         AppendSzMod("%c=%0.6f ", i,
                g_staticParams.massUtility.pdAAMassParent[i] += g_staticParams.staticModifications.pdStaticMods[i]);
          g_staticParams.massUtility.pdAAMassFragment[i] += g_staticParams.staticModifications.pdStaticMods[i];
       }
@@ -1461,14 +1579,14 @@ bool CometSearchManager::InitializeStaticParams()
       if (g_staticParams.options.iEnzymeTermini != 2)
          sprintf(szTmp, ":%d", g_staticParams.options.iEnzymeTermini);
 
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s (%d%s)",
+      AppendSzMod("Enzyme:%s (%d%s)",
             g_staticParams.enzymeInformation.szSearchEnzymeName,
             g_staticParams.enzymeInformation.iAllowedMissedCleavage,
             szTmp);
    }
    else
    {
-      sprintf(g_staticParams.szMod + strlen(g_staticParams.szMod), "Enzyme:%s",
+      AppendSzMod("Enzyme:%s",
             g_staticParams.enzymeInformation.szSearchEnzymeName);
    }
 
@@ -1559,26 +1677,22 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      g_bIndexPrecursors = (bool*)malloc(BIN(g_staticParams.options.dPeptideMassHigh) * sizeof(bool));
-      if (g_bIndexPrecursors == NULL)
-      {
-         printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh));
+      if (!AllocateIndexPrecursors())
          return false;
-      }
-      for (int x = 0; x < BIN(g_staticParams.options.dPeptideMassHigh); ++x)
-      {
-         if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
-            g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
-         else
-            g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
-      }
    }
 
    if (g_staticParams.speclibInfo.strSpecLibFile.length() > 0)
    {
       // set this such that can access all SpecLib entries at specific precursor mass bin
       // by accessing g_vulSpecLibPrecursorIndex.at(massbin)
-      g_vulSpecLibPrecursorIndex.resize(BINPREC(g_staticParams.options.dPeptideMassHigh));
+      // +1: SetSpecLibPrecursorIndex() clamps its fill range to BINPREC(dPeptideMassHigh)
+      // inclusive (iMaxBin), so index iMaxBin itself must be valid -- without the +1 this
+      // sized only 0..iMaxBin-1, and .at(iMaxBin) threw std::out_of_range during LoadSpecLib()
+      // for any library entry whose tolerance window reached the configured mass ceiling
+      // (this runs for every entry regardless of MS level, so it could throw even in an
+      // MS1-only run). Matches the +1 convention used elsewhere, e.g.
+      // uiMaxFragmentArrayIndex = BIN(dFragIndexMaxMass) + 1 above.
+      g_vulSpecLibPrecursorIndex.resize(BINPREC(g_staticParams.options.dPeptideMassHigh) + 1);
    }
 
    if (g_staticParams.tolerances.dInputToleranceMinus > g_staticParams.tolerances.dInputTolerancePlus)
@@ -1654,8 +1768,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1677,8 +1794,11 @@ void CometSearchManager::SetParam(const std::string &name, const string &strValu
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1700,8 +1820,11 @@ void CometSearchManager::SetParam(const std::string &name, const string &strValu
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1723,8 +1846,11 @@ void CometSearchManager::SetParam(const std::string &name, const string &strValu
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1746,8 +1872,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1769,8 +1898,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1792,8 +1924,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1815,8 +1950,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1838,8 +1976,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -1861,8 +2002,11 @@ void CometSearchManager::SetParam(const string &name, const string &strValue, co
    pair<map<string, CometParam*>::iterator,bool> ret = _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
    if (false == ret.second)
    {
-      _mapStaticParams.erase(name);
-      _mapStaticParams.insert(std::pair<std::string, CometParam*>(name, pParam));
+      // insert() left the existing entry unchanged on failure -- ret.first points at it.
+      // Free the CometParam* being replaced before overwriting it, instead of erase()+
+      // insert(), which drops the map entry but leaks the heap object it pointed to.
+      delete ret.first->second;
+      ret.first->second = pParam;
    }
 }
 
@@ -2161,16 +2305,24 @@ bool CometSearchManager::DoSearch()
 }
 
 
+// Shared by InitializeSingleSpectrumSearch() and InitializeSingleSpectrumMS1Search() --
+// previously each had its own separate mutex, so concurrent first-time MS1+MS2 init from
+// two C# Tasks (which the API permits; only the shipped driver happens to init
+// sequentially) could run both functions' bodies at once. Both call the same
+// InitializeStaticParams() (guarded only by a plain, non-atomic bool -- safe only because
+// nothing else races it) and both fillPool() the same ThreadPool (no internal lock of its
+// own) -- one shared mutex serializes the two init paths against each other, closing both
+// races at once.
+static std::mutex g_initSingleSpectrumMutex;
+
 bool CometSearchManager::InitializeSingleSpectrumSearch()
 {
-   static std::mutex g_initSingleSearchMutex;
-
    // Fast path: atomic acquire-load avoids data race while bypassing the mutex
    // when initialization is already complete.
    if (singleSearchInitializationComplete.load(std::memory_order_acquire))
       return true;
 
-   std::lock_guard<std::mutex> lock(g_initSingleSearchMutex);
+   std::lock_guard<std::mutex> lock(g_initSingleSpectrumMutex);
 
    // Double-check under the lock (relaxed is sufficient: the mutex provides
    // the required happens-before relationship).
@@ -2361,8 +2513,8 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
          // Mirrors the FI_DB branch above -- without this, g_AScoreInterface stays
          // NULL for the entire session (CometSearch::EnsurePeptideIndexLoaded()'s own
          // AScoreInterface-creation code never runs for RTS PI_DB, since it's gated on
-         // g_bPeptideIndexRead being false, and this function already set it to true
-         // above before that code path is ever reached).
+         // g_bPeptideIndexFullyInitialized being false, and this function already set
+         // it to true above before that code path is ever reached).
          SetAScoreOptions(g_AScoreOptions);
 
          g_AScoreInterface = CreateAScoreDllInterface();
@@ -2376,6 +2528,13 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
       }
 
       g_bPeptideIndexRead = true;
+
+      // Mass-init and (if enabled) AScorePro setup above are both done, so
+      // EnsurePeptideIndexLoaded()'s unlocked fast-path check can safely treat the
+      // index as fully ready from here on -- without this, every RTS query would take
+      // EnsurePeptideIndexLoaded()'s locked slow path forever, since nothing else in
+      // this exclusively-mutexed one-time init ever sets that flag.
+      g_bPeptideIndexFullyInitialized = true;
    }
 
    // --- End: peptide index initialization for iDbType == 2 ---
@@ -2418,12 +2577,10 @@ void CometSearchManager::FinalizeSingleSpectrumSearch()
 // Task 1.1 + 1.2: Load reference library once during init; fix thread pool deadlock
 bool CometSearchManager::InitializeSingleSpectrumMS1Search(const double dMaxQueryRT)
 {
-   static std::mutex g_initSingleMS1SearchMutex;
-
    if (singleSearchMS1InitializationComplete.load(std::memory_order_acquire))
       return true;
 
-   std::lock_guard<std::mutex> lock(g_initSingleMS1SearchMutex);
+   std::lock_guard<std::mutex> lock(g_initSingleSpectrumMutex);
 
    if (singleSearchMS1InitializationComplete.load(std::memory_order_relaxed))
       return true;
@@ -2720,6 +2877,16 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
    // g_pvProteinNameCache populated at init -- no file I/O per spectrum.
    // For FASTA_DB, we still need to open the file.
+   //
+   // In practice this FASTA_DB branch (and the matching one in Step 6 below) never
+   // executes: RTS single-spectrum search doesn't support FASTA_DB at all, by design --
+   // CometSearch::RunSearch(Query*) only handles FI_DB/PI_DB and returns false for
+   // anything else, and this function's own bSucceeded check right after the RunSearch()
+   // call above goes to cleanup_results before ever reaching here. Confirmed with Jimmy
+   // 2026-08-22; see docs/20260819_fablereview.md's P5 write-up and
+   // docs/RealTimeSearch.md's supported-DB-types summary. Left as dead code rather than
+   // removed, since it costs nothing to keep and documents what *would* be needed if
+   // FASTA_DB RTS support were ever added.
 #ifdef RTS_TIMING
    tTimingMark = hrc::now();
 #endif
@@ -2832,7 +2999,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          }
          else
          {
-            // Non-indexed (FASTA) path: read protein names from the open file handle
+            // Non-indexed (FASTA) path: read protein names from the open file handle.
+            // Dead in practice -- see Step 5's comment above for why FASTA_DB never
+            // reaches this function's body at all.
             char szProteinName[WIDTH_REFERENCE];
             int iPrintDuplicateProteinCt = 0;
 

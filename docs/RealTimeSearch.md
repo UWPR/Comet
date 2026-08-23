@@ -31,6 +31,24 @@ bool DoSingleSpectrumSearchMultiResults(
 
 Returns up to `topN` hits. Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
 
+**Supported database types: FI_DB and PI_DB only -- `database_name` pointing at a plain
+FASTA (`FASTA_DB`) is not supported here, by design, and always fails.** `InitializeSingleSpectrumSearch()`
+itself has no FASTA_DB-specific rejection and returns success either way, but every
+subsequent `DoSingleSpectrumSearchMultiResults()` call fails: it calls
+`CometSearch::RunSearch(Query*)` (the RTS single-spectrum search dispatcher) unconditionally,
+and that function only implements `if (iDbType == FI_DB)` / `else if (iDbType == PI_DB)` --
+any other value, including `FASTA_DB`, falls through to `return false` with
+`"Error - index search but iDbType = 0"`. `DoSingleSpectrumSearchMultiResults()`'s own
+`if (!bSucceeded) goto cleanup_results;` right after that call then skips the rest of the
+function, including a `FASTA_DB`-specific protein-name-lookup branch further down that
+consequently can never run. This is intentional, not a gap needing a fix (confirmed with
+Jimmy 2026-08-22, `docs/20260819_fablereview.md`'s P5 write-up has the discovery story):
+RTS is built around a pre-built, read-only index so a spectrum can be searched without any
+per-call digestion; on-the-fly FASTA digestion is what the batch `CometSearch::DoSearch(sDBEntry&, ...)`
+path is for. If FASTA_DB RTS support is ever genuinely wanted, `RunSearch(Query*)` needs a
+third branch that does the on-the-fly digestion equivalent of `DoSearch()`, which is a
+substantially larger change than anything touched here.
+
 ### MS1 spectral library search
 
 ```cpp
@@ -54,6 +72,16 @@ Scores against the in-memory spectral library (`g_vSpecLib`). Also safe for conc
 ---
 
 ## Initialization
+
+Both `InitializeSingleSpectrumSearch()` and `InitializeSingleSpectrumMS1Search()`
+serialize their slow (first-caller) path through one shared `static std::mutex
+g_initSingleSpectrumMutex` in `CometSearchManager.cpp` -- previously each had its
+own separate mutex, so a concurrent first-time MS1+MS2 init from two C# Tasks
+(which the API permits, even though the shipped driver happens to init
+sequentially) could run both functions' bodies at once, racing on the shared
+`InitializeStaticParams()` call (guarded only by a plain, non-atomic bool) and
+the shared `ThreadPool::fillPool()` call. The two atomic completion flags
+below remain separate; only the slow-path lock is shared.
 
 ### MS2 (`InitializeSingleSpectrumSearch`)
 
@@ -149,9 +177,20 @@ slow path: mutex-guarded check + initialization
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
-                                gated on g_bPeptideIndexRead being false, and this branch
-                                already sets it true below)
+                                gated on g_bPeptideIndexFullyInitialized being false, and
+                                this branch already sets it true below)
        g_bPeptideIndexRead = true
+       g_bPeptideIndexFullyInitialized = true   <- gates EnsurePeptideIndexLoaded()'s own
+                                                    fast path (see the per-call flow's
+                                                    "EnsurePeptideIndexLoaded(true)" step
+                                                    below); deliberately separate from, and
+                                                    set after, g_bPeptideIndexRead -- the
+                                                    latter alone would let a second RTS
+                                                    thread's EnsurePeptideIndexLoaded() call
+                                                    see the index as "read" while this thread
+                                                    is still inside the mass-init/AScorePro
+                                                    setup above, before it's actually safe
+                                                    to search against
   -> singleSearchInitializationComplete.store(true, release)
 ```
 
@@ -455,6 +494,7 @@ clock via its own `Query*`; there is no shared timeout state.
 **Shared pools (allocated once at init or once per thread, reused across calls):**
 
 - `CometPreprocess::GetRtsRawDataBuffer()` -- returns the thread-local raw-data buffer owned by a per-thread `RtsScratch` pool, initializing it on first use per thread. This replaced an earlier per-call `new[] iArraySizeGlobal doubles` / `delete[]` design (`pdTmpSpectrum` is no longer a per-call heap allocation).
+  - **Per-thread memory footprint (P10):** `RtsScratch::EnsureInitialized()` allocates 3 double arrays and 3 float arrays each sized `iArraySizeGlobal` (plus a small `iXcorrProcessingOffset` pad on the doubles), a sparse-matrix child pool sized `6 * (iArraySizeGlobal / SPARSE_MATRIX_SIZE + 2)` floats, and a `Results`/`Decoys` pool (~1.6 KB per stored result x `iNumStored`). `iArraySizeGlobal` scales with `peptide_mass_high / fragment_bin_tol`, so this totals roughly **~300 KB/thread at default low-res settings up to ~15 MB/thread at high-resolution `fragment_bin_tol` (e.g. 0.02)** -- allocated once per thread and held for that thread's lifetime, not per spectrum. A C# host that spins up a large `Task` pool for RTS (rather than a small, bounded worker pool) multiplies this by however many distinct native threads end up running RTS work, which is worth sizing against for high-res searches with many concurrent threads.
 - `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems)` (`CometSearch.cpp:63`; the latter two args size the PI_DB target/decoy scratch buffers) (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
 - **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
@@ -466,7 +506,10 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
 
 1. Declare the method in `CometInterfaces.h` (`ICometSearchManager`).
 2. Implement in `CometSearchManager.cpp` using the thread-local pattern:
-   - Use `PreprocessSingleSpectrumThreadLocal()` (not `PreprocessSingleSpectrum()`).
+   - Use `PreprocessSingleSpectrumThreadLocal()` -- the old non-thread-local
+     `PreprocessSingleSpectrum()`/`PreprocessMS1SingleSpectrum()` entry points that pushed
+     directly into `SearchSession` were dead code (carrying a batch-only NaN transient) and
+     have been deleted.
    - Set `pQuery->tSearchStart` right after preprocessing, then call `CometSearch::RunSearch(pQuery)` (not `RunSearch(ThreadPool*)` or the pre-assigned-slot `RunSearch(Query*, int iSlot)` overload used by the fused batch path).
    - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.

@@ -98,6 +98,16 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <!-- Defined here (rather than down by the <Reference> items that also use them) so
+       RAWReader.cpp's ForcedUsingFiles metadata below can reference them: MSBuild
+       evaluates property/item groups in file order, so a PropertyGroup after the ItemGroup
+       that uses its properties would see them as empty. -->
+  <PropertyGroup>
+    <ThermoNuGetCache>$(SolutionDir)packages\thermofisher.commoncore.</ThermoNuGetCache>
+    <!-- Single source of truth for the package version below. Keep in sync with the
+         PackageReference versions in RealtimeSearch.csproj when bumping. -->
+    <ThermoVersion>5.0.0.93</ThermoVersion>
+  </PropertyGroup>
   <!-- Project-level CLRSupport (above) defaults every file to /clr; only RAWReader.cpp (which
        talks to RawFileReader .NET) actually needs that, so every other file explicitly opts
        back out to plain native compilation. See docs/20260618_RawFileReaderMigration.md. -->
@@ -108,7 +118,23 @@
     <ClCompile Include="..\src\MSToolkit\MSReader.cpp">
       <CompileAsManaged>false</CompileAsManaged>
     </ClCompile>
-    <ClCompile Include="..\src\MSToolkit\RAWReader.cpp" />
+    <!-- ForcedUsingFiles set explicitly (2026-08-21): RAWReader.cpp has no #using directives
+         of its own, relying entirely on the Reference items below (each an assembly + HintPath,
+         normally enough for VC++ to auto-generate the matching /FU compiler switch) to make
+         ThermoFisher's managed types visible. Confirmed via a diagnostic-verbosity build that a
+         plain command-line MSBuild.exe invocation (MSBuild.exe Comet.sln ..., i.e. not through
+         the Visual Studio IDE) was not translating those Reference items into /FU switches at
+         all: the actual CL.exe command line for this file carried only mscorlib.dll's /FU,
+         with both ThermoFisher ones silently absent despite the referenced DLLs existing on disk
+         at the exact HintPath, causing every ThermoFisher:: type to read as an undeclared
+         namespace. Setting ForcedUsingFiles here bypasses whatever step in that pipeline was
+         dropping them, by pointing the compiler at both DLLs directly; verified fixed via a full
+         `MSBuild.exe Comet.sln /p:Configuration=Release /p:Platform=x64` build producing
+         MSToolkit.lib, CometSearch.lib, CometWrapper.dll, RealtimeSearch.exe, and Comet.exe with
+         zero errors. -->
+    <ClCompile Include="..\src\MSToolkit\RAWReader.cpp">
+      <ForcedUsingFiles>$(ThermoNuGetCache)data\$(ThermoVersion)\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll;$(ThermoNuGetCache)rawfilereader\$(ThermoVersion)\lib\netstandard2.0\ThermoFisher.CommonCore.RawFileReader.dll;%(ForcedUsingFiles)</ForcedUsingFiles>
+    </ClCompile>
     <ClCompile Include="..\src\MSToolkit\Spectrum.cpp">
       <CompileAsManaged>false</CompileAsManaged>
     </ClCompile>
@@ -165,12 +191,6 @@
        the working approach. The packages restore into $(SolutionDir)packages (repo-local,
        set via globalPackagesFolder in nuget.config) rather than the per-user global cache;
        see the note there for why. -->
-  <PropertyGroup>
-    <ThermoNuGetCache>$(SolutionDir)packages\thermofisher.commoncore.</ThermoNuGetCache>
-    <!-- Single source of truth for the package version below. Keep in sync with the
-         PackageReference versions in RealtimeSearch.csproj when bumping. -->
-    <ThermoVersion>5.0.0.93</ThermoVersion>
-  </PropertyGroup>
   <ItemGroup>
     <Reference Include="ThermoFisher.CommonCore.Data">
       <HintPath>$(ThermoNuGetCache)data\$(ThermoVersion)\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll</HintPath>

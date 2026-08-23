@@ -87,14 +87,6 @@ public:
    static bool DoneProcessingAllSpectra();
    static bool AllocateMemory(int maxNumThreads);
    static bool DeallocateMemory(int maxNumThreads);
-   static bool PreprocessSingleSpectrum(int iPrecursorCharge,
-                                        double dMZ,
-                                        double *pdMass,
-                                        double *pdInten,
-                                        int iNumPeaks,
-                                        double *pdTmpSpectrum,
-                                        SearchSession& session);
-
    // Thread-local version: returns Query* without touching g_pvQuery.
    // Caller owns the returned Query* and must delete it when done.
    static Query* PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge,
@@ -104,10 +96,6 @@ public:
                                                      int iNumPeaks,
                                                      double *pdTmpSpectrum);
 
-   static bool PreprocessMS1SingleSpectrum(double* pdMass,
-                                           double* pdInten,
-                                           int iNumPeaks,
-                                           SearchSession& session);
    // Thread-local version: returns QueryMS1* without touching g_pvQueryMS1.
    // Caller owns the returned QueryMS1* and must delete it when done.
    static QueryMS1* PreprocessMS1SingleSpectrumThreadLocal(double* pdMass,
@@ -213,8 +201,13 @@ private:
    // docs/20260723_ExtendFusedBatchPath.md). Currently only the fused batch path
    // (FusedSearchSpectrum) passes non-null for either; nullptr preserves the
    // prior per-spectrum-heap-allocation behavior for any other caller.
+   // P4: mstSpectrum is a reference, not a by-value copy -- Preprocess() is called once
+   // per guessed charge state (up to 2x/spectrum for a 2+/3+ guess), and previously
+   // copied the whole peak vector on every call just to hand it straight to LoadIons(),
+   // which copied it again. Neither function needs to mutate the caller's spectrum (see
+   // LoadIons()'s own comment on its conditional sortIntensity() copy).
    static bool Preprocess(struct Query *pScoring,
-                          Spectrum mstSpectrum,
+                          Spectrum& mstSpectrum,
                           double *pdTmpRawData,
                           double *pdTmpFastXcorrData,
                           double *pdTmpCorrelationData,
@@ -225,14 +218,14 @@ private:
                           FusedPointerArena *pPtrArena = nullptr);
    static bool LoadIons(struct Query *pScoring,
                         double *pdTmpRawData,
-                        Spectrum mstSpectrum,
+                        Spectrum& mstSpectrum,
                         struct PreprocessStruct *pPre);
    static void MakeCorrData(double* pdTmpRawData,
                             double* pdTmpCorrelationData,
                             int iHighestIon,
                             double dHighestIntensity);
 
-   // Shared core of PreprocessSingleSpectrum and PreprocessSingleSpectrumThreadLocal.
+   // Core of PreprocessSingleSpectrumThreadLocal.
    // Builds a fully preprocessed Query* from the input spectrum data.
    // Does NOT push the Query* into g_pvQuery.
    // When bUseThreadLocalPool=true the five scratch buffers and sparse child arrays

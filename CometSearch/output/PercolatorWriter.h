@@ -35,6 +35,8 @@ public:
          ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
          return false;
       }
+      // P11: see TxtWriter.h's identical setvbuf comment.
+      setvbuf(_fpout, NULL, _IOFBF, 1 << 20);
       CometWritePercolator::WritePercolatorHeader(_fpout);
       return true;
    }

@@ -41,7 +41,8 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 | `g_vFragmentPeptides` | `vector<FragmentPeptidesStruct>` | Mass-sorted list of all (peptide, mod-state) combinations. Each entry references a row in `g_vRawPeptides` via `iWhichPeptide`. |
 | `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | List of unique unmodified peptide sequences with protein file-position pointers. |
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
-| `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` once the peptide index has been fully loaded. Checked with `acquire` ordering before RTS searches begin. |
+| `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` by `CometPeptideIndex::ReadPeptideIndex()` once the `.idx` file itself has been read -- **not** the same as "fully initialized" (see `g_bPeptideIndexFullyInitialized` below, which gates on more than this). |
+| `g_bPeptideIndexFullyInitialized` | `std::atomic<bool>` | Set to `true` only after `CometSearch::EnsurePeptideIndexLoaded()` has completed *all* of: `ReadPeptideIndex()` (which sets `g_bPeptideIndexRead`), `InitializeMassesFromPeptideIndex()`, and (if `print_ascorepro_score`) AScorePro interface creation. This exists because a second concurrent caller (another RTS Task's thread, which the API permits) could otherwise observe `g_bPeptideIndexRead == true` while the first caller is still finishing mass-init/AScorePro setup under the lock, and search with masses that aren't ready yet. `EnsurePeptideIndexLoaded()`'s unlocked fast-path check gates on this flag, not on `g_bPeptideIndexRead`. |
 | `g_bPlainPeptideIndexRead` | `bool` (plain, not atomic) | FI_DB analogue of `g_bPeptideIndexRead` -- set once `g_vRawPeptides` has been fully loaded (`CometFragmentIndex.cpp:1604`, re-set at `CometSearchManager.cpp:2291`), then read from RTS search threads (`CometSearch.cpp:175,240`). Not atomic, unlike its sibling; safe in practice only because writes are confined to the init path under the `singleSearchInitializationComplete` happens-before edge. |
 
 ---
@@ -145,7 +146,7 @@ Not a global variable, but the direct replacement for the old `_pbSearchMemoryPo
 | `singleSearchInitializationComplete` | `std::atomic<bool>` | Set to `true` (with `release` ordering) after `InitializeSingleSpectrumSearch()` completes. Checked with `acquire` ordering at the top of `DoSingleSpectrumSearchMultiResults()`. Ensures all RTS threads see fully initialized globals. |
 | `singleSearchMS1InitializationComplete` | `std::atomic<bool>` | Same pattern for `InitializeSingleSpectrumMS1Search()` / `DoMS1SearchMultiResults()`. |
 
-The happens-before edge that makes the `acquire`/`release` ordering meaningful comes from a function-local `static std::mutex` guarding the slow (first-call) path in each init function -- `g_initSingleSearchMutex` in `InitializeSingleSpectrumSearch()` (`CometSearchManager.cpp:2162`) and `g_initSingleMS1SearchMutex` in `InitializeSingleSpectrumMS1Search()` (`CometSearchManager.cpp:2376`). These are function-scoped statics (no `extern`, inaccessible outside the function), so they're not full "globals" in the sense of the rest of this table, but they're what actually serializes concurrent first-callers during double-checked locking.
+The happens-before edge that makes the `acquire`/`release` ordering meaningful comes from a single file-static `std::mutex`, `g_initSingleSpectrumMutex` (`CometSearchManager.cpp:2309`), shared by both `InitializeSingleSpectrumSearch()` and `InitializeSingleSpectrumMS1Search()`. It used to be two separate function-local statics, one per function; they were unified because both functions call the same `InitializeStaticParams()` (guarded only by a plain, non-atomic bool) and both `fillPool()` the same `ThreadPool` (no internal lock of its own) -- concurrent first-time MS1+MS2 init from two C# Tasks (which the API permits) could otherwise run both functions' bodies at once and race on either. `g_initSingleSpectrumMutex` is file-static (no `extern`, inaccessible outside the translation unit), so it's not a full "global" in the sense of the rest of this table, but it's what actually serializes concurrent first-callers during double-checked locking.
 
 ---
 
@@ -213,7 +214,9 @@ Always shared mutable -- use sparingly from hot paths:
 Atomic, checked with acquire/release ordering:
   singleSearchInitializationComplete, singleSearchMS1InitializationComplete
   (CometSearchManager instance members, not free globals -- see "RTS
-  initialization flags" above), g_bPeptideIndexRead
+  initialization flags" above), g_bPeptideIndexRead,
+  g_bPeptideIndexFullyInitialized (the one EnsurePeptideIndexLoaded()'s
+  fast-path actually gates on -- see "Fragment index" above)
 
 Plain bool, NOT atomic, but written only inside the init paths (relies on the
 above happens-before edge for safety -- see their entries above):

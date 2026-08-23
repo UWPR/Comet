@@ -30,6 +30,10 @@ typedef __int64 comet_fileoffset_t;
 #define comet_ftell(handle) _ftelli64(handle)
 #define PATH_MAX _MAX_PATH
 #define realpath(N,R) _fullpath((R),(N),PATH_MAX)
+// strtok_s has the same (str, delim, context) signature/order as POSIX strtok_r --
+// unlike localtime_s below, a straight #define is sufficient. Same precedent already
+// used by MSToolkit (MSToolkitTypes.h, mzParser.h).
+#define strtok_r strtok_s
 #else
 #include <unistd.h>
 #include <sys/stat.h>
@@ -67,6 +71,24 @@ using namespace std;
 #include <functional>
 
 #include "githubsha.h"
+
+// Thread-safe drop-in replacement for localtime(&t): plain localtime() returns a pointer
+// into a single process-global static struct tm, so two threads calling it concurrently
+// (or one thread using its previous result after another thread's call overwrote it) race.
+// localtime_r (POSIX) and localtime_s (MSVC) both take a caller-supplied buffer instead --
+// but their signatures aren't compatible enough for a single #define (argument order and
+// return type both differ), so this wraps them behind one signature matching localtime()'s.
+// thread_local storage keeps each calling thread's buffer independent without every call
+// site having to declare and pass its own.
+inline struct tm* comet_localtime(const time_t* timep)
+{
+   thread_local struct tm tmResult;
+#ifdef _WIN32
+   return (localtime_s(&tmResult, timep) == 0) ? &tmResult : nullptr;
+#else
+   return localtime_r(timep, &tmResult);
+#endif
+}
 
 #define comet_version   "2026.02 rev. 2"
 #define copyright "(c) University of Washington"
