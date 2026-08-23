@@ -395,9 +395,43 @@ repo path, never rely on copies.
     another spontaneous WSL restart (the same environment failure mode that killed the
     original 51h Carafe run on 2026-08-16) -- the two-phase writer left no misleading
     half-store, exactly as designed; the rerun completed clean.
-- **M3 -- mask-from-cps**: `carafe_ms2_to_fi_mask.py --from-cps`, verified by rebuilding
-  both real phospho masks and diffing byte-for-byte (or bit-flip-count, per Section 5.4)
-  against the chunk-built originals; timing target: full-population mask build in minutes.
+- **M3 -- mask-from-cps** -- **DONE 2026-08-22**:
+  - Implemented as its own CLI, **`tools/carafe_cps_to_fi_mask.py`** (deviation from the
+    "--from-cps flag on carafe_ms2_to_fi_mask.py" sketch above: that script's 6 positional
+    TSV arguments have no meaning in cps mode -- same capability, cleaner interface; all
+    decision logic still shared via carafe_cps.compute_variant_mask_from_cps()).
+    Scale design: the variant map is streamed in parallel byte ranges (never loaded whole
+    -- the TSV builder's whole-file read would be tens of GB here), tuple-group boundary
+    handling at arbitrary byte splits is covered by an exhaustive every-split-point unit
+    test (which caught three real boundary bugs pre-run), and workers return entries
+    packed to bytes (the M2 lesson). 10 unit tests total in test_carafe_cps.py, all green.
+  - **A real assumption was falsified by the loud-abort check, exactly as Section 9
+    hoped**: variant-map enumeration order is NOT globally key-ordered (observed:
+    (1267306, 2458, ...) followed by (762231, 132169, ...) -- mod-variant enumeration
+    does not nest inside peptide order; the chunked TSV builder never noticed because it
+    re-sorted at every chunk write and again at merge). First full-scale run aborted
+    loudly with no output file, as designed. Fix: workers sort their own ranges, parent
+    k-way-merges the sorted runs (heapq.merge) while streaming the file out; the written
+    file is then re-read and verified strictly increasing (sort order + key uniqueness).
+  - **noNL rebuild, full scale**: 124,863,304 entries in **23m43s** (12 workers, peak RSS
+    6.2GB), vs the chunked TSV path's ~5.5h build + 15min merge -- **~14x faster**, and
+    the plan's "minutes" target is honestly "tens of minutes" (24), not single digits.
+    Full-population streaming diff vs the chunk-built ground-truth mask
+    (`phospho_charge2_noNL_ignoremodloss.fi_mask`): headers identical field-for-field,
+    **0 key mismatches across all 124,863,304 entry pairs**, 11,512 masks differ
+    (**0.0092%**, single-bit threshold-boundary flips), kept-bit delta **+62 of
+    1,176,101,839 bits**. Consistent with Section 5.4's characterized u16 quantization
+    rate (0.0075-0.0086% on samples).
+  - **withNL mask built for the first time at full scale** (the chunked path had only
+    ever built the noNL flavor): `phospho_charge2_withNL_fromcps.fi_mask`, 124,863,304
+    entries in 24m57s. No chunk-built ground truth exists for it, so verification is a
+    spot-check against the quantization-free reference (direct TSV-path
+    compute_variant_mask() over the raw prediction chunks, has_modloss=True) on 3 sample
+    chunks / 113,304 variants, keys looked up by binary search in the built file:
+    **113,300 identical, 4 differ (0.0035%), 0 missing keys**.
+  - Both real masks (`*_fromcps.fi_mask`) now exist under `20260420-human-phosho/`,
+    regenerable at any threshold/floor from the 31GB store in ~24 min without the raw
+    TSVs and without Carafe.
 - **M4 -- `carafe_prerun.sh` driver**: orchestration + resume + docs; end-to-end dry run on
   a small database (the 500-protein Phase 5 fixture) and stage-resume tests.
 - **M5 -- load-path work IF M1b demands it** (Section 7.2 options 2/3) -- **CANCELLED

@@ -218,6 +218,166 @@ def test_from_cps_multicharge_max(failures):
     check(want == got, f"multicharge merge mismatch:\n  tsv={want}\n  cps={got}", failures)
 
 
+def _make_vmap(path, groups):
+    """groups: list of (key4, [row_index,...]) written in order, one line per
+    (row_index, key) pair -- same shape idx_to_carafe.py writes."""
+    with open(path, "wb") as f:
+        f.write(b"# VarModConfig: TESTCONFIG\r\n")
+        f.write(b"row_index\tiWhichPeptide\tmodNumIdx\tcNtermMod\tcCtermMod\r\n")
+        for key, rows in groups:
+            for ri in rows:
+                f.write(f"{ri}\t{key[0]}\t{key[1]}\t{key[2]}\t{key[3]}\r\n".encode("ascii"))
+
+
+def test_vmap_range_split_covers_each_group_exactly_once(failures):
+    """The parallel byte-range splitter (carafe_cps_to_fi_mask.iter_vmap_groups) must yield
+    every tuple-group exactly once across ANY partition of the byte range -- including
+    boundaries landing mid-line and mid-group (multi-row groups)."""
+    import carafe_cps_to_fi_mask as cfm
+
+    groups = [
+        ((1, -1, -1, -1), [0]),
+        ((1, 0, -1, -1), [1, 2]),      # multi-row group (two charge states)
+        ((2, -1, -1, -1), [3]),
+        ((2, 5, -1, -1), [4, 5]),
+        ((3, -1, -1, -1), [6]),
+        ((7, 1, 0, -1), [7]),
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        vp = os.path.join(tmp, "v.tsv")
+        _make_vmap(vp, groups)
+        data_start, vmc = cfm.find_data_start(vp)
+        check(vmc == "TESTCONFIG", f"VarModConfig parse: {vmc!r}", failures)
+        size = os.path.getsize(vp)
+
+        # Single range must reproduce the groups exactly.
+        got = list(cfm.iter_vmap_groups(vp, data_start, data_start, size))
+        check(got == groups, f"single-range groups mismatch:\n{got}\nvs\n{groups}", failures)
+
+        # Every possible 2-way split point (byte granularity!) must still yield each group
+        # exactly once, in order, across the two ranges combined.
+        for split in range(data_start + 1, size):
+            a = list(cfm.iter_vmap_groups(vp, data_start, data_start, split))
+            b = list(cfm.iter_vmap_groups(vp, data_start, split, size))
+            combined = a + b
+            if combined != groups:
+                check(False, f"split at byte {split}: groups wrong\n  a={a}\n  b={b}",
+                      failures)
+                break
+
+        # And an arbitrary 3-way split.
+        s1 = data_start + (size - data_start) // 3
+        s2 = data_start + 2 * (size - data_start) // 3
+        combined = (list(cfm.iter_vmap_groups(vp, data_start, data_start, s1))
+                    + list(cfm.iter_vmap_groups(vp, data_start, s1, s2))
+                    + list(cfm.iter_vmap_groups(vp, data_start, s2, size)))
+        check(combined == groups, f"3-way split groups wrong: {combined}", failures)
+
+
+def test_cps_to_fi_mask_end_to_end_matches_tsv_builder(failures):
+    """Full pipeline equivalence on synthetic lossless data: a tiny store + variant map,
+    run through carafe_cps_to_fi_mask's worker path, must produce entries identical to
+    computing each variant with the TSV path's compute_variant_mask() -- in both modes."""
+    import carafe_cps_to_fi_mask as cfm
+
+    qmax = 65535
+    base8 = 6.5535
+    # Two variants: one unmodified single-charge (rows 0), one modified two-charge (rows 1,2)
+    nAA = 5
+    steps_rows = [
+        [(100, 0, 900, 0, 0, 0, 0, 0), (500, 0, 400, 0, 0, 0, 0, 0),
+         (50, 0, 60, 0, 0, 0, 0, 0), (10, 0, 20, 0, 0, 0, 0, 0)],
+        [(200, 0, 100, 0, 300, 0, 400, 0), (600, 65535, 700, 0, 800, 0, 900, 0),
+         (1, 0, 2, 0, 3, 0, 4, 0), (0, 0, 0, 0, 0, 0, 0, 0)],
+        [(150, 0, 250, 0, 350, 0, 450, 0), (550, 0, 650, 0, 750, 0, 850, 0),
+         (5, 0, 6, 0, 7, 0, 8, 0), (9, 0, 10, 0, 11, 0, 12, 0)],
+    ]
+    float_rows = [[tuple(s / qmax * base8 for s in row) for row in rows]
+                  for rows in steps_rows]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        sp = os.path.join(tmp, "t.cps")
+        w = cps.CpsWriter(sp, source_rows=0, source_head_crc="0" * 8,
+                           quant="u16", mode="phospho")
+        for rows in steps_rows:
+            b8 = max(s for r in rows for s in r) / qmax * base8
+            b4 = max(s for r in rows for s in r[:4]) / qmax * base8
+            w.append_row(nAA, b8, b4, [tuple(r[i] for i in (0, 2, 4, 6)) for r in rows])
+        w.source_rows = 3
+        w.finalize()
+
+        vp = os.path.join(tmp, "v.tsv")
+        groups = [((10, -1, -1, -1), [0]), ((10, 3, -1, -1), [1, 2])]
+        _make_vmap(vp, groups)
+        data_start, _ = cfm.find_data_start(vp)
+        size = os.path.getsize(vp)
+
+        for ignore_modloss in (False, True):
+            has_modloss = not ignore_modloss
+            _, blob, n = cfm.process_range(
+                (0, vp, data_start, data_start, size, sp, 0.10, 2, has_modloss))
+            check(n == 2, f"expected 2 entries, got {n}", failures)
+            got_entries = list(struct.iter_unpack(fi_mask.ENTRY_FMT, blob))
+
+            for (key, rows), got in zip(groups, got_entries):
+                merged8 = float_rows[rows[0]]
+                if len(rows) > 1:
+                    merged8 = [tuple(max(vals) for vals in zip(*rs))
+                               for rs in zip(*(float_rows[ri] for ri in rows))]
+                if ignore_modloss:
+                    merged8_for_tsv = merged8
+                    want = fi_mask.compute_variant_mask(
+                        [r[:4] + (0.0,) * 4 for r in merged8_for_tsv], nAA, 0.10, 2,
+                        has_modloss=False, is_modified=(key[1] != -1))
+                else:
+                    want = fi_mask.compute_variant_mask(
+                        merged8, nAA, 0.10, 2, has_modloss=True,
+                        is_modified=(key[1] != -1))
+                check(got[:4] == key and got[4:] == want[:4],
+                      f"ignore_modloss={ignore_modloss} key={key}: entry "
+                      f"{got} != want key+{want[:4]}", failures)
+
+
+def test_worker_sorts_and_merge_restores_global_order(failures):
+    """The real 124.8M-row variant map is NOT globally key-ordered (empirically: mod-variant
+    enumeration doesn't nest inside peptide order), so workers must sort their own ranges
+    and merge_sorted_runs() must restore global order across ranges whose key spans
+    OVERLAP. Fixture: two ranges with interleaved keys, out of order within each range."""
+    import carafe_cps_to_fi_mask as cfm
+
+    nAA = 3
+    with tempfile.TemporaryDirectory() as tmp:
+        sp = os.path.join(tmp, "t.cps")
+        w = cps.CpsWriter(sp, source_rows=0, source_head_crc="0" * 8,
+                           quant="u16", mode="phospho")
+        for _ in range(4):
+            w.append_row(nAA, 1.0, 1.0, [(65535, 65535, 0, 0), (65535, 65535, 0, 0)])
+        w.source_rows = 4
+        w.finalize()
+
+        # Range A gets keys (50,...) then (10,...); range B gets (40,...) then (20,...) --
+        # each internally unsorted, spans overlapping.
+        vp_a = os.path.join(tmp, "a.tsv")
+        _make_vmap(vp_a, [((50, -1, -1, -1), [0]), ((10, -1, -1, -1), [1])])
+        vp_b = os.path.join(tmp, "b.tsv")
+        _make_vmap(vp_b, [((40, 2, -1, -1), [2]), ((20, -1, -1, -1), [3])])
+
+        blobs = []
+        for vp in (vp_a, vp_b):
+            ds, _ = cfm.find_data_start(vp)
+            _, blob, n = cfm.process_range(
+                (0, vp, ds, ds, os.path.getsize(vp), sp, 0.10, 1, True))
+            check(n == 2, f"{vp}: expected 2 entries, got {n}", failures)
+            keys = [k for k, _ in cfm.iter_packed_entries(blob)]
+            check(keys == sorted(keys), f"worker output not sorted: {keys}", failures)
+            blobs.append(blob)
+
+        merged_keys = [struct.unpack_from("<Iibb", e)[0]
+                       for e in cfm.merge_sorted_runs(blobs)]
+        check(merged_keys == [10, 20, 40, 50],
+              f"merged order wrong: {merged_keys}", failures)
+
+
 TESTS = [
     test_roundtrip_u8_and_u16,
     test_append_packed_identical_to_append_row,
@@ -226,6 +386,9 @@ TESTS = [
     test_verify_source_crc,
     test_from_cps_matches_tsv_path_when_lossless,
     test_from_cps_multicharge_max,
+    test_vmap_range_split_covers_each_group_exactly_once,
+    test_cps_to_fi_mask_end_to_end_matches_tsv_builder,
+    test_worker_sorts_and_merge_restores_global_order,
 ]
 
 
