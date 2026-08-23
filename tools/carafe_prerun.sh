@@ -45,6 +45,10 @@
 #                          the validated production run used "2")
 #   --include-decoys        pass through to idx_to_carafe.py (production runs did)
 #   --carafe-mode MODE      ai_pred.py --mode (default: phosphorylation)
+#   --parquet               transient parquet mode for stages 4-5 (prediction output
+#                          ~5-9x smaller; stores verified byte-identical to the TSV
+#                          path -- see run_carafe_chunked.sh's --parquet). Runs the
+#                          s5 translator under the Carafe venv python (pandas/pyarrow).
 #   --chunk-size N          run_carafe_chunked.sh chunk size (default 50000)
 #   --quant u8|u16          store quantization (default u16 -- the validated choice;
 #                          u8 diverges on ~2.8%% of variants, see plan doc Section 5.4)
@@ -67,6 +71,7 @@ FLAVOR_PARAMS=()
 CHARGES=""
 INCLUDE_DECOYS=0
 CARAFE_MODE="phosphorylation"
+PARQUET=0
 CHUNK_SIZE=50000
 QUANT="u16"
 MIN_REL=0.10
@@ -93,6 +98,7 @@ while [ $# -gt 0 ]; do
     --charges) CHARGES="$2"; shift 2 ;;
     --include-decoys) INCLUDE_DECOYS=1; shift ;;
     --carafe-mode) CARAFE_MODE="$2"; shift 2 ;;
+    --parquet) PARQUET=1; shift ;;
     --chunk-size) CHUNK_SIZE="$2"; shift 2 ;;
     --quant) QUANT="$2"; shift 2 ;;
     --min-relative-intensity) MIN_REL="$2"; shift 2 ;;
@@ -207,6 +213,7 @@ predict_args=(--in "$OUT_DIR/$PRIMARY.carafe_peptides.tsv" --out "$OUT_DIR/predi
               --tf-type ms2 --limit-chunks 0 --jobs 1)
 [ -n "$VENV_PY" ] && predict_args+=(--venv-python "$VENV_PY")
 [ -n "$AI_PRED_PY" ] && predict_args+=(--ai-pred-py "$AI_PRED_PY")
+[ "$PARQUET" = 1 ] && predict_args+=(--parquet)
 run_stage "s4_predict" "Carafe prediction (run_carafe_chunked.sh -- the expensive step)" \
   bash "$SCRIPT_DIR/run_carafe_chunked.sh" "${predict_args[@]}"
 # run_carafe_chunked.sh logs failures and continues; a chunk without .done means failure.
@@ -220,8 +227,10 @@ fi
 maybe_stop predict
 
 # ---- stage 5: compact prediction store ----
+CPS_PY=python3
+[ "$PARQUET" = 1 ] && CPS_PY="${VENV_PY:-$HOME/.carafe/.venv/bin/python}"
 run_stage "s5_cps" "translate predictions -> $PRIMARY.cps" \
-  python3 "$SCRIPT_DIR/carafe_pred_to_cps.py" \
+  "$CPS_PY" "$SCRIPT_DIR/carafe_pred_to_cps.py" \
     --chunks-dir "$OUT_DIR/prediction/chunks" \
     --preds-dir "$OUT_DIR/prediction/chunk_preds" \
     --source-out-tsv "$OUT_DIR/$PRIMARY.carafe_peptides.tsv" \

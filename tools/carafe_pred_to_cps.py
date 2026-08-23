@@ -39,6 +39,60 @@ import carafe_cps  # noqa: E402
 import carafe_ms2_to_fi_mask as fi_mask  # noqa: E402
 
 
+def _read_ms2_df_parquet(path):
+    """Parquet counterpart of carafe_ms2_to_fi_mask.read_ms2_df() -- same key contract
+    ((str sequence, str mods, str mod_sites, int charge) -> (nAA, start, stop)), same
+    duplicate-key rejection. Requires pandas+pyarrow (the M1a-adopted parquet transient
+    mode -- docs/20260822_carafe_prerun.md Section 6.1; the dependency stays confined to
+    this translator, never the mask tools)."""
+    import pandas as pd
+    df = pd.read_parquet(path, columns=["sequence", "mods", "mod_sites", "charge",
+                                          "nAA", "frag_start_idx", "frag_stop_idx"])
+    out = {}
+    for seq, mods, sites, ch, nAA, start, stop in df.itertuples(index=False, name=None):
+        key = (str(seq),
+               "" if pd.isna(mods) else str(mods),
+               "" if pd.isna(sites) else str(sites),
+               int(ch))
+        if key in out:
+            raise ValueError(f"{path!r}: duplicate content tuple {key!r}")
+        out[key] = (int(nAA), int(start), int(stop))
+    return out
+
+
+class _NpFragmentTable:
+    """Parquet counterpart of carafe_ms2_to_fi_mask.FragmentTable: wraps the prediction
+    matrix (float32, CHANNELS order, zero-padded to 8 columns for general-mode input) and
+    serves table[start:stop] as a list of 8-tuples of Python floats -- the same interface
+    and the same float32-derived values the TSV path produces."""
+
+    def __init__(self, matrix):
+        self._m = matrix   # numpy float32, shape (n, 8)
+
+    def __getitem__(self, sl):
+        return [tuple(float(v) for v in row) for row in self._m[sl]]
+
+
+def _read_ms2_pred_parquet(path):
+    """Parquet counterpart of carafe_ms2_to_fi_mask.read_ms2_pred(): returns
+    (_NpFragmentTable, has_modloss), mirroring its channel handling (all 4 modloss columns
+    present -> phospho mode; none -> general mode, zero-padded; partial -> error)."""
+    import numpy as np
+    import pandas as pd
+    df = pd.read_parquet(path)
+    cols = list(df.columns)
+    n_modloss = sum(1 for c in fi_mask.MODLOSS_CHANNELS if c in cols)
+    if n_modloss not in (0, len(fi_mask.MODLOSS_CHANNELS)):
+        raise ValueError(f"{path!r}: partial modloss columns ({n_modloss} of "
+                          f"{len(fi_mask.MODLOSS_CHANNELS)})")
+    has_modloss = n_modloss == len(fi_mask.MODLOSS_CHANNELS)
+    use = fi_mask.CHANNELS if has_modloss else fi_mask.CHANNELS[:4]
+    m = df[list(use)].to_numpy(dtype=np.float32)
+    if not has_modloss:
+        m = np.concatenate([m, np.zeros((m.shape[0], 4), dtype=np.float32)], axis=1)
+    return _NpFragmentTable(m), has_modloss
+
+
 def process_chunk(job):
     """Worker: one chunk -> (chunk_base, payload_blob, row_sizes, n_rows, n_missing,
     has_modloss). Rows are PACKED TO BYTES here in the worker (carafe_cps.pack_row(), the
@@ -48,12 +102,16 @@ def process_chunk(job):
     result buffer accumulated dozens of those -- ~44GB parent RSS within minutes on the
     first full-scale attempt. Packed, a chunk is ~7MB of bytes and the parent's only work
     is a write, so no backlog can form."""
-    chunk_base, chunk_tsv, ms2_df_tsv, ms2_pred_tsv, quant = job
+    chunk_base, chunk_tsv, ms2_df_path, ms2_pred_path, quant = job
     qchar, qmax = carafe_cps.QUANT_PARAMS[quant]
 
     out_rows = fi_mask.read_out_tsv(chunk_tsv)           # row_index -> content tuple
-    ms2_by_content = fi_mask.read_ms2_df(ms2_df_tsv)     # content tuple -> (nAA, start, stop)
-    pred, has_modloss = fi_mask.read_ms2_pred(ms2_pred_tsv)
+    if ms2_df_path.endswith(".parquet"):
+        ms2_by_content = _read_ms2_df_parquet(ms2_df_path)
+        pred, has_modloss = _read_ms2_pred_parquet(ms2_pred_path)
+    else:
+        ms2_by_content = fi_mask.read_ms2_df(ms2_df_path)   # content -> (nAA, start, stop)
+        pred, has_modloss = fi_mask.read_ms2_pred(ms2_pred_path)
 
     import array
     blob_parts = []
@@ -125,11 +183,17 @@ def main():
     jobs = []
     for ct in chunk_tsvs:
         base = ct.stem
-        pd = Path(args.preds_dir) / base
-        ms2_df = pd / f"{base}_ms2_df.tsv"
-        ms2_pred = pd / f"{base}_ms2_pred.tsv"
+        pdir = Path(args.preds_dir) / base
+        # Per-chunk format auto-detect: parquet outputs (ai_pred.py --fast, the M1a-adopted
+        # transient mode) preferred when present, TSV otherwise. Both must be same-format.
+        ms2_df = pdir / f"{base}_ms2_df.parquet"
+        ms2_pred = pdir / f"{base}_ms2_pred.parquet"
+        if not (ms2_df.is_file() and ms2_pred.is_file()):
+            ms2_df = pdir / f"{base}_ms2_df.tsv"
+            ms2_pred = pdir / f"{base}_ms2_pred.tsv"
         if not ms2_df.is_file() or not ms2_pred.is_file():
-            print(f"missing prediction files for {base} under {pd}", file=sys.stderr)
+            print(f"missing prediction files (parquet or tsv) for {base} under {pdir}",
+                  file=sys.stderr)
             sys.exit(1)
         jobs.append((base, str(ct), str(ms2_df), str(ms2_pred), args.quant))
 

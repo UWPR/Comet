@@ -50,6 +50,14 @@
 #                        carafe_ms2_to_fi_mask.py, not absent. (Measured cost
 #                        of including it is small relative to MS2 prediction,
 #                        so this is not worth working around.)
+#   --parquet            transient parquet mode (docs/20260822_carafe_prerun.md
+#                        Section 6.1): converts each input chunk to parquet inline
+#                        (cached as chunk_NNNNN.input.parquet) and runs ai_pred.py
+#                        --fast, so prediction output lands as parquet (~5-9x
+#                        smaller -- the ~390GB full-proteome-phospho transient
+#                        high-water mark becomes ~45GB). carafe_pred_to_cps.py
+#                        auto-detects parquet chunk outputs. Requires pandas+pyarrow
+#                        in the --venv-python environment (the Carafe venv has them).
 #   --limit-chunks N       stop after N *newly run* chunks this invocation
 #                        (default: 1 -- calibration-safe; pass 0 for "run all
 #                        remaining chunks")
@@ -83,6 +91,7 @@ CHUNK_SIZE=50000
 MODE="phosphorylation"
 DEVICE="cpu"
 TF_TYPE="ms2"
+PARQUET=0
 LIMIT_CHUNKS=1
 JOBS=1
 VENV_PY="$HOME/.carafe/.venv/bin/python"
@@ -96,6 +105,7 @@ while [ $# -gt 0 ]; do
     --mode) MODE="$2"; shift 2 ;;
     --device) DEVICE="$2"; shift 2 ;;
     --tf-type) TF_TYPE="$2"; shift 2 ;;
+    --parquet) PARQUET=1; shift ;;
     --limit-chunks) LIMIT_CHUNKS="$2"; shift 2 ;;
     --jobs) JOBS="$2"; shift 2 ;;
     --venv-python) VENV_PY="$2"; shift 2 ;;
@@ -158,17 +168,47 @@ run_chunk() {
   fi
 
   nrows=$(($(wc -l < "$chunk") - 1))
-  echo "[$base] starting: $nrows rows, mode=$MODE device=$DEVICE tf_type=$TF_TYPE, $(date -u +%FT%TZ)"
+  echo "[$base] starting: $nrows rows, mode=$MODE device=$DEVICE tf_type=$TF_TYPE parquet=$PARQUET, $(date -u +%FT%TZ)"
   date -u +%FT%TZ > "$chunk_out/.start_time"
   start_ts=$(date +%s)
 
+  # --parquet (docs/20260822_carafe_prerun.md Section 6.1, the M1a-adopted transient
+  # mode): ai_pred.py --fast is all-or-nothing -- it reads --in_file with read_parquet()
+  # too -- so the input chunk must be converted first (trivial: ~0.1s and ~14x smaller
+  # than the TSV). Conversion is cached next to the chunk and reused on resume. Outputs
+  # then land as ${base}_*.parquet (~5-9x smaller than TSV); carafe_pred_to_cps.py
+  # auto-detects them.
+  in_file="$chunk"
+  extra_args=()
+  if [ "$PARQUET" = 1 ]; then
+    pq_in="${chunk%.tsv}.input.parquet"
+    if [ ! -f "$pq_in" ]; then
+      "$VENV_PY" - "$chunk" "$pq_in" > "$chunk_out/parquet_convert.log" 2>&1 << 'PYEOF'
+import sys
+import pandas as pd
+src, dst = sys.argv[1], sys.argv[2]
+df = pd.read_csv(src, sep="\t", low_memory=False, dtype={"mod_sites": str, "mods": str})
+df["mods"] = df["mods"].fillna("")
+df["mod_sites"] = df["mod_sites"].fillna("")
+df.to_parquet(dst, compression="zstd")
+PYEOF
+      if [ ! -f "$pq_in" ]; then
+        echo "[$base] FAILED converting input to parquet -- see $chunk_out/parquet_convert.log"
+        return 1
+      fi
+    fi
+    in_file="$pq_in"
+    extra_args=(--fast)
+  fi
+
   "$VENV_PY" "$AI_PRED_PY" \
-      --in_file "$chunk" \
+      --in_file "$in_file" \
       --out_dir "$chunk_out" \
       --out_prefix "$base" \
       --mode "$MODE" \
       --device "$DEVICE" \
       --tf_type "$TF_TYPE" \
+      "${extra_args[@]}" \
       > "$chunk_out/ai_pred.log" 2>&1 &
   ai_pid=$!
 
@@ -210,7 +250,7 @@ run_chunk() {
   echo "[$base] done in ${elapsed}s (${rate} rows/sec), peak RSS ${peak_rss} KB, peak swap-used ${peak_swap} KB"
 }
 export -f run_chunk
-export VENV_PY AI_PRED_PY MODE DEVICE TF_TYPE PRED_DIR
+export VENV_PY AI_PRED_PY MODE DEVICE TF_TYPE PRED_DIR PARQUET
 
 # ---- 3. Drive chunks, honoring --limit-chunks and --jobs ----
 mapfile -t ALL_CHUNKS < <(ls "$CHUNK_DIR"/chunk_*.tsv 2>/dev/null | sort)

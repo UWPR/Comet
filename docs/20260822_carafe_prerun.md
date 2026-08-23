@@ -468,10 +468,44 @@ repo path, never rely on copies.
 - **M5 -- load-path work IF M1b demands it** (Section 7.2 options 2/3) -- **CANCELLED
   2026-08-22**: M1b (Section 7.4) showed the existing load path passes the budget >10x on
   every path; no optimization warranted.
-- **M6 -- housekeeping**: CLAUDE.md + `docs/20260805_carafe.md` cross-references, T-series
-  regression coverage for the new tools (T29+: cps roundtrip + mask-from-cps equivalence on
-  the committed small fixtures), delete the raw phospho prediction trees on both machines
-  once M2's verification passes (user sign-off per machine).
+- **M6 -- housekeeping** -- **mostly DONE 2026-08-22** (one item deliberately held):
+  - **Parquet transient mode implemented and validated** (the M1a adoption, folded in
+    here): `run_carafe_chunked.sh --parquet` (inline input-chunk conversion, cached;
+    `ai_pred.py --fast`), `carafe_pred_to_cps.py` auto-detects parquet chunk outputs
+    (pandas/pyarrow confined to the translator; requires the Carafe venv python -- system
+    python3 has neither), `carafe_prerun.sh --parquet` passes both through. Validated two
+    ways: (1) the same real chunk translated from its TSV outputs and from its M1a parquet
+    outputs produces **byte-identical stores** -- across two SEPARATE inference runs, i.e.
+    seeded-model determinism and exact float32 text round-trip both confirmed; (2) a full
+    parquet-mode driver run on the M4 fixture produces masks whose **all 51,980 entries
+    are bit-identical** to the TSV-mode run's (headers differ only in per-run provenance:
+    SourceIdxPath and the .idx fingerprint each run's own build binds to -- by design).
+    Transient size on the fixture: 80MB -> 17MB.
+  - **T29** (`t29_carafe_python_suites`): the four standalone pure-Python Carafe test
+    suites (`test_carafe_ms2_to_fi_mask/alignment/idx_to_carafe_dedup_key/carafe_cps.py`)
+    -- previously wired into NOTHING, hand-run only -- now run in the default fast suite,
+    once per invocation. Full suite after all M6 changes: 47 passed, 0 failed, 0 skipped.
+  - **CLAUDE.md**: new "Carafe ahead-of-time pipeline" section (driver one-liner, tool
+    roster, pointers to both docs, and the two hard-won invariants: variant-map order is
+    not key order; pack worker results to bytes), T29 documented, suite range updated.
+  - **Scratch hygiene**: the stale pre-flag-conversion `RealtimeSearch.exe`/
+    `CometWrapper.dll` copies in `20260420-human-phosho/` (the Section 7.4 RTS
+    measurement trap) replaced with the current build-tree binaries; ~17.3GB of
+    regenerable intermediates deleted (the noNL chunked-mask-build split trees +
+    per-chunk masks -- the MERGED chunk-built ground-truth mask is kept -- plus the M1a
+    parquet scratch and the M4 driver-test run dirs).
+  - **Raw prediction-tree deletion: DONE locally 2026-08-22** (user sign-off, explicitly
+    waiving the GPU-diff gate: these predictions will be regenerated in the future with a
+    more limited peptide search space, so the raw trees have no re-analysis value worth
+    ~775GB). The local 395GB `carafe_chunked_phospho_c2_withNL/` tree (split input chunks
+    + all per-chunk prediction output) deleted; every durable artifact retained (the
+    31GB `.cps` store, all three full-scale `.fi_mask` files, both out_tsvs, both variant
+    maps, both `.idx` files, all run logs). The GPU machine's ~395GB tree is outside this
+    session's reach -- delete there at will. Consequence, stated plainly: the
+    prediction-level GPU-vs-CPU diff (Section 9) is now only possible if the GPU
+    machine's predictions are translated to a `.cps` before its own cleanup; with the
+    planned regeneration under a new search space, that comparison is effectively
+    retired rather than pending.
 
 ## 9. Risks / open questions
 

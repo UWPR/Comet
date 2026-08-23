@@ -108,7 +108,7 @@ diagrams, use the `comet-codebase` skill.
 Tests live in `tests/unit/`. The runner is `run_tests.py`.
 
 ```bash
-# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T28) -- fast, no large data required
+# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T29) -- fast, no large data required
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
 
 # Run a specific test by ID
@@ -231,6 +231,41 @@ crafted fixtures in `tests/unit/data/`.
   (`WWWWWWWS[+79.966331]WWWWWWW`) is hand-derived so the fix's effect is an exact,
   verifiable count -- 42 FI entries with the fix vs. 40 under the old buggy break -- not
   just "some difference."
+- **T29** (`t29_carafe_python_suites`) -- runs the four standalone pure-Python Carafe tool
+  test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
+  `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`; no comet.exe/Carafe-venv
+  dependency). Runs once per invocation, not per `--comet` binary.
+
+### The Carafe ahead-of-time pipeline (tools/)
+
+Producing the `.fi_mask` a masked FI search consumes is an offline pipeline, run per
+database + mod configuration -- design/results docs: `docs/20260822_carafe_prerun.md`
+(the pipeline plan + all M1-M4 measurements) and `docs/20260805_carafe.md` (the masking
+feature itself, Sections 6.15-6.22 for full-scale results). The one-command driver:
+
+```bash
+tools/carafe_prerun.sh --fasta db.fasta --out workdir --comet /path/to/comet.exe \
+  --flavor withnl=withnl.params --flavor nonl=nonl.params \
+  --charges 2 --include-decoys [--parquet]
+```
+
+Stages (each resumable via `workdir/.prerun/<stage>.done` markers): per flavor,
+`comet.exe -i` / `-x` / `tools/idx_to_carafe.py`; once, `tools/run_carafe_chunked.sh`
+(the expensive Carafe `ai_pred.py` inference -- hours; chunk-resumable; `--parquet` for
+~8x smaller transient output, verified byte-identical stores) and
+`tools/carafe_pred_to_cps.py` (compact prediction store, `.cps` -- ~31GB vs ~390GB raw at
+full phospho scale, u16-quantized, the durable artifact); per flavor,
+`tools/carafe_cps_to_fi_mask.py` (mask build/re-sweep from the store, ~24 min at full
+scale, `--ignore-modloss` auto-detected from the flavor's VarModConfig).
+`tools/carafe_ms2_to_fi_mask.py` remains the TSV-direct mask builder (tests, small runs);
+`tools/build_carafe_mask_chunked.sh` + `tools/merge_carafe_fi_masks.py` are the legacy
+chunked-TSV mask path, superseded by the store but kept for TSV-only situations.
+
+Two hard-won invariants (do not rediscover these at scale): the variant map's enumeration
+order is NOT key order (any consumer must sort/merge -- `carafe_cps_to_fi_mask.py` does);
+and returning large per-chunk Python object graphs from `multiprocessing` workers to a
+slower parent lets `Pool.imap`'s result buffer blow up (tens of GB) -- pack to bytes in
+the workers.
 
 ### Key Design Decisions in the Test Suite
 

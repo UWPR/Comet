@@ -2928,6 +2928,47 @@ def test_t28_fragment_nl_break_boundary(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T29 -- the standalone pure-Python Carafe tool test suites
+# ---------------------------------------------------------------------------
+#
+# tests/unit/test_carafe_ms2_to_fi_mask.py, test_carafe_alignment.py,
+# test_idx_to_carafe_dedup_key.py, and test_carafe_cps.py each carry their own run_test()
+# harness (in-process Python, no comet.exe/.idx/Carafe-venv dependency) but until this
+# test none of them were wired into this runner -- they only ran when someone remembered
+# to invoke them by hand (docs/20260822_carafe_prerun.md milestone M6). T29 imports each
+# module and runs its suite; a False return (any internal failure -- the module prints its
+# own per-test detail to stdout) fails T29 with the module named.
+#
+# Runs once per run_tests.py invocation, not per --comet binary: nothing here touches a
+# comet binary, so running it N times for N binaries would be pure noise. Implemented via
+# a module-level latch rather than a special-case in main()'s loop.
+
+_T29_RAN = False
+
+@register("t29_carafe_python_suites")
+def test_t29_carafe_python_suites(comet_exe):
+    """T29: run the four standalone Carafe pure-Python test suites in-process."""
+    global _T29_RAN
+    failures = []
+    if _T29_RAN:
+        return failures   # already ran under the first --comet binary this invocation
+    _T29_RAN = True
+
+    import importlib
+    for mod_name in ("test_carafe_ms2_to_fi_mask", "test_carafe_alignment",
+                      "test_idx_to_carafe_dedup_key", "test_carafe_cps"):
+        try:
+            mod = importlib.import_module(mod_name)
+            ok = mod.run_test()
+        except Exception as e:  # noqa: BLE001 -- a crashing suite must fail T29, not the runner
+            check(False, f"{mod_name} raised {type(e).__name__}: {e}", failures)
+            continue
+        check(ok, f"{mod_name}.run_test() reported failures (detail printed above)",
+              failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
