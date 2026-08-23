@@ -22,7 +22,17 @@ CombinatoricsUtils::CombinatoricsUtils()
 {
 }
 
-int** BINOM_COEF; // array[N][K], partial Pascal's Triangle
+// Pascal's triangle built in int64_t, not int: MAX_BITCOUNT/the default peptide_length_range
+// upper bound is 50 (raised from a 24 cap that made this unreachable -- see
+// CometModificationsPermuter.cpp's MAX_BITCOUNT comment), and initBinomialCoefficients() is
+// called with (peptideLengthRange.iEnd, MAX_K_VAL) = (50, 10) by default. C(44,10) =
+// 2,481,256,778, already past INT_MAX, so building rows 44-50 in `int` silently wrapped
+// negative (UB) on every FI/PI build at default params -- a peptide with >= 44 modifiable
+// residues of one mod type then made getCombinationCount() return negative, which *passed*
+// the "> FRAGINDEX_MAX_COMBINATIONS" guards in CometModificationsPermuter.cpp (a negative
+// number is never > 10000) and reached `new unsigned long long[negative]`, which the compiler
+// turns into `new unsigned long long[huge size_t]` -> std::bad_array_new_length.
+long long** BINOM_COEF; // array[N][K], partial Pascal's Triangle
 int N = -1;
 int K = -1;
 
@@ -30,10 +40,10 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
 {
    N = n;
    K = k;
-   BINOM_COEF = new int*[n + 1];
+   BINOM_COEF = new long long*[n + 1];
    for (int i = 0; i <= n; ++i)
    {
-      const auto coeffs = new int[k + 1];
+      const auto coeffs = new long long[k + 1];
       if (i == 0)
       {
          coeffs[0] = 1;
@@ -48,7 +58,7 @@ void CombinatoricsUtils::initBinomialCoefficients(const int n, const int k)
                coeffs[j] = 1;
                continue;
             }
-            int* prevRow = BINOM_COEF[i - 1];
+            long long* prevRow = BINOM_COEF[i - 1];
             coeffs[j] = prevRow[j - 1] + prevRow[j];
          }
       }
@@ -175,7 +185,7 @@ int** CombinatoricsUtils::makeCombinations(int n, int r, int count)
    return combinations;
 }
 
-int CombinatoricsUtils::nChooseK(const int n, const int k)
+long long CombinatoricsUtils::nChooseK(const int n, const int k)
 {
    if (n == k || k == 0)
       return 1;
@@ -193,9 +203,12 @@ int CombinatoricsUtils::nChooseK(const int n, const int k)
 
    // https://en.wikipedia.org/wiki/Binomial_coefficient#Identities_involving_binomial_coefficients
    // (n, k) = n / k * (n - 1, k - 1)
-   int answer = n - k + 1; // base (n - k + 1, 1)
-   int previous = answer;
-   for (int i = 1; i < k; ++i) 
+   // int64_t, not int -- this fallback (n/k outside the precomputed BINOM_COEF table) hits the
+   // same magnitude-overflow risk as the table itself for k > 10 or so (review: "nChooseK
+   // (196-204) also overflows its intermediate").
+   long long answer = n - k + 1; // base (n - k + 1, 1)
+   long long previous = answer;
+   for (int i = 1; i < k; ++i)
    {
       answer = previous * (n - k + 1 + i) / (i + 1);
       previous = answer;
@@ -204,9 +217,9 @@ int CombinatoricsUtils::nChooseK(const int n, const int k)
    return answer;
 }
 
-int CombinatoricsUtils::getCombinationCount(int n, int k)
+long long CombinatoricsUtils::getCombinationCount(int n, int k)
 {
-   int total = 0;
+   long long total = 0;
    if (k > n)
       k = n;
    for (; k >= 1; k--)

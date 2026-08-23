@@ -435,7 +435,7 @@ void LoadParameters(char* pszParamsFile,
       {"scale_fragmentNL",             { [&]() { parse_int("scale_fragmentNL"); }}},
       {"search_enzyme2_number",        { [&]() { parse_int("search_enzyme2_number"); sscanf(szParamVal, "%d", &iSearchEnzyme2Number); }}},
       {"search_enzyme_number",         { [&]() { parse_int("search_enzyme_number"); sscanf(szParamVal, "%d", &iSearchEnzymeNumber); }}},
-      {"speclib_ms_level",             { [&]() { parse_int("speclib_ms_level"); }}},
+      {"spectral_library_ms_level",    { [&]() { parse_int("spectral_library_ms_level"); }}},
       {"spectrum_batch_size",          { [&]() { parse_int("spectrum_batch_size"); }}},
       {"theoretical_fragment_ions",    { [&]() { parse_int("theoretical_fragment_ions"); }}},
       {"use_A_ions",                   { [&]() { parse_int("use_A_ions"); }}},
@@ -536,12 +536,12 @@ void LoadParameters(char* pszParamsFile,
          tok = strtok(szParamVal, delims);
          while (tok != NULL)
          {
-            if (sscanf(tok, "%lf", &dMass) == 1)
-            {
-               if (dMass >= 0.0)
-                  vectorSetMassOffsets.push_back(dMass);
-               tok = strtok(NULL, delims);
-            }
+            // tok must advance unconditionally, not only on successful parse -- a
+            // non-numeric token previously left tok pointing at itself forever,
+            // spinning the params-parsing loop at 100% CPU.
+            if (sscanf(tok, "%lf", &dMass) == 1 && dMass >= 0.0)
+               vectorSetMassOffsets.push_back(dMass);
+            tok = strtok(NULL, delims);
          }
          sort(vectorSetMassOffsets.begin(), vectorSetMassOffsets.end());
          pSearchMgr->SetParam("mass_offsets", szMassOffsets, vectorSetMassOffsets);
@@ -557,8 +557,9 @@ void LoadParameters(char* pszParamsFile,
           tok = strtok(szParamVal, delims);
           while (tok != NULL)
           {
-             sscanf(tok, "%lf", &dMass);
-             if (dMass >= 0.0)
+             // Must check sscanf's return value -- a non-numeric token otherwise left dMass
+             // uninitialized (stack garbage) and the >= 0.0 check below read that garbage.
+             if (sscanf(tok, "%lf", &dMass) == 1 && dMass >= 0.0)
                 vectorPrecursorNLIons.push_back(dMass);
              tok = strtok(NULL, delims);
           }
@@ -578,7 +579,11 @@ void LoadParameters(char* pszParamsFile,
             *pStr = 0;
          if ((pStr = strchr(szParamBuf, '=')) != NULL)
          {
-            strcpy(szParamVal, pStr + 1);
+            // szParamBuf (the source) is SIZE_BUF=8192 bytes but szParamVal is only 512 --
+            // a param line's value portion longer than that (a long database_name path,
+            // for instance) overflowed this stack buffer via the unbounded strcpy.
+            strncpy(szParamVal, pStr + 1, sizeof(szParamVal) - 1);
+            szParamVal[sizeof(szParamVal) - 1] = '\0';
             *pStr = 0;
             sscanf(szParamBuf, "%127s", szParamName);
 
@@ -675,14 +680,18 @@ void LoadParameters(char* pszParamsFile,
    }
 
    // Get enzyme specificity.
-   char szSearchEnzymeName[ENZYME_NAME_LEN];
-   char szSearchEnzyme2Name[ENZYME_NAME_LEN];
-   char szSampleEnzymeName[ENZYME_NAME_LEN];
    EnzymeInfo enzymeInformation;
 
-   strcpy(szSearchEnzymeName, "-");
-   strcpy(szSearchEnzyme2Name, "-");
-   strcpy(szSampleEnzymeName, "-");
+   // Sentinel the struct members the missing-definition checks below actually test. This
+   // used to sentinel separate, unused local arrays of the same name while the parse loop
+   // below (and those checks) both operate on enzymeInformation.* -- so a search_enzyme_number/
+   // search_enzyme2_number/sample_enzyme_number with no matching entry in the params file
+   // silently kept EnzymeInfo's own default identity ("" for szSearchEnzymeName/
+   // szSampleEnzymeName, "Cut_everywhere" for szSearchEnzyme2Name) instead of erroring, since
+   // neither default string is "-".
+   strcpy(enzymeInformation.szSearchEnzymeName, "-");
+   strcpy(enzymeInformation.szSearchEnzyme2Name, "-");
+   strcpy(enzymeInformation.szSampleEnzymeName, "-");
 
    std::string enzymeInfoStrVal;
    while (!feof(fp))
@@ -784,6 +793,12 @@ bool ParseCmdLine(char *cmd, InputFileInfo *pInputFile, ICometSearchManager *pSe
          }
       }
    }
+
+   // i is bounded only by strlen(cmd) (the raw argv entry) above, but szFileName is
+   // SIZE_FILE bytes -- an argv longer than that overflowed both this strncpy (n=i exceeds
+   // the destination's real capacity) and the '\0' write just below it.
+   if (i >= SIZE_FILE)
+      i = SIZE_FILE - 1;
 
    strncpy(pInputFile->szFileName, cmd, i);
    pInputFile->szFileName[i] = '\0';

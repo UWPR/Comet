@@ -719,6 +719,9 @@ extern int MOD_NUM;
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
+extern std::atomic<bool> g_bPeptideIndexFullyInitialized;  // set true only once EnsurePeptideIndexLoaded()'s
+                                        // mass-init/AScorePro setup has also completed, not just the raw
+                                        // .idx read -- see CometSearch.cpp's EnsurePeptideIndexLoaded()
 extern std::atomic<bool> g_bSpecLibRead;             // set to true if spectral library file is read
 
 // g_bPerformSpecLibSearch, g_bPerformDatabaseSearch, g_bIdxNoFasta moved to SearchSession
@@ -877,7 +880,7 @@ struct Query
    ~Query()
    {
       int i;
-      if (!bSparseFromPool)
+      if (!bSparseFromPool && ppfSparseSpScoreData != NULL)
       {
          for (i = 0; i < iSpScoreData; ++i)
          {
@@ -896,12 +899,25 @@ struct Query
       {
          if (!bSparseFromPool)
          {
-            for (i = 0; i < iFastXcorrDataSize; ++i)
+            // Freed independently: a bad_alloc building ppfSparseFastXcorrData (below,
+            // after this NL array's children are already populated) leaves this array's
+            // pointer non-NULL with its sibling still NULL -- a combined null-check here
+            // would skip freeing this array's already-allocated children and leak them.
+            if (ppfSparseFastXcorrData != NULL)
             {
-               if (ppfSparseFastXcorrData[i] != NULL)
-                  delete[] ppfSparseFastXcorrData[i];
-               if (ppfSparseFastXcorrDataNL[i]!=NULL)
-                  delete[] ppfSparseFastXcorrDataNL[i];
+               for (i = 0; i < iFastXcorrDataSize; ++i)
+               {
+                  if (ppfSparseFastXcorrData[i] != NULL)
+                     delete[] ppfSparseFastXcorrData[i];
+               }
+            }
+            if (ppfSparseFastXcorrDataNL != NULL)
+            {
+               for (i = 0; i < iFastXcorrDataSize; ++i)
+               {
+                  if (ppfSparseFastXcorrDataNL[i] != NULL)
+                     delete[] ppfSparseFastXcorrDataNL[i];
+               }
             }
          }
          if (!bSparsePointerArraysFromPool)
@@ -910,7 +926,7 @@ struct Query
       }
       else
       {
-         if (!bSparseFromPool)
+         if (!bSparseFromPool && ppfSparseFastXcorrData != NULL)
          {
             for (i = 0; i < iFastXcorrDataSize; ++i)
             {
@@ -1002,6 +1018,7 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <= 12
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern std::map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
+extern std::unordered_map<comet_fileoffset_t, std::string> g_pvProteinNameCache;  // populated at index load; protein name by file offset for search-time lookups
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

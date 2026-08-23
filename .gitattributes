@@ -21,6 +21,10 @@
 *.md    text eol=crlf
 *.txt   text eol=crlf
 *.params text eol=crlf
+.gitignore text eol=crlf
+
+# Sequence data
+*.fasta text eol=crlf
 
 # Binary files -- no line-ending translation
 *.exe   binary

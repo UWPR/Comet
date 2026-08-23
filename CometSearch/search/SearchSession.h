@@ -54,8 +54,8 @@ struct SearchSession
    // On the fused FI_DB batch path (FusedLoadAndSearchSpectra), workers append to
    // their own per-slot vectors lock-free and this is filled by a single serial
    // concatenation after the thread-pool join -- not mutex-guarded there.  Other
-   // batch paths (LoadAndPreprocessSpectra, PreprocessSingleSpectrum, etc.) still
-   // guard direct pushes to this vector with queriesMutex.
+   // batch paths (LoadAndPreprocessSpectra, etc.) still guard direct pushes to this
+   // vector with queriesMutex.
    std::vector<Query*>    queries;
 
    // Per-slot sparse-XCorr-matrix bump arenas for the fused FI_DB/PI_DB batch path

@@ -22,6 +22,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometModificationsPermuter.h"
 
+#include <atomic>
 #include <cmath>
 #include <cstdio>
 #include <iostream>
@@ -29,6 +30,20 @@
 #include <bitset>
 #include <limits>
 #include <queue>
+
+// std::atomic_ref (P1's lock-free relaxed fetch_add on plain, non-atomic
+// g_iFragmentIndexOffset entries -- see the comment above GenerateFragmentIndex() for why
+// this doesn't need a real atomic<uint64_t> array) needs library support beyond just
+// -std=c++20: MSVC's STL and libstdc++ (GCC) both define it, but Apple Clang's libc++ on
+// the macos-14 CI runner doesn't yet, and fails to compile "no member named 'atomic_ref'
+// in namespace 'std'" even though the compiler itself is otherwise C++20-capable.
+// __atomic_fetch_add is a GCC/Clang builtin (independent of the C++ standard library
+// version), so it's available everywhere std::atomic_ref isn't.
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
+#define FRAGINDEX_ATOMIC_FETCH_ADD(x) std::atomic_ref<uint64_t>(x).fetch_add(1, std::memory_order_relaxed)
+#else
+#define FRAGINDEX_ATOMIC_FETCH_ADD(x) __atomic_fetch_add(&(x), 1, __ATOMIC_RELAXED)
+#endif
 
 
 vector<ModificationNumber> MOD_NUMBERS;
@@ -39,11 +54,6 @@ int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides t
 int MOD_NUM = 0;
 size_t tTmp;
 
-Mutex CometFragmentIndex::_vFragmentPeptidesMutex;
-
-// Temporary write-position array used only during the index fill pass.
-// Initialized to g_iFragmentIndexOffset[0..n-1] before filling, freed after.
-static uint64_t* s_iWritePos = nullptr;
 
 
 #ifdef _WIN32
@@ -55,6 +65,22 @@ comet_fileoffset_t clSizeCometFileOffset = (long long)sizeof(comet_fileoffset_t)
 #else
 comet_fileoffset_t clSizeCometFileOffset = sizeof(comet_fileoffset_t);              //linux
 #endif
+
+// .idx binary I/O throughout CometPeptideIndex.cpp reads/writes size_t objects
+// (tNumRaw, tNumProteinEntries, tNumProteins, ProteinsListCSR row sizes, etc.) using
+// clSizeCometFileOffset (== sizeof(comet_fileoffset_t), always 8) as the byte count for
+// both fread() and fwrite() -- e.g. fwrite(&tTmp, clSizeCometFileOffset, 1, fptr) where
+// tTmp is size_t. That's only correct if sizeof(size_t) itself is also 8: on a
+// hypothetical 32-bit build (sizeof(size_t) == 4), fwrite would read 4 bytes past the
+// variable (heap/stack overread) and fread would write 4 bytes past it (memory
+// corruption) instead of failing loudly. Comet has only ever shipped 64-bit builds, so
+// this is unreachable today -- catch it at compile time if that ever changes, rather
+// than relying on it staying unreachable by convention.
+static_assert(sizeof(size_t) == sizeof(comet_fileoffset_t),
+   "CometPeptideIndex.cpp's .idx binary I/O reads/writes size_t objects using "
+   "clSizeCometFileOffset (sizeof(comet_fileoffset_t)) as the byte count; this build's "
+   "sizeof(size_t) doesn't match, which would silently overread/overwrite past those "
+   "variables during .idx read/write.");
 
 
 CometFragmentIndex::CometFragmentIndex()
@@ -70,7 +96,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
    // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0/0.5) --
    // g_vRawPeptides plus the MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
-   // GenerateFragmentIndex() (via AddFragmentsThreadProc()) reads directly below.
+   // GenerateFragmentIndex() (via AddFragmentsThreadProcRange()) reads directly below.
    // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
    // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
    // longer persisted in the .idx file), so no separate call is needed here. g_vDBIndexVariants
@@ -111,7 +137,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    g_iFragmentIndexOffset = new uint64_t[g_massRange.uiMaxFragmentArrayIndex + 1]();
 
    // generate the modified peptides to calculate the fragment index
-   GenerateFragmentIndex(tp);
+   if (!GenerateFragmentIndex(tp))
+      return false;   // GenerateFragmentIndex() (via the thread pool's error handler) already reported the specific error
 
    return true;
 }
@@ -180,30 +207,88 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 }
 
 
-void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
+bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment ion index\n"; fflush(stdout);
 
    auto tFIGlobalStartTime = chrono::steady_clock::now();
 
-   Threading::InitMutex(&_vFragmentPeptidesMutex);
-
    ThreadPool *pFragmentIndexPool = tp;
+   const int iNumThreads = g_staticParams.options.iNumThreads;
 
-   // Create N number of threads, each of which will iterate through
-   // a subset of peptides to calculate their fragment ions
+   // Fetched once for the whole build rather than once per AddFragments() call below (a
+   // hot loop over every raw peptide/fragment-peptide variant, potentially millions of calls).
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
 
-   // Sort the peptides by mass
+   // P1: count and fill passes are each O(variants x peptide length) -- the dominant cost
+   // of a large FI build -- and embarrassingly parallel: count partitions g_vRawPeptides by
+   // peptide-index range, one thread per range, each accumulating into its own local
+   // FragmentPeptidesStruct vector (no lock) with bin counts folded into the shared
+   // g_iFragmentIndexOffset via std::atomic_ref (safe -- a commutative sum, order doesn't
+   // matter); fill partitions the now mass-sorted g_vFragmentPeptides the same way, using a
+   // fill-count sub-pass to give each partition its own disjoint, deterministically-ordered
+   // write-cursor range per bin (see AddFragments()'s doc comment in the header for the full
+   // per-sub-pass destination-pointer contract) before the fill-write sub-pass actually
+   // populates g_iFragmentIndex -- so no partition ever needs a lock or an atomic RMW on the
+   // fragment-index array itself, and the result is byte-identical to the old single-threaded
+   // traversal (T18's build-determinism guarantee), just computed on iNumThreads threads.
 
    cout <<  "   - store peptide list and reserve memory ... "; fflush(stdout);
    auto tStartTime = chrono::steady_clock::now();
-   // stupid workaround for Windows/Visual Studio performance ... first calculate all
-   // fragments to find size of each fragment on index vector
-   AddFragmentsThreadProc(1, pFragmentIndexPool);
+
+   const size_t iNumRawPeptides = g_vRawPeptides.size();
+   vector<pair<size_t,size_t>> vCountRanges(iNumThreads);
+   vector<vector<FragmentPeptidesStruct>> vLocalFragPeptides(iNumThreads);
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      vCountRanges[t].first  = t * iNumRawPeptides / iNumThreads;
+      vCountRanges[t].second = (t + 1) * iNumRawPeptides / iNumThreads;
+   }
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vCountRanges, &vLocalFragPeptides]()
+      {
+         AddFragmentsThreadProcRange(vCountRanges[t].first, vCountRanges[t].second, vLocalFragPeptides[t]);
+      });
+   }
    pFragmentIndexPool->wait_on_threads();
 
-   // Convert per-bin counts (stored in g_iFragmentIndexOffset[0..n-1] during count pass)
-   // to CSR prefix-sum offsets, then allocate the single flat data array.
+   // ThreadPool::doJob() catches a worker exception (e.g. bad_alloc partway through a
+   // partition) and only reports it through the error handler wired in
+   // CometSearchManager's constructor, which sets g_cometStatus -- it does not stop the
+   // other queued partitions or this function. Left unchecked, a partial/empty
+   // vLocalFragPeptides[t] here would silently concatenate into g_vFragmentPeptides as if
+   // every partition had succeeded, and every later pass (mass sort, fill-count,
+   // fill-write) would build on top of that corrupt data and still return true.
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
+
+   // Concatenate in ascending partition order (== ascending raw-peptide-index order), the
+   // exact traversal order the old single-threaded AddFragmentsThreadProc() produced, so the
+   // subsequent mass sort below sees byte-identical input to before.
+   {
+      size_t iTotal = 0;
+      for (auto& v : vLocalFragPeptides)
+         iTotal += v.size();
+
+      if (iTotal >= UINT_MAX)
+      {
+         printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
+         exit(1);
+      }
+
+      g_vFragmentPeptides.reserve(iTotal);
+      for (auto& v : vLocalFragPeptides)
+      {
+         g_vFragmentPeptides.insert(g_vFragmentPeptides.end(),
+            make_move_iterator(v.begin()), make_move_iterator(v.end()));
+         vector<FragmentPeptidesStruct>().swap(v);
+      }
+      vector<vector<FragmentPeptidesStruct>>().swap(vLocalFragPeptides);
+   }
+
+   // Convert per-bin counts (accumulated into g_iFragmentIndexOffset[0..n-1] during the
+   // count pass above) to CSR prefix-sum offsets, then allocate the single flat data array.
    // Use uint64_t accumulator: non-enzymatic searches against large databases can
    // exceed UINT_MAX total entries, silently corrupting the index with unsigned int.
    {
@@ -218,13 +303,9 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       g_iFragmentIndex = new unsigned int[uiTotal];
    }
 
-   // Initialize per-bin write positions as a copy of the base offsets.
-   s_iWritePos = new uint64_t[g_massRange.uiMaxFragmentArrayIndex];
-   memcpy(s_iWritePos, g_iFragmentIndexOffset, sizeof(uint64_t) * g_massRange.uiMaxFragmentArrayIndex);
-
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
-   // now sort g_vFragmentPeptides by mass; this was filled in the above AddFragmentsThreadProc calls
+   // now sort g_vFragmentPeptides by mass; this was filled in the above count pass
    tStartTime = chrono::steady_clock::now();
    cout << "   - sort peptides by mass ... "; fflush(stdout);
    sort(g_vFragmentPeptides.begin(), g_vFragmentPeptides.end(), [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
@@ -235,43 +316,111 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // In the for loop below, peptide references (iWhichFragmentPeptide) are stored in the FI.
    // As the FI is an array of unsigned int pointers, need to ensure that iWhichFragmentPeptide
-   // will fit into an unsigned int.
-   // NOTE: explicitly use (std::numeric_limits<unsigned int>::max)() to avoid macro expansion on Windows.
-   if (g_vFragmentPeptides.size() > (std::numeric_limits<unsigned int>::max)())
-   {
-      // handle error: value too large to fit in unsigned int
-      throw std::overflow_error(" Error: g_vFragmentPeptides.size() too large for unsigned int");
-   }
+   // will fit into an unsigned int. This is already guaranteed by the `iTotal >= UINT_MAX`
+   // check above: g_vFragmentPeptides is populated with exactly iTotal elements (reserve()
+   // + move-insert, nothing else appends to it) and then only reordered (mass sort), so
+   // size() == iTotal here, and iTotal < UINT_MAX was already enforced -- a second,
+   // differently-phrased check here would be unreachable dead code.
 
-   // now populate the fragment index vector
+   // now populate the fragment index vector -- two parallel sub-passes over the same
+   // mass-sorted-array partitioning (see the P1 comment above this function)
    tStartTime = chrono::steady_clock::now();
    cout <<  "   - populate index ... "; fflush(stdout);
-   // Fetched once for this whole fill pass rather than once per AddFragments() call below (a
-   // hot loop over every fragment-peptide variant, potentially millions of calls).
-   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
-   for (size_t iWhichFragmentPeptide = 0; iWhichFragmentPeptide < g_vFragmentPeptides.size(); ++iWhichFragmentPeptide)
+
+   const size_t iNumFragPeptides = g_vFragmentPeptides.size();
+   const uint64_t uiNumBins = g_massRange.uiMaxFragmentArrayIndex;
+   vector<pair<size_t,size_t>> vFillRanges(iNumThreads);
+   for (int t = 0; t < iNumThreads; ++t)
    {
-      auto& fp = g_vFragmentPeptides[iWhichFragmentPeptide];
-      AddFragments(g_vRawPeptides, fp.iWhichPeptide, iWhichFragmentPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod, 0, vModSlotForAllModsIdx);
+      vFillRanges[t].first  = t * iNumFragPeptides / iNumThreads;
+      vFillRanges[t].second = (t + 1) * iNumFragPeptides / iNumThreads;
+   }
+
+   // Fill-count sub-pass: each thread re-walks its own partition's already-known
+   // (peptide, mods, mass) entries -- no recomputation of dPepMass itself (P2's
+   // dKnownPepMass short-circuit still applies) -- purely to learn how many b/y ions
+   // its partition contributes to each bin.
+   vector<vector<uint64_t>> vPartitionBinCounts(iNumThreads, vector<uint64_t>(uiNumBins, 0));
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionBinCounts, &vModSlotForAllModsIdx]()
+      {
+         uint64_t* pLocalCounts = vPartitionBinCounts[t].data();
+         for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
+         {
+            auto& fp = g_vFragmentPeptides[i];
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+               vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
+         }
+      });
    }
    pFragmentIndexPool->wait_on_threads();
+
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
+
+   // Prefix sum across partitions (in the same fixed partition order used above), per bin:
+   // the write-cursor partition t should start at is the bin's base CSR offset plus every
+   // earlier partition's contribution to that bin. This gives every partition a disjoint
+   // sub-range within each bin, and the relative order across partitions is fixed
+   // (partition 0's entries first, then partition 1's, ...) regardless of actual thread
+   // scheduling -- the same order the old single-threaded fill loop produced, since it also
+   // processed iWhichFragmentPeptide in ascending (== partition-ascending) order.
+   vector<vector<uint64_t>> vPartitionWriteCursor(iNumThreads, vector<uint64_t>(uiNumBins));
+   for (uint64_t bin = 0; bin < uiNumBins; ++bin)
+   {
+      uint64_t cursor = g_iFragmentIndexOffset[bin];
+      for (int t = 0; t < iNumThreads; ++t)
+      {
+         vPartitionWriteCursor[t][bin] = cursor;
+         cursor += vPartitionBinCounts[t][bin];
+      }
+   }
+   vector<vector<uint64_t>>().swap(vPartitionBinCounts);
+
+   // Fill-write sub-pass: each thread re-walks the same partition a second time, this time
+   // actually writing, using only its own local write-cursor array -- no shared cursor, so
+   // no lock/atomic needed on g_iFragmentIndex itself.
+   for (int t = 0; t < iNumThreads; ++t)
+   {
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionWriteCursor, &vModSlotForAllModsIdx]()
+      {
+         uint64_t* pLocalCursor = vPartitionWriteCursor[t].data();
+         for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
+         {
+            auto& fp = g_vFragmentPeptides[i];
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+               vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
+         }
+      });
+   }
+   pFragmentIndexPool->wait_on_threads();
+
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
+
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
-   // Hardening check (docs/20260805_carafe.md Section 7): every bin's write cursor must land
-   // EXACTLY on the next bin's CSR offset -- proving the fill pass wrote precisely as many
-   // entries into this bin as the count pass reserved for it, no more (which would silently
-   // overflow into the next bin's region, corrupting unrelated masses) and no fewer (which
-   // would leave stale/uninitialized entries in this bin's tail). This is the single highest-
-   // severity correctness risk Phase 3's predicted-fragment masking introduces (a count/fill
-   // mismatch doesn't crash cleanly), but the check itself is generic -- it catches a
-   // count/fill divergence from ANY cause, not just masking, and costs O(bins), negligible
-   // next to the O(peptides) fill pass it follows.
-   for (unsigned int iBin = 0; iBin < g_massRange.uiMaxFragmentArrayIndex; ++iBin)
+   // Hardening check (docs/20260805_carafe.md Section 7): every bin's final write cursor must
+   // land EXACTLY on the next bin's CSR offset -- proving the fill-write sub-pass wrote
+   // precisely as many entries into this bin as the fill-count sub-pass reserved for it, no
+   // more (which would silently overflow into the next bin's region, corrupting unrelated
+   // masses) and no fewer (which would leave stale/uninitialized entries in this bin's tail).
+   // This is the single highest-severity correctness risk Phase 3's predicted-fragment masking
+   // introduces (a count/fill mismatch doesn't crash cleanly), but the check itself is generic
+   // -- it catches a count/fill divergence from ANY cause, not just masking, and costs
+   // O(bins), negligible next to the O(peptides) fill pass it follows.
+   // Under the P1 partitioned fill (see the comment above this function), the last partition
+   // (iNumThreads-1) writes each bin's tail-most entries -- vPartitionWriteCursor[iNumThreads-1][bin]
+   // was pre-seeded to that partition's start-of-bin offset and advanced in place by every
+   // entry it wrote, so once every thread has finished it should equal the bin's end-of-range
+   // CSR offset exactly.
+   for (uint64_t iBin = 0; iBin < uiNumBins; ++iBin)
    {
-      if (s_iWritePos[iBin] != g_iFragmentIndexOffset[iBin + 1])
+      if (vPartitionWriteCursor[iNumThreads - 1][iBin] != g_iFragmentIndexOffset[iBin + 1])
       {
          string strErrorMsg = " Error - fragment index count/fill mismatch at bin " + std::to_string(iBin)
-            + ": fill pass wrote to offset " + std::to_string(s_iWritePos[iBin])
+            + ": fill pass wrote to offset " + std::to_string(vPartitionWriteCursor[iNumThreads - 1][iBin])
             + " but count pass reserved up to " + std::to_string(g_iFragmentIndexOffset[iBin + 1])
             + " -- the index is corrupt. This should be unreachable (the mask check, if any, "
             + "sits before the bCountOnly branch so both passes see identical logic); please "
@@ -281,12 +430,6 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          exit(1);
       }
    }
-
-   // Write positions no longer needed after fill.
-   delete[] s_iWritePos;
-   s_iWritePos = nullptr;
-
-   Threading::DestroyMutex(_vFragmentPeptidesMutex);
 
    // Total entry count is the CSR sentinel value.
    unsigned long long ullCount = g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex];
@@ -302,11 +445,13 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    cout << " ... " << CometMassSpecUtils::ElapsedTime(tFIGlobalStartTime) << endl;
 
+   return true;
 }
 
 
-void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
-                                                ThreadPool* /*tp*/)
+void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
+                                                      size_t iPeptideEnd,
+                                                      vector<FragmentPeptidesStruct>& localFragPeptides)
 {
    size_t iWhichFragmentPeptide = 0;  // unused here for counting only
 
@@ -318,12 +463,14 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
    // needs it -- ctNtermMod/ctCtermMod elsewhere in this function are already raw slots).
    const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
 
-   // each thread will loop through a subset of the g_vRawPeptides
-   for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
+   // P1: this thread owns [iPeptideStart, iPeptideEnd) exclusively -- every accepted
+   // variant goes into this thread's own localFragPeptides (see AddFragments()'s doc
+   // comment), so there's no shared state here to race on.
+   for (size_t iWhichPeptide = iPeptideStart; iWhichPeptide < iPeptideEnd; ++iWhichPeptide)
    {
       // AddFragments for unmodified peptide; only if no variable mods are required
       if (!g_staticParams.variableModParameters.iRequireVarMod)
-         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, bCountOnly, vModSlotForAllModsIdx);
+         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
       // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
@@ -338,7 +485,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -349,7 +496,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -364,7 +511,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                         && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                {
-                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                }
             }
          }
@@ -402,7 +549,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
 
             if (bPass)
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, bCountOnly, vModSlotForAllModsIdx);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
                if (g_staticParams.variableModParameters.bVarTermModSearch)
                {
@@ -412,7 +559,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, bCountOnly, vModSlotForAllModsIdx);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -422,7 +569,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                      if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -437,7 +584,7 @@ void CometFragmentIndex::AddFragmentsThreadProc(bool bCountOnly,
                               (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                                  && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                         {
-                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, bCountOnly, vModSlotForAllModsIdx);
+                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                         }
                      }
                   }
@@ -455,15 +602,34 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       int modNumIdx,
                                       char cNtermMod,
                                       char cCtermMod,
-                                      bool bCountOnly,
-                                      const vector<int>& vModSlotForAllModsIdx)
+                                      const vector<int>& vModSlotForAllModsIdx,
+                                      double dKnownPepMass,
+                                      vector<FragmentPeptidesStruct>* pLocalFragPeptides,
+                                      uint64_t* pFillBinCounts,
+                                      uint64_t* pFillWriteCursor)
 {
-   string sPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
+   // Count-pass vs. fill-pass mode is fully determined by which of the three mutually
+   // exclusive destination pointers the caller supplied: count pass passes
+   // pLocalFragPeptides (non-null) and leaves the other two null; both fill sub-passes pass
+   // pLocalFragPeptides == nullptr and exactly one of pFillBinCounts/pFillWriteCursor. A
+   // separate bCountOnly bool was redundant with this and could theoretically be passed
+   // inconsistently; derive it here instead of carrying it as its own parameter.
+   const bool bCountOnly = (pLocalFragPeptides != nullptr);
+   // P2: was `string sPeptide = ...szPeptide;`, a heap-backed copy on every one of the
+   // 10^8+ calls a whole-proteome build makes (twice per accepted variant: once in the
+   // count pass, once in the fill pass). szPeptide is already a NUL-terminated char[] on
+   // the raw-peptide entry, so read it directly instead of copying it into a std::string.
+   const char* pszPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
 
    ModificationNumber modNum;
    char* mods = NULL;
    int modSeqIdx = -1;
-   string modSeq;
+
+   // Same reasoning as pszPeptide above: MOD_SEQS is a read-only global table for the
+   // duration of the fill/count passes, so reference its entry directly rather than
+   // copying it into a local std::string per call.
+   static const string s_EmptyModSeq;
+   const string* pModSeq = &s_EmptyModSeq;
 
    // mods[] (MOD_NUMBERS[modNumIdx].modifications[]) values are 0-based indices into this
    // COMPACTED active-variable-mod-slot list, not raw varModList indices -- see
@@ -477,17 +643,18 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       modNum = MOD_NUMBERS.at(modNumIdx);
       mods = modNum.modifications;
       modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-      modSeq = MOD_SEQS.at(modSeqIdx);
+      pModSeq = &MOD_SEQS.at(modSeqIdx);
    }
+   const string& modSeq = *pModSeq;
 
-   double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+   double dCalcPepMass;
    double dBion = g_staticParams.precalcMasses.dNtermProton;
    double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
    int iPosReverse;  // points to residue in reverse order
 
    int j = 0; // track count of each modifiable residue
    int k = 0; // track count of each modifiable residue in reverse
-   int iEndPos = (int)sPeptide.length() - 1;
+   int iEndPos = (int)strlen(pszPeptide) - 1;
 
    // Search-time peptide_length_range narrower than what's baked into g_vRawPeptides (see
    // ParsePeptideIndexHeader()'s inward-only clamp of peptideLengthRange from the .idx's
@@ -498,73 +665,90 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       || iEndPos + 1 > g_staticParams.options.peptideLengthRange.iEnd)
       return;
 
-   // first calculate peptide mass as that's needed in fragment loop
-   j = 0;
-   double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
-   for (int i = 0; i <= iEndPos; ++i)
+   // P2: the fill pass (bCountOnly == false) calls this with the exact same
+   // (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple the count pass already
+   // accepted, mass, range/precursor filters, and hardening-check included -- the caller
+   // (GenerateFragmentIndex()) passes that already-computed mass back in as dKnownPepMass
+   // (fp.dPepMass) instead of leaving this function to redo the full O(peptide length)
+   // residue-by-residue recompute a second time. The count pass (dKnownPepMass < 0,
+   // its default) still computes it fresh, since that's the one place it's not yet known.
+   if (dKnownPepMass >= 0.0)
    {
-      dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-
-      if (modNumIdx >= 0) // handle the variable mods if present on peptide
+      dCalcPepMass = dKnownPepMass;
+   }
+   else
+   {
+      // first calculate peptide mass as that's needed in fragment loop
+      j = 0;
+      dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+      double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+      for (int i = 0; i <= iEndPos; ++i)
       {
-         if (sPeptide[i] == modSeq[j])
+         dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+         dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+
+         if (modNumIdx >= 0) // handle the variable mods if present on peptide
          {
-            // Bugfix: mods[j] is a compacted index (see the note above this function's
-            // declaration) -- using it directly as a varModList index only coincided with
-            // the real slot when every active variable_modNN among the first
-            // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
-            // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
-            // mass to this peptide's precursor mass.
-            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
-            if (iSlot >= 0)
-               dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
-            j++;
+            if (pszPeptide[i] == modSeq[j])
+            {
+               // Bugfix: mods[j] is a compacted index (see the note above this function's
+               // declaration) -- using it directly as a varModList index only coincided with
+               // the real slot when every active variable_modNN among the first
+               // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
+               // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
+               // mass to this peptide's precursor mass.
+               int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+               if (iSlot >= 0)
+                  dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+               j++;
+            }
          }
       }
-   }
 
-   // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
-   // recomputed here from sPeptide (a NUL-terminated string reconstructed from the
-   // stored szPeptide char[]) must match the authoritative unmodified mass that was
-   // computed directly from the protein sequence at digestion time and stored
-   // independently on the raw-peptide entry (CometSearch.cpp:3446-3488). A large
-   // divergence means szPeptide was truncated/corrupted after storage -- exactly how
-   // the 'U'/B/J/O/X/Z packing-table bug in core/Types.h manifested (see
-   // docs/20260709_sprankjitter.md) -- rather than a benign mono/avg mass-type or
-   // protein-terminal-mod difference, which is at most a few Da for realistic
-   // peptide lengths. Non-fatal: logs and continues so a batch build doesn't abort
-   // over a single bad entry.
-   if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
-   {
-      constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
-      double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
-      double dDelta = fabs(dResidueOnlyMass - dStoredMass);
-      if (dDelta > MASS_CHECK_TOL)
+      // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
+      // recomputed here from pszPeptide (the raw-peptide entry's stored szPeptide char[])
+      // must match the authoritative unmodified mass that was computed directly from the
+      // protein sequence at digestion time and stored independently on the raw-peptide
+      // entry (CometSearch.cpp:3446-3488). A large divergence means szPeptide was
+      // truncated/corrupted after storage -- exactly how the 'U'/B/J/O/X/Z packing-table
+      // bug in core/Types.h manifested (see docs/20260709_sprankjitter.md) -- rather than a
+      // benign mono/avg mass-type or protein-terminal-mod difference, which is at most a
+      // few Da for realistic peptide lengths. Non-fatal: logs and continues so a batch
+      // build doesn't abort over a single bad entry. Only reachable here (the fresh-compute
+      // path) -- the fill pass's dKnownPepMass already went through this exact check once,
+      // during the count pass, for this same peptide variant.
+      if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
       {
-         logerr(" Warning - AddFragments mass mismatch for peptide '" + sPeptide
-            + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
-            + "): recomputed mass " + std::to_string(dResidueOnlyMass)
-            + " vs stored " + std::to_string(dStoredMass)
-            + ", delta " + std::to_string(dDelta)
-            + ". Possible truncated/corrupted peptide string.\n");
+         constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
+         double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
+         double dDelta = fabs(dResidueOnlyMass - dStoredMass);
+         if (dDelta > MASS_CHECK_TOL)
+         {
+            logerr(" Warning - AddFragments mass mismatch for peptide '" + string(pszPeptide)
+               + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
+               + "): recomputed mass " + std::to_string(dResidueOnlyMass)
+               + " vs stored " + std::to_string(dStoredMass)
+               + ", delta " + std::to_string(dDelta)
+               + ". Possible truncated/corrupted peptide string.\n");
+         }
       }
+
+      if (cNtermMod >= 0)  // if -1, unused
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+      if (cCtermMod >= 0)  // if -1, unused
+         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
    }
 
+   // dBion/dYion's own terminal-mod contribution is needed for the fragment ladder built
+   // below regardless of which branch above computed dCalcPepMass.
    if (cNtermMod >= 0)  // if -1, unused
-   {
       dBion += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-   }
    if (cCtermMod >= 0)  // if -1, unused
-   {
       dYion += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
-   }
 
    if (dCalcPepMass > 99999.9)
    {
-      printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, sPeptide.c_str(), modNumIdx);
+      printf(" Error, pepmass in AddFragments is %f, peptide %s, modNumIdx %d\n", dCalcPepMass, pszPeptide, modNumIdx);
       exit(1);
    }
 
@@ -586,16 +770,11 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
       sTmp.cNtermMod = cNtermMod;
       sTmp.cCtermMod = cCtermMod;
 
-      // Store the current peptide; iWhichFragmentPeptide references this peptide entry
-      // for use in the g_iFragmentIndex fragment index.  As this is a global list of
-      // peptides, need to lock when updating to avoid thread conflicts
-      if (g_vFragmentPeptides.size() >= UINT_MAX)
-      {
-         printf(" Error in CometFragmentIndex; UINT_MAX (%d) peptides reached.\n", UINT_MAX);
-         exit(1);
-      }
-      // store peptide representation based on sequence (iWhichPeptide), modification state (modNumIdx), and mass (dPepMass)
-      g_vFragmentPeptides.push_back(sTmp);
+      // P1: pLocalFragPeptides is this calling thread's own vector (one per
+      // AddFragmentsThreadProcRange() partition) -- no lock needed since no other thread
+      // ever touches it; the caller concatenates all partitions' vectors, in partition
+      // order, into g_vFragmentPeptides once every thread has finished (GenerateFragmentIndex()).
+      pLocalFragPeptides->push_back(sTmp);
    }
 
 /*
@@ -606,8 +785,8 @@ if (!(iWhichPeptide%1000))
    j=0;
    for (int i = 0; i <= iEndPos; ++i)
    {
-      printf("%c", (char)sPeptide[i]);
-      if (sPeptide[i] == modSeq[j])
+      printf("%c", (char)pszPeptide[i]);
+      if (pszPeptide[i] == modSeq[j])
       {
          if (modNumIdx != -1 && mods[j] != -1)
          {
@@ -685,12 +864,12 @@ if (!(iWhichPeptide%1000))
    {
       iPosReverse = iEndPos - i;
 
-      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[i]];
-      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)sPeptide[iPosReverse]];
+      dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+      dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[iPosReverse]];
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
-         if (sPeptide[i] == modSeq[j])
+         if (pszPeptide[i] == modSeq[j])
          {
             // Bugfix: mods[j] is a compacted index (see the note above this function's
             // declaration), not a raw varModList index -- the previous
@@ -728,7 +907,7 @@ if (!(iWhichPeptide%1000))
             j++;
          }
 
-         if (sPeptide[iPosReverse] == modSeq[k])
+         if (k >= 0 && pszPeptide[iPosReverse] == modSeq[k])
          {
             // see bugfix note above
             int slotY = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
@@ -776,14 +955,18 @@ if (!(iWhichPeptide%1000))
 
             if ((unsigned int)iBinBion >= g_massRange.uiMaxFragmentArrayIndex)
             {
-               printf(" Error: FI dBion %lf too large, pep %s\n", dBion, sPeptide.c_str());
+               printf(" Error: FI dBion %lf too large, pep %s\n", dBion, pszPeptide);
                exit(1);
             }
 
+            // P1: three mutually-exclusive destinations selected by which pointer the
+            // caller supplied -- see this function's doc comment in the header.
             if (bCountOnly)
-               g_iFragmentIndexOffset[iBinBion] += 1;
+               FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinBion]);
+            else if (pFillWriteCursor != nullptr)
+               g_iFragmentIndex[pFillWriteCursor[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
-               g_iFragmentIndex[s_iWritePos[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+               pFillBinCounts[iBinBion] += 1;
          }
 
          if ((maskY & maskBit)
@@ -793,14 +976,16 @@ if (!(iWhichPeptide%1000))
 
             if ((unsigned int)iBinYion >= g_massRange.uiMaxFragmentArrayIndex)
             {
-               printf(" Error: FI dYion %lf too large, pep %s\n", dYion, sPeptide.c_str());
+               printf(" Error: FI dYion %lf too large, pep %s\n", dYion, pszPeptide);
                exit(1);
             }
 
             if (bCountOnly)
-               g_iFragmentIndexOffset[iBinYion] += 1;
+               FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinYion]);
+            else if (pFillWriteCursor != nullptr)
+               g_iFragmentIndex[pFillWriteCursor[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
-               g_iFragmentIndex[s_iWritePos[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+               pFillBinCounts[iBinYion] += 1;
          }
 
          // Neutral-loss-shifted variants: inserted as SEPARATE FI entries alongside the
@@ -828,14 +1013,16 @@ if (!(iWhichPeptide%1000))
 
                      if ((unsigned int)iBinNLBion >= g_massRange.uiMaxFragmentArrayIndex)
                      {
-                        printf(" Error: FI dNLBion %lf too large, pep %s\n", dNLBion, sPeptide.c_str());
+                        printf(" Error: FI dNLBion %lf too large, pep %s\n", dNLBion, pszPeptide);
                         exit(1);
                      }
 
                      if (bCountOnly)
-                        g_iFragmentIndexOffset[iBinNLBion] += 1;
+                        FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinNLBion]);
+                     else if (pFillWriteCursor != nullptr)
+                        g_iFragmentIndex[pFillWriteCursor[iBinNLBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
                      else
-                        g_iFragmentIndex[s_iWritePos[iBinNLBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+                        pFillBinCounts[iBinNLBion] += 1;
                   }
                }
 
@@ -848,14 +1035,16 @@ if (!(iWhichPeptide%1000))
 
                      if ((unsigned int)iBinNLYion >= g_massRange.uiMaxFragmentArrayIndex)
                      {
-                        printf(" Error: FI dNLYion %lf too large, pep %s\n", dNLYion, sPeptide.c_str());
+                        printf(" Error: FI dNLYion %lf too large, pep %s\n", dNLYion, pszPeptide);
                         exit(1);
                      }
 
                      if (bCountOnly)
-                        g_iFragmentIndexOffset[iBinNLYion] += 1;
+                        FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinNLYion]);
+                     else if (pFillWriteCursor != nullptr)
+                        g_iFragmentIndex[pFillWriteCursor[iBinNLYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
                      else
-                        g_iFragmentIndex[s_iWritePos[iBinNLYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
+                        pFillBinCounts[iBinNLYion] += 1;
                   }
                }
             }
@@ -981,6 +1170,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          };
 
          vector<comet_fileoffset_t> prot;
+         // OR'd (not just the representative's) across every occurrence in the dedup run:
+         // with protein_modslist_file active, a peptide shared between a listed and an
+         // unlisted protein must not silently lose the listed protein's allowed-mod bits just
+         // because the unlisted protein happened to sort first (smallest file offset) and
+         // become buf[iRunStart]. Bit i allowed by ANY occurrence should stay allowed for the
+         // merged peptide -- the per-protein occurrence list (prot/prots_flat above) already
+         // records which specific proteins back this peptide.
+         unsigned short siVarModFilterUnion = 0;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
@@ -1001,15 +1198,19 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
-               dbi.siVarModProteinFilter     = rep.siVarModProteinFilter;
+               dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
                r.dbIdx.push_back(dbi);
 
                iRunStart = i;
+               siVarModFilterUnion = 0;
             }
             if (i < buf.size())
+            {
                prot.push_back(buf[i].lProteinFileOffset);
+               siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+            }
          }
 
          vector<PepGenTuple>().swap(buf);
@@ -1049,6 +1250,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<comet_fileoffset_t> prot;
+         // Same fix as the long-length path above: OR the mask across the whole dedup run
+         // instead of taking only the representative occurrence's mask.
+         unsigned short siVarModFilterUnion = 0;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
@@ -1073,15 +1277,19 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
                dbi.dPepMass                  = rep.dPepMass;
                dbi.cPrevAA                   = rep.cPrevAA;
                dbi.cNextAA                   = rep.cNextAA;
-               dbi.siVarModProteinFilter     = rep.siVarModProteinFilter;
+               dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
                r.dbIdx.push_back(dbi);
 
                iRunStart = i;
+               siVarModFilterUnion = 0;
             }
             if (i < buf.size())
+            {
                prot.push_back(buf[i].lProteinFileOffset);
+               siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+            }
          }
 
          vector<PepGenTupleShort>().swap(buf);

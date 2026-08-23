@@ -41,21 +41,21 @@ CometSearchManagerWrapper::CometSearchManagerWrapper()
 {
     // Instantiate the native C++ class
     _pSearchMgr = GetCometSearchManager();
-
-    _pvInputFilesList = new vector<InputFileInfo*>();
 }
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
+    // Destructor (Dispose()): deterministic cleanup path when the C# host calls
+    // Dispose() or uses a `using` block. This is deliberately the ONLY place the
+    // native manager is released: GetCometSearchManager()/ReleaseCometSearchManager()
+    // hand every wrapper the same process-wide singleton, refcounted so the singleton
+    // itself is only actually deleted once the last live wrapper releases it --
+    // releasing it from a GC finalizer instead destroyed the shared native manager at
+    // a nondeterministic time regardless, under any other live wrapper, or even
+    // mid-native-call on this one. An undisposed wrapper leaks the singleton for the
+    // life of the process, which is the safe failure mode (see the header comment).
     ReleaseCometSearchManager();
-
-    // CometSearchManager releases all the objects stored in the vector, we just
-    // need to release the vector itself here.
-    if (NULL != _pvInputFilesList)
-    {
-        delete _pvInputFilesList;
-        _pvInputFilesList = NULL;
-    }
+    _pSearchMgr = NULL;
 }
 
 bool CometSearchManagerWrapper::CreatePeptideIndex()
@@ -231,15 +231,31 @@ bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^input
     {
         return false;
     }
-    
+
+    // Hand the native side its own deep copies, and only THIS call's files:
+    // ~CometSearchManager() deletes every InputFileInfo* in g_pvInputFiles, while each
+    // InputFileInfoWrapper also deletes the InputFileInfo it owns -- passing the
+    // wrapper-owned pointer through would double-free. Copying also fixes the old
+    // accumulated-list bug where a second AddInputFiles call re-added the first
+    // batch's pointers to g_pvInputFiles (duplicate entries, double delete).
+    vector<InputFileInfo*> vNewInputFiles;
     int numFiles = inputFilesList->Count;
-    for (int i = 0; i < numFiles; i++)
+    try
     {
-        InputFileInfoWrapper^ inputFile = inputFilesList[i];
-        _pvInputFilesList->push_back(inputFile->get_InputFileInfoPtr());
+        for (int i = 0; i < numFiles; i++)
+        {
+            InputFileInfoWrapper^ inputFile = inputFilesList[i];
+            vNewInputFiles.push_back(new InputFileInfo(*(inputFile->get_InputFileInfoPtr())));
+        }
+    }
+    catch (...)
+    {
+        for (auto pFile : vNewInputFiles)
+            delete pFile;
+        throw;
     }
 
-    _pSearchMgr->AddInputFiles(*_pvInputFilesList);
+    _pSearchMgr->AddInputFiles(vNewInputFiles);
 
     return true;
 }

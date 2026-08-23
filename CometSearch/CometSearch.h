@@ -80,6 +80,8 @@ public:
 
    // Task 1.3: Thread-local overload: searches a caller-owned Query* without
    // touching g_pvQuery.  Allocates its own pbDuplFragment scratch buffer.
+   // FI_DB/PI_DB only, by design -- FASTA_DB always fails here; see this
+   // function's own comment in CometSearch.cpp.
    static bool RunSearch(Query* pQuery);
 
    // Fused batch FI_DB/PI_DB overload: skips AcquirePoolSlot by using a
@@ -110,7 +112,10 @@ public:
    static void SearchThreadProc(SearchThreadData* pSearchThreadData,
                                 ThreadPool* tp);
 
-   bool DoSearch(sDBEntry dbe, bool* pbDuplFragment, const vector<Query*>& queries);
+   // P6: dbe is a reference to the caller's (SearchThreadProc's) own SearchThreadData::dbEntry,
+   // which is already a per-thread owned copy and stable for this call's whole duration --
+   // no need for DoSearch to make its own second copy just to read/pass it onward.
+   bool DoSearch(sDBEntry& dbe, bool* pbDuplFragment, const vector<Query*>& queries);
 
    // Performance: Mark as const where possible
    bool CheckEnzymeTermini(const char* szProteinSeq,
@@ -207,7 +212,11 @@ private:
                            int *piVarModSites,
                            struct sDBEntry *dbe,
                            unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE+1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS+2],
-                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE],
+                           // +1 like uiBinnedIonMasses above: charge states are 1-indexed and
+                           // max_precursor_charge is explicitly allowed up to MAX_PRECURSOR_CHARGE
+                           // (CometSearchManager.cpp's clamp), so index MAX_PRECURSOR_CHARGE itself
+                           // must be valid, not one past the end.
+                           unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE+1],
                            int iNumMatchedFragmentIons);
 /*
    static double GetFragmentIonMass(int iWhichIonSeries,
@@ -293,8 +302,12 @@ private:
                        int iLenPeptide,
                        struct sDBEntry* dbe);
    
+   // P10: iSlot selects this thread's pool-backed uiBinnedIonMasses/uiBinnedPrecursorNL
+   // scratch buffers instead of declaring the ~143 KB array on the stack on every call
+   // (mirrors AnalyzePeptideIndex's identical pattern below).
    static void SearchFragmentIndex(Query* pQuery,
-                                   bool* pbDuplFragment);
+                                   bool* pbDuplFragment,
+                                   int iSlot);
 
    // Thread-local overload: searches a caller-owned Query* against the
    // read-only g_vDBIndexVariants. Does not access g_pvQuery. iSlot identifies the
@@ -311,11 +324,17 @@ private:
                                    struct sDBEntry* dbe,
                                    int iSlot);
 
-   bool SearchForPeptides(struct sDBEntry dbe,
+   // P6: dbe taken by reference, not by value -- DoSearch calls this up to twice per
+   // protein (once for the full sequence, once more for the N-term-Met-clipped variant),
+   // and a fresh sDBEntry copy (full sequence string + all PEFF vectors) on every call was
+   // pure overhead layered on top of DoSearch's own copy. The one-time PEFF-vector sort
+   // below now guards on is_sorted() so the second call doesn't redundantly re-sort what
+   // the first call already sorted on this same dbe.
+   bool SearchForPeptides(struct sDBEntry& dbe,
                           char* szProteinSeq,
                           int iNtermPeptideOnly,  // used in clipped methionine sequence
                           bool* pbDuplFragment);
-   void SearchForVariants(struct sDBEntry dbe,
+   void SearchForVariants(struct sDBEntry& dbe,
                           char* szProteinSeq,
                           bool* pbDuplFragment);
    void CompoundModSearch(char *szProteinSeq,
@@ -394,8 +413,12 @@ private:
 
    unsigned int       _uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];   // +2 for two fragment NL series
    unsigned int       _uiBinnedIonMassesDecoy[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2];
-   unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
-   unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE];
+   // +1: charge states are 1-indexed and max_precursor_charge is explicitly allowed up to
+   // MAX_PRECURSOR_CHARGE (CometSearchManager.cpp's clamp), so index MAX_PRECURSOR_CHARGE
+   // itself must be a valid slot, not one past the end -- matches _uiBinnedIonMasses's own
+   // MAX_FRAGMENT_CHARGE + 1 convention above.
+   unsigned int       _uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
+   unsigned int       _uiBinnedPrecursorNLDecoy[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1];
 
    static int  AcquirePoolSlot();       // Spin-wait for a free slot; returns index or -1 on timeout
 

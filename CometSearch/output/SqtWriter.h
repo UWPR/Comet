@@ -35,6 +35,12 @@ public:
             ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
             return false;
          }
+         // CometWriteSqt::WriteSqt() builds each result line via an ostringstream and issues
+         // one fprintf per line (unlike Txt/PepXml/MzIdentMl/Percolator's 25-40 small
+         // fprintf-per-line pattern), so the syscall-count win from a bigger stdio buffer is
+         // smaller here -- but still real, and free (setvbuf only changes buffering, not
+         // content), so apply it for consistency with the other writers.
+         setvbuf(_fpout, NULL, _IOFBF, 1 << 20);
          CometWriteSqt::PrintSqtHeader(_fpout, *ctx.pMgr);
 
          if (ctx.iDecoySearch == 2)
@@ -45,6 +51,7 @@ public:
                ctx.pStatus->SetStatus(CometResult_Failed, msg); logerr(msg);
                return false;
             }
+            setvbuf(_fpoutd, NULL, _IOFBF, 1 << 20);
             CometWriteSqt::PrintSqtHeader(_fpoutd, *ctx.pMgr);
          }
       }

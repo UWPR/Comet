@@ -72,6 +72,9 @@ void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
    // now loop through sTmpFile file, wr
    ParseTmpFile(fpout, fpdb, sTmpFile, searchMgr, bIdxNoFasta);
 
+   // Note: on failure, ParseTmpFile already reports via g_cometStatus/logerr; still
+   // close out the document so the caller gets a well-formed (if incomplete) file
+   // instead of a truncated one.
    fprintf(fpout, "</MzIdentML>\n");
 }
 
@@ -84,7 +87,7 @@ bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
    char szModel[SIZE_FILE];
 
    time(&tTime);
-   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", comet_localtime(&tTime));
 
    // Get msModel + msManufacturer from mzXML. Easy way to get from mzML too?
    CometWritePepXML::ReadInstrument(szManufacturer, szModel);
@@ -132,13 +135,22 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
 
    if (!ifsTmpFile.is_open())
    {
-      printf(" Error cannot read tmp file \"%s\"\n", sTmpFile.c_str());
-      exit(1);
+      std::string strErrorMsg = " Error cannot read tmp file \"" + sTmpFile + "\"\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
    }
 
    std::string strLine;  // line
    std::string strTmpPep;
    std::string strLocal;
+
+   // Guard against a corrupt/truncated tmp file (e.g. a prior crash or a disk-full
+   // write): a malformed numeric field would otherwise throw an uncaught
+   // std::invalid_argument/out_of_range out of stoi/stod/stof/at() and kill the
+   // whole process, including an embedding RTS host.
+   try
+   {
 
    while (std::getline(ifsTmpFile, strLine))
    {
@@ -584,6 +596,14 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    fprintf(fpout, " </DataCollection>\n");
 
    return true;
+   }
+   catch (const std::exception &e)
+   {
+      std::string strErrorMsg = " Error parsing mzid temp file \"" + sTmpFile + "\": " + e.what() + "\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 }
 
 
@@ -606,7 +626,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
    WriteStaticMod(fpout, searchMgr, "add_L_leucine");
    WriteStaticMod(fpout, searchMgr, "add_I_isoleucine");
    WriteStaticMod(fpout, searchMgr, "add_N_asparagine");
-   WriteStaticMod(fpout, searchMgr, "add_O_ornithine");
+   WriteStaticMod(fpout, searchMgr, "add_O_pyrrolysine");
    WriteStaticMod(fpout, searchMgr, "add_D_aspartic_acid");
    WriteStaticMod(fpout, searchMgr, "add_Q_glutamine");
    WriteStaticMod(fpout, searchMgr, "add_K_lysine");
@@ -619,7 +639,7 @@ void CometWriteMzIdentML::WriteMods(FILE *fpout,
    WriteStaticMod(fpout, searchMgr, "add_W_tryptophan");
    WriteStaticMod(fpout, searchMgr, "add_B_user_amino_acid");
    WriteStaticMod(fpout, searchMgr, "add_J_user_amino_acid");
-   WriteStaticMod(fpout, searchMgr, "add_U_user_amino_acid");
+   WriteStaticMod(fpout, searchMgr, "add_U_selenocysteine");
    WriteStaticMod(fpout, searchMgr, "add_X_user_amino_acid");
    WriteStaticMod(fpout, searchMgr, "add_Z_user_amino_acid");
 
@@ -1136,7 +1156,9 @@ void CometWriteMzIdentML::WriteTolerance(FILE *fpout)
 void CometWriteMzIdentML::WriteInputs(FILE *fpout)
 {
    fprintf(fpout, "  <Inputs>\n");
-   fprintf(fpout, "   <SearchDatabase id=\"DB\" location=\"%s\">\n", g_staticParams.databaseInfo.szDatabase);
+   string strDatabase = g_staticParams.databaseInfo.szDatabase;
+   CometMassSpecUtils::EscapeString(strDatabase);
+   fprintf(fpout, "   <SearchDatabase id=\"DB\" location=\"%s\">\n", strDatabase.c_str());
    fprintf(fpout, "    <FileFormat>\n");
    fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001348\" name=\"FASTA format\" />\n");
    fprintf(fpout, "    </FileFormat>\n");
@@ -1155,7 +1177,9 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    else
       strcpy(szNoPathDatabase, g_staticParams.databaseInfo.szDatabase);
 
-   fprintf(fpout, "     <userParam type=\"string\" name=\"%s\" />\n", szNoPathDatabase);
+   string strNoPathDatabase = szNoPathDatabase;
+   CometMassSpecUtils::EscapeString(strNoPathDatabase);
+   fprintf(fpout, "     <userParam type=\"string\" name=\"%s\" />\n", strNoPathDatabase.c_str());
    fprintf(fpout, "    </DatabaseName>\n");
    fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001073\" name=\"database type amino acid\" />\n");
    if (g_staticParams.options.iDecoySearch == 1)
@@ -1172,7 +1196,9 @@ void CometWriteMzIdentML::WriteInputs(FILE *fpout)
    }
    fprintf(fpout, "   </SearchDatabase>\n");
 
-   fprintf(fpout, "   <SpectraData location=\"%s\" id=\"SD\" >\n", g_staticParams.inputFile.szFileName);
+   string strSpectraDataLocation = g_staticParams.inputFile.szFileName;
+   CometMassSpecUtils::EscapeString(strSpectraDataLocation);
+   fprintf(fpout, "   <SpectraData location=\"%s\" id=\"SD\" >\n", strSpectraDataLocation.c_str());
    fprintf(fpout, "    <FileFormat>\n");
 
    char szFormatAccession[24];
@@ -1356,17 +1382,20 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       lCount++;
    }
 
-   if (dPrevRT > 0.0)
+   if (!(*vMzid).empty())
    {
-      fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
-   }
+      if (dPrevRT > 0.0)
+      {
+         fprintf(fpout, "     <cvParam cvRef=\"PSI-MS\" accession=\"MS:1000894\" name=\"retention time\" value=\"%0.4f\" unitCvRef=\"UO\" unitAccession=\"UO:0000010\" unitName=\"second\"/>\n", dPrevRT);
+      }
 
-   fprintf(fpout, "    </SpectrumIdentificationResult>\n");
+      fprintf(fpout, "    </SpectrumIdentificationResult>\n");
+   }
 
    time_t tTime;
    char szDate[48];
    time(&tTime);
-   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", localtime(&tTime));
+   strftime(szDate, 46, "%Y-%m-%dT%H:%M:%S", comet_localtime(&tTime));
 
    fprintf(fpout, "    <cvParam cvRef=\"PSI-MS\" accession=\"MS:1001035\" name=\"date / time search performed\" value=\"%s\" />\n", szDate);
    fprintf(fpout, "   </SpectrumIdentificationList>\n");
