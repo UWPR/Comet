@@ -1,5 +1,5 @@
 H	CreationDate	synthetic
-H	Comment	T28 fragment-neutral-loss break-boundary regression fixture: peptide
+H	Comment	T37 fragment-neutral-loss break-boundary regression fixture: peptide
 H	Comment	WWWWWWWS[+79.966331]WWWWWWW, charge 3+. Exercises CometFragmentIndex.cpp's
 H	Comment	AddFragments() early-exit break (old form: dBion > dFragIndexMaxMass &&
 H	Comment	dYion > dFragIndexMaxMass), which is unsound once NL-shifted insertions are in

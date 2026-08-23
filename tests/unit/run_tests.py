@@ -2206,7 +2206,7 @@ def test_t25_fi_mod_slot_ambig(comet_exe):
 # NL feature off), while comparing xcorr/e-value between the two isolates bug/feature 1 (only
 # "with NL" can match the 9 NL-shifted peaks, so its xcorr must be meaningfully higher).
 
-T25_FRAGMENT_NL_PARAMS_TEMPLATE = textwrap.dedent("""\
+CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE = textwrap.dedent("""\
 # comet_version {comet_version}
 database_name = {database}
 decoy_search = 0
@@ -2304,13 +2304,13 @@ add_Z_user_amino_acid = 0.0
 """)
 
 
-def _t25_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
+def _t34_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
     """Build a fresh .idx with the given neutral_loss value, search it, return
     (rc, out, txt_path, fi_entries) -- caller does all assertions."""
     idx = fasta.with_suffix(".fasta.idx")
     idx.unlink(missing_ok=True)
 
-    build_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+    build_params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=neutral_loss)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -2330,7 +2330,7 @@ def _t25_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
 
     txt = ms2.with_suffix(".txt")
     txt.unlink(missing_ok=True)
-    search_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+    search_params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=neutral_loss)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -2348,9 +2348,9 @@ def _t25_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
         idx.unlink(missing_ok=True)
 
 
-@register("t25_fragment_nl")
-def test_t25_fragment_nl(comet_exe):
-    """T25: FI_DB fragment neutral loss -- gap variable-mod-slot config (mod in
+@register("t34_fragment_nl")
+def test_t34_fragment_nl(comet_exe):
+    """T34: FI_DB fragment neutral loss -- gap variable-mod-slot config (mod in
     variable_mod02, variable_mod01 unused) regression-tests both the FI-construction
     fix (CometFragmentIndex.cpp) and the FI-query-scoring fix (CometSearch.cpp)."""
     failures = []
@@ -2363,7 +2363,7 @@ def test_t25_fragment_nl(comet_exe):
 
     results = {}
     for label, nl in (("no_nl", "0.0"), ("with_nl", "97.976896")):
-        rc, out, txt, fi_entries = _t25_build_and_search(comet_exe, fasta, ms2, nl, fmt, label)
+        rc, out, txt, fi_entries = _t34_build_and_search(comet_exe, fasta, ms2, nl, fmt, label)
         if rc != 0 or txt is None:
             failures.append(f"[{label}] search failed (rc={rc}):\n{out}")
             continue
@@ -2378,7 +2378,7 @@ def test_t25_fragment_nl(comet_exe):
     if "no_nl" not in results or "with_nl" not in results:
         return failures
 
-    # Column order comes from T25_FRAGMENT_NL_PARAMS_TEMPLATE's shared txt output format (same as
+    # Column order comes from CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE's shared txt output format (same as
     # T19_PARAMS_TEMPLATE's), fixed and hardcoded here rather than re-derived from the actual
     # header line since both templates emit the identical column set.
     COLS = ("scan", "num", "charge", "exp_neutral_mass", "calc_neutral_mass", "e-value",
@@ -2429,7 +2429,7 @@ def test_t25_fragment_nl(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T26 -- comet.exe -x peptide-index variant export (docs/20260805_carafe.md Section 6.9/9)
+# T35 -- comet.exe -x peptide-index variant export (docs/20260805_carafe.md Section 6.9/9)
 # ---------------------------------------------------------------------------
 #
 # Phase 0.5 stopped persisting MOD_NUMBERS/MOD_SEQS/the compact variant array in the .idx
@@ -2458,12 +2458,12 @@ def test_t25_fragment_nl(comet_exe):
 # baseline survived -- GenerateVariantArray()'s first loop has no mass check at all), while
 # the export still "succeeded" with a plausible-looking single-row file instead of failing
 # loudly. This test's row-count/site assertions below are exactly what would have caught it.
-T26_EXPORT_PARAMS_TEMPLATE = T25_PARAMS_TEMPLATE
+T35_EXPORT_PARAMS_TEMPLATE = T25_PARAMS_TEMPLATE
 
 
-@register("t26_export_peptide_index_variants")
-def test_t26_export_peptide_index_variants(comet_exe):
-    """T26: comet.exe -x exports the live-session peptide-mod variant enumeration a real
+@register("t35_export_peptide_index_variants")
+def test_t35_export_peptide_index_variants(comet_exe):
+    """T35: comet.exe -x exports the live-session peptide-mod variant enumeration a real
     PI_DB search would use -- regression-tests both the feature itself and the
     g_massRange.dMinMass/dMaxMass initialization bug found while building it (see module-level
     comment above)."""
@@ -2478,7 +2478,7 @@ def test_t26_export_peptide_index_variants(comet_exe):
     if idx.exists():
         idx.unlink()
 
-    build_params = T26_EXPORT_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta))
+    build_params = T35_EXPORT_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta))
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
@@ -2492,14 +2492,14 @@ def test_t26_export_peptide_index_variants(comet_exe):
     finally:
         build_params_file.unlink(missing_ok=True)
 
-    export_params = T26_EXPORT_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(idx))
+    export_params = T35_EXPORT_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(idx))
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
         pf.write(export_params)
         export_params_file = Path(pf.name)
 
-    export_tsv = DATA_DIR / "t26_export.tsv"
+    export_tsv = DATA_DIR / "t35_export.tsv"
     export_tsv.unlink(missing_ok=True)
     try:
         rc, out = _run_t19_step(comet_exe, [f"-x{fmt(export_tsv)}", f"-P{fmt(export_params_file)}"])
@@ -2554,7 +2554,7 @@ def test_t26_export_peptide_index_variants(comet_exe):
         # .idx/comet.params instead of two -j builds): iWhichPeptide/modNumIdx numbering is
         # exactly what tools/idx_to_carafe.py's Carafe integration depends on staying stable
         # across separate `comet.exe -x` invocations.
-        export_tsv2 = DATA_DIR / "t26_export2.tsv"
+        export_tsv2 = DATA_DIR / "t35_export2.tsv"
         export_tsv2.unlink(missing_ok=True)
         rc2, out2 = _run_t19_step(comet_exe, [f"-x{fmt(export_tsv2)}", f"-P{fmt(export_params_file)}"])
         try:
@@ -2574,14 +2574,15 @@ def test_t26_export_peptide_index_variants(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T27 -- CometFragmentIndex.cpp predicted-fragment mask integration (docs/20260805_carafe.md
+# T36 -- CometFragmentIndex.cpp predicted-fragment mask integration (docs/20260805_carafe.md
 # Section 4.4/9, Phase 3)
 # ---------------------------------------------------------------------------
 #
-# Reuses t25_fragment_nl's own fixture/template (t25_fragment_nl.fasta/.ms2, ACDSEFGHIK, real
+# Reuses T34's own fixture/template (t25_fragment_nl.fasta/.ms2 -- filenames predate T34's
+# renumbering, ACDSEFGHIK, real
 # mod in variable_mod02/slot 1 WITH a real 97.976896 Da neutral loss configured -- Section
 # 6.6/6.7's own fixture is exactly what's needed here too, already proven to produce 28 FI
-# entries with NL off / 37 with NL on) rather than T25/T26's plain gap-config fixture, which
+# entries with NL off / 37 with NL on) rather than T25/T35's plain gap-config fixture, which
 # has NL=0.0 and so never exercises the NL-shifted-entry code path masking needs to prove it
 # can filter independently of the unshifted one. The mask itself is hand-constructed via
 # tools/carafe_ms2_to_fi_mask.py's write_mask_file()/idx_fingerprint() directly -- no real
@@ -2600,17 +2601,17 @@ def test_t26_export_peptide_index_variants(comet_exe):
 # shifted, matching t25_fragment_nl's own with-NL count exactly); masked 28 (14 unmodified,
 # unfiltered via the fallback + 14 modified-unshifted, all kept + 0 modified-NL, all dropped)
 # -- an exact, hand-derived count, not just "some difference" (matches this project's
-# established T25-style standard for FI entry counts). Every one of the spectrum's 14 real
+# established T34-style standard for FI entry counts). Every one of the spectrum's 14 real
 # (unshifted) ions stays in the masked index, so the peptide must still be found with
 # identical scoring to the unmasked search -- proving masking is purely a candidate-recall
 # filter (matching classic search's own NL-scoring precedent: XcorrScoreI() always scores the
 # full theoretical spectrum regardless of what's in the FI), not a scoring-accuracy one.
-T27_NEUTRAL_LOSS = "97.976896"
-T27_VAR_MOD_CONFIG = ("0.000000X--0.000000|79.966331S--" + T27_NEUTRAL_LOSS + "|"
+T36_NEUTRAL_LOSS = "97.976896"
+T36_VAR_MOD_CONFIG = ("0.000000X--0.000000|79.966331S--" + T36_NEUTRAL_LOSS + "|"
                       "0.000000X--0.000000|0.000000X--0.000000|0.000000X--0.000000")
 
 
-def _t27_write_hand_mask(idx_path, mask_path):
+def _t36_write_hand_mask(idx_path, mask_path):
     """Builds a mask file directly (no idx_to_carafe.py/Carafe involved) with the exact bit
     patterns documented above. Returns (fingerprint, num_raw_peptides) for the caller's own
     mismatch-rejection sub-test."""
@@ -2622,14 +2623,14 @@ def _t27_write_hand_mask(idx_path, mask_path):
     fi_mask.write_mask_file(
         str(mask_path), fingerprint, num_raw_peptides, str(idx_path),
         threshold=0.10, min_kept_peaks=6, general_mode=False,
-        var_mod_config=T27_VAR_MOD_CONFIG,
+        var_mod_config=T36_VAR_MOD_CONFIG,
         entries=entries)
     return fingerprint, num_raw_peptides
 
 
-@register("t27_predicted_mask_integration")
-def test_t27_predicted_mask_integration(comet_exe):
-    """T27: CometFragmentIndex.cpp actually applies a predicted-fragment mask -- fewer FI
+@register("t36_predicted_mask_integration")
+def test_t36_predicted_mask_integration(comet_exe):
+    """T36: CometFragmentIndex.cpp actually applies a predicted-fragment mask -- fewer FI
     entries with masking, identical scoring for a peptide whose real ions survive the mask,
     the Section 8 item 2 "not found -> unfiltered" fallback, and rejection of a mask that
     doesn't match the currently-loaded .idx/comet.params (Section 8 items 12-14's VarModConfig guard)."""
@@ -2639,14 +2640,14 @@ def test_t27_predicted_mask_integration(comet_exe):
     ms2   = DATA_DIR / "t25_fragment_nl.ms2"
     idx   = fasta.with_suffix(".fasta.idx")
     txt   = ms2.with_suffix(".txt")
-    mask_path = DATA_DIR / "t27_predicted.mask"
+    mask_path = DATA_DIR / "t36_predicted.mask"
 
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
     idx.unlink(missing_ok=True)
-    build_params = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
-        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=T27_NEUTRAL_LOSS)
+    build_params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=T36_NEUTRAL_LOSS)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
         pf.write(build_params)
         build_params_file = Path(pf.name)
@@ -2661,7 +2662,7 @@ def test_t27_predicted_mask_integration(comet_exe):
         # whichever of -i/-j built it) is authoritative and index_search_type is no longer
         # consulted for an existing file -- so -j here now permanently locks this .idx to
         # PI_DB, silently skipping CreateFragmentIndex()/the mask entirely on every subsequent
-        # search against it (T25's own _t25_build_and_search() helper already used -i
+        # search against it (T34's own _t34_build_and_search() helper already used -i
         # correctly; this test just didn't match it).
         rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
         if rc != 0 or not idx.exists():
@@ -2671,10 +2672,10 @@ def test_t27_predicted_mask_integration(comet_exe):
         build_params_file.unlink(missing_ok=True)
 
     try:
-        fingerprint, num_raw_peptides = _t27_write_hand_mask(idx, mask_path)
+        fingerprint, num_raw_peptides = _t36_write_hand_mask(idx, mask_path)
 
-        search_params_common = T25_FRAGMENT_NL_PARAMS_TEMPLATE.format(
-            comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T27_NEUTRAL_LOSS)
+        search_params_common = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+            comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T36_NEUTRAL_LOSS)
 
         def run_search(mask_file, tag):
             params = search_params_common
@@ -2731,7 +2732,7 @@ def test_t27_predicted_mask_integration(comet_exe):
 
         # --- Mismatch rejection: a mask with the wrong fingerprint must be rejected loudly,
         # not silently ignored or misapplied. ---
-        bad_mask_path = DATA_DIR / "t27_bad_fingerprint.mask"
+        bad_mask_path = DATA_DIR / "t36_bad_fingerprint.mask"
         fi_mask.write_mask_file(
             str(bad_mask_path), "deadbeef", num_raw_peptides, str(idx),
             threshold=0.10, min_kept_peaks=6, general_mode=False,
@@ -2750,7 +2751,7 @@ def test_t27_predicted_mask_integration(comet_exe):
 
         # --- Mismatch rejection: a mask with the wrong VarModConfig (right .idx, different
         # variable mods) must also be rejected -- Section 8 items 12-14's closing-the-gap guard. ---
-        bad_varmod_path = DATA_DIR / "t27_bad_varmod.mask"
+        bad_varmod_path = DATA_DIR / "t36_bad_varmod.mask"
         fi_mask.write_mask_file(
             str(bad_varmod_path), fingerprint, num_raw_peptides, str(idx),
             threshold=0.10, min_kept_peaks=6, general_mode=False,
@@ -2775,7 +2776,7 @@ def test_t27_predicted_mask_integration(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T28 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
+# T37 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
 # ---------------------------------------------------------------------------
 #
 # Found by a 2026-08-13 code review of the Carafe integration branch: AddFragments()'s early
@@ -2799,30 +2800,30 @@ def test_t27_predicted_mask_integration(comet_exe):
 # both NL-eligible since the mod at position 7 is within reach from both termini by this ladder
 # position) -- exactly the entries the old break silently dropped.
 #
-# Same digest_mass_range/peptide_length_range-widened derivative of T25_FRAGMENT_NL_PARAMS_
-# TEMPLATE as T25 itself is a derivative of T19's (see that comment for the maintenance-risk
-# rationale) -- T25's own 200-2000 Da/10-10 residue ranges are far too narrow for this fixture's
+# Same digest_mass_range/peptide_length_range-widened derivative of CARAFE_FRAGMENT_NL_PARAMS_
+# TEMPLATE as T34 itself is a derivative of T19's (see that comment for the maintenance-risk
+# rationale) -- T34's own 200-2000 Da/10-10 residue ranges are far too narrow for this fixture's
 # ~2710-2790 Da peptide.
-T28_PARAMS_TEMPLATE = (
-    T25_FRAGMENT_NL_PARAMS_TEMPLATE
+T37_PARAMS_TEMPLATE = (
+    CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE
     .replace("digest_mass_range = 200.0 2000.0", "digest_mass_range = 200.0 3000.0")
     .replace("peptide_length_range = 10 10", "peptide_length_range = 15 15")
 )
 
-assert "digest_mass_range = 200.0 3000.0" in T28_PARAMS_TEMPLATE, \
-    "T28_PARAMS_TEMPLATE: digest_mass_range replacement didn't fire -- T25_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
-assert "peptide_length_range = 15 15" in T28_PARAMS_TEMPLATE, \
-    "T28_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T25_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
+assert "digest_mass_range = 200.0 3000.0" in T37_PARAMS_TEMPLATE, \
+    "T37_PARAMS_TEMPLATE: digest_mass_range replacement didn't fire -- CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 15 15" in T37_PARAMS_TEMPLATE, \
+    "T37_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE changed?"
 
 
-def _t28_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
-    """Same shape as _t25_build_and_search() but against T28_PARAMS_TEMPLATE's wider mass/length
-    ranges -- kept as its own function rather than parameterizing _t25_build_and_search() so T25
-    itself can't be accidentally affected by a change made for T28's sake."""
+def _t37_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
+    """Same shape as _t34_build_and_search() but against T37_PARAMS_TEMPLATE's wider mass/length
+    ranges -- kept as its own function rather than parameterizing _t34_build_and_search() so T34
+    itself can't be accidentally affected by a change made for T37's sake."""
     idx = fasta.with_suffix(".fasta.idx")
     idx.unlink(missing_ok=True)
 
-    build_params = T28_PARAMS_TEMPLATE.format(
+    build_params = T37_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=neutral_loss)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -2840,7 +2841,7 @@ def _t28_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
 
     txt = ms2.with_suffix(".txt")
     txt.unlink(missing_ok=True)
-    search_params = T28_PARAMS_TEMPLATE.format(
+    search_params = T37_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=neutral_loss)
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
@@ -2858,19 +2859,19 @@ def _t28_build_and_search(comet_exe, fasta, ms2, neutral_loss, fmt, tag):
         idx.unlink(missing_ok=True)
 
 
-@register("t28_fragment_nl_break_boundary")
-def test_t28_fragment_nl_break_boundary(comet_exe):
-    """T28: CometFragmentIndex.cpp AddFragments()'s early-exit break must stay sound once
+@register("t37_fragment_nl_break_boundary")
+def test_t37_fragment_nl_break_boundary(comet_exe):
+    """T37: CometFragmentIndex.cpp AddFragments()'s early-exit break must stay sound once
     NL-shifted insertions are in play (2026-08-13 code review finding)."""
     failures = []
 
-    fasta = DATA_DIR / "t28_fragment_nl_break_boundary.fasta"
-    ms2   = DATA_DIR / "t28_fragment_nl_break_boundary.ms2"
+    fasta = DATA_DIR / "t37_fragment_nl_break_boundary.fasta"
+    ms2   = DATA_DIR / "t37_fragment_nl_break_boundary.ms2"
 
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
-    rc, out, txt, fi_entries = _t28_build_and_search(comet_exe, fasta, ms2, "97.976896", fmt, "t28")
+    rc, out, txt, fi_entries = _t37_build_and_search(comet_exe, fasta, ms2, "97.976896", fmt, "t37")
     if rc != 0 or txt is None:
         failures.append(f"search failed (rc={rc}):\n{out}")
         return failures
@@ -2895,7 +2896,7 @@ def test_t28_fragment_nl_break_boundary(comet_exe):
     # The headline assertion. Both the unmodified (modNumIdx=-1, bFragmentNL always False, so
     # this fix is a no-op there -- 18 entries either way) and modified (phospho + NL, where the
     # fix matters) variants of this one peptide get indexed together (search_enzyme_number=0
-    # "cut everywhere" digests it as a single candidate, same as T25's own single-peptide FASTA).
+    # "cut everywhere" digests it as a single candidate, same as T34's own single-peptide FASTA).
     # Independently hand-derived in Python (see module comment above) by walking the exact same
     # ladder AddFragments() walks:
     #   unmodified: 18 (9 unshifted b + 9 unshifted y, length>=3 through the full 14-position
@@ -2904,13 +2905,13 @@ def test_t28_fragment_nl_break_boundary(comet_exe):
     #     4 NL-shifted y) vs. 22 with the OLD buggy break (same unshifted counts, but only
     #     3+3 NL-shifted -- missing exactly the length-11 NLb/NLy pair the break drops)
     #   total: 42 with the fix, 40 with the old bug -- an exact, hand-verifiable difference of 2,
-    #   not just "some difference" (matches this project's T25/T27 precedent for FI-entry-count
+    #   not just "some difference" (matches this project's T34/T36 precedent for FI-entry-count
     #   assertions).
     check(fi_entries == 42,
           f"expected exactly 42 FI entries (18 unmodified + 24 modified-with-fix; would be 40 "
           f"-- 18 + 22 -- under the pre-fix break), got {fi_entries}", failures)
 
-    # Matching signal (mirrors T25's own xcorr check): CometSearch.cpp's SearchFragmentIndex()
+    # Matching signal (mirrors T34's own xcorr check): CometSearch.cpp's SearchFragmentIndex()
     # bins NL-shifted candidate masses on the fly regardless of what's in the FI's posting
     # list -- the FI entries above only affect *candidate recall*, not per-candidate scoring
     # accuracy. So this can't distinguish the fix from the bug on its own (a low-recall FI can
@@ -2929,31 +2930,31 @@ def test_t28_fragment_nl_break_boundary(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T29 -- the standalone pure-Python Carafe tool test suites
+# T38 -- the standalone pure-Python Carafe tool test suites
 # ---------------------------------------------------------------------------
 #
 # tests/unit/test_carafe_ms2_to_fi_mask.py, test_carafe_alignment.py,
 # test_idx_to_carafe_dedup_key.py, and test_carafe_cps.py each carry their own run_test()
 # harness (in-process Python, no comet.exe/.idx/Carafe-venv dependency) but until this
 # test none of them were wired into this runner -- they only ran when someone remembered
-# to invoke them by hand (docs/20260822_carafe_prerun.md milestone M6). T29 imports each
+# to invoke them by hand (docs/20260822_carafe_prerun.md milestone M6). T38 imports each
 # module and runs its suite; a False return (any internal failure -- the module prints its
-# own per-test detail to stdout) fails T29 with the module named.
+# own per-test detail to stdout) fails T38 with the module named.
 #
 # Runs once per run_tests.py invocation, not per --comet binary: nothing here touches a
 # comet binary, so running it N times for N binaries would be pure noise. Implemented via
 # a module-level latch rather than a special-case in main()'s loop.
 
-_T29_RAN = False
+_T38_RAN = False
 
-@register("t29_carafe_python_suites")
-def test_t29_carafe_python_suites(comet_exe):
-    """T29: run the four standalone Carafe pure-Python test suites in-process."""
-    global _T29_RAN
+@register("t38_carafe_python_suites")
+def test_t38_carafe_python_suites(comet_exe):
+    """T38: run the four standalone Carafe pure-Python test suites in-process."""
+    global _T38_RAN
     failures = []
-    if _T29_RAN:
+    if _T38_RAN:
         return failures   # already ran under the first --comet binary this invocation
-    _T29_RAN = True
+    _T38_RAN = True
 
     import importlib
     for mod_name in ("test_carafe_ms2_to_fi_mask", "test_carafe_alignment",
@@ -2961,7 +2962,7 @@ def test_t29_carafe_python_suites(comet_exe):
         try:
             mod = importlib.import_module(mod_name)
             ok = mod.run_test()
-        except Exception as e:  # noqa: BLE001 -- a crashing suite must fail T29, not the runner
+        except Exception as e:  # noqa: BLE001 -- a crashing suite must fail T38, not the runner
             check(False, f"{mod_name} raised {type(e).__name__}: {e}", failures)
             continue
         check(ok, f"{mod_name}.run_test() reported failures (detail printed above)",

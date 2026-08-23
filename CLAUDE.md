@@ -111,7 +111,7 @@ diagrams, use the `comet-codebase` skill.
 Tests live in `tests/unit/`. The runner is `run_tests.py`.
 
 ```bash
-# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T33) -- fast, no large data required
+# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T38) -- fast, no large data required
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
 
 # Run a specific test by ID
@@ -192,22 +192,30 @@ variance from machine noise alone can plausibly reach 10-20% with no code change
 Treat one `_check_timing` failure as "worth re-running to confirm," not proof of a
 regression on its own -- a *repeated* failure across multiple runs is the real signal.
 
-### Carafe / FI-masking regressions (T25-T28)
+### Carafe / FI-masking regressions (T25 shared with master, T34-T38 Carafe-only)
 
-All four run in the default fast suite (no `--integration` needed) against small
-crafted fixtures in `tests/unit/data/`.
+Master independently added its own T26-T33 (unrelated correctness/robustness
+regressions -- see `tests/tests.md`) after Carafe forked, so Carafe's own FI-masking
+tests were renumbered T34-T38 on merge to avoid two different tests sharing the same
+ID; `t25_fi_mod_slot_gap`/`_ambig` predate the fork and are common to both branches, so
+those two keep the T25 numbering master also uses. All five (T25's `_fragment_nl` case
+plus T34-T38) run in the default fast suite (no `--integration` needed) against small
+crafted fixtures in `tests/unit/data/` -- note some of T34/T36/T37's fixture/output
+filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
+`t37_fragment_nl_break_boundary.*` was renamed to match.
 
-- **T25** (`t25_fi_mod_slot_gap`, `t25_fi_mod_slot_ambig`, `t25_fragment_nl`) -- FI_DB
-  variable-mod-slot regressions. `_fi_mod_slot_gap`: a mod configured in `variable_mod02`
-  (slot 1) with `variable_mod01` (slot 0) left unused must not silently resolve to the
-  wrong slot. `_fi_mod_slot_ambig`: a genuinely ambiguous second candidate site (2
-  modifiable residues, `max_variable_mods_in_peptide=1`) forces `AddFragments()` to
-  enumerate a combination where the other site's compacted mod index is the `-1` "not
+- **T25** (`t25_fi_mod_slot_gap`, `t25_fi_mod_slot_ambig`) -- FI_DB variable-mod-slot
+  regressions, shared with master. `_fi_mod_slot_gap`: a mod configured in
+  `variable_mod02` (slot 1) with `variable_mod01` (slot 0) left unused must not silently
+  resolve to the wrong slot. `_fi_mod_slot_ambig`: a genuinely ambiguous second candidate
+  site (2 modifiable residues, `max_variable_mods_in_peptide=1`) forces `AddFragments()`
+  to enumerate a combination where the other site's compacted mod index is the `-1` "not
   modified in this combination" sentinel -- the specific unguarded array access that
-  previously crashed/corrupted. `_fragment_nl`: fragment neutral loss under the same gap
-  slot config, regression-testing both the FI-construction fix (`CometFragmentIndex.cpp`)
-  and the FI-query-scoring fix (`CometSearch.cpp`) together.
-- **T26** (`t26_export_peptide_index_variants`) -- `comet.exe -x` exports the
+  previously crashed/corrupted.
+- **T34** (`t34_fragment_nl`) -- fragment neutral loss under the same gap slot config,
+  regression-testing both the FI-construction fix (`CometFragmentIndex.cpp`) and the
+  FI-query-scoring fix (`CometSearch.cpp`) together.
+- **T35** (`t35_export_peptide_index_variants`) -- `comet.exe -x` exports the
   live-session peptide-mod variant enumeration a real PI_DB search would use (feeds
   Carafe's `idx_to_carafe.py`). Also regression-tests a `g_massRange.dMinMass`/`dMaxMass`
   initialization bug found while building the feature: every entry point that reaches
@@ -216,15 +224,15 @@ crafted fixtures in `tests/unit/data/`.
   variable-mod-modified variant was silently dropped by the mass-range check, and the
   export still "succeeded" with a plausible-looking single-row file instead of failing
   loudly.
-- **T27** (`t27_predicted_mask_integration`) -- `CometFragmentIndex.cpp` actually applies
+- **T36** (`t36_predicted_mask_integration`) -- `CometFragmentIndex.cpp` actually applies
   a Carafe predicted-fragment mask: fewer FI entries with masking, identical scoring for
   a peptide whose real ions survive the mask, the "not found -> unfiltered" fallback
   (an unscored variant keeps its full fragment set rather than being dropped), and
   rejection of a mask that doesn't match the currently-loaded `.idx`/`comet.params`
   (`VarModConfig` guard).
-- **T28** (`t28_fragment_nl_break_boundary`) -- `AddFragments()`'s early-exit break
+- **T37** (`t37_fragment_nl_break_boundary`) -- `AddFragments()`'s early-exit break
   (`if (dBion > dFragIndexMaxMass && dYion > dFragIndexMaxMass) break;`) predates the
-  NL-shifted b/y insertions T25/T27 exercise and is unsound against them: an NL-shifted
+  NL-shifted b/y insertions T34/T36 exercise and is unsound against them: an NL-shifted
   insertion uses `dBion-dNL`/`dYion-dNL`, not `dBion`/`dYion` directly, so once the
   unshifted sums cross `dFragIndexMaxMass` by less than the largest active neutral-loss
   delta, a valid in-window NL-shifted entry can still exist at that ladder position --
@@ -234,7 +242,7 @@ crafted fixtures in `tests/unit/data/`.
   (`WWWWWWWS[+79.966331]WWWWWWW`) is hand-derived so the fix's effect is an exact,
   verifiable count -- 42 FI entries with the fix vs. 40 under the old buggy break -- not
   just "some difference."
-- **T29** (`t29_carafe_python_suites`) -- runs the four standalone pure-Python Carafe tool
+- **T38** (`t38_carafe_python_suites`) -- runs the four standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
   `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`; no comet.exe/Carafe-venv
   dependency). Runs once per invocation, not per `--comet` binary.
