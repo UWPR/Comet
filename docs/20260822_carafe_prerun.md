@@ -432,8 +432,39 @@ repo path, never rely on copies.
   - Both real masks (`*_fromcps.fi_mask`) now exist under `20260420-human-phosho/`,
     regenerable at any threshold/floor from the 31GB store in ~24 min without the raw
     TSVs and without Carafe.
-- **M4 -- `carafe_prerun.sh` driver**: orchestration + resume + docs; end-to-end dry run on
-  a small database (the 500-protein Phase 5 fixture) and stage-resume tests.
+- **M4 -- `carafe_prerun.sh` driver** -- **DONE 2026-08-22**:
+  - `tools/carafe_prerun.sh`: one command runs the whole ahead-of-time pipeline --
+    per-flavor `.idx` build (`-i`) / variant export (`-x`) / `idx_to_carafe.py`, one
+    Carafe prediction pass (via `run_carafe_chunked.sh`, chunk-resumable), `.cps`
+    translation, and per-flavor mask builds. "Flavor" = one comet.params mod config
+    (canonically the withNL/noNL pair); the first flavor's out_tsv feeds Carafe and the
+    store. Each flavor gets its own FASTA copy (Comet writes `<database_name>.idx`, so two
+    flavors of one FASTA would clobber -- Section 6.15's old near-miss, now structural).
+  - **Two operator-error classes removed by construction**: (1) `--ignore-modloss` is
+    auto-detected per flavor from its own variant map's VarModConfig (all neutral-loss
+    deltas 0.0 -> general mode), never hand-specified; (2) a cross-flavor population
+    identity check (every flavor's conversion row count must equal the primary's) makes a
+    mismatched flavor pair fail loudly before any expensive stage.
+  - Stage-level `.done` markers under `OUT/.prerun/` (delete one to re-run its stage;
+    stage 4 additionally resumes at chunk granularity), per-stage logs, `--stop-after`
+    for deliberate partial runs (e.g. prediction on the GPU machine), `--delete-raw`
+    (default OFF) for reclaiming the transient prediction output post-verification.
+  - End-to-end dry run: 100-protein fixture (subset100 target+decoy), phospho withNL/noNL
+    params pair crafted for it, charge-2, decoys included -- full pipeline in **~66s**
+    (51,980 variants; Carafe step 58s of it), producing both masks with correct headers
+    verified (withNL: GeneralMode=0, 42,512/51,980 entries carrying nonzero modloss
+    masks; noNL: GeneralMode=1, zero modloss bits; identical entry counts). Note the
+    fixture is the 100-protein one, not the plan's "500-protein Phase 5 fixture" -- the
+    Phase 5 fixture is oxmet-only, which cannot exercise the withNL/noNL flavor logic.
+  - Resume tests: full re-run -> every stage skips; single deleted marker
+    (`s6_mask_nonl.done`) -> exactly that stage re-runs; `--stop-after convert` on a
+    fresh dir -> stops before prediction with only stages 1-3 outputs on disk.
+  - **Deliberately NOT in this driver: the parquet transient mode** (M1a's adoption
+    decision). The driver orchestrates the TSV pipeline exactly as validated end-to-end
+    at full scale; wiring parquet through `run_carafe_chunked.sh` + the translator is a
+    contained follow-up (tracked as M6's remaining pipeline item) whose payoff is the
+    transient disk high-water mark (~390GB -> ~45GB during stages 4-5), not correctness
+    or steady-state storage (the `.cps` already handles that).
 - **M5 -- load-path work IF M1b demands it** (Section 7.2 options 2/3) -- **CANCELLED
   2026-08-22**: M1b (Section 7.4) showed the existing load path passes the budget >10x on
   every path; no optimization warranted.
