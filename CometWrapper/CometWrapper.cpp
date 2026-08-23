@@ -239,10 +239,19 @@ bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^input
     // batch's pointers to g_pvInputFiles (duplicate entries, double delete).
     vector<InputFileInfo*> vNewInputFiles;
     int numFiles = inputFilesList->Count;
-    for (int i = 0; i < numFiles; i++)
+    try
     {
-        InputFileInfoWrapper^ inputFile = inputFilesList[i];
-        vNewInputFiles.push_back(new InputFileInfo(*(inputFile->get_InputFileInfoPtr())));
+        for (int i = 0; i < numFiles; i++)
+        {
+            InputFileInfoWrapper^ inputFile = inputFilesList[i];
+            vNewInputFiles.push_back(new InputFileInfo(*(inputFile->get_InputFileInfoPtr())));
+        }
+    }
+    catch (...)
+    {
+        for (auto pFile : vNewInputFiles)
+            delete pFile;
+        throw;
     }
 
     _pSearchMgr->AddInputFiles(vNewInputFiles);

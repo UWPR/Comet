@@ -897,14 +897,27 @@ struct Query
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         if (!bSparseFromPool && ppfSparseFastXcorrData != NULL && ppfSparseFastXcorrDataNL != NULL)
+         if (!bSparseFromPool)
          {
-            for (i = 0; i < iFastXcorrDataSize; ++i)
+            // Freed independently: a bad_alloc building ppfSparseFastXcorrData (below,
+            // after this NL array's children are already populated) leaves this array's
+            // pointer non-NULL with its sibling still NULL -- a combined null-check here
+            // would skip freeing this array's already-allocated children and leak them.
+            if (ppfSparseFastXcorrData != NULL)
             {
-               if (ppfSparseFastXcorrData[i] != NULL)
-                  delete[] ppfSparseFastXcorrData[i];
-               if (ppfSparseFastXcorrDataNL[i]!=NULL)
-                  delete[] ppfSparseFastXcorrDataNL[i];
+               for (i = 0; i < iFastXcorrDataSize; ++i)
+               {
+                  if (ppfSparseFastXcorrData[i] != NULL)
+                     delete[] ppfSparseFastXcorrData[i];
+               }
+            }
+            if (ppfSparseFastXcorrDataNL != NULL)
+            {
+               for (i = 0; i < iFastXcorrDataSize; ++i)
+               {
+                  if (ppfSparseFastXcorrDataNL[i] != NULL)
+                     delete[] ppfSparseFastXcorrDataNL[i];
+               }
             }
          }
          if (!bSparsePointerArraysFromPool)
