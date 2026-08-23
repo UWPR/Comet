@@ -47,12 +47,13 @@ CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
     // Destructor (Dispose()): deterministic cleanup path when the C# host calls
     // Dispose() or uses a `using` block. This is deliberately the ONLY place the
-    // native manager is released: GetCometSearchManager() hands every wrapper the
-    // same process-wide singleton with no refcounting, so releasing it from a GC
-    // finalizer destroyed the shared native manager at a nondeterministic time --
-    // under any other live wrapper, or even mid-native-call on this one. An
-    // undisposed wrapper leaks the singleton for the life of the process, which is
-    // the safe failure mode (see the header comment).
+    // native manager is released: GetCometSearchManager()/ReleaseCometSearchManager()
+    // hand every wrapper the same process-wide singleton, refcounted so the singleton
+    // itself is only actually deleted once the last live wrapper releases it --
+    // releasing it from a GC finalizer instead destroyed the shared native manager at
+    // a nondeterministic time regardless, under any other live wrapper, or even
+    // mid-native-call on this one. An undisposed wrapper leaks the singleton for the
+    // life of the process, which is the safe failure mode (see the header comment).
     ReleaseCometSearchManager();
     _pSearchMgr = NULL;
 }

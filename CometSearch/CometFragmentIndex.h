@@ -41,7 +41,7 @@ public:
 
 private:
 
-   static void GenerateFragmentIndex(ThreadPool *tp);
+   static bool GenerateFragmentIndex(ThreadPool *tp);
 
    // P1: destination for a qualifying b/y ion (or, for the count pass, a qualifying
    // peptide variant) is selected by exactly one of the three trailing pointer

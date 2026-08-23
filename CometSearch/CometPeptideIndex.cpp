@@ -321,6 +321,27 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       {
          comet_fileoffset_t lMin = vDistinctOffsets.front();
          comet_fileoffset_t lMax = vDistinctOffsets.back();
+
+         // These offsets come straight from the .idx protein-list section, not from a value
+         // this code computed itself, so a corrupt file can hand them arbitrary garbage --
+         // unlike clPeptidesFilePos/clProteinsFilePos above, nothing has bounded them yet.
+         // Every protein-name block is WIDTH_REFERENCE bytes and the whole name section lies
+         // before clPeptidesFilePos (see file-layout comment at the top of this file), so a
+         // legitimate offset must satisfy 0 <= lMin <= lMax <= clPeptidesFilePos -
+         // WIDTH_REFERENCE. Reject otherwise before lMax - lMin feeds tSpan's allocation size,
+         // the fseek below, and pProtBuf's pointer arithmetic.
+         if (lMin < 0 || clPeptidesFilePos < (comet_fileoffset_t)WIDTH_REFERENCE
+            || lMax > clPeptidesFilePos - (comet_fileoffset_t)WIDTH_REFERENCE)
+         {
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" has an out-of-range protein-name offset in its .idx file; the file is "
+               + "likely truncated or corrupt. Rebuild it with -i or -j.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            fclose(fp);
+            return false;
+         }
+
          size_t tSpan = (size_t)(lMax - lMin) + WIDTH_REFERENCE;
 
          vector<char> vNameBuf(tSpan);

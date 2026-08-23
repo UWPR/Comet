@@ -115,7 +115,8 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    g_iFragmentIndexOffset = new uint64_t[g_massRange.uiMaxFragmentArrayIndex + 1]();
 
    // generate the modified peptides to calculate the fragment index
-   GenerateFragmentIndex(tp);
+   if (!GenerateFragmentIndex(tp))
+      return false;   // GenerateFragmentIndex() (via the thread pool's error handler) already reported the specific error
 
    return true;
 }
@@ -184,7 +185,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
 }
 
 
-void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
+bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 {
    cout <<  " - generate fragment ion index\n"; fflush(stdout);
 
@@ -229,6 +230,16 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       });
    }
    pFragmentIndexPool->wait_on_threads();
+
+   // ThreadPool::doJob() catches a worker exception (e.g. bad_alloc partway through a
+   // partition) and only reports it through the error handler wired in
+   // CometSearchManager's constructor, which sets g_cometStatus -- it does not stop the
+   // other queued partitions or this function. Left unchecked, a partial/empty
+   // vLocalFragPeptides[t] here would silently concatenate into g_vFragmentPeptides as if
+   // every partition had succeeded, and every later pass (mass sort, fill-count,
+   // fill-write) would build on top of that corrupt data and still return true.
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
 
    // Concatenate in ascending partition order (== ascending raw-peptide-index order), the
    // exact traversal order the old single-threaded AddFragmentsThreadProc() produced, so the
@@ -323,6 +334,9 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    }
    pFragmentIndexPool->wait_on_threads();
 
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
+
    // Prefix sum across partitions (in the same fixed partition order used above), per bin:
    // the write-cursor partition t should start at is the bin's base CSR offset plus every
    // earlier partition's contribution to that bin. This gives every partition a disjoint
@@ -359,6 +373,10 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       });
    }
    pFragmentIndexPool->wait_on_threads();
+
+   if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+      return false;
+
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
    // Total entry count is the CSR sentinel value.
@@ -375,6 +393,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    cout << " ... " << CometMassSpecUtils::ElapsedTime(tFIGlobalStartTime) << endl;
 
+   return true;
 }
 
 
