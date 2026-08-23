@@ -41,34 +41,20 @@ CometSearchManagerWrapper::CometSearchManagerWrapper()
 {
     // Instantiate the native C++ class
     _pSearchMgr = GetCometSearchManager();
-
-    _pvInputFilesList = new vector<InputFileInfo*>();
 }
 
 CometSearchManagerWrapper::~CometSearchManagerWrapper()
 {
     // Destructor (Dispose()): deterministic cleanup path when the C# host calls
-    // Dispose() or uses a `using` block. Delegates to the finalizer for the actual
-    // native release so that path also runs cleanup if Dispose() is skipped -- the
-    // compiler-generated Dispose() suppresses the finalizer afterward either way, so
-    // this doesn't double-release.
-    this->!CometSearchManagerWrapper();
-}
-
-CometSearchManagerWrapper::!CometSearchManagerWrapper()
-{
-    // Finalizer: GC safety net. Runs even if the C# host never calls Dispose() --
-    // without this, _pSearchMgr/_pvInputFilesList (both native, unmanaged heap
-    // allocations the GC knows nothing about) leaked for the life of the process.
+    // Dispose() or uses a `using` block. This is deliberately the ONLY place the
+    // native manager is released: GetCometSearchManager() hands every wrapper the
+    // same process-wide singleton with no refcounting, so releasing it from a GC
+    // finalizer destroyed the shared native manager at a nondeterministic time --
+    // under any other live wrapper, or even mid-native-call on this one. An
+    // undisposed wrapper leaks the singleton for the life of the process, which is
+    // the safe failure mode (see the header comment).
     ReleaseCometSearchManager();
-
-    // CometSearchManager releases all the objects stored in the vector, we just
-    // need to release the vector itself here.
-    if (NULL != _pvInputFilesList)
-    {
-        delete _pvInputFilesList;
-        _pvInputFilesList = NULL;
-    }
+    _pSearchMgr = NULL;
 }
 
 bool CometSearchManagerWrapper::CreatePeptideIndex()
@@ -244,15 +230,22 @@ bool CometSearchManagerWrapper::AddInputFiles(List<InputFileInfoWrapper^> ^input
     {
         return false;
     }
-    
+
+    // Hand the native side its own deep copies, and only THIS call's files:
+    // ~CometSearchManager() deletes every InputFileInfo* in g_pvInputFiles, while each
+    // InputFileInfoWrapper also deletes the InputFileInfo it owns -- passing the
+    // wrapper-owned pointer through would double-free. Copying also fixes the old
+    // accumulated-list bug where a second AddInputFiles call re-added the first
+    // batch's pointers to g_pvInputFiles (duplicate entries, double delete).
+    vector<InputFileInfo*> vNewInputFiles;
     int numFiles = inputFilesList->Count;
     for (int i = 0; i < numFiles; i++)
     {
         InputFileInfoWrapper^ inputFile = inputFilesList[i];
-        _pvInputFilesList->push_back(inputFile->get_InputFileInfoPtr());
+        vNewInputFiles.push_back(new InputFileInfo(*(inputFile->get_InputFileInfoPtr())));
     }
 
-    _pSearchMgr->AddInputFiles(*_pvInputFilesList);
+    _pSearchMgr->AddInputFiles(vNewInputFiles);
 
     return true;
 }

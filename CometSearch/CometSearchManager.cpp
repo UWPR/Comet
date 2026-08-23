@@ -401,8 +401,11 @@ CometSearchManager::~CometSearchManager()
    // point to (unlike a container of by-value objects, where the comment this replaces
    // would have been correct). AddInputFiles()/SetParam() are the only places these
    // pointers are ever created (Comet.cpp's ParseCmdLine() new's the InputFileInfo but
-   // never deletes it, handing ownership to whichever CometSearchManager it's added to),
-   // so freeing them here doesn't risk a double-free.
+   // never deletes it, handing ownership to whichever CometSearchManager it's added to;
+   // CometWrapper's AddInputFiles() likewise hands over deep copies it makes purely for
+   // this container -- it must NEVER pass the InputFileInfoWrapper-owned pointers
+   // themselves, which their managed wrappers also delete), so freeing them here
+   // doesn't risk a double-free.
    for (InputFileInfo* p : g_pvInputFiles)
       delete p;
    g_pvInputFiles.clear();
@@ -434,6 +437,33 @@ static void AppendSzMod(const char* fmt, ...)
    va_end(args);
 }
 
+// Shared by InitializeStaticParams() (FiStrategy::finalize()'s free-then-reinit path on a
+// second FI_DB search in the same process) and CreateFragmentIndex() (the first-run path):
+// both need this exact allocation. +1: ReadPrecursors() clamps its fill range to
+// BIN(dPeptideMassHigh) inclusive, so the array needs a valid slot at that top index, not
+// just 0..BIN(...)-1.
+static bool AllocateIndexPrecursors()
+{
+   int iNumBins = BIN(g_staticParams.options.dPeptideMassHigh) + 1;
+
+   g_bIndexPrecursors = (bool*)malloc(iNumBins * sizeof(bool));
+   if (g_bIndexPrecursors == NULL)
+   {
+      printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", iNumBins);
+      return false;
+   }
+
+   for (int x = 0; x < iNumBins; ++x)
+   {
+      if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
+         g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
+      else
+         g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
+   }
+
+   return true;
+}
+
 bool CometSearchManager::InitializeStaticParams()
 {
    int iIntData;
@@ -457,19 +487,8 @@ bool CometSearchManager::InitializeStaticParams()
       // change under this one-shot design).
       if (g_staticParams.iDbType == DbType::FI_DB && g_bIndexPrecursors == NULL)
       {
-         g_bIndexPrecursors = (bool*)malloc((BIN(g_staticParams.options.dPeptideMassHigh) + 1) * sizeof(bool));
-         if (g_bIndexPrecursors == NULL)
-         {
-            printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh) + 1);
+         if (!AllocateIndexPrecursors())
             return false;
-         }
-         for (int x = 0; x <= BIN(g_staticParams.options.dPeptideMassHigh); ++x)
-         {
-            if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
-               g_bIndexPrecursors[x] = true;
-            else
-               g_bIndexPrecursors[x] = false;
-         }
       }
 
       return true;
@@ -1476,26 +1495,27 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   // AScorePro was only ever intended to be applied to variable_mod01-05 (the FI
-   // modification-count limit). CometPostAnalysis.cpp's sequence handoff to AScorePro
+   // CometPostAnalysis.cpp's sequence handoff to AScorePro
    // (`std::to_string(piVarModSites[i])`) embeds a raw mod-slot number (1-15) per
    // modified residue directly into the peptide-string encoding it hands over, and
    // AScorePro's single-char-per-position parser can't distinguish a two-digit slot
    // number (e.g. "12") from two consecutive single-digit ones -- silently
    // mis-localizing/corrupting mod sites onto the wrong slot's mass (see the review
-   // write-up this guard was added for). Loudly refuse the combination instead of
-   // letting it silently corrupt results.
+   // write-up this guard was added for). The ambiguity only exists for two-digit slot
+   // numbers: slots 1-9 encode as a single digit that round-trips exactly against
+   // SetAScoreOptions()'s registered symbols, so only variable_mod10-15 are refused.
+   // Loudly refuse that combination instead of letting it silently corrupt results.
    if (g_staticParams.options.iPrintAScoreProScore != 0)
    {
-      for (int i = 5; i < VMODS; ++i)   // variable_mod06 (index 5) .. variable_mod15 (index 14)
+      for (int i = 9; i < VMODS; ++i)   // variable_mod10 (index 9) .. variable_mod15 (index 14)
       {
          if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
                && (g_staticParams.variableModParameters.varModList[i].szVarModChar[0] != '-'))
          {
             string strErrorMsg = " Error - print_ascorepro_score is enabled but variable_mod"
-               + string(i + 1 < 10 ? "0" : "") + to_string(i + 1)
+               + to_string(i + 1)
                + " is active; AScorePro localization is only supported for variable_mod01"
-               + " through variable_mod05. Disable print_ascorepro_score or remove/renumber"
+               + " through variable_mod09. Disable print_ascorepro_score or remove/renumber"
                + " the higher-numbered variable mod(s).\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
@@ -1657,21 +1677,8 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
-      // +1: ReadPrecursors() clamps its fill range to BIN(dPeptideMassHigh) inclusive,
-      // so the array needs a valid slot at that top index, not just 0..BIN(...)-1.
-      g_bIndexPrecursors = (bool*)malloc((BIN(g_staticParams.options.dPeptideMassHigh) + 1) * sizeof(bool));
-      if (g_bIndexPrecursors == NULL)
-      {
-         printf("\n Error cannot allocate memory for g_bIndexPrecursors(%d)\n", BIN(g_staticParams.options.dPeptideMassHigh) + 1);
+      if (!AllocateIndexPrecursors())
          return false;
-      }
-      for (int x = 0; x <= BIN(g_staticParams.options.dPeptideMassHigh); ++x)
-      {
-         if (g_pvInputFiles.size() == 0 || g_staticParams.options.iFragIndexSkipReadPrecursors)
-            g_bIndexPrecursors[x] = true;  // if RTS search, no input file to read precursors from so all precursors are valid
-         else
-            g_bIndexPrecursors[x] = false; // set all precursors as invalid; valid precursors will be determined in ReadPrecursors
-      }
    }
 
    if (g_staticParams.speclibInfo.strSpecLibFile.length() > 0)

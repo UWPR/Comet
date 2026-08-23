@@ -415,6 +415,10 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
          pTmp.iLibEntry = iWhichLibEntry;
          pTmp.iSpecLibCharge = 0;
          pTmp.dSpecLibMW = 0;
+         pTmp.iNumPeaks = 0;   // only assigned in the "Num peaks:" branch below; the
+                               // validation after the loop reads it, so an entry missing
+                               // that line must see 0 (reject), not indeterminate stack
+                               // garbage that usually passes
 
          while (fgets(szBuf, SIZE_BUF, fp))
          {

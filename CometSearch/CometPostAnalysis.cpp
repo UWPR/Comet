@@ -1341,15 +1341,24 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    // std::call_once only guarantees InitPrecomputedDecoyBins() ran exactly once ever --
    // it can't detect a later param change in the same process (RTS re-initializing with
    // a different ion series/max fragment charge/bin width via SetParam()) and rebuild.
-   // Assert loudly instead of silently scoring every decoy against a now-stale table.
-   assert(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
+   // Fail loudly through g_cometStatus instead of silently scoring every decoy against
+   // a now-stale table. This is a real error return (not an assert()): an assert would
+   // abort() an embedding RTS host outright, and would compile to nothing in any
+   // NDEBUG build -- leaving the silent-wrong-E-value hazard undetected in exactly the
+   // binaries users run.
+   if (!(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
       && s_pdMaxCharge == std::max(g_staticParams.options.iMaxFragmentCharge, 1)
       && isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
-      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)
-      && "Precomputed decoy-bin table is stale: ion series/max fragment charge/bin width "
-         "changed since InitPrecomputedDecoyBins() first built it in this process. Decoy "
-         "E-values would silently use the wrong bins -- restart the process instead of "
-         "re-initializing with different search params.");
+      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)))
+   {
+      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/max"
+         " fragment charge/bin width changed since it was first built in this process."
+         " Decoy E-values would silently use the wrong bins -- restart the process"
+         " instead of re-initializing with different search params.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
 
    int *piHistogram = pQuery->iXcorrHistogram;
    const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;

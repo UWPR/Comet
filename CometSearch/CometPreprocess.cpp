@@ -42,6 +42,42 @@ float **CometPreprocess::ppfFastXcorrData;
 float **CometPreprocess::ppfFastXcorrDataNL;
 float **CometPreprocess::ppfSpScoreData;
 
+// The zero-bound formula below (used by both PreprocessSingleSpectrumCore's RTS
+// thread-local-pool path and FusedSearchSpectrum's batch scratch-buffer path -- see
+// docs/20260714_EvalueJitter.md Phase 3) must zero at least as far as any peak
+// LoadIons()/the peak-loading loop can accept, or a stale-buffer bug reappears. Named so
+// both the zero-bound clamp and the peak-acceptance cutoffs it must cover (LoadIons()'s
+// `dIon < dExpPepMass + FASTXCORR_ZERO_BOUND_CUSHION` and the precursor-removal
+// dMassCutoff) can never drift apart independently.
+static const double FASTXCORR_ZERO_BOUND_CUSHION = 50.0;
+
+// Shared by PreprocessSingleSpectrumCore() (RTS) and FusedSearchSpectrum() (batch): the
+// highest bin MakeCorrData()/the xcorr-building loop can read or write, given a spectrum
+// whose highest accepted peak may be up to FASTXCORR_ZERO_BOUND_CUSHION Da past
+// dExpPepMass. Both call sites previously duplicated this formula verbatim.
+static inline int ComputeZeroBound(int iArraySize, double dExpPepMass)
+{
+   return std::min(
+      std::max(iArraySize, BIN(dExpPepMass + FASTXCORR_ZERO_BOUND_CUSHION) + 1),
+      g_staticParams.iArraySizeGlobal);
+}
+
+// Shared by PreprocessSingleSpectrumCore() (RTS), PreprocessSpectrum() (batch), and
+// FusedSearchSpectrum(): computes the array size a Query needs for this precursor mass,
+// clamped to iArraySizeGlobal so an out-of-configured-range precursor (or the
+// peptide_mass_low == 0.0 / isEqual() bypass that defeats the mass-range gate) can't drive
+// downstream pool-array writes/reads past the size those pools are actually allocated to.
+// All three call sites previously duplicated this compute-then-clamp pair verbatim.
+static inline int ComputeClampedArraySize(double dExpPepMass)
+{
+   int iArraySize = (int)((dExpPepMass + CometPreprocess::GetMassCushion(dExpPepMass)) * g_staticParams.dInverseBinWidth);
+
+   if (iArraySize > g_staticParams.iArraySizeGlobal)
+      iArraySize = g_staticParams.iArraySizeGlobal;
+
+   return iArraySize;
+}
+
 
 // ---------------------------------------------------------------------------
 // Per-thread scratch pool for PreprocessSingleSpectrumThreadLocal.
@@ -1261,9 +1297,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // function, so this mirrors iZeroBound's formula directly from dExpPepMass+50 rather
    // than depending on a value computed later.
    const int iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
-   const int iZeroBound = std::min(
-      std::max(iArraySize, BIN(pScoring->_pepMassInfo.dExpPepMass + 50.0) + 1),
-      g_staticParams.iArraySizeGlobal);
+   const int iZeroBound = ComputeZeroBound(iArraySize, pScoring->_pepMassInfo.dExpPepMass);
    size_t iTmp = (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset) * sizeof(double);
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
@@ -1659,11 +1693,13 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // of its own. usiChargeState drives loop bounds and array indices sized up to
    // MAX_PRECURSOR_CHARGE (uiBinnedPrecursorNL et al.) further downstream, so an unclamped
    // charge >= that limit -- or <= 0, which would wrap huge when stored into the unsigned
-   // usiChargeState -- would index past those arrays.
-   if (iPrecursorCharge < 1)
-      iPrecursorCharge = 1;
-   else if (iPrecursorCharge > MAX_PRECURSOR_CHARGE)
-      iPrecursorCharge = MAX_PRECURSOR_CHARGE;
+   // usiChargeState -- would index past those arrays. REJECT out-of-range charges rather
+   // than clamping them: RTS hosts pass 0 for "charge unknown" (SearchMS1MS2.cs does this
+   // whenever a scan's trailer lacks a Charge State entry), and clamping 0 to 1 would
+   // silently search the spectrum as a 1+ precursor at m/z-as-mass, confidently returning
+   // wrong-mass PSMs where the pre-clamp behavior (dMass ~= a proton) found nothing.
+   if (iPrecursorCharge < 1 || iPrecursorCharge > MAX_PRECURSOR_CHARGE)
+      return nullptr;
 
    double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
 
@@ -1722,17 +1758,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       return nullptr;
    }
 
-   double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
-   pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
-
    // This RTS single-spectrum path takes dMZ/iPrecursorCharge straight from the caller with
    // no mass-range check of its own (see CometSearchManager.cpp's DoSingleSpectrumSearch...()
    // entry gate, which checks the upper bound before ever reaching here but isn't a substitute
-   // for clamping the array this function itself allocates against) -- clamp defensively so an
-   // out-of-configured-range precursor can't drive downstream pool-array writes/reads past
-   // iArraySizeGlobal, the size those pools are actually allocated to.
-   if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
-      pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
+   // for clamping the array this function itself allocates against) -- ComputeClampedArraySize
+   // clamps defensively so an out-of-configured-range precursor can't drive downstream
+   // pool-array writes/reads past iArraySizeGlobal, the size those pools are actually
+   // allocated to.
+   pScoring->_spectrumInfoInternal.iArraySize = ComputeClampedArraySize(pScoring->_pepMassInfo.dExpPepMass);
 
    if (!AdjustMassTol(pScoring))
    {
@@ -1779,9 +1812,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // thread-count-independent, absent from small synthetic fixtures whose peaks
    // never reach the gap). Zeroing up to the true worst case instead lets RTS pass
    // the unclamped iHighestIon to MakeCorrData(), matching batch exactly.
-   const int iZeroBound = std::min(
-      std::max(iArraySize, BIN(pScoring->_pepMassInfo.dExpPepMass + 50.0) + 1),
-      g_staticParams.iArraySizeGlobal);
+   const int iZeroBound = ComputeZeroBound(iArraySize, pScoring->_pepMassInfo.dExpPepMass);
 
    double *pdTmpRawData;
    double *pdTmpFastXcorrData;
@@ -1914,7 +1945,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    const int    iCharge      = pScoring->_spectrumInfoInternal.usiChargeState;
    const double dRemTol      = g_staticParams.options.dRemovePrecursorTol;
    const int    iRemovePrec  = g_staticParams.options.iRemovePrecursor;
-   const double dMassCutoff  = dExpPepMass + 50.0;
+   const double dMassCutoff  = dExpPepMass + FASTXCORR_ZERO_BOUND_CUSHION;
 
    double dPrecMZ_mode1 = 0.0;
    double dMZ1_mode3 = 0.0, dMZ2_mode3 = 0.0;
@@ -2676,18 +2707,15 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             //MH: Find appropriately sized array cushion based on user parameters. Fixes error found by Patrick Pedrioli for
             // very wide mass tolerance searches (i.e. 500 Da).
-            double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
-            pScoring->_spectrumInfoInternal.iArraySize = (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
-
+            //
             // peptide_mass_low = 0.0 makes the mass-range check above an unconditional pass
             // (isEqual(dPeptideMassLow, 0.0) short-circuits the "<= dPeptideMassHigh" test
             // entirely), so a precursor mass far above dPeptideMassHigh would otherwise
             // compute an iArraySize larger than the iArraySizeGlobal-sized pool arrays
-            // LoadIons() and friends write into. Clamp directly rather than trying to patch
-            // the isEqual() bypass, since it's the array size -- not just this one gate -- that
-            // has to stay in bounds.
-            if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
-               pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
+            // LoadIons() and friends write into. ComputeClampedArraySize clamps directly
+            // rather than trying to patch the isEqual() bypass, since it's the array size --
+            // not just this one gate -- that has to stay in bounds.
+            pScoring->_spectrumInfoInternal.iArraySize = ComputeClampedArraySize(pScoring->_pepMassInfo.dExpPepMass);
 
             Threading::LockMutex(_maxChargeMutex);
             // g_massRange.iMaxFragmentCharge is global maximum fragment ion charge across all spectra.
@@ -2948,7 +2976,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
             pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
          }
 
-         if (dIon < (pScoring->_pepMassInfo.dExpPepMass + 50.0))
+         if (dIon < (pScoring->_pepMassInfo.dExpPepMass + FASTXCORR_ZERO_BOUND_CUSHION))
          {
             int iBinIon = BIN(dIon);
 
@@ -3541,14 +3569,9 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                   pScoring->_spectrumInfoInternal.usiMaxFragCharge = g_staticParams.options.iMaxFragmentCharge;
             }
 
-            double dCushion = GetMassCushion(pScoring->_pepMassInfo.dExpPepMass);
-            pScoring->_spectrumInfoInternal.iArraySize =
-               (int)((pScoring->_pepMassInfo.dExpPepMass + dCushion) * g_staticParams.dInverseBinWidth);
-
             // Same peptide_mass_low = 0.0 / isEqual() bypass and same clamp as the batch path
             // above.
-            if (pScoring->_spectrumInfoInternal.iArraySize > g_staticParams.iArraySizeGlobal)
-               pScoring->_spectrumInfoInternal.iArraySize = g_staticParams.iArraySizeGlobal;
+            pScoring->_spectrumInfoInternal.iArraySize = ComputeClampedArraySize(pScoring->_pepMassInfo.dExpPepMass);
 
             if (!AdjustMassTol(pScoring))
             {

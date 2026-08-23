@@ -3174,12 +3174,16 @@ def test_t33_param_robustness(comet_exe):
             return failures
 
         out = result.stdout + result.stderr
-        # A crash (killed by a signal, e.g. stack smashing from the 600-char value)
-        # shows up as a negative returncode on POSIX. A clean error exit (nonzero,
-        # positive) or a clean success are both acceptable -- the bug was a hang or a
-        # crash, not "must succeed".
-        check(result.returncode >= 0,
-              f"Comet exited via signal (returncode={result.returncode}), suggesting "
+        # Comet's only clean exits are 0 (success) and 1 (exit(1) on a param error);
+        # anything else indicates a crash. A signal death shows up as a negative
+        # returncode on POSIX, but a Windows crash surfaces as a large POSITIVE
+        # NTSTATUS-derived code (e.g. 0xC0000409 stack-buffer-overrun = 3221226505
+        # from Python on Windows, or that code truncated to its low byte, 9, through
+        # WSL interop) -- so `>= 0` would pass trivially for exactly the Windows
+        # crash this test guards against. Either a clean error or a clean success is
+        # fine -- the bug was a hang or a crash, not "must succeed".
+        check(result.returncode in (0, 1),
+              f"Comet exited abnormally (returncode={result.returncode}), suggesting "
               f"a crash:\n{out}", failures)
     finally:
         params_file.unlink(missing_ok=True)

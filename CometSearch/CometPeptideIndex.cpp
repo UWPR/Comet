@@ -335,8 +335,34 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
          }
          else
          {
-            logout(" Warning - failed to read protein-name section from .idx file; protein"
-               " names may be missing from output.\n");
+            // The one-shot bulk read failed (truncated .idx or a transient I/O error).
+            // Do NOT continue with an empty cache: decoy classification looks peptides'
+            // proteins up in g_pvProteinNameCache and treats a miss as "target", so an
+            // empty cache silently classifies every PSM as target and destroys the
+            // target/decoy split. Retry per-protein; if names still can't be read,
+            // fail the index load loudly instead.
+            logout(" Warning - bulk read of protein-name section from .idx file failed;"
+               " retrying per-protein.\n");
+
+            char szProtBuf[WIDTH_REFERENCE];
+            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
+            {
+               comet_fseek(fp, lOffset, SEEK_SET);
+               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == WIDTH_REFERENCE)
+               {
+                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
+               }
+               else
+               {
+                  string strErrorMsg = " Error - cannot read protein name at offset "
+                     + to_string((long long)lOffset) + " from .idx file; the file is"
+                     " likely truncated or corrupt. Re-create the .idx file.\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  fclose(fp);
+                  return false;
+               }
+            }
          }
       }
    }

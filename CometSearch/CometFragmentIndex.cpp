@@ -283,13 +283,11 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // In the for loop below, peptide references (iWhichFragmentPeptide) are stored in the FI.
    // As the FI is an array of unsigned int pointers, need to ensure that iWhichFragmentPeptide
-   // will fit into an unsigned int.
-   // NOTE: explicitly use (std::numeric_limits<unsigned int>::max)() to avoid macro expansion on Windows.
-   if (g_vFragmentPeptides.size() > (std::numeric_limits<unsigned int>::max)())
-   {
-      // handle error: value too large to fit in unsigned int
-      throw std::overflow_error(" Error: g_vFragmentPeptides.size() too large for unsigned int");
-   }
+   // will fit into an unsigned int. This is already guaranteed by the `iTotal >= UINT_MAX`
+   // check above: g_vFragmentPeptides is populated with exactly iTotal elements (reserve()
+   // + move-insert, nothing else appends to it) and then only reordered (mass sort), so
+   // size() == iTotal here, and iTotal < UINT_MAX was already enforced -- a second,
+   // differently-phrased check here would be unreachable dead code.
 
    // now populate the fragment index vector -- two parallel sub-passes over the same
    // mass-sorted-array partitioning (see the P1 comment above this function)
@@ -319,7 +317,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          {
             auto& fp = g_vFragmentPeptides[i];
             AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
-               false, vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
+               vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
          }
       });
    }
@@ -356,7 +354,7 @@ void CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          {
             auto& fp = g_vFragmentPeptides[i];
             AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
-               false, vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
+               vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
          }
       });
    }
@@ -401,7 +399,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
    {
       // AddFragments for unmodified peptide; only if no variable mods are required
       if (!g_staticParams.variableModParameters.iRequireVarMod)
-         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+         AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
       // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
@@ -416,7 +414,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -427,7 +425,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                && (!g_staticParams.variableModParameters.bVarModProteinFilter
                   || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, -1, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
             }
          }
 
@@ -442,7 +440,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                      (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                         && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                {
-                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+                  AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, -1, ctNtermMod, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                }
             }
          }
@@ -480,7 +478,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
 
             if (bPass)
             {
-               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+               AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
 
                if (g_staticParams.variableModParameters.bVarTermModSearch)
                {
@@ -490,7 +488,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                      if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, -1, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -500,7 +498,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                      if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
                         && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
                      {
-                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+                        AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, -1, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                      }
                   }
 
@@ -515,7 +513,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                               (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
                                  && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
                         {
-                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, true, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
+                           AddFragments(g_vRawPeptides, iWhichPeptide, iWhichFragmentPeptide, modNumIdx, ctNtermMod, ctCtermMod, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
                         }
                      }
                   }
@@ -533,13 +531,19 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
                                       int modNumIdx,
                                       char cNtermMod,
                                       char cCtermMod,
-                                      bool bCountOnly,
                                       const vector<int>& vModSlotForAllModsIdx,
                                       double dKnownPepMass,
                                       vector<FragmentPeptidesStruct>* pLocalFragPeptides,
                                       uint64_t* pFillBinCounts,
                                       uint64_t* pFillWriteCursor)
 {
+   // Count-pass vs. fill-pass mode is fully determined by which of the three mutually
+   // exclusive destination pointers the caller supplied: count pass passes
+   // pLocalFragPeptides (non-null) and leaves the other two null; both fill sub-passes pass
+   // pLocalFragPeptides == nullptr and exactly one of pFillBinCounts/pFillWriteCursor. A
+   // separate bCountOnly bool was redundant with this and could theoretically be passed
+   // inconsistently; derive it here instead of carrying it as its own parameter.
+   const bool bCountOnly = (pLocalFragPeptides != nullptr);
    // P2: was `string sPeptide = ...szPeptide;`, a heap-backed copy on every one of the
    // 10^8+ calls a whole-proteome build makes (twice per accepted variant: once in the
    // count pass, once in the fill pass). szPeptide is already a NUL-terminated char[] on

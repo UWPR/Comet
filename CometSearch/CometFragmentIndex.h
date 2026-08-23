@@ -64,13 +64,16 @@ private:
    //     disjoint across threads and the relative order within a bin is deterministic
    //     regardless of actual thread scheduling, preserving T18's byte-identical-build
    //     guarantee).
+   // Count-pass vs. fill-pass mode is derived inside the function from which destination
+   // pointer is non-null -- see the definition -- so there is no separate bCountOnly flag:
+   // pLocalFragPeptides non-null selects the count pass; null selects a fill sub-pass,
+   // where pFillWriteCursor non-null vs. null further selects fill-write vs. fill-count.
    static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
                             size_t iWhichPeptide,
                             size_t iWhichFragmentPeptide,
                             int modNumIdx,
                             char cNtermMod,
                             char cCtermMod,
-                            bool bCountOnly,
                             const vector<int>& vModSlotForAllModsIdx,
                             double dKnownPepMass,
                             vector<FragmentPeptidesStruct>* pLocalFragPeptides,

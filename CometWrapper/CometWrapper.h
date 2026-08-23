@@ -34,10 +34,15 @@ namespace CometWrapper {
     public:
         CometSearchManagerWrapper();
         virtual ~CometSearchManagerWrapper();
-        !CometSearchManagerWrapper();   // finalizer: GC safety net that releases the
-                                         // native _pSearchMgr/_pvInputFilesList even if
-                                         // the C# host never calls Dispose()/the
-                                         // destructor (e.g. no `using`/explicit Dispose())
+        // Deliberately NO finalizer (!CometSearchManagerWrapper): the native
+        // CometSearchManager is a process-wide singleton shared by every wrapper
+        // instance (GetCometSearchManager()/ReleaseCometSearchManager() do no
+        // refcounting), so releasing it from a GC finalizer destroys it at a
+        // nondeterministic time -- under any other live wrapper, or even mid-native-call
+        // on this one (nothing keeps the managed wrapper alive during a long native
+        // call). The host must Dispose()/`using` the wrapper; an undisposed wrapper
+        // leaks the singleton for the life of the process, which is the safe failure
+        // mode.
 
         bool CreateFragmentIndex();
         bool CreatePeptideIndex();
@@ -94,6 +99,5 @@ namespace CometWrapper {
     private:
         ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
-        vector<InputFileInfo*>* _pvInputFilesList;
     };
 }

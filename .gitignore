@@ -155,6 +155,10 @@ ipch/
 *.msix
 *.msm
 *.msp
+# ...except MSP (NIST spectral-library) test fixtures, which share the .msp extension
+# with Windows Installer Patch files above -- without this exception T31's fixture is
+# silently untracked and a fresh clone can never run it.
+!tests/unit/data/*.msp
 
 # Artifact of CodeQL
 _codeql_detected_source_root
