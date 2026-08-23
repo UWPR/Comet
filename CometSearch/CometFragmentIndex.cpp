@@ -30,6 +30,20 @@
 #include <limits>
 #include <queue>
 
+// std::atomic_ref (P1's lock-free relaxed fetch_add on plain, non-atomic
+// g_iFragmentIndexOffset entries -- see the comment above GenerateFragmentIndex() for why
+// this doesn't need a real atomic<uint64_t> array) needs library support beyond just
+// -std=c++20: MSVC's STL and libstdc++ (GCC) both define it, but Apple Clang's libc++ on
+// the macos-14 CI runner doesn't yet, and fails to compile "no member named 'atomic_ref'
+// in namespace 'std'" even though the compiler itself is otherwise C++20-capable.
+// __atomic_fetch_add is a GCC/Clang builtin (independent of the C++ standard library
+// version), so it's available everywhere std::atomic_ref isn't.
+#if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
+#define FRAGINDEX_ATOMIC_FETCH_ADD(x) std::atomic_ref<uint64_t>(x).fetch_add(1, std::memory_order_relaxed)
+#else
+#define FRAGINDEX_ATOMIC_FETCH_ADD(x) __atomic_fetch_add(&(x), 1, __ATOMIC_RELAXED)
+#endif
+
 
 vector<ModificationNumber> MOD_NUMBERS;
 vector<string> MOD_SEQS;    // Unique modifiable sequences.
@@ -811,7 +825,7 @@ if (!(iWhichPeptide%1000))
             // P1: three mutually-exclusive destinations selected by which pointer the
             // caller supplied -- see this function's doc comment in the header.
             if (bCountOnly)
-               std::atomic_ref<uint64_t>(g_iFragmentIndexOffset[iBinBion]).fetch_add(1, std::memory_order_relaxed);
+               FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinBion]);
             else if (pFillWriteCursor != nullptr)
                g_iFragmentIndex[pFillWriteCursor[iBinBion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
@@ -829,7 +843,7 @@ if (!(iWhichPeptide%1000))
             }
 
             if (bCountOnly)
-               std::atomic_ref<uint64_t>(g_iFragmentIndexOffset[iBinYion]).fetch_add(1, std::memory_order_relaxed);
+               FRAGINDEX_ATOMIC_FETCH_ADD(g_iFragmentIndexOffset[iBinYion]);
             else if (pFillWriteCursor != nullptr)
                g_iFragmentIndex[pFillWriteCursor[iBinYion]++] = static_cast<unsigned int>(iWhichFragmentPeptide);
             else
