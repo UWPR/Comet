@@ -41,8 +41,28 @@ about 7x fewer variants, and correspondingly faster, than the MM2 phospho run's 
 | Raw file | `20240924_Hela_01.raw` (primary table) | `MM2_R1.raw` / `MM2_R2.raw` | `20240924_Hela_01.raw` |
 | Mod space | wide (M/STY, up to 3/residue) or narrow (up to 2/residue) | M-ox + STY-phospho w/ NL | M-ox only, no NL |
 | Params file | `comet.params` / `data/comet_phospho.params` | `comet.params.phosphosmall` | `comet.params.oxmet.7-35` (edited this session -- see Section 3) |
-| Comet version | v2026.02.0 vs. v2026.02.1 (also compared) | carafe branch, single version | carafe branch, single version |
+| Comet version | v2026.02.0 vs. v2026.02.1 (also compared) | carafe branch, single version | carafe branch, two versions -- see note below |
 | Thread counts | 1, 2, 4, 8, 20 | 20 only | 1, 2, 4, 8, 20 |
+
+**Comet version note (added 2026-08-25).** The ahead-of-time pipeline (Section 4: `.idx`
+build through mask build) ran at commit `40f93fb3bf1b29bf1d2358864c1cd9fc0067f8e3` (confirmed
+via `git log` against the pipeline's own `.prerun/*.log` timestamps -- the same commit the MM2
+phospho analysis's pipeline ran at). Section 5's masked RTS sweep was re-run on 2026-08-25 at
+the current branch HEAD, `a71b701ebca5ce5c06ba0928fcead94b7010f6e9` (`a71b701e`) -- two commits
+after `40f93fb3`/`7d4e6427` (`3a3d8d4b` then `a71b701e`), the same two `CometPredictedMask`
+memory fixes documented in `docs/20260824_carafe_phoshoresults.md`'s Section 7 dated notes.
+Both fixes change only search-time mask handling (freeing/shrinking `CometPredictedMask::
+s_entries` after/during the one-time FI-build pass), never mask-file format or content, so the
+existing `oxmet735.fasta.idx`/`oxmet735.fi_mask` artifacts from the original pipeline run
+remain valid and were reused unmodified -- only the RTS search binaries were rebuilt (Windows
+`RealtimeSearch.exe`/`CometWrapper.dll`, MSBuild Release/x64, Clean-then-Build) and only the
+masked side of Section 5's sweep was re-run. The unmasked column is untouched by this update
+and was not re-run: `CometPredictedMask::Load()` is a no-op whenever no mask file is
+configured, so neither fix changes anything about an unmasked search. All five re-run masked
+threads counts were verified to produce the same FI-entries figure (5.345e7) as the original
+run, and the 20-thread run's PSM output was verified byte-identical to the original masked
+run's (`tools/rts_out_to_txt.py` output, sorted, `diff`: 0 differing lines) -- confirming
+Section 6's PSM-quality analysis is unaffected and needs no changes.
 
 ## 3. Input data and configuration
 
@@ -129,28 +149,35 @@ per mask state, as expected (thread count doesn't change what gets loaded).
 
 | Threads | Unmasked MS2 search | Masked MS2 search | Unmasked Hz | Masked Hz | Unmasked ms/spec | Masked ms/spec | Unmasked peak mem | Masked peak mem |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 35.02s | 33.27s | 1,787 | 1,881 | 0.56 | 0.53 | 2.3GB | 2.3GB |
-| 2 | 17.91s | 17.66s | 3,494 | 3,544 | 0.29 | 0.28 | 2.4GB | 2.3GB |
-| 4 | 9.07s | 8.49s | 6,902 | 7,371 | 0.14 | 0.14 | 2.4GB | 2.4GB |
-| 8 | 4.77s | 4.44s | 13,112 | 14,107 | 0.08 | 0.07 | 2.5GB | 2.5GB |
-| 20 | 4.00s | 3.82s | 15,626 | 16,376 | 0.06 | 0.06 | 2.8GB | 2.7GB |
+| 1 | 35.02s | 33.92s | 1,787 | 1,845 | 0.56 | 0.54 | 2.3GB | 2.1GB |
+| 2 | 17.91s | 17.13s | 3,494 | 3,654 | 0.29 | 0.27 | 2.4GB | 2.1GB |
+| 4 | 9.07s | 8.50s | 6,902 | 7,364 | 0.14 | 0.14 | 2.4GB | 2.1GB |
+| 8 | 4.77s | 4.48s | 13,112 | 13,983 | 0.08 | 0.07 | 2.5GB | 2.2GB |
+| 20 | 4.00s | 3.77s | 15,626 | 16,605 | 0.06 | 0.06 | 2.8GB | 2.5GB |
 
-(62,576 MS2 spectra searched per run, all ten runs.)
+(62,576 MS2 spectra searched per run, all ten runs. Masked-column figures are the 2026-08-25
+re-run at commit `a71b701e` -- see the Comet-version note in Section 2; unmasked columns are
+the original, unaffected run.)
 
 **Observations:**
-- Masking improves throughput at **every** thread count tested, by 4-11% (Hz), with the
-  largest relative gain at 8 threads (+7.6%) and a smaller one at 1 thread (+5.3%) --
+- Masking improves throughput at **every** thread count tested, by +3.2% to +6.7% (Hz), with
+  the largest relative gain at 4 threads (+6.7%) and the smallest at 1 thread (+3.2%) --
   broadly consistent, not concentrated at any one thread count.
-- Both configurations show the expected diminishing-returns scaling past 8 threads (13-16K Hz
-  at 8 vs. 20 threads is only a ~19-20% further gain for 2.5x more threads) -- this FI search,
+- Both configurations show the expected diminishing-returns scaling past 8 threads (14-17K Hz
+  at 8 vs. 20 threads is only a ~19% further gain for 2.5x more threads) -- this FI search,
   masked or not, is memory-bandwidth-bound at high thread counts on this machine, matching
   the reference note's own general finding for FI_DB RTS.
-- Peak memory is nearly identical to the unmasked baseline at low thread counts and modestly
-  *lower* under masking at high thread counts (2.8GB -> 2.7GB at 20 threads) -- smaller than
-  the ~24-59% memory reductions seen in other analyses in this project because the fragment
-  index itself is a much smaller fraction of this run's peak memory to begin with (a Hela
-  whole-cell-digest search has far fewer MS2 spectra queued/threaded at once than the
-  phospho analyses' peak memory profile was dominated by).
+- Peak memory is now **consistently lower** under masking at every thread count tested
+  (-8.7% to -12.5%: 2.3GB->2.1GB at 1 thread, 2.4GB->2.1GB at 2 and 4 threads, 2.5GB->2.2GB at
+  8 threads, 2.8GB->2.5GB at 20 threads) -- a clearer, more uniform reduction than the original
+  run found (which saw peak memory "nearly identical... at low thread counts" and only
+  "modestly lower... at high thread counts", 2.8GB->2.7GB at 20 threads), because the two
+  `CometPredictedMask` memory fixes (Section 2 note) free/shrink the mask's resident lookup
+  table regardless of thread count -- unlike the original comparison, this reduction is not a
+  function of how much *other* per-thread memory happens to be competing for the same peak.
+  Still smaller in absolute terms than the ~1.1-2.1GB reductions seen in the MM2 phospho
+  analysis, because this run's mask (5,581,921 entries, no neutral-loss channel) is about
+  1/7th the size of the phospho run's (39,466,180 entries) to begin with.
 
 ## 6. PSM-quality comparison at 1% and 5% FDR (20 threads)
 
@@ -224,7 +251,7 @@ and acquisition:**
 
 The reference note found FI_DB dramatically faster than PI_DB (12,681 Hz vs. 1,259 Hz at 20
 threads -- roughly a 10x difference) -- a *backend* change. This analysis's FI-vs-FI-masked
-comparison is a much smaller relative effect (15,626 -> 16,376 Hz at 20 threads, +4.8%) --
+comparison is a much smaller relative effect (15,626 -> 16,605 Hz at 20 threads, +6.3%) --
 expected, since masking only prunes candidate fragment-ion postings within the same backend
 and data structure, not a fundamentally different search algorithm. The two effects are
 complementary and multiplicative in principle: FI_DB's backend advantage over PI_DB, and
@@ -281,3 +308,7 @@ repository, matching the MM2 analysis's convention):
   of the 20-thread runs (the only pair converted/FDR-analyzed, since PSM identity is expected
   to be, and should be verified as, thread-count-invariant -- not independently re-verified in
   this analysis)
+- `rts_hela01_masked_t{1,2,4,8,20}_a71b701e.out` / `rts_hela01_masked_t20_a71b701e.txt` /
+  `rts_hela01_sweep_a71b701e.log` -- the 2026-08-25 masked-only re-run at commit `a71b701e`
+  (Section 2's Comet-version note, Section 5's updated table) -- the `_unmasked_` files above
+  were not re-run and remain the originals

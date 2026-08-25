@@ -33,13 +33,19 @@ minutes.
 - **Host**: WSL2 (Ubuntu) on Windows, shared physical cores with the Windows host (relevant
   to Section 6.1 below). 20 logical CPUs, 54GB RAM, no GPU (`nvidia-smi` absent) -- all Carafe
   inference in this run was CPU-only (`--device cpu`).
-- **Comet**: `carafe` branch, commit `40f93fb3bf1b29bf1d2358864c1cd9fc0067f8e3` (the C++ search
-  code -- `CometSearch/`, `CometFragmentIndex.cpp`, `CometPredictedMask.cpp` -- was last
-  touched by the merge at `4f51fc7b`; the three commits after it were test/doc-only). Linux
-  `comet.exe` built via `make` (full build). Windows `RealtimeSearch.exe` / `CometWrapper.dll`
-  / `CometWrapperCore.dll` built fresh from the same commit via MSBuild (Release/x64, full
-  solution, Clean-then-Build to avoid the `zconf.h` Linux/Windows cross-build issue -- see
-  the `comet-build` skill).
+- **Comet**: `carafe` branch. The ahead-of-time pipeline (Sections 3-6: `.idx` build, export,
+  Carafe inference, mask build) ran at commit `40f93fb3bf1b29bf1d2358864c1cd9fc0067f8e3` (the
+  C++ search code -- `CometSearch/`, `CometFragmentIndex.cpp`, `CometPredictedMask.cpp` -- was
+  last touched by the merge at `4f51fc7b`; the three commits after it were test/doc-only).
+  Section 7's masked-search re-runs (dated notes below) instead reflect the current branch
+  HEAD, `a71b701ebca5ce5c06ba0928fcead94b7010f6e9` (`a71b701e`) -- two commits after
+  `40f93fb3`/`7d4e6427` (`3a3d8d4b` then `a71b701e`), both touching only search-time mask
+  handling (`CometPredictedMask.cpp`/`.h`, `CometFragmentIndex.cpp`) for memory reduction, not
+  mask-file format or content, so the ahead-of-time pipeline's own artifacts (`.idx`/`.fi_mask`)
+  did not need rebuilding against them. Linux `comet.exe` built via `make` (full build).
+  Windows `RealtimeSearch.exe` / `CometWrapper.dll` / `CometWrapperCore.dll` built fresh from
+  the corresponding commit via MSBuild (Release/x64, full solution, Clean-then-Build to avoid
+  the `zconf.h` Linux/Windows cross-build issue -- see the `comet-build` skill).
 - **Carafe**: `/mnt/c/Work/Carafe/src/main/resources/py/v2/ai_pred.py`, `--mode
   phosphorylation --device cpu --tf_type ms2`. Python environment: `~/.carafe/.venv`
   (Python 3.9.x, `torch` 2.5.1+cpu, `pandas` 2.2.3, `alphabase`/`peptdeep` per prior session
@@ -465,8 +471,8 @@ deltas are noisier and not the focus of this re-run -- see the notes below and S
 general single-sample-timing caveat.)
 
 **2026-08-25 re-run: `CometPredictedMask::FreeAfterIndexBuild()` fix.** The masked-column
-figures above were re-measured after a same-session fix on top of commit `7d4e6427` (still
-uncommitted at time of writing): `CometPredictedMask::s_entries` -- the mask's resident
+figures above were re-measured after a same-session fix on top of commit `7d4e6427`, committed
+as `3a3d8d4b`: `CometPredictedMask::s_entries` -- the mask's resident
 lookup table, 48 bytes/entry, ~1.9GB for this run's 39,466,180 entries -- was previously never
 freed after `CometFragmentIndex::GenerateFragmentIndex()` finished with it, even though
 `AddFragments()` (`CometFragmentIndex.cpp:854`) is its only consumer and that consumption is
@@ -496,7 +502,7 @@ masked run -- consistent with ordinary single-sample wall-clock noise (Section 9
 systematic effect of the fix; the memory reduction is the reproducible result here.
 
 **2026-08-25 second re-run: pack `CometPredictedMask::Entry` to match the on-disk layout.**
-On top of the fix above, `Load()` previously read the file's packed 42-byte-per-entry records
+On top of the fix above (committed as `a71b701e`), `Load()` previously read the file's packed 42-byte-per-entry records
 into a temporary `vector<PackedEntry>`, then copied each field into a second, naturally-
 aligned 48-byte-per-entry `vector<Entry>` (`s_entries`) before freeing the first -- a leftover
 of `Entry` and the on-disk record having independently evolved into two separate types. Since
