@@ -11,10 +11,11 @@ manuscript.
 ## 1. Summary
 
 A masked FI_DB RTS search cut the in-memory fragment index by **65.3%** (1.580e9 -> 5.483e8
-entries) and peak search memory by **35.6-36.4%** (8.7-8.8GB -> 5.6GB, after a same-session
-fix -- Section 7 -- that frees the predicted-fragment mask's own ~1.9GB resident lookup table
-once it's no longer needed, on top of the FI-array shrinkage itself) against both of two
-independent acquisitions, while simultaneously *increasing* PSMs identified at 1% FDR in
+entries) and peak search memory by **37.9-38.6%** (8.7-8.8GB -> 5.4GB, after two same-session
+fixes -- Section 7 -- that free the predicted-fragment mask's own resident lookup table once
+it's no longer needed and shrink it while it is needed, on top of the FI-array shrinkage
+itself) against both of two independent acquisitions, while simultaneously *increasing* PSMs
+identified at 1% FDR in
 both: +2.8%/+4.0% (xcorr-sorted, R1/R2) and +1.0%/+0.2% (e-value-sorted, R1/R2). A
 scan-level comparison shows the two search modes agree on >99.9% of PSMs both consider
 confident; of the small remainder, the PSMs masking uniquely recovers are systematically
@@ -451,17 +452,17 @@ idle machine (confirmed via `ps`/`uptime` beforehand, as in Section 6.1).
 |---|---|---|---|---|
 | Total scans / MS2 scans searched | 68,586 / 45,806 | 68,586 / 45,806 | 62,887 / 42,406 | 62,887 / 42,406 |
 | FI entries in memory | 1.580e9 | 5.483e8 (**-65.3%**) | 1.580e9 | 5.483e8 (**-65.3%**) |
-| Peak process memory | 8.8GB | 5.6GB (**-36.4%**) | 8.7GB | 5.6GB (**-35.6%**) |
+| Peak process memory | 8.8GB | 5.4GB (**-38.6%**) | 8.7GB | 5.4GB (**-37.9%**) |
 | MS2 search elapsed | 4.90s | 4.77s (-2.7%) | 4.54s | 4.22s (-7.0%) |
-| MS2 average search rate | 9,349 Hz | 9,603 Hz (+2.7%) | 9,334 Hz | 10,053 Hz (+7.7%) |
-| Total RTS elapsed | 16.09s | 19.48s | 17.68s | 18.56s |
+| MS2 average search rate | 9,349 Hz | 9,609 Hz (+2.8%) | 9,334 Hz | 10,058 Hz (+7.8%) |
+| Total RTS elapsed | 16.09s | 18.83s | 17.68s | 17.88s |
 
 (FI entry counts and their reduction are identical between replicates by construction --
 same `.idx`/`.fi_mask` pair for both. Peak memory now matches exactly between replicates too
-(5.6GB/5.6GB, masked) -- expected, since freeing a fixed-size, mask-content-determined
-structure is deterministic given the same `.idx`/`.fi_mask` pair. Search-speed deltas are
-noisier and not the focus of this re-run -- see the note below and Section 9's general
-single-sample-timing caveat.)
+(5.4GB/5.4GB, masked) -- expected, since freeing/shrinking a fixed-size, mask-content-
+determined structure is deterministic given the same `.idx`/`.fi_mask` pair. Search-speed
+deltas are noisier and not the focus of this re-run -- see the notes below and Section 9's
+general single-sample-timing caveat.)
 
 **2026-08-25 re-run: `CometPredictedMask::FreeAfterIndexBuild()` fix.** The masked-column
 figures above were re-measured after a same-session fix on top of commit `7d4e6427` (still
@@ -493,6 +494,27 @@ PSM-quality analysis needs no changes. MS2 search-elapsed/rate deltas above shif
 (a few percent, in both directions across the two replicates) relative to the original
 masked run -- consistent with ordinary single-sample wall-clock noise (Section 9), not a
 systematic effect of the fix; the memory reduction is the reproducible result here.
+
+**2026-08-25 second re-run: pack `CometPredictedMask::Entry` to match the on-disk layout.**
+On top of the fix above, `Load()` previously read the file's packed 42-byte-per-entry records
+into a temporary `vector<PackedEntry>`, then copied each field into a second, naturally-
+aligned 48-byte-per-entry `vector<Entry>` (`s_entries`) before freeing the first -- a leftover
+of `Entry` and the on-disk record having independently evolved into two separate types. Since
+`Lookup()`/`EntryKeyLess()` only ever run during the one-time FI-build pass (not the per-
+spectrum search-time hot path), the natural-alignment padding was buying nothing: `Entry` is
+now declared `#pragma pack(1)` directly (`CometPredictedMask.h`), matching the on-disk format
+exactly, and `Load()` `fread()`s straight into `s_entries` with no staging buffer or per-field
+conversion loop. This removes a ~1.66GB transient co-resident buffer during `Load()` itself
+(not currently the process's limiting peak, but a robustness margin for larger mask builds)
+and shrinks the mask's steady-state resident size 48B/entry -> 42B/entry (39,466,180 x 6B =
+**~226MB**) for as long as it's resident -- which, after the first fix above, is exactly the
+window right before/at the end of FI generation that now sets the process's actual peak.
+Measured effect: masked peak memory **5.6GB -> 5.4GB** for both replicates (matching the
+~226MB estimate closely: 5.6-5.4=0.2GB actual vs. ~0.226GB predicted -- the gap is well within
+rounding at 1-decimal-GB reporting precision). Re-verified byte-identical PSM output against
+both the original masked run and the first fix's re-run (`diff`: 0 differing lines, all four
+comparisons, both replicates) -- this change is mask-representation-only and changes nothing
+about which fragment-ion positions get masked or which peptides get identified.
 
 The mask itself was accepted without a fingerprint or `VarModConfig` mismatch in either run
 (both are checked and would hard-fail the search otherwise -- see

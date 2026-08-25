@@ -80,8 +80,8 @@ public:
 
    // Releases s_entries' backing storage once CometFragmentIndex::GenerateFragmentIndex() has
    // finished -- Lookup() is only ever called from AddFragments() during that one build pass
-   // (CometFragmentIndex.cpp:854), so the mask's 39M+-entry lookup table (48 bytes/entry, e.g.
-   // ~1.9GB for the phospho run in docs/20260824_carafe_phoshoresults.md) is otherwise dead
+   // (CometFragmentIndex.cpp:854), so the mask's 39M+-entry lookup table (42 bytes/entry, e.g.
+   // ~1.66GB for the phospho run in docs/20260824_carafe_phoshoresults.md) is otherwise dead
    // weight for the rest of the search. Deliberately leaves s_bEnabled untouched -- nothing
    // outside this class currently queries IsEnabled() after the FI build completes, and even if
    // something did, Lookup() against an emptied s_entries still hits the documented "not found"
@@ -96,6 +96,20 @@ public:
    static void FreeAfterIndexBuild();
 
 private:
+   // Byte-for-byte the on-disk layout too (tools/carafe_ms2_to_fi_mask.py's ENTRY_FMT =
+   // "<IibbQQQQ", little-endian, unpadded): iWhichPeptide(u32) modNumIdx(i32) cNtermMod(i8)
+   // cCtermMod(i8) bMask(u64) yMask(u64) bModlossMask(u64) yModlossMask(u64). Packed
+   // (no alignment padding) so Load() can fread() the file directly into s_entries with no
+   // separate staging buffer/conversion pass -- this used to be two types (a padded 48-byte
+   // "Entry" for lookup plus an unpadded 42-byte "PackedEntry" for I/O, copied field-by-field
+   // right after loading) purely so Entry's uint64_t members would land on natural alignment;
+   // merged into one packed type instead, since the transient staging copy cost ~1.66GB extra
+   // (a second full-size buffer, momentarily resident alongside this one) for no benefit --
+   // Lookup()/EntryKeyLess() only run during the one-time FI-build pass, so the minor unaligned-
+   // load cost of reading uint64_t fields at non-8-byte-aligned offsets here is immaterial next
+   // to the memory saved, and every target this builds for (x86/x64/ARM64, all little-endian in
+   // practice per the byte-order note above) handles unaligned loads correctly.
+#pragma pack(push, 1)
    struct Entry
    {
       unsigned int iWhichPeptide;
@@ -107,6 +121,10 @@ private:
       uint64_t bModlossMask;
       uint64_t yModlossMask;
    };
+#pragma pack(pop)
+
+   static_assert(sizeof(Entry) == 4 + 4 + 1 + 1 + 8 + 8 + 8 + 8,
+      "Entry must match tools/carafe_ms2_to_fi_mask.py's ENTRY_FMT exactly (42 bytes, unpadded)");
 
    static std::vector<Entry> s_entries;   // kept sorted by (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod)
    static bool s_bEnabled;

@@ -36,33 +36,15 @@ static const char* MASK_FILE_MAGIC = "Comet Carafe FI mask v3\n";
 std::vector<CometPredictedMask::Entry> CometPredictedMask::s_entries;
 bool CometPredictedMask::s_bEnabled = false;
 
-
-namespace
-{
-   // On-disk entry layout, byte-for-byte matching tools/carafe_ms2_to_fi_mask.py's
-   // ENTRY_FMT = "<IibbQQQQ"> (little-endian, unpadded): iWhichPeptide(u32) modNumIdx(i32)
-   // cNtermMod(i8) cCtermMod(i8) bMask(u64) yMask(u64) bModlossMask(u64) yModlossMask(u64).
-   // Comet only builds/runs on little-endian platforms (x86/x64/ARM64 all little-endian in
-   // practice here), so no byte-swap is needed -- matches every other fixed-width .idx section
-   // read elsewhere in this codebase (CometPeptideIndex.cpp's raw peptide table etc.), none of
-   // which byte-swap either.
-#pragma pack(push, 1)
-   struct PackedEntry
-   {
-      uint32_t iWhichPeptide;
-      int32_t  modNumIdx;
-      int8_t   cNtermMod;
-      int8_t   cCtermMod;
-      uint64_t bMask;
-      uint64_t yMask;
-      uint64_t bModlossMask;
-      uint64_t yModlossMask;
-   };
-#pragma pack(pop)
-
-   static_assert(sizeof(PackedEntry) == 4 + 4 + 1 + 1 + 8 + 8 + 8 + 8,
-      "PackedEntry must match tools/carafe_ms2_to_fi_mask.py's ENTRY_FMT exactly (42 bytes, unpadded)");
-}
+// Entry (CometPredictedMask.h) is declared #pragma pack(1) specifically so this holds --
+// byte-for-byte matching tools/carafe_ms2_to_fi_mask.py's ENTRY_FMT = "<IibbQQQQ" (little-
+// endian, unpadded). Comet only builds/runs on little-endian platforms (x86/x64/ARM64 all
+// little-endian in practice here), so Load() below can fread() the file straight into
+// s_entries with no byte-swap and no separate staging/conversion pass -- matches every other
+// fixed-width .idx section read elsewhere in this codebase (CometPeptideIndex.cpp's raw
+// peptide table etc.), none of which byte-swap either. (The static_assert on this lives in
+// the header, right after Entry's definition -- Entry is private, so it can't be named from
+// free-standing code out here.)
 
 
 bool CometPredictedMask::EntryKeyLess(const Entry& a, const Entry& b)
@@ -340,30 +322,22 @@ bool CometPredictedMask::Load(const std::string& strMaskFile)
       return false;
    }
 
-   std::vector<PackedEntry> raw((size_t)count);
-   if (count > 0 && fread(raw.data(), sizeof(PackedEntry), (size_t)count, fp) != (size_t)count)
+   // Read directly into s_entries -- Entry is #pragma pack(1) and byte-for-byte matches the
+   // on-disk record, so no separate staging buffer/field-by-field conversion pass is needed
+   // (previously: a same-size second buffer, momentarily co-resident with s_entries here --
+   // see the header's comment above Entry's definition).
+   s_entries.resize((size_t)count);
+   if (count > 0 && fread(s_entries.data(), sizeof(Entry), (size_t)count, fp) != (size_t)count)
    {
       string strErrorMsg = " Error - \"" + strMaskFile + "\" truncated (expected "
          + std::to_string(count) + " entries).\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       fclose(fp);
+      std::vector<Entry>().swap(s_entries);
       return false;
    }
    fclose(fp);
-
-   s_entries.resize((size_t)count);
-   for (uint64_t i = 0; i < count; ++i)
-   {
-      s_entries[i].iWhichPeptide  = raw[i].iWhichPeptide;
-      s_entries[i].modNumIdx      = raw[i].modNumIdx;
-      s_entries[i].cNtermMod      = (signed char)raw[i].cNtermMod;
-      s_entries[i].cCtermMod      = (signed char)raw[i].cCtermMod;
-      s_entries[i].bMask          = raw[i].bMask;
-      s_entries[i].yMask          = raw[i].yMask;
-      s_entries[i].bModlossMask   = raw[i].bModlossMask;
-      s_entries[i].yModlossMask   = raw[i].yModlossMask;
-   }
 
    // write_mask_file() already writes entries pre-sorted (Section 4.3), but don't rely on that
    // invariant holding for a hand-edited or future-tool-generated file -- Lookup()'s binary
