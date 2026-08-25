@@ -159,6 +159,12 @@ bool CometPredictedMask::IsEnabled()
 }
 
 
+void CometPredictedMask::FreeAfterIndexBuild()
+{
+   std::vector<Entry>().swap(s_entries);
+}
+
+
 std::string CometPredictedMask::ComputeVarModConfigString()
 {
    // Matches CometFragmentIndex::PermuteIndexPeptideMods()'s own "for (int i = 0; i <

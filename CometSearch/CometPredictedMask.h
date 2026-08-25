@@ -78,6 +78,23 @@ public:
    // variable mods than are live right now, rather than silently trusting stale modNumIdx keys.
    static std::string ComputeVarModConfigString();
 
+   // Releases s_entries' backing storage once CometFragmentIndex::GenerateFragmentIndex() has
+   // finished -- Lookup() is only ever called from AddFragments() during that one build pass
+   // (CometFragmentIndex.cpp:854), so the mask's 39M+-entry lookup table (48 bytes/entry, e.g.
+   // ~1.9GB for the phospho run in docs/20260824_carafe_phoshoresults.md) is otherwise dead
+   // weight for the rest of the search. Deliberately leaves s_bEnabled untouched -- nothing
+   // outside this class currently queries IsEnabled() after the FI build completes, and even if
+   // something did, Lookup() against an emptied s_entries still hits the documented "not found"
+   // path (lower_bound on an empty vector) and correctly falls back to fully-unfiltered rather
+   // than misbehaving.
+   //
+   // Safety precondition (shared with Load()'s own s_bLoadAttempted one-shot guard just below):
+   // this assumes CreateFragmentIndex() runs at most once per process, as already documented
+   // there -- if that ever changes, a second build would find s_entries empty (Load() no-ops
+   // after its first call, so it won't reload) and would silently run unmasked instead of
+   // failing loudly. Revisit both guards together if a multi-build-per-process caller appears.
+   static void FreeAfterIndexBuild();
+
 private:
    struct Entry
    {

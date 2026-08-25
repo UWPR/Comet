@@ -140,6 +140,12 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    if (!GenerateFragmentIndex(tp))
       return false;   // GenerateFragmentIndex() (via the thread pool's error handler) already reported the specific error
 
+   // AddFragments() (called from GenerateFragmentIndex() above) was the mask's only consumer --
+   // free its lookup table now rather than holding it resident for the rest of the search (see
+   // CometPredictedMask::FreeAfterIndexBuild()'s header comment for the ~GB-scale motivation and
+   // the shared safety precondition with Load()'s one-shot guard).
+   CometPredictedMask::FreeAfterIndexBuild();
+
    return true;
 }
 

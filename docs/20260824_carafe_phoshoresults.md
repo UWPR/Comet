@@ -11,7 +11,9 @@ manuscript.
 ## 1. Summary
 
 A masked FI_DB RTS search cut the in-memory fragment index by **65.3%** (1.580e9 -> 5.483e8
-entries) and peak search memory by **23-24%** (8.7-8.8GB -> 6.7GB) against both of two
+entries) and peak search memory by **35.6-36.4%** (8.7-8.8GB -> 5.6GB, after a same-session
+fix -- Section 7 -- that frees the predicted-fragment mask's own ~1.9GB resident lookup table
+once it's no longer needed, on top of the FI-array shrinkage itself) against both of two
 independent acquisitions, while simultaneously *increasing* PSMs identified at 1% FDR in
 both: +2.8%/+4.0% (xcorr-sorted, R1/R2) and +1.0%/+0.2% (e-value-sorted, R1/R2). A
 scan-level comparison shows the two search modes agree on >99.9% of PSMs both consider
@@ -449,14 +451,48 @@ idle machine (confirmed via `ps`/`uptime` beforehand, as in Section 6.1).
 |---|---|---|---|---|
 | Total scans / MS2 scans searched | 68,586 / 45,806 | 68,586 / 45,806 | 62,887 / 42,406 | 62,887 / 42,406 |
 | FI entries in memory | 1.580e9 | 5.483e8 (**-65.3%**) | 1.580e9 | 5.483e8 (**-65.3%**) |
-| Peak process memory | 8.8GB | 6.7GB (**-23.9%**) | 8.7GB | 6.7GB (**-23.0%**) |
-| MS2 search elapsed | 4.90s | 4.48s (-8.6%) | 4.54s | 4.18s (-7.9%) |
-| MS2 average search rate | 9,349 Hz | 10,227 Hz (+9.4%) | 9,334 Hz | 10,148 Hz (+8.7%) |
-| Total RTS elapsed | 16.09s | 18.16s | 17.68s | 19.02s |
+| Peak process memory | 8.8GB | 5.6GB (**-36.4%**) | 8.7GB | 5.6GB (**-35.6%**) |
+| MS2 search elapsed | 4.90s | 4.77s (-2.7%) | 4.54s | 4.22s (-7.0%) |
+| MS2 average search rate | 9,349 Hz | 9,603 Hz (+2.7%) | 9,334 Hz | 10,053 Hz (+7.7%) |
+| Total RTS elapsed | 16.09s | 19.48s | 17.68s | 18.56s |
 
 (FI entry counts and their reduction are identical between replicates by construction --
-same `.idx`/`.fi_mask` pair for both. Peak memory, search speed, and their masked-vs-
-unmasked deltas replicate closely between the two independent acquisitions.)
+same `.idx`/`.fi_mask` pair for both. Peak memory now matches exactly between replicates too
+(5.6GB/5.6GB, masked) -- expected, since freeing a fixed-size, mask-content-determined
+structure is deterministic given the same `.idx`/`.fi_mask` pair. Search-speed deltas are
+noisier and not the focus of this re-run -- see the note below and Section 9's general
+single-sample-timing caveat.)
+
+**2026-08-25 re-run: `CometPredictedMask::FreeAfterIndexBuild()` fix.** The masked-column
+figures above were re-measured after a same-session fix on top of commit `7d4e6427` (still
+uncommitted at time of writing): `CometPredictedMask::s_entries` -- the mask's resident
+lookup table, 48 bytes/entry, ~1.9GB for this run's 39,466,180 entries -- was previously never
+freed after `CometFragmentIndex::GenerateFragmentIndex()` finished with it, even though
+`AddFragments()` (`CometFragmentIndex.cpp:854`) is its only consumer and that consumption is
+entirely confined to the one-time FI-build pass. The fix frees it (`std::vector<Entry>().
+swap(s_entries)`) immediately after `GenerateFragmentIndex()` returns, inside
+`CometFragmentIndex::CreateFragmentIndex()`. Original (pre-fix) masked peak memory was
+**6.7GB** for both replicates; the post-fix **5.6GB** is a further **-1.1GB** on top of the
+already-reported masking benefit -- smaller than the ~1.9GB the freed `s_entries` structure
+itself accounts for. That gap is expected, not a discrepancy: freeing a `std::vector` returns
+its memory to the process heap, but Windows' `PeakWorkingSetSize` tracks actual resident pages,
+not heap accounting, so the reduction only shows up to the extent the OS reclaims those pages
+before the process's next high-water point; any of it retained by the allocator for reuse (or
+backfilled by later allocations -- per-thread search buffers, raw-file read buffers, CLR GC
+activity -- before the process's true peak is reached during the search phase) doesn't reduce
+the observed peak by its full size. **-1.1GB** is the real, measured number either way; treat
+the ~1.9GB structure size as an upper bound on what freeing it *could* save, not a prediction
+of what a peak-RSS measurement will show. The unmasked columns are untouched by this fix and were not
+re-run -- `CometPredictedMask::Load()` is a no-op (`s_entries` stays empty) whenever no mask
+file is configured, so `FreeAfterIndexBuild()` swaps an already-empty vector to empty there.
+Both re-run replicates were verified byte-identical to the original masked run's PSM calls
+(`tools/rts_out_to_txt.py` output, sorted, `diff`: 0 differing lines for both R1 and R2) and
+produce identical 1% FDR PSM counts to Section 8's existing table (R1: 15,793 xcorr / 16,906
+e-value; R2: 15,275 xcorr / 15,865 e-value) -- confirming the fix is memory-only and Section 8's
+PSM-quality analysis needs no changes. MS2 search-elapsed/rate deltas above shifted modestly
+(a few percent, in both directions across the two replicates) relative to the original
+masked run -- consistent with ordinary single-sample wall-clock noise (Section 9), not a
+systematic effect of the fix; the memory reduction is the reproducible result here.
 
 The mask itself was accepted without a fingerprint or `VarModConfig` mismatch in either run
 (both are checked and would hard-fail the search otherwise -- see
