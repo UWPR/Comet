@@ -12,6 +12,20 @@ it is now only a compatibility shim that `#include`s them
 "Files Modified" table entries below are not corrected one-by-one; treat every
 `CometDataInternal.h` reference in this doc as `core/Types.h` today.
 
+**Later update (2026-08-25):** `WriteFIPlainPeptideIndex()` and `ReadPlainPeptideIndex()`,
+central to this whole document, were **retired entirely** by the PI/FI unification
+(`docs/20260730_PI_reduction.md`) -- `CometFragmentIndex.h:29` now reads "`WriteFIPlainPeptideIndex()`/`ReadPlainPeptideIndex()` retired (docs/20260730_PI_reduction.md...)".
+`GeneratePlainPeptideIndex()` itself survived and is still the current mechanism (confirmed
+in `CometFragmentIndex.cpp`), but its signature gained an output parameter not described
+anywhere in this doc: `GeneratePlainPeptideIndex(ThreadPool *tp, vector<pair<size_t,size_t>>&
+slices)` -- the `slices` vector is how callers now learn the per-length mass-sorted
+boundaries this doc's own "Phase 9"/k-way-merge sections below describe, without going
+through the now-gone `WriteFIPlainPeptideIndex()`. `g_pvDBIndex` itself is unaffected by this
+and remains exactly as this document describes it throughout. Treat every mention of
+`WriteFIPlainPeptideIndex`/`ReadPlainPeptideIndex` below as historical -- read
+`docs/20260730_PI_reduction.md` and `CometFragmentIndex.cpp`'s current `GeneratePlainPeptideIndex()`
+for what replaced them.
+
 ## Problem
 
 When Comet builds a fragment ion index (`.idx` file), it first calls

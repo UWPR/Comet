@@ -273,7 +273,7 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |     -> AcquirePoolSlot() reserves one slot of the shared SearchMemoryPool
   |        (s_pool), guarded by a SearchMemoryPoolSlotGuard so the slot is
   |        released on any exit path (including exceptions)
-  |     -> branches on g_staticParams.iDbType (CometSearch.cpp:171-215):
+  |     -> branches on g_staticParams.iDbType (CometSearch.cpp:207-251):
   |        FI_DB -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
   |                   reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
   |                   reads g_vFragmentPeptides (READ-ONLY) [x]
@@ -364,6 +364,7 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensiti
 | `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
 | `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_vFragmentPeptides` is built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
 | `g_vDBIndexVariants` | Read-only [x] | PI_DB's compact per-variant array (mass-sorted), built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then read-only for the rest of the session; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Only populated when `iDbType == PI_DB`. |
+| `g_bIndexPrecursors` | Read-only [x] | Per-mass-bin bool array. Set once during RTS init (`CometSearchManager.cpp:459`) with every bin `true` -- unlike the batch path, RTS has no input file to derive real observed precursor masses from, so this degenerates to "every precursor mass is considered present" rather than a real filter. Read (not written) during FI regeneration by `CometFragmentIndex::AddFragments()`'s `!g_staticParams.options.iFragIndexSkipReadPrecursors && !g_bIndexPrecursors[BIN(dCalcPepMass)]` check -- a no-op check for RTS given the all-`true` array above, but the same code path batch uses, so it must still be allocated and populated correctly at RTS init or that check null-derefs. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
 | `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |

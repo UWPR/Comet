@@ -24,7 +24,7 @@ Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The
 | `SearchSession::ms1Queries` | `vector<QueryMS1*>` | Guarded by `queriesMutex` | Analogous to `queries` for MS1 spectral library batch searches. Replaces the former global `g_pvQueryMS1`. |
 | `SearchSession::queriesMutex` | `std::mutex` | -- | Protects `queries` / `ms1Queries` insertions on the non-fused batch paths (see above). Replaces the former `g_pvQueryMutex`. |
 | `g_pvInputFiles` | `vector<InputFileInfo*>` | Read-only after init | List of input files to search; set before `DoSearch()` begins. |
-| `g_bPerformDatabaseSearch` / `g_bPerformSpecLibSearch` / `g_bIdxNoFasta` | `bool` | Written once per run | Still live bare globals (`CometSearchManager.cpp:94,95,99`), not `SearchSession` members -- despite being conceptually per-run flags, they were never migrated. Written in `DoSearch()` (`g_bPerformDatabaseSearch`, lines ~1953-1962) and `ValidateSequenceDatabaseFile()` (`g_bIdxNoFasta`, lines ~183-188), then copied *into* `session.bPerformDatabaseSearch` etc. rather than replaced. `ValidateSequenceDatabaseFile()` is also called from the RTS init path (`InitializeSingleSpectrumSearch()`), so `g_bIdxNoFasta` is touched by both paths, not batch-only. |
+| `g_bPerformDatabaseSearch` / `g_bPerformSpecLibSearch` / `g_bIdxNoFasta` | `bool` | Written once per run | Still live bare globals (`CometSearchManager.cpp:103,104,108`), not `SearchSession` members -- despite being conceptually per-run flags, they were never migrated. Written in `DoSearch()` (`g_bPerformDatabaseSearch`) and `ValidateSequenceDatabaseFile()` (`g_bIdxNoFasta`), then copied *into* `session.bPerformDatabaseSearch` etc. rather than replaced. `ValidateSequenceDatabaseFile()` is also called from the RTS init path (`InitializeSingleSpectrumSearch()`), so `g_bIdxNoFasta` is touched by both paths, not batch-only. |
 
 ---
 
@@ -43,7 +43,26 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
 | `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` by `CometPeptideIndex::ReadPeptideIndex()` once the `.idx` file itself has been read -- **not** the same as "fully initialized" (see `g_bPeptideIndexFullyInitialized` below, which gates on more than this). |
 | `g_bPeptideIndexFullyInitialized` | `std::atomic<bool>` | Set to `true` only after `CometSearch::EnsurePeptideIndexLoaded()` has completed *all* of: `ReadPeptideIndex()` (which sets `g_bPeptideIndexRead`), `InitializeMassesFromPeptideIndex()`, and (if `print_ascorepro_score`) AScorePro interface creation. This exists because a second concurrent caller (another RTS Task's thread, which the API permits) could otherwise observe `g_bPeptideIndexRead == true` while the first caller is still finishing mass-init/AScorePro setup under the lock, and search with masses that aren't ready yet. `EnsurePeptideIndexLoaded()`'s unlocked fast-path check gates on this flag, not on `g_bPeptideIndexRead`. |
-| `g_bPlainPeptideIndexRead` | `bool` (plain, not atomic) | FI_DB analogue of `g_bPeptideIndexRead` -- set once `g_vRawPeptides` has been fully loaded (`CometFragmentIndex.cpp:1604`, re-set at `CometSearchManager.cpp:2291`), then read from RTS search threads (`CometSearch.cpp:175,240`). Not atomic, unlike its sibling; safe in practice only because writes are confined to the init path under the `singleSearchInitializationComplete` happens-before edge. |
+| `g_bPlainPeptideIndexRead` | `bool` (plain, not atomic) | FI_DB analogue of `g_bPeptideIndexRead` -- set once `g_vRawPeptides` has been fully loaded (`CometPeptideIndex.cpp:461`, alongside `g_bPeptideIndexRead = true` on the same unified-`.idx`-read path -- both PI_DB and FI_DB code check their own flag post-unification, see the comment at that call site; re-set at `CometSearchManager.cpp:2517`), then read from RTS search threads (`CometSearch.cpp:211,276`). Not atomic, unlike its sibling; safe in practice only because writes are confined to the init path under the `singleSearchInitializationComplete` happens-before edge. |
+
+---
+
+## Carafe predicted-fragment mask (read-only after loading)
+
+Carafe-branch-only state (`CometSearch/CometPredictedMask.h`/`.cpp`), not present on
+`master`. Static class members on `CometPredictedMask`, not free globals, but follow the
+same "written once at init, read-only from then on" pattern as everything else in this
+document. `Load(strMaskFile)` is a no-op (leaves `s_bEnabled == false`) when
+`fragment_index_predicted_mask_file` is unset; it must be called once, after
+`g_vRawPeptides` is populated, before `CometFragmentIndex::GenerateFragmentIndex()` runs
+(see `CometFragmentIndex::CreateFragmentIndex()`). `Lookup()` is read-only and safe from any thread, including concurrently from
+`GenerateFragmentIndex()`'s parallel fill-pass worker threads.
+
+| Variable | Type | Notes |
+|----------|------|-------|
+| `CometPredictedMask::s_entries` | `std::vector<Entry>` | Parsed `.fi_mask` entries, sorted by `(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod)` for `Lookup()`'s binary search. Empty when masking is disabled. |
+| `CometPredictedMask::s_bEnabled` | `bool` | `true` once `Load()` has successfully parsed a mask file (fingerprint + `VarModConfig` both matched); `IsEnabled()` just returns this. |
+| `s_bLoadAttempted` (function-local static inside `Load()`) | `bool` | Load-once guard -- a second `Load()` call in the same process is a no-op returning the first call's result, not a re-parse. |
 
 ---
 
@@ -53,9 +72,9 @@ The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fr
 |----------|------|-------|
 | `g_vSpecLib` | `vector<SpecLibStruct>` | In-memory spectral library entries. Each entry holds peaks, charge, RT, and a unit-vector representation for dot-product scoring. |
 | `g_vulSpecLibPrecursorIndex` | `vector<vector<unsigned int>>` | Mass index into `g_vSpecLib`; maps precursor mass bins to library entry indices for fast lookup. |
-| `pMS1Aligner` | `CometMassSpecAligner` (`CometSearchManager.cpp:110`) | The RT-regression aligner object itself. Its `processRetentionMatch(dQueryRT, dMatchedSpecLibRT)` method is called under `g_ms1AlignerMutex` from `DoMS1SearchMultiResults` and internally maintains the rolling RT-match history (`RetentionMatchHistory` below is the deque it manipulates, not a separate globally-visible container). |
+| `pMS1Aligner` | `CometMassSpecAligner` (`CometSearchManager.cpp:119`) | The RT-regression aligner object itself. Its `processRetentionMatch(dQueryRT, dMatchedSpecLibRT)` method is called under `g_ms1AlignerMutex` from `DoMS1SearchMultiResults` and internally maintains the rolling RT-match history (`RetentionMatchHistory` below is the deque it manipulates, not a separate globally-visible container). |
 | `RetentionMatchHistory` | `std::deque<RetentionMatch>` | Rolling window of (query RT, reference RT) pairs used by the MS1 RT aligner, owned internally by `pMS1Aligner`. Protected by `g_ms1AlignerMutex`. |
-| `dMaxSpecLibRT` | `double` (`CometSearchManager.cpp:106`) | Set once during `InitializeSingleSpectrumMS1Search()` -> `LoadSpecLibMS1Raw()`; read on every RTS MS1 call to rescale query RT against the library's RT range. |
+| `dMaxSpecLibRT` | `double` (`CometSearchManager.cpp:115`) | Set once during `InitializeSingleSpectrumMS1Search()` -> `LoadSpecLibMS1Raw()`; read on every RTS MS1 call to rescale query RT against the library's RT range. |
 | `g_bSpecLibRead` | `bool` (plain, not atomic) | Set once `g_vSpecLib` has been fully loaded (`CometSpecLib.cpp:93,687`), read at `CometSpecLib.cpp:42`. Same not-atomic-but-init-only-write pattern as `g_bPlainPeptideIndexRead` above. |
 
 ---
@@ -76,7 +95,7 @@ not listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_
 | `g_pvDBIndex` | `vector<DBIndex>` | **Build-time only, no longer the search-time index.** Phase A digestion output (`CometFragmentIndex::GeneratePlainPeptideIndex()`) inside `CometPeptideIndex::WritePeptideIndex()`: one entry per unique raw peptide, copied into `g_vRawPeptides` and cleared before the function returns. `DBIndex` itself is also used as a transient, stack-local, per-candidate reconstruction target at PI_DB search time (`CometPeptideIndex::MaterializeOneEntry()`, called from `CometSearch::SearchPeptideIndex()`) -- that usage never touches this global. |
 | `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | One entry per unique unmodified peptide (sequence, protein reference, flank AAs, unmodified mass), loaded from the `.idx` file at search init and kept resident for the whole session. Shared by both search modes. |
 | `g_vDBIndexVariants` | `vector<FragmentPeptidesStruct>` | PI_DB's compact per-variant array (one entry per (peptide, mod combination) pair: mass + a reference back into `g_vRawPeptides`), mass-sorted. Built once per search session by `CometPeptideIndex::GenerateVariantArray()` from `g_vRawPeptides` + whichever variable mods are active in `g_staticParams.variableModParameters` at that moment -- as of `docs/20260811_restore_idx_header_mods.md`, that's the `.idx` file's own `VariableMod:` header line (parsed into `g_staticParams` by `ParsePeptideIndexHeader()`, overwriting whatever `comet.params` supplied), not live `comet.params` directly. The array itself is still never persisted to disk -- rebuilt fresh every session. `CometSearch::SearchPeptideIndex()` binary-searches this by mass; `CometPeptideIndex::MaterializeOneEntry()` reconstructs a full `DBIndex` per surviving candidate. Only populated when `iDbType == PI_DB`. |
-| `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | Maps protein file-position to accession string and ordinal. Used for FASTA searches and legacy index paths. |
+| `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | **Build-time only -- not search-time readable.** Populated only while *building* a `.idx` (`CometPeptideIndex::WritePeptideIndex()`'s digestion path); never repopulated when an existing `.idx` is read back for a search, so a search-time lookup silently finds nothing rather than erroring. This exact confusion caused a real bug: `CometSearch.cpp`'s decoy-classification check read this map and always found nothing, so `bDecoyPep` was unconditionally `false` for every PI_DB search of an already-built index (see the comment at `CometSearch.cpp:2269`). Use `g_pvProteinNameCache` (below) for any search-time protein-name lookup instead. |
 | `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein file offsets (for multi-protein peptides). `ProteinsListCSR` is a CSR-layout replacement for `vector<vector<comet_fileoffset_t>>`; exposes the same `operator[]`/`size()`/range-for interface but uses only two heap allocations total. |
 | `g_pvProteinNameCache` | `unordered_map<comet_fileoffset_t, string>` | Protein name lookup cache for index-based searches. Populated at index load time from the protein name blocks in the `.idx` file. Maps protein file-position offsets to accession strings. ~7 MB for a human target-decoy database. Allows O(1) protein name resolution during RTS without file I/O. |
 
@@ -129,7 +148,12 @@ from the file before this regeneration runs, the same way `StaticMod:` already d
 
 **Note:** `g_searchMemoryPoolMutex` and the paired `g_searchPoolCV` condition variable were removed during the architecture migration; the search memory pool's locking is now encapsulated inside the `SearchMemoryPool` class (see below) instead of living as bare globals.
 
-**Dead declarations:** `core/Types.h:984-985` declares `extern Mutex g_dbIndexMutex;` and `extern Mutex g_vSpecLibMutex;`. Neither has a definition anywhere in the repo, and neither is ever locked. They are distinct from the real, in-use `g_pvDBIndexMutex` and `g_pvQueryMutex` above -- `g_vSpecLibMutex` in particular looks like an abandoned attempt to give `g_vSpecLib`'s protection a correctly-named mutex (the doc's own `g_pvQueryMutex` entry already notes that name is a holdover). Don't assume either does anything.
+**Formerly dead declarations, now removed:** an earlier revision of this doc noted that
+`core/Types.h` declared `extern Mutex g_dbIndexMutex;` and `extern Mutex g_vSpecLibMutex;`
+with no definition anywhere and no call site -- as of the memory-safety hardening merged
+from `master` into `carafe` on 2026-08-23 (PR #128), neither declaration exists in the
+codebase any more (`grep -rn "g_dbIndexMutex\|g_vSpecLibMutex" CometSearch/` finds nothing).
+Noted here only so a reader who remembers the old note doesn't go looking for them.
 
 ### SearchMemoryPool (`threading/SearchMemoryPool.h`)
 
@@ -163,7 +187,7 @@ The happens-before edge that makes the `acquire`/`release` ordering meaningful c
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_sCometVersion` | `string` | Version string, assembled independently at three sites: `main()` in `Comet.cpp:44-52` (batch via CLI) and `DoSearch()` in `CometSearchManager.cpp:1985-1993` (batch via DLL -- its comment notes this duplicates `main()`'s logic "as main() is skipped when search invoked via DLL") both append the `GITHUBSHA` macro (below) to `comet_version` when non-empty, producing e.g. `"2026.02 rev. 1 (a1b2c3d)"`. **`InitializeSingleSpectrumSearch()` (RTS, `CometSearchManager.cpp:2217`) does not** -- it sets `g_sCometVersion = comet_version;` with no SHA appended, so RTS builds report a version string with no git hash. This looks like a real gap in the RTS path, not just a doc issue -- worth fixing at the code level if a git hash in the reported RTS version is expected. |
+| `g_sCometVersion` | `string` | Version string including git hash. **Update, now fixed:** an earlier revision of this doc flagged that `InitializeSingleSpectrumSearch()` (RTS) assembled this without the `GITHUBSHA` suffix that the batch paths appended, a real RTS-vs-batch gap. As of the current code, all three sites (`Comet.cpp`'s `main()`, `CometSearchManager::DoSearch()`, and `InitializeSingleSpectrumSearch()`) call one shared helper, `BuildCometVersionString()` (`CometSearch/Common.h`, `inline`) -- its own comment says it exists specifically to keep those three call sites "in sync instead of each re-deriving it." It appends the short (7-char) `GITHUBSHA` (below) in parens when non-empty, e.g. `"2026.02 rev. 2 (a1b2c3d)"`; RTS now reports the same git hash a batch build would. |
 | `GITHUBSHA` | `#define` macro (`CometSearch/githubsha.h`) | Not a variable -- a compile-time string literal. Defaults to `#define GITHUBSHA ""` in the tracked file; CI workflows overwrite `githubsha.h` with the actual commit SHA before building a release, so a locally-built binary normally has an empty `GITHUBSHA`. There is no `g_psGITHUB_SHA` global; earlier drafts of this doc described one, but the mechanism has always been this compile-time macro. |
 
 ---
@@ -191,11 +215,16 @@ The happens-before edge that makes the `acquire`/`release` ordering meaningful c
 ```
 Safe to read from any concurrent RTS thread (after init):
   g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
-  g_vFragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
+  g_vFragmentPeptides, g_vRawPeptides, g_pvProteinsList,
   g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex,
   g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange (written once at init on
   either path -- not batch-only, see "Core search state" above)
+
+NOT search-time readable despite being a "read-only after init"-shaped global
+-- only ever populated at .idx BUILD time, never on a search-only read-back
+(see "Protein database index" above for the historical bug this caused):
+  g_pvProteinNames
 
 Written once per call, batch path only (RTS never calls PreprocessSpectrum):
   g_massRange.usiMaxFragmentCharge

@@ -1,5 +1,13 @@
 # The Delay: C++ Global Destructor Chains at Program Exit
 
+**Update (current code):** all structural claims below were re-verified against current
+source and still hold (`g_pvProteinNames` is still `std::map<long long, IndexProteinStruct>`,
+`ProteinsListCSR` still exists, `m_bRTSIndexBuild`'s guard is unchanged). One file-location
+detail is stale: `ProteinsListCSR` (and the other globals referenced below) now live in
+`CometSearch/core/Types.h`, not `CometDataInternal.h` -- part of the same broader
+file-reorganization the OOP architecture migration (`docs/20260612_architecture_migration.md`)
+carried out elsewhere in the codebase.
+
 When `g_pvInputFiles.size() == 0` the function returns and `main()` exits.
 Before the process terminates, the C++ runtime calls the destructors of all
 file-scope global objects -- and for an MHC (no-enzyme) search those globals

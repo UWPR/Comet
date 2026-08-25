@@ -564,3 +564,13 @@ code was out of scope for this change. `BoundedSpectrumQueue` stayed file-local
 to the .cpp, forward-declared with `struct BoundedSpectrumQueue;` in the header
 for the `FilterAndEnqueueSpectrum` signature, rather than being relocated into
 the header as Step 2b's "mechanical detail" note left open.
+
+**Further update (current code):** the line numbers just above are themselves now stale --
+later fused-batch-path work (`docs/20260715_fusedflush.md`, `docs/
+20260723_ExtendFusedBatchPath.md`) grew the file further and added another consumer of this
+same infrastructure, `FusedPreloadThenSearch`, which also calls `FilterAndEnqueueSpectrum`
+(per `CometPreprocess.h`'s doc comment on it) -- so that helper is no longer shared by only
+the two loops this design describes. All symbols named here (`FusedLoadAndSearchSpectra`,
+`FilterAndEnqueueSpectrum`, `SpectrumReadahead`, `ReadaheadLoop`) still exist under the same
+names; only their line numbers and the full set of callers have moved on. Treat this doc's
+line numbers as historical, not current-line references.

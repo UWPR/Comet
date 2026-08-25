@@ -1,10 +1,20 @@
 # Carafe as an ahead-of-time step: size, speed, and the search-time budget
 
 **Date:** 2026-08-22
-**Status:** PLAN (nothing below is implemented yet unless explicitly marked otherwise)
-**Companion docs:** `docs/20260805_carafe.md` (design + phase history through Section 6.21),
+**Status:** IMPLEMENTED. All of M1-M4 and M6 are DONE (Section 8); M5 was CANCELLED (M1b's
+own measurement showed the existing load path already passes the search-time budget by
+>10x, so no load-path optimization was needed). This document was written as a plan and
+updated in place as each milestone completed -- Section 8's per-milestone status lines are
+the authoritative current state, not this top line's original "PLAN" framing.
+**Companion docs:** `docs/20260805_carafe.md` (design + phase history through Section 6.24,
+including the 2026-08-23/24 master-merge and two post-merge real-data reconfirmations of
+this pipeline's output),
 `docs/20260816_carafe_gpu_benchmark_setup.md` (GPU benchmark runbook and corrected disk
-accounting).
+accounting -- also since retired, see that doc's own status note),
+`docs/20260824_carafe_phoshoresults.md` and `docs/20260824_carafe_oxmet_fi_vs_fimask.md`
+(two independent FI-vs-FI-masked analyses run entirely through this pipeline, 2026-08-24,
+with full per-stage timing/memory on real data -- the pipeline's first real production use
+after M1-M6 landed).
 
 ## 1. Problem statement
 
@@ -191,6 +201,13 @@ the comparison isolates quantization effects only.
   replacing today's 5.5h chunked build + 15-min merge (which exist only because the TSV
   inputs are 386GB; the chunked mask-build tools from commit `1187d98d` remain for
   TSV-sourced builds but stop being the primary path).
+  **[As built (M3, Section 8): not a `--from-cps` flag on this script.]** `carafe_ms2_to_
+  fi_mask.py`'s 6 positional TSV arguments have no sensible meaning in `.cps` mode, so the
+  store-based path shipped as its own CLI, `tools/carafe_cps_to_fi_mask.py`, instead --
+  same capability, all decision logic still shared via `carafe_cps.
+  compute_variant_mask_from_cps()` calling back into this script's own threshold/floor/pack
+  helpers. `carafe_ms2_to_fi_mask.py` itself gained no `--from-cps` flag and remains
+  TSV-only.
 - **NEW `tools/carafe_prerun.sh`**: the Section 3 decision-1 driver. Thin orchestration over
   the existing + new tools; per-stage `.done` markers; `--resume` semantics identical to
   `run_carafe_chunked.sh`'s (which it invokes for stage 3); a `--start-at`/`--stop-after`
@@ -444,7 +461,12 @@ repo path, never rely on copies.
     auto-detected per flavor from its own variant map's VarModConfig (all neutral-loss
     deltas 0.0 -> general mode), never hand-specified; (2) a cross-flavor population
     identity check (every flavor's conversion row count must equal the primary's) makes a
-    mismatched flavor pair fail loudly before any expensive stage.
+    mismatched flavor pair fail loudly before any expensive stage. Note this is a
+    *mask-format* auto-detection (whether the mask carries modloss channels), separate from
+    `--carafe-mode` (default `phosphorylation`), which selects `ai_pred.py`'s own prediction
+    mode and must still be set explicitly to `general` for a non-phospho mod space (e.g. an
+    oxidized-Met-only search) -- confirmed in practice 2026-08-24, `docs/
+    20260824_carafe_oxmet_fi_vs_fimask.md`.
   - Stage-level `.done` markers under `OUT/.prerun/` (delete one to re-run its stage;
     stage 4 additionally resumes at chunk granularity), per-stage logs, `--stop-after`
     for deliberate partial runs (e.g. prediction on the GPU machine), `--delete-raw`
@@ -485,6 +507,10 @@ repo path, never rely on copies.
     suites (`test_carafe_ms2_to_fi_mask/alignment/idx_to_carafe_dedup_key/carafe_cps.py`)
     -- previously wired into NOTHING, hand-run only -- now run in the default fast suite,
     once per invocation. Full suite after all M6 changes: 47 passed, 0 failed, 0 skipped.
+    **Renamed `t38_carafe_python_suites` on 2026-08-24** (`docs/20260805_carafe.md` Section
+    6.24) when this project's own T25-T29 tests were renumbered T34-T38 to resolve a
+    collision with master's independently-added T26-T33 -- run `t38`, not `t29`, against
+    the current suite.
   - **CLAUDE.md**: new "Carafe ahead-of-time pipeline" section (driver one-liner, tool
     roster, pointers to both docs, and the two hard-won invariants: variant-map order is
     not key order; pack worker results to bytes), T29 documented, suite range updated.
@@ -520,10 +546,16 @@ repo path, never rely on copies.
   environment) AND the mask/`.cps` consumers must behave identically when `comet.exe` is
   the MSVC build -- M1b/M3 measurements should include one Windows-binary datapoint
   (`x64/Release/Comet.exe`), matching the test suite's dual-binary convention.
-- **GPU-vs-CPU prediction equivalence still pending** (Section 6.21): the 395GB GPU
-  prediction transfer + diff. Independent of this plan, but M2's translator provides the
-  natural comparison tool (translate both, diff the compact stores -- far cheaper than
-  diffing 2x386GB of TSV). Worth sequencing the diff AFTER M2 for exactly that reason.
+- **GPU-vs-CPU prediction equivalence: retired, not pending** (Section 6.21; update per
+  M6's own resolution, Section 8, 2026-08-22). This item originally anticipated using M2's
+  translator to diff the GPU and CPU prediction runs cheaply via their compact stores. That
+  never happened: the local 395GB raw prediction tree was deleted (with explicit user
+  sign-off waiving this gate) before the GPU machine's predictions were ever translated,
+  and future Carafe predictions are planned to be regenerated under a smaller search space
+  regardless -- making the original CPU-vs-GPU-on-this-exact-population comparison moot.
+  The GPU machine's own ~395GB tree remains undeleted as of 2026-08-22 (outside this
+  session's reach); if it's ever translated to a `.cps` before that cleanup, the comparison
+  is still technically possible, but nothing in this project currently plans to do so.
 - **`/mnt/c` I/O variance**: all timing measurements land on DrvFs, whose throughput has
   already shown session-to-session swings in this project (Section 6.21's CPU plateau,
   the ghost-file episodes). Each M1/M3/M5 timing should be run twice, non-consecutively,

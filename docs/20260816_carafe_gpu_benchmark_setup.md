@@ -3,6 +3,16 @@
 **Audience:** Claude Code running on the Windows 11 desktop with the NVIDIA GTX 1660
 Super. This document is a self-contained instruction packet — follow it directly.
 
+**Status (2026-08-22, per `docs/20260805_carafe.md` Section 6.21):** both the CPU and GPU
+full runs this packet drives completed; results are in Section 6.21. The GPU-vs-CPU
+prediction-diff comparison this was built for was subsequently **retired** — future
+Carafe predictions are being regenerated with a more limited search space instead (see
+`docs/20260805_carafe.md`'s top status note and Section 6.23-6.24), so this exact
+124,863,304-row/`phospho_charge2_withNL` job is not expected to be re-run. This packet's
+setup steps and `run_carafe_chunked.sh` invocations remain accurate as reference (verified
+against the current script 2026-08-25), but the ~395GB output tree this produced on the
+GPU machine is superseded and, per that status note, still pending deletion there.
+
 ## 1. What this is
 
 We're comparing Carafe's `ai_pred.py` MS2-prediction throughput on GPU vs. CPU, on

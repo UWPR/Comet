@@ -4,6 +4,20 @@
 **Scope:** `ppfSparseSpScoreData`, `ppfSparseFastXcorrData`, `ppfSparseFastXcorrDataNL` in `struct Query`  
 **Files:** `CometDataInternal.h`, `CometPreprocess.cpp`, `CometSearch.cpp`, `CometPostAnalysis.cpp`
 
+**Update (current code):** `struct Query` and these three members now live in
+`CometSearch/core/Types.h` (`SPARSE_MATRIX_SIZE` itself is still `CometData.h`, unchanged at
+100 -- Section 7's "optional, low-priority" runtime-adaptive-size suggestion was never
+implemented). The lazy per-block `new float[SPARSE_MATRIX_SIZE]()`/`delete[]` allocation this
+doc analyzes has since been supplemented by a bump-arena allocator (`FusedSparseArena`/
+`FusedPointerArena`, `CometSearch/core/FusedSparseArena.h`) for the fused batch path
+(`docs/20260723_ExtendFusedBatchPath.md`) -- one arena per worker slot, reset once per flush
+round instead of freed per-spectrum. This doc's actual subject, the two-level chunked
+pointer-array *format* and its sizing/cache/COO-crossover analysis, is unaffected by that
+allocator change (the arena still hands out the same `float[SPARSE_MATRIX_SIZE]` blocks and
+variable-length outer-pointer spans this doc describes) and its conclusions still hold; only
+the allocation *mechanism* backing the format changed, and only on the batch path (RTS's
+single-spectrum path still allocates/frees per query, per Section 1 above).
+
 ---
 
 ## 1. Current Format Mechanics

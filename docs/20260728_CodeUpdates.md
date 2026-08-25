@@ -1,6 +1,6 @@
 # Follow-ups from the DataStructures/GlobalVariables/RealTimeSearch doc audit
 
-Status: IN PROGRESS (7/8 items addressed)
+Status: COMPLETE (7/8 DONE, 1/8 DEFERRED -- see item 8; no items remain pending)
 
 ## Background
 

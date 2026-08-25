@@ -1,6 +1,17 @@
 # PI_DB index build: reusing FI_DB's peptide-generation and mod-permutation code
 
-Status: PLANNING ONLY. No implementation yet.
+Status: PLANNING ONLY when written. **Update (2026-08-25):** this plan's core goal --
+PI_DB reusing FI_DB's fast digestion/mod-permutation code instead of the legacy per-protein
+`RunSearch()`/`DBIndex` path -- was subsequently implemented as the PI/FI **unification**
+(`docs/20260730_PI_reduction.md`), which went further than this document's own scope: rather
+than PI_DB merely reusing FI_DB's generation code, PI_DB and FI_DB now share **one on-disk
+`.idx` format** entirely, with `index_search_type` selecting which mode a shared build is
+searched as. `WritePeptideIndex()` and `WriteFIPlainPeptideIndex()`, both named throughout
+this document as the two separate current build paths, are consequently retired/superseded --
+see `docs/20260730_PI_reduction.md` for the actual shipped design, and
+`CometFragmentIndex.h`/`CometPeptideIndex.h` for current function names. This document's
+own analysis of *why* the legacy PI_DB path was slow remains accurate historical
+motivation; its specific proposed reuse mechanism is superseded, not merely unimplemented.
 
 ## 1. Request
 

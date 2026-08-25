@@ -349,6 +349,15 @@ Linux and macOS are unchanged by this migration: `.raw` is not supported; users 
 input, optionally pre-converted from `.raw` with an external tool (ThermoRawFileParser,
 `msconvert`) outside of Comet.
 
+**(2026-08-24 note: a new `CometWrapperCore` project (.NET 8 / `net8.0`) was added to the
+solution on `master`** (merged into `carafe` 2026-08-23), alongside the existing `CometWrapper`
+(.NET Framework 4.7.2, `/clr`, the bridge this migration's Phase 0-2 work targets). At the time
+of this note it appears to be scaffolding -- `AssemblyInfo.cpp` and project files exist, but no
+functional source beyond that was found. Its relationship to this migration, if any -- e.g.
+whether it's a future modern-.NET path for the same `RAWReader`/RawFileReader interop, or an
+unrelated effort -- was not determined and should be checked before assuming this doc's
+Windows-only, .NET-Framework-4.7.2-targeted plan is the only interop path going forward.)**
+
 ---
 
 ## Appendix -- cross-platform options considered, not pursued

@@ -60,6 +60,17 @@ call sites, in descending order of call frequency:
 | `CometSearch::RunSearch(int,int,ThreadPool*,vector<Query*>&)` FI_DB branch | `CometSearch.cpp:218` | Once per query, per batch | Only reached for the legacy (non-fused) batch path, i.e. when Mango or a spectral-library search forces `FiStrategy::executeBatch()` away from the fused path (`search/FiStrategy.cpp:129-131`). |
 | `CometSearch::SearchThreadProc` | `CometSearch.cpp:1220` | Once per protein-search job dispatch | Classic FASTA three-sweep search. Per-job, not per-spectrum; each job is comparatively expensive (protein-by-protein FASTA scoring), so lock overhead is a much smaller fraction of total work here. |
 
+**(2026-08-24: all `CometSearch.cpp` line numbers in this table have drifted** by ~95-100
+lines from general file growth since this doc was written (unrelated to any specific pass --
+no `thread_local`/lock-free work from Phase 1/2 below has landed; this section's functions
+just moved). Re-confirmed current locations, function names unchanged: `RunSearch(Query*
+pQuery)` now at line 207 (acquires at 219, 233, not 122/164); `RunSearch(int,int,ThreadPool*,
+vector<Query*>&)`'s FI_DB-branch acquire now at line 296 (not 218); `SearchThreadProc` now at
+line 1319 (not 1220), with its own acquire at line 1322. `RunSearch(Query*, int iSlot)` --
+the pre-assigned-slot overload referenced later in this doc as "`CometSearch.cpp:186`" -- is
+now at line 255. None of this changes the document's analysis, only where a reader would
+need to look.)**
+
 ### The pattern that already avoids this problem
 
 The fused batch FI_DB path (`CometPreprocess::FusedLoadAndSearchSpectra`,

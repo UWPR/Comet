@@ -14,6 +14,13 @@ path (`RealtimeSearch.exe`) scales nearly linearly. Measured on one HeLa file
 | 8       | 827      | 6,715  |
 | 4       | -        | 4,397  |
 
+**Naming update (2026-08-25):** the bare global `g_pvQuery`/`g_pvQueryMutex` this document
+refers to throughout was moved into `SearchSession::queries`/`SearchSession::queriesMutex`
+by the OOP architecture migration (`docs/20260612_architecture_migration.md`) -- see
+CLAUDE.md's Key Globals table for the current name. Not corrected at each mention below;
+every `g_pvQuery`/`g_pvQueryMutex` reference in this document means what is now
+`SearchSession::queries`/`::queriesMutex`.
+
 RTS at 4 threads beats batch at 20. Root cause (confirmed by reading the code):
 the batch path processes each spectrum batch in **three separate parallel
 sweeps** - `LoadAndPreprocessSpectra` writes every spectrum's sparse

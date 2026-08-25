@@ -1,5 +1,13 @@
 # Building a Unique Peptide -> Protein Index from a FASTA 
 
+**Outcome note:** this exploratory design brainstorm led directly to
+`docs/20260513_FI_PlainPeptideIdx.md`'s implementation plan (per that doc's own "original
+design document" citation of this one) -- the per-length uint64-packed short-peptide /
+fixed-size long-peptide split and within-protein deduplication described below were carried
+through into the shipped `GeneratePlainPeptideIndex()`. See that document for the current,
+implemented design and its own later corrections; this document is left as the original
+brainstorm and not otherwise updated.
+
 Current Comet calls the RunSearch() function which parses a FASTA file, generating peptides
 within the specified enzyme and mass constraints, and stores the peptides in g_pvDBIndex.
 After the FASTA has been parsed, these peptides are made unique while storing all protein

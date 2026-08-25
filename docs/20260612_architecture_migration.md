@@ -15,7 +15,7 @@ Behavior is unchanged at every step; each phase is independently compilable and 
 | 2 | Extract `SearchMemoryPool` | **Complete** | `4337ee8d` |
 | 3 | Extract `IResultWriter` | **Complete** | `4337ee8d` |
 | 4 | Introduce `SearchSession` | **Complete** | `00e0655f` |
-| 5 | Extract `ISearchStrategy` + `Pipeline` | **Complete** | uncommitted |
+| 5 | Extract `ISearchStrategy` + `Pipeline` | **Complete** | committed (was "uncommitted" when this table was last written; confirmed 2026-08-25 via `git log`, `CometSearch/search/{Pipeline,ISearchStrategy,FiStrategy,FastaStrategy,PiStrategy}.{h,cpp}` all tracked) |
 | 6+ | Further decomposition (index/, spectrum/, scoring/) | Planned | -- |
 
 All phases verified: 17/17 unit tests pass; HeLa FI_DB batch parity confirmed at

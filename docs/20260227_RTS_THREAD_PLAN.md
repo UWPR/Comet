@@ -343,3 +343,14 @@ C# Task thread N
 
 Globals written per-call on this path: **none**. All state is either read-only after init
 or owned by the per-call `Query*`.
+
+**(2026-08-24 note: this doc's `g_pvQuery` is purely a historical name at this point.** The
+OOP architecture migration (`docs/20260612_architecture_migration.md`, i.e. already merged
+before this doc's own 2026-07-10 correction pass above) folded the bare global into a
+`queries` member of `struct SearchSession` (`CometSearch/search/SearchSession.h`) -- accessed
+today as `session.queries`, guarded by `SearchSession::queriesMutex`, batch-search-path only.
+This doesn't change anything this doc claims: the RTS path this doc is about still never
+touches it, under either name -- confirmed current, `CometSearchManager.cpp:2779`'s own
+comment reads "never touches session.queries". Plenty of comments across the tree, including
+several quoted verbatim above, still say `g_pvQuery` informally; CLAUDE.md's Key Globals table
+has the current name.)**
