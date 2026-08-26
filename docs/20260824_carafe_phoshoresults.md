@@ -11,11 +11,10 @@ manuscript.
 ## 1. Summary
 
 A masked FI_DB RTS search cut the in-memory fragment index by **65.3%** (1.580e9 -> 5.483e8
-entries) and peak search memory by **37.9-38.6%** (8.7-8.8GB -> 5.4GB, after two same-session
-fixes -- Section 7 -- that free the predicted-fragment mask's own resident lookup table once
-it's no longer needed and shrink it while it is needed, on top of the FI-array shrinkage
-itself) against both of two independent acquisitions, while simultaneously *increasing* PSMs
-identified at 1% FDR in
+entries) and peak search memory by **29.9-30.7%** (8.7-8.8GB -> 6.1GB, current code -- Section 7
+-- which frees the predicted-fragment mask's own resident lookup table once it's no longer
+needed, on top of the FI-array shrinkage itself) against both of two independent acquisitions,
+while simultaneously *increasing* PSMs identified at 1% FDR in
 both: +2.8%/+4.0% (xcorr-sorted, R1/R2) and +1.0%/+0.2% (e-value-sorted, R1/R2). A
 scan-level comparison shows the two search modes agree on >99.9% of PSMs both consider
 confident; of the small remainder, the PSMs masking uniquely recovers are systematically
@@ -35,17 +34,19 @@ minutes.
   inference in this run was CPU-only (`--device cpu`).
 - **Comet**: `carafe` branch. The ahead-of-time pipeline (Sections 3-6: `.idx` build, export,
   Carafe inference, mask build) ran at commit `40f93fb3bf1b29bf1d2358864c1cd9fc0067f8e3` (the
-  C++ search code -- `CometSearch/`, `CometFragmentIndex.cpp`, `CometPredictedMask.cpp` -- was
-  last touched by the merge at `4f51fc7b`; the three commits after it were test/doc-only).
-  Section 7's masked-search re-runs (dated notes below) instead reflect the current branch
-  HEAD, `a71b701ebca5ce5c06ba0928fcead94b7010f6e9` (`a71b701e`) -- two commits after
-  `40f93fb3`/`7d4e6427` (`3a3d8d4b` then `a71b701e`), both touching only search-time mask
-  handling (`CometPredictedMask.cpp`/`.h`, `CometFragmentIndex.cpp`) for memory reduction, not
-  mask-file format or content, so the ahead-of-time pipeline's own artifacts (`.idx`/`.fi_mask`)
-  did not need rebuilding against them. Linux `comet.exe` built via `make` (full build).
-  Windows `RealtimeSearch.exe` / `CometWrapper.dll` / `CometWrapperCore.dll` built fresh from
-  the corresponding commit via MSBuild (Release/x64, full solution, Clean-then-Build to avoid
-  the `zconf.h` Linux/Windows cross-build issue -- see the `comet-build` skill).
+  C++ search code was last touched by the merge at `4f51fc7b`); those artifacts
+  (`.idx`/`.fi_mask`) are unaffected by every search-time-only mask-handling change since and
+  did not need rebuilding. Section 7's masked-search results reflect the current branch HEAD,
+  `b35ca862ddb29faf4cf79691cecab13aba713210` (`b35ca862`), which includes three subsequent
+  `CometPredictedMask`/`CometFragmentIndex.cpp` memory-reduction changes: freeing the mask's
+  resident lookup table once the FI build no longer needs it, packing that lookup table to
+  match the on-disk format exactly, and caching each variant's mask decision (at a
+  configuration-dependent width) so the lookup table can be freed before the much bigger
+  fragment-ion postings array is even allocated, not just before the search itself starts.
+  Linux `comet.exe` built via `make` (full build). Windows `RealtimeSearch.exe` /
+  `CometWrapper.dll` / `CometWrapperCore.dll` built fresh from the same commit via MSBuild
+  (Release/x64, full solution, Clean-then-Build to avoid the `zconf.h` Linux/Windows
+  cross-build issue -- see the `comet-build` skill).
 - **Carafe**: `/mnt/c/Work/Carafe/src/main/resources/py/v2/ai_pred.py`, `--mode
   phosphorylation --device cpu --tf_type ms2`. Python environment: `~/.carafe/.venv`
   (Python 3.9.x, `torch` 2.5.1+cpu, `pandas` 2.2.3, `alphabase`/`peptdeep` per prior session
@@ -458,69 +459,59 @@ idle machine (confirmed via `ps`/`uptime` beforehand, as in Section 6.1).
 |---|---|---|---|---|
 | Total scans / MS2 scans searched | 68,586 / 45,806 | 68,586 / 45,806 | 62,887 / 42,406 | 62,887 / 42,406 |
 | FI entries in memory | 1.580e9 | 5.483e8 (**-65.3%**) | 1.580e9 | 5.483e8 (**-65.3%**) |
-| Peak process memory | 8.8GB | 5.4GB (**-38.6%**) | 8.7GB | 5.4GB (**-37.9%**) |
-| MS2 search elapsed | 4.90s | 4.77s (-2.7%) | 4.54s | 4.22s (-7.0%) |
-| MS2 average search rate | 9,349 Hz | 9,609 Hz (+2.8%) | 9,334 Hz | 10,058 Hz (+7.8%) |
-| Total RTS elapsed | 16.09s | 18.83s | 17.68s | 17.88s |
+| Peak process memory | 8.8GB | 6.1GB (**-30.7%**) | 8.7GB | 6.1GB (**-29.9%**) |
+| MS2 search elapsed | 5.15s | 4.82s (-6.4%) | 4.49s | 4.21s (-6.2%) |
+| MS2 average search rate | 8,889 Hz | 9,502 Hz (+6.9%) | 9,438 Hz | 10,063 Hz (+6.6%) |
+| Total RTS elapsed | 16.77s | 18.38s | 16.04s | 17.67s |
 
 (FI entry counts and their reduction are identical between replicates by construction --
-same `.idx`/`.fi_mask` pair for both. Peak memory now matches exactly between replicates too
-(5.4GB/5.4GB, masked) -- expected, since freeing/shrinking a fixed-size, mask-content-
-determined structure is deterministic given the same `.idx`/`.fi_mask` pair. Search-speed
-deltas are noisier and not the focus of this re-run -- see the notes below and Section 9's
-general single-sample-timing caveat.)
+same `.idx`/`.fi_mask` pair for both. Peak memory matches exactly between replicates too
+(6.1GB/6.1GB, masked) -- expected, since the mask-handling code is deterministic given the
+same `.idx`/`.fi_mask` pair; unmasked also closely matches its own historical figures
+(8.8GB/8.7GB), confirming this measurement session's environment is consistent with prior
+ones. Both replicates re-verified byte-identical to their original masked PSM calls
+(`tools/rts_out_to_txt.py`, sorted, `diff`: 0 differing lines each) and produce the same 1% FDR
+PSM counts as Section 8's table -- every memory/timing change described below is memory- and
+timing-only, with zero effect on identification results at any point.)
 
-**2026-08-25 re-run: `CometPredictedMask::FreeAfterIndexBuild()` fix.** The masked-column
-figures above were re-measured after a same-session fix on top of commit `7d4e6427`, committed
-as `3a3d8d4b`: `CometPredictedMask::s_entries` -- the mask's resident
-lookup table, 48 bytes/entry, ~1.9GB for this run's 39,466,180 entries -- was previously never
-freed after `CometFragmentIndex::GenerateFragmentIndex()` finished with it, even though
-`AddFragments()` (`CometFragmentIndex.cpp:854`) is its only consumer and that consumption is
-entirely confined to the one-time FI-build pass. The fix frees it (`std::vector<Entry>().
-swap(s_entries)`) immediately after `GenerateFragmentIndex()` returns, inside
-`CometFragmentIndex::CreateFragmentIndex()`. Original (pre-fix) masked peak memory was
-**6.7GB** for both replicates; the post-fix **5.6GB** is a further **-1.1GB** on top of the
-already-reported masking benefit -- smaller than the ~1.9GB the freed `s_entries` structure
-itself accounts for. That gap is expected, not a discrepancy: freeing a `std::vector` returns
-its memory to the process heap, but Windows' `PeakWorkingSetSize` tracks actual resident pages,
-not heap accounting, so the reduction only shows up to the extent the OS reclaims those pages
-before the process's next high-water point; any of it retained by the allocator for reuse (or
-backfilled by later allocations -- per-thread search buffers, raw-file read buffers, CLR GC
-activity -- before the process's true peak is reached during the search phase) doesn't reduce
-the observed peak by its full size. **-1.1GB** is the real, measured number either way; treat
-the ~1.9GB structure size as an upper bound on what freeing it *could* save, not a prediction
-of what a peak-RSS measurement will show. The unmasked columns are untouched by this fix and were not
-re-run -- `CometPredictedMask::Load()` is a no-op (`s_entries` stays empty) whenever no mask
-file is configured, so `FreeAfterIndexBuild()` swaps an already-empty vector to empty there.
-Both re-run replicates were verified byte-identical to the original masked run's PSM calls
-(`tools/rts_out_to_txt.py` output, sorted, `diff`: 0 differing lines for both R1 and R2) and
-produce identical 1% FDR PSM counts to Section 8's existing table (R1: 15,793 xcorr / 16,906
-e-value; R2: 15,275 xcorr / 15,865 e-value) -- confirming the fix is memory-only and Section 8's
-PSM-quality analysis needs no changes. MS2 search-elapsed/rate deltas above shifted modestly
-(a few percent, in both directions across the two replicates) relative to the original
-masked run -- consistent with ordinary single-sample wall-clock noise (Section 9), not a
-systematic effect of the fix; the memory reduction is the reproducible result here.
+**Current code**: `CometPredictedMask` frees the mask's resident lookup table
+(`s_entries`, packed `#pragma pack(1)` to match the on-disk 42-byte record exactly, no separate
+staging buffer) as soon as `CometFragmentIndex::GenerateFragmentIndex()` no longer needs it --
+which, since the fill-count and fill-write sub-passes both re-consult the mask after the
+mass sort, means caching each variant's decision once (indexed by its final position, an O(1)
+array read replacing what used to be a repeated binary search) and freeing `s_entries`
+immediately afterward, before `g_iFragmentIndex` (the fragment-ion postings array, usually the
+single biggest structure) is even allocated. The cache itself uses a runtime-chosen width: 32
+bytes/entry when the active mod configuration has a live fragment neutral-loss (this
+document's phospho config: M-oxidation + STY-phospho with a 97.976896 Da NL delta), 16 when it
+doesn't (docs/20260822_carafe_prerun.md Section 7.6.2's no-NL case gets the smaller width; this
+document's mask always carries a real 97.976896 Da neutral loss, so it does not).
 
-**2026-08-25 second re-run: pack `CometPredictedMask::Entry` to match the on-disk layout.**
-On top of the fix above (committed as `a71b701e`), `Load()` previously read the file's packed 42-byte-per-entry records
-into a temporary `vector<PackedEntry>`, then copied each field into a second, naturally-
-aligned 48-byte-per-entry `vector<Entry>` (`s_entries`) before freeing the first -- a leftover
-of `Entry` and the on-disk record having independently evolved into two separate types. Since
-`Lookup()`/`EntryKeyLess()` only ever run during the one-time FI-build pass (not the per-
-spectrum search-time hot path), the natural-alignment padding was buying nothing: `Entry` is
-now declared `#pragma pack(1)` directly (`CometPredictedMask.h`), matching the on-disk format
-exactly, and `Load()` `fread()`s straight into `s_entries` with no staging buffer or per-field
-conversion loop. This removes a ~1.66GB transient co-resident buffer during `Load()` itself
-(not currently the process's limiting peak, but a robustness margin for larger mask builds)
-and shrinks the mask's steady-state resident size 48B/entry -> 42B/entry (39,466,180 x 6B =
-**~226MB**) for as long as it's resident -- which, after the first fix above, is exactly the
-window right before/at the end of FI generation that now sets the process's actual peak.
-Measured effect: masked peak memory **5.6GB -> 5.4GB** for both replicates (matching the
-~226MB estimate closely: 5.6-5.4=0.2GB actual vs. ~0.226GB predicted -- the gap is well within
-rounding at 1-decimal-GB reporting precision). Re-verified byte-identical PSM output against
-both the original masked run and the first fix's re-run (`diff`: 0 differing lines, all four
-comparisons, both replicates) -- this change is mask-representation-only and changes nothing
-about which fragment-ion positions get masked or which peptides get identified.
+**The result here is smaller, and more nuanced, than at full production scale.** At the
+124.8M-variant no-NL scale (docs/20260822_carafe_prerun.md Section 7.6.2), the same code drops
+masked peak memory by a further ~12% on top of everything already measured there. At this
+document's much smaller scale (39,466,180 mask entries) and *with* neutral-loss active (so no
+cache-width halving applies), the net effect measured here is a **peak-memory increase**
+relative to the narrower fix that preceded this one: **5.4GB -> 6.1GB** (+0.7GB, +13%), even
+though the unmasked baseline is unchanged (matches its own historical 8.7-8.8GB exactly) and
+the fix's own structural savings (the mask's 42-byte tuple-keyed entries shrink to the cache's
+32-byte position-indexed entries, saving only the 10-byte key per entry -- ~0.4GB total at this
+scale, far smaller than the ~2GB the no-NL halving saves at full scale) should, on paper, be a
+small net positive. The most likely explanation: building the cache *before* freeing the mask
+means a brief window where both are resident together (mask 1.66GB + cache 1.26GB, briefly
+~2.9GB combined vs. the mask's 1.66GB alone under the previous code), and the extra
+allocate-then-free cycle this introduces appears to leave the process's heap in a state that
+costs more resident pages later in the run than it saves during FI construction -- a real,
+reproducible measurement (repeated twice, both replicates, both giving 6.1GB), not noise, but
+one whose mechanism (heap fragmentation from the added alloc/free pair, most plausibly) wasn't
+independently confirmed by further instrumentation in this session. Net across the whole
+memory-optimization effort, though: **6.1GB is still comfortably below the original,
+completely-unoptimized 8.7-8.8GB unmasked baseline** (a genuine ~30% reduction), even if it is
+higher than the narrower fix's own 5.4GB. Compare against docs/20260822_carafe_prerun.md
+Section 7.6.2, which documents the same code delivering a clean, unambiguous win at full
+production scale with a no-NL configuration -- the two documents together suggest this fix's
+benefit depends materially on scale and on whether the no-NL cache-width halving applies,
+rather than being a universal improvement.
 
 The mask itself was accepted without a fingerprint or `VarModConfig` mismatch in either run
 (both are checked and would hard-fail the search otherwise -- see
@@ -707,3 +698,5 @@ analysis:
   (R2) -- written to `RealtimeSearch/bin/x64/Release/` at run time, moved into
   `carafe_phosphosmall/` after each run -- and their `rts_unmasked.txt` / `rts_masked.txt` /
   `rts_r2_unmasked.txt` / `rts_r2_masked.txt` qvalue.py-ready conversions
+- `rts_phosphosmall_r{1,2}_{unmasked,masked}*_current*.{out,txt}` and their console logs --
+  the current-code (commit `b35ca862`) re-run behind Section 7's present numbers

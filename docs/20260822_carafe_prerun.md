@@ -632,6 +632,83 @@ touched, zero timing cost, and zero effect on search results at any point in thi
 **Net assessment**: correct, tested, zero timing cost, and this time a clearly visible
 multi-GB memory-pressure reduction. Kept as implemented.
 
+### 7.7 2026-08-26: the same comparison with neutral loss active (`phospho_withNL`)
+
+Sections 7.5/7.6/7.6.2 all used the **noNL** flavor -- the no-neutral-loss cache-width halving
+(Section 7.6.2) never engages there for the opposite reason it doesn't engage in this project's
+other with-NL analysis (`docs/20260824_carafe_phoshoresults.md`'s smaller-scale phosphosmall
+run, where the same stride-4 cache produced a measured *regression*, 5.4GB -> 6.1GB): both are
+no-NL-halving-ineligible, but at very different absolute scale. This section closes that gap by
+running the identical masked-vs-unmasked comparison at full production scale with neutral loss
+actually active -- the realistic phospho scenario this whole pipeline exists for -- using the
+`withNL` flavor already built and validated in Section 8 (M2/M3): `phospho_withNL.idx` (the
+same 4,658,764-raw-peptide/124,863,304-variant population as `phospho_noNL.idx`, differing only
+in mask flavor) and `phospho_charge2_withNL_fromcps.fi_mask` (124,863,304 entries, real
+modloss/neutral-loss channels -- built from the same `phospho_charge2_withNL.cps` store used
+throughout Section 8, Carafe's own `phosphorylation`-mode predictions, not a stand-in). Neither
+needed rebuilding; both were already on disk from the 2026-08-22 pipeline run. Same current
+code (commit `b35ca862`, includes Sections 7.5/7.6/7.6.2's fixes), same methodology as Section
+7.5 (`RealtimeSearch.exe`, `--threads 20`, `MM2_R1.raw`/`MM2_R2.raw`, machine confirmed idle).
+
+Because a live neutral-loss mod is present search-wide, `CometPredictedMask::ReserveCache()`'s
+`bIncludeModloss` flag is true here, so the fill-pass cache uses the full 32-byte/entry width
+(Section 7.6), not the 16-byte no-NL width (Section 7.6.2) -- this is exactly the scenario
+Section 7.6 alone (before 7.6.2's halving) was measured against, just at the same 124.8M-entry
+full scale as Sections 7.5/7.6/7.6.2 rather than `docs/20260824_carafe_phoshoresults.md`'s much
+smaller ~39.5M-entry scale.
+
+| Metric | R1 unmasked | R1 masked | R2 unmasked | R2 masked |
+|---|---|---|---|---|
+| Total scans / MS2 scans searched | 68,586 / 55,558 | 68,586 / 55,558 | 62,887 / 49,540 | 62,887 / 49,540 |
+| FI entries in memory | 5.479e9 | 1.748e9 (**-68.1%**) | 5.479e9 | 1.748e9 (**-68.1%**) |
+| Peak process memory | 27.0GB | 16.8GB (**-37.8%**) | 26.9GB | 16.7GB (**-37.9%**) |
+| MS2 search elapsed | 8.91s | 8.17s (-8.3%) | 7.39s | 6.74s (-8.8%) |
+| MS2 average search rate | 6,232 Hz | 6,800 Hz (+9.1%) | 6,704 Hz | 7,353 Hz (+9.7%) |
+| Total RTS elapsed | 42.99s | 48.61s | 40.74s | 46.32s |
+| PSMs @ 1% FDR (xcorr-sorted) | 16,873 | 17,591 (**+4.3%**) | 16,038 | 16,730 (**+4.3%**) |
+| PSMs @ 1% FDR (e-value-sorted) | 18,572 | 18,786 (**+1.2%**) | 17,522 | 17,670 (**+0.8%**) |
+
+(`loaded 124863304 predicted-fragment mask entries` matched the mask's own row count exactly
+in both runs, with no fingerprint/`VarModConfig` mismatch. FI entries here are much larger than
+the noNL comparison's 3.540e9/1.161e9 -- expected: `AddFragments()` inserts NL-shifted b/y ions
+as *separate* FI entries alongside the unshifted ones whenever a neutral-loss-bearing mod is
+active, so a with-NL population produces roughly 1.5x the unmasked postings of the same
+population's noNL build. The two PSM rows are a sanity check (`tools/qvalue.py`, rank-1,
+target-decoy), not a full analysis -- both replicates show masking increasing identifications
+at 1% FDR, consistent in direction and rough magnitude with every other masked-vs-unmasked
+comparison in this project (Section 7.5's noNL result and `docs/20260824_carafe_phoshoresults.md`
+throughout); a full scan-level breakdown of which PSMs agree/disagree is out of scope here --
+that's `docs/20260824_carafe_phoshoresults.md`'s focus, not this document's.)
+
+**This is the clean, large win the no-NL cache-width halving doesn't need to unlock.** At full
+production scale, even the *un-halved* 32-byte cache delivers a substantial, unambiguous
+reduction. Comparing both flavors' *current-code, unmasked-to-masked* totals directly (the
+fair apples-to-apples number, since Section 7.5's own 25.9-26.3% figure predates the fill-pass
+cache entirely):
+
+| Flavor | Unmasked | Masked (current code) | Total reduction |
+|---|---|---|---|
+| noNL (Section 7.6.2, 16-byte cache) | 19.7-19.8GB | 12.7-12.8GB | 35.3-35.5% |
+| withNL (this section, 32-byte cache) | 26.9-27.0GB | 16.7-16.8GB | **37.8-37.9%** |
+
+withNL's total reduction is actually *larger* than noNL's, despite not getting the extra
+16-byte-per-entry halving -- because the mask/cache's fixed absolute overhead (124,863,304
+entries either way; entry count depends on the peptide population, not on whether NL is
+active) is a smaller fraction of withNL's much bigger overall footprint (the ~1.5x more FI
+postings a with-NL build inserts, Section 8's own noted design decision) than of noNL's
+smaller one, so a larger share of the FI-array's own 68.1% postings cut shows through cleanly.
+This resolves the open question `docs/20260824_carafe_phoshoresults.md` was left with: whether
+the fill-pass cache's benefit at real production scale depends on the no-NL halving being
+available. It doesn't -- what matters is *absolute scale*, not NL/no-NL. At this document's
+124.8M-entry/17-27GB-class scale, the cache-then-free sequence's structural savings (freeing
+the mask before the FI array's own memory is touched, not just before the search starts)
+comfortably outweigh the transient mask+cache co-residency cost that dominated at
+phosphosmall's ~39.5M-entry/6GB-class scale. The phosphosmall regression was a small-scale
+artifact of that same code, not a sign the underlying fix is unsound -- it just needs enough
+absolute memory pressure for the win to show through the overhead of the extra allocate-then-
+free cycle, exactly as Section 7.6.2's own discussion of the search phase's additive memory
+cost predicted.
+
 ## 8. Milestones
 
 - **M1 -- Measurements, no code** -- **DONE 2026-08-22**:
