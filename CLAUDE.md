@@ -250,9 +250,11 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
 ### The Carafe ahead-of-time pipeline (tools/)
 
 Producing the `.fi_mask` a masked FI search consumes is an offline pipeline, run per
-database + mod configuration -- design/results docs: `docs/20260822_carafe_prerun.md`
-(the pipeline plan + all M1-M4 measurements) and `docs/20260805_carafe.md` (the masking
-feature itself, Sections 6.15-6.22 for full-scale results). The one-command driver:
+database + mod configuration -- design/results docs: `docs/20260826_carafe.md`
+(the pipeline plan, milestones M1-M6, end-to-end validation analyses, and the full-scale
+memory-optimization work -- consolidates three prior dated documents) and
+`docs/20260805_carafe.md` (the masking feature itself, Sections 6.15-6.22 for full-scale
+results). The one-command driver:
 
 ```bash
 tools/carafe_prerun.sh --fasta db.fasta --out workdir --comet /path/to/comet.exe \
