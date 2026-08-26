@@ -65,6 +65,44 @@ public:
    static bool Lookup(unsigned int iWhichPeptide, int modNumIdx, signed char cNtermMod, signed char cCtermMod,
                       uint64_t& bMask, uint64_t& yMask, uint64_t& bModlossMask, uint64_t& yModlossMask);
 
+   // Fill-pass cache (docs/20260822_carafe_prerun.md Section 7.6): CometFragmentIndex::
+   // GenerateFragmentIndex() re-visits every variant THREE times total -- the initial
+   // enumeration pass (which also does the first per-bin count, key-ordered, before
+   // g_vFragmentPeptides exists in its final form), then a fill-count sub-pass, then a
+   // fill-write sub-pass, both of the latter two in the FINAL mass-sorted index order. Only
+   // the first pass needs Lookup()'s key-based binary search (the final index doesn't exist
+   // yet); the other two always visit variants in that same final order, so their mask
+   // decision can be looked up ONCE per variant right after the sort -- in that final index
+   // order -- and reused by both, via O(1) array access instead of two more binary searches
+   // into the much bigger key-sorted s_entries. The real payoff: once every variant's
+   // decision is cached, s_entries can be freed immediately (see FreeAfterIndexBuild() below)
+   // -- BEFORE the fill-count/fill-write sub-passes run, rather than after all three passes
+   // finish -- so it's no longer resident while g_iFragmentIndex (the far bigger postings
+   // array) is actually being populated. ReserveCache()/StoreCached() are called from
+   // GenerateFragmentIndex()'s own thread pool (StoreCached() only ever writes its own
+   // caller's index, so concurrent calls across disjoint indices need no lock, matching
+   // g_iFragmentIndex's own no-lock partitioned-write pattern); LookupCached() is called from
+   // AddFragments() itself, gated the same way Lookup() is (CometPredictedMask::IsEnabled()).
+   //
+   // bIncludeModloss (docs/20260822_carafe_prerun.md Section 7.6.2): bModlossMask/yModlossMask
+   // are only ever read by AddFragments() when bFragmentNL is true for a given variant, which
+   // requires g_staticParams.variableModParameters.bUseFragmentNeutralLoss to be true SEARCH-
+   // WIDE (a fixed, session-level setting, not per-variant) -- a no-neutral-loss mod
+   // configuration (e.g. Met-oxidation-only, or a phospho mask built with --ignore-modloss)
+   // never reads those two fields for ANY variant. ReserveCache() takes the caller's
+   // bUseFragmentNeutralLoss value once and stores entries at 2x uint64_t (16 bytes) instead
+   // of 4x (32 bytes) whenever it's false, halving the cache at zero cost: StoreCached()
+   // simply never computes non-default values for the two dropped fields in that case (the
+   // GenerateFragmentIndex() caller already skips the modloss Lookup()/insertion logic
+   // entirely when bFragmentNL is false), and LookupCached() returns the fully-unfiltered
+   // ~0ULL default for them, which every caller already treats identically to a real "keep
+   // everything" mask entry.
+   static void ReserveCache(size_t numVariants, bool bIncludeModloss);
+   static void StoreCached(size_t iWhichFragmentPeptide, uint64_t bMask, uint64_t yMask,
+                           uint64_t bModlossMask, uint64_t yModlossMask);
+   static void LookupCached(size_t iWhichFragmentPeptide, uint64_t& bMask, uint64_t& yMask,
+                            uint64_t& bModlossMask, uint64_t& yModlossMask);
+
    // Closes the gap the .idx fingerprint alone leaves open (docs/20260805_carafe.md Section
    // 6.10's closing note / Section 8 items 12-14): the .idx fingerprint proves iWhichPeptide numbering is
    // safe, but modNumIdx numbering also depends on whichever variable mods were live in
@@ -78,15 +116,21 @@ public:
    // variable mods than are live right now, rather than silently trusting stale modNumIdx keys.
    static std::string ComputeVarModConfigString();
 
-   // Releases s_entries' backing storage once CometFragmentIndex::GenerateFragmentIndex() has
-   // finished -- Lookup() is only ever called from AddFragments() during that one build pass
-   // (CometFragmentIndex.cpp:854), so the mask's 39M+-entry lookup table (42 bytes/entry, e.g.
-   // ~1.66GB for the phospho run in docs/20260824_carafe_phoshoresults.md) is otherwise dead
-   // weight for the rest of the search. Deliberately leaves s_bEnabled untouched -- nothing
-   // outside this class currently queries IsEnabled() after the FI build completes, and even if
-   // something did, Lookup() against an emptied s_entries still hits the documented "not found"
-   // path (lower_bound on an empty vector) and correctly falls back to fully-unfiltered rather
-   // than misbehaving.
+   // Releases s_entries' backing storage. Originally called once GenerateFragmentIndex()
+   // fully returned; now called from inside it (docs/20260822_carafe_prerun.md Section 7.6),
+   // right after the fill-pass cache above is populated -- Lookup() by then has no remaining
+   // callers (the enumeration pass that needed it already ran, before the cache existed; the
+   // fill-count/fill-write sub-passes use LookupCached() instead), so the mask's 39M+-entry
+   // lookup table (42 bytes/entry, e.g. ~5.24GB at the 124.8M-entry full phospho scale,
+   // docs/20260822_carafe_prerun.md Section 7.5) is dead weight from that point on -- freeing
+   // it here means it's no longer resident while g_iFragmentIndex (typically far bigger) gets
+   // filled, not just for the rest of the search after that. Still called a second time at the
+   // end of CreateFragmentIndex() too, as a harmless no-op safety net (swapping an
+   // already-empty vector) in case IsEnabled() is somehow false when GenerateFragmentIndex()
+   // runs. Deliberately leaves s_bEnabled untouched -- nothing outside this class currently
+   // queries IsEnabled() after the FI build completes, and even if something did, Lookup()
+   // against an emptied s_entries still hits the documented "not found" path (lower_bound on
+   // an empty vector) and correctly falls back to fully-unfiltered rather than misbehaving.
    //
    // Safety precondition (shared with Load()'s own s_bLoadAttempted one-shot guard just below):
    // this assumes CreateFragmentIndex() runs at most once per process, as already documented
@@ -128,6 +172,16 @@ private:
 
    static std::vector<Entry> s_entries;   // kept sorted by (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod)
    static bool s_bEnabled;
+
+   // Fill-pass cache, indexed by iWhichFragmentPeptide (the final mass-sorted index into
+   // g_vFragmentPeptides) rather than the (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod)
+   // tuple -- see ReserveCache()/StoreCached()/LookupCached() above. Flat vector<uint64_t>
+   // rather than an array-of-struct so s_cacheStride (2 or 4, chosen once per ReserveCache()
+   // call) can vary the per-entry width at runtime without two near-duplicate cache types:
+   // entry i occupies s_cache[i*s_cacheStride .. i*s_cacheStride+s_cacheStride-1], holding
+   // (bMask, yMask) always and (bModlossMask, yModlossMask) only when s_cacheStride == 4.
+   static std::vector<uint64_t> s_cache;
+   static int s_cacheStride;
 
    // (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple ordering, shared by the sort in
    // Load() and the binary search in Lookup(). A private static member (not a free function in

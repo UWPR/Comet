@@ -294,20 +294,21 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    }
 
    // Convert per-bin counts (accumulated into g_iFragmentIndexOffset[0..n-1] during the
-   // count pass above) to CSR prefix-sum offsets, then allocate the single flat data array.
-   // Use uint64_t accumulator: non-enzymatic searches against large databases can
-   // exceed UINT_MAX total entries, silently corrupting the index with unsigned int.
+   // count pass above) to CSR prefix-sum offsets. Use uint64_t accumulator: non-enzymatic
+   // searches against large databases can exceed UINT_MAX total entries, silently corrupting
+   // the index with unsigned int. Deliberately does NOT allocate g_iFragmentIndex itself yet
+   // (see the mask-caching block below, right before the fill-count sub-pass, for why that
+   // allocation is now split out and moved later) -- this loop only touches
+   // g_iFragmentIndexOffset, which at uiMaxFragmentArrayIndex+1 entries is a few hundred KB
+   // even at whole-proteome scale, nowhere near big enough to matter for that ordering.
+   uint64_t uiTotal = 0;
+   for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
    {
-      uint64_t uiTotal = 0;
-      for (unsigned int iMass = 0; iMass < g_massRange.uiMaxFragmentArrayIndex; ++iMass)
-      {
-         uint64_t uiCnt = g_iFragmentIndexOffset[iMass];
-         g_iFragmentIndexOffset[iMass] = uiTotal;
-         uiTotal += uiCnt;
-      }
-      g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex] = uiTotal;  // sentinel
-      g_iFragmentIndex = new unsigned int[uiTotal];
+      uint64_t uiCnt = g_iFragmentIndexOffset[iMass];
+      g_iFragmentIndexOffset[iMass] = uiTotal;
+      uiTotal += uiCnt;
    }
+   g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex] = uiTotal;  // sentinel
 
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
@@ -341,6 +342,50 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       vFillRanges[t].first  = t * iNumFragPeptides / iNumThreads;
       vFillRanges[t].second = (t + 1) * iNumFragPeptides / iNumThreads;
    }
+
+   // Cache each variant's predicted-fragment-mask decision ONCE here, in the final mass-sorted
+   // index order the fill-count and fill-write sub-passes below both use -- then free the much
+   // bigger, tuple-keyed CometPredictedMask::s_entries immediately, before either sub-pass (and
+   // g_iFragmentIndex's own fill-write) actually run, instead of after both finish
+   // (docs/20260822_carafe_prerun.md Section 7.6). Reuses vFillRanges' partitioning; no-op (and
+   // no allocation) when masking isn't enabled. bUseFragmentNeutralLoss is a fixed, search-wide
+   // setting (not per-variant), so it's safe to decide the cache's per-entry width once here --
+   // when it's false, AddFragments() never reaches the modloss-masked insertion branch for ANY
+   // variant, so ReserveCache() halves the cache by dropping bModlossMask/yModlossMask entirely
+   // (docs/20260822_carafe_prerun.md Section 7.6.2).
+   if (CometPredictedMask::IsEnabled())
+   {
+      cout << "   - cache predicted-fragment mask decisions ... "; fflush(stdout);
+      auto tCacheStartTime = chrono::steady_clock::now();
+      CometPredictedMask::ReserveCache(iNumFragPeptides, g_staticParams.variableModParameters.bUseFragmentNeutralLoss);
+      for (int t = 0; t < iNumThreads; ++t)
+      {
+         pFragmentIndexPool->doJob([t, &vFillRanges]()
+         {
+            for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
+            {
+               auto& fp = g_vFragmentPeptides[i];
+               uint64_t bMask = ~0ULL, yMask = ~0ULL, bModlossMask = ~0ULL, yModlossMask = ~0ULL;
+               CometPredictedMask::Lookup(fp.iWhichPeptide, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+                  bMask, yMask, bModlossMask, yModlossMask);
+               CometPredictedMask::StoreCached(i, bMask, yMask, bModlossMask, yModlossMask);
+            }
+         });
+      }
+      pFragmentIndexPool->wait_on_threads();
+      CometPredictedMask::FreeAfterIndexBuild();
+      cout << CometMassSpecUtils::ElapsedTime(tCacheStartTime) << endl;
+   }
+
+   // Allocate the CSR flat data array only now, after the mask cache above has been built and
+   // CometPredictedMask::s_entries freed (when masking is enabled) -- deferred from right after
+   // the CSR-offset conversion (this function's very first block) specifically so this
+   // allocation's own memory commit and CometPredictedMask::s_entries' resident lifetime never
+   // overlap (docs/20260822_carafe_prerun.md Section 7.6): allocating it earlier, while
+   // s_entries was still alive, defeated the whole point of freeing s_entries before the fill
+   // sub-passes -- the two were simultaneously resident regardless of when s_entries was freed,
+   // since the peak had already been set the moment this array's pages were touched/committed.
+   g_iFragmentIndex = new unsigned int[uiTotal];
 
    // Fill-count sub-pass: each thread re-walks its own partition's already-known
    // (peptide, mods, mass) entries -- no recomputation of dPepMass itself (P2's
@@ -856,14 +901,28 @@ if (!(iWhichPeptide%1000))
    // ("fully unfiltered") so the SAME bit-test code below runs unconditionally whether masking
    // is disabled, this variant has no mask entry (Section 8 item 2's fallback), or a real mask
    // was found -- no separate "is masking active here" branch needed at any insertion site.
+   //
+   // Two different lookup paths (docs/20260822_carafe_prerun.md Section 7.6): bCountOnly is
+   // the enumeration pass, which runs BEFORE g_vFragmentPeptides has its final mass-sorted
+   // index -- iWhichFragmentPeptide isn't meaningful yet, so this is the one call site that
+   // still needs Lookup()'s key-based binary search. Both fill sub-passes (fill-count and
+   // fill-write) always run AFTER the sort, visiting variants in that same final index order,
+   // so GenerateFragmentIndex() has already cached each one's decision by the time either
+   // runs (right after the sort, before g_iFragmentIndex is populated) -- they read it back
+   // in O(1) via LookupCached() instead of re-binary-searching s_entries a second and third
+   // time, and s_entries itself is already freed by this point (CometPredictedMask::
+   // FreeAfterIndexBuild(), called right after the cache is built).
    uint64_t maskB = ~0ULL, maskY = ~0ULL, maskBModloss = ~0ULL, maskYModloss = ~0ULL;
    if (CometPredictedMask::IsEnabled())
    {
-      CometPredictedMask::Lookup(static_cast<unsigned int>(iWhichPeptide), modNumIdx, cNtermMod, cCtermMod,
-         maskB, maskY, maskBModloss, maskYModloss);
-      // Lookup() leaves maskB/maskY/maskBModloss/maskYModloss untouched (still all-bits-set)
-      // when it returns false -- deliberately not checked here; "not found" and "found,
-      // fully-unfiltered" are handled identically by construction.
+      if (bCountOnly)
+         CometPredictedMask::Lookup(static_cast<unsigned int>(iWhichPeptide), modNumIdx, cNtermMod, cCtermMod,
+            maskB, maskY, maskBModloss, maskYModloss);
+      else
+         CometPredictedMask::LookupCached(iWhichFragmentPeptide, maskB, maskY, maskBModloss, maskYModloss);
+      // Lookup()/LookupCached() leave maskB/maskY/maskBModloss/maskYModloss untouched (still
+      // all-bits-set) when there's no entry for this variant -- deliberately not checked here;
+      // "not found" and "found, fully-unfiltered" are handled identically by construction.
    }
 
    for (int i = 0; i < iEndPos; ++i)

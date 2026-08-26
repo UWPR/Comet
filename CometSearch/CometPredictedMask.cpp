@@ -35,6 +35,8 @@ static const char* MASK_FILE_MAGIC = "Comet Carafe FI mask v3\n";
 
 std::vector<CometPredictedMask::Entry> CometPredictedMask::s_entries;
 bool CometPredictedMask::s_bEnabled = false;
+std::vector<uint64_t> CometPredictedMask::s_cache;
+int CometPredictedMask::s_cacheStride = 0;
 
 // Entry (CometPredictedMask.h) is declared #pragma pack(1) specifically so this holds --
 // byte-for-byte matching tools/carafe_ms2_to_fi_mask.py's ENTRY_FMT = "<IibbQQQQ" (little-
@@ -144,6 +146,63 @@ bool CometPredictedMask::IsEnabled()
 void CometPredictedMask::FreeAfterIndexBuild()
 {
    std::vector<Entry>().swap(s_entries);
+}
+
+
+void CometPredictedMask::ReserveCache(size_t numVariants, bool bIncludeModloss)
+{
+   // 4 uint64_t/entry when this search can ever consult bModlossMask/yModlossMask (some
+   // active variable mod has a neutral-loss delta), 2 when it can't (docs/20260822_
+   // carafe_prerun.md Section 7.6.2) -- StoreCached()/LookupCached() below key off the same
+   // s_cacheStride to know which layout is in effect.
+   s_cacheStride = bIncludeModloss ? 4 : 2;
+
+   // Default ~0ULL ("all bits set"), not value-initialized 0 -- matches Lookup()'s own
+   // "not found -> fully unfiltered" default (AddFragments()'s maskB/maskY/... locals start
+   // the same way). Every index gets overwritten by the parallel StoreCached() pass that
+   // follows in GenerateFragmentIndex(), covering the full [0, numVariants) range with no
+   // gaps -- this default only matters as a safety net if that invariant is ever violated.
+   s_cache.assign(numVariants * (size_t)s_cacheStride, ~0ULL);
+}
+
+
+void CometPredictedMask::StoreCached(size_t iWhichFragmentPeptide, uint64_t bMask, uint64_t yMask,
+                                     uint64_t bModlossMask, uint64_t yModlossMask)
+{
+   uint64_t* p = &s_cache[iWhichFragmentPeptide * (size_t)s_cacheStride];
+   p[0] = bMask;
+   p[1] = yMask;
+   if (s_cacheStride == 4)
+   {
+      p[2] = bModlossMask;
+      p[3] = yModlossMask;
+   }
+   // else: bModlossMask/yModlossMask discarded -- the GenerateFragmentIndex() caller only
+   // ever computes non-default values for these when bFragmentNL is active search-wide, which
+   // is exactly when ReserveCache() was told bIncludeModloss == true.
+}
+
+
+void CometPredictedMask::LookupCached(size_t iWhichFragmentPeptide, uint64_t& bMask, uint64_t& yMask,
+                                      uint64_t& bModlossMask, uint64_t& yModlossMask)
+{
+   const uint64_t* p = &s_cache[iWhichFragmentPeptide * (size_t)s_cacheStride];
+   bMask = p[0];
+   yMask = p[1];
+   if (s_cacheStride == 4)
+   {
+      bModlossMask = p[2];
+      yModlossMask = p[3];
+   }
+   else
+   {
+      // Never read by AddFragments() when bFragmentNL is false search-wide (the only case
+      // s_cacheStride == 2 occurs), but default to fully-unfiltered anyway, matching every
+      // other "not applicable here" convention in this class rather than leaving the
+      // out-params unset.
+      bModlossMask = ~0ULL;
+      yModlossMask = ~0ULL;
+   }
 }
 
 

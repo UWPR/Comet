@@ -364,6 +364,274 @@ index_search_type" swallowing the `--db` value). The current-interface binary li
 in scratch dirs are a recurring trap; the M4 driver script should always invoke tools by
 repo path, never rely on copies.
 
+### 7.5 2026-08-26 update: real full-scale RTS memory/speed re-measurement with the `CometPredictedMask` memory fixes
+
+Re-measured RTS masked-vs-unmasked at the same full production scale as Section 7.4
+(`phospho_noNL.idx` + the noNL mask, 124,863,304 entries -- both reused unmodified, no
+rebuild needed), at the current branch HEAD, `21847acce1720e4b14cb1dff9e4e8d38e4dbd3ea`
+(`21847acc`) -- two commits past Section 7.4's own measurement that specifically change
+search-time mask handling: `CometPredictedMask::FreeAfterIndexBuild()` (frees the mask's
+resident lookup table once `GenerateFragmentIndex()` no longer needs it) and packing
+`CometPredictedMask::Entry` to match the on-disk 42-byte record (shrinking it from 48 bytes
+while it *is* resident) -- both documented in `docs/20260824_carafe_phoshoresults.md`'s
+Section 7 dated notes and `docs/20260824_carafe_oxmet_fi_vs_fimask.md`'s Section 2 note.
+Neither fix touches mask-file format or content, so `phospho_noNL.idx` /
+`phospho_charge2_noNL_fromcps.fi_mask` (built 2026-08-13/22, Section 8) needed no rebuild and
+no Carafe re-run -- only the RTS search binaries were rebuilt (Windows `RealtimeSearch.exe` /
+`CometWrapper.dll`, MSBuild Release/x64, Clean-then-Build).
+
+Two changes from Section 7.4's own methodology, both deliberate: **query file** is
+`MM2_R1.raw` / `MM2_R2.raw` (the phospho-*enriched* acquisitions used throughout
+`docs/20260824_carafe_phoshoresults.md`) instead of Section 7.4's `20170103_Hela_01.raw` (a
+whole-cell-digest QC file, not phospho-enriched), and **thread count** is 20 (matching that
+doc's own Section 7 table) rather than Section 7.4's 16. Because both the raw file and thread
+count differ from 7.4, this table is **not a controlled A/B against Section 7.4's own
+numbers** -- it's a fresh, self-contained masked-vs-unmasked comparison at the current code,
+in the same format as `docs/20260824_carafe_phoshoresults.md` Section 7, run on real
+phospho-enriched data at true full production scale (RTS only; no batch-path re-measurement
+was done here). Machine confirmed idle (`uptime`/`ps`) before all four runs.
+
+| Metric | R1 unmasked | R1 masked | R2 unmasked | R2 masked |
+|---|---|---|---|---|
+| Total scans / MS2 scans searched | 68,586 / 55,558 | 68,586 / 55,558 | 62,887 / 49,540 | 62,887 / 49,540 |
+| FI entries in memory | 3.540e9 | 1.161e9 (**-67.2%**) | 3.540e9 | 1.161e9 (**-67.2%**) |
+| Peak process memory | 19.8GB | 14.6GB (**-26.3%**) | 19.7GB | 14.6GB (**-25.9%**) |
+| MS2 search elapsed | 8.24s | 7.67s (-6.9%) | 6.85s | 6.43s (-6.1%) |
+| MS2 average search rate | 6,742 Hz | 7,245 Hz (+7.5%) | 7,236 Hz | 7,709 Hz (+6.5%) |
+| Total RTS elapsed | 38.40s | 45.15s | 36.34s | 42.76s |
+
+(Raw outputs archived under `20260420-human-phosho/rts_fullscale_{r1,r2}_{unmasked,masked}.
+{out,txt}` plus per-run console logs.)
+
+**Observations:**
+
+- **FI entries and mask-entry counts match Section 7.4's/Section 8's own historical figures
+  exactly** (3.540e9 unmasked, 1.161e9 masked, `loaded 124863304 predicted-fragment mask
+  entries` both replicates) -- confirming this is the identical 124,863,304-variant
+  population Section 7.4 measured, unaffected by either fix (as expected: masking only
+  gates which fragment-ion postings get written, never which peptide variants exist).
+- **MS2 scans searched (55,558 R1 / 49,540 R2) differ from `docs/20260824_carafe_phoshoresults.md`'s
+  smaller-scale run on the same two raw files** (45,806 / 42,406) -- expected, not a
+  discrepancy: `phospho_noNL.idx` uses the wider full-scale digest configuration
+  (`peptide_length_range 7 50`, `digest_mass_range 700.0 5000.0`, up to 3 combined M-ox/
+  phospho mods) vs. that analysis's scaled-down `comet.params.phosphosmall` (7-35, 700-3500,
+  max 2), so more precursor masses/charges find at least one candidate. Total scan counts
+  (68,586 / 62,887) match exactly, as expected -- that's an intrinsic property of the raw
+  file, independent of index configuration.
+- **Peak memory reduction here (-5.1 to -5.2GB absolute) is far larger in absolute terms than
+  any smaller-scale analysis in this project** (MM2 phosphosmall: -1.1 to -1.3GB; oxmet: -0.2
+  to -0.3GB) -- expected, since the freed/shrunk structure is fixed by mask size:
+  124,863,304 entries x 48B (the old, unfixed `Entry` layout) = **~5.99GB**, almost the
+  entirety of the observed reduction, confirming that at real full production scale the
+  predicted-fragment mask's own resident footprint -- not other per-search memory -- is what
+  the `FreeAfterIndexBuild()` fix actually reclaims. The relative percentage (-25.9% to
+  -26.3%) is smaller than the phosphosmall run's (-37.9% to -38.6%) only because this run's
+  *total* peak memory is much larger to begin with (~20GB vs ~5.4-8.8GB), not because the fix
+  is less effective in absolute terms -- it's the opposite.
+- **MS2 search speed improved under masking here too** (+6.5% to +7.5% Hz), consistent in
+  direction and rough magnitude with every other analysis in this project (MM2 phosphosmall:
+  +2.7-2.8%; oxmet: +3.2% to +6.7%). Total RTS elapsed is higher under masking in both
+  replicates, driven by mask-load time added to initialization (consistent with Section 7.4's
+  own ~25s-at-this-entry-count finding) -- the same masked-total-elapsed pattern already
+  documented and explained in the phosphosmall/oxmet docs, not a regression.
+- **Identification yield also improved under masking at true full scale**, consistent with
+  every smaller-scale analysis: PSMs at 1% FDR (`tools/qvalue.py`, xcorr-sorted) rose from
+  16,167->17,291 (+7.0%, R1) and 15,436->16,032 (+3.9%, R2); e-value-sorted rose more modestly
+  (17,774->18,389, +3.5%, R1; 17,117->17,347, +1.3%, R2). Not independently investigated
+  further here (a full Section-8-style scan-level breakdown is out of scope for this
+  memory/speed update), but direction and rough magnitude match the phosphosmall/oxmet
+  findings.
+
+### 7.5.1 Memory breakdown: why a 67.2% FI-entries cut is only a 25.9-26.3% peak-memory cut
+
+Structural byte accounting for the R1 masked run (exact counts from the run's own log lines;
+FI-entry counts are 4-sig-fig as printed):
+
+| Component | Count | Size/entry | Unmasked | Masked |
+|---|---|---|---|---|
+| `g_iFragmentIndex` (FI postings) | 3.540e9 / 1.161e9 | 4 B | **14.16 GB** | **4.64 GB** |
+| `g_vFragmentPeptides` (variants) | 124,863,304 | 24 B | 3.00 GB | 3.00 GB |
+| `g_vRawPeptides` (raw peptides) | 4,658,764 | 72 B | 0.34 GB | 0.34 GB |
+| `CometPredictedMask::s_entries` (packed) | 124,863,304 | 42 B | -- | **5.24 GB** |
+| **Core subtotal** | | | **17.49 GB** | **13.22 GB** |
+| Everything else (thread buffers, CLR/.NET runtime, Thermo RawFileReader, OS/allocator overhead) | | | ~2.3 GB | ~1.4 GB |
+| **Observed peak** | | | **19.8 GB** | **14.6 GB** |
+
+The variant and raw-peptide tables are identical in both runs -- masking never changes which
+candidates exist, only which fragment-ion postings get written -- so they don't explain the
+gap. The whole story is one line: **masking removes 9.5GB of FI-array weight but adds back
+5.24GB of its own mask weight**, netting a ~4.3GB core-structure reduction rather than
+something close to 67% of 19.8GB.
+
+The reason the mask still costs its full 5.24GB even with the `FreeAfterIndexBuild()` /
+packed-`Entry` fixes (Section 7's dated notes) is structural, not a bug: `GenerateFragmentIndex()`
+(as of those two fixes) still allocates `g_iFragmentIndex` at its full final masked size in one
+shot right after the count pass, then frees the mask only after the whole function returns --
+so the mask (5.24GB) and the fully-allocated FI array (4.64GB) are unavoidably co-resident for
+the entire fill-write pass: 4.64+3.00+0.34+5.24 = **13.22GB**, within ~1.4GB of the observed
+14.6GB peak, meaning the peak is very likely reached *during* FI construction, before the mask
+is ever freed. Section 7.6 develops and tests a fix for exactly this.
+
+### 7.6 2026-08-26: avoiding the mask's full residency during the fill-write pass
+
+**The real pass structure (corrected).** `GenerateFragmentIndex()` visits every variant THREE
+times, not two: (1) the enumeration pass (`AddFragmentsThreadProcRange`, `bCountOnly`) builds
+`g_vFragmentPeptides` and does the first per-bin atomic count, *before* the mass sort -- the
+final index doesn't exist yet, so this pass must use `CometPredictedMask::Lookup()`'s key-based
+binary search; (2) a fill-count sub-pass (`pFillBinCounts`) computes each thread partition's
+own per-bin counts, needed to hand every partition a disjoint write-cursor range; (3) the
+fill-write sub-pass (`pFillWriteCursor`) actually writes postings into `g_iFragmentIndex`. Both
+(2) and (3) run *after* the sort, in that same final mass-sorted index order, and both
+independently re-consult the mask by key -- so `Lookup()` runs three times per variant in the
+pre-existing code, and `CometPredictedMask::s_entries` has to stay resident through all three.
+
+**The fix.** Cache each variant's mask decision (`bMask`/`yMask`/`bModlossMask`/`yModlossMask`,
+32 bytes, indexed by the final `iWhichFragmentPeptide` -- no key fields needed once addressed by
+position) in one new pass, right after the sort and *before* `g_iFragmentIndex` is allocated:
+`CometPredictedMask::ReserveCache()`/`StoreCached()` (parallelized across the same partitioning
+the fill sub-passes already use -- disjoint per-thread index ranges, no locking needed, same
+pattern as `g_iFragmentIndex`'s own writes) followed immediately by `FreeAfterIndexBuild()`.
+`AddFragments()`'s mask-lookup branches on `bCountOnly`: the enumeration pass still uses
+key-based `Lookup()` (unavoidable -- no final index yet); both fill sub-passes now call the new
+O(1) `LookupCached()` instead of re-binary-searching `s_entries`. Net binary-search count is
+unchanged (3 per variant: enumeration + the new cache-build pass, with fill-count/fill-write
+now doing free O(1) reads instead of their own two binary searches) -- this is a *reordering*
+of when the mask work happens, not additional work.
+
+**A real bug caught before it shipped.** The first implementation attempt inserted the
+cache-build-then-free block right after the sort but left `g_iFragmentIndex = new unsigned
+int[uiTotal]` where it already was -- which turned out to be *before* the sort, not after
+(re-verified by direct code reading, not assumption). That ordering means the FI array was
+still being allocated before the mask was freed, so the co-residency this fix targets was
+never actually removed -- confirmed empirically (Section 7.6.1) before being caught and fixed
+by reordering: the CSR-offset-conversion loop (needs only `g_iFragmentIndexOffset`, a few
+hundred KB) stays where it was, but the array allocation itself was moved to right after the
+new cache-build-and-free block.
+
+#### 7.6.1 Verification
+
+- **Correctness, small fixtures**: full fast unit suite 57/57 pass, including T25/T34/T36/T37
+  (the FI-masking-specific regressions) with their exact expected FI-entry counts unchanged
+  (28, 42, etc.) -- the refactor changes *when* mask decisions are computed, never *what* they
+  are. T22 RTS integration tests (FI_DB and PI_DB, 1-thread vs. 8-thread byte-identical) also
+  pass.
+- **Correctness, full scale**: re-ran the Section 7.5 masked R1 measurement (`phospho_noNL.idx`
+  + the noNL mask, `MM2_R1.raw`, 20 threads) end to end -- FI entries unchanged (1.161e9,
+  matching Section 7.5 exactly) and PSM output byte-identical to the original Section 7.5 run
+  (`tools/rts_out_to_txt.py`, sorted, `diff`: 0 differing lines) -- this change is a pure
+  memory/timing refactor with zero effect on results.
+- **Timing** (the specific question asked mid-implementation): total FI-build time
+  (`store peptide list` + `sort peptides` + `populate index`, which now includes the new
+  `cache predicted-fragment mask decisions` sub-step) is **18s, identical to the pre-fix
+  baseline's 18s** -- no measurable penalty at this 124.8M-variant/1.16B-FI-entry scale. The
+  new cache-build sub-step itself costs ~2s (parallelized across the same 20 threads), but
+  that's offset by eliminating the two binary searches it replaces in the fill-count/fill-write
+  sub-passes, net-zero as the reasoning above predicted. (An earlier measurement showed a
+  spurious +1s -- traced to `fflush()`-heavy temporary debug instrumentation added for the
+  memory investigation below, removed before this final measurement; the underlying code
+  change was correct throughout, only the diagnostic prints added overhead.)
+- **Memory -- direct instrumentation, the honest result.** Temporary `GetCurrentWorkingSetKB()`
+  probes at four points in `GenerateFragmentIndex()` (before the cache-build; after building the
+  cache but before freeing the mask; after freeing the mask; after the FI array is allocated;
+  after the fill-write pass) showed the fix working exactly as designed:
+
+  | Checkpoint | Current RSS |
+  |---|---|
+  | Before cache-build (mask still resident, no cache yet) | 10.30GB |
+  | After cache-build, before freeing mask (mask + cache both resident) | 14.02GB |
+  | After `FreeAfterIndexBuild()` | 9.14GB |
+  | After `g_iFragmentIndex` allocated (before any writes) | 9.14GB (unchanged) |
+  | After the fill-write pass completes | 13.48GB |
+
+  Two things confirmed here: (1) freeing the mask really does drop RSS by ~4.9GB, matching its
+  ~5.24GB resident size closely; (2) `new unsigned int[uiTotal]`'s allocation itself is
+  essentially free in RSS terms -- the array's pages aren't charged to the working set until
+  the fill-write pass actually writes them, confirming the reordering fix (Section 7.6's "real
+  bug caught" note) was addressing a real, not hypothetical, problem. The FI-build-phase peak
+  under the fix is **14.02GB transient** (during the brief cache+mask co-residency) or
+  **13.48GB** once the mask is gone and the array is filled -- both below the pre-fix
+  structural estimate of ~14.6GB (mask + full FI array co-resident through the entire
+  fill-write pass, Section 7.5.1).
+
+  **But the run's own self-reported final peak was still 14.6GB at this point, unchanged from
+  before the fix.** `Done. (14.6GB)` is a whole-process, whole-run monotonic high-water mark
+  (`PeakWorkingSetSize`). At the time this was written, the working theory was that the search
+  phase *after* FI-build (raw-file preload, per-thread RTS scratch buffers, AScorePro,
+  accumulated PSM results across 55,558 spectra) independently reaches ~14.6GB on its own,
+  regardless of the FI-build-phase floor -- **Section 7.6.2 shows this theory was wrong**: the
+  search phase instead adds a roughly constant ~1.1-1.2GB *on top of* whatever FI-build leaves
+  resident, so shrinking the FI-build floor further (which had only dropped by ~1GB at this
+  point, 13.22GB estimated -> 13.48GB measured, both within noise of each other) simply hadn't
+  shrunk it enough yet to show through. This is exactly what Section 7.6.2's larger reduction
+  goes on to confirm.
+
+**Net assessment (superseded by 7.6.2 below)**: correct, tested, zero timing cost, and a real
+memory-pressure reduction during FI construction -- initially thought to be invisible in the
+overall reported peak for this scenario, until Section 7.6.2's further cache-size reduction
+made it large enough to show through after all.
+
+### 7.6.2 2026-08-26 continued: cutting the cache in half for no-neutral-loss configurations
+
+**The remaining question.** The Section 7.6 cache (32 bytes/entry: 4x `uint64_t`) is only
+10 bytes smaller than the 42-byte mask entry it replaces -- the entire structural saving from
+"cache instead of re-binary-searching the mask" is just the discarded key fields
+(`iWhichPeptide`+`modNumIdx`+`cNtermMod`+`cCtermMod` = 10 bytes), not the mask's full
+footprint. At 124,863,304 variants that's only **~1.25GB**, which is exactly why Section 7.6's
+measured improvement (13.22GB estimated -> 13.48GB measured, i.e. none outside noise) didn't
+show through the search phase's own ~1.1-1.2GB additive cost.
+
+**The fix.** `bModlossMask`/`yModlossMask` are only ever read by `AddFragments()` when
+`bFragmentNL` is true for a variant, which requires
+`g_staticParams.variableModParameters.bUseFragmentNeutralLoss` to be true *search-wide* -- a
+fixed, session-level setting, not something that varies per variant. For a no-neutral-loss
+configuration (Met-oxidation-only, or a phospho mask built with `--ignore-modloss`/noNL, which
+is exactly this document's `phospho_noNL.idx` test case), those two fields are never consulted
+for *any* variant. `CometPredictedMask::ReserveCache()` now takes a `bIncludeModloss` flag
+(passed as `bUseFragmentNeutralLoss` from `GenerateFragmentIndex()`) and stores the cache as a
+flat `vector<uint64_t>` with a runtime stride of 2 (just `bMask`/`yMask`, 16 bytes/entry) or 4
+(32 bytes/entry, unchanged), rather than two near-duplicate fixed-size cache types.
+`StoreCached()`/`LookupCached()` branch on the same stride; when it's 2, `LookupCached()`
+returns the fully-unfiltered `~0ULL` default for the two dropped fields, which every caller
+already treats identically to a real "keep everything" entry.
+
+**Verification.**
+- **Correctness**: full unit suite 57/57 pass. T34 (`t34_fragment_nl`) is the single most
+  relevant regression here -- it runs both a `no_nl` (stride-2 path) and a `with_nl`
+  (stride-4 path) case in one test and gets exactly the same FI-entry counts as before (28 and
+  37 respectively) in both. T22 RTS integration tests still pass.
+- **Full-scale correctness**: re-ran both `phospho_noNL.idx` masked replicates (`MM2_R1.raw`,
+  `MM2_R2.raw`) -- FI entries unchanged (1.161e9) and PSM output byte-identical to the original
+  Section 7.5 runs for both (`diff`: 0 differing lines each).
+- **Timing**: FI-build total still **18s** (17s for R2) -- no penalty, if anything the
+  cache-build sub-step itself dropped from ~2s to ~1s (half the data to move).
+- **Memory -- and this time the theory was tested directly.** Same four-checkpoint
+  instrumentation as Section 7.6.1, re-run with the stride-2 cache:
+
+  | Checkpoint | Section 7.6 (stride 4) | Section 7.6.2 (stride 2) |
+  |---|---|---|
+  | After cache-build, before freeing mask | 14.02GB | 12.16GB (-1.86GB) |
+  | After `FreeAfterIndexBuild()` | 9.14GB | 7.27GB (-1.87GB) |
+  | After the fill-write pass completes | 13.48GB | 11.62GB (-1.86GB) |
+  | **Final self-reported peak (`Done.`)** | **14.6GB** | **12.8GB (R1) / 12.7GB (R2)** |
+
+  The ~1.86GB reduction at every FI-build checkpoint matches the predicted structural saving
+  almost exactly (124,863,304 x 16 bytes dropped = 1.998GB). And critically, **this time it
+  does show up in the final number**: 14.6GB -> 12.8GB, a further **-1.8GB (-12.3%)** on top
+  of Section 7.6's already-implemented fixes. This confirms the corrected theory directly: the
+  search phase's own cost is additive (~1.1-1.2GB on top of the FI-build floor in both stride
+  cases: 13.48+1.12=14.6 and 11.62+1.18=12.8), not an independent floor -- Section 7.6's
+  smaller, noisier ~0.3GB reduction simply hadn't been large enough to clear that additive
+  margin, while this one comfortably is.
+
+**Combined effect of Section 7.6 + 7.6.2** on top of the two fixes already measured in Section
+7.5 (`FreeAfterIndexBuild()` + packed `Entry`): masked full-scale RTS peak memory for this
+no-NL configuration is now **12.7-12.8GB**, down from Section 7.5's **14.6GB** -- a further
+**~12.3%** reduction, achieved with no code outside `CometPredictedMask`/`CometFragmentIndex.cpp`
+touched, zero timing cost, and zero effect on search results at any point in this chain.
+
+**Net assessment**: correct, tested, zero timing cost, and this time a clearly visible
+multi-GB memory-pressure reduction. Kept as implemented.
+
 ## 8. Milestones
 
 - **M1 -- Measurements, no code** -- **DONE 2026-08-22**:
