@@ -242,10 +242,13 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   (`WWWWWWWS[+79.966331]WWWWWWW`) is hand-derived so the fix's effect is an exact,
   verifiable count -- 42 FI entries with the fix vs. 40 under the old buggy break -- not
   just "some difference."
-- **T38** (`t38_carafe_python_suites`) -- runs the four standalone pure-Python Carafe tool
+- **T38** (`t38_carafe_python_suites`) -- runs the five standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
-  `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`; no comet.exe/Carafe-venv
-  dependency). Runs once per invocation, not per `--comet` binary.
+  `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`, and
+  `test_carafe_pipeline_drivers.py`, which pins the bash/awk-port semantics of the
+  pipeline drivers -- chunk splitting, variant-map row_index rewrite, `--ignore-modloss`
+  auto-detection, `--params` threshold precedence, and the `carafe.py` dispatch table; no
+  comet.exe/Carafe-venv dependency). Runs once per invocation, not per `--comet` binary.
 
 ### The Carafe ahead-of-time pipeline (tools/)
 
@@ -254,25 +257,40 @@ database + mod configuration -- design/results docs: `docs/20260826_carafe.md`
 (the pipeline plan, milestones M1-M6, end-to-end validation analyses, and the full-scale
 memory-optimization work -- consolidates three prior dated documents) and
 `docs/20260805_carafe.md` (the masking feature itself, Sections 6.15-6.22 for full-scale
-results). The one-command driver:
+results). Everything is driven through one umbrella CLI, `tools/carafe.py` (stdlib-only
+Python, identical under WSL Ubuntu and a native Windows terminal; `tools/carafe.py --help`
+lists every stage). The one-command driver:
 
 ```bash
-tools/carafe_prerun.sh --fasta db.fasta --out workdir --comet /path/to/comet.exe \
+tools/carafe.py prerun --fasta db.fasta --out workdir --comet /path/to/comet.exe \
   --flavor withnl=withnl.params --flavor nonl=nonl.params \
   --charges 2 --include-decoys [--parquet]
+
+# single-flavor shorthand: mask thresholds read from the params file's own
+# carafe_mask_min_relative_intensity / carafe_mask_min_peaks keys
+tools/carafe.py prerun --fasta db.fasta --out workdir --comet /path/to/comet.exe \
+  --params comet.params
 ```
 
+(On Windows: `python tools\carafe.py ...`. Each subcommand dispatches to a module under
+`tools/` that stays directly runnable too -- `python3 tools/carafe_prerun.py ...` -- and
+whose docstring carries the full per-stage documentation. The drivers were originally
+bash+awk, since deleted; marker/log layouts were preserved exactly, so a workdir
+half-finished under a bash-era driver resumes under the Python ones.)
+
 Stages (each resumable via `workdir/.prerun/<stage>.done` markers): per flavor,
-`comet.exe -i` / `-x` / `tools/idx_to_carafe.py`; once, `tools/run_carafe_chunked.sh`
-(the expensive Carafe `ai_pred.py` inference -- hours; chunk-resumable; `--parquet` for
-~8x smaller transient output, verified byte-identical stores) and
-`tools/carafe_pred_to_cps.py` (compact prediction store, `.cps` -- ~31GB vs ~390GB raw at
-full phospho scale, u16-quantized, the durable artifact); per flavor,
-`tools/carafe_cps_to_fi_mask.py` (mask build/re-sweep from the store, ~24 min at full
-scale, `--ignore-modloss` auto-detected from the flavor's VarModConfig).
-`tools/carafe_ms2_to_fi_mask.py` remains the TSV-direct mask builder (tests, small runs);
-`tools/build_carafe_mask_chunked.sh` + `tools/merge_carafe_fi_masks.py` are the legacy
-chunked-TSV mask path, superseded by the store but kept for TSV-only situations.
+`comet.exe -i` / `-x` / `carafe.py convert` (`idx_to_carafe.py`); once,
+`carafe.py predict` (`run_carafe_chunked.py` -- the expensive Carafe `ai_pred.py`
+inference: hours; chunk-resumable; `--parquet` for ~8x smaller transient output,
+verified byte-identical stores) and `carafe.py cps` (`carafe_pred_to_cps.py` -- compact
+prediction store, `.cps`, ~31GB vs ~390GB raw at full phospho scale, u16-quantized, the
+durable artifact); per flavor, `carafe.py mask` (`carafe_cps_to_fi_mask.py` -- mask
+build/re-sweep from the store, ~24 min at full scale, `--ignore-modloss` auto-detected
+from the flavor's VarModConfig). `carafe.py mask-tsv` (`carafe_ms2_to_fi_mask.py`)
+remains the TSV-direct mask builder (tests, small runs); `carafe.py mask-chunks` +
+`carafe.py merge-masks` (`build_carafe_mask_chunked.py`, `merge_carafe_fi_masks.py`) are
+the legacy chunked-TSV mask path, superseded by the store but kept for TSV-only
+situations.
 
 Two hard-won invariants (do not rediscover these at scale): the variant map's enumeration
 order is NOT key order (any consumer must sort/merge -- `carafe_cps_to_fi_mask.py` does);
@@ -360,38 +378,44 @@ documented exceptions for `MSToolkit/` third-party code and the newer OOP layer 
 `CometSearch/search/`, `CometSearch/output/`) live in `docs/CometCodingStyleGuidelines.md`
 -- read it before writing or editing C++ in `CometSearch/`.
 
-**Windows-style line endings (`\r\n`) are MANDATORY for every file in this repo.** This
-applies to Claude Code's own Edit/Write behavior specifically, not just human-authored
-code -- see the enforcement rules below.
+**Windows-style line endings (`\r\n`) are MANDATORY for every file in this repo EXCEPT
+`.py` files, which use Unix LF (`\n`).** This applies to Claude Code's own Edit/Write
+behavior specifically, not just human-authored code -- see the enforcement rules below.
 
-### Line-ending enforcement (CRLF)
+### Line-ending enforcement (CRLF, except Python)
 
-**Every source file — `.cpp`, `.h`, `.c`, `.cs`, `.py`, `.md`, `.txt`, `.params` — must
-use Windows CRLF (`\r\n`) line endings.  Unix LF (`\n`) is wrong for this repo.**
+**Every source file — `.cpp`, `.h`, `.c`, `.cs`, `.md`, `.txt`, `.params` — must use
+Windows CRLF (`\r\n`) line endings.  The one exception: `.py` files use Unix LF (`\n`)
+— python runs LF files identically on both platforms, and an LF shebang keeps
+`./tools/carafe.py` directly executable on Linux (a CRLF shebang breaks: the kernel
+would exec `python3\r`).**
 
 Rules for Claude Code:
 
 1. **Editing existing files** (`Edit` tool): the tool preserves the file's existing line
    endings, so edits to a CRLF file stay CRLF automatically.  No special action needed.
 
-2. **Writing a new file or fully replacing one** (`Write` tool): the content string passed
-   to `Write` must contain `\r\n` at every line break.  Plain `\n` produces a Unix-LF
-   file.  **Always verify after writing:**
+2. **Writing a new non-Python file or fully replacing one** (`Write` tool): the content
+   string passed to `Write` must contain `\r\n` at every line break.  Plain `\n`
+   produces a Unix-LF file (which is what a new `.py` file SHOULD be).  **Always verify
+   after writing:**
    ```bash
-   file <path>   # must show "CRLF line terminators"
+   file <path>   # must show "CRLF line terminators" (non-.py); .py must NOT
    ```
-   If the output shows only "ASCII text" (no CRLF mention), the file has Unix LF —
+   A non-`.py` file showing only "ASCII text" (no CRLF mention) has Unix LF —
    re-write it with correct line endings before proceeding.
 
 3. **After any session that creates or modifies files**, run a quick sanity check on the
    touched files:
    ```bash
-   file CometSearch/*.h CometSearch/*.cpp | grep -v CRLF
+   file CometSearch/*.h CometSearch/*.cpp | grep -v CRLF   # non-.py: must print nothing
+   file tools/*.py tests/unit/*.py | grep CRLF             # .py: must print nothing
    ```
-   Any line printed is a file with wrong line endings — fix it with `unix2dos <file>`.
+   Fix a wrong non-`.py` file with `unix2dos <file>`, a wrong `.py` with `dos2unix <file>`.
 
-A `.gitattributes` file at the repo root enforces CRLF for all tracked source files
-at the git level, providing a second safety net.
+A `.gitattributes` file at the repo root enforces these endings for all tracked source
+files at the git level (`eol=crlf` per type, `*.py text eol=lf`), providing a second
+safety net.
 
 
 ## Development Workflows

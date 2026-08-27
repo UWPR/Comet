@@ -53,7 +53,7 @@ Avoid trailing whitespace on any line.
 
 ## D. Line endings
 
-Use Windows-style carriage returns (`\r\n`) rather than Unix-style (`\n`).
+Use Windows-style carriage returns (`\r\n`) rather than Unix-style (`\n`) -- except in `.py` files, which use Unix LF (`\n`): python runs LF files identically on both platforms, and an LF shebang line keeps scripts like `tools/carafe.py` directly executable on Linux (a CRLF shebang breaks -- the kernel would exec `python3\r`). `.gitattributes` enforces both (`eol=crlf` per type, `*.py text eol=lf`).
 
 ## E. Comments
 

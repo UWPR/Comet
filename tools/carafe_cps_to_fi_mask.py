@@ -4,7 +4,7 @@ Build a Comet Carafe FI mask (v3, byte-compatible with tools/carafe_ms2_to_fi_ma
 output) from a compact prediction store (.cps -- tools/carafe_cps.py) instead of raw Carafe
 TSV output -- docs/20260822_carafe_prerun.md milestone M3.
 
-This replaces the chunked TSV mask build (tools/build_carafe_mask_chunked.sh, ~5.5h +
+This replaces the chunked TSV mask build (tools/build_carafe_mask_chunked.py, ~5.5h +
 merge) as the primary mask-(re)build path: any threshold/floor/ignore-modloss combination
 can be re-swept from the ~31GB store in minutes, without the 386GB raw TSVs and without
 re-running Carafe. (The plan doc originally sketched this as a --from-cps flag on
@@ -237,7 +237,7 @@ def verify_written_mask_sorted(path):
         return n
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("idx_file")
@@ -255,7 +255,7 @@ def main():
                      help="Optional: the original out_tsv, to check the store's provenance "
                           "head-CRC against")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     t0 = time.time()
     reader = carafe_cps.CpsReader(args.cps_file)

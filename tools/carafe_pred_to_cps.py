@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Translate a chunked Carafe prediction run (tools/run_carafe_chunked.sh's chunk_preds/ TSV
+Translate a chunked Carafe prediction run (tools/run_carafe_chunked.py's chunk_preds/ TSV
 output) into one compact prediction store (.cps -- tools/carafe_cps.py, docs/
 20260822_carafe_prerun.md Section 5, milestone M2). After the resulting store verifies, the
 raw Carafe output (386-395GB at real full-proteome-phospho scale) is discardable: the store
@@ -8,7 +8,7 @@ holds everything both the withNL and --ignore-modloss noNL mask builds consume, 
 smaller (u8 quantization) -- see the format module's docstring.
 
 Inputs mirror the chunked pipeline's own layout:
-  --chunks-dir     run_carafe_chunked.sh's <out>/chunks/ (chunk_NNNNN.tsv out_tsv slices,
+  --chunks-dir     run_carafe_chunked.py's <out>/chunks/ (chunk_NNNNN.tsv out_tsv slices,
                    header + 50K data rows each; row order IS row_index order)
   --preds-dir      its <out>/chunk_preds/ (chunk_NNNNN/chunk_NNNNN_ms2_df.tsv + _ms2_pred.tsv)
   --source-out-tsv the ORIGINAL unchunked out_tsv (for the store's provenance header:
@@ -156,7 +156,7 @@ def process_chunk(job):
     return chunk_base, b"".join(blob_parts), row_sizes, n_rows, n_missing, has_modloss
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--chunks-dir", required=True)
@@ -171,7 +171,7 @@ def main():
                           "unless --source-out-tsv is a matching slice -- intended for "
                           "experiments that read the .payload.tmp path via the test harness, "
                           "or with a sliced source file.")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     chunk_tsvs = sorted(Path(args.chunks_dir).glob("chunk_*.tsv"))
     if args.limit_chunks:

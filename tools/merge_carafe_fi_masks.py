@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Merges per-chunk .fi_mask files (tools/build_carafe_mask_chunked.sh's output, one per
+Merges per-chunk .fi_mask files (tools/build_carafe_mask_chunked.py's output, one per
 50,000-row population slice) into a single final mask file, using
 tools/carafe_ms2_to_fi_mask.py's own read_mask_file()/write_mask_file() so the binary format
 (Comet Carafe FI mask v3) is produced identically to a real non-chunked run -- Phase 3's
@@ -8,7 +8,7 @@ CometPredictedMask::Load() cannot tell the difference between a mask built in on
 merged from chunks.
 
 Correctness: chunks partition the population by row_index range (tools/
-split_variant_map_for_chunks.awk), which are non-overlapping by construction, so entries across
+carafe_chunk_common.py's split_variant_map()), which are non-overlapping by construction, so entries across
 chunks never collide (a differing outcome would mean the chunk split itself was broken, not a
 tie-breaking question this script needs to resolve) -- this script does not need to consider
 merge conflicts. All chunks must report the SAME header (fingerprint, num_raw_peptides, idx_path,
@@ -28,7 +28,7 @@ needed at this run's scale.
 Usage:
   merge_carafe_fi_masks.py --chunk-dir DIR --out FILE
 
-  --chunk-dir DIR   directory of chunk_NNNNN.fi_mask files (tools/build_carafe_mask_chunked.sh's
+  --chunk-dir DIR   directory of chunk_NNNNN.fi_mask files (tools/build_carafe_mask_chunked.py's
                     mask_chunks/ output). Only files with a matching chunk_NNNNN.done marker are
                     included, so a partially-completed chunked build can still be safely merged
                     up to whatever's actually finished (with --allow-partial; otherwise this
@@ -58,7 +58,7 @@ HEADER_KEYS_MUST_MATCH = (
 )
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--chunk-dir", required=True, help="Directory of chunk_NNNNN.fi_mask files")
@@ -69,7 +69,7 @@ def main():
                      help="Merge whatever .done chunks are present instead of requiring "
                           "--expect-chunks of them")
     ap.add_argument("-v", "--verbose", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     mask_files = sorted(glob.glob(os.path.join(args.chunk_dir, "chunk_*.fi_mask")))
     done_files = []

@@ -14,8 +14,10 @@
 *.vcxproj.filters text eol=crlf
 *.rc    text eol=crlf
 
-# Python
-*.py    text eol=crlf
+# Python -- LF, unlike the rest of the repo: python runs LF files identically on both
+# platforms, and an LF shebang line keeps ./tools/carafe.py directly executable on Linux
+# (a CRLF shebang breaks: the kernel would exec "python3\r").
+*.py    text eol=lf
 
 # Docs / config
 *.md    text eol=crlf

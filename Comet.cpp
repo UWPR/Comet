@@ -378,10 +378,11 @@ void LoadParameters(char* pszParamsFile,
       {"fragment_index_predicted_mask_file", { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("fragment_index_predicted_mask_file", szFile, szFile); }}},
       {"spectral_library_name",        { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("spectral_library_name", szFile, szFile); }}},
       // Accepted but not read anywhere in comet.exe -- these two are only consumed by
-      // tools/params_to_fi_mask.sh when it builds fragment_index_predicted_mask_file's
-      // target from the same comet.params (carafe_cps_to_fi_mask.py's --min-relative-
-      // intensity/--min-kept-peaks). Registered here purely so a comet.params carrying
-      // them doesn't print "Warning - invalid parameter found" during an actual search.
+      // `tools/carafe.py prerun --params` when it builds fragment_index_predicted_mask_
+      // file's target from the same comet.params (carafe_cps_to_fi_mask.py's --min-
+      // relative-intensity/--min-kept-peaks). Registered here purely so a comet.params
+      // carrying them doesn't print "Warning - invalid parameter found" during an
+      // actual search.
       {"carafe_mask_min_relative_intensity", { [&]() { parse_double("carafe_mask_min_relative_intensity"); }}},
       {"carafe_mask_min_peaks",        { [&]() { parse_int("carafe_mask_min_peaks"); }}},
       // Simple strings
@@ -994,8 +995,8 @@ fragment_index_predicted_mask_file =   # path to a Carafe predicted-fragment kee
                                         # builds (tools/carafe_ms2_to_fi_mask.py, docs/20260805_carafe.md);\n\
                                         # empty = disabled (default)\n\
 carafe_mask_min_relative_intensity = 0.10 # not read by comet.exe -- recorded here only so\n\
-                                        # tools/params_to_fi_mask.sh can read the threshold used to\n\
-                                        # (re)build fragment_index_predicted_mask_file's target from\n\
+                                        # 'tools/carafe.py prerun --params' can read the threshold used\n\
+                                        # to (re)build fragment_index_predicted_mask_file's target from\n\
                                         # the same comet.params (tools/carafe_cps_to_fi_mask.py's\n\
                                         # --min-relative-intensity)\n\
 carafe_mask_min_peaks = 6              # not read by comet.exe -- same as above, for\n\

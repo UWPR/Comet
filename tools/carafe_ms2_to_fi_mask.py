@@ -577,7 +577,7 @@ def read_mask_file(path):
 # main
 # ---------------------------------------------------------------------------
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Build a predicted-fragment keep/drop mask for Comet's FI from Carafe's "
                      "MS2 prediction output.",
@@ -618,7 +618,7 @@ def main():
                           "Load()'s VarModConfig check will otherwise reject a mask whose "
                           "embedded VarModConfig doesn't match the live search's.")
     ap.add_argument("-v", "--verbose", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     if args.verbose:
         print(f"Fingerprinting {args.idx_file} ...", file=sys.stderr)

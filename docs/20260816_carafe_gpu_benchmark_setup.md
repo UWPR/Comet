@@ -8,16 +8,18 @@ full runs this packet drives completed; results are in Section 6.21. The GPU-vs-
 prediction-diff comparison this was built for was subsequently **retired** — future
 Carafe predictions are being regenerated with a more limited search space instead (see
 `docs/20260805_carafe.md`'s top status note and Section 6.23-6.24), so this exact
-124,863,304-row/`phospho_charge2_withNL` job is not expected to be re-run. This packet's
-setup steps and `run_carafe_chunked.sh` invocations remain accurate as reference (verified
-against the current script 2026-08-25), but the ~395GB output tree this produced on the
+124,863,304-row/`phospho_charge2_withNL` job is not expected to be re-run. 2026-08-27: the runner was
+ported from bash to stdlib-only Python (`tools/run_carafe_chunked.py`, invoked as
+`python3 tools/carafe.py predict`; the `.sh` is deleted) -- this packet's invocations are
+updated below and chunk/marker layouts are unchanged, so everything still applies as
+reference. The ~395GB output tree this produced on the
 GPU machine is superseded and, per that status note, still pending deletion there.
 
 ## 1. What this is
 
 We're comparing Carafe's `ai_pred.py` MS2-prediction throughput on GPU vs. CPU, on
 the exact same real dataset, using a chunked/resumable runner
-(`tools/run_carafe_chunked.sh`) that was built and validated on a CPU-only dev
+(`tools/run_carafe_chunked.py`, `carafe.py predict`) that was built and validated on a CPU-only dev
 machine. That machine is currently partway through a real ~124.8M-row,
 phosphorylation-mode production run with this exact tool — do not wait for it to
 finish; this is an independent benchmark run on different hardware.
@@ -85,18 +87,15 @@ PowerShell or validating `alphabase`/`peptdeep` install cleanly on native Window
    git clone <comet-repo-url> Comet-master
    cd Comet-master
    git checkout carafe
-   git log --oneline -1 tools/run_carafe_chunked.sh
-   # should show commit 145b2f6a "Add tools/run_carafe_chunked.sh: chunked,
-   # resumable Carafe ai_pred.py runner" (or later)
+   ls tools/run_carafe_chunked.py tools/carafe.py
+   # both must exist (the chunked runner and its umbrella CLI; the former
+   # bash runner tools/run_carafe_chunked.sh was ported/deleted 2026-08-27)
    ```
    Note: this repo's `.gitattributes` forces CRLF line endings on most tracked
-   source files, but deliberately **not** on `.sh` files (a CRLF shebang line
-   breaks direct execution) — `tools/run_carafe_chunked.sh` will check out as
-   plain LF and should just work. If `git update-index --chmod=+x` didn't
-   survive the transfer to this filesystem and `./run_carafe_chunked.sh` gives
-   "Permission denied", just invoke it as `bash tools/run_carafe_chunked.sh ...`
-   instead (all the instructions below already do this) — no need to fight the
-   executable bit.
+   source files, but deliberately **not** on `.py` files (a CRLF shebang line
+   breaks direct execution) — the runner checks out as plain LF and should
+   just work. All the instructions below invoke it as `python3 tools/carafe.py
+   predict ...`, which sidesteps the executable bit entirely.
 
 4. **Clone the Carafe repo** to the same relative path the script defaults to,
    or pass `--ai-pred-py` explicitly:
@@ -141,7 +140,7 @@ Same discipline as the CPU machine: one small chunk first, verify it's healthy,
 
 ```bash
 mkdir -p carafe_chunked_gpu
-bash tools/run_carafe_chunked.sh \
+python3 tools/carafe.py predict \
   --in phospho_charge2_withNL_carafe_peptides.tsv \
   --out carafe_chunked_gpu \
   --chunk-size 50000 \
@@ -185,7 +184,7 @@ assume the CPU finding ("parallel is worse") transfers, but don't assume the
 opposite either:
 
 ```bash
-bash tools/run_carafe_chunked.sh \
+python3 tools/carafe.py predict \
   --in phospho_charge2_withNL_carafe_peptides.tsv \
   --out carafe_chunked_gpu \
   --chunk-size 50000 --mode phosphorylation --device cuda --tf-type ms2 \
@@ -204,7 +203,7 @@ background it — this will likely still run for multiple hours even accelerated
 and should survive a terminal/session disconnect:
 
 ```bash
-nohup bash tools/run_carafe_chunked.sh \
+nohup python3 tools/carafe.py predict \
   --in phospho_charge2_withNL_carafe_peptides.tsv \
   --out carafe_chunked_gpu \
   --chunk-size 50000 \

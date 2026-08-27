@@ -612,6 +612,7 @@ def find_default_carafe_tsv():
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Carafe",
                      "src", "main", "resources", "top_modifications.tsv"),
         "/mnt/c/Work/Carafe/src/main/resources/top_modifications.tsv",
+        "C:\\Work\\Carafe\\src\\main\\resources\\top_modifications.tsv",
     ]
     for c in candidates:
         if os.path.isfile(c):
@@ -619,7 +620,7 @@ def find_default_carafe_tsv():
     return None
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(
         description="Export peptides + modifications from a Comet .idx to a Carafe ai_pred.py input TSV.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -661,7 +662,7 @@ def main():
                           "same peptide -- the variant map (see --variant-map) still records "
                           "every source tuple's provenance either way")
     ap.add_argument("-v", "--verbose", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     charges = [int(c) for c in args.charges.split(",")]
 

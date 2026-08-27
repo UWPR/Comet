@@ -2941,6 +2941,12 @@ def test_t37_fragment_nl_break_boundary(comet_exe):
 # module and runs its suite; a False return (any internal failure -- the module prints its
 # own per-test detail to stdout) fails T38 with the module named.
 #
+# test_carafe_pipeline_drivers.py joined the list when the bash/awk pipeline drivers
+# (carafe_prerun.sh, run_carafe_chunked.sh, build_carafe_mask_chunked.sh,
+# params_to_fi_mask.sh, split_variant_map_for_chunks.awk) were ported to stdlib-only
+# Python for native-Windows compatibility -- it pins the subtle ported semantics
+# (chunk splitting, variant-map row_index rewrite, NL auto-detection, params rewrite).
+#
 # Runs once per run_tests.py invocation, not per --comet binary: nothing here touches a
 # comet binary, so running it N times for N binaries would be pure noise. Implemented via
 # a module-level latch rather than a special-case in main()'s loop.
@@ -2949,7 +2955,7 @@ _T38_RAN = False
 
 @register("t38_carafe_python_suites")
 def test_t38_carafe_python_suites(comet_exe):
-    """T38: run the four standalone Carafe pure-Python test suites in-process."""
+    """T38: run the five standalone Carafe pure-Python test suites in-process."""
     global _T38_RAN
     failures = []
     if _T38_RAN:
@@ -2958,7 +2964,8 @@ def test_t38_carafe_python_suites(comet_exe):
 
     import importlib
     for mod_name in ("test_carafe_ms2_to_fi_mask", "test_carafe_alignment",
-                      "test_idx_to_carafe_dedup_key", "test_carafe_cps"):
+                      "test_idx_to_carafe_dedup_key", "test_carafe_cps",
+                      "test_carafe_pipeline_drivers"):
         try:
             mod = importlib.import_module(mod_name)
             ok = mod.run_test()
