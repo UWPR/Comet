@@ -984,6 +984,29 @@ if (!(iWhichPeptide%1000))
 //   - g_vvvPepGenShort / g_vvvPepGenLong: cleared (memory freed)
 bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<size_t,size_t>>& slices)
 {
+   // docs/20260827_PI_memory.md Phase 4: ProteinsListCSR stores protein references as
+   // uint32 -- at build time these are FASTA byte offsets, so the FASTA must fit in 32
+   // bits. Check once up front (making every later narrowing safe by construction) rather
+   // than per-offset in the digestion hot path; a >= 4 GB FASTA fails loudly here.
+   {
+      FILE* fpCheck = fopen(g_staticParams.databaseInfo.szDatabase, "rb");
+      if (fpCheck != NULL)
+      {
+         comet_fseek(fpCheck, 0, SEEK_END);
+         comet_fileoffset_t lFastaSize = comet_ftell(fpCheck);
+         fclose(fpCheck);
+         if ((uint64_t)lFastaSize > 0xFFFFFFFFull)
+         {
+            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+               + "\" is larger than 4 GB, which indexed searches cannot digest (protein\n"
+               + " references are stored as 32-bit FASTA offsets during an index build).\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+   }
+
    int iNumThreads = g_staticParams.options.iNumThreads;
    const int iMinLen = g_staticParams.options.peptideLengthRange.iStart;
    const int iMaxLen = g_staticParams.options.peptideLengthRange.iEnd;
@@ -1030,7 +1053,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    struct LenResult
    {
       vector<DBIndex>            dbIdx;
-      vector<comet_fileoffset_t> prots_flat;  // all protein file offsets concatenated
+      vector<unsigned int>       prots_flat;  // all protein FASTA offsets concatenated (uint32-safe: FASTA size checked above)
       vector<uint32_t>           prots_cnt;   // number of proteins per peptide row
    };
 
@@ -1082,7 +1105,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
             return true;
          };
 
-         vector<comet_fileoffset_t> prot;
+         vector<unsigned int> prot;
          // OR'd (not just the representative's) across every occurrence in the dedup run:
          // with protein_modslist_file active, a peptide shared between a listed and an
          // unlisted protein must not silently lose the listed protein's allowed-mod bits just
@@ -1121,7 +1144,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
             }
             if (i < buf.size())
             {
-               prot.push_back(buf[i].lProteinFileOffset);
+               prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
             }
          }
@@ -1162,7 +1185,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
-         vector<comet_fileoffset_t> prot;
+         vector<unsigned int> prot;
          // Same fix as the long-length path above: OR the mask across the whole dedup run
          // instead of taking only the representative occurrence's mask.
          unsigned short siVarModFilterUnion = 0;
@@ -1200,7 +1223,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
             }
             if (i < buf.size())
             {
-               prot.push_back(buf[i].lProteinFileOffset);
+               prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
             }
          }
@@ -1224,7 +1247,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          for (auto& dbi : r.dbIdx)
             dbi.lIndexProteinFilePosition += (comet_fileoffset_t)iProtBase;
          iProtBase += r.prots_cnt.size();
-         g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt);
+         if (!g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt))
+         {
+            string strErrorMsg = " Error - protein list exceeds the uint32 CSR limit"
+               " (>4.29e9 (peptide, protein) pairs); reduce the database/digest size.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
          if (!r.dbIdx.empty())
          {
             const size_t iStart = g_pvDBIndex.size();
@@ -1234,10 +1264,12 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
             slices.push_back({iStart, iCount});
          }
       }
+
+      return true;
    };
 
-   mergeResults(longResults);
-   mergeResults(shortResults);
+   if (!mergeResults(longResults) || !mergeResults(shortResults))
+      return false;
 
    if (g_pvDBIndex.empty())
       return true;   // caller prints the "no peptides" error

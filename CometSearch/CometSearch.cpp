@@ -2445,12 +2445,12 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       if (lProtIdx >= 0 && lProtIdx < (comet_fileoffset_t)g_pvProteinsList.size()
          && !g_pvProteinsList[lProtIdx].empty())
       {
-         // Check the first protein in the list for the decoy prefix
-         comet_fileoffset_t lProtFilePos = g_pvProteinsList[lProtIdx][0];
-         auto it = g_pvProteinNameCache.find(lProtFilePos);
-         if (it != g_pvProteinNameCache.end())
+         // Check the first protein in the list for the decoy prefix (rows hold
+         // name-section ordinals since docs/20260827_PI_memory.md Phase 4)
+         unsigned int uiWhichProtein = g_pvProteinsList[lProtIdx][0];
+         if (uiWhichProtein < g_pvProteinNameCache.size())
          {
-            if (strncmp(it->second.c_str(), g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
+            if (strncmp(g_pvProteinNameCache[uiWhichProtein].c_str(), g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
                bDecoyPep = true;
          }
       }

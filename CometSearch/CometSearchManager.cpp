@@ -68,7 +68,7 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 
-unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
+vector<string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
@@ -2982,11 +2982,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
             for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
             {
-               auto cacheIt = g_pvProteinNameCache.find(*itProt);
-               if (cacheIt == g_pvProteinNameCache.end())
+               if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                   continue;
 
-               const string& sName = cacheIt->second;
+               const string& sName = g_pvProteinNameCache[*itProt];
                if (!strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
                   vProteinDecoys.push_back(sName);
                else

@@ -113,6 +113,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       return false;
    }
 
+   // The protein-name section starts immediately after the text header's terminating blank
+   // line, i.e. exactly where ParsePeptideIndexHeader() left the stream: one WIDTH_REFERENCE-
+   // sized block per protein, back-to-back. Phase 4 (docs/20260827_PI_memory.md) stores
+   // name-section ORDINALS, not file offsets, in g_pvProteinsList, so the load below needs
+   // this base (and the section's block count) to translate and validate the on-disk
+   // offsets. The on-disk format itself is unchanged.
+   comet_fileoffset_t clNamesBase = comet_ftell(fp);
+
    // --- Read the two-pointer footer at true EOF ---
    comet_fseek(fp, 0, SEEK_END);
    comet_fileoffset_t clFileSize = comet_ftell(fp);
@@ -275,14 +283,34 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       return false;
    }
 
-   // Read directly into flat CSR staging buffers instead of one throwaway
-   // vector<comet_fileoffset_t> per row -- avoids tNumProteinEntries individual
-   // heap allocations (each immediately freed by ProteinsListCSR::push_back's
-   // swap-to-release), the same per-row allocation cost append_flat() was
-   // built to eliminate on the build side (see its comment in core/Types.h).
+   // The name section spans [clNamesBase, clPeptidesFilePos) in fixed WIDTH_REFERENCE
+   // blocks; its block count both sizes the sequential name-cache read below and bounds
+   // the ordinal validation here.
+   if (clPeptidesFilePos < clNamesBase
+      || ((clPeptidesFilePos - clNamesBase) % (comet_fileoffset_t)WIDTH_REFERENCE) != 0)
    {
-      vector<comet_fileoffset_t> vFlatProteinOffsets;
+      fclose(fp);
+      string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+         + "\" has a malformed protein-name section in its .idx file; the file is likely "
+         + "truncated or corrupt. Rebuild it with -i or -j.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+   const uint64_t tNumProteinsInFile = (uint64_t)(clPeptidesFilePos - clNamesBase) / WIDTH_REFERENCE;
+
+   // Read directly into flat CSR staging buffers instead of one throwaway vector per row --
+   // avoids tNumProteinEntries individual heap allocations, the same per-row allocation
+   // cost append_flat() was built to eliminate on the build side (see its comment in
+   // core/Types.h). The on-disk values are 8-byte name-section file offsets (format
+   // unchanged); each is translated to its name-section ORDINAL here -- Phase 4
+   // (docs/20260827_PI_memory.md) halves the resident structure by storing uint32 ordinals,
+   // and the stride/range validation below is a stronger corruption check than the old
+   // min/max bound on raw offsets.
+   {
+      vector<unsigned int> vFlatProteinOrdinals;
       vector<uint32_t> vProteinCounts;
+      vector<comet_fileoffset_t> vRowBuf;
       vProteinCounts.reserve(tNumProteinEntries);
 
       for (size_t i = 0; i < tNumProteinEntries; ++i)
@@ -301,13 +329,27 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             return false;
          }
 
-         size_t tOldSize = vFlatProteinOffsets.size();
-         vFlatProteinOffsets.resize(tOldSize + tNumProteins);
-         if (fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp) != tNumProteins)
+         vRowBuf.resize(tNumProteins);
+         if (fread(vRowBuf.data(), clSizeCometFileOffset, tNumProteins, fp) != tNumProteins)
          {
             fclose(fp);
             logout(" Error - failed to read protein offsets from .idx file at entry " + to_string(i) + "; file may be truncated or corrupt.\n");
             return false;
+         }
+
+         for (size_t j = 0; j < tNumProteins; ++j)
+         {
+            comet_fileoffset_t lOffset = vRowBuf[j];
+            if (lOffset < clNamesBase
+               || ((lOffset - clNamesBase) % (comet_fileoffset_t)WIDTH_REFERENCE) != 0
+               || (uint64_t)(lOffset - clNamesBase) / WIDTH_REFERENCE >= tNumProteinsInFile)
+            {
+               fclose(fp);
+               logout(" Error - out-of-range protein-name offset in .idx file at entry " + to_string(i)
+                  + "; the file is likely truncated or corrupt. Rebuild it with -i or -j.\n");
+               return false;
+            }
+            vFlatProteinOrdinals.push_back((unsigned int)((lOffset - clNamesBase) / WIDTH_REFERENCE));
          }
 
          vProteinCounts.push_back((uint32_t)tNumProteins);
@@ -315,99 +357,55 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 
       g_pvProteinsList.clear();
       g_pvProteinsList.reserve(tNumProteinEntries);
-      g_pvProteinsList.append_flat(vFlatProteinOffsets, vProteinCounts);
+      if (!g_pvProteinsList.append_flat(vFlatProteinOrdinals, vProteinCounts))
+      {
+         fclose(fp);
+         logout(" Error - protein list exceeds the uint32 CSR limit (see ProteinsListCSR::append_flat); file may be corrupt.\n");
+         return false;
+      }
    }
 
-   // Build in-memory protein name cache before closing the file.
-   //
-   // P5: every protein's szProt block was written back-to-back in one contiguous section
-   // by WritePeptideIndex() (see the file-layout comment at the top of this file), so a
-   // per-protein fseek+fread here is random-access I/O against what's actually a fully
-   // sequential region -- each seek also discards this stdio stream's buffered state.
-   // Collect the distinct offsets actually referenced, then do ONE sequential read
-   // spanning [min, max + WIDTH_REFERENCE) and slice each name out of that in-memory
-   // buffer instead of seeking to it individually.
+   // Build the in-memory protein name cache before closing the file: one sequential read
+   // of the whole name section (tNumProteinsInFile x WIDTH_REFERENCE, already validated
+   // above), one string per protein, indexed by ordinal -- Phase 4
+   // (docs/20260827_PI_memory.md) replaced the former offset-keyed unordered_map (built
+   // from the distinct referenced offsets via a min/max-bounded bulk read) with this
+   // complete, ordinal-indexed vector; every ordinal stored in g_pvProteinsList is in
+   // range by the validation above, so lookups are a bounds check + index, and the old
+   // per-protein file-read fallback is unnecessary.
    {
       g_pvProteinNameCache.clear();
+      g_pvProteinNameCache.reserve((size_t)tNumProteinsInFile);
 
-      vector<comet_fileoffset_t> vDistinctOffsets;
-      for (const auto& vProts : g_pvProteinsList)
+      comet_fseek(fp, clNamesBase, SEEK_SET);
+
+      // read in chunks so a pathologically large name section doesn't demand one giant buffer
+      const size_t tChunkBlocks = 65536;   // 16 MB per chunk at WIDTH_REFERENCE == 256
+      vector<char> vNameBuf(tChunkBlocks * WIDTH_REFERENCE);
+      uint64_t tRemaining = tNumProteinsInFile;
+
+      while (tRemaining > 0)
       {
-         for (const comet_fileoffset_t lOffset : vProts)
-            vDistinctOffsets.push_back(lOffset);
-      }
-
-      sort(vDistinctOffsets.begin(), vDistinctOffsets.end());
-      vDistinctOffsets.erase(unique(vDistinctOffsets.begin(), vDistinctOffsets.end()), vDistinctOffsets.end());
-
-      if (!vDistinctOffsets.empty())
-      {
-         comet_fileoffset_t lMin = vDistinctOffsets.front();
-         comet_fileoffset_t lMax = vDistinctOffsets.back();
-
-         // These offsets come straight from the .idx protein-list section, not from a value
-         // this code computed itself, so a corrupt file can hand them arbitrary garbage --
-         // unlike clPeptidesFilePos/clProteinsFilePos above, nothing has bounded them yet.
-         // Every protein-name block is WIDTH_REFERENCE bytes and the whole name section lies
-         // before clPeptidesFilePos (see file-layout comment at the top of this file), so a
-         // legitimate offset must satisfy 0 <= lMin <= lMax <= clPeptidesFilePos -
-         // WIDTH_REFERENCE. Reject otherwise before lMax - lMin feeds tSpan's allocation size,
-         // the fseek below, and pProtBuf's pointer arithmetic.
-         if (lMin < 0 || clPeptidesFilePos < (comet_fileoffset_t)WIDTH_REFERENCE
-            || lMax > clPeptidesFilePos - (comet_fileoffset_t)WIDTH_REFERENCE)
+         size_t tBlocks = (tRemaining < tChunkBlocks) ? (size_t)tRemaining : tChunkBlocks;
+         if (fread(vNameBuf.data(), WIDTH_REFERENCE, tBlocks, fp) != tBlocks)
          {
-            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
-               + "\" has an out-of-range protein-name offset in its .idx file; the file is "
-               + "likely truncated or corrupt. Rebuild it with -i or -j.\n";
+            // Do NOT continue with a partial cache: decoy classification looks peptides'
+            // proteins up in g_pvProteinNameCache and treats a miss as "target", so a
+            // short cache silently misclassifies decoys and destroys the target/decoy
+            // split. Fail the index load loudly instead.
+            string strErrorMsg = " Error - cannot read the protein-name section from the"
+               " .idx file; the file is likely truncated or corrupt. Re-create the .idx file.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
-
-         size_t tSpan = (size_t)(lMax - lMin) + WIDTH_REFERENCE;
-
-         vector<char> vNameBuf(tSpan);
-         comet_fseek(fp, lMin, SEEK_SET);
-         if (fread(vNameBuf.data(), sizeof(char), tSpan, fp) == tSpan)
+         for (size_t b = 0; b < tBlocks; ++b)
          {
-            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
-            {
-               const char* pProtBuf = vNameBuf.data() + (size_t)(lOffset - lMin);
-               g_pvProteinNameCache.emplace(lOffset, string(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1)));
-            }
+            const char* pProtBuf = vNameBuf.data() + b * WIDTH_REFERENCE;
+            g_pvProteinNameCache.emplace_back(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1));
          }
-         else
-         {
-            // The one-shot bulk read failed (truncated .idx or a transient I/O error).
-            // Do NOT continue with an empty cache: decoy classification looks peptides'
-            // proteins up in g_pvProteinNameCache and treats a miss as "target", so an
-            // empty cache silently classifies every PSM as target and destroys the
-            // target/decoy split. Retry per-protein; if names still can't be read,
-            // fail the index load loudly instead.
-            logout(" Warning - bulk read of protein-name section from .idx file failed;"
-               " retrying per-protein.\n");
-
-            char szProtBuf[WIDTH_REFERENCE];
-            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
-            {
-               comet_fseek(fp, lOffset, SEEK_SET);
-               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == WIDTH_REFERENCE)
-               {
-                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
-               }
-               else
-               {
-                  string strErrorMsg = " Error - cannot read protein name at offset "
-                     + to_string((long long)lOffset) + " from .idx file; the file is"
-                     " likely truncated or corrupt. Re-create the .idx file.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  fclose(fp);
-                  return false;
-               }
-            }
-         }
+         tRemaining -= tBlocks;
       }
    }
 
@@ -936,8 +934,8 @@ void CometPeptideIndex::LogIndexMemoryReport()
       + MOD_SEQS_OFFSET.capacity() * sizeof(unsigned int);
 
    size_t tNameBytes = 0;
-   for (const auto& kv : g_pvProteinNameCache)
-      tNameBytes += kv.second.size();
+   for (const auto& sName : g_pvProteinNameCache)
+      tNameBytes += sName.size();
 
    std::ostringstream oss;
    oss << " Index memory report (COMET_MEMREPORT), load-time state:\n";
@@ -955,8 +953,8 @@ void CometPeptideIndex::LogIndexMemoryReport()
    oss << "   g_pvProteinsList:     " << g_pvProteinsList.size() << " rows, "
        << g_pvProteinsList.total_offsets() << " offsets, "
        << mb(g_pvProteinsList.heap_bytes()) << "\n";
-   oss << "   g_pvProteinNameCache: " << g_pvProteinNameCache.size() << " names, "
-       << mb(tNameBytes) << " of string payload (map-node overhead excluded)\n";
+   oss << "   g_pvProteinNameCache: " << g_pvProteinNameCache.size() << " names (by ordinal), "
+       << mb(tNameBytes) << " of string payload\n";
    logout(oss.str());
 }
 

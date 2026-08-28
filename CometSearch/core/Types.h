@@ -801,23 +801,32 @@ struct IndexProteinStruct  // for indexed database
 // ~6-minute free-time tail when building an MHC .idx file.
 // External interface mirrors vector<vector<comet_fileoffset_t>> so
 // existing call sites need no changes.
+// docs/20260827_PI_memory.md Phase 4: element and offset types are both uint32 (halving
+// this structure vs. the former comet_fileoffset_t/uint64_t pair -- ~1.5 GB at MHC scale).
+// The stored VALUE is a "protein reference" whose meaning depends on lifecycle stage:
+// during an index BUILD it is the protein's FASTA byte offset (GeneratePlainPeptideIndex()
+// verifies the FASTA is < 4 GB up front, so uint32 always fits, and WritePeptideIndex()
+// translates to on-disk name-block offsets through g_pvProteinNames as before -- the .idx
+// format is unchanged); after ReadPeptideIndex() LOADS an index it is the protein's
+// ORDINAL in the .idx name section (0-based), the index into the g_pvProteinNameCache
+// name vector.
 class ProteinsListCSR
 {
 public:
-   // Read-only proxy for a single row (one peptide's protein offsets).
+   // Read-only proxy for a single row (one peptide's protein references).
    struct Row
    {
-      const comet_fileoffset_t* ptr;
-      size_t                    n;
+      const unsigned int* ptr;
+      size_t              n;
 
       size_t size()  const { return n; }
       bool   empty() const { return n == 0; }
 
-      const comet_fileoffset_t& operator[](size_t j) const { return ptr[j]; }
-      comet_fileoffset_t        at(size_t j)          const { return ptr[j]; }
+      const unsigned int& operator[](size_t j) const { return ptr[j]; }
+      unsigned int        at(size_t j)          const { return ptr[j]; }
 
-      const comet_fileoffset_t* begin() const { return ptr; }
-      const comet_fileoffset_t* end()   const { return ptr + n; }
+      const unsigned int* begin() const { return ptr; }
+      const unsigned int* end()   const { return ptr + n; }
    };
 
    // Size / state
@@ -827,8 +836,8 @@ public:
    // Modifiers
    void clear()
    {
-      vector<comet_fileoffset_t>().swap(m_flat);
-      vector<uint64_t>().swap(m_off);
+      vector<unsigned int>().swap(m_flat);
+      vector<unsigned int>().swap(m_off);
    }
 
    void reserve(size_t n) { m_off.reserve(n + 1); }
@@ -839,42 +848,32 @@ public:
    size_t total_offsets() const { return m_flat.size(); }
    size_t heap_bytes() const
    {
-      return m_flat.capacity() * sizeof(comet_fileoffset_t) + m_off.capacity() * sizeof(uint64_t);
-   }
-
-   void push_back(const vector<comet_fileoffset_t>& v)
-   {
-      if (m_off.empty()) m_off.push_back(0);
-      m_flat.insert(m_flat.end(), v.begin(), v.end());
-      m_off.push_back(m_flat.size());
-   }
-
-   void push_back(vector<comet_fileoffset_t>&& v)
-   {
-      if (m_off.empty()) m_off.push_back(0);
-      m_flat.insert(m_flat.end(), v.begin(), v.end());
-      m_off.push_back(m_flat.size());
-      vector<comet_fileoffset_t>().swap(v);  // release source buffer immediately
+      return m_flat.capacity() * sizeof(unsigned int) + m_off.capacity() * sizeof(unsigned int);
    }
 
    // Batch-append from pre-built flat storage.
-   // flat: all protein file offsets for this block, concatenated in row order
-   // cnt:  number of offsets per row (max value bounded by iMaxDuplicateProteins)
+   // flat: all protein references for this block, concatenated in row order
+   // cnt:  number of references per row (max value bounded by iMaxDuplicateProteins)
    // Bulk-copies both arrays into m_flat/m_off with two insert() calls, then
-   // releases the source buffers.  Replaces N individual push_back(vector&&)
-   // calls, each of which required one heap free() -- this reduces N free()s
-   // to 2 (one for flat, one for cnt) regardless of how many rows are in the block.
-   void append_flat(vector<comet_fileoffset_t>& flat, vector<uint32_t>& cnt)
+   // releases the source buffers -- this keeps heap-free() traffic constant
+   // regardless of how many rows are in the block. Returns false -- storing
+   // nothing -- if the total entry count would exceed what the uint32 CSR
+   // offsets can address (>4.29e9 (peptide, protein) pairs; callers fail the
+   // build/load loudly).
+   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt)
    {
       if (flat.empty())
-         return;
+         return true;
+      if ((uint64_t)m_flat.size() + (uint64_t)flat.size() > 0xFFFFFFFFull)
+         return false;
       if (m_off.empty())
          m_off.push_back(0);
       m_flat.insert(m_flat.end(), flat.begin(), flat.end());
       for (uint32_t n : cnt)
          m_off.push_back(m_off.back() + n);
-      vector<comet_fileoffset_t>().swap(flat);
+      vector<unsigned int>().swap(flat);
       vector<uint32_t>().swap(cnt);
+      return true;
    }
 
    // Element access
@@ -901,12 +900,12 @@ public:
    Iterator end()   const { return {this, size()}; }
 
 private:
-   vector<comet_fileoffset_t> m_flat;   // all protein offsets concatenated
-   vector<uint64_t>           m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
+   vector<unsigned int> m_flat;   // all protein references concatenated (see class comment)
+   vector<unsigned int> m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
 };
 
 extern ProteinsListCSR g_pvProteinsList;
-extern std::unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // file offset -> protein name string; populated at index load
+extern vector<string> g_pvProteinNameCache;  // protein name by .idx name-section ORDINAL; every protein, read sequentially at index load (docs/20260827_PI_memory.md Phase 4; formerly an unordered_map keyed by file offset)
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
@@ -1265,7 +1264,7 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <= 12
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern std::map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
-extern std::unordered_map<comet_fileoffset_t, std::string> g_pvProteinNameCache;  // populated at index load; protein name by file offset for search-time lookups
+extern vector<string> g_pvProteinNameCache;  // populated at index load; protein name by name-section ordinal for search-time lookups (Phase 4)
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

@@ -291,7 +291,7 @@ class ProteinsListCSR  // core/Types.h
 extern ProteinsListCSR g_pvProteinsList;
 ```
 
-The external interface mirrors `vector<vector<comet_fileoffset_t>>`: `size()`, `empty()`, `clear()`, `reserve()`, `push_back(vector&&)` / `push_back(const vector&)`, `append_flat()`, `operator[](i)`, `at(i)`, range-for. `operator[](i)` returns a lightweight `Row` proxy (`ptr` + `n`) with `size()`, `operator[]`, `begin()`/`end()`. Only two internal heap allocations regardless of how many rows are stored (`m_flat`: all protein file offsets concatenated; `m_off`: `[N+1]` uint64 CSR offsets).
+The external interface mirrors a vector-of-vectors: `size()`, `empty()`, `clear()`, `reserve()`, `append_flat()` (bool -- fails loudly past the uint32 CSR limit), `operator[](i)`, `at(i)`, range-for. `operator[](i)` returns a lightweight `Row` proxy (`ptr` + `n`) with `size()`, `operator[]`, `begin()`/`end()`. Only two internal heap allocations regardless of how many rows are stored, and since docs/20260827_PI_memory.md Phase 4 both are `uint32` (`m_flat`: all protein references concatenated -- FASTA byte offsets during a build, name-section ordinals after an index load; `m_off`: `[N+1]` CSR offsets), halving the structure vs. the former `comet_fileoffset_t`/`uint64` pair.
 
 ---
 
