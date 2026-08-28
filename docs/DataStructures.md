@@ -1,7 +1,7 @@
 # Core Data Structures
 
 Key types used throughout `CometSearch/`. Struct definitions were reorganized in Phase 3-4 of the architecture migration:
-- `core/Types.h` -- per-spectrum, index, and runtime structs (`Results`, `Query`, `QueryMS1`, `DBIndex`, `PlainPeptideIndexStruct`, `FragmentPeptidesStruct`, `ProteinsListCSR`, etc.)
+- `core/Types.h` -- per-spectrum, index, and runtime structs (`Results`, `Query`, `QueryMS1`, `DBIndex`, `RawPeptideTable`, `FragmentPeptidesStruct`, `PiVariantArray`, `ProteinsListCSR`, etc.)
 - `core/Params.h` -- `StaticParams` and all its nested sub-structs
 - `core/Constants.h` -- compile-time constants (`MAX_PEPTIDE_LEN`, `VMODS`, `HISTO_SIZE`, etc.)
 - `CometData.h` -- public API types that cross the library boundary into `CometWrapper` and `RealtimeSearch`
@@ -183,7 +183,7 @@ Historically one entry in `g_pvDBIndex`, used both during index generation and a
 resident search-time array; as of `docs/20260730_PI_reduction.md`, `g_pvDBIndex` is
 build-time-only (Phase A digestion output inside `CometPeptideIndex::WritePeptideIndex()`,
 copied into `g_vRawPeptides` and cleared before the function returns -- see
-`PlainPeptideIndexStruct`/`FragmentPeptidesStruct` below for what replaced it at search
+`RawPeptideTable`/`FragmentPeptidesStruct` below for what replaced it at search
 time). `DBIndex` the *type* is still used, but only as a stack-local, per-candidate
 reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on demand from
 a `g_dbIndexVariants` entry for each mass-window candidate PI_DB search scores, then
@@ -211,11 +211,16 @@ struct DBIndex  // core/Types.h
 
 ---
 
-## PlainPeptideIndexStruct
+## RawPeptideTable / RawPeptideView (formerly PlainPeptideIndexStruct)
 
-Compact fixed-size tuple stored in the unified `.idx` file (shared by PI_DB and FI_DB,
+Compact tuple stored in the unified `.idx` file (shared by PI_DB and FI_DB,
 `docs/20260730_PI_reduction.md` Phase 0) and loaded into `g_vRawPeptides` at runtime by
-both search modes. Same core fields as `DBIndex` but without the `VarModSites` mod-site
+both search modes -- since docs/20260827_PI_memory.md Phase 3, `g_vRawPeptides` is a
+`RawPeptideTable`: NUL-terminated sequences in one flat char pool plus exact-sized parallel
+arrays for the fixed fields (~24B/entry + sequence bytes, vs. the former 72B/entry
+`PlainPeptideIndexStruct` AoS), read through the `RawPeptideView` accessor struct whose
+field names match the old struct (plus a precomputed `iLen`). Same core fields as `DBIndex`
+but without the `VarModSites` mod-site
 field (only unmodified peptides are stored here; modifications are layered on in
 `g_vFragmentPeptides` for FI_DB, or the SoA-compacted `g_dbIndexVariants` for
 PI_DB). As of Phase 0.5, `g_vRawPeptides` is the *only* peptide-level data persisted in the
@@ -229,7 +234,8 @@ before the tables above are built -- `comet.params`/RTS `SetParam()` mod values 
 overwritten, not consulted, for an indexed search.
 
 ```cpp
-struct PlainPeptideIndexStruct  // core/Types.h
+class RawPeptideTable;    // core/Types.h -- pooled storage
+struct RawPeptideView;    // core/Types.h -- per-entry accessor, fields below
 ```
 
 | Field | Purpose |

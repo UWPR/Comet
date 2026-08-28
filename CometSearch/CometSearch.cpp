@@ -2161,7 +2161,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       if (uiWhichPeptide >= g_vRawPeptides.size())
          continue;
 
-      int iRawLen = (int)strlen(g_vRawPeptides.at(uiWhichPeptide).szPeptide);
+      int iRawLen = g_vRawPeptides.seq_len(uiWhichPeptide);
       if (iRawLen < g_staticParams.options.peptideLengthRange.iStart
          || iRawLen > g_staticParams.options.peptideLengthRange.iEnd)
          continue;

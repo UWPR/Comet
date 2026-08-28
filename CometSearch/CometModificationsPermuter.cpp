@@ -282,7 +282,7 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 // with the unique modifiable sequences, replacing the former vector<string> MOD_SEQS return
 // value (one std::string header + possible heap allocation per unique sequence). The dedup
 // map itself stays a transient unordered_map, freed when this function returns.
-void ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
+void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPeptides,
                                                    int* PEPTIDE_MOD_SEQ_IDXS,
                                                    vector<string>& ALL_MODS)
 {
@@ -298,7 +298,7 @@ void ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndexStruc
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
       //FIX: put restriction here for protein mod filter
-      string modifiableAas = getModifiableAas((*it).szPeptide, ALL_MODS);
+      string modifiableAas = getModifiableAas(string((*it).szPeptide, (size_t)(*it).iLen), ALL_MODS);
 
       if (!modifiableAas.empty())
       {

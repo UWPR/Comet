@@ -182,7 +182,9 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    }
 
    g_vRawPeptides.clear();
-   g_vRawPeptides.reserve((size_t)tNumRaw);
+   // tSectionSize (the on-disk table: sequence bytes + per-entry fixed fields) is a close
+   // upper bound for the sequence pool; shrink_to_fit() below trims the overshoot.
+   g_vRawPeptides.reserve((size_t)tNumRaw, tSectionSize);
    {
       vector<char> vBuf(tSectionSize);
       if (fread(vBuf.data(), 1, tSectionSize, fp) != tSectionSize)
@@ -195,7 +197,6 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       const char* pEnd = vBuf.data() + tSectionSize;
       for (uint64_t i = 0; i < tNumRaw; ++i)
       {
-         PlainPeptideIndexStruct sRaw;
          int iLen;
 
          if (p + sizeof(int) > pEnd)
@@ -222,14 +223,26 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
-         memcpy(sRaw.szPeptide, p, (size_t)iLen); sRaw.szPeptide[iLen] = '\0'; p += iLen;
-         sRaw.cPrevAA = *p++;
-         sRaw.cNextAA = *p++;
-         memcpy(&sRaw.dPepMass, p, sizeof(double)); p += sizeof(double);
-         memcpy(&sRaw.siVarModProteinFilter, p, sizeof(unsigned short)); p += sizeof(unsigned short);
-         memcpy(&sRaw.lIndexProteinFilePosition, p, clSizeCometFileOffset); p += clSizeCometFileOffset;
-         g_vRawPeptides.push_back(sRaw);
+         const char* pSeq = p; p += iLen;
+         char cPrevAA = *p++;
+         char cNextAA = *p++;
+         double dPepMass;
+         unsigned short siVarModProteinFilter;
+         comet_fileoffset_t lIndexProteinFilePosition;
+         memcpy(&dPepMass, p, sizeof(double)); p += sizeof(double);
+         memcpy(&siVarModProteinFilter, p, sizeof(unsigned short)); p += sizeof(unsigned short);
+         memcpy(&lIndexProteinFilePosition, p, clSizeCometFileOffset); p += clSizeCometFileOffset;
+         if (!g_vRawPeptides.push_back(pSeq, iLen, cPrevAA, cNextAA, dPepMass,
+               siVarModProteinFilter, lIndexProteinFilePosition))
+         {
+            // push_back only refuses an out-of-range protein row index (see
+            // RawPeptideTable's class comment) -- possible only for a corrupt file.
+            fclose(fp);
+            logout(" Error - corrupt protein reference in raw peptide entry " + to_string(i) + " in .idx file.\n");
+            return false;
+         }
       }
+      g_vRawPeptides.shrink_to_fit();
    }
 
    // --- Proteins list (ProteinsListCSR) ---
@@ -574,8 +587,8 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
 
    auto tryPush = [&](size_t iWhichPeptide, int modNumIdx, char cNtermMod, char cCtermMod)
    {
-      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
-      const int iLen = (int)strlen(raw.szPeptide);
+      const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
+      const int iLen = raw.iLen;
 
       double dCalcPepMass = raw.dPepMass;
       int cNumSites = 0;
@@ -652,7 +665,7 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
 
    for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
    {
-      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
+      const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
       if (g_staticParams.variableModParameters.bVarTermModSearch)
@@ -806,8 +819,8 @@ bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx,
    if (iWhichPeptide >= g_vRawPeptides.size())
       return false;
 
-   const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
-   const int iLen = (int)strlen(raw.szPeptide);
+   const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
+   const int iLen = raw.iLen;
 
    double dCalcPepMass = raw.dPepMass;
    VarModSites pcVarModSites;
@@ -928,8 +941,8 @@ void CometPeptideIndex::LogIndexMemoryReport()
 
    std::ostringstream oss;
    oss << " Index memory report (COMET_MEMREPORT), load-time state:\n";
-   oss << "   g_vRawPeptides:       " << tNumRaw << " entries, "
-       << mb(g_vRawPeptides.capacity() * sizeof(PlainPeptideIndexStruct)) << "\n";
+   oss << "   g_vRawPeptides:       " << tNumRaw << " entries (pooled), "
+       << mb(g_vRawPeptides.heap_bytes()) << "\n";
    oss << "   g_dbIndexVariants:    " << g_dbIndexVariants.size() << " entries (SoA), "
        << mb(g_dbIndexVariants.heap_bytes()) << "\n";
    oss << "   g_vFragmentPeptides:  " << g_vFragmentPeptides.size() << " entries, "
@@ -1239,18 +1252,24 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // written to the .idx file below and read back at search time
    // (CometPeptideIndex::ReadPeptideIndex()).
    g_vRawPeptides.clear();
-   g_vRawPeptides.reserve(g_pvDBIndex.size());
+   g_vRawPeptides.reserve(g_pvDBIndex.size(), 0);
    for (const auto& entry : g_pvDBIndex)
    {
-      PlainPeptideIndexStruct sTmp;
-      strcpy(sTmp.szPeptide, entry.sPeptide);
-      sTmp.lIndexProteinFilePosition = entry.lIndexProteinFilePosition;
-      sTmp.dPepMass = entry.dPepMass;
-      sTmp.siVarModProteinFilter = entry.siVarModProteinFilter;
-      sTmp.cPrevAA = entry.cPrevAA;
-      sTmp.cNextAA = entry.cNextAA;
-      g_vRawPeptides.push_back(sTmp);
+      if (!g_vRawPeptides.push_back(entry.sPeptide, (int)strlen(entry.sPeptide),
+            entry.cPrevAA, entry.cNextAA, entry.dPepMass, entry.siVarModProteinFilter,
+            entry.lIndexProteinFilePosition))
+      {
+         // Unreachable on the live build path (Phase A stores g_pvProteinsList row
+         // indices, bounded by the peptide count) -- fail loudly rather than truncate
+         // if a resurrected legacy path ever handed a >32-bit value here.
+         logerr(" Error - protein reference out of range while building the raw peptide table.\n");
+         CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
+         fclose(fptr);
+         remove(strIndexFile.c_str());
+         return false;
+      }
    }
+   g_vRawPeptides.shrink_to_fit();
 
    // g_pvDBIndex (Phase A's per-unique-raw-peptide DBIndex entries) has now been fully
    // copied into g_vRawPeptides; nothing below needs the DBIndex-format copy any more.
@@ -1382,9 +1401,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fptr);
    uint64_t tNumRaw = (uint64_t)g_vRawPeptides.size();
    fwrite(&tNumRaw, sizeof(uint64_t), 1, fptr);
-   for (const auto& raw : g_vRawPeptides)
+   for (const auto raw : g_vRawPeptides)
    {
-      int iLen = (int)strlen(raw.szPeptide);
+      int iLen = raw.iLen;
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite(raw.szPeptide, sizeof(char), iLen, fptr);
       fwrite(&raw.cPrevAA, sizeof(char), 1, fptr);

@@ -138,7 +138,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 }
 
 
-void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& g_vRawPeptides)
+void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPeptides)
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
@@ -562,7 +562,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
 }
 
 
-void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPeptides,
+void CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
                                       size_t iWhichPeptide,
                                       size_t iWhichFragmentPeptide,
                                       int modNumIdx,

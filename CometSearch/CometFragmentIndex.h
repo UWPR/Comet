@@ -37,7 +37,7 @@ public:
    // Public for reuse by CometPeptideIndex (PI_DB build, see
    // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS_POOL/MOD_NUMBERS_POOL/
    // MOD_SEQ_MOD_NUM_START/CNT/POOL_START/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
-   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
+   static void PermuteIndexPeptideMods(const RawPeptideTable& vRawPeptides);
 
 private:
 
@@ -68,7 +68,7 @@ private:
    // pointer is non-null -- see the definition -- so there is no separate bCountOnly flag:
    // pLocalFragPeptides non-null selects the count pass; null selects a fill sub-pass,
    // where pFillWriteCursor non-null vs. null further selects fill-write vs. fill-count.
-   static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
+   static void AddFragments(const RawPeptideTable& vRawPeptides,
                             size_t iWhichPeptide,
                             size_t iWhichFragmentPeptide,
                             int modNumIdx,
