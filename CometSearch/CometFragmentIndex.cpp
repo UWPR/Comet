@@ -260,7 +260,13 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    // Concatenate in ascending partition order (== ascending raw-peptide-index order), the
    // exact traversal order the old single-threaded AddFragmentsThreadProc() produced, so the
-   // subsequent mass sort below sees byte-identical input to before.
+   // subsequent mass sort below sees byte-identical input to before. Since the FI_DB Phase 2
+   // port (docs/20260827_PI_memory.md Section 7.1), this concatenated 24B/entry AoS is a
+   // page-granular STAGING buffer, not g_fragmentPeptides itself: it feeds the mass sort and
+   // both posting-list fill sub-passes below (which need the exact double masses), then gets
+   // transcoded into the 13B/entry SoA and released, page by page, as the transcode walks.
+   size_t tNumFragPeptides = 0;
+   FragmentPeptidesStruct* pStaging = NULL;
    {
       size_t iTotal = 0;
       for (auto& v : vLocalFragPeptides)
@@ -272,12 +278,28 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          exit(1);
       }
 
-      g_vFragmentPeptides.reserve(iTotal);
-      for (auto& v : vLocalFragPeptides)
+      tNumFragPeptides = iTotal;
+      if (tNumFragPeptides > 0)
       {
-         g_vFragmentPeptides.insert(g_vFragmentPeptides.end(),
-            make_move_iterator(v.begin()), make_move_iterator(v.end()));
-         vector<FragmentPeptidesStruct>().swap(v);
+         pStaging = (FragmentPeptidesStruct*)CometPeptideIndex::AllocStagingPages(
+            tNumFragPeptides * sizeof(FragmentPeptidesStruct));
+         if (pStaging == NULL)
+         {
+            string strErrorMsg = " Error - cannot allocate the fragment-index variant staging buffer.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+         size_t tCursor = 0;
+         for (auto& v : vLocalFragPeptides)
+         {
+            if (!v.empty())
+            {
+               memcpy(pStaging + tCursor, v.data(), v.size() * sizeof(FragmentPeptidesStruct));
+               tCursor += v.size();
+            }
+            vector<FragmentPeptidesStruct>().swap(v);
+         }
       }
       vector<vector<FragmentPeptidesStruct>>().swap(vLocalFragPeptides);
    }
@@ -300,10 +322,13 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
-   // now sort g_vFragmentPeptides by mass; this was filled in the above count pass
+   // now sort the staging array by mass; this was filled in the above count pass. Same
+   // element type, comparator, and input order as the pre-SoA vector sort (raw pointers
+   // resolve to the same std::sort instantiation), so the sorted order -- equal-mass ties
+   // included, which determine the posting lists' index values -- is byte-identical.
    tStartTime = chrono::steady_clock::now();
    cout << "   - sort peptides by mass ... "; fflush(stdout);
-   sort(g_vFragmentPeptides.begin(), g_vFragmentPeptides.end(), [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
+   sort(pStaging, pStaging + tNumFragPeptides, [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
       {
          return a.dPepMass < b.dPepMass;
       });
@@ -322,7 +347,7 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    tStartTime = chrono::steady_clock::now();
    cout <<  "   - populate index ... "; fflush(stdout);
 
-   const size_t iNumFragPeptides = g_vFragmentPeptides.size();
+   const size_t iNumFragPeptides = tNumFragPeptides;
    const uint64_t uiNumBins = g_massRange.uiMaxFragmentArrayIndex;
    vector<pair<size_t,size_t>> vFillRanges(iNumThreads);
    for (int t = 0; t < iNumThreads; ++t)
@@ -338,12 +363,12 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    vector<vector<uint64_t>> vPartitionBinCounts(iNumThreads, vector<uint64_t>(uiNumBins, 0));
    for (int t = 0; t < iNumThreads; ++t)
    {
-      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionBinCounts, &vModSlotForAllModsIdx]()
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionBinCounts, &vModSlotForAllModsIdx, pStaging]()
       {
          uint64_t* pLocalCounts = vPartitionBinCounts[t].data();
          for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
          {
-            auto& fp = g_vFragmentPeptides[i];
+            const FragmentPeptidesStruct& fp = pStaging[i];
             AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
                vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
          }
@@ -352,7 +377,10 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    pFragmentIndexPool->wait_on_threads();
 
    if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+   {
+      CometPeptideIndex::FreeStagingPages(pStaging, tNumFragPeptides * sizeof(FragmentPeptidesStruct));
       return false;
+   }
 
    // Prefix sum across partitions (in the same fixed partition order used above), per bin:
    // the write-cursor partition t should start at is the bin's base CSR offset plus every
@@ -378,12 +406,12 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    // no lock/atomic needed on g_iFragmentIndex itself.
    for (int t = 0; t < iNumThreads; ++t)
    {
-      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionWriteCursor, &vModSlotForAllModsIdx]()
+      pFragmentIndexPool->doJob([t, &vFillRanges, &vPartitionWriteCursor, &vModSlotForAllModsIdx, pStaging]()
       {
          uint64_t* pLocalCursor = vPartitionWriteCursor[t].data();
          for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
          {
-            auto& fp = g_vFragmentPeptides[i];
+            const FragmentPeptidesStruct& fp = pStaging[i];
             AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
                vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
          }
@@ -392,17 +420,67 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
    pFragmentIndexPool->wait_on_threads();
 
    if (g_cometStatus.IsError() || g_cometStatus.IsCancel())
+   {
+      CometPeptideIndex::FreeStagingPages(pStaging, tNumFragPeptides * sizeof(FragmentPeptidesStruct));
       return false;
+   }
 
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
+
+   // Transcode the sorted staging into the 13B/entry SoA (docs/20260827_PI_memory.md
+   // Section 7.1 -- the FI_DB port of PI_DB's Phase 2), releasing consumed staging pages
+   // to the OS as the walk advances so the SoA's growth is offset by the staging's
+   // shrinkage (reserve + push_back, NOT resize: see GenerateVariantArray()'s equivalent
+   // comment). The posting-list fill passes above are done with the exact doubles by this
+   // point; searches recompute any candidate's exact mass bit-identically via
+   // ComputeIndexedPepMass().
+   g_fragmentPeptides.clear();
+   if (tNumFragPeptides > 0)
+   {
+      // The 4-byte fixed-point key must be able to represent the largest (last) mass.
+      if (!(pStaging[tNumFragPeptides - 1].dPepMass * VariantArray::MASS_KEY_SCALE < 4294967295.0))
+      {
+         CometPeptideIndex::FreeStagingPages(pStaging, tNumFragPeptides * sizeof(FragmentPeptidesStruct));
+         string strErrorMsg = " Error - peptide mass " + std::to_string(pStaging[tNumFragPeptides - 1].dPepMass)
+            + " exceeds the variant mass-key range; reduce peptide_mass_range.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
+
+      g_fragmentPeptides.vuiMassKey.reserve(tNumFragPeptides);
+      g_fragmentPeptides.vuiWhichPeptide.reserve(tNumFragPeptides);
+      g_fragmentPeptides.vuiModNumIdx.reserve(tNumFragPeptides);
+      g_fragmentPeptides.vucTermMods.reserve(tNumFragPeptides);
+
+      const size_t tChunkEntries = 4 * 1024 * 1024;  // release granularity: ~96 MB of staging
+      size_t tReleasedBytes = 0;
+
+      for (size_t i = 0; i < tNumFragPeptides; ++i)
+      {
+         const FragmentPeptidesStruct& s = pStaging[i];
+         g_fragmentPeptides.vuiMassKey.push_back((unsigned int)llround(s.dPepMass * VariantArray::MASS_KEY_SCALE));
+         g_fragmentPeptides.vuiWhichPeptide.push_back(s.iWhichPeptide);
+         g_fragmentPeptides.vuiModNumIdx.push_back((s.modNumIdx < 0) ? 0xFFFFFFFFu : (unsigned int)s.modNumIdx);
+         g_fragmentPeptides.vucTermMods.push_back((unsigned char)(((s.cNtermMod + 1) << 4) | (s.cCtermMod + 1)));
+
+         if (((i + 1) % tChunkEntries) == 0)
+         {
+            size_t tConsumedBytes = (i + 1) * sizeof(FragmentPeptidesStruct);
+            CometPeptideIndex::DecommitStagingRange(pStaging, tReleasedBytes, tConsumedBytes);
+            tReleasedBytes = tConsumedBytes;
+         }
+      }
+   }
+   CometPeptideIndex::FreeStagingPages(pStaging, tNumFragPeptides * sizeof(FragmentPeptidesStruct));
 
    // Total entry count is the CSR sentinel value.
    unsigned long long ullCount = g_iFragmentIndexOffset[g_massRange.uiMaxFragmentArrayIndex];
 
-   if (g_vFragmentPeptides.size() > 1e6)
-      printf("   - %0.3e total peptides, ", (double)g_vFragmentPeptides.size());
+   if (g_fragmentPeptides.size() > 1e6)
+      printf("   - %0.3e total peptides, ", (double)g_fragmentPeptides.size());
    else
-      printf("   - %zu total peptides, ", g_vFragmentPeptides.size());
+      printf("   - %zu total peptides, ", g_fragmentPeptides.size());
    if (ullCount > 1e6)
       printf("%0.3e FI entries", (double)ullCount);
    else
@@ -562,6 +640,63 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
 }
 
 
+// See the declaration comment in CometFragmentIndex.h: AddFragments()'s residue-by-residue
+// precursor-mass computation, factored out so FI_DB's search path can recompute a stored
+// variant's mass bit-identically (docs/20260827_PI_memory.md Section 7.1).
+double CometFragmentIndex::ComputeIndexedPepMass(size_t iWhichPeptide,
+                                                 int modNumIdx,
+                                                 char cNtermMod,
+                                                 char cCtermMod,
+                                                 const vector<int>& vModSlotForAllModsIdx,
+                                                 double* pdResidueOnlyMass)
+{
+   const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
+   const char* pszPeptide = raw.szPeptide;
+   const int iEndPos = raw.iLen - 1;
+
+   const char* mods = NULL;
+   const char* pModSeq = NULL;
+   int iModSeqLen = 0;
+   if (modNumIdx >= 0)
+   {
+      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+      pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+      mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
+   }
+
+   int j = 0;
+   double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+   double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
+   for (int i = 0; i <= iEndPos; ++i)
+   {
+      dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+      dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
+
+      if (modNumIdx >= 0) // handle the variable mods if present on peptide
+      {
+         // j bound + compacted-slot translation: see AddFragments()'s fragment-ladder loop
+         if (j < iModSeqLen && pszPeptide[i] == pModSeq[j])
+         {
+            int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
+            if (iSlot >= 0)
+               dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
+            j++;
+         }
+      }
+   }
+
+   if (cNtermMod >= 0)  // if -1, unused
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+   if (cCtermMod >= 0)  // if -1, unused
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
+
+   if (pdResidueOnlyMass != NULL)
+      *pdResidueOnlyMass = dResidueOnlyMass;
+
+   return dCalcPepMass;
+}
+
+
 void CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
                                       size_t iWhichPeptide,
                                       size_t iWhichFragmentPeptide,
@@ -641,41 +776,19 @@ void CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
    }
    else
    {
-      // first calculate peptide mass as that's needed in fragment loop
-      j = 0;
-      dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
-      double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
-      for (int i = 0; i <= iEndPos; ++i)
-      {
-         dCalcPepMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
-         dResidueOnlyMass += g_staticParams.massUtility.pdAAMassFragment[(int)pszPeptide[i]];
-
-         if (modNumIdx >= 0) // handle the variable mods if present on peptide
-         {
-            // j < iModSeqLen: pool mod-seq entries are not NUL-terminated, so the former
-            // std::string behavior (operator[] at size() safely returning '\0', which never
-            // matches a residue) is replaced by an explicit bound; identical semantics.
-            if (j < iModSeqLen && pszPeptide[i] == pModSeq[j])
-            {
-               // Bugfix: mods[j] is a compacted index (see the note above this function's
-               // declaration) -- using it directly as a varModList index only coincided with
-               // the real slot when every active variable_modNN among the first
-               // FRAGINDEX_VMODS is contiguous from slot 0; a config with a gap (e.g.
-               // variable_mod01 unused, variable_mod02 set) silently added the WRONG mod's
-               // mass to this peptide's precursor mass.
-               int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
-               if (iSlot >= 0)
-                  dCalcPepMass += g_staticParams.variableModParameters.varModList[iSlot].dVarModMass;
-               j++;
-            }
-         }
-      }
+      // first calculate peptide mass as that's needed in fragment loop -- via
+      // ComputeIndexedPepMass() (the same residue-by-residue summation this branch used to
+      // inline), which FI_DB's search path also calls per candidate to recompute the mass a
+      // variant was stored with, bit-identically (docs/20260827_PI_memory.md Section 7.1)
+      double dResidueOnlyMass;
+      dCalcPepMass = ComputeIndexedPepMass(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
+         vModSlotForAllModsIdx, &dResidueOnlyMass);
 
       // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
-      // recomputed here from pszPeptide (the raw-peptide entry's stored szPeptide char[])
-      // must match the authoritative unmodified mass that was computed directly from the
+      // recomputed above from pszPeptide (the raw-peptide entry's stored sequence) must
+      // match the authoritative unmodified mass that was computed directly from the
       // protein sequence at digestion time and stored independently on the raw-peptide
-      // entry (CometSearch.cpp:3446-3488). A large divergence means szPeptide was
+      // entry (CometSearch.cpp:3446-3488). A large divergence means the sequence was
       // truncated/corrupted after storage -- exactly how the 'U'/B/J/O/X/Z packing-table
       // bug in core/Types.h manifested (see docs/20260709_sprankjitter.md) -- rather than a
       // benign mono/avg mass-type or protein-terminal-mod difference, which is at most a
@@ -698,11 +811,6 @@ void CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
                + ". Possible truncated/corrupted peptide string.\n");
          }
       }
-
-      if (cNtermMod >= 0)  // if -1, unused
-         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
-      if (cCtermMod >= 0)  // if -1, unused
-         dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
    }
 
    // dBion/dYion's own terminal-mod contribution is needed for the fragment ladder built

@@ -83,7 +83,7 @@ The codebase has three layers:
 | Global | Thread-safe? | Notes |
 |--------|-------------|-------|
 | `g_staticParams` | [x] Read-only after init | All search parameters |
-| `g_iFragmentIndex`, `g_vFragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
+| `g_iFragmentIndex`, `g_fragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
 | `g_pvProteinsList` | [x] Read-only after init | Populated on both a fresh build and a search-only read-back of an existing `.idx` |
 | `g_pvProteinNames` | [ ] Build-time only | **Not** search-time readable: populated only while *building* a `.idx`, never repopulated when an existing `.idx` is read back for a search -- reading it during a search-only run silently finds nothing (this exact confusion caused a real bug, decoy peptides misclassified as targets in every PI_DB search of a pre-built index). Use `g_pvProteinNameCache` for search-time protein-name lookups instead. |
 | `g_pvProteinNameCache` | [x] Read-only after index load | File-offset -> protein-name string; populated whenever an index is loaded (build or read-back) -- the search-time-safe counterpart to `g_pvProteinNames` above |

@@ -84,9 +84,9 @@ ProteinsListCSR g_pvProteinsList;
 unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
 uint64_t*     g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
-vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
+VariantArray g_fragmentPeptides;  // FI_DB's per-variant SoA (13B/entry): iWhichPeptide, which mod if any, fixed-point mass key (docs/20260827_PI_memory.md Section 7.1); see core/Types.h
 RawPeptideTable g_vRawPeptides;             // list of unmodified peptides and their protein references, pooled (docs/20260827_PI_memory.md Phase 3); see core/Types.h
-PiVariantArray g_dbIndexVariants;   // PI_DB's compact per-variant SoA (13B/entry), regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5, docs/20260827_PI_memory.md Phase 2); see core/Types.h
+VariantArray g_dbIndexVariants;   // PI_DB's compact per-variant SoA (13B/entry), regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5, docs/20260827_PI_memory.md Phase 2); see core/Types.h
 vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
 vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
 

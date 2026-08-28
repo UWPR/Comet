@@ -222,9 +222,9 @@ arrays for the fixed fields (~24B/entry + sequence bytes, vs. the former 72B/ent
 field names match the old struct (plus a precomputed `iLen`). Same core fields as `DBIndex`
 but without the `VarModSites` mod-site
 field (only unmodified peptides are stored here; modifications are layered on in
-`g_vFragmentPeptides` for FI_DB, or the SoA-compacted `g_dbIndexVariants` for
+`g_fragmentPeptides` for FI_DB, or the SoA-compacted `g_dbIndexVariants` for
 PI_DB). As of Phase 0.5, `g_vRawPeptides` is the *only* peptide-level data persisted in the
-`.idx` file -- `g_vFragmentPeptides`/`g_dbIndexVariants` and the mod-permutation
+`.idx` file -- `g_fragmentPeptides`/`g_dbIndexVariants` and the mod-permutation
 tables (`MOD_NUMBERS_POOL`/`MOD_SEQS_POOL`/etc.) are generated fresh from it, once per search
 session, rather than read back from disk. The variable mods driving that regeneration do
 come from the `.idx` file again, though: `docs/20260811_restore_idx_header_mods.md`
@@ -250,13 +250,13 @@ struct RawPeptideView;    // core/Types.h -- per-entry accessor, fields below
 
 ## FragmentPeptidesStruct
 
-One entry in the fragment index peptide list (`g_vFragmentPeptides`). Represents one (peptide, mod-state) combination. Sorted by mass so that RunSearch can binary-search for mass-matching candidates.
+One entry in the fragment index peptide list. Represents one (peptide, mod-state) combination. Since the FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1) this 24B struct is only the BUILD-TIME STAGING element for both modes; the resident arrays (`g_fragmentPeptides` for FI_DB, `g_dbIndexVariants` for PI_DB) are 13B/entry `VariantArray` SoAs, sorted by mass so searches can binary-search for mass-matching candidates.
 
 **PI_DB's compact per-variant array used to be this same type** (`g_vDBIndexVariants`,
 `docs/20260730_PI_reduction.md`); as of docs/20260827_PI_memory.md Phase 2 it is
 `g_dbIndexVariants` (`PiVariantArray`, core/Types.h) -- a 13B/entry structure-of-arrays
 with a 4-byte fixed-point mass key instead of the 24B AoS, still built by PI_DB's own
-path rather than sharing `g_vFragmentPeptides` (tracked as a follow-up). PI_DB's
+path rather than sharing `g_fragmentPeptides` (tracked as a follow-up). PI_DB's
 `CometSearch::SearchPeptideIndex()` binary-searches the quantized keys (conservatively
 widened), then reconstructs a full `DBIndex` -- exact double mass included -- per
 surviving candidate via `CometPeptideIndex::MaterializeOneEntry()` instead of resolving a

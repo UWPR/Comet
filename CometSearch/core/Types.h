@@ -699,25 +699,25 @@ extern std::deque<RetentionMatch> RetentionMatchHistory;
 
 extern unsigned int* g_iFragmentIndex;            // CSR flat data: all posting lists concatenated [g_iFragmentIndexOffset[bin]..g_iFragmentIndexOffset[bin+1])
 extern uint64_t*     g_iFragmentIndexOffset;      // CSR offsets [uiMaxFragmentArrayIndex+1]: cumulative entry counts, can exceed UINT_MAX for large non-enzymatic searches
-extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern RawPeptideTable g_vRawPeptides;
 
-// PI_DB's compact per-variant array (docs/20260730_PI_reduction.md;
-// docs/20260827_PI_memory.md Phase 2): one entry per (peptide, mod combination) pair,
-// mass-sorted, referencing g_vRawPeptides by index. Phase 2 turned the former 24B-AoS
-// vector<FragmentPeptidesStruct> into this 13B/entry structure-of-arrays with a 4-byte
-// fixed-point mass key: the exact double mass is only ever a candidate-SELECTION key here --
-// CometPeptideIndex::MaterializeOneEntry() recomputes the exact double per surviving
-// candidate (bit-identical to what used to be stored, same summation order), and
-// CometSearch::SearchPeptideIndex() re-runs the exact tolerance checks on that recomputed
-// mass after a conservatively-widened quantized prefilter, so quantization can only admit
-// extra borderline candidates into the exact check, never change the accepted set.
-// PI_DB and FI_DB still build their variant lists via different code paths
-// (CometPeptideIndex::GenerateVariantArray() vs. CometFragmentIndex::
-// AddFragmentsThreadProc()); FI_DB's g_vFragmentPeptides keeps the 24B AoS -- its scoring
-// path reports the stored dPepMass directly and has no exact-mass recompute step yet (see
-// docs/20260827_PI_memory.md Section 7.1 for the porting condition).
-struct PiVariantArray
+// Compact per-variant array shared by BOTH search modes (docs/20260730_PI_reduction.md;
+// docs/20260827_PI_memory.md Phase 2 for PI_DB, Section 7.1 for the FI_DB port): one entry
+// per (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
+// a 13B/entry structure-of-arrays with a 4-byte fixed-point mass key replacing the former
+// 24B-AoS vector<FragmentPeptidesStruct> (which survives only as the build-time staging
+// element). The exact double mass is only ever a candidate-SELECTION key here: each mode
+// recomputes the exact double per surviving candidate, BIT-IDENTICALLY to what its own
+// build stored -- PI_DB via CometPeptideIndex::MaterializeOneEntry() (raw.dPepMass + mod
+// deltas), FI_DB via CometFragmentIndex::ComputeIndexedPepMass() (AddFragments()'s
+// residue-by-residue sum; the two computations have always differed in summation path and
+// protein-terminal-static-mod handling, so they are deliberately NOT unified) -- and every
+// tolerance decision is made either on a conservatively-widened/shrunk quantized check or
+// on that exact recomputed mass, so quantization can never change the accepted set.
+// PI_DB and FI_DB still build their arrays via different code paths
+// (CometPeptideIndex::GenerateVariantArray() -> g_dbIndexVariants vs.
+// CometFragmentIndex::GenerateFragmentIndex() -> g_fragmentPeptides).
+struct VariantArray
 {
    // Fixed-point granularity of uiMassKey: 1e-4 Da. llround(mass * scale) is monotonic
    // non-decreasing over the mass-sorted input, so binary-search semantics are unchanged.
@@ -781,7 +781,9 @@ struct PiVariantArray
          + vucTermMods.capacity() * sizeof(unsigned char);
    }
 };
-extern PiVariantArray g_dbIndexVariants;
+extern VariantArray g_dbIndexVariants;    // PI_DB's variant array (GenerateVariantArray())
+extern VariantArray g_fragmentPeptides;   // FI_DB's variant array (GenerateFragmentIndex()); the
+                                          // posting list g_iFragmentIndex stores indices into this
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
 extern vector<SpecLibStruct> g_vSpecLib;
 extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>

@@ -172,8 +172,8 @@ private:
                               vector<OBOStruct>& vectorPeffOBO);
    static size_t BinarySearchIndexMass(size_t start,
                                        size_t end,
-                                       double dQueryMass,
-                                       unsigned int *uiFragmentMass);
+                                       unsigned int uiKeyLow,
+                                       unsigned int uiWhichBin);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);

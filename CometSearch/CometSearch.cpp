@@ -1518,7 +1518,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
-   std::unordered_map<unsigned int, int> mPeptides;   // which peptide (index into g_vFragmentPeptides, and # matched fragments)
+   std::unordered_map<unsigned int, int> mPeptides;   // which peptide (index into g_fragmentPeptides, and # matched fragments)
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
 
@@ -1530,6 +1530,20 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNL(iSlot));
 
    mPeptides.clear();
+
+   // FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1): g_fragmentPeptides
+   // stores a 4-byte fixed-point mass key, not the exact double. Every counting decision
+   // below is exact-by-construction: a candidate whose dequantized key passes the
+   // tolerance checks SHRUNK by dKeyEps is a definite accept (its true mass, within
+   // dKeyEps of the key, must also pass the unshrunk checks); one that fails the checks
+   // WIDENED by dKeyEps is a definite reject; the rare boundary cells in between are
+   // resolved on the exact mass recomputed bit-identically via
+   // CometFragmentIndex::ComputeIndexedPepMass(). The counted candidate set is therefore
+   // identical to when the exact double was stored per entry.
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
+   const unsigned int uiKeyLowBracket = VariantArray::QuantizeLow(pQuery->_pepMassInfo.dPeptideMassToleranceMinus);
+   const unsigned int uiKeyHighBracket = VariantArray::QuantizeHigh(pQuery->_pepMassInfo.dPeptideMassTolerancePlus);
+   const double dKeyEps = 2.0 / VariantArray::MASS_KEY_SCALE;  // quantization bound + margin
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
@@ -1552,25 +1566,33 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                if (lNumPeps <= BINARYSEARCHCUTOFF)
                   iFirst = 0;
                else
-               {
-                  iFirst = BinarySearchIndexMass(0, lNumPeps,
-                     pQuery->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
-               }
+                  iFirst = BinarySearchIndexMass(0, lNumPeps, uiKeyLowBracket, uiFragmentMass);
 
                uint64_t uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
                for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                {
                   unsigned int iTmp = g_iFragmentIndex[uiBinBase + ix];
-                  double dCalcPepMass = g_vFragmentPeptides[iTmp].dPepMass;
+                  unsigned int uiMassKey = g_fragmentPeptides.vuiMassKey[iTmp];
 
-                  if (dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus
-                     && dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
-                  {
-                     if (CheckMassMatch(pQuery, dCalcPepMass))
-                        mPeptides[iTmp] += 1;
-                  }
-                  else if (dCalcPepMass > pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
+                  if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
                      break;
+
+                  if (uiMassKey >= uiKeyLowBracket)
+                  {
+                     // three-way decision on the dequantized key -- see the comment at the
+                     // top of this function (definite accept / boundary / definite reject)
+                     double dApproxMass = uiMassKey / VariantArray::MASS_KEY_SCALE;
+                     if (CheckMassMatch(pQuery, dApproxMass, -dKeyEps))
+                        mPeptides[iTmp] += 1;
+                     else if (CheckMassMatch(pQuery, dApproxMass, dKeyEps))
+                     {
+                        if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
+                              g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
+                              g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
+                              vModSlotForAllModsIdx, NULL)))
+                           mPeptides[iTmp] += 1;
+                     }
+                  }
 
                   if (g_staticParams.options.iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
                   {
@@ -1651,12 +1673,21 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
       {
          int iFoundVariableMod = 0;
 
-         strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).szPeptide);
-         iLenPeptide = (int)strlen(szPeptide);
+         const unsigned int uiWhichVariant = ix->first;
+         size_t iWhichPeptide = g_fragmentPeptides.vuiWhichPeptide[uiWhichVariant];
+         int modNumIdx = g_fragmentPeptides.GetModNumIdx(uiWhichVariant);
+         char cVariantNtermMod = g_fragmentPeptides.GetNtermMod(uiWhichVariant);
+         char cVariantCtermMod = g_fragmentPeptides.GetCtermMod(uiWhichVariant);
 
-         int modNumIdx = g_vFragmentPeptides[ix->first].modNumIdx;
-         size_t iWhichPeptide = g_vFragmentPeptides[ix->first].iWhichPeptide;
-         double dCalcPepMass = g_vFragmentPeptides[ix->first].dPepMass;
+         const RawPeptideView rawView = g_vRawPeptides.at(iWhichPeptide);
+         strcpy(szPeptide, rawView.szPeptide);
+         iLenPeptide = rawView.iLen;
+
+         // The SoA stores only a fixed-point mass key; recompute the exact mass this
+         // variant was stored with -- bit-identical to the formerly stored double
+         // (docs/20260827_PI_memory.md Section 7.1) -- for scoring and reporting.
+         double dCalcPepMass = CometFragmentIndex::ComputeIndexedPepMass(iWhichPeptide,
+            modNumIdx, cVariantNtermMod, cVariantCtermMod, vModSlotForAllModsIdx, NULL);
 
          iEndPos = iLenMinus1 = iLenPeptide - 1;
 
@@ -1684,8 +1715,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             // that peptide (not just a display issue -- piVarModSites feeds directly into this
             // function's own fragment-mass accumulation used for XCorr/SP scoring).
             // CometPeptideIndex.cpp's MaterializeOneEntry() (the PI_DB-mode equivalent) already
-            // does this translation correctly; this mirrors it.
-            const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
+            // does this translation correctly; this mirrors it. vModSlotForAllModsIdx is
+            // fetched once at the top of this function.
             int j = 0;
             for (int k = 0; k <= iEndPos; ++k)
             {
@@ -1707,16 +1738,16 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
          // set terminal mods
-         if (g_vFragmentPeptides[ix->first].cNtermMod > -1)
+         if (cVariantNtermMod > -1)
          {
-            piVarModSites[iLenPeptide] = g_vFragmentPeptides[ix->first].cNtermMod + 1;
-            dBion += g_staticParams.variableModParameters.varModList[g_vFragmentPeptides[ix->first].cNtermMod].dVarModMass;
+            piVarModSites[iLenPeptide] = cVariantNtermMod + 1;
+            dBion += g_staticParams.variableModParameters.varModList[(int)cVariantNtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
-         if (g_vFragmentPeptides[ix->first].cCtermMod > -1)
+         if (cVariantCtermMod > -1)
          {
-            piVarModSites[iLenPeptide + 1] = g_vFragmentPeptides[ix->first].cCtermMod + 1;
-            dYion += g_staticParams.variableModParameters.varModList[g_vFragmentPeptides[ix->first].cCtermMod].dVarModMass;
+            piVarModSites[iLenPeptide + 1] = cVariantCtermMod + 1;
+            dYion += g_staticParams.variableModParameters.varModList[(int)cVariantCtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
 
@@ -1994,8 +2025,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          struct sDBEntry dbe;
 
-         char cPrevAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cPrevAA;
-         char cNextAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cNextAA;
+         char cPrevAA = rawView.cPrevAA;
+         char cNextAA = rawView.cNextAA;
          char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
          if (cPrevAA == '-')
          {
@@ -2025,7 +2056,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          dbe.strName = "";
          dbe.strSeq = szProtein;
-         dbe.lProteinFilePosition = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
+         dbe.lProteinFilePosition = rawView.lIndexProteinFilePosition;
 
          XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, pQuery,
             iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
@@ -2110,9 +2141,9 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
    // entry's recomputed double mass (bit-identical to the formerly stored value -- same
    // summation, same order), so the accepted candidate set is identical to when the exact
    // double was stored per entry.
-   const unsigned int uiKeyLow = PiVariantArray::QuantizeLow(dMassTolLow);
-   const unsigned int uiKeyHigh = PiVariantArray::QuantizeHigh(dMassTolHigh);
-   const double dTolWiden = 2.0 / PiVariantArray::MASS_KEY_SCALE;  // quantization bound + margin
+   const unsigned int uiKeyLow = VariantArray::QuantizeLow(dMassTolLow);
+   const unsigned int uiKeyHigh = VariantArray::QuantizeHigh(dMassTolHigh);
+   const double dTolWiden = 2.0 / VariantArray::MASS_KEY_SCALE;  // quantization bound + margin
 
    const vector<unsigned int>& vuiKeys = g_dbIndexVariants.vuiMassKey;
 
@@ -2137,7 +2168,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       if (vuiKeys[i] > uiKeyHigh)
          break;
 
-      const double dApproxMass = vuiKeys[i] / PiVariantArray::MASS_KEY_SCALE;
+      const double dApproxMass = vuiKeys[i] / VariantArray::MASS_KEY_SCALE;
 
       // Search-time digest_mass_range/peptide_length_range narrower than what's baked into
       // the .idx (see ParsePeptideIndexHeader()'s inward-only clamp of g_massRange/
@@ -4276,46 +4307,32 @@ int CometSearch::BinarySearchMass(int start,
 }
 
 
+// Returns the first position within bin uiWhichBin's posting list whose variant's
+// fixed-point mass key is >= uiKeyLow -- a conservative start hint for the caller's walk
+// (uiKeyLow is the quantized-and-lowered form of the query's lower tolerance bound, so
+// this can only start at or before the first truly in-window entry; the caller's
+// per-entry checks decide the actual candidate set). Rewritten as an exact iterative
+// lower bound as part of the FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1);
+// the entries within a bin are stored in ascending variant-mass order, which quantization
+// preserves.
 size_t CometSearch::BinarySearchIndexMass(size_t start,
                                           size_t end,
-                                          double dQueryMass,
-                                          unsigned int* uiFragmentMass)
+                                          unsigned int uiKeyLow,
+                                          unsigned int uiWhichBin)
 {
-   // dQueryMass is the lower bound tolerance mass of input spectrum.
+   uint64_t uiBinBase = g_iFragmentIndexOffset[uiWhichBin];
+   const vector<unsigned int>& vuiKeys = g_fragmentPeptides.vuiMassKey;
 
-   // Termination condition: start index greater than end index.
-   if (start >= end || end <= BINARYSEARCHCUTOFF)
+   while (start < end)
    {
-      return start;
+      size_t middle = start + ((end - start) / 2);
+      if (vuiKeys[g_iFragmentIndex[uiBinBase + middle]] < uiKeyLow)
+         start = middle + 1;
+      else
+         end = middle;
    }
 
-   // Find the middle element of the vector and use that for splitting
-   // the array into two pieces.
-   size_t middle = start + ((end - start) / 2);
-
-   uint64_t uiBinBase = g_iFragmentIndexOffset[*uiFragmentMass];
-   double dArrayMass = g_vFragmentPeptides[g_iFragmentIndex[uiBinBase + middle]].dPepMass;
-
-   if (dArrayMass > dQueryMass)
-   {
-      return BinarySearchIndexMass(start, middle - 1, dQueryMass, uiFragmentMass);
-   }
-   else if (dArrayMass < dQueryMass)
-   {
-      return BinarySearchIndexMass(middle + 1, end, dQueryMass, uiFragmentMass);
-   }
-   else // this means (dArrayMass >= dQueryMass && dArrayMass <= dQueryMass)
-   {
-      // always walk backwards now until ArrayMass is < dQueryMass
-      // as there may be multiple entries in the mass vector with the same ArrayMass so
-      // need to start at the first one (or the entry before the first one)
-      while (middle > 0 && g_vFragmentPeptides[g_iFragmentIndex[uiBinBase + middle]].dPepMass >= dQueryMass)
-      {
-         middle--;
-      }
-
-      return middle;
-   }
+   return start;
 }
 
 

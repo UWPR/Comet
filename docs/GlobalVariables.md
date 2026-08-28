@@ -32,13 +32,13 @@ Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The
 
 Populated during index build / load; treated as read-only during all searches. Safe for concurrent reads from RTS threads.
 
-The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fragment mass bin `b`, the entries in `g_vFragmentPeptides` are at positions `g_iFragmentIndexOffset[b]` through `g_iFragmentIndexOffset[b+1] - 1` (half-open interval), and the values stored there are indices into `g_vFragmentPeptides`.
+The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fragment mass bin `b`, the entries in `g_fragmentPeptides` are at positions `g_iFragmentIndexOffset[b]` through `g_iFragmentIndexOffset[b+1] - 1` (half-open interval), and the values stored there are indices into `g_fragmentPeptides`.
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_iFragmentIndex` | `unsigned int*` | Flat CSR data array. Each element is an index into `g_vFragmentPeptides`. Entries for bin `b` span `[g_iFragmentIndexOffset[b], g_iFragmentIndexOffset[b+1])`. |
+| `g_iFragmentIndex` | `unsigned int*` | Flat CSR data array. Each element is an index into `g_fragmentPeptides`. Entries for bin `b` span `[g_iFragmentIndexOffset[b], g_iFragmentIndexOffset[b+1])`. |
 | `g_iFragmentIndexOffset` | `uint64_t*` | CSR offset array; length = (max bin + 1) + 1. Must be 64-bit -- the total entry count can exceed UINT_MAX for large databases with many variable mods. |
-| `g_vFragmentPeptides` | `vector<FragmentPeptidesStruct>` | Mass-sorted list of all (peptide, mod-state) combinations. Each entry references a row in `g_vRawPeptides` via `iWhichPeptide`. |
+| `g_fragmentPeptides` | `VariantArray` (SoA, core/Types.h) | Mass-sorted list of all (peptide, mod-state) combinations, 13B/entry with a fixed-point mass key (docs/20260827_PI_memory.md Section 7.1). Each entry references a row in `g_vRawPeptides` via `vuiWhichPeptide`; exact masses are recomputed per candidate via `CometFragmentIndex::ComputeIndexedPepMass()`. |
 | `g_vRawPeptides` | `RawPeptideTable` (pooled, core/Types.h) | List of unique unmodified peptide sequences with protein row references; sequences in one flat NUL-terminated pool + parallel fixed-field arrays (docs/20260827_PI_memory.md Phase 3). |
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
 | `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` by `CometPeptideIndex::ReadPeptideIndex()` once the `.idx` file itself has been read -- **not** the same as "fully initialized" (see `g_bPeptideIndexFullyInitialized` below, which gates on more than this). |
@@ -67,7 +67,7 @@ PI_DB and FI_DB share one unified `.idx` format and one reader,
 modes populate `g_vRawPeptides` and the protein-list globals below identically -- these are
 the only peptide-level data actually read from disk. `g_dbIndexVariants` is PI_DB-specific,
 built once per session (not read from disk, see Phase 0.5) only when `iDbType == PI_DB`, and
-`g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_vFragmentPeptides` (built separately by
+`g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_fragmentPeptides` (built separately by
 FI_DB, once per session, from the same `g_vRawPeptides` + regenerated permutation tables --
 not listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_DB-specific.
 
@@ -192,7 +192,7 @@ The happens-before edge that makes the `acquire`/`release` ordering meaningful c
 ```
 Safe to read from any concurrent RTS thread (after init):
   g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
-  g_vFragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
+  g_fragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
   g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex,
   g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS_POOL, MOD_SEQS_POOL, MOD_SEQS_OFFSET,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange (written once at init on

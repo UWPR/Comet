@@ -276,7 +276,7 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |     -> branches on g_staticParams.iDbType (CometSearch.cpp:171-215):
   |        FI_DB -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
   |                   reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
-  |                   reads g_vFragmentPeptides (READ-ONLY) [x]
+  |                   reads g_fragmentPeptides (READ-ONLY) [x]
   |                   XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
   |                   CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
   |                   timeout checked periodically against pQuery->tSearchStart
@@ -362,7 +362,7 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensiti
 |-------|:--------:|-------|
 | `g_staticParams` | Read-only [x] | Set once at init; never written during search. |
 | `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
-| `g_vFragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_vFragmentPeptides` is built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
+| `g_fragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_fragmentPeptides` is built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
 | `g_dbIndexVariants` | Read-only [x] | PI_DB's compact per-variant SoA (mass-sorted, 13B/entry -- docs/20260827_PI_memory.md Phase 2), built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then read-only for the rest of the session; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Only populated when `iDbType == PI_DB`. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
 | `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |

@@ -41,7 +41,7 @@ public:
    static bool WritePeptideIndex(ThreadPool* tp);
 
    // docs/20260730_PI_reduction.md Phase 0.5 / docs/20260827_PI_memory.md Phase 2: builds
-   // g_dbIndexVariants (PI_DB mode only, 13B/entry SoA -- see PiVariantArray, core/Types.h)
+   // g_dbIndexVariants (PI_DB mode only, 13B/entry SoA -- see VariantArray, core/Types.h)
    // from g_vRawPeptides + the mod-permutation tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Called once per search
    // session from ReadPeptideIndex(), not from WritePeptideIndex() -- nothing about the
@@ -82,6 +82,17 @@ public:
    // report, logged at the end of ReadPeptideIndex() when the COMET_MEMREPORT environment
    // variable is set; no-op otherwise.
    static void LogIndexMemoryReport();
+
+   // Page-granular staging buffer for the variant-array build/transcode (docs/
+   // 20260827_PI_memory.md Phase 2): mmap on POSIX so DecommitStagingRange() can
+   // progressively return fully-transcoded pages to the OS mid-walk; plain malloc/free on
+   // Windows, where DecommitStagingRange() is a no-op (the VirtualAlloc/VirtualFree
+   // analogue trips endpoint-protection heuristics -- see AllocStagingPages()'s definition).
+   // Shared by CometPeptideIndex::GenerateVariantArray() (PI_DB) and
+   // CometFragmentIndex::GenerateFragmentIndex() (FI_DB).
+   static void* AllocStagingPages(size_t tBytes);
+   static void DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo);
+   static void FreeStagingPages(void* pBase, size_t tBytes);
 
 
 

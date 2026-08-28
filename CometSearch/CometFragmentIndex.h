@@ -39,6 +39,24 @@ public:
    // MOD_SEQ_MOD_NUM_START/CNT/POOL_START/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
    static void PermuteIndexPeptideMods(const RawPeptideTable& vRawPeptides);
 
+   // docs/20260827_PI_memory.md Section 7.1 (FI_DB Phase 2 port): the residue-by-residue
+   // precursor-mass computation for one (peptide, mod combination, terminal mods) tuple,
+   // extracted from AddFragments()'s fresh-compute branch so search-time callers
+   // (CometSearch::SearchFragmentIndex()) can reproduce the mass a variant was stored with
+   // BIT-IDENTICALLY (same accumulator, same summation order) -- g_fragmentPeptides stores
+   // only a fixed-point key, and FI_DB reports this recomputed value as the candidate's
+   // calculated mass. Deliberately NOT unified with PI_DB's tryPush/MaterializeOneEntry
+   // computation (raw.dPepMass + mod deltas): the two have always differed in summation
+   // path and protein-terminal-static-mod handling, and each mode must keep recomputing
+   // exactly what its own build historically stored. pdResidueOnlyMass (optional) returns
+   // the unmodified residue-only sum for AddFragments()'s hardening check.
+   static double ComputeIndexedPepMass(size_t iWhichPeptide,
+                                       int modNumIdx,
+                                       char cNtermMod,
+                                       char cCtermMod,
+                                       const vector<int>& vModSlotForAllModsIdx,
+                                       double* pdResidueOnlyMass);
+
 private:
 
    static bool GenerateFragmentIndex(ThreadPool *tp);

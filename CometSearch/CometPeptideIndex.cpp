@@ -50,7 +50,7 @@ CometPeptideIndex::~CometPeptideIndex()
 //                            docs/20260730_PI_reduction.md for why that changed).
 //   g_dbIndexVariants      - one compact entry per (peptide, mod combination) pair (a
 //                            fixed-point mass key plus a reference back into
-//                            g_vRawPeptides; PiVariantArray SoA, core/Types.h), sorted by
+//                            g_vRawPeptides; VariantArray SoA, core/Types.h), sorted by
 //                            mass. Built
 //                            once per session by GenerateVariantArray() below, PI_DB mode
 //                            only. A full DBIndex is materialized on demand from one of
@@ -945,9 +945,8 @@ void CometPeptideIndex::LogIndexMemoryReport()
        << mb(g_vRawPeptides.heap_bytes()) << "\n";
    oss << "   g_dbIndexVariants:    " << g_dbIndexVariants.size() << " entries (SoA), "
        << mb(g_dbIndexVariants.heap_bytes()) << "\n";
-   oss << "   g_vFragmentPeptides:  " << g_vFragmentPeptides.size() << " entries, "
-       << mb(g_vFragmentPeptides.capacity() * sizeof(FragmentPeptidesStruct))
-       << " (FI_DB fills this after load)\n";
+   oss << "   g_fragmentPeptides:   " << g_fragmentPeptides.size() << " entries (SoA), "
+       << mb(g_fragmentPeptides.heap_bytes()) << " (FI_DB fills this after load)\n";
    oss << "   mod combinations:     " << MOD_NUM << " entries; MOD_NUMBERS_POOL "
        << mb(MOD_NUMBERS_POOL.capacity()) << "\n";
    oss << "   modifiable sequences: " << iNumModSeqs << "; MOD_SEQS_POOL "
@@ -977,7 +976,7 @@ void CometPeptideIndex::LogIndexMemoryReport()
 // transient is ~37B/entry (staging + SoA together) instead of ~24B/entry -- still at or
 // below the pre-Phase-2 steady state (24B x ~1.5x vector growth capacity plus the
 // mod-table overhead Phase 1 removed).
-static void* AllocStagingPages(size_t tBytes)
+void* CometPeptideIndex::AllocStagingPages(size_t tBytes)
 {
 #ifdef _WIN32
    return malloc(tBytes);
@@ -992,7 +991,7 @@ static void* AllocStagingPages(size_t tBytes)
 // transcode only ever walks forward and never re-reads a released range). Bounds align
 // inward to page boundaries, so partially-covered pages at either end are left committed.
 // Windows: no-op -- see AllocStagingPages() above.
-static void DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo)
+void CometPeptideIndex::DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo)
 {
 #ifdef _WIN32
    (void)pBase;
@@ -1008,7 +1007,7 @@ static void DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo)
 #endif
 }
 
-static void FreeStagingPages(void* pBase, size_t tBytes)
+void CometPeptideIndex::FreeStagingPages(void* pBase, size_t tBytes)
 {
    if (pBase == NULL)
       return;
@@ -1036,7 +1035,7 @@ static void FreeStagingPages(void* pBase, size_t tBytes)
 // pre-Phase-2 vector<FragmentPeptidesStruct> sort, so the final candidate ordering --
 // equal-mass ties included, which are common (positional mod isomers share a mass) and
 // observable through result tie-breaking -- is identical to the old implementation's.
-// The sorted staging is then transcoded into the 13B/entry SoA (PiVariantArray,
+// The sorted staging is then transcoded into the 13B/entry SoA (VariantArray,
 // core/Types.h), releasing consumed staging pages to the OS as it goes.
 bool CometPeptideIndex::GenerateVariantArray()
 {
@@ -1116,7 +1115,7 @@ bool CometPeptideIndex::GenerateVariantArray()
    sort(pStaging, pStaging + tNumVariants);
 
    // The 4-byte fixed-point key must be able to represent the largest (last) mass.
-   if (!(pStaging[tNumVariants - 1].dPepMass * PiVariantArray::MASS_KEY_SCALE < 4294967295.0))
+   if (!(pStaging[tNumVariants - 1].dPepMass * VariantArray::MASS_KEY_SCALE < 4294967295.0))
    {
       FreeStagingPages(pStaging, tStagingBytes);
       logerr(" Error - peptide mass " + std::to_string(pStaging[tNumVariants - 1].dPepMass)
@@ -1142,7 +1141,7 @@ bool CometPeptideIndex::GenerateVariantArray()
       for (size_t i = 0; i < tNumVariants; ++i)
       {
          const FragmentPeptidesStruct& s = pStaging[i];
-         g_dbIndexVariants.vuiMassKey.push_back((unsigned int)llround(s.dPepMass * PiVariantArray::MASS_KEY_SCALE));
+         g_dbIndexVariants.vuiMassKey.push_back((unsigned int)llround(s.dPepMass * VariantArray::MASS_KEY_SCALE));
          g_dbIndexVariants.vuiWhichPeptide.push_back(s.iWhichPeptide);
          g_dbIndexVariants.vuiModNumIdx.push_back((s.modNumIdx < 0) ? 0xFFFFFFFFu : (unsigned int)s.modNumIdx);
          g_dbIndexVariants.vucTermMods.push_back((unsigned char)(((s.cNtermMod + 1) << 4) | (s.cCtermMod + 1)));
