@@ -21,6 +21,8 @@
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
+#include <xmmintrin.h>   // _mm_prefetch (SearchFragmentIndex's posting-list walk)
+
 bool** CometSearch::_ppbDuplFragmentArr = nullptr;
 
 // Module-local pool instance.  Owns the same scratch arrays as the
@@ -1545,6 +1547,37 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    const unsigned int uiKeyHighBracket = VariantArray::QuantizeHigh(pQuery->_pepMassInfo.dPeptideMassTolerancePlus);
    const double dKeyEps = 2.0 / VariantArray::MASS_KEY_SCALE;  // quantization bound + margin
 
+   // Fast path for the common isotope_error == 0 / no-mass-offsets configuration, where
+   // CheckMassMatch()'s acceptance set is exactly one interval [ToleranceMinus,
+   // TolerancePlus]: precompute the key interval whose every possible underlying mass is
+   // guaranteed inside that window (llround keys are within 0.5 LSB of mass * scale; the
+   // extra +/-1 key of margin means FP rounding in this computation can only move keys
+   // from "definite" into the exactly-resolved boundary path below, never the reverse).
+   // The per-entry decision then needs two integer compares and no CheckMassMatch call at
+   // all -- cheaper than the pre-SoA double-compare path, and what recovers the ~12%
+   // Windows FI search-phase regression the first cut of this port measured.
+   const bool bSimpleWindow = (g_staticParams.tolerances.iIsotopeError == 0
+      && g_staticParams.vectorMassOffsets.size() == 0);
+   unsigned int uiKeyDefiniteLow = 1;   // empty interval by default
+   unsigned int uiKeyDefiniteHigh = 0;
+   if (bSimpleWindow)
+   {
+      double dDefLow = ceil(pQuery->_pepMassInfo.dPeptideMassToleranceMinus * VariantArray::MASS_KEY_SCALE + 0.5) + 1.0;
+      double dDefHigh = floor(pQuery->_pepMassInfo.dPeptideMassTolerancePlus * VariantArray::MASS_KEY_SCALE - 0.5) - 1.0;
+      if (dDefLow >= 0.0 && dDefHigh >= dDefLow && dDefHigh < 4294967295.0)
+      {
+         uiKeyDefiniteLow = (unsigned int)dDefLow;
+         uiKeyDefiniteHigh = (unsigned int)dDefHigh;
+      }
+   }
+
+   // Raw pointers / scalars, hoisted: the mPeptides map operation inside the walk is an
+   // opaque call, so reading these through their globals would force the compiler to
+   // reload them every iteration of the hottest loop in FI search.
+   const unsigned int* puiMassKeys = g_fragmentPeptides.vuiMassKey.data();
+   const unsigned int* puiPostings = g_iFragmentIndex;
+   const int iMaxIndexRunTime = g_staticParams.options.iMaxIndexRunTime;
+
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
    bool bTimeout = false;
@@ -1568,40 +1601,100 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                else
                   iFirst = BinarySearchIndexMass(0, lNumPeps, uiKeyLowBracket, uiFragmentMass);
 
-               uint64_t uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
-               for (size_t ix = iFirst; ix < lNumPeps; ++ix)
+               const unsigned int* puiBin = puiPostings + g_iFragmentIndexOffset[uiFragmentMass];
+
+               if (bSimpleWindow)
                {
-                  unsigned int iTmp = g_iFragmentIndex[uiBinBase + ix];
-                  unsigned int uiMassKey = g_fragmentPeptides.vuiMassKey[iTmp];
-
-                  if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
-                     break;
-
-                  if (uiMassKey >= uiKeyLowBracket)
+                  // Specialized walk for the common isotope_error == 0 / no-mass-offsets
+                  // case: two integer compares per in-window entry, no CheckMassMatch
+                  // call. (The Windows FI regression once suspected here turned out to be
+                  // CMOV codegen in BinarySearchIndexMass -- see its comment -- but this
+                  // split is kept: it is strictly less work per entry.)
+                  for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                   {
-                     // three-way decision on the dequantized key -- see the comment at the
-                     // top of this function (definite accept / boundary / definite reject)
-                     double dApproxMass = uiMassKey / VariantArray::MASS_KEY_SCALE;
-                     if (CheckMassMatch(pQuery, dApproxMass, -dKeyEps))
-                        mPeptides[iTmp] += 1;
-                     else if (CheckMassMatch(pQuery, dApproxMass, dKeyEps))
+                     unsigned int iTmp = puiBin[ix];
+                     unsigned int uiMassKey = puiMassKeys[iTmp];
+
+                     // The key load above is a dependent random access (posting entry ->
+                     // key); the posting entries themselves are sequential, so future keys
+                     // can be prefetched to hide that latency.
+                     if (ix + 8 < lNumPeps)
+                        _mm_prefetch((const char*)(puiMassKeys + puiBin[ix + 8]), _MM_HINT_T0);
+
+                     if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
+                        break;
+
+                     if (uiMassKey >= uiKeyDefiniteLow && uiMassKey <= uiKeyDefiniteHigh)
                      {
+                        // definitely inside the tolerance window
+                        mPeptides[iTmp] += 1;
+                     }
+                     else if (uiMassKey >= uiKeyLowBracket)
+                     {
+                        // boundary key (or a degenerate definite interval): resolve on the
+                        // exact recomputed mass -- rare
                         if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
                               g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
                               g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
                               vModSlotForAllModsIdx, NULL)))
                            mPeptides[iTmp] += 1;
                      }
-                  }
 
-                  if (g_staticParams.options.iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
-                  {
-                     auto tNow = std::chrono::high_resolution_clock::now();
-                     auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
-                     if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
+                     if (iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
                      {
-                        bTimeout = true;
+                        auto tNow = std::chrono::high_resolution_clock::now();
+                        auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+                        if (tElapsedTime >= iMaxIndexRunTime)
+                        {
+                           bTimeout = true;
+                           break;
+                        }
+                     }
+                  }
+               }
+               else
+               {
+                  // isotope offsets / mass offsets active: three-way decision on the
+                  // dequantized key -- see the comment at the top of this function
+                  // (definite accept / boundary / definite reject)
+                  for (size_t ix = iFirst; ix < lNumPeps; ++ix)
+                  {
+                     unsigned int iTmp = puiBin[ix];
+                     unsigned int uiMassKey = puiMassKeys[iTmp];
+
+                     // The key load above is a dependent random access (posting entry ->
+                     // key); the posting entries themselves are sequential, so future keys
+                     // can be prefetched to hide that latency.
+                     if (ix + 8 < lNumPeps)
+                        _mm_prefetch((const char*)(puiMassKeys + puiBin[ix + 8]), _MM_HINT_T0);
+
+                     if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
                         break;
+
+                     if (uiMassKey >= uiKeyLowBracket)
+                     {
+                        double dApproxMass = uiMassKey * (1.0 / VariantArray::MASS_KEY_SCALE);
+                        if (CheckMassMatch(pQuery, dApproxMass, -dKeyEps))
+                           mPeptides[iTmp] += 1;
+                        else if (CheckMassMatch(pQuery, dApproxMass, dKeyEps))
+                        {
+                           if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
+                                 g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
+                                 g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
+                                 vModSlotForAllModsIdx, NULL)))
+                              mPeptides[iTmp] += 1;
+                        }
+                     }
+
+                     if (iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
+                     {
+                        auto tNow = std::chrono::high_resolution_clock::now();
+                        auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+                        if (tElapsedTime >= iMaxIndexRunTime)
+                        {
+                           bTimeout = true;
+                           break;
+                        }
                      }
                   }
                }
@@ -2168,7 +2261,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       if (vuiKeys[i] > uiKeyHigh)
          break;
 
-      const double dApproxMass = vuiKeys[i] / VariantArray::MASS_KEY_SCALE;
+      const double dApproxMass = vuiKeys[i] * (1.0 / VariantArray::MASS_KEY_SCALE);
 
       // Search-time digest_mass_range/peptide_length_range narrower than what's baked into
       // the .idx (see ParsePeptideIndexHeader()'s inward-only clamp of g_massRange/
@@ -4320,19 +4413,45 @@ size_t CometSearch::BinarySearchIndexMass(size_t start,
                                           unsigned int uiKeyLow,
                                           unsigned int uiWhichBin)
 {
-   uint64_t uiBinBase = g_iFragmentIndexOffset[uiWhichBin];
-   const vector<unsigned int>& vuiKeys = g_fragmentPeptides.vuiMassKey;
-
-   while (start < end)
+   // Deliberately recursive, three-way, and branchy -- structurally identical to the
+   // pre-SoA double-mass implementation -- rather than a tight iterative lower-bound loop:
+   // MSVC compiles the iterative form's select into CMOV, which makes each probe's
+   // cache-missing load a DATA dependency of the next probe's address (no branch
+   // prediction, no overlapped misses) and was measured serializing the whole search --
+   // the entire ~15-20% Windows FI search-phase regression of the first SoA port lived
+   // here. Branches let the predictor speculate ahead and overlap the misses instead
+   // (docs/20260827_PI_memory.md, cross-platform section). GCC never applied the CMOV
+   // transform, which is why Linux was unaffected.
+   if (start >= end || end <= BINARYSEARCHCUTOFF)
    {
-      size_t middle = start + ((end - start) / 2);
-      if (vuiKeys[g_iFragmentIndex[uiBinBase + middle]] < uiKeyLow)
-         start = middle + 1;
-      else
-         end = middle;
+      return start;
    }
 
-   return start;
+   size_t middle = start + ((end - start) / 2);
+
+   uint64_t uiBinBase = g_iFragmentIndexOffset[uiWhichBin];
+   unsigned int uiArrayKey = g_fragmentPeptides.vuiMassKey[g_iFragmentIndex[uiBinBase + middle]];
+
+   if (uiArrayKey > uiKeyLow)
+   {
+      return BinarySearchIndexMass(start, middle - 1, uiKeyLow, uiWhichBin);
+   }
+   else if (uiArrayKey < uiKeyLow)
+   {
+      return BinarySearchIndexMass(middle + 1, end, uiKeyLow, uiWhichBin);
+   }
+   else
+   {
+      // walk backwards to the first entry carrying this key (quantized keys repeat more
+      // often than exact doubles did; entries with key == uiKeyLow are still just the
+      // ones within one quantization step of the window edge)
+      while (middle > 0 && g_fragmentPeptides.vuiMassKey[g_iFragmentIndex[uiBinBase + middle]] >= uiKeyLow)
+      {
+         middle--;
+      }
+
+      return middle;
+   }
 }
 
 
