@@ -21,7 +21,21 @@
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
-#include <xmmintrin.h>   // _mm_prefetch (SearchFragmentIndex's posting-list walk)
+// Portable read-prefetch for SearchFragmentIndex()'s posting-list walk. x86 SSE
+// intrinsics (<xmmintrin.h>/_mm_prefetch) don't exist on aarch64 -- the aarch-linux and
+// macos-14 (Apple Silicon) CI builds fail on them -- so use the compiler builtins:
+// __builtin_prefetch is target-independent on GCC/Clang (PRFM on aarch64, PREFETCHT0 on
+// x86); MSVC has no __builtin_prefetch, so use _mm_prefetch on x64 and __prefetch on ARM64.
+#ifdef _MSC_VER
+#include <intrin.h>
+#if defined(_M_ARM64)
+#define COMET_PREFETCH_READ(p) __prefetch((const void*)(p))
+#else
+#define COMET_PREFETCH_READ(p) _mm_prefetch((const char*)(p), _MM_HINT_T0)
+#endif
+#else
+#define COMET_PREFETCH_READ(p) __builtin_prefetch((p), 0, 3)
+#endif
 
 bool** CometSearch::_ppbDuplFragmentArr = nullptr;
 
@@ -1619,7 +1633,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                      // key); the posting entries themselves are sequential, so future keys
                      // can be prefetched to hide that latency.
                      if (ix + 8 < lNumPeps)
-                        _mm_prefetch((const char*)(puiMassKeys + puiBin[ix + 8]), _MM_HINT_T0);
+                        COMET_PREFETCH_READ(puiMassKeys + puiBin[ix + 8]);
 
                      if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
                         break;
@@ -1666,7 +1680,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                      // key); the posting entries themselves are sequential, so future keys
                      // can be prefetched to hide that latency.
                      if (ix + 8 < lNumPeps)
-                        _mm_prefetch((const char*)(puiMassKeys + puiBin[ix + 8]), _MM_HINT_T0);
+                        COMET_PREFETCH_READ(puiMassKeys + puiBin[ix + 8]);
 
                      if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
                         break;
