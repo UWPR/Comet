@@ -1654,12 +1654,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).szPeptide);
          iLenPeptide = (int)strlen(szPeptide);
 
-         ModificationNumber modNum;
-         char* mods = NULL;
-         int modSeqIdx;
          int modNumIdx = g_vFragmentPeptides[ix->first].modNumIdx;
          size_t iWhichPeptide = g_vFragmentPeptides[ix->first].iWhichPeptide;
-         string modSeq;
          double dCalcPepMass = g_vFragmentPeptides[ix->first].dPepMass;
 
          iEndPos = iLenMinus1 = iLenPeptide - 1;
@@ -1668,12 +1664,16 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          if (modNumIdx != -1)  // set modified peptide info
          {
-            modNum = MOD_NUMBERS.at(modNumIdx);
-            mods = modNum.modifications;
-            modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-            modSeq = MOD_SEQS.at(modSeqIdx);
+            // Pointer + length into the read-only MOD_SEQS_POOL/MOD_NUMBERS_POOL flat pools
+            // (docs/20260827_PI_memory.md Phase 1) -- previously this copied a
+            // ModificationNumber struct and a std::string modSeq by value per candidate,
+            // a per-candidate heap allocation in this scoring hot path.
+            int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+            int iModSeqLen;
+            const char* pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+            const char* mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
-            // Bugfix: mods[j] (MOD_NUMBERS[modNumIdx].modifications[j]) is a 0-based
+            // Bugfix: mods[j] (this entry's MOD_NUMBERS_POOL slice) is a 0-based
             // COMPACTED variable-mod-slot index -- an index into
             // CometPeptideIndex::GetVModSlotForAllModsIdx()'s compacted active-slot list --
             // not a raw varModList index. "1 + mods[j]" only coincided with the "1 + realSlot"
@@ -1689,7 +1689,9 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             int j = 0;
             for (int k = 0; k <= iEndPos; ++k)
             {
-               if (szPeptide[k] == modSeq[j])
+               // j bound: pool mod-seq entries are not NUL-terminated (the former
+               // std::string indexed safely at size(), returning a never-matching '\0')
+               if (j < iModSeqLen && szPeptide[k] == pModSeq[j])
                {
                   int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
                   if (iSlot >= 0)
@@ -9013,7 +9015,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
 // loaded the peptide data, so that mass arrays reflect the exact static/variable mods used
 // when the index was built.
 //
-// Does NOT rebuild the MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
+// Does NOT rebuild the MOD_NUMBERS_POOL/MOD_SEQS_POOL/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
 // ReadPeptideIndex() already read them directly from the .idx file's persisted permutations
 // section (docs/20260730_PI_reduction.md Phase 0), rather than recomputing them here from
 // whatever mod settings happen to be active. An earlier version of this function called

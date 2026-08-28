@@ -35,8 +35,8 @@ public:
    static int WhichPrecursorBin(double dMass);
 
    // Public for reuse by CometPeptideIndex (PI_DB build, see
-   // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS/MOD_NUMBERS/
-   // MOD_SEQ_MOD_NUM_START/CNT/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
+   // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS_POOL/MOD_NUMBERS_POOL/
+   // MOD_SEQ_MOD_NUM_START/CNT/POOL_START/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
    static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
 
 private:

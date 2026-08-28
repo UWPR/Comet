@@ -109,9 +109,10 @@ from the file before this regeneration runs, the same way `StaticMod:` already d
 
 | Variable | Notes |
 |----------|-------|
-| `MOD_NUMBERS` | `vector<ModificationNumber>` -- precomputed modification number combinations. |
-| `MOD_SEQS` | `vector<string>` -- unique modifiable sequences. |
-| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- index into `MOD_NUMBERS` per modifiable sequence. |
+| `MOD_NUMBERS_POOL` | `vector<char>` -- flat pool holding every precomputed mod-combination entry's `modifications[]` array, concatenated (docs/20260827_PI_memory.md Phase 1; formerly `vector<ModificationNumber>` with one heap allocation per entry). Entries are addressed arithmetically via `GetModNumEntry()` (core/Types.h). |
+| `MOD_SEQ_MOD_NUM_POOL_START` | `uint64_t*` -- per modifiable sequence, offset of its first entry in `MOD_NUMBERS_POOL`. |
+| `MOD_SEQS_POOL` / `MOD_SEQS_OFFSET` | `vector<char>` / `vector<unsigned int>` -- unique modifiable sequences, flat-pooled (formerly `vector<string> MOD_SEQS`); sequence text is not NUL-terminated, accessed via `GetModSeq()`. |
+| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- mod-combination entry index range per modifiable sequence. |
 | `PEPTIDE_MOD_SEQ_IDXS` | `int*` -- maps peptides to their modifiable sequence index. |
 | `MOD_NUM` | `int` -- total number of distinct modification combinations. |
 | `g_vvvPepGenShort` / `g_vvvPepGenLong` | Per-thread peptide generation scratch buffers; populated during index build and reused across peptides to avoid repeated allocation. |
@@ -193,7 +194,7 @@ Safe to read from any concurrent RTS thread (after init):
   g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
   g_vFragmentPeptides, g_vRawPeptides, g_pvProteinNames, g_pvProteinsList,
   g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex,
-  g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
+  g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS_POOL, MOD_SEQS_POOL, MOD_SEQS_OFFSET,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange (written once at init on
   either path -- not batch-only, see "Core search state" above)
 

@@ -2549,7 +2549,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
 
 // Does NOT reset g_bPeptideIndexRead/g_bPlainPeptideIndexRead or free
-// g_vRawPeptides/MOD_SEQS/MOD_NUMBERS/g_vDBIndexVariants/CometPeptideIndex::
+// g_vRawPeptides/MOD_SEQS_POOL/MOD_NUMBERS_POOL/g_vDBIndexVariants/CometPeptideIndex::
 // GetVModSlotForAllModsIdx()'s cached slot map -- see the PROCESS-LIFETIME note above
 // CometPeptideIndex::ReadPeptideIndex()'s PermuteIndexPeptideMods() call for why a partial
 // reset here (clearing just the two guard bools) would be actively worse than the current

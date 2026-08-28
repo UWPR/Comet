@@ -220,7 +220,7 @@ field (only unmodified peptides are stored here; modifications are layered on in
 `g_vFragmentPeptides` for FI_DB, or the structurally-identical `g_vDBIndexVariants` for
 PI_DB). As of Phase 0.5, `g_vRawPeptides` is the *only* peptide-level data persisted in the
 `.idx` file -- `g_vFragmentPeptides`/`g_vDBIndexVariants` and the mod-permutation
-tables (`MOD_NUMBERS`/`MOD_SEQS`/etc.) are generated fresh from it, once per search
+tables (`MOD_NUMBERS_POOL`/`MOD_SEQS_POOL`/etc.) are generated fresh from it, once per search
 session, rather than read back from disk. The variable mods driving that regeneration do
 come from the `.idx` file again, though: `docs/20260811_restore_idx_header_mods.md`
 restored the header's text `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` lines
@@ -270,7 +270,7 @@ for the sizing rationale).
 |-------|---------|
 | `dPepMass` | Modified MH+ mass (= unmodified mass + sum of applied mod masses). |
 | `iWhichPeptide` | Index into `g_vRawPeptides`; provides sequence and protein info. Narrowed to `unsigned int` from `size_t` since `g_vRawPeptides.size()` is checked to fit before this struct is ever populated. |
-| `modNumIdx` | Index into `MOD_NUMBERS`; 0 = unmodified. |
+| `modNumIdx` | Mod-combination entry index (resolved against `MOD_NUMBERS_POOL` via `GetModNumEntry()`); -1 = unmodified. |
 | `cNtermMod` / `cCtermMod` | N/C-terminal variable mod codes (index into `varModList`). |
 
 ---

@@ -63,7 +63,7 @@ public:
    // time. Reconstructs a full DBIndex (sequence, explicit pcVarModSites, mass,
    // flank AAs, protein reference) from a compact (iWhichPeptide, modNumIdx,
    // cNtermMod, cCtermMod) reference into g_vRawPeptides, using the
-   // MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
+   // MOD_NUMBERS_POOL/MOD_SEQS_POOL/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). modNumIdx == -1
    // means "no body modification" (only possibly cNtermMod/cCtermMod);
    // cNtermMod/cCtermMod == -1 means "no terminal modification". Returns false
@@ -73,6 +73,11 @@ public:
    // wrote to the compact array.
    static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
       char cCtermMod, DBIndex& out);
+
+   // docs/20260827_PI_memory.md Phase 0: one-shot, structure-by-structure index memory
+   // report, logged at the end of ReadPeptideIndex() when the COMET_MEMREPORT environment
+   // variable is set; no-op otherwise.
+   static void LogIndexMemoryReport();
 
 
 
@@ -94,7 +99,7 @@ public:
    // Compacted list of active variable_modNN slot indices (0-based into
    // g_staticParams.variableModParameters.varModList), built in the same compaction order
    // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop uses --
-   // MOD_NUMBERS[].modifications[] values are indices into *this* compacted list, not direct
+   // MOD_NUMBERS_POOL entry values are indices into *this* compacted list, not direct
    // varModList slot indices, so both EnumerateIndexPeptideMods() (build time) and
    // MaterializeOneEntry() (search time, called per mass-window candidate) need the exact
    // same translation. Single shared implementation rather than two independently-maintained
@@ -103,8 +108,8 @@ public:
    // could silently violate.
    static const vector<int>& GetVModSlotForAllModsIdx();
 
-   // Translates a single compacted variable-mod-slot index (as read from
-   // MOD_NUMBERS[...].modifications[]) into the real varModList[] slot it refers to, via
+   // Translates a single compacted variable-mod-slot index (as read from a
+   // MOD_NUMBERS_POOL entry) into the real varModList[] slot it refers to, via
    // GetVModSlotForAllModsIdx()'s translation table above. Returns -1, uniformly, for both
    // legitimate cases callers must treat as "no real slot here": compactedIdx == -1 (the
    // ordinary "not modified at this candidate position in this combination" sentinel) and

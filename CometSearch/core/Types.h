@@ -629,6 +629,15 @@ public:
 
    void reserve(size_t n) { m_off.reserve(n + 1); }
 
+   // Total protein-offset entries across all rows, and heap bytes currently held
+   // (flat data + offsets) -- for the COMET_MEMREPORT report
+   // (CometPeptideIndex::LogIndexMemoryReport()).
+   size_t total_offsets() const { return m_flat.size(); }
+   size_t heap_bytes() const
+   {
+      return m_flat.capacity() * sizeof(comet_fileoffset_t) + m_off.capacity() * sizeof(uint64_t);
+   }
+
    void push_back(const vector<comet_fileoffset_t>& v)
    {
       if (m_off.empty()) m_off.push_back(0);
@@ -698,24 +707,58 @@ extern std::unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
-struct ModificationNumber
-{
-//   int modificationNumber;
-   int modStringLen;             // FIX: need to confirm if not needed  (MOD_SEQS.at(modSeqIdx)).size();
-   char* modifications;
-};
+// Flat-pooled mod-permutation tables (docs/20260827_PI_memory.md Phase 1). MOD_NUMBERS_POOL
+// replaces the former vector<ModificationNumber>, which paid a 16-byte vector slot plus one
+// separate new char[modStringLen] heap allocation per entry (~40-56B amortized to store a
+// handful of payload bytes) across tens of millions of entries: every entry's
+// modifications[] array now lives concatenated in this one pool. No per-entry offset is
+// stored, because two invariants make it computable: all entries for one modifiable
+// sequence are contiguous (ModificationsPermuter::getModificationCombinations() processes
+// sequences serially, recording [MOD_SEQ_MOD_NUM_START, +MOD_SEQ_MOD_NUM_CNT) per
+// sequence), and every entry for that sequence has length == the sequence's own length.
+// See GetModNumEntry() below for the arithmetic.
+extern vector<char> MOD_NUMBERS_POOL;
+extern uint64_t* MOD_SEQ_MOD_NUM_POOL_START;  // per modifiable sequence: offset in MOD_NUMBERS_POOL of its first entry
 
-extern vector<ModificationNumber> MOD_NUMBERS;
-extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
-extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
+// Unique modifiable sequences, flat-pooled (formerly vector<string> MOD_SEQS): sequence
+// modSeqIdx occupies MOD_SEQS_POOL[MOD_SEQS_OFFSET[modSeqIdx] .. MOD_SEQS_OFFSET[modSeqIdx+1]).
+// NOT NUL-terminated -- always pair the pointer with the length from GetModSeq().
+extern vector<char> MOD_SEQS_POOL;
+extern vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 entries; [0] == 0
+
+extern int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 
-// Index into the MOD_SEQS vector
+// Index into the modifiable-sequence tables above
 // -1 for peptides that have no modifiable amino acids
 // -2 for peptides with no modifiable amino acids but contain n/c-term mods
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
+
+inline int GetNumModSeqs()
+{
+   return MOD_SEQS_OFFSET.empty() ? 0 : (int)MOD_SEQS_OFFSET.size() - 1;
+}
+
+// Sequence text + length for one unique modifiable sequence (not NUL-terminated).
+inline const char* GetModSeq(int modSeqIdx, int& iLenOut)
+{
+   unsigned int uiBegin = MOD_SEQS_OFFSET[modSeqIdx];
+   iLenOut = (int)(MOD_SEQS_OFFSET[modSeqIdx + 1] - uiBegin);
+   return MOD_SEQS_POOL.data() + uiBegin;
+}
+
+// The modifications[] array for one mod-combination entry: modification values (compacted
+// variable-mod-slot indices, or -1 for "not modified at this position") for each of the
+// iModSeqLen modifiable positions of sequence modSeqIdx. iModSeqLen must be that sequence's
+// length as returned by GetModSeq() -- it doubles as this entry's length.
+inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
+{
+   return MOD_NUMBERS_POOL.data() + MOD_SEQ_MOD_NUM_POOL_START[modSeqIdx]
+      + (uint64_t)(modNumIdx - MOD_SEQ_MOD_NUM_START[modSeqIdx]) * (uint64_t)iModSeqLen;
+}
+
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read

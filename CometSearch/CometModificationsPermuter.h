@@ -36,11 +36,12 @@ public:
    static vector<string> readPeptides(string file);
    static string getModifiableAas(std::string peptide,
                                   vector<string>& ALL_MODS);
-   static vector<string> getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
-                                                int* PEPTIDE_MOD_SEQ_IDXS,
-                                                vector<string>& ALL_MODS);
-   static unsigned long long getModBitmask(string* modSeq,
-                                           string sModChars);
+   static void getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
+                                      int* PEPTIDE_MOD_SEQ_IDXS,
+                                      vector<string>& ALL_MODS);
+   static unsigned long long getModBitmask(const char* modSeq,
+                                           int iLen,
+                                           const string& sModChars);
    static vector<vector<int>> getCombinationSets(int modCount);
    static int getTotalCombinationCount(vector<int> combinationCounts,
                                        vector<vector<int>> combinationSets);
@@ -48,7 +49,8 @@ public:
                        unsigned long long* bitmasks,
                        int modNumCount,
                        int modStringLen);
-   static void generateModifications(string* sequence,
+   static void generateModifications(const char* sequence,
+                                     int iSeqLen,
                                      vector<int>& vMaxNumVarModsPerMod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,
@@ -56,8 +58,7 @@ public:
                                      int MOD_CNT,
                                      int ALL_COMBINATION_CNT,
                                      unsigned long long* ALL_COMBINATIONS);
-   static void getModificationCombinations(const vector<string> modifiableSeqs,
-                                           vector<int>& vMaxNumVarModsPerMod,
+   static void getModificationCombinations(vector<int>& vMaxNumVarModsPerMod,
                                            vector<string>& ALL_MODS,
                                            int MOD_CNT,
                                            int ALL_COMBINATION_CNT,

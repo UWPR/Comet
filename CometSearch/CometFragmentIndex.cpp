@@ -45,11 +45,13 @@
 #endif
 
 
-vector<ModificationNumber> MOD_NUMBERS;
-vector<string> MOD_SEQS;    // Unique modifiable sequences.
-int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
+vector<char> MOD_NUMBERS_POOL;         // flat pool: every mod-combination entry's modifications[] array, concatenated (see core/Types.h)
+uint64_t* MOD_SEQ_MOD_NUM_POOL_START;  // per modifiable sequence: offset in MOD_NUMBERS_POOL of its first entry
+vector<char> MOD_SEQS_POOL;            // unique modifiable sequences, concatenated, no NUL terminators
+vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 offsets into MOD_SEQS_POOL; [0] == 0
+int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
-int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the MOD_SEQS vector; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
+int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
 int MOD_NUM = 0;
 size_t tTmp;
 
@@ -94,7 +96,7 @@ CometFragmentIndex::~CometFragmentIndex()
 bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
 {
    // Reads the shared unified .idx format (docs/20260730_PI_reduction.md Phase 0/0.5) --
-   // g_vRawPeptides plus the MOD_SEQS/MOD_NUMBERS/etc. permutation tables that
+   // g_vRawPeptides plus the MOD_SEQS_POOL/MOD_NUMBERS_POOL/etc. permutation tables that
    // GenerateFragmentIndex() (via AddFragmentsThreadProcRange()) reads directly below.
    // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
    // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
@@ -188,13 +190,14 @@ void CometFragmentIndex::PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>
    ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, iMaxNumVariableMods,
          &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
-   // Get the unique modifiable sequences from the peptides
+   // Get the unique modifiable sequences from the peptides (fills the MOD_SEQS_POOL/
+   // MOD_SEQS_OFFSET flat pool -- docs/20260827_PI_memory.md Phase 1)
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   MOD_SEQS = ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
+   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
 
    // Get the modification combinations for each unique modifiable substring
-   ModificationsPermuter::getModificationCombinations(MOD_SEQS, vMaxNumVarModsPerMod, ALL_MODS,
+   ModificationsPermuter::getModificationCombinations(vMaxNumVarModsPerMod, ALL_MODS,
          MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 }
 
@@ -417,7 +420,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
 {
    size_t iWhichFragmentPeptide = 0;  // unused here for counting only
 
-   // mods[]/MOD_NUMBERS[].modifications[] values are 0-based COMPACTED variable-mod-slot
+   // mods[]/MOD_NUMBERS_POOL entry values are 0-based COMPACTED variable-mod-slot
    // indices requiring translation through this compacted-to-real-slot map before use as a
    // varModList index or an siVarModProteinFilter bit position (both real-slot-indexed) --
    // see AddFragments()'s own copy of this note for the full explanation. Fetched once here,
@@ -503,9 +506,10 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
             // CometPeptideIndex::PassesVarModProteinFilter()'s doc comment) copy of this exact check.
             if (g_staticParams.variableModParameters.bVarModProteinFilter)
             {
-               const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
+               int iModSeqLen;
+               GetModSeq(modSeqIdx, iModSeqLen);
                bPass = CometPeptideIndex::PassesVarModProteinFilter(vModSlotForAllModsIdx,
-                  modNum.modifications, modNum.modStringLen,
+                  GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen), iModSeqLen,
                   g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
             }
 
@@ -583,17 +587,16 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    // the raw-peptide entry, so read it directly instead of copying it into a std::string.
    const char* pszPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
 
-   ModificationNumber modNum;
-   char* mods = NULL;
-   int modSeqIdx = -1;
+   const char* mods = NULL;
 
-   // Same reasoning as pszPeptide above: MOD_SEQS is a read-only global table for the
-   // duration of the fill/count passes, so reference its entry directly rather than
-   // copying it into a local std::string per call.
-   static const string s_EmptyModSeq;
-   const string* pModSeq = &s_EmptyModSeq;
+   // Same reasoning as pszPeptide above: the MOD_SEQS_POOL/MOD_NUMBERS_POOL flat pools are
+   // read-only global tables for the duration of the fill/count passes, so reference their
+   // entries directly (pointer + length; pool entries are NOT NUL-terminated) rather than
+   // copying into a local std::string per call.
+   const char* pModSeq = NULL;
+   int iModSeqLen = 0;
 
-   // mods[] (MOD_NUMBERS[modNumIdx].modifications[]) values are 0-based indices into this
+   // mods[] (this entry's MOD_NUMBERS_POOL slice) values are 0-based indices into this
    // COMPACTED active-variable-mod-slot list, not raw varModList indices -- see
    // CometPeptideIndex::GetVModSlotForAllModsIdx()'s own doc comment, and its
    // MaterializeOneEntry() (the PI_DB-mode equivalent of this function), which already
@@ -602,12 +605,10 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
    // per-peptide-variant calls in a full index build).
    if (modNumIdx >= 0)  // set modified peptide info
    {
-      modNum = MOD_NUMBERS.at(modNumIdx);
-      mods = modNum.modifications;
-      modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-      pModSeq = &MOD_SEQS.at(modSeqIdx);
+      int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+      pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+      mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
    }
-   const string& modSeq = *pModSeq;
 
    double dCalcPepMass;
    double dBion = g_staticParams.precalcMasses.dNtermProton;
@@ -651,7 +652,10 @@ void CometFragmentIndex::AddFragments(vector<PlainPeptideIndexStruct>& g_vRawPep
 
          if (modNumIdx >= 0) // handle the variable mods if present on peptide
          {
-            if (pszPeptide[i] == modSeq[j])
+            // j < iModSeqLen: pool mod-seq entries are not NUL-terminated, so the former
+            // std::string behavior (operator[] at size() safely returning '\0', which never
+            // matches a residue) is replaced by an explicit bound; identical semantics.
+            if (j < iModSeqLen && pszPeptide[i] == pModSeq[j])
             {
                // Bugfix: mods[j] is a compacted index (see the note above this function's
                // declaration) -- using it directly as a varModList index only coincided with
@@ -748,7 +752,7 @@ if (!(iWhichPeptide%1000))
    for (int i = 0; i <= iEndPos; ++i)
    {
       printf("%c", (char)pszPeptide[i]);
-      if (pszPeptide[i] == modSeq[j])
+      if (j < iModSeqLen && pszPeptide[i] == pModSeq[j])
       {
          if (modNumIdx != -1 && mods[j] != -1)
          {
@@ -757,12 +761,12 @@ if (!(iWhichPeptide%1000))
          j++;
       }
    }
-   printf("\t%f\t%d\t%s\n", dCalcPepMass, modNumIdx, modSeq.c_str());
+   printf("\t%f\t%d\t%s\n", dCalcPepMass, modNumIdx, string(pModSeq, iModSeqLen).c_str());
 }
 */
 
    j = 0;
-   k = (int)modSeq.size() - 1;
+   k = iModSeqLen - 1;
 
    for (int i = 0; i < iEndPos; ++i)
    {
@@ -773,7 +777,8 @@ if (!(iWhichPeptide%1000))
 
       if (modNumIdx >= 0) // handle the variable mods if present on peptide
       {
-         if (pszPeptide[i] == modSeq[j])
+         // j bound: see the same guard in the precursor-mass loop above
+         if (j < iModSeqLen && pszPeptide[i] == pModSeq[j])
          {
             // Bugfix: mods[j] is a compacted index (see the note above this function's
             // declaration), not a raw varModList index -- the previous
@@ -797,7 +802,7 @@ if (!(iWhichPeptide%1000))
             j++;
          }
 
-         if (k >= 0 && pszPeptide[iPosReverse] == modSeq[k])
+         if (k >= 0 && pszPeptide[iPosReverse] == pModSeq[k])
          {
             // see bugfix note above
             int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[k]);
