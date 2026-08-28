@@ -40,7 +40,8 @@ public:
    static bool ReadPeptideIndex(bool bIsRTS);
    static bool WritePeptideIndex(ThreadPool* tp);
 
-   // docs/20260730_PI_reduction.md Phase 0.5: builds g_vDBIndexVariants (PI_DB mode only)
+   // docs/20260730_PI_reduction.md Phase 0.5 / docs/20260827_PI_memory.md Phase 2: builds
+   // g_dbIndexVariants (PI_DB mode only, 13B/entry SoA -- see PiVariantArray, core/Types.h)
    // from g_vRawPeptides + the mod-permutation tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Called once per search
    // session from ReadPeptideIndex(), not from WritePeptideIndex() -- nothing about the
@@ -50,12 +51,15 @@ public:
 
    // Phase B (docs/20260713_PIidxformat.md, docs/20260730_PI_reduction.md Phase 1): walks
    // g_vRawPeptides x valid mod combinations (mirroring
-   // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and appends a
-   // compact FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
-   // dPepMass} per valid combination, using the combinatorics tables built by a prior call to
-   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include the
-   // fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for that.
-   static bool EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants);
+   // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and, per valid
+   // combination, either counts it (pStaging == NULL) or writes a compact
+   // FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
+   // dPepMass} at pStaging[*ptCursor++], using the combinatorics tables built by a prior
+   // call to CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include
+   // the fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for
+   // that, and for the count/fill two-pass shape both modes serve.
+   static bool EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStaging,
+      size_t tStagingCap, size_t* ptCursor);
 
    // Single-entry version of EnumerateIndexPeptideMods()'s tryPush lambda,
    // factored out so it can be called per-candidate at search time (see

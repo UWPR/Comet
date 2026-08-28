@@ -569,17 +569,86 @@ extern uint64_t*     g_iFragmentIndexOffset;      // CSR offsets [uiMaxFragmentA
 extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
 extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
 
-// PI_DB's compact per-variant array (docs/20260730_PI_reduction.md): one entry per
-// (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
-// structurally identical to g_vFragmentPeptides/FragmentPeptidesStruct, but kept as its own
-// vector rather than literally sharing FI_DB's, since PI_DB and FI_DB build it via different
-// code paths (CometPeptideIndex::GenerateVariantArray() vs.
-// CometFragmentIndex::AddFragmentsThreadProc()) even though both now run once per session
-// from the same source data (Phase 0.5) -- collapsing them into one shared array is a
-// possible follow-up, not yet done. CometSearch::SearchPeptideIndex() binary-searches this
-// by dPepMass and materializes a full DBIndex per surviving candidate via
-// CometPeptideIndex::MaterializeOneEntry().
-extern vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;
+// PI_DB's compact per-variant array (docs/20260730_PI_reduction.md;
+// docs/20260827_PI_memory.md Phase 2): one entry per (peptide, mod combination) pair,
+// mass-sorted, referencing g_vRawPeptides by index. Phase 2 turned the former 24B-AoS
+// vector<FragmentPeptidesStruct> into this 13B/entry structure-of-arrays with a 4-byte
+// fixed-point mass key: the exact double mass is only ever a candidate-SELECTION key here --
+// CometPeptideIndex::MaterializeOneEntry() recomputes the exact double per surviving
+// candidate (bit-identical to what used to be stored, same summation order), and
+// CometSearch::SearchPeptideIndex() re-runs the exact tolerance checks on that recomputed
+// mass after a conservatively-widened quantized prefilter, so quantization can only admit
+// extra borderline candidates into the exact check, never change the accepted set.
+// PI_DB and FI_DB still build their variant lists via different code paths
+// (CometPeptideIndex::GenerateVariantArray() vs. CometFragmentIndex::
+// AddFragmentsThreadProc()); FI_DB's g_vFragmentPeptides keeps the 24B AoS -- its scoring
+// path reports the stored dPepMass directly and has no exact-mass recompute step yet (see
+// docs/20260827_PI_memory.md Section 7.1 for the porting condition).
+struct PiVariantArray
+{
+   // Fixed-point granularity of uiMassKey: 1e-4 Da. llround(mass * scale) is monotonic
+   // non-decreasing over the mass-sorted input, so binary-search semantics are unchanged.
+   // uint32_t covers masses to ~429,496 Da; GenerateVariantArray() verifies the top mass fits.
+   static constexpr double MASS_KEY_SCALE = 1e4;
+
+   vector<unsigned int>  vuiMassKey;       // llround(dPepMass * MASS_KEY_SCALE), non-decreasing
+   vector<unsigned int>  vuiWhichPeptide;  // index into g_vRawPeptides
+   vector<unsigned int>  vuiModNumIdx;     // mod-combination entry index; 0xFFFFFFFF = unmodified
+   vector<unsigned char> vucTermMods;      // hi nibble cNtermMod+1, lo nibble cCtermMod+1; 0 = none
+                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4)
+
+   size_t size() const { return vuiMassKey.size(); }
+   bool empty() const { return vuiMassKey.empty(); }
+
+   void clear()
+   {
+      vector<unsigned int>().swap(vuiMassKey);
+      vector<unsigned int>().swap(vuiWhichPeptide);
+      vector<unsigned int>().swap(vuiModNumIdx);
+      vector<unsigned char>().swap(vucTermMods);
+   }
+
+   int GetModNumIdx(size_t i) const
+   {
+      unsigned int ui = vuiModNumIdx[i];
+      return ui == 0xFFFFFFFFu ? -1 : (int)ui;
+   }
+   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x0F) - 1; }
+   char GetCtermMod(size_t i) const { return (char)(vucTermMods[i] & 0x0F) - 1; }
+
+   // Smallest key a mass >= dMass could have encoded to, minus 1 LSB of margin; with
+   // QuantizeHigh() below, brackets a [low, high] mass window conservatively: rounding
+   // error can only ADMIT extra borderline entries (rejected by the exact per-candidate
+   // checks), never exclude a real one.
+   static unsigned int QuantizeLow(double dMass)
+   {
+      double d = floor(dMass * MASS_KEY_SCALE) - 1.0;
+      if (d <= 0.0)
+         return 0;
+      if (d >= 4294967295.0)
+         return 0xFFFFFFFFu;
+      return (unsigned int)d;
+   }
+   static unsigned int QuantizeHigh(double dMass)
+   {
+      double d = ceil(dMass * MASS_KEY_SCALE) + 1.0;
+      if (d <= 0.0)
+         return 0;
+      if (d >= 4294967295.0)
+         return 0xFFFFFFFFu;
+      return (unsigned int)d;
+   }
+
+   // Heap bytes currently held; for the COMET_MEMREPORT report.
+   size_t heap_bytes() const
+   {
+      return vuiMassKey.capacity() * sizeof(unsigned int)
+         + vuiWhichPeptide.capacity() * sizeof(unsigned int)
+         + vuiModNumIdx.capacity() * sizeof(unsigned int)
+         + vucTermMods.capacity() * sizeof(unsigned char);
+   }
+};
+extern PiVariantArray g_dbIndexVariants;
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
 extern vector<SpecLibStruct> g_vSpecLib;
 extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>

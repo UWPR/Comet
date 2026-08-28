@@ -100,7 +100,7 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    // GenerateFragmentIndex() (via AddFragmentsThreadProcRange()) reads directly below.
    // ReadPeptideIndex() itself calls CometFragmentIndex::PermuteIndexPeptideMods() once per
    // session to build those tables fresh from live comet.params (Phase 0.5 -- they're no
-   // longer persisted in the .idx file), so no separate call is needed here. g_vDBIndexVariants
+   // longer persisted in the .idx file), so no separate call is needed here. g_dbIndexVariants
    // also gets populated (by ReadPeptideIndex(), for PI_DB mode only) but is unused on this
    // FI_DB path.
    if (!g_bPlainPeptideIndexRead && !CometPeptideIndex::ReadPeptideIndex(bIsRTS))

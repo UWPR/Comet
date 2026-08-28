@@ -86,7 +86,7 @@ uint64_t*     g_iFragmentIndexOffset;                       // CSR offsets [uiMa
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
 vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
 vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
-vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;   // PI_DB's compact per-variant array, regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5); see core/Types.h
+PiVariantArray g_dbIndexVariants;   // PI_DB's compact per-variant SoA (13B/entry), regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5, docs/20260827_PI_memory.md Phase 2); see core/Types.h
 vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
 vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
 
@@ -2549,7 +2549,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
 
 // Does NOT reset g_bPeptideIndexRead/g_bPlainPeptideIndexRead or free
-// g_vRawPeptides/MOD_SEQS_POOL/MOD_NUMBERS_POOL/g_vDBIndexVariants/CometPeptideIndex::
+// g_vRawPeptides/MOD_SEQS_POOL/MOD_NUMBERS_POOL/g_dbIndexVariants/CometPeptideIndex::
 // GetVModSlotForAllModsIdx()'s cached slot map -- see the PROCESS-LIFETIME note above
 // CometPeptideIndex::ReadPeptideIndex()'s PermuteIndexPeptideMods() call for why a partial
 // reset here (clearing just the two guard bools) would be actively worse than the current

@@ -186,8 +186,8 @@ copied into `g_vRawPeptides` and cleared before the function returns -- see
 `PlainPeptideIndexStruct`/`FragmentPeptidesStruct` below for what replaced it at search
 time). `DBIndex` the *type* is still used, but only as a stack-local, per-candidate
 reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on demand from
-a `g_vDBIndexVariants` entry for each mass-window candidate PI_DB search scores, then
-discards it. Since Phase 0.5, `g_vDBIndexVariants` itself is also transient in a different
+a `g_dbIndexVariants` entry for each mass-window candidate PI_DB search scores, then
+discards it. Since Phase 0.5, `g_dbIndexVariants` itself is also transient in a different
 sense: it's rebuilt once per search session (`CometPeptideIndex::GenerateVariantArray()`,
 called from `ReadPeptideIndex()`) from `g_vRawPeptides` + whichever variable mods are
 active in `g_staticParams.variableModParameters`, rather than read from disk. As of
@@ -217,9 +217,9 @@ Compact fixed-size tuple stored in the unified `.idx` file (shared by PI_DB and 
 `docs/20260730_PI_reduction.md` Phase 0) and loaded into `g_vRawPeptides` at runtime by
 both search modes. Same core fields as `DBIndex` but without the `VarModSites` mod-site
 field (only unmodified peptides are stored here; modifications are layered on in
-`g_vFragmentPeptides` for FI_DB, or the structurally-identical `g_vDBIndexVariants` for
+`g_vFragmentPeptides` for FI_DB, or the SoA-compacted `g_dbIndexVariants` for
 PI_DB). As of Phase 0.5, `g_vRawPeptides` is the *only* peptide-level data persisted in the
-`.idx` file -- `g_vFragmentPeptides`/`g_vDBIndexVariants` and the mod-permutation
+`.idx` file -- `g_vFragmentPeptides`/`g_dbIndexVariants` and the mod-permutation
 tables (`MOD_NUMBERS_POOL`/`MOD_SEQS_POOL`/etc.) are generated fresh from it, once per search
 session, rather than read back from disk. The variable mods driving that regeneration do
 come from the `.idx` file again, though: `docs/20260811_restore_idx_header_mods.md`
@@ -246,12 +246,13 @@ struct PlainPeptideIndexStruct  // core/Types.h
 
 One entry in the fragment index peptide list (`g_vFragmentPeptides`). Represents one (peptide, mod-state) combination. Sorted by mass so that RunSearch can binary-search for mass-matching candidates.
 
-**Also used, as the same type, for PI_DB's compact per-variant array** (`g_vDBIndexVariants`,
-`docs/20260730_PI_reduction.md`) -- a separate global rather than literally sharing
-`g_vFragmentPeptides` with FI_DB (the two backends don't yet share a build/dispatch path
-for this, tracked as a follow-up), but identical in layout and semantics. PI_DB's
-`CometSearch::SearchPeptideIndex()` binary-searches `g_vDBIndexVariants` by `dPepMass`
-exactly as FI_DB does with `g_vFragmentPeptides`, then reconstructs a full `DBIndex` per
+**PI_DB's compact per-variant array used to be this same type** (`g_vDBIndexVariants`,
+`docs/20260730_PI_reduction.md`); as of docs/20260827_PI_memory.md Phase 2 it is
+`g_dbIndexVariants` (`PiVariantArray`, core/Types.h) -- a 13B/entry structure-of-arrays
+with a 4-byte fixed-point mass key instead of the 24B AoS, still built by PI_DB's own
+path rather than sharing `g_vFragmentPeptides` (tracked as a follow-up). PI_DB's
+`CometSearch::SearchPeptideIndex()` binary-searches the quantized keys (conservatively
+widened), then reconstructs a full `DBIndex` -- exact double mass included -- per
 surviving candidate via `CometPeptideIndex::MaterializeOneEntry()` instead of resolving a
 fragment-ion posting list.
 
