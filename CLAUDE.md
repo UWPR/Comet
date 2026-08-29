@@ -83,10 +83,10 @@ The codebase has three layers:
 | Global | Thread-safe? | Notes |
 |--------|-------------|-------|
 | `g_staticParams` | [x] Read-only after init | All search parameters |
-| `g_iFragmentIndex`, `g_vFragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
+| `g_iFragmentIndex`, `g_fragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
 | `g_pvProteinsList` | [x] Read-only after init | Populated on both a fresh build and a search-only read-back of an existing `.idx` |
 | `g_pvProteinNames` | [ ] Build-time only | **Not** search-time readable: populated only while *building* a `.idx`, never repopulated when an existing `.idx` is read back for a search -- reading it during a search-only run silently finds nothing (this exact confusion caused a real bug, decoy peptides misclassified as targets in every PI_DB search of a pre-built index). Use `g_pvProteinNameCache` for search-time protein-name lookups instead. |
-| `g_pvProteinNameCache` | [x] Read-only after index load | File-offset -> protein-name string; populated whenever an index is loaded (build or read-back) -- the search-time-safe counterpart to `g_pvProteinNames` above |
+| `g_pvProteinNameCache` | [x] Read-only after index load | Protein-name strings indexed by name-section ordinal (`vector<string>`; every protein, read sequentially at index load) -- the search-time-safe counterpart to `g_pvProteinNames` above. `g_pvProteinsList` rows hold matching ordinals after a load (FASTA offsets during a build). |
 | `g_bIndexPrecursors` | [x] Read-only after init | Per-mass-bin bool array sized `BIN(dPeptideMassHigh) + 1`; freed and nulled by `FiStrategy::finalize()` at the end of a search |
 | `g_vSpecLib` | [x] Read-only after init | MS1 spectral library |
 | `SearchSession::queries` | [ ] Shared mutable | Batch search path only; guarded by `SearchSession::queriesMutex`. Formerly the bare global `g_pvQuery` -- moved into `SearchSession` by the OOP architecture migration (`docs/20260612_architecture_migration.md`); `core/Types.h` still has a comment noting the move, but plenty of code comments across the tree still say `g_pvQuery` informally. |

@@ -64,7 +64,7 @@ public:
 
    static bool InitializeMassesFromPeptideIndex();
 
-   // Ensures the peptide index (g_vRawPeptides, g_vDBIndexVariants, g_pvProteinsList,
+   // Ensures the peptide index (g_vRawPeptides, g_dbIndexVariants, g_pvProteinsList,
    // protein name cache)
    // and its associated fragment/parent masses are loaded exactly once. Shared by
    // both the thread-local RTS path (RunSearch(Query*)) and the batch PI_DB path
@@ -131,9 +131,12 @@ public:
                         double dCalcPepMass) const;
    bool CheckMassMatch(size_t iWhichQuery,
                        double dCalcPepMass);
-   // Task 1.2: Thread-local overload accepting Query* directly.
+   // Task 1.2: Thread-local overload accepting Query* directly. dTolWiden (default 0.0 =
+   // exact) widens every tolerance window by that many Da per side -- used only by
+   // SearchPeptideIndex()'s quantized-mass prefilter (docs/20260827_PI_memory.md Phase 2).
    static bool CheckMassMatch(Query* pQuery,
-                              double dCalcPepMass);
+                              double dCalcPepMass,
+                              double dTolWiden = 0.0);
 
    bool SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries);
 
@@ -169,8 +172,8 @@ private:
                               vector<OBOStruct>& vectorPeffOBO);
    static size_t BinarySearchIndexMass(size_t start,
                                        size_t end,
-                                       double dQueryMass,
-                                       unsigned int *uiFragmentMass);
+                                       unsigned int uiKeyLow,
+                                       unsigned int uiWhichBin);
    void SubtractVarMods(int *piVarModCounts,
                         int cResidue,
                         int iResiduePosition);
@@ -310,7 +313,7 @@ private:
                                    int iSlot);
 
    // Thread-local overload: searches a caller-owned Query* against the
-   // read-only g_vDBIndexVariants. Does not access g_pvQuery. iSlot identifies the
+   // read-only g_dbIndexVariants. Does not access g_pvQuery. iSlot identifies the
    // caller's claimed SearchMemoryPool slot, used to fetch the thread-local
    // PI_DB ion-mass/precursor-NL scratch buffers (see AnalyzePeptideIndex).
    static void SearchPeptideIndex(Query* pQuery, bool* pbDuplFragment, int iSlot);

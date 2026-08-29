@@ -16,6 +16,13 @@
 #include "CometPeptideIndex.h"
 #include "CometPredictedMask.h"
 
+// For GenerateVariantArray()'s page-granular staging buffer (AllocStagingPages() et al.):
+// mmap/madvise/munmap on POSIX; Windows uses plain malloc/free (see AllocStagingPages()'s
+// comment for why NOT VirtualAlloc/VirtualFree there).
+#ifndef _WIN32
+#include <sys/mman.h>
+#endif
+
 extern comet_fileoffset_t clSizeCometFileOffset;
 
 
@@ -34,22 +41,25 @@ CometPeptideIndex::~CometPeptideIndex()
 //                            mod-variant of that peptide. The only peptide-level data
 //                            persisted on disk -- everything below is generated fresh in
 //                            memory every session, never written to the .idx file.
-//   MOD_SEQS/MOD_NUMBERS/MOD_SEQ_MOD_NUM_START/MOD_SEQ_MOD_NUM_CNT/PEPTIDE_MOD_SEQ_IDXS -
-//                            the mod-permutation tables, rebuilt once per session by
+//   MOD_SEQS_POOL/MOD_NUMBERS_POOL/MOD_SEQ_MOD_NUM_START/CNT/POOL_START/PEPTIDE_MOD_SEQ_IDXS -
+//                            the mod-permutation tables (flat-pooled, see core/Types.h and
+//                            docs/20260827_PI_memory.md Phase 1), rebuilt once per session by
 //                            CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides)
 //                            from whichever variable mods are active in comet.params at
 //                            that moment (Phase 0.5 -- previously persisted in the .idx
 //                            file and read back as-is; see the Phase 0.5 section of
 //                            docs/20260730_PI_reduction.md for why that changed).
-//   g_vDBIndexVariants     - one compact entry per (peptide, mod combination) pair (mass plus
-//                            a reference back into g_vRawPeptides), sorted by mass. Built
+//   g_dbIndexVariants      - one compact entry per (peptide, mod combination) pair (a
+//                            fixed-point mass key plus a reference back into
+//                            g_vRawPeptides; VariantArray SoA, core/Types.h), sorted by
+//                            mass. Built
 //                            once per session by GenerateVariantArray() below, PI_DB mode
 //                            only. A full DBIndex is materialized on demand from one of
 //                            these entries via CometPeptideIndex::MaterializeOneEntry(),
 //                            called once per mass-window candidate from
 //                            CometSearch::SearchPeptideIndex(). FI_DB mode leaves this
 //                            empty -- it builds its own posting list from
-//                            MOD_SEQS/MOD_NUMBERS/etc. above via
+//                            MOD_SEQS_POOL/MOD_NUMBERS_POOL/etc. above via
 //                            CometFragmentIndex::GenerateFragmentIndex(), unchanged by
 //                            this unification.
 //   g_pvProteinsList       - vector-of-vectors mapping peptide to protein file positions
@@ -111,6 +121,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
    // check) see what the caller actually asked for.
    if (bForceExportMode)
       g_staticParams.iDbType = DbType::PI_DB;
+
+   // The protein-name section starts immediately after the text header's terminating blank
+   // line, i.e. exactly where ParsePeptideIndexHeader() left the stream: one WIDTH_REFERENCE-
+   // sized block per protein, back-to-back. Phase 4 (docs/20260827_PI_memory.md) stores
+   // name-section ORDINALS, not file offsets, in g_pvProteinsList, so the load below needs
+   // this base (and the section's block count) to translate and validate the on-disk
+   // offsets. The on-disk format itself is unchanged.
+   comet_fileoffset_t clNamesBase = comet_ftell(fp);
 
    // --- Read the two-pointer footer at true EOF ---
    comet_fseek(fp, 0, SEEK_END);
@@ -180,55 +198,96 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
       return false;
    }
 
+   // Streamed read of the raw-peptide section (docs/20260827_PI_memory.md follow-up to
+   // Phase 4): a fixed carry buffer replaces the former whole-section vBuf, which at
+   // MHC scale held ~8 GB alongside the growing table and -- with the pool over-reserve's
+   // shrink_to_fit() copy on top -- WAS the process's peak-RSS moment. The on-disk fixed
+   // overhead is exactly 24 B/entry (iLen int + 2 flanks + double + ushort + 8-byte protein
+   // reference) and the pool stores (iLen + 1) bytes per entry, so the pool's final size is
+   // computable up front: tSectionSize - 23 * tNumRaw. Reserving exactly makes the trailing
+   // shrink_to_fit() a no-op instead of a multi-GB copy.
+   const size_t tFixedDiskBytesPerEntry = sizeof(int) + 2 + sizeof(double)
+      + sizeof(unsigned short) + (size_t)clSizeCometFileOffset;   // == tMinEntrySize above
+   size_t tSeqPoolBytes = tSectionSize - (size_t)tNumRaw * (tFixedDiskBytesPerEntry - 1);
+
    g_vRawPeptides.clear();
-   g_vRawPeptides.reserve((size_t)tNumRaw);
+   g_vRawPeptides.reserve((size_t)tNumRaw, tSeqPoolBytes);
    {
-      vector<char> vBuf(tSectionSize);
-      if (fread(vBuf.data(), 1, tSectionSize, fp) != tSectionSize)
-      {
-         fclose(fp);
-         logout(" Error - failed to read raw peptide table from .idx file; file may be truncated or corrupt.\n");
-         return false;
-      }
-      const char* p = vBuf.data();
-      const char* pEnd = vBuf.data() + tSectionSize;
+      // largest possible entry: fixed fields + a (MAX_PEPTIDE_LEN - 1)-residue sequence
+      const size_t tMaxEntryBytes = tFixedDiskBytesPerEntry + MAX_PEPTIDE_LEN;
+      const size_t tBufCap = 16 * 1024 * 1024;
+      vector<char> vBuf(tBufCap);
+      size_t tHave = 0;                          // valid bytes currently in vBuf
+      size_t tPos = 0;                           // parse cursor within vBuf
+      uint64_t tFileRemaining = tSectionSize;    // section bytes not yet read from disk
+
       for (uint64_t i = 0; i < tNumRaw; ++i)
       {
-         PlainPeptideIndexStruct sRaw;
+         // refill when the window can no longer be guaranteed to hold one whole entry
+         if (tHave - tPos < tMaxEntryBytes && tFileRemaining > 0)
+         {
+            memmove(vBuf.data(), vBuf.data() + tPos, tHave - tPos);
+            tHave -= tPos;
+            tPos = 0;
+            size_t tToRead = tBufCap - tHave;
+            if ((uint64_t)tToRead > tFileRemaining)
+               tToRead = (size_t)tFileRemaining;
+            if (fread(vBuf.data() + tHave, 1, tToRead, fp) != tToRead)
+            {
+               fclose(fp);
+               logout(" Error - failed to read raw peptide table from .idx file; file may be truncated or corrupt.\n");
+               return false;
+            }
+            tHave += tToRead;
+            tFileRemaining -= tToRead;
+         }
+
          int iLen;
 
-         if (p + sizeof(int) > pEnd)
+         if (tHave - tPos < sizeof(int))
          {
             fclose(fp);
             logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
-         memcpy(&iLen, p, sizeof(int)); p += sizeof(int);
+         memcpy(&iLen, vBuf.data() + tPos, sizeof(int)); tPos += sizeof(int);
          if (iLen < 0 || iLen >= MAX_PEPTIDE_LEN)
          {
             fclose(fp);
             logout(" Error - corrupt raw peptide entry " + to_string(i) + " in .idx file.\n");
             return false;
          }
-         // Every fixed-size field this entry still needs to read, checked in one shot: the
-         // peptide sequence itself (iLen bytes) plus cPrevAA/cNextAA/dPepMass/
-         // siVarModProteinFilter/lIndexProteinFilePosition. tNumRaw not matching what the
-         // section actually holds (a corrupt/truncated file) would otherwise walk p past
-         // vBuf's end -- a heap-buffer-overread -- instead of erroring cleanly here.
-         if (p + (size_t)iLen + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset > pEnd)
+         // Every fixed-size field this entry still needs, checked in one shot: the peptide
+         // sequence itself (iLen bytes) plus cPrevAA/cNextAA/dPepMass/siVarModProteinFilter/
+         // lIndexProteinFilePosition. tNumRaw not matching what the section actually holds
+         // (a corrupt/truncated file) would otherwise walk the cursor past the window -- a
+         // heap-buffer-overread -- instead of erroring cleanly here.
+         if (tHave - tPos < (size_t)iLen + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset)
          {
             fclose(fp);
             logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
-         memcpy(sRaw.szPeptide, p, (size_t)iLen); sRaw.szPeptide[iLen] = '\0'; p += iLen;
-         sRaw.cPrevAA = *p++;
-         sRaw.cNextAA = *p++;
-         memcpy(&sRaw.dPepMass, p, sizeof(double)); p += sizeof(double);
-         memcpy(&sRaw.siVarModProteinFilter, p, sizeof(unsigned short)); p += sizeof(unsigned short);
-         memcpy(&sRaw.lIndexProteinFilePosition, p, clSizeCometFileOffset); p += clSizeCometFileOffset;
-         g_vRawPeptides.push_back(sRaw);
+         const char* pSeq = vBuf.data() + tPos; tPos += iLen;
+         char cPrevAA = vBuf[tPos++];
+         char cNextAA = vBuf[tPos++];
+         double dPepMass;
+         unsigned short siVarModProteinFilter;
+         comet_fileoffset_t lIndexProteinFilePosition;
+         memcpy(&dPepMass, vBuf.data() + tPos, sizeof(double)); tPos += sizeof(double);
+         memcpy(&siVarModProteinFilter, vBuf.data() + tPos, sizeof(unsigned short)); tPos += sizeof(unsigned short);
+         memcpy(&lIndexProteinFilePosition, vBuf.data() + tPos, clSizeCometFileOffset); tPos += (size_t)clSizeCometFileOffset;
+         if (!g_vRawPeptides.push_back(pSeq, iLen, cPrevAA, cNextAA, dPepMass,
+               siVarModProteinFilter, lIndexProteinFilePosition))
+         {
+            // push_back only refuses an out-of-range protein row index (see
+            // RawPeptideTable's class comment) -- possible only for a corrupt file.
+            fclose(fp);
+            logout(" Error - corrupt protein reference in raw peptide entry " + to_string(i) + " in .idx file.\n");
+            return false;
+         }
       }
+      g_vRawPeptides.shrink_to_fit();   // no-op when the exact pool estimate held
    }
 
    // --- Proteins list (ProteinsListCSR) ---
@@ -261,14 +320,34 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
       return false;
    }
 
-   // Read directly into flat CSR staging buffers instead of one throwaway
-   // vector<comet_fileoffset_t> per row -- avoids tNumProteinEntries individual
-   // heap allocations (each immediately freed by ProteinsListCSR::push_back's
-   // swap-to-release), the same per-row allocation cost append_flat() was
-   // built to eliminate on the build side (see its comment in core/Types.h).
+   // The name section spans [clNamesBase, clPeptidesFilePos) in fixed WIDTH_REFERENCE
+   // blocks; its block count both sizes the sequential name-cache read below and bounds
+   // the ordinal validation here.
+   if (clPeptidesFilePos < clNamesBase
+      || ((clPeptidesFilePos - clNamesBase) % (comet_fileoffset_t)WIDTH_REFERENCE) != 0)
    {
-      vector<comet_fileoffset_t> vFlatProteinOffsets;
+      fclose(fp);
+      string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+         + "\" has a malformed protein-name section in its .idx file; the file is likely "
+         + "truncated or corrupt. Rebuild it with -i or -j.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+   const uint64_t tNumProteinsInFile = (uint64_t)(clPeptidesFilePos - clNamesBase) / WIDTH_REFERENCE;
+
+   // Read directly into flat CSR staging buffers instead of one throwaway vector per row --
+   // avoids tNumProteinEntries individual heap allocations, the same per-row allocation
+   // cost append_flat() was built to eliminate on the build side (see its comment in
+   // core/Types.h). The on-disk values are 8-byte name-section file offsets (format
+   // unchanged); each is translated to its name-section ORDINAL here -- Phase 4
+   // (docs/20260827_PI_memory.md) halves the resident structure by storing uint32 ordinals,
+   // and the stride/range validation below is a stronger corruption check than the old
+   // min/max bound on raw offsets.
+   {
+      vector<unsigned int> vFlatProteinOrdinals;
       vector<uint32_t> vProteinCounts;
+      vector<comet_fileoffset_t> vRowBuf;
       vProteinCounts.reserve(tNumProteinEntries);
 
       for (size_t i = 0; i < tNumProteinEntries; ++i)
@@ -287,13 +366,27 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
             return false;
          }
 
-         size_t tOldSize = vFlatProteinOffsets.size();
-         vFlatProteinOffsets.resize(tOldSize + tNumProteins);
-         if (fread(&vFlatProteinOffsets[tOldSize], clSizeCometFileOffset, tNumProteins, fp) != tNumProteins)
+         vRowBuf.resize(tNumProteins);
+         if (fread(vRowBuf.data(), clSizeCometFileOffset, tNumProteins, fp) != tNumProteins)
          {
             fclose(fp);
             logout(" Error - failed to read protein offsets from .idx file at entry " + to_string(i) + "; file may be truncated or corrupt.\n");
             return false;
+         }
+
+         for (size_t j = 0; j < tNumProteins; ++j)
+         {
+            comet_fileoffset_t lOffset = vRowBuf[j];
+            if (lOffset < clNamesBase
+               || ((lOffset - clNamesBase) % (comet_fileoffset_t)WIDTH_REFERENCE) != 0
+               || (uint64_t)(lOffset - clNamesBase) / WIDTH_REFERENCE >= tNumProteinsInFile)
+            {
+               fclose(fp);
+               logout(" Error - out-of-range protein-name offset in .idx file at entry " + to_string(i)
+                  + "; the file is likely truncated or corrupt. Rebuild it with -i or -j.\n");
+               return false;
+            }
+            vFlatProteinOrdinals.push_back((unsigned int)((lOffset - clNamesBase) / WIDTH_REFERENCE));
          }
 
          vProteinCounts.push_back((uint32_t)tNumProteins);
@@ -301,99 +394,55 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
 
       g_pvProteinsList.clear();
       g_pvProteinsList.reserve(tNumProteinEntries);
-      g_pvProteinsList.append_flat(vFlatProteinOffsets, vProteinCounts);
+      if (!g_pvProteinsList.append_flat(vFlatProteinOrdinals, vProteinCounts))
+      {
+         fclose(fp);
+         logout(" Error - protein list exceeds the uint32 CSR limit (see ProteinsListCSR::append_flat); file may be corrupt.\n");
+         return false;
+      }
    }
 
-   // Build in-memory protein name cache before closing the file.
-   //
-   // P5: every protein's szProt block was written back-to-back in one contiguous section
-   // by WritePeptideIndex() (see the file-layout comment at the top of this file), so a
-   // per-protein fseek+fread here is random-access I/O against what's actually a fully
-   // sequential region -- each seek also discards this stdio stream's buffered state.
-   // Collect the distinct offsets actually referenced, then do ONE sequential read
-   // spanning [min, max + WIDTH_REFERENCE) and slice each name out of that in-memory
-   // buffer instead of seeking to it individually.
+   // Build the in-memory protein name cache before closing the file: one sequential read
+   // of the whole name section (tNumProteinsInFile x WIDTH_REFERENCE, already validated
+   // above), one string per protein, indexed by ordinal -- Phase 4
+   // (docs/20260827_PI_memory.md) replaced the former offset-keyed unordered_map (built
+   // from the distinct referenced offsets via a min/max-bounded bulk read) with this
+   // complete, ordinal-indexed vector; every ordinal stored in g_pvProteinsList is in
+   // range by the validation above, so lookups are a bounds check + index, and the old
+   // per-protein file-read fallback is unnecessary.
    {
       g_pvProteinNameCache.clear();
+      g_pvProteinNameCache.reserve((size_t)tNumProteinsInFile);
 
-      vector<comet_fileoffset_t> vDistinctOffsets;
-      for (const auto& vProts : g_pvProteinsList)
+      comet_fseek(fp, clNamesBase, SEEK_SET);
+
+      // read in chunks so a pathologically large name section doesn't demand one giant buffer
+      const size_t tChunkBlocks = 65536;   // 16 MB per chunk at WIDTH_REFERENCE == 256
+      vector<char> vNameBuf(tChunkBlocks * WIDTH_REFERENCE);
+      uint64_t tRemaining = tNumProteinsInFile;
+
+      while (tRemaining > 0)
       {
-         for (const comet_fileoffset_t lOffset : vProts)
-            vDistinctOffsets.push_back(lOffset);
-      }
-
-      sort(vDistinctOffsets.begin(), vDistinctOffsets.end());
-      vDistinctOffsets.erase(unique(vDistinctOffsets.begin(), vDistinctOffsets.end()), vDistinctOffsets.end());
-
-      if (!vDistinctOffsets.empty())
-      {
-         comet_fileoffset_t lMin = vDistinctOffsets.front();
-         comet_fileoffset_t lMax = vDistinctOffsets.back();
-
-         // These offsets come straight from the .idx protein-list section, not from a value
-         // this code computed itself, so a corrupt file can hand them arbitrary garbage --
-         // unlike clPeptidesFilePos/clProteinsFilePos above, nothing has bounded them yet.
-         // Every protein-name block is WIDTH_REFERENCE bytes and the whole name section lies
-         // before clPeptidesFilePos (see file-layout comment at the top of this file), so a
-         // legitimate offset must satisfy 0 <= lMin <= lMax <= clPeptidesFilePos -
-         // WIDTH_REFERENCE. Reject otherwise before lMax - lMin feeds tSpan's allocation size,
-         // the fseek below, and pProtBuf's pointer arithmetic.
-         if (lMin < 0 || clPeptidesFilePos < (comet_fileoffset_t)WIDTH_REFERENCE
-            || lMax > clPeptidesFilePos - (comet_fileoffset_t)WIDTH_REFERENCE)
+         size_t tBlocks = (tRemaining < tChunkBlocks) ? (size_t)tRemaining : tChunkBlocks;
+         if (fread(vNameBuf.data(), WIDTH_REFERENCE, tBlocks, fp) != tBlocks)
          {
-            string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
-               + "\" has an out-of-range protein-name offset in its .idx file; the file is "
-               + "likely truncated or corrupt. Rebuild it with -i or -j.\n";
+            // Do NOT continue with a partial cache: decoy classification looks peptides'
+            // proteins up in g_pvProteinNameCache and treats a miss as "target", so a
+            // short cache silently misclassifies decoys and destroys the target/decoy
+            // split. Fail the index load loudly instead.
+            string strErrorMsg = " Error - cannot read the protein-name section from the"
+               " .idx file; the file is likely truncated or corrupt. Re-create the .idx file.\n";
             g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
             logerr(strErrorMsg);
             fclose(fp);
             return false;
          }
-
-         size_t tSpan = (size_t)(lMax - lMin) + WIDTH_REFERENCE;
-
-         vector<char> vNameBuf(tSpan);
-         comet_fseek(fp, lMin, SEEK_SET);
-         if (fread(vNameBuf.data(), sizeof(char), tSpan, fp) == tSpan)
+         for (size_t b = 0; b < tBlocks; ++b)
          {
-            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
-            {
-               const char* pProtBuf = vNameBuf.data() + (size_t)(lOffset - lMin);
-               g_pvProteinNameCache.emplace(lOffset, string(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1)));
-            }
+            const char* pProtBuf = vNameBuf.data() + b * WIDTH_REFERENCE;
+            g_pvProteinNameCache.emplace_back(pProtBuf, strnlen(pProtBuf, WIDTH_REFERENCE - 1));
          }
-         else
-         {
-            // The one-shot bulk read failed (truncated .idx or a transient I/O error).
-            // Do NOT continue with an empty cache: decoy classification looks peptides'
-            // proteins up in g_pvProteinNameCache and treats a miss as "target", so an
-            // empty cache silently classifies every PSM as target and destroys the
-            // target/decoy split. Retry per-protein; if names still can't be read,
-            // fail the index load loudly instead.
-            logout(" Warning - bulk read of protein-name section from .idx file failed;"
-               " retrying per-protein.\n");
-
-            char szProtBuf[WIDTH_REFERENCE];
-            for (const comet_fileoffset_t lOffset : vDistinctOffsets)
-            {
-               comet_fseek(fp, lOffset, SEEK_SET);
-               if (fread(szProtBuf, sizeof(char), WIDTH_REFERENCE, fp) == WIDTH_REFERENCE)
-               {
-                  g_pvProteinNameCache.emplace(lOffset, string(szProtBuf, strnlen(szProtBuf, WIDTH_REFERENCE - 1)));
-               }
-               else
-               {
-                  string strErrorMsg = " Error - cannot read protein name at offset "
-                     + to_string((long long)lOffset) + " from .idx file; the file is"
-                     " likely truncated or corrupt. Re-create the .idx file.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  fclose(fp);
-                  return false;
-               }
-            }
-         }
+         tRemaining -= tBlocks;
       }
    }
 
@@ -428,19 +477,20 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
    // batch comet.exe) calls Initialize.../Finalize... exactly once each, right before the
    // process exits -- so this is unreachable today, not merely untested. It also isn't a
    // one-line fix: CometFragmentIndex::PermuteIndexPeptideMods() and
-   // GenerateVariantArray()/EnumerateIndexPeptideMods() below allocate MOD_NUMBERS[].
-   // modifications, MOD_SEQ_MOD_NUM_START/CNT, and PEPTIDE_MOD_SEQ_IDXS with raw new[]/new
-   // that nothing currently frees, and GetVModSlotForAllModsIdx() caches its result in a
-   // function-local static for the same reason -- all three would need an explicit,
-   // ordered teardown (not just clearing these two bools) to support real re-parameterization
-   // safely. Do not "fix" this by resetting only the two bools below: that would make a
-   // reused process regenerate MOD_SEQS/MOD_NUMBERS/g_vDBIndexVariants against the new
-   // params while GetVModSlotForAllModsIdx() kept translating them with the OLD compacted
-   // mod-slot mapping -- silently wrong scoring, worse than today's clean (if surprising)
-   // stale-reuse.
+   // GenerateVariantArray()/EnumerateIndexPeptideMods() below allocate
+   // MOD_SEQ_MOD_NUM_START/CNT/POOL_START and PEPTIDE_MOD_SEQ_IDXS with raw new[] that
+   // nothing currently frees (the MOD_NUMBERS_POOL/MOD_SEQS_POOL flat pools would at least
+   // free cleanly, but are likewise never torn down), and GetVModSlotForAllModsIdx() caches
+   // its result in a function-local static for the same reason -- all of these would need an
+   // explicit, ordered teardown (not just clearing these two bools) to support real
+   // re-parameterization safely. Do not "fix" this by resetting only the two bools below:
+   // that would make a reused process regenerate the mod pools/g_dbIndexVariants against
+   // the new params while GetVModSlotForAllModsIdx() kept translating them with the OLD
+   // compacted mod-slot mapping -- silently wrong scoring, worse than today's clean (if
+   // surprising) stale-reuse.
    //
    // FI_DB doesn't need an equivalent call for its own posting list -- GenerateFragmentIndex()
-   // (via AddFragmentsThreadProc()) already consumes MOD_NUMBERS/MOD_SEQS/etc. from wherever
+   // (via AddFragmentsThreadProc()) already consumes MOD_NUMBERS_POOL/MOD_SEQS_POOL/etc. from wherever
    // they came from, unchanged whether that's a disk read (pre-Phase-0.5) or this in-memory
    // regeneration.
    CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides);
@@ -450,6 +500,8 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
       if (!GenerateVariantArray())
          return false;
    }
+
+   LogIndexMemoryReport();
 
    // Both guard flags set: PI_DB code checks g_bPeptideIndexRead, FI_DB code (still, after
    // this unification) checks g_bPlainPeptideIndexRead -- see
@@ -496,7 +548,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
 //     compacted index directly.
 //
 // FI_DB's ModificationsPermuter compacts active variable_modNN slots into ALL_MODS,
-// skipping inactive/blank slots, so MOD_NUMBERS[].modifications[] values are indices
+// skipping inactive/blank slots, so MOD_NUMBERS_POOL entry values are indices
 // into that compacted list, not direct varModList slot indices. vModSlotForAllModsIdx
 // rebuilds the exact same compaction order as
 // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop to translate
@@ -554,31 +606,45 @@ bool CometPeptideIndex::PassesVarModProteinFilter(const vector<int>& vModSlotFor
 }
 
 
-bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants)
+// Dual-mode since Phase 2 (docs/20260827_PI_memory.md): with pStaging == NULL this is a
+// count-only pass (*ptCursor is incremented per accepted tuple, nothing stored); with
+// pStaging set, accepted tuples are written at pStaging[*ptCursor++]. Both passes run the
+// exact same enumeration, filters, and mass computation, so the fill pass's element count
+// always equals the count pass's -- GenerateVariantArray() verifies this. tStagingCap
+// bounds the fill pass as corruption defense (ignored in count mode).
+bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStaging,
+   size_t tStagingCap, size_t* ptCursor)
 {
    const vector<int>& vModSlotForAllModsIdx = GetVModSlotForAllModsIdx();
 
    bool bModSitesOverflow = false;
+   bool bStagingOverflow = false;
 
    auto tryPush = [&](size_t iWhichPeptide, int modNumIdx, char cNtermMod, char cCtermMod)
    {
-      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
-      const int iLen = (int)strlen(raw.szPeptide);
+      const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
+      const int iLen = raw.iLen;
 
       double dCalcPepMass = raw.dPepMass;
       int cNumSites = 0;
 
       if (modNumIdx >= 0)
       {
-         const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
-         char* mods = modNum.modifications;
          int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-         const string& modSeq = MOD_SEQS.at(modSeqIdx);
+         int iModSeqLen;
+         const char* pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+         const char* mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
          int j = 0;
          for (int i = 0; i < iLen; ++i)
          {
-            if (raw.szPeptide[i] == modSeq[j])
+            // j bound: pool mod-seq entries are not NUL-terminated, so the former
+            // std::string behavior (operator[] at size() safely returning '\0', which never
+            // matches a residue) is replaced by an explicit stop once every modifiable
+            // position has been consumed -- same guard as MaterializeOneEntry() below.
+            if (j >= iModSeqLen)
+               break;
+            if (raw.szPeptide[i] == pModSeq[j])
             {
                int iSlot = TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
                if (iSlot >= 0)
@@ -615,18 +681,26 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
       if (dCalcPepMass > g_massRange.dMaxMass || dCalcPepMass < g_massRange.dMinMass)
          return;
 
-      FragmentPeptidesStruct sVariant;
-      sVariant.dPepMass = dCalcPepMass;
-      sVariant.iWhichPeptide = (unsigned int)iWhichPeptide;
-      sVariant.modNumIdx = modNumIdx;
-      sVariant.cNtermMod = cNtermMod;
-      sVariant.cCtermMod = cCtermMod;
-      vVariants.push_back(sVariant);
+      if (pStaging != NULL)
+      {
+         if (*ptCursor >= tStagingCap)
+         {
+            bStagingOverflow = true;   // fill pass disagrees with count pass -- internal error
+            return;
+         }
+         FragmentPeptidesStruct& sVariant = pStaging[*ptCursor];
+         sVariant.dPepMass = dCalcPepMass;
+         sVariant.iWhichPeptide = (unsigned int)iWhichPeptide;
+         sVariant.modNumIdx = modNumIdx;
+         sVariant.cNtermMod = cNtermMod;
+         sVariant.cCtermMod = cCtermMod;
+      }
+      ++*ptCursor;
    };
 
    for (size_t iWhichPeptide = 0; iWhichPeptide < g_vRawPeptides.size(); ++iWhichPeptide)
    {
-      const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
+      const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
       if (g_staticParams.variableModParameters.bVarTermModSearch)
@@ -682,9 +756,11 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
 
          if (g_staticParams.variableModParameters.bVarModProteinFilter)
          {
-            const ModificationNumber& modNum = MOD_NUMBERS.at(modNumIdx);
-            bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, modNum.modifications,
-               modNum.modStringLen, raw.siVarModProteinFilter);
+            int iModSeqLen;
+            GetModSeq(modSeqIdx, iModSeqLen);
+            bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx,
+               GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen), iModSeqLen,
+               raw.siVarModProteinFilter);
          }
 
          if (!bPass)
@@ -741,6 +817,15 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>
       return false;
    }
 
+   if (bStagingOverflow)
+   {
+      string strErrorMsg = " Error - EnumerateIndexPeptideMods() fill pass produced more variants "
+         "than its count pass; internal error in the variant enumeration.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
    return true;
 }
 
@@ -769,56 +854,52 @@ bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx,
    if (iWhichPeptide >= g_vRawPeptides.size())
       return false;
 
-   const PlainPeptideIndexStruct& raw = g_vRawPeptides.at(iWhichPeptide);
-   const int iLen = (int)strlen(raw.szPeptide);
+   const RawPeptideView raw = g_vRawPeptides.at(iWhichPeptide);
+   const int iLen = raw.iLen;
 
    double dCalcPepMass = raw.dPepMass;
    VarModSites pcVarModSites;
 
    if (modNumIdx >= 0)
    {
-      // Defense against a corrupt/malformed .idx: modNumIdx/iWhichPeptide come directly from
-      // an on-disk FragmentPeptidesStruct record here (CometSearch::SearchPeptideIndex()
-      // reads g_vDBIndexVariants straight off disk), unlike EnumerateIndexPeptideMods()'s own
-      // build-time enumeration, which only ever constructs a modNumIdx>=0 tuple when its
-      // peptide's modSeqIdx is itself valid. A corrupt file could violate that invariant --
-      // fail this one candidate (the caller already treats a false return as "skip it") rather
-      // than let a bad index reach an unchecked array access or an uncaught vector::at()
-      // exception that would otherwise propagate out of this per-candidate hot path.
-      if (modNumIdx >= (int)MOD_NUMBERS.size())
-         return false;
-      const ModificationNumber& modNum = MOD_NUMBERS[modNumIdx];
-      char* mods = modNum.modifications;
+      // Defense against a malformed compact-variant tuple: fail this one candidate (the
+      // caller already treats a false return as "skip it") rather than let a bad tuple reach
+      // an out-of-bounds pool read. Beyond the modSeqIdx range check, modNumIdx must lie
+      // inside its own mod-seq's [MOD_SEQ_MOD_NUM_START, +CNT) block for GetModNumEntry()'s
+      // pooled-offset arithmetic to address the right entry -- a stronger constraint than the
+      // former global bounds test against MOD_NUMBERS.size(), which a (peptide, modNumIdx)
+      // pairing from mismatched mod-seqs could still have passed.
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-      if (modSeqIdx < 0 || modSeqIdx >= (int)MOD_SEQS.size())
+      if (modSeqIdx < 0 || modSeqIdx >= GetNumModSeqs())
          return false;
-      const string& modSeq = MOD_SEQS[modSeqIdx];
+      int iModNumStart = MOD_SEQ_MOD_NUM_START[modSeqIdx];
+      if (iModNumStart < 0 || modNumIdx < iModNumStart
+         || modNumIdx >= iModNumStart + MOD_SEQ_MOD_NUM_CNT[modSeqIdx])
+         return false;
+      int iModSeqLen;
+      const char* pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+      const char* mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
       int j = 0;
       for (int i = 0; i < iLen; ++i)
       {
-         // j reaching modSeq.size() before i reaches iLen is normal, not corruption -- it
+         // j reaching iModSeqLen before i reaches iLen is normal, not corruption -- it
          // means every modifiable position in the peptide has already been consumed and the
          // remaining residues are all non-modifiable (e.g. any peptide whose last modifiable
-         // residue isn't also its literal last residue). The original code relied on
+         // residue isn't also its literal last residue). The pre-pool code relied on
          // std::string::operator[](size()) safely returning '\0' here, which never matches a
          // real residue, to no-op through the rest of the peptide; an earlier version of this
          // fix instead treated reaching the end of modSeq as corruption and rejected the
          // (entirely valid) candidate outright -- caught via a real ~24% PI_DB PSM-count drop
          // on comet-debug3/4's data (17,660 -> 13,410) that a synthetic-corruption-only test
-         // didn't surface. Stop considering matches once modSeq is exhausted instead.
-         if ((size_t)j >= modSeq.size())
+         // didn't surface. Stop considering matches once modSeq is exhausted instead. This
+         // bound also covers mods[j]: the pool entry's length equals the mod-seq's length by
+         // construction (see GetModNumEntry()), so the former separate modStringLen check
+         // is subsumed here.
+         if (j >= iModSeqLen)
             break;
-         if (raw.szPeptide[i] == modSeq[j])
+         if (raw.szPeptide[i] == pModSeq[j])
          {
-            // Unlike modSeq (a std::string, safe to index up to and including size()), mods
-            // is a raw char* sized exactly modStringLen -- genuinely unsafe to read at/past
-            // that length, and (unlike modSeq.size(), just proven reachable in normal
-            // operation above) modStringLen should never be smaller than modSeq.size() for a
-            // well-formed file, so this check is pure corruption defense with no legitimate
-            // false-positive path.
-            if (j >= modNum.modStringLen)
-               return false;
             // TranslateVarModSlot() returns -1 for both mods[j] == -1 (ordinary "not modified
             // here") and mods[j] out of range (corrupt/mismatched .idx) -- the two are
             // distinguished explicitly below because only the latter should reject this whole
@@ -864,7 +945,7 @@ bool CometPeptideIndex::MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx,
 
 bool CometPeptideIndex::ExportVariants(const string& strOutputFile)
 {
-   if (g_staticParams.iDbType != DbType::PI_DB || g_vDBIndexVariants.empty())
+   if (g_staticParams.iDbType != DbType::PI_DB || g_dbIndexVariants.empty())
    {
       string strErrorMsg = " Error - ExportVariants() requires a PI_DB session with a "
          "populated variant array (ReadPeptideIndex() must have run in PI_DB mode first).\n";
@@ -894,15 +975,23 @@ bool CometPeptideIndex::ExportVariants(const string& strOutputFile)
 
    DBIndex entry;
    std::ostringstream oss;
-   for (const FragmentPeptidesStruct& variant : g_vDBIndexVariants)
+   for (size_t tWhichVariant = 0; tWhichVariant < g_dbIndexVariants.size(); ++tWhichVariant)
    {
-      if (!MaterializeOneEntry(variant.iWhichPeptide, variant.modNumIdx, variant.cNtermMod,
-         variant.cCtermMod, entry))
+      // ported to the VariantArray SoA (docs/20260827_PI_memory.md Phase 2): field reads
+      // become accessor calls; the exported values are identical to the former 24B-AoS
+      // export (MaterializeOneEntry()'s recomputed mass is bit-identical to what the old
+      // array stored per entry)
+      const unsigned int uiWhichPeptide = g_dbIndexVariants.vuiWhichPeptide[tWhichVariant];
+      const int modNumIdx = g_dbIndexVariants.GetModNumIdx(tWhichVariant);
+      const char cNtermMod = g_dbIndexVariants.GetNtermMod(tWhichVariant);
+      const char cCtermMod = g_dbIndexVariants.GetCtermMod(tWhichVariant);
+
+      if (!MaterializeOneEntry(uiWhichPeptide, modNumIdx, cNtermMod, cCtermMod, entry))
       {
          string strErrorMsg = " Error - failed to materialize variant (iWhichPeptide="
-            + std::to_string(variant.iWhichPeptide) + ", modNumIdx=" + std::to_string(variant.modNumIdx)
-            + ", cNtermMod=" + std::to_string((int)variant.cNtermMod)
-            + ", cCtermMod=" + std::to_string((int)variant.cCtermMod) + ") during export.\n";
+            + std::to_string(uiWhichPeptide) + ", modNumIdx=" + std::to_string(modNumIdx)
+            + ", cNtermMod=" + std::to_string((int)cNtermMod)
+            + ", cCtermMod=" + std::to_string((int)cCtermMod) + ") during export.\n";
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(strErrorMsg);
          fclose(fp);
@@ -924,59 +1013,212 @@ bool CometPeptideIndex::ExportVariants(const string& strOutputFile)
       }
 
       fprintf(fp, "%u\t%d\t%d\t%d\t%.10f\t%s\t%s\n",
-         variant.iWhichPeptide, variant.modNumIdx, (int)variant.cNtermMod, (int)variant.cCtermMod,
+         uiWhichPeptide, modNumIdx, (int)cNtermMod, (int)cCtermMod,
          entry.dPepMass, entry.sPeptide, oss.str().c_str());
    }
 
    fclose(fp);
 
-   logout("   - exported " + std::to_string(g_vDBIndexVariants.size()) + " peptide-index variants to \""
+   logout("   - exported " + std::to_string(g_dbIndexVariants.size()) + " peptide-index variants to \""
       + strOutputFile + "\"\n");
 
    return true;
 }
 
 
-// docs/20260730_PI_reduction.md Phase 0.5. PI_DB's counterpart to what used to be part of
-// WritePeptideIndex()'s build-time work -- builds the compact per-variant array
-// (g_vDBIndexVariants) from g_vRawPeptides + the mod-permutation tables a prior call to
-// CometFragmentIndex::PermuteIndexPeptideMods() just built, using whichever variable mods
-// are active in comet.params right now. Called once per search session from
-// ReadPeptideIndex(), not at build time -- nothing about the modified-peptide variant list
-// is persisted to disk any more.
+// docs/20260827_PI_memory.md Phase 0: one-shot, structure-by-structure memory report,
+// logged at the end of ReadPeptideIndex() when the COMET_MEMREPORT environment variable is
+// set. Reports load-time state: in FI_DB mode, g_vFragmentPeptides and the fragment-ion
+// posting list (g_iFragmentIndex) are built after this point
+// (CometFragmentIndex::CreateFragmentIndex()) and so legitimately show as empty here.
+// Capacities (not sizes) are what's charged, since allocator-held growth slack is real
+// process memory.
+void CometPeptideIndex::LogIndexMemoryReport()
+{
+   if (getenv("COMET_MEMREPORT") == NULL)
+      return;
+
+   auto mb = [](size_t tBytes) -> string
+   {
+      char szBuf[64];
+      snprintf(szBuf, sizeof(szBuf), "%.1f MB", tBytes / (1024.0 * 1024.0));
+      return string(szBuf);
+   };
+
+   size_t tNumRaw = g_vRawPeptides.size();
+   int iNumModSeqs = GetNumModSeqs();
+
+   // MOD_SEQ_MOD_NUM_START/CNT (int each) + MOD_SEQ_MOD_NUM_POOL_START (uint64_t), all
+   // sized per modifiable sequence, + the MOD_SEQS_OFFSET offsets array.
+   size_t tModAuxBytes = (size_t)iNumModSeqs * (2 * sizeof(int) + sizeof(uint64_t))
+      + MOD_SEQS_OFFSET.capacity() * sizeof(unsigned int);
+
+   size_t tNameBytes = 0;
+   for (const auto& sName : g_pvProteinNameCache)
+      tNameBytes += sName.size();
+
+   std::ostringstream oss;
+   oss << " Index memory report (COMET_MEMREPORT), load-time state:\n";
+   oss << "   g_vRawPeptides:       " << tNumRaw << " entries (pooled), "
+       << mb(g_vRawPeptides.heap_bytes()) << "\n";
+   oss << "   g_dbIndexVariants:    " << g_dbIndexVariants.size() << " entries (SoA), "
+       << mb(g_dbIndexVariants.heap_bytes()) << "\n";
+   oss << "   g_fragmentPeptides:   " << g_fragmentPeptides.size() << " entries (SoA), "
+       << mb(g_fragmentPeptides.heap_bytes()) << " (FI_DB fills this after load)\n";
+   oss << "   mod combinations:     " << MOD_NUM << " entries; MOD_NUMBERS_POOL "
+       << mb(MOD_NUMBERS_POOL.capacity()) << "\n";
+   oss << "   modifiable sequences: " << iNumModSeqs << "; MOD_SEQS_POOL "
+       << mb(MOD_SEQS_POOL.capacity()) << "; aux arrays " << mb(tModAuxBytes) << "\n";
+   oss << "   PEPTIDE_MOD_SEQ_IDXS: " << mb(tNumRaw * sizeof(int)) << "\n";
+   oss << "   g_pvProteinsList:     " << g_pvProteinsList.size() << " rows, "
+       << g_pvProteinsList.total_offsets() << " offsets, "
+       << mb(g_pvProteinsList.heap_bytes()) << "\n";
+   oss << "   g_pvProteinNameCache: " << g_pvProteinNameCache.size() << " names (by ordinal), "
+       << mb(tNameBytes) << " of string payload\n";
+   logout(oss.str());
+}
+
+
+// Page-granular staging allocation for GenerateVariantArray()'s Phase 2 transcode
+// (docs/20260827_PI_memory.md): a vector can't return already-consumed memory to the OS
+// mid-walk, so on POSIX the sorted staging array lives in raw mmap pages and
+// DecommitStagingRange() progressively releases the fully-transcoded prefix while the
+// transcode is still running, keeping the step's peak at ~24B/entry (the staging alone)
+// instead of 24B + 13B.
+//
+// Windows deliberately uses plain malloc/free with NO progressive release: the original
+// VirtualAlloc + chunked VirtualFree(MEM_DECOMMIT) implementation pattern-matched an
+// endpoint-protection behavioral heuristic -- CrowdStrike Falcon quarantined the freshly
+// built Comet.exe on its first execution (observed 2026-08-27; that memory-management
+// idiom is common in packers/loaders). Cost of the fallback: the Windows transcode
+// transient is ~37B/entry (staging + SoA together) instead of ~24B/entry -- still at or
+// below the pre-Phase-2 steady state (24B x ~1.5x vector growth capacity plus the
+// mod-table overhead Phase 1 removed).
+void* CometPeptideIndex::AllocStagingPages(size_t tBytes)
+{
+#ifdef _WIN32
+   return malloc(tBytes);
+#else
+   void* p = mmap(NULL, tBytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+   return (p == MAP_FAILED) ? NULL : p;
+#endif
+}
+
+// POSIX: returns the physical pages backing [pBase + tFrom, pBase + tTo) to the OS; the
+// address range stays reserved (a read after this would see zero-filled pages, but the
+// transcode only ever walks forward and never re-reads a released range). Bounds align
+// inward to page boundaries, so partially-covered pages at either end are left committed.
+// Windows: no-op -- see AllocStagingPages() above.
+void CometPeptideIndex::DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo)
+{
+#ifdef _WIN32
+   (void)pBase;
+   (void)tFrom;
+   (void)tTo;
+#else
+   const size_t tPage = 4096;
+   size_t tBegin = (tFrom + tPage - 1) & ~(tPage - 1);
+   size_t tEnd = tTo & ~(tPage - 1);
+   if (tEnd <= tBegin)
+      return;
+   madvise((char*)pBase + tBegin, tEnd - tBegin, MADV_DONTNEED);
+#endif
+}
+
+void CometPeptideIndex::FreeStagingPages(void* pBase, size_t tBytes)
+{
+   if (pBase == NULL)
+      return;
+#ifdef _WIN32
+   free(pBase);
+   (void)tBytes;
+#else
+   munmap(pBase, tBytes);
+#endif
+}
+
+
+// docs/20260730_PI_reduction.md Phase 0.5; docs/20260827_PI_memory.md Phase 2. PI_DB's
+// counterpart to what used to be part of WritePeptideIndex()'s build-time work -- builds
+// the compact per-variant array (g_dbIndexVariants) from g_vRawPeptides + the
+// mod-permutation tables a prior call to CometFragmentIndex::PermuteIndexPeptideMods()
+// just built, using whichever variable mods are active in comet.params right now. Called
+// once per search session from ReadPeptideIndex(), not at build time -- nothing about the
+// modified-peptide variant list is persisted to disk.
+//
+// Phase 2 shape: the enumeration runs twice -- a count-only pass, then a fill pass into an
+// exactly-sized staging array of FragmentPeptidesStruct (no vector growth slack; measured
+// at 553 MB of pure overshoot at the reference benchmark scale before this change). The
+// staging is sorted with the same element type, comparator, and input order as the
+// pre-Phase-2 vector<FragmentPeptidesStruct> sort, so the final candidate ordering --
+// equal-mass ties included, which are common (positional mod isomers share a mass) and
+// observable through result tie-breaking -- is identical to the old implementation's.
+// The sorted staging is then transcoded into the 13B/entry SoA (VariantArray,
+// core/Types.h), releasing consumed staging pages to the OS as it goes.
 bool CometPeptideIndex::GenerateVariantArray()
 {
-   g_vDBIndexVariants.clear();
-   g_vDBIndexVariants.reserve(g_vRawPeptides.size());
+   g_dbIndexVariants.clear();
 
-   // require_variable_mod: every entry must carry a required mod, so the fully-unmodified
-   // variant (modNumIdx == -1, no terminal mods) is only included when that's not required
-   // (matching CometFragmentIndex::AddFragmentsThreadProc()'s equivalent check).
-   if (!g_staticParams.variableModParameters.iRequireVarMod)
+   const size_t tNumRaw = g_vRawPeptides.size();
+   const bool bIncludeUnmodified = !g_staticParams.variableModParameters.iRequireVarMod;
+
+   // Pass 1: count only. require_variable_mod: every entry must carry a required mod, so
+   // the fully-unmodified variant (modNumIdx == -1, no terminal mods) is only included when
+   // that's not required (matching CometFragmentIndex::AddFragmentsThreadProc()'s
+   // equivalent check); when included, it's every raw peptide unconditionally -- raw
+   // peptides were already mass/length-filtered at digestion.
+   size_t tNumVariants = bIncludeUnmodified ? tNumRaw : 0;
+   if (!EnumerateIndexPeptideMods(NULL, 0, &tNumVariants))
    {
-      for (size_t i = 0; i < g_vRawPeptides.size(); ++i)
+      logerr(" Error in EnumerateIndexPeptideMods() while sizing the peptide-index variant list.\n");
+      return false;
+   }
+
+   if (tNumVariants == 0)
+   {
+      string strErrorMsg = " Error: no peptides in generated index; check the input database file or search parameters.\n";
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   // Pass 2: fill, sort, transcode.
+   const size_t tStagingBytes = tNumVariants * sizeof(FragmentPeptidesStruct);
+   FragmentPeptidesStruct* pStaging = (FragmentPeptidesStruct*)AllocStagingPages(tStagingBytes);
+   if (pStaging == NULL)
+   {
+      logerr(" Error - cannot allocate the " + std::to_string(tStagingBytes)
+         + "-byte variant staging buffer.\n");
+      return false;
+   }
+
+   size_t tCursor = 0;
+   if (bIncludeUnmodified)
+   {
+      for (size_t i = 0; i < tNumRaw; ++i)
       {
-         FragmentPeptidesStruct sVariant;
+         FragmentPeptidesStruct& sVariant = pStaging[tCursor++];
          sVariant.dPepMass = g_vRawPeptides[i].dPepMass;
          sVariant.iWhichPeptide = (unsigned int)i;
          sVariant.modNumIdx = -1;
          sVariant.cNtermMod = -1;
          sVariant.cCtermMod = -1;
-         g_vDBIndexVariants.push_back(sVariant);
       }
    }
 
-   if (!EnumerateIndexPeptideMods(g_vDBIndexVariants))
+   if (!EnumerateIndexPeptideMods(pStaging, tNumVariants, &tCursor))
    {
-      string strErrorMsg = " Error in EnumerateIndexPeptideMods() while generating the peptide-index variant list.\n";
-      logerr(strErrorMsg);
+      FreeStagingPages(pStaging, tStagingBytes);
+      logerr(" Error in EnumerateIndexPeptideMods() while generating the peptide-index variant list.\n");
       return false;
    }
 
-   if (g_vDBIndexVariants.size() == 0)
+   if (tCursor != tNumVariants)
    {
-      string strErrorMsg = " Error: no peptides in generated index; check the input database file or search parameters.\n";
-      logerr(strErrorMsg);
+      // The two passes run identical, deterministic enumeration; disagreement is an
+      // internal bug, not a data problem -- fail loudly rather than search a partial array.
+      FreeStagingPages(pStaging, tStagingBytes);
+      logerr(" Error - variant enumeration count mismatch (counted " + std::to_string(tNumVariants)
+         + ", filled " + std::to_string(tCursor) + "); internal error.\n");
       return false;
    }
 
@@ -985,18 +1227,63 @@ bool CometPeptideIndex::GenerateVariantArray()
    // per raw peptide -- there is no source of duplication to defend against (see
    // docs/20260730_PI_reduction.md Section 8, Open Question 1).
 
-   // sort by mass; FragmentPeptidesStruct::operator< compares dPepMass.
-   sort(g_vDBIndexVariants.begin(), g_vDBIndexVariants.end());
+   // Sort by mass (FragmentPeptidesStruct::operator< compares dPepMass) -- over raw
+   // pointers rather than vector iterators, which resolve to the same std::sort
+   // instantiation on this element type.
+   sort(pStaging, pStaging + tNumVariants);
+
+   // The 4-byte fixed-point key must be able to represent the largest (last) mass.
+   if (!(pStaging[tNumVariants - 1].dPepMass * VariantArray::MASS_KEY_SCALE < 4294967295.0))
+   {
+      FreeStagingPages(pStaging, tStagingBytes);
+      logerr(" Error - peptide mass " + std::to_string(pStaging[tNumVariants - 1].dPepMass)
+         + " exceeds the variant mass-key range; reduce peptide_mass_range.\n");
+      return false;
+   }
+
+   // reserve(), not resize(): resize() value-initializes and therefore touches every page
+   // of all four arrays up front, making the whole 13B/entry SoA resident BEFORE the
+   // staging release below can give anything back -- measured as a 5.3 GiB transient peak
+   // (vs. 4.4 GiB steady) at the reference benchmark scale. reserve() only maps the
+   // address space; pages become resident as push_back writes them, in step with the
+   // staging pages being released, so the transcode's peak stays ~24B/entry (the staging).
+   g_dbIndexVariants.vuiMassKey.reserve(tNumVariants);
+   g_dbIndexVariants.vuiWhichPeptide.reserve(tNumVariants);
+   g_dbIndexVariants.vuiModNumIdx.reserve(tNumVariants);
+   g_dbIndexVariants.vucTermMods.reserve(tNumVariants);
+
+   {
+      const size_t tChunkEntries = 4 * 1024 * 1024;  // release granularity: ~96 MB of staging
+      size_t tReleasedBytes = 0;
+
+      for (size_t i = 0; i < tNumVariants; ++i)
+      {
+         const FragmentPeptidesStruct& s = pStaging[i];
+         g_dbIndexVariants.vuiMassKey.push_back((unsigned int)llround(s.dPepMass * VariantArray::MASS_KEY_SCALE));
+         g_dbIndexVariants.vuiWhichPeptide.push_back(s.iWhichPeptide);
+         g_dbIndexVariants.vuiModNumIdx.push_back((s.modNumIdx < 0) ? 0xFFFFFFFFu : (unsigned int)s.modNumIdx);
+         g_dbIndexVariants.vucTermMods.push_back((unsigned char)(((s.cNtermMod + 1) << 4) | (s.cCtermMod + 1)));
+
+         if (((i + 1) % tChunkEntries) == 0)
+         {
+            size_t tConsumedBytes = (i + 1) * sizeof(FragmentPeptidesStruct);
+            DecommitStagingRange(pStaging, tReleasedBytes, tConsumedBytes);
+            tReleasedBytes = tConsumedBytes;
+         }
+      }
+   }
+
+   FreeStagingPages(pStaging, tStagingBytes);
 
    std::string strNumVariants;
-   if (g_vDBIndexVariants.size() > 1e6)
+   if (g_dbIndexVariants.size() > 1e6)
    {
       std::ostringstream oss;
-      oss << std::scientific << std::setprecision(3) << static_cast<double>(g_vDBIndexVariants.size());
+      oss << std::scientific << std::setprecision(3) << static_cast<double>(g_dbIndexVariants.size());
       strNumVariants = oss.str();
    }
    else
-      strNumVariants = std::to_string(g_vDBIndexVariants.size());
+      strNumVariants = std::to_string(g_dbIndexVariants.size());
 
    logout("   - " + strNumVariants + " modified peptides\n");
 
@@ -1056,10 +1343,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // instead of the legacy RunSearch() path (one heap-allocated DBIndex push per
    // protein occurrence, under a global mutex). See docs/20260713_PIidxformat.md.
    if (bSucceeded)
-   {
-      vector<pair<size_t,size_t>> slices;
-      bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp, slices);
-   }
+      bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp);
 
    if (bSwapIdxExtension)
       strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
@@ -1077,33 +1361,17 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       return false;
    }
 
-   // g_vRawPeptides supplies the sequence/protein/flank data shared by every mod-variant of
-   // a given raw peptide; kept alive (not cleared) for the rest of this function -- it's
-   // written to the .idx file below and read back at search time
-   // (CometPeptideIndex::ReadPeptideIndex()).
-   g_vRawPeptides.clear();
-   g_vRawPeptides.reserve(g_pvDBIndex.size());
-   for (const auto& entry : g_pvDBIndex)
-   {
-      PlainPeptideIndexStruct sTmp;
-      strcpy(sTmp.szPeptide, entry.sPeptide);
-      sTmp.lIndexProteinFilePosition = entry.lIndexProteinFilePosition;
-      sTmp.dPepMass = entry.dPepMass;
-      sTmp.siVarModProteinFilter = entry.siVarModProteinFilter;
-      sTmp.cPrevAA = entry.cPrevAA;
-      sTmp.cNextAA = entry.cNextAA;
-      g_vRawPeptides.push_back(sTmp);
-   }
-
-   // g_pvDBIndex (Phase A's per-unique-raw-peptide DBIndex entries) has now been fully
-   // copied into g_vRawPeptides; nothing below needs the DBIndex-format copy any more.
-   g_pvDBIndex.clear();
-   vector<DBIndex>().swap(g_pvDBIndex);
+   // g_vRawPeptides was populated (pooled, mass-sorted per length) directly by
+   // GeneratePlainPeptideIndex()'s merge -- the former 88B/entry g_pvDBIndex intermediate,
+   // which briefly DOUBLED the peptide table's footprint here, is gone
+   // (docs/20260827_PI_memory.md build-path follow-up). Kept alive (not cleared) for the
+   // rest of this function: it's written to the .idx file below and read back at search
+   // time (CometPeptideIndex::ReadPeptideIndex()).
 
    // Phase 0.5 (docs/20260730_PI_reduction.md): no mod-related build step here any more.
    // g_vRawPeptides -- unmodified peptides only, filtered by peptide mass/length range and
    // carrying static mods -- is the only peptide-level data this function writes to disk.
-   // MOD_NUMBERS/MOD_SEQS and the modified-peptide variant array are generated fresh once
+   // MOD_NUMBERS_POOL/MOD_SEQS_POOL and the modified-peptide variant array are generated fresh once
    // per search session instead, from g_vRawPeptides + whatever comet.params has active at
    // that moment (see CometPeptideIndex::ReadPeptideIndex()/GenerateVariantArray()) -- so
    // there's nothing here to enumerate, sort, or sanity-check against an empty result: a
@@ -1225,9 +1493,9 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    comet_fileoffset_t clPeptidesFilePos = comet_ftell(fptr);
    uint64_t tNumRaw = (uint64_t)g_vRawPeptides.size();
    fwrite(&tNumRaw, sizeof(uint64_t), 1, fptr);
-   for (const auto& raw : g_vRawPeptides)
+   for (const auto raw : g_vRawPeptides)
    {
-      int iLen = (int)strlen(raw.szPeptide);
+      int iLen = raw.iLen;
       fwrite(&iLen, sizeof(int), 1, fptr);
       fwrite(raw.szPeptide, sizeof(char), iLen, fptr);
       fwrite(&raw.cPrevAA, sizeof(char), 1, fptr);

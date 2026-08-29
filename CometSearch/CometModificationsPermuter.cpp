@@ -278,20 +278,27 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 }
 
 
-vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptideIndexStruct>& vRawPeptides,
-                                                             int* PEPTIDE_MOD_SEQ_IDXS,
-                                                             vector<string>& ALL_MODS)
+// Fills the MOD_SEQS_POOL/MOD_SEQS_OFFSET flat pool (docs/20260827_PI_memory.md Phase 1)
+// with the unique modifiable sequences, replacing the former vector<string> MOD_SEQS return
+// value (one std::string header + possible heap allocation per unique sequence). The dedup
+// map itself stays a transient unordered_map, freed when this function returns.
+void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPeptides,
+                                                   int* PEPTIDE_MOD_SEQ_IDXS,
+                                                   vector<string>& ALL_MODS)
 {
    std::unordered_map<string, int> modifiableSeqMap;
-   vector<string> ret;
    int pepIdx = 0;
    int modSeqIdx = 0;
    int modifiablePeptides = 0;
 
+   MOD_SEQS_POOL.clear();
+   MOD_SEQS_OFFSET.clear();
+   MOD_SEQS_OFFSET.push_back(0);
+
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
       //FIX: put restriction here for protein mod filter
-      string modifiableAas = getModifiableAas((*it).szPeptide, ALL_MODS);
+      string modifiableAas = getModifiableAas(string((*it).szPeptide, (size_t)(*it).iLen), ALL_MODS);
 
       if (!modifiableAas.empty())
       {
@@ -300,7 +307,8 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
          if (iter == modifiableSeqMap.end())
          {
             modifiableSeqMap[modifiableAas] = modSeqIdx;
-            ret.push_back(modifiableAas);
+            MOD_SEQS_POOL.insert(MOD_SEQS_POOL.end(), modifiableAas.begin(), modifiableAas.end());
+            MOD_SEQS_OFFSET.push_back((unsigned int)MOD_SEQS_POOL.size());
             PEPTIDE_MOD_SEQ_IDXS[pepIdx] = modSeqIdx;
             modSeqIdx++;
          }
@@ -322,29 +330,31 @@ vector<string> ModificationsPermuter::getModifiableSequences(vector<PlainPeptide
       pepIdx++;
    }
 
+   MOD_SEQS_POOL.shrink_to_fit();
+   MOD_SEQS_OFFSET.shrink_to_fit();
+
    cout << " - "
         << std::scientific << std::setprecision(3)
         << static_cast<double>(vRawPeptides.size())
         << " plain peptides, "
         << static_cast<double>(modifiablePeptides)
-        << " modifiable peptides" << endl; // << std::to_string(ret.size()) << " unique modifiable sequences" << endl;
-
-   return ret;
+        << " modifiable peptides" << endl; // << std::to_string(GetNumModSeqs()) << " unique modifiable sequences" << endl;
 }
 
 
-// Iterate over the modSeq and set the bit to 1 if the amino acid at an index matches the given modChar
+// Iterate over the modSeq (pointer + length into MOD_SEQS_POOL, not NUL-terminated) and set
+// the bit to 1 if the amino acid at an index matches the given modChar
 // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
-unsigned long long ModificationsPermuter::getModBitmask(string* modSeq,
-                                                        string sModChars)
+unsigned long long ModificationsPermuter::getModBitmask(const char* modSeq,
+                                                        int iLen,
+                                                        const string& sModChars)
 {
    uint64_t bitMask = 0ULL;
-   long len = (long)(*modSeq).size();
-   for (int i = 0; i < len; ++i)
+   for (int i = 0; i < iLen; ++i)
    {
-      if (sModChars.find((*modSeq)[i]) != string::npos)
+      if (sModChars.find(modSeq[i]) != string::npos)
       {
-         bitMask |= (static_cast <uint64_t> (1ULL) << (len - i - 1));
+         bitMask |= (static_cast <uint64_t> (1ULL) << (iLen - i - 1));
       }
    }
 
@@ -445,11 +455,18 @@ bool ModificationsPermuter::combine(int* modNumbers,
    if (bitCount > (unsigned long long)g_staticParams.variableModParameters.iMaxVarModPerPeptide)
       return false;
 
-   char *mods = new char[modStringLen];
+   // Append this entry's modifications[] array directly to the flat pool
+   // (docs/20260827_PI_memory.md Phase 1), replacing the former per-entry
+   // new char[modStringLen] heap allocation + ModificationNumber struct. The pool stays in
+   // lockstep with MOD_NUM by construction: exactly modStringLen bytes are appended per
+   // accepted combination, all entries of the current modifiable sequence share the same
+   // modStringLen, and GetModNumEntry() (core/Types.h) recovers any entry's slice by
+   // arithmetic from MOD_SEQ_MOD_NUM_POOL_START/MOD_SEQ_MOD_NUM_START. resize()'s fill
+   // value -1 is the "not modified at this position" sentinel the old init loop wrote.
+   size_t tPoolBase = MOD_NUMBERS_POOL.size();
+   MOD_NUMBERS_POOL.resize(tPoolBase + (size_t)modStringLen, (char)-1);
+   char* mods = MOD_NUMBERS_POOL.data() + tPoolBase;
    char modNum;
-
-   for (int i = 0; i < modStringLen; ++i)
-      mods[i] = -1;
 
    for (int i = 0; i < modStringLen; ++i)
    {
@@ -469,20 +486,17 @@ bool ModificationsPermuter::combine(int* modNumbers,
       }
    }
 
-   ModificationNumber modification;
-   MOD_NUM++;  //FIX:  confirm this is not needed either
-   modification.modifications = mods;
-   modification.modStringLen = modStringLen;
-
-   MOD_NUMBERS.push_back(modification);
+   MOD_NUM++;
 
 // TIME_IN_COMBINE += duration(start);
    return true;
 }
 
 
-// Generate all the modification combinations for the given sequence of modifiable amino acids.
-void ModificationsPermuter::generateModifications(string* sequence,
+// Generate all the modification combinations for the given sequence of modifiable amino
+// acids (pointer + length into MOD_SEQS_POOL, not NUL-terminated).
+void ModificationsPermuter::generateModifications(const char* sequence,
+                                                  int iSeqLen,
                                                   vector<int>& vMaxNumVarModsPerMod,
                                                   int* ret_modNumStart,
                                                   int* ret_modNumCount,
@@ -506,7 +520,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
       //FIX: apply protein modifications filter here??
       string sModChars = ALL_MODS[m];
 
-      const unsigned long long bitmask = getModBitmask(sequence, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
+      const unsigned long long bitmask = getModBitmask(sequence, iSeqLen, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
 
       if (bitmask != 0)
       {
@@ -603,8 +617,8 @@ void ModificationsPermuter::generateModifications(string* sequence,
       }
       if (combinationsFound != combinationsForModArrLen) // Number of combinations found should be the same as the expected number.
       {
-         cout << "ERROR: Unexpected combination count; Found combination count " << std::to_string(combinationsFound) 
-              << "; Expected calculated count is " << std::to_string(combinationsForModArrLen) << "; sequence " << *sequence << endl;
+         cout << "ERROR: Unexpected combination count; Found combination count " << std::to_string(combinationsFound)
+              << "; Expected calculated count is " << std::to_string(combinationsForModArrLen) << "; sequence " << string(sequence, iSeqLen) << endl;
       }
       combinationsForAllMods[idx++] = combinationsForMod;
    }
@@ -680,7 +694,7 @@ void ModificationsPermuter::generateModifications(string* sequence,
                modNumbers[k] = modIndices.at(modIndicesToMerge[k]);
             }
 
-            if (combine(modNumbers, toCombine, modNumCount, (int)(*sequence).length()))
+            if (combine(modNumbers, toCombine, modNumCount, iSeqLen))
             {
                modNumCalculated++;
             }
@@ -750,31 +764,41 @@ void ModificationsPermuter::generateModifications(string* sequence,
 }
 
 
-void ModificationsPermuter::getModificationCombinations(const vector<string> modifiableSeqs,
-                                                        vector<int>& vMaxNumVarModsPerMod,
+// Iterates the unique modifiable sequences already pooled by getModifiableSequences()
+// (MOD_SEQS_POOL/MOD_SEQS_OFFSET) rather than taking a by-value vector<string> copy.
+void ModificationsPermuter::getModificationCombinations(vector<int>& vMaxNumVarModsPerMod,
                                                         vector<string>& ALL_MODS,
                                                         int MOD_CNT,
                                                         int ALL_COMBINATION_CNT,
                                                         unsigned long long* ALL_COMBINATIONS)
 {
-   MOD_SEQ_MOD_NUM_START = new int[modifiableSeqs.size()];
-   MOD_SEQ_MOD_NUM_CNT = new int[modifiableSeqs.size()];
+   const int iNumModSeqs = GetNumModSeqs();
+
+   MOD_SEQ_MOD_NUM_START = new int[iNumModSeqs];
+   MOD_SEQ_MOD_NUM_CNT = new int[iNumModSeqs];
+   MOD_SEQ_MOD_NUM_POOL_START = new uint64_t[iNumModSeqs];
 
    CombinatoricsUtils::initBinomialCoefficients(g_staticParams.options.peptideLengthRange.iEnd, MAX_K_VAL);
 
-   int i = 0;
-   for (auto it = modifiableSeqs.begin(); it != modifiableSeqs.end(); ++it)
+   for (int i = 0; i < iNumModSeqs; ++i)
    {
-      string modSeq = *it;
+      int iModSeqLen;
+      const char* pModSeq = GetModSeq(i, iModSeqLen);
 
       int modNumStart = -1;
       int modNumCount = 0;
 
-      generateModifications(&modSeq, vMaxNumVarModsPerMod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+      // Recorded before this sequence's entries are appended by combine(): together with
+      // MOD_SEQ_MOD_NUM_START/CNT below, this makes every entry's position in
+      // MOD_NUMBERS_POOL computable -- see GetModNumEntry() (core/Types.h).
+      MOD_SEQ_MOD_NUM_POOL_START[i] = (uint64_t)MOD_NUMBERS_POOL.size();
+
+      generateModifications(pModSeq, iModSeqLen, vMaxNumVarModsPerMod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;
-
-      i++;
    }
+
+   // Trim the geometric-growth slack now that the pool's final size is known.
+   MOD_NUMBERS_POOL.shrink_to_fit();
 }

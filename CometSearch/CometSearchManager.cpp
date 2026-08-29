@@ -68,7 +68,7 @@ CometStatus                   g_cometStatus;
 string                        g_sCometVersion;
 map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 
-unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
+vector<string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
@@ -84,9 +84,9 @@ ProteinsListCSR g_pvProteinsList;
 unsigned int* g_iFragmentIndex;                             // CSR flat data: concatenated posting lists
 uint64_t*     g_iFragmentIndexOffset;                       // CSR offsets [uiMaxFragmentArrayIndex+1]
 bool* g_bIndexPrecursors;                                   // array for BIN(precursors), set to true if precursor present in file
-vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;  // each peptide is represented here iWhichPeptide, which mod if any, calculated mass
-vector<PlainPeptideIndexStruct> g_vRawPeptides;             // list of unmodified peptides and their proteins as file pointers
-vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;   // PI_DB's compact per-variant array, regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5); see core/Types.h
+VariantArray g_fragmentPeptides;  // FI_DB's per-variant SoA (13B/entry): iWhichPeptide, which mod if any, fixed-point mass key (docs/20260827_PI_memory.md Section 7.1); see core/Types.h
+RawPeptideTable g_vRawPeptides;             // list of unmodified peptides and their protein references, pooled (docs/20260827_PI_memory.md Phase 3); see core/Types.h
+VariantArray g_dbIndexVariants;   // PI_DB's compact per-variant SoA (13B/entry), regenerated once per session (docs/20260730_PI_reduction.md Phase 0.5, docs/20260827_PI_memory.md Phase 2); see core/Types.h
 vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;    // mass index for SpecLib
 vector<SpecLibStruct> g_vSpecLib;                           // stores the SpecLib
 
@@ -2612,7 +2612,7 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
 
 // Does NOT reset g_bPeptideIndexRead/g_bPlainPeptideIndexRead or free
-// g_vRawPeptides/MOD_SEQS/MOD_NUMBERS/g_vDBIndexVariants/CometPeptideIndex::
+// g_vRawPeptides/MOD_SEQS_POOL/MOD_NUMBERS_POOL/g_dbIndexVariants/CometPeptideIndex::
 // GetVModSlotForAllModsIdx()'s cached slot map -- see the PROCESS-LIFETIME note above
 // CometPeptideIndex::ReadPeptideIndex()'s PermuteIndexPeptideMods() call for why a partial
 // reset here (clearing just the two guard bools) would be actively worse than the current
@@ -3045,11 +3045,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
             for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
             {
-               auto cacheIt = g_pvProteinNameCache.find(*itProt);
-               if (cacheIt == g_pvProteinNameCache.end())
+               if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                   continue;
 
-               const string& sName = cacheIt->second;
+               const string& sName = g_pvProteinNameCache[*itProt];
                if (!strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
                   vProteinDecoys.push_back(sName);
                else

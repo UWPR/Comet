@@ -203,42 +203,28 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
    *uiNumTotProteins = 0;
 
-   // P5: g_pvProteinNameCache (built once at index load, see CometPeptideIndex.cpp) already
-   // holds every indexed-DB protein's full name string in memory -- resolve from that instead
-   // of a fresh fseek+fgets/fscanf per protein per result. Without this, every enabled output
-   // writer (txt/pepxml/percolator/sqt) independently re-does this same random-access I/O for
-   // the same result. Falls back to the old direct-file read only on a cache miss (shouldn't
-   // normally happen once an index is loaded, but stay correct rather than silently dropping
-   // a name).
-   auto resolveIndexedProteinName = [&](comet_fileoffset_t lOffset) -> string
+   // P5: g_pvProteinNameCache (built once at index load, see CometPeptideIndex.cpp) holds
+   // EVERY indexed-DB protein's full name string, indexed by the protein's name-section
+   // ordinal (docs/20260827_PI_memory.md Phase 4 -- g_pvProteinsList rows now carry
+   // ordinals, not file offsets) -- resolve from that instead of a fresh fseek+fgets/fscanf
+   // per protein per result. The former direct-file-read fallback is gone with the offsets:
+   // the cache is complete by construction, so an out-of-range ordinal can only mean a
+   // corrupt index -- return an empty name for that one protein rather than fabricate.
+   auto resolveIndexedProteinName = [&](unsigned int uiWhichProtein) -> string
    {
-      auto itCache = g_pvProteinNameCache.find(lOffset);
-      if (itCache != g_pvProteinNameCache.end())
+      if (uiWhichProtein < g_pvProteinNameCache.size())
       {
+         const string& sName = g_pvProteinNameCache[uiWhichProtein];
          if (bReturnFullProteinString)
-            return itCache->second;
+            return sName;
 
          // accession-only: first whitespace-delimited token, matching fscanf("%s", ...)
          // (isspace() under the "C" locale: space, \t, \n, \v, \f, \r)
-         size_t tPos = itCache->second.find_first_of(" \t\n\v\f\r");
-         return (tPos == string::npos) ? itCache->second : itCache->second.substr(0, tPos);
+         size_t tPos = sName.find_first_of(" \t\n\v\f\r");
+         return (tPos == string::npos) ? sName : sName.substr(0, tPos);
       }
 
-      comet_fseek(fpdb, lOffset, SEEK_SET);
-
-      char szProteinNameLocal[WIDTH_REFERENCE];
-      if (bReturnFullProteinString)
-      {
-         if (fgets(szProteinNameLocal, WIDTH_REFERENCE, fpdb) == NULL)
-            szProteinNameLocal[0] = '\0';
-      }
-      else
-      {
-         if (fscanf(fpdb, szFormat, szProteinNameLocal) != 1)
-            szProteinNameLocal[0] = '\0';
-      }
-      szProteinNameLocal[WIDTH_REFERENCE - 1] = '\0';
-      return string(szProteinNameLocal);
+      return string();
    };
 
    // FIX:  protein references is so convoluted with the restoration of peptide index.  This

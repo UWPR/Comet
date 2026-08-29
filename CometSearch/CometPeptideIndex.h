@@ -53,7 +53,8 @@ public:
    static bool ReadPeptideIndex(bool bIsRTS, bool bForceExportMode = false);
    static bool WritePeptideIndex(ThreadPool* tp);
 
-   // docs/20260730_PI_reduction.md Phase 0.5: builds g_vDBIndexVariants (PI_DB mode only)
+   // docs/20260730_PI_reduction.md Phase 0.5 / docs/20260827_PI_memory.md Phase 2: builds
+   // g_dbIndexVariants (PI_DB mode only, 13B/entry SoA -- see VariantArray, core/Types.h)
    // from g_vRawPeptides + the mod-permutation tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Called once per search
    // session from ReadPeptideIndex(), not from WritePeptideIndex() -- nothing about the
@@ -63,12 +64,15 @@ public:
 
    // Phase B (docs/20260713_PIidxformat.md, docs/20260730_PI_reduction.md Phase 1): walks
    // g_vRawPeptides x valid mod combinations (mirroring
-   // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and appends a
-   // compact FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
-   // dPepMass} per valid combination, using the combinatorics tables built by a prior call to
-   // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include the
-   // fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for that.
-   static bool EnumerateIndexPeptideMods(vector<FragmentPeptidesStruct>& vVariants);
+   // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and, per valid
+   // combination, either counts it (pStaging == NULL) or writes a compact
+   // FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
+   // dPepMass} at pStaging[*ptCursor++], using the combinatorics tables built by a prior
+   // call to CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include
+   // the fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for
+   // that, and for the count/fill two-pass shape both modes serve.
+   static bool EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStaging,
+      size_t tStagingCap, size_t* ptCursor);
 
    // Single-entry version of EnumerateIndexPeptideMods()'s tryPush lambda,
    // factored out so it can be called per-candidate at search time (see
@@ -76,7 +80,7 @@ public:
    // time. Reconstructs a full DBIndex (sequence, explicit pcVarModSites, mass,
    // flank AAs, protein reference) from a compact (iWhichPeptide, modNumIdx,
    // cNtermMod, cCtermMod) reference into g_vRawPeptides, using the
-   // MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
+   // MOD_NUMBERS_POOL/MOD_SEQS_POOL/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). modNumIdx == -1
    // means "no body modification" (only possibly cNtermMod/cCtermMod);
    // cNtermMod/cCtermMod == -1 means "no terminal modification". Returns false
@@ -87,7 +91,7 @@ public:
    static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
       char cCtermMod, DBIndex& out);
 
-   // docs/20260805_carafe.md Section 6.9/9: dumps g_vDBIndexVariants (already populated by a
+   // docs/20260805_carafe.md Section 6.9/9: dumps g_dbIndexVariants (already populated by a
    // prior ReadPeptideIndex() call, PI_DB mode) to strOutputFile as a TSV -- one row per
    // variant: iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, the plain peptide sequence, and
    // a semicolon-separated "pos:mass" list of every variable-mod site MaterializeOneEntry()
@@ -98,6 +102,22 @@ public:
    // that Phase 0.5 stopped persisting it in the .idx file -- see ExportPeptideIndexVariants()
    // in CometSearchManager for the public entry point (Comet's -x<file> CLI flag).
    static bool ExportVariants(const string& strOutputFile);
+
+   // docs/20260827_PI_memory.md Phase 0: one-shot, structure-by-structure index memory
+   // report, logged at the end of ReadPeptideIndex() when the COMET_MEMREPORT environment
+   // variable is set; no-op otherwise.
+   static void LogIndexMemoryReport();
+
+   // Page-granular staging buffer for the variant-array build/transcode (docs/
+   // 20260827_PI_memory.md Phase 2): mmap on POSIX so DecommitStagingRange() can
+   // progressively return fully-transcoded pages to the OS mid-walk; plain malloc/free on
+   // Windows, where DecommitStagingRange() is a no-op (the VirtualAlloc/VirtualFree
+   // analogue trips endpoint-protection heuristics -- see AllocStagingPages()'s definition).
+   // Shared by CometPeptideIndex::GenerateVariantArray() (PI_DB) and
+   // CometFragmentIndex::GenerateFragmentIndex() (FI_DB).
+   static void* AllocStagingPages(size_t tBytes);
+   static void DecommitStagingRange(void* pBase, size_t tFrom, size_t tTo);
+   static void FreeStagingPages(void* pBase, size_t tBytes);
 
 
 
@@ -119,7 +139,7 @@ public:
    // Compacted list of active variable_modNN slot indices (0-based into
    // g_staticParams.variableModParameters.varModList), built in the same compaction order
    // CometFragmentIndex::PermuteIndexPeptideMods()'s ALL_MODS-building loop uses --
-   // MOD_NUMBERS[].modifications[] values are indices into *this* compacted list, not direct
+   // MOD_NUMBERS_POOL entry values are indices into *this* compacted list, not direct
    // varModList slot indices, so both EnumerateIndexPeptideMods() (build time) and
    // MaterializeOneEntry() (search time, called per mass-window candidate) need the exact
    // same translation. Single shared implementation rather than two independently-maintained
@@ -128,8 +148,8 @@ public:
    // could silently violate.
    static const vector<int>& GetVModSlotForAllModsIdx();
 
-   // Translates a single compacted variable-mod-slot index (as read from
-   // MOD_NUMBERS[...].modifications[]) into the real varModList[] slot it refers to, via
+   // Translates a single compacted variable-mod-slot index (as read from a
+   // MOD_NUMBERS_POOL entry) into the real varModList[] slot it refers to, via
    // GetVModSlotForAllModsIdx()'s translation table above. Returns -1, uniformly, for both
    // legitimate cases callers must treat as "no real slot here": compactedIdx == -1 (the
    // ordinary "not modified at this candidate position in this combination" sentinel) and

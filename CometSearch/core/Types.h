@@ -498,21 +498,154 @@ struct PepGenTupleShort
    uint16_t           uILMask;              // bitmask: bit k = 1 means position k was 'L' in FASTA original
 };
 
-// This is used for fragment indexing; plain peptides are stored in index
-// file and read in to this data struct.  Same as DBIndex w/o pcVarModSites[]
-struct PlainPeptideIndexStruct
+// One raw (unmodified) peptide's fields, as returned by RawPeptideTable::operator[] below.
+// Field names deliberately match the former PlainPeptideIndexStruct (72B/entry AoS with a
+// fixed szPeptide[MAX_PEPTIDE_LEN] buffer -- docs/20260827_PI_memory.md Phase 3) so
+// consumer expressions like raw.szPeptide / raw.dPepMass compile unchanged; szPeptide now
+// points into the table's sequence pool and IS NUL-terminated (the pool stores terminators
+// precisely so strcpy/strlen/%s call sites keep working), but iLen is already computed --
+// prefer it over strlen in hot paths.
+struct RawPeptideView
 {
-   comet_fileoffset_t   lIndexProteinFilePosition;  // points to entry in g_pvProteinsList
-   double               dPepMass;                   // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
-   unsigned short       siVarModProteinFilter;      // bitwise representation of mmapProtein
-   char                 cPrevAA;
-   char                 cNextAA;
-   char                 szPeptide[MAX_PEPTIDE_LEN]; // peptide sequence, null-terminated
+   const char*        szPeptide;                  // NUL-terminated, points into RawPeptideTable's pool
+   int                iLen;                       // strlen(szPeptide), precomputed
+   double             dPepMass;                   // MH+ pep mass, unmodified mass; modified mass in FragmentPeptidesStruct
+   comet_fileoffset_t lIndexProteinFilePosition;  // row index into g_pvProteinsList
+   unsigned short     siVarModProteinFilter;      // bitwise representation of mmapProtein
+   char               cPrevAA;
+   char               cNextAA;
+};
 
-   bool operator==(const PlainPeptideIndexStruct &rhs) const
+// Pooled storage for the raw-peptide table (docs/20260827_PI_memory.md Phase 3): sequences
+// live NUL-terminated in one flat char pool, fixed fields in exact-sized parallel arrays --
+// ~24B/entry + (len+1) pool bytes, vs. the former 72B/entry (51 of which were the fixed
+// szPeptide buffer, mostly padding). The protein reference is stored as uint32: every
+// build/load path stores a g_pvProteinsList ROW INDEX here (bounded by the raw-peptide
+// count, which CometFragmentIndex::CreateFragmentIndex() already caps at UINT_MAX);
+// push_back() range-checks it and fails loudly rather than truncate.
+class RawPeptideTable
+{
+public:
+   size_t size() const { return m_dPepMass.size(); }
+   bool empty() const { return m_dPepMass.empty(); }
+
+   void clear()
    {
-      return strcmp(szPeptide, rhs.szPeptide) == 0;
+      vector<char>().swap(m_seqPool);
+      vector<uint64_t>().swap(m_seqOffset);
+      vector<double>().swap(m_dPepMass);
+      vector<unsigned int>().swap(m_protIdx);
+      vector<unsigned short>().swap(m_filter);
+      vector<char>().swap(m_prevAA);
+      vector<char>().swap(m_nextAA);
    }
+
+   // tSeqPoolBytes is an optional upper-bound estimate for the sequence pool (pass 0 to
+   // let it grow); call shrink_to_fit() after a bulk load to trim either kind of slack.
+   void reserve(size_t tNumEntries, size_t tSeqPoolBytes)
+   {
+      m_seqOffset.reserve(tNumEntries + 1);
+      m_dPepMass.reserve(tNumEntries);
+      m_protIdx.reserve(tNumEntries);
+      m_filter.reserve(tNumEntries);
+      m_prevAA.reserve(tNumEntries);
+      m_nextAA.reserve(tNumEntries);
+      if (tSeqPoolBytes > 0)
+         m_seqPool.reserve(tSeqPoolBytes);
+   }
+
+   void shrink_to_fit()
+   {
+      m_seqPool.shrink_to_fit();
+      m_seqOffset.shrink_to_fit();
+      m_dPepMass.shrink_to_fit();
+      m_protIdx.shrink_to_fit();
+      m_filter.shrink_to_fit();
+      m_prevAA.shrink_to_fit();
+      m_nextAA.shrink_to_fit();
+   }
+
+   // pSeq need not be NUL-terminated (iLen bytes are copied; the pool adds the terminator).
+   // Returns false -- storing nothing -- if lIndexProteinFilePosition doesn't fit the
+   // uint32 row-index storage (negative or > UINT_MAX; see the class comment).
+   bool push_back(const char* pSeq, int iLen, char cPrevAA, char cNextAA, double dPepMass,
+      unsigned short siVarModProteinFilter, comet_fileoffset_t lIndexProteinFilePosition)
+   {
+      if (lIndexProteinFilePosition < 0
+         || (uint64_t)lIndexProteinFilePosition > 0xFFFFFFFFull)
+      {
+         return false;
+      }
+      if (m_seqOffset.empty())
+         m_seqOffset.push_back(0);
+      m_seqPool.insert(m_seqPool.end(), pSeq, pSeq + iLen);
+      m_seqPool.push_back('\0');
+      m_seqOffset.push_back((uint64_t)m_seqPool.size());
+      m_dPepMass.push_back(dPepMass);
+      m_protIdx.push_back((unsigned int)lIndexProteinFilePosition);
+      m_filter.push_back(siVarModProteinFilter);
+      m_prevAA.push_back(cPrevAA);
+      m_nextAA.push_back(cNextAA);
+      return true;
+   }
+
+   RawPeptideView operator[](size_t i) const
+   {
+      RawPeptideView v;
+      v.szPeptide = m_seqPool.data() + m_seqOffset[i];
+      v.iLen = (int)(m_seqOffset[i + 1] - m_seqOffset[i] - 1);   // -1: stored NUL terminator
+      v.dPepMass = m_dPepMass[i];
+      v.lIndexProteinFilePosition = (comet_fileoffset_t)m_protIdx[i];
+      v.siVarModProteinFilter = m_filter[i];
+      v.cPrevAA = m_prevAA[i];
+      v.cNextAA = m_nextAA[i];
+      return v;
+   }
+
+   // Same as operator[]; kept so existing .at() call sites (which all bounds-check first)
+   // need no edits. Not bounds-checked.
+   RawPeptideView at(size_t i) const { return (*this)[i]; }
+
+   // Sequence length without materializing a full view (hot-path length filters).
+   int seq_len(size_t i) const
+   {
+      return (int)(m_seqOffset[i + 1] - m_seqOffset[i] - 1);
+   }
+
+   // Range-based for -- yields RawPeptideView values.
+   struct Iterator
+   {
+      const RawPeptideTable* self;
+      size_t                 i;
+
+      RawPeptideView operator*() const { return (*self)[i]; }
+      Iterator& operator++() { ++i; return *this; }
+      bool operator!=(const Iterator& o) const { return i != o.i; }
+   };
+
+   Iterator begin() const { return {this, 0}; }
+   Iterator end() const { return {this, size()}; }
+
+   // Heap bytes currently held; for the COMET_MEMREPORT report.
+   size_t heap_bytes() const
+   {
+      return m_seqPool.capacity()
+         + m_seqOffset.capacity() * sizeof(uint64_t)
+         + m_dPepMass.capacity() * sizeof(double)
+         + m_protIdx.capacity() * sizeof(unsigned int)
+         + m_filter.capacity() * sizeof(unsigned short)
+         + m_prevAA.capacity()
+         + m_nextAA.capacity();
+   }
+
+private:
+   vector<char>           m_seqPool;    // NUL-terminated sequences, concatenated
+   vector<uint64_t>       m_seqOffset;  // [size()+1] pool offsets; [0] == 0
+   vector<double>         m_dPepMass;
+   vector<unsigned int>   m_protIdx;    // g_pvProteinsList row index (see class comment)
+   vector<unsigned short> m_filter;
+   vector<char>           m_prevAA;
+   vector<char>           m_nextAA;
 };
 
 // Field order matters: dPepMass (8-byte aligned) first, then the two 4-byte fields, then the two
@@ -524,7 +657,7 @@ struct FragmentPeptidesStruct
 {
    double dPepMass;        // peptide mass (modified or unmodified) after permuting mods
    unsigned int iWhichPeptide;  // reference to raw peptide (sequence, proteins, etc.) in
-                                 // PlainPeptideIndexStruct -- narrowed from size_t since
+                                 // g_vRawPeptides -- narrowed from size_t since
                                  // g_vRawPeptides.size() is checked to fit in unsigned int
                                  // before this struct is ever populated (CometFragmentIndex.cpp,
                                  // CreateFragmentIndex())
@@ -566,20 +699,91 @@ extern std::deque<RetentionMatch> RetentionMatchHistory;
 
 extern unsigned int* g_iFragmentIndex;            // CSR flat data: all posting lists concatenated [g_iFragmentIndexOffset[bin]..g_iFragmentIndexOffset[bin+1])
 extern uint64_t*     g_iFragmentIndexOffset;      // CSR offsets [uiMaxFragmentArrayIndex+1]: cumulative entry counts, can exceed UINT_MAX for large non-enzymatic searches
-extern vector<struct FragmentPeptidesStruct> g_vFragmentPeptides;
-extern vector<PlainPeptideIndexStruct> g_vRawPeptides;
+extern RawPeptideTable g_vRawPeptides;
 
-// PI_DB's compact per-variant array (docs/20260730_PI_reduction.md): one entry per
-// (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
-// structurally identical to g_vFragmentPeptides/FragmentPeptidesStruct, but kept as its own
-// vector rather than literally sharing FI_DB's, since PI_DB and FI_DB build it via different
-// code paths (CometPeptideIndex::GenerateVariantArray() vs.
-// CometFragmentIndex::AddFragmentsThreadProc()) even though both now run once per session
-// from the same source data (Phase 0.5) -- collapsing them into one shared array is a
-// possible follow-up, not yet done. CometSearch::SearchPeptideIndex() binary-searches this
-// by dPepMass and materializes a full DBIndex per surviving candidate via
-// CometPeptideIndex::MaterializeOneEntry().
-extern vector<struct FragmentPeptidesStruct> g_vDBIndexVariants;
+// Compact per-variant array shared by BOTH search modes (docs/20260730_PI_reduction.md;
+// docs/20260827_PI_memory.md Phase 2 for PI_DB, Section 7.1 for the FI_DB port): one entry
+// per (peptide, mod combination) pair, mass-sorted, referencing g_vRawPeptides by index --
+// a 13B/entry structure-of-arrays with a 4-byte fixed-point mass key replacing the former
+// 24B-AoS vector<FragmentPeptidesStruct> (which survives only as the build-time staging
+// element). The exact double mass is only ever a candidate-SELECTION key here: each mode
+// recomputes the exact double per surviving candidate, BIT-IDENTICALLY to what its own
+// build stored -- PI_DB via CometPeptideIndex::MaterializeOneEntry() (raw.dPepMass + mod
+// deltas), FI_DB via CometFragmentIndex::ComputeIndexedPepMass() (AddFragments()'s
+// residue-by-residue sum; the two computations have always differed in summation path and
+// protein-terminal-static-mod handling, so they are deliberately NOT unified) -- and every
+// tolerance decision is made either on a conservatively-widened/shrunk quantized check or
+// on that exact recomputed mass, so quantization can never change the accepted set.
+// PI_DB and FI_DB still build their arrays via different code paths
+// (CometPeptideIndex::GenerateVariantArray() -> g_dbIndexVariants vs.
+// CometFragmentIndex::GenerateFragmentIndex() -> g_fragmentPeptides).
+struct VariantArray
+{
+   // Fixed-point granularity of uiMassKey: 1e-4 Da. llround(mass * scale) is monotonic
+   // non-decreasing over the mass-sorted input, so binary-search semantics are unchanged.
+   // uint32_t covers masses to ~429,496 Da; GenerateVariantArray() verifies the top mass fits.
+   static constexpr double MASS_KEY_SCALE = 1e4;
+
+   vector<unsigned int>  vuiMassKey;       // llround(dPepMass * MASS_KEY_SCALE), non-decreasing
+   vector<unsigned int>  vuiWhichPeptide;  // index into g_vRawPeptides
+   vector<unsigned int>  vuiModNumIdx;     // mod-combination entry index; 0xFFFFFFFF = unmodified
+   vector<unsigned char> vucTermMods;      // hi nibble cNtermMod+1, lo nibble cCtermMod+1; 0 = none
+                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4)
+
+   size_t size() const { return vuiMassKey.size(); }
+   bool empty() const { return vuiMassKey.empty(); }
+
+   void clear()
+   {
+      vector<unsigned int>().swap(vuiMassKey);
+      vector<unsigned int>().swap(vuiWhichPeptide);
+      vector<unsigned int>().swap(vuiModNumIdx);
+      vector<unsigned char>().swap(vucTermMods);
+   }
+
+   int GetModNumIdx(size_t i) const
+   {
+      unsigned int ui = vuiModNumIdx[i];
+      return ui == 0xFFFFFFFFu ? -1 : (int)ui;
+   }
+   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x0F) - 1; }
+   char GetCtermMod(size_t i) const { return (char)(vucTermMods[i] & 0x0F) - 1; }
+
+   // Smallest key a mass >= dMass could have encoded to, minus 1 LSB of margin; with
+   // QuantizeHigh() below, brackets a [low, high] mass window conservatively: rounding
+   // error can only ADMIT extra borderline entries (rejected by the exact per-candidate
+   // checks), never exclude a real one.
+   static unsigned int QuantizeLow(double dMass)
+   {
+      double d = floor(dMass * MASS_KEY_SCALE) - 1.0;
+      if (d <= 0.0)
+         return 0;
+      if (d >= 4294967295.0)
+         return 0xFFFFFFFFu;
+      return (unsigned int)d;
+   }
+   static unsigned int QuantizeHigh(double dMass)
+   {
+      double d = ceil(dMass * MASS_KEY_SCALE) + 1.0;
+      if (d <= 0.0)
+         return 0;
+      if (d >= 4294967295.0)
+         return 0xFFFFFFFFu;
+      return (unsigned int)d;
+   }
+
+   // Heap bytes currently held; for the COMET_MEMREPORT report.
+   size_t heap_bytes() const
+   {
+      return vuiMassKey.capacity() * sizeof(unsigned int)
+         + vuiWhichPeptide.capacity() * sizeof(unsigned int)
+         + vuiModNumIdx.capacity() * sizeof(unsigned int)
+         + vucTermMods.capacity() * sizeof(unsigned char);
+   }
+};
+extern VariantArray g_dbIndexVariants;    // PI_DB's variant array (GenerateVariantArray())
+extern VariantArray g_fragmentPeptides;   // FI_DB's variant array (GenerateFragmentIndex()); the
+                                          // posting list g_iFragmentIndex stores indices into this
 extern bool* g_bIndexPrecursors;     // allocate an array of BIN(max_precursor, protonated) and use a bool to indicate if that precursor is present in input file(s)
 extern vector<SpecLibStruct> g_vSpecLib;
 extern vector<vector<unsigned int>> g_vulSpecLibPrecursorIndex;  // this will be an vector of vectors<unsigned int>
@@ -597,23 +801,32 @@ struct IndexProteinStruct  // for indexed database
 // ~6-minute free-time tail when building an MHC .idx file.
 // External interface mirrors vector<vector<comet_fileoffset_t>> so
 // existing call sites need no changes.
+// docs/20260827_PI_memory.md Phase 4: element and offset types are both uint32 (halving
+// this structure vs. the former comet_fileoffset_t/uint64_t pair -- ~1.5 GB at MHC scale).
+// The stored VALUE is a "protein reference" whose meaning depends on lifecycle stage:
+// during an index BUILD it is the protein's FASTA byte offset (GeneratePlainPeptideIndex()
+// verifies the FASTA is < 4 GB up front, so uint32 always fits, and WritePeptideIndex()
+// translates to on-disk name-block offsets through g_pvProteinNames as before -- the .idx
+// format is unchanged); after ReadPeptideIndex() LOADS an index it is the protein's
+// ORDINAL in the .idx name section (0-based), the index into the g_pvProteinNameCache
+// name vector.
 class ProteinsListCSR
 {
 public:
-   // Read-only proxy for a single row (one peptide's protein offsets).
+   // Read-only proxy for a single row (one peptide's protein references).
    struct Row
    {
-      const comet_fileoffset_t* ptr;
-      size_t                    n;
+      const unsigned int* ptr;
+      size_t              n;
 
       size_t size()  const { return n; }
       bool   empty() const { return n == 0; }
 
-      const comet_fileoffset_t& operator[](size_t j) const { return ptr[j]; }
-      comet_fileoffset_t        at(size_t j)          const { return ptr[j]; }
+      const unsigned int& operator[](size_t j) const { return ptr[j]; }
+      unsigned int        at(size_t j)          const { return ptr[j]; }
 
-      const comet_fileoffset_t* begin() const { return ptr; }
-      const comet_fileoffset_t* end()   const { return ptr + n; }
+      const unsigned int* begin() const { return ptr; }
+      const unsigned int* end()   const { return ptr + n; }
    };
 
    // Size / state
@@ -623,45 +836,44 @@ public:
    // Modifiers
    void clear()
    {
-      vector<comet_fileoffset_t>().swap(m_flat);
-      vector<uint64_t>().swap(m_off);
+      vector<unsigned int>().swap(m_flat);
+      vector<unsigned int>().swap(m_off);
    }
 
    void reserve(size_t n) { m_off.reserve(n + 1); }
 
-   void push_back(const vector<comet_fileoffset_t>& v)
+   // Total protein-offset entries across all rows, and heap bytes currently held
+   // (flat data + offsets) -- for the COMET_MEMREPORT report
+   // (CometPeptideIndex::LogIndexMemoryReport()).
+   size_t total_offsets() const { return m_flat.size(); }
+   size_t heap_bytes() const
    {
-      if (m_off.empty()) m_off.push_back(0);
-      m_flat.insert(m_flat.end(), v.begin(), v.end());
-      m_off.push_back(m_flat.size());
-   }
-
-   void push_back(vector<comet_fileoffset_t>&& v)
-   {
-      if (m_off.empty()) m_off.push_back(0);
-      m_flat.insert(m_flat.end(), v.begin(), v.end());
-      m_off.push_back(m_flat.size());
-      vector<comet_fileoffset_t>().swap(v);  // release source buffer immediately
+      return m_flat.capacity() * sizeof(unsigned int) + m_off.capacity() * sizeof(unsigned int);
    }
 
    // Batch-append from pre-built flat storage.
-   // flat: all protein file offsets for this block, concatenated in row order
-   // cnt:  number of offsets per row (max value bounded by iMaxDuplicateProteins)
+   // flat: all protein references for this block, concatenated in row order
+   // cnt:  number of references per row (max value bounded by iMaxDuplicateProteins)
    // Bulk-copies both arrays into m_flat/m_off with two insert() calls, then
-   // releases the source buffers.  Replaces N individual push_back(vector&&)
-   // calls, each of which required one heap free() -- this reduces N free()s
-   // to 2 (one for flat, one for cnt) regardless of how many rows are in the block.
-   void append_flat(vector<comet_fileoffset_t>& flat, vector<uint32_t>& cnt)
+   // releases the source buffers -- this keeps heap-free() traffic constant
+   // regardless of how many rows are in the block. Returns false -- storing
+   // nothing -- if the total entry count would exceed what the uint32 CSR
+   // offsets can address (>4.29e9 (peptide, protein) pairs; callers fail the
+   // build/load loudly).
+   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt)
    {
       if (flat.empty())
-         return;
+         return true;
+      if ((uint64_t)m_flat.size() + (uint64_t)flat.size() > 0xFFFFFFFFull)
+         return false;
       if (m_off.empty())
          m_off.push_back(0);
       m_flat.insert(m_flat.end(), flat.begin(), flat.end());
       for (uint32_t n : cnt)
          m_off.push_back(m_off.back() + n);
-      vector<comet_fileoffset_t>().swap(flat);
+      vector<unsigned int>().swap(flat);
       vector<uint32_t>().swap(cnt);
+      return true;
    }
 
    // Element access
@@ -688,34 +900,68 @@ public:
    Iterator end()   const { return {this, size()}; }
 
 private:
-   vector<comet_fileoffset_t> m_flat;   // all protein offsets concatenated
-   vector<uint64_t>           m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
+   vector<unsigned int> m_flat;   // all protein references concatenated (see class comment)
+   vector<unsigned int> m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
 };
 
 extern ProteinsListCSR g_pvProteinsList;
-extern std::unordered_map<comet_fileoffset_t, string> g_pvProteinNameCache;  // file offset -> protein name string; populated at index load
+extern vector<string> g_pvProteinNameCache;  // protein name by .idx name-section ORDINAL; every protein, read sequentially at index load (docs/20260827_PI_memory.md Phase 4; formerly an unordered_map keyed by file offset)
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
 
-struct ModificationNumber
-{
-//   int modificationNumber;
-   int modStringLen;             // FIX: need to confirm if not needed  (MOD_SEQS.at(modSeqIdx)).size();
-   char* modifications;
-};
+// Flat-pooled mod-permutation tables (docs/20260827_PI_memory.md Phase 1). MOD_NUMBERS_POOL
+// replaces the former vector<ModificationNumber>, which paid a 16-byte vector slot plus one
+// separate new char[modStringLen] heap allocation per entry (~40-56B amortized to store a
+// handful of payload bytes) across tens of millions of entries: every entry's
+// modifications[] array now lives concatenated in this one pool. No per-entry offset is
+// stored, because two invariants make it computable: all entries for one modifiable
+// sequence are contiguous (ModificationsPermuter::getModificationCombinations() processes
+// sequences serially, recording [MOD_SEQ_MOD_NUM_START, +MOD_SEQ_MOD_NUM_CNT) per
+// sequence), and every entry for that sequence has length == the sequence's own length.
+// See GetModNumEntry() below for the arithmetic.
+extern vector<char> MOD_NUMBERS_POOL;
+extern uint64_t* MOD_SEQ_MOD_NUM_POOL_START;  // per modifiable sequence: offset in MOD_NUMBERS_POOL of its first entry
 
-extern vector<ModificationNumber> MOD_NUMBERS;
-extern vector<string> MOD_SEQS;    // Unique modifiable sequences.
-extern int* MOD_SEQ_MOD_NUM_START; // Start index in the MOD_NUMBERS vector for a modifiable sequence; -1 if no modification numbers were generated
+// Unique modifiable sequences, flat-pooled (formerly vector<string> MOD_SEQS): sequence
+// modSeqIdx occupies MOD_SEQS_POOL[MOD_SEQS_OFFSET[modSeqIdx] .. MOD_SEQS_OFFSET[modSeqIdx+1]).
+// NOT NUL-terminated -- always pair the pointer with the length from GetModSeq().
+extern vector<char> MOD_SEQS_POOL;
+extern vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 entries; [0] == 0
+
+extern int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 
-// Index into the MOD_SEQS vector
+// Index into the modifiable-sequence tables above
 // -1 for peptides that have no modifiable amino acids
 // -2 for peptides with no modifiable amino acids but contain n/c-term mods
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
+
+inline int GetNumModSeqs()
+{
+   return MOD_SEQS_OFFSET.empty() ? 0 : (int)MOD_SEQS_OFFSET.size() - 1;
+}
+
+// Sequence text + length for one unique modifiable sequence (not NUL-terminated).
+inline const char* GetModSeq(int modSeqIdx, int& iLenOut)
+{
+   unsigned int uiBegin = MOD_SEQS_OFFSET[modSeqIdx];
+   iLenOut = (int)(MOD_SEQS_OFFSET[modSeqIdx + 1] - uiBegin);
+   return MOD_SEQS_POOL.data() + uiBegin;
+}
+
+// The modifications[] array for one mod-combination entry: modification values (compacted
+// variable-mod-slot indices, or -1 for "not modified at this position") for each of the
+// iModSeqLen modifiable positions of sequence modSeqIdx. iModSeqLen must be that sequence's
+// length as returned by GetModSeq() -- it doubles as this entry's length.
+inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
+{
+   return MOD_NUMBERS_POOL.data() + MOD_SEQ_MOD_NUM_POOL_START[modSeqIdx]
+      + (uint64_t)(modNumIdx - MOD_SEQ_MOD_NUM_START[modSeqIdx]) * (uint64_t)iModSeqLen;
+}
+
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)
                                         // poor choice of name for the fragment index .idx given peptide index is back
 extern  std::atomic<bool>  g_bPeptideIndexRead;        // set to true if peptide index file is read
@@ -1018,7 +1264,7 @@ extern vector<DBIndex> g_pvDBIndex;       // used in both peptide index and frag
 extern vector<vector<vector<PepGenTupleShort>>> g_vvvPepGenShort;  // lengths <= 12
 extern vector<vector<vector<PepGenTuple>>>      g_vvvPepGenLong;   // lengths > 12
 extern std::map<long long, IndexProteinStruct>  g_pvProteinNames;   // indexed database protein names and file positions
-extern std::unordered_map<comet_fileoffset_t, std::string> g_pvProteinNameCache;  // populated at index load; protein name by file offset for search-time lookups
+extern vector<string> g_pvProteinNameCache;  // populated at index load; protein name by name-section ordinal for search-time lookups (Phase 4)
 
 struct IonSeriesStruct         // defines which fragment ion series are considered
 {

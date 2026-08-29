@@ -21,6 +21,22 @@
 
 #define BINARYSEARCHCUTOFF 20                // do linear search through FI if # entries is this or less
 
+// Portable read-prefetch for SearchFragmentIndex()'s posting-list walk. x86 SSE
+// intrinsics (<xmmintrin.h>/_mm_prefetch) don't exist on aarch64 -- the aarch-linux and
+// macos-14 (Apple Silicon) CI builds fail on them -- so use the compiler builtins:
+// __builtin_prefetch is target-independent on GCC/Clang (PRFM on aarch64, PREFETCHT0 on
+// x86); MSVC has no __builtin_prefetch, so use _mm_prefetch on x64 and __prefetch on ARM64.
+#ifdef _MSC_VER
+#include <intrin.h>
+#if defined(_M_ARM64)
+#define COMET_PREFETCH_READ(p) __prefetch((const void*)(p))
+#else
+#define COMET_PREFETCH_READ(p) _mm_prefetch((const char*)(p), _MM_HINT_T0)
+#endif
+#else
+#define COMET_PREFETCH_READ(p) __builtin_prefetch((p), 0, 3)
+#endif
+
 bool** CometSearch::_ppbDuplFragmentArr = nullptr;
 
 // Module-local pool instance.  Owns the same scratch arrays as the
@@ -1518,7 +1534,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    double pdAAforward[MAX_PEPTIDE_LEN];
    double pdAAreverse[MAX_PEPTIDE_LEN];
 
-   std::unordered_map<unsigned int, int> mPeptides;   // which peptide (index into g_vFragmentPeptides, and # matched fragments)
+   std::unordered_map<unsigned int, int> mPeptides;   // which peptide (index into g_fragmentPeptides, and # matched fragments)
    size_t lNumPeps = 0;
    unsigned int uiFragmentMass;
 
@@ -1530,6 +1546,51 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    auto& uiBinnedPrecursorNL = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNL(iSlot));
 
    mPeptides.clear();
+
+   // FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1): g_fragmentPeptides
+   // stores a 4-byte fixed-point mass key, not the exact double. Every counting decision
+   // below is exact-by-construction: a candidate whose dequantized key passes the
+   // tolerance checks SHRUNK by dKeyEps is a definite accept (its true mass, within
+   // dKeyEps of the key, must also pass the unshrunk checks); one that fails the checks
+   // WIDENED by dKeyEps is a definite reject; the rare boundary cells in between are
+   // resolved on the exact mass recomputed bit-identically via
+   // CometFragmentIndex::ComputeIndexedPepMass(). The counted candidate set is therefore
+   // identical to when the exact double was stored per entry.
+   const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
+   const unsigned int uiKeyLowBracket = VariantArray::QuantizeLow(pQuery->_pepMassInfo.dPeptideMassToleranceMinus);
+   const unsigned int uiKeyHighBracket = VariantArray::QuantizeHigh(pQuery->_pepMassInfo.dPeptideMassTolerancePlus);
+   const double dKeyEps = 2.0 / VariantArray::MASS_KEY_SCALE;  // quantization bound + margin
+
+   // Fast path for the common isotope_error == 0 / no-mass-offsets configuration, where
+   // CheckMassMatch()'s acceptance set is exactly one interval [ToleranceMinus,
+   // TolerancePlus]: precompute the key interval whose every possible underlying mass is
+   // guaranteed inside that window (llround keys are within 0.5 LSB of mass * scale; the
+   // extra +/-1 key of margin means FP rounding in this computation can only move keys
+   // from "definite" into the exactly-resolved boundary path below, never the reverse).
+   // The per-entry decision then needs two integer compares and no CheckMassMatch call at
+   // all -- cheaper than the pre-SoA double-compare path, and what recovers the ~12%
+   // Windows FI search-phase regression the first cut of this port measured.
+   const bool bSimpleWindow = (g_staticParams.tolerances.iIsotopeError == 0
+      && g_staticParams.vectorMassOffsets.size() == 0);
+   unsigned int uiKeyDefiniteLow = 1;   // empty interval by default
+   unsigned int uiKeyDefiniteHigh = 0;
+   if (bSimpleWindow)
+   {
+      double dDefLow = ceil(pQuery->_pepMassInfo.dPeptideMassToleranceMinus * VariantArray::MASS_KEY_SCALE + 0.5) + 1.0;
+      double dDefHigh = floor(pQuery->_pepMassInfo.dPeptideMassTolerancePlus * VariantArray::MASS_KEY_SCALE - 0.5) - 1.0;
+      if (dDefLow >= 0.0 && dDefHigh >= dDefLow && dDefHigh < 4294967295.0)
+      {
+         uiKeyDefiniteLow = (unsigned int)dDefLow;
+         uiKeyDefiniteHigh = (unsigned int)dDefHigh;
+      }
+   }
+
+   // Raw pointers / scalars, hoisted: the mPeptides map operation inside the walk is an
+   // opaque call, so reading these through their globals would force the compiler to
+   // reload them every iteration of the hottest loop in FI search.
+   const unsigned int* puiMassKeys = g_fragmentPeptides.vuiMassKey.data();
+   const unsigned int* puiPostings = g_iFragmentIndex;
+   const int iMaxIndexRunTime = g_staticParams.options.iMaxIndexRunTime;
 
    // Walk through the binned peaks in the spectrum and map them to the fragment index
    // to count all peptides that contain each fragment peak.
@@ -1552,34 +1613,102 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                if (lNumPeps <= BINARYSEARCHCUTOFF)
                   iFirst = 0;
                else
+                  iFirst = BinarySearchIndexMass(0, lNumPeps, uiKeyLowBracket, uiFragmentMass);
+
+               const unsigned int* puiBin = puiPostings + g_iFragmentIndexOffset[uiFragmentMass];
+
+               if (bSimpleWindow)
                {
-                  iFirst = BinarySearchIndexMass(0, lNumPeps,
-                     pQuery->_pepMassInfo.dPeptideMassToleranceMinus, &uiFragmentMass);
-               }
-
-               uint64_t uiBinBase = g_iFragmentIndexOffset[uiFragmentMass];
-               for (size_t ix = iFirst; ix < lNumPeps; ++ix)
-               {
-                  unsigned int iTmp = g_iFragmentIndex[uiBinBase + ix];
-                  double dCalcPepMass = g_vFragmentPeptides[iTmp].dPepMass;
-
-                  if (dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus
-                     && dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
+                  // Specialized walk for the common isotope_error == 0 / no-mass-offsets
+                  // case: two integer compares per in-window entry, no CheckMassMatch
+                  // call. (The Windows FI regression once suspected here turned out to be
+                  // CMOV codegen in BinarySearchIndexMass -- see its comment -- but this
+                  // split is kept: it is strictly less work per entry.)
+                  for (size_t ix = iFirst; ix < lNumPeps; ++ix)
                   {
-                     if (CheckMassMatch(pQuery, dCalcPepMass))
-                        mPeptides[iTmp] += 1;
-                  }
-                  else if (dCalcPepMass > pQuery->_pepMassInfo.dPeptideMassTolerancePlus)
-                     break;
+                     unsigned int iTmp = puiBin[ix];
+                     unsigned int uiMassKey = puiMassKeys[iTmp];
 
-                  if (g_staticParams.options.iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
-                  {
-                     auto tNow = std::chrono::high_resolution_clock::now();
-                     auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
-                     if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
-                     {
-                        bTimeout = true;
+                     // The key load above is a dependent random access (posting entry ->
+                     // key); the posting entries themselves are sequential, so future keys
+                     // can be prefetched to hide that latency.
+                     if (ix + 8 < lNumPeps)
+                        COMET_PREFETCH_READ(puiMassKeys + puiBin[ix + 8]);
+
+                     if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
                         break;
+
+                     if (uiMassKey >= uiKeyDefiniteLow && uiMassKey <= uiKeyDefiniteHigh)
+                     {
+                        // definitely inside the tolerance window
+                        mPeptides[iTmp] += 1;
+                     }
+                     else if (uiMassKey >= uiKeyLowBracket)
+                     {
+                        // boundary key (or a degenerate definite interval): resolve on the
+                        // exact recomputed mass -- rare
+                        if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
+                              g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
+                              g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
+                              vModSlotForAllModsIdx, NULL)))
+                           mPeptides[iTmp] += 1;
+                     }
+
+                     if (iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
+                     {
+                        auto tNow = std::chrono::high_resolution_clock::now();
+                        auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+                        if (tElapsedTime >= iMaxIndexRunTime)
+                        {
+                           bTimeout = true;
+                           break;
+                        }
+                     }
+                  }
+               }
+               else
+               {
+                  // isotope offsets / mass offsets active: three-way decision on the
+                  // dequantized key -- see the comment at the top of this function
+                  // (definite accept / boundary / definite reject)
+                  for (size_t ix = iFirst; ix < lNumPeps; ++ix)
+                  {
+                     unsigned int iTmp = puiBin[ix];
+                     unsigned int uiMassKey = puiMassKeys[iTmp];
+
+                     // The key load above is a dependent random access (posting entry ->
+                     // key); the posting entries themselves are sequential, so future keys
+                     // can be prefetched to hide that latency.
+                     if (ix + 8 < lNumPeps)
+                        COMET_PREFETCH_READ(puiMassKeys + puiBin[ix + 8]);
+
+                     if (uiMassKey > uiKeyHighBracket)  // entries within a bin are mass-sorted
+                        break;
+
+                     if (uiMassKey >= uiKeyLowBracket)
+                     {
+                        double dApproxMass = uiMassKey * (1.0 / VariantArray::MASS_KEY_SCALE);
+                        if (CheckMassMatch(pQuery, dApproxMass, -dKeyEps))
+                           mPeptides[iTmp] += 1;
+                        else if (CheckMassMatch(pQuery, dApproxMass, dKeyEps))
+                        {
+                           if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
+                                 g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
+                                 g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
+                                 vModSlotForAllModsIdx, NULL)))
+                              mPeptides[iTmp] += 1;
+                        }
+                     }
+
+                     if (iMaxIndexRunTime > 0 && (ix & 0x3FF) == 0)
+                     {
+                        auto tNow = std::chrono::high_resolution_clock::now();
+                        auto tElapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(tNow - pQuery->tSearchStart).count();
+                        if (tElapsedTime >= iMaxIndexRunTime)
+                        {
+                           bTimeout = true;
+                           break;
+                        }
                      }
                   }
                }
@@ -1651,16 +1780,21 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
       {
          int iFoundVariableMod = 0;
 
-         strcpy(szPeptide, g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).szPeptide);
-         iLenPeptide = (int)strlen(szPeptide);
+         const unsigned int uiWhichVariant = ix->first;
+         size_t iWhichPeptide = g_fragmentPeptides.vuiWhichPeptide[uiWhichVariant];
+         int modNumIdx = g_fragmentPeptides.GetModNumIdx(uiWhichVariant);
+         char cVariantNtermMod = g_fragmentPeptides.GetNtermMod(uiWhichVariant);
+         char cVariantCtermMod = g_fragmentPeptides.GetCtermMod(uiWhichVariant);
 
-         ModificationNumber modNum;
-         char* mods = NULL;
-         int modSeqIdx;
-         int modNumIdx = g_vFragmentPeptides[ix->first].modNumIdx;
-         size_t iWhichPeptide = g_vFragmentPeptides[ix->first].iWhichPeptide;
-         string modSeq;
-         double dCalcPepMass = g_vFragmentPeptides[ix->first].dPepMass;
+         const RawPeptideView rawView = g_vRawPeptides.at(iWhichPeptide);
+         strcpy(szPeptide, rawView.szPeptide);
+         iLenPeptide = rawView.iLen;
+
+         // The SoA stores only a fixed-point mass key; recompute the exact mass this
+         // variant was stored with -- bit-identical to the formerly stored double
+         // (docs/20260827_PI_memory.md Section 7.1) -- for scoring and reporting.
+         double dCalcPepMass = CometFragmentIndex::ComputeIndexedPepMass(iWhichPeptide,
+            modNumIdx, cVariantNtermMod, cVariantCtermMod, vModSlotForAllModsIdx, NULL);
 
          iEndPos = iLenMinus1 = iLenPeptide - 1;
 
@@ -1668,12 +1802,16 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          if (modNumIdx != -1)  // set modified peptide info
          {
-            modNum = MOD_NUMBERS.at(modNumIdx);
-            mods = modNum.modifications;
-            modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
-            modSeq = MOD_SEQS.at(modSeqIdx);
+            // Pointer + length into the read-only MOD_SEQS_POOL/MOD_NUMBERS_POOL flat pools
+            // (docs/20260827_PI_memory.md Phase 1) -- previously this copied a
+            // ModificationNumber struct and a std::string modSeq by value per candidate,
+            // a per-candidate heap allocation in this scoring hot path.
+            int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
+            int iModSeqLen;
+            const char* pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
+            const char* mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
-            // Bugfix: mods[j] (MOD_NUMBERS[modNumIdx].modifications[j]) is a 0-based
+            // Bugfix: mods[j] (this entry's MOD_NUMBERS_POOL slice) is a 0-based
             // COMPACTED variable-mod-slot index -- an index into
             // CometPeptideIndex::GetVModSlotForAllModsIdx()'s compacted active-slot list --
             // not a raw varModList index. "1 + mods[j]" only coincided with the "1 + realSlot"
@@ -1684,12 +1822,14 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             // that peptide (not just a display issue -- piVarModSites feeds directly into this
             // function's own fragment-mass accumulation used for XCorr/SP scoring).
             // CometPeptideIndex.cpp's MaterializeOneEntry() (the PI_DB-mode equivalent) already
-            // does this translation correctly; this mirrors it.
-            const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
+            // does this translation correctly; this mirrors it. vModSlotForAllModsIdx is
+            // fetched once at the top of this function.
             int j = 0;
             for (int k = 0; k <= iEndPos; ++k)
             {
-               if (szPeptide[k] == modSeq[j])
+               // j bound: pool mod-seq entries are not NUL-terminated (the former
+               // std::string indexed safely at size(), returning a never-matching '\0')
+               if (j < iModSeqLen && szPeptide[k] == pModSeq[j])
                {
                   int iSlot = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]);
                   if (iSlot >= 0)
@@ -1705,16 +1845,16 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
          // set terminal mods
-         if (g_vFragmentPeptides[ix->first].cNtermMod > -1)
+         if (cVariantNtermMod > -1)
          {
-            piVarModSites[iLenPeptide] = g_vFragmentPeptides[ix->first].cNtermMod + 1;
-            dBion += g_staticParams.variableModParameters.varModList[g_vFragmentPeptides[ix->first].cNtermMod].dVarModMass;
+            piVarModSites[iLenPeptide] = cVariantNtermMod + 1;
+            dBion += g_staticParams.variableModParameters.varModList[(int)cVariantNtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
-         if (g_vFragmentPeptides[ix->first].cCtermMod > -1)
+         if (cVariantCtermMod > -1)
          {
-            piVarModSites[iLenPeptide + 1] = g_vFragmentPeptides[ix->first].cCtermMod + 1;
-            dYion += g_staticParams.variableModParameters.varModList[g_vFragmentPeptides[ix->first].cCtermMod].dVarModMass;
+            piVarModSites[iLenPeptide + 1] = cVariantCtermMod + 1;
+            dYion += g_staticParams.variableModParameters.varModList[(int)cVariantCtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
 
@@ -1992,8 +2132,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          struct sDBEntry dbe;
 
-         char cPrevAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cPrevAA;
-         char cNextAA = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).cNextAA;
+         char cPrevAA = rawView.cPrevAA;
+         char cNextAA = rawView.cNextAA;
          char szProtein[MAX_PEPTIDE_LEN_P2 + 1];
          if (cPrevAA == '-')
          {
@@ -2023,7 +2163,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 
          dbe.strName = "";
          dbe.strSeq = szProtein;
-         dbe.lProteinFilePosition = g_vRawPeptides.at(g_vFragmentPeptides[ix->first].iWhichPeptide).lIndexProteinFilePosition;
+         dbe.lProteinFilePosition = rawView.lIndexProteinFilePosition;
 
          XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, pQuery,
             iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
@@ -2047,7 +2187,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
 // Batch PI_DB search: loads the peptide index into memory once (shared with the
 // thread-local RTS path via EnsurePeptideIndexLoaded()), then fans out one job per
 // query onto the thread pool. Each job binary-searches the shared, read-only,
-// mass-sorted g_vDBIndexVariants via the thread-local SearchPeptideIndex(Query*, bool*)
+// mass-sorted g_dbIndexVariants via the thread-local SearchPeptideIndex(Query*, bool*)
 // overload instead of streaming candidates serially off disk on the calling
 // thread, so batch PI_DB searches now scale with iNumThreads like FI_DB batch
 // searches already do.
@@ -2088,26 +2228,40 @@ bool CometSearch::SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries)
 
 
 // Thread-local overload: searches a caller-owned Query* against the read-only
-// g_vDBIndexVariants (docs/20260730_PI_reduction.md). Does not access g_pvQuery.
+// g_dbIndexVariants (docs/20260730_PI_reduction.md). Does not access g_pvQuery.
 // pbDuplFragment is a thread-local scratch buffer of size g_staticParams.iArraySizeGlobal.
 void CometSearch::SearchPeptideIndex(Query* pQuery,
                                      bool* pbDuplFragment,
                                      int iSlot)
 {
-   if (!g_bPeptideIndexRead || g_vDBIndexVariants.empty())
+   if (!g_bPeptideIndexRead || g_dbIndexVariants.empty())
       return;
 
    double dMassTolLow = pQuery->_pepMassInfo.dPeptideMassToleranceMinus;
    double dMassTolHigh = pQuery->_pepMassInfo.dPeptideMassTolerancePlus;
 
-   // Binary search: find first entry with dPepMass >= dMassTolLow
+   // Phase 2 (docs/20260827_PI_memory.md): the variant array stores a 4-byte fixed-point
+   // mass key, not the exact double -- bracket the window on quantized keys, widened by
+   // 1 LSB each side (QuantizeLow/High) so rounding can only ADMIT extra borderline
+   // entries; the per-entry prefilters below run on the dequantized key with a matching
+   // epsilon, and the exact checks re-run per surviving candidate on the materialized
+   // entry's recomputed double mass (bit-identical to the formerly stored value -- same
+   // summation, same order), so the accepted candidate set is identical to when the exact
+   // double was stored per entry.
+   const unsigned int uiKeyLow = VariantArray::QuantizeLow(dMassTolLow);
+   const unsigned int uiKeyHigh = VariantArray::QuantizeHigh(dMassTolHigh);
+   const double dTolWiden = 2.0 / VariantArray::MASS_KEY_SCALE;  // quantization bound + margin
+
+   const vector<unsigned int>& vuiKeys = g_dbIndexVariants.vuiMassKey;
+
+   // Binary search: find first entry with mass key >= uiKeyLow
    size_t iStart = 0;
-   size_t iEnd = g_vDBIndexVariants.size();
+   size_t iEnd = g_dbIndexVariants.size();
 
    while (iStart < iEnd)
    {
       size_t iMid = iStart + (iEnd - iStart) / 2;
-      if (g_vDBIndexVariants[iMid].dPepMass < dMassTolLow)
+      if (vuiKeys[iMid] < uiKeyLow)
          iStart = iMid + 1;
       else
          iEnd = iMid;
@@ -2116,55 +2270,65 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
    struct sDBEntry dbe;
 
    // Iterate through candidates within mass tolerance
-   for (size_t i = iStart; i < g_vDBIndexVariants.size(); ++i)
+   for (size_t i = iStart; i < vuiKeys.size(); ++i)
    {
-      const FragmentPeptidesStruct& variant = g_vDBIndexVariants[i];
-
-      if (variant.dPepMass > dMassTolHigh)
+      if (vuiKeys[i] > uiKeyHigh)
          break;
 
-      // Search-time digest_mass_range/peptide_length_range narrower than what's stored in
+      const double dApproxMass = vuiKeys[i] * (1.0 / VariantArray::MASS_KEY_SCALE);
+
+      // Search-time digest_mass_range/peptide_length_range narrower than what's baked into
       // the .idx (see ParsePeptideIndexHeader()'s inward-only clamp of g_massRange/
       // peptideLengthRange from the MassRange:/LengthRange: header lines) further restricts
-      // g_vDBIndexVariants here -- this is the one place PI_DB needs to apply that clamp
+      // the variant array here -- this is the one place PI_DB needs to apply that clamp
       // explicitly, since (unlike FI_DB, whose fragment index is rebuilt fresh from these
-      // same bounds on every load) g_vDBIndexVariants is read directly off disk unfiltered.
-      // A wider search-time range is already a no-op: nothing outside the file's own
-      // MassRange:/LengthRange: bounds was ever written to g_vDBIndexVariants to admit.
-      if (variant.dPepMass < g_massRange.dMinMass || variant.dPepMass > g_massRange.dMaxMass)
+      // same bounds on every load) the variant enumeration admits everything within the
+      // bounds g_massRange held when GenerateVariantArray() ran at session start. A wider
+      // search-time range is already a no-op: nothing outside those bounds was ever
+      // enumerated. Widened prefilter here; exact re-check below after materialization.
+      if (dApproxMass < g_massRange.dMinMass - dTolWiden || dApproxMass > g_massRange.dMaxMass + dTolWiden)
          continue;
 
-      // variant.iWhichPeptide comes straight off disk (g_vDBIndexVariants is read unfiltered
-      // by ReadPeptideIndex()) -- a corrupt/truncated .idx could put an out-of-range value
-      // here. Checked explicitly rather than relying on g_vRawPeptides.at()'s bounds-checked
-      // exception, since an uncaught exception from this per-candidate hot-path loop (reached
-      // directly from the RTS thread-local path with no generic try/catch around it) would
-      // crash the search instead of just skipping this one candidate, consistent with
-      // MaterializeOneEntry()'s own handling of the same untrusted field.
-      if (variant.iWhichPeptide >= g_vRawPeptides.size())
+      // Defense against a malformed variant entry, checked explicitly rather than relying
+      // on g_vRawPeptides.at()'s bounds-checked exception, since an uncaught exception from
+      // this per-candidate hot-path loop (reached directly from the RTS thread-local path
+      // with no generic try/catch around it) would crash the search instead of just
+      // skipping this one candidate, consistent with MaterializeOneEntry()'s own handling
+      // of the same field.
+      const unsigned int uiWhichPeptide = g_dbIndexVariants.vuiWhichPeptide[i];
+      if (uiWhichPeptide >= g_vRawPeptides.size())
          continue;
 
-      int iRawLen = (int)strlen(g_vRawPeptides.at(variant.iWhichPeptide).szPeptide);
+      int iRawLen = g_vRawPeptides.seq_len(uiWhichPeptide);
       if (iRawLen < g_staticParams.options.peptideLengthRange.iStart
          || iRawLen > g_staticParams.options.peptideLengthRange.iEnd)
          continue;
 
-      // Verify mass match (handles isotope offsets)
-      if (!CheckMassMatch(pQuery, variant.dPepMass))
+      // Widened mass-match prefilter on the dequantized key (handles isotope offsets):
+      // cheap per-entry rejection so entries in the isotope-gap dead zones of a wide
+      // bracket don't all get materialized just to be rejected.
+      if (!CheckMassMatch(pQuery, dApproxMass, dTolWiden))
          continue;
 
       // Materialize this candidate's full DBIndex (sequence, explicit pcVarModSites, flank
-      // AAs, protein reference) on the fly -- the compact variant array only carries a
-      // reference into g_vRawPeptides plus the mod-permutation tables, not the full
-      // reconstruction, since only the handful of candidates surviving this mass-window
-      // filter (not every one of g_vDBIndexVariants' entries) ever need it. See
-      // docs/20260730_PI_reduction.md Phase 3.
+      // AAs, protein reference, exact double mass) on the fly -- the compact variant array
+      // only carries a reference into g_vRawPeptides plus the mod-permutation tables, not
+      // the full reconstruction, since only the handful of candidates surviving this
+      // mass-window filter ever need it. See docs/20260730_PI_reduction.md Phase 3.
       DBIndex dbiLocal;
-      if (!CometPeptideIndex::MaterializeOneEntry(variant.iWhichPeptide, variant.modNumIdx,
-            variant.cNtermMod, variant.cCtermMod, dbiLocal))
+      if (!CometPeptideIndex::MaterializeOneEntry(uiWhichPeptide, g_dbIndexVariants.GetModNumIdx(i),
+            g_dbIndexVariants.GetNtermMod(i), g_dbIndexVariants.GetCtermMod(i), dbiLocal))
       {
          continue;
       }
+
+      // Exact equivalents of the two widened prefilters above, on the recomputed double
+      // mass -- these are the decisions the pre-Phase-2 code made against the stored exact
+      // mass, so the accepted set (and with it the output) is unchanged.
+      if (dbiLocal.dPepMass < g_massRange.dMinMass || dbiLocal.dPepMass > g_massRange.dMaxMass)
+         continue;
+      if (!CheckMassMatch(pQuery, dbiLocal.dPepMass))
+         continue;
 
       dbe.lProteinFilePosition = dbiLocal.lIndexProteinFilePosition;
       AnalyzePeptideIndex(pQuery, dbiLocal, pbDuplFragment, &dbe, iSlot);
@@ -2281,12 +2445,12 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       if (lProtIdx >= 0 && lProtIdx < (comet_fileoffset_t)g_pvProteinsList.size()
          && !g_pvProteinsList[lProtIdx].empty())
       {
-         // Check the first protein in the list for the decoy prefix
-         comet_fileoffset_t lProtFilePos = g_pvProteinsList[lProtIdx][0];
-         auto it = g_pvProteinNameCache.find(lProtFilePos);
-         if (it != g_pvProteinNameCache.end())
+         // Check the first protein in the list for the decoy prefix (rows hold
+         // name-section ordinals since docs/20260827_PI_memory.md Phase 4)
+         unsigned int uiWhichProtein = g_pvProteinsList[lProtIdx][0];
+         if (uiWhichProtein < g_pvProteinNameCache.size())
          {
-            if (strncmp(it->second.c_str(), g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
+            if (strncmp(g_pvProteinNameCache[uiWhichProtein].c_str(), g_staticParams.szDecoyPrefix, strlen(g_staticParams.szDecoyPrefix)) == 0)
                bDecoyPep = true;
          }
       }
@@ -4250,40 +4414,52 @@ int CometSearch::BinarySearchMass(int start,
 }
 
 
+// Returns the first position within bin uiWhichBin's posting list whose variant's
+// fixed-point mass key is >= uiKeyLow -- a conservative start hint for the caller's walk
+// (uiKeyLow is the quantized-and-lowered form of the query's lower tolerance bound, so
+// this can only start at or before the first truly in-window entry; the caller's
+// per-entry checks decide the actual candidate set). Rewritten as an exact iterative
+// lower bound as part of the FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1);
+// the entries within a bin are stored in ascending variant-mass order, which quantization
+// preserves.
 size_t CometSearch::BinarySearchIndexMass(size_t start,
                                           size_t end,
-                                          double dQueryMass,
-                                          unsigned int* uiFragmentMass)
+                                          unsigned int uiKeyLow,
+                                          unsigned int uiWhichBin)
 {
-   // dQueryMass is the lower bound tolerance mass of input spectrum.
-
-   // Termination condition: start index greater than end index.
+   // Deliberately recursive, three-way, and branchy -- structurally identical to the
+   // pre-SoA double-mass implementation -- rather than a tight iterative lower-bound loop:
+   // MSVC compiles the iterative form's select into CMOV, which makes each probe's
+   // cache-missing load a DATA dependency of the next probe's address (no branch
+   // prediction, no overlapped misses) and was measured serializing the whole search --
+   // the entire ~15-20% Windows FI search-phase regression of the first SoA port lived
+   // here. Branches let the predictor speculate ahead and overlap the misses instead
+   // (docs/20260827_PI_memory.md, cross-platform section). GCC never applied the CMOV
+   // transform, which is why Linux was unaffected.
    if (start >= end || end <= BINARYSEARCHCUTOFF)
    {
       return start;
    }
 
-   // Find the middle element of the vector and use that for splitting
-   // the array into two pieces.
    size_t middle = start + ((end - start) / 2);
 
-   uint64_t uiBinBase = g_iFragmentIndexOffset[*uiFragmentMass];
-   double dArrayMass = g_vFragmentPeptides[g_iFragmentIndex[uiBinBase + middle]].dPepMass;
+   uint64_t uiBinBase = g_iFragmentIndexOffset[uiWhichBin];
+   unsigned int uiArrayKey = g_fragmentPeptides.vuiMassKey[g_iFragmentIndex[uiBinBase + middle]];
 
-   if (dArrayMass > dQueryMass)
+   if (uiArrayKey > uiKeyLow)
    {
-      return BinarySearchIndexMass(start, middle - 1, dQueryMass, uiFragmentMass);
+      return BinarySearchIndexMass(start, middle - 1, uiKeyLow, uiWhichBin);
    }
-   else if (dArrayMass < dQueryMass)
+   else if (uiArrayKey < uiKeyLow)
    {
-      return BinarySearchIndexMass(middle + 1, end, dQueryMass, uiFragmentMass);
+      return BinarySearchIndexMass(middle + 1, end, uiKeyLow, uiWhichBin);
    }
-   else // this means (dArrayMass >= dQueryMass && dArrayMass <= dQueryMass)
+   else
    {
-      // always walk backwards now until ArrayMass is < dQueryMass
-      // as there may be multiple entries in the mass vector with the same ArrayMass so
-      // need to start at the first one (or the entry before the first one)
-      while (middle > 0 && g_vFragmentPeptides[g_iFragmentIndex[uiBinBase + middle]].dPepMass >= dQueryMass)
+      // walk backwards to the first entry carrying this key (quantized keys repeat more
+      // often than exact doubles did; entries with key == uiKeyLow are still just the
+      // ones within one quantization step of the window edge)
+      while (middle > 0 && g_fragmentPeptides.vuiMassKey[g_iFragmentIndex[uiBinBase + middle]] >= uiKeyLow)
       {
          middle--;
       }
@@ -8088,13 +8264,25 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 }
 
 // Task 1.2: Thread-local overload accepting Query* directly.
+// dTolWiden (default 0.0, bit-identical to the unwidened check) widens every tolerance
+// window by that many Da on each side. Used by SearchPeptideIndex()'s quantized-mass-key
+// prefilter (docs/20260827_PI_memory.md Phase 2): the prefilter runs on a fixed-point
+// approximation of the peptide mass, so its windows must be widened by the quantization
+// error bound to stay conservative; the exact, unwidened check re-runs afterward on the
+// materialized candidate's recomputed double mass.
 bool CometSearch::CheckMassMatch(Query* pQuery,
-                                 double dCalcPepMass)
+                                 double dCalcPepMass,
+                                 double dTolWiden)
 {
    int iMassOffsetsSize = (int)g_staticParams.vectorMassOffsets.size();
 
-   if ((dCalcPepMass >= pQuery->_pepMassInfo.dPeptideMassToleranceMinus)
-      && (dCalcPepMass <= pQuery->_pepMassInfo.dPeptideMassTolerancePlus))
+   const double dTolMinus = pQuery->_pepMassInfo.dPeptideMassToleranceMinus - dTolWiden;
+   const double dTolPlus = pQuery->_pepMassInfo.dPeptideMassTolerancePlus + dTolWiden;
+   const double dTolLow = pQuery->_pepMassInfo.dPeptideMassToleranceLow - dTolWiden;
+   const double dTolHigh = pQuery->_pepMassInfo.dPeptideMassToleranceHigh + dTolWiden;
+
+   if ((dCalcPepMass >= dTolMinus)
+      && (dCalcPepMass <= dTolPlus))
    {
       if (g_staticParams.tolerances.iIsotopeError == 0 && iMassOffsetsSize == 0)
          return true;
@@ -8113,8 +8301,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
             {
                for (int x = 0; x <= iMaxIsotope; ++x)
                {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * C13_DIFF
-                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  if ((dTolLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * C13_DIFF
+                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * C13_DIFF <= dTolHigh))
                   {
                      return true;
                   }
@@ -8132,8 +8320,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
                {
                   for (int x = 0; x <= iMaxIsotope; ++x)
                   {
-                     if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x * C13_DIFF
-                        && dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x * C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                     if ((dTolLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x * C13_DIFF
+                        && dCalcPepMass + g_staticParams.vectorMassOffsets[i] - x * C13_DIFF <= dTolHigh))
                      {
                         return true;
                      }
@@ -8149,8 +8337,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
             {
                for (int x = -2; x <= 2; ++x)
                {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995
-                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  if ((dTolLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995
+                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995 <= dTolHigh))
                   {
                      return true;
                   }
@@ -8179,8 +8367,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
 
             for (int x = 0; x <= iMaxIsotope; ++x)
             {
-               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x * C13_DIFF
-                  && dCalcPepMass + x * C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+               if ((dTolLow <= dCalcPepMass + x * C13_DIFF
+                  && dCalcPepMass + x * C13_DIFF <= dTolHigh))
                {
                   return true;
                }
@@ -8195,8 +8383,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
 
                for (int x = 0; x <= iMaxIsotope; ++x)
                {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass - x * C13_DIFF
-                     && dCalcPepMass - x * C13_DIFF <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  if ((dTolLow <= dCalcPepMass - x * C13_DIFF
+                     && dCalcPepMass - x * C13_DIFF <= dTolHigh))
                   {
                      return true;
                   }
@@ -8209,8 +8397,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
          {
             for (int x = -2; x <= 2; ++x)
             {
-               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x * 4.0070995
-                  && dCalcPepMass + x * 4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+               if ((dTolLow <= dCalcPepMass + x * 4.0070995
+                  && dCalcPepMass + x * 4.0070995 <= dTolHigh))
                {
                   return true;
                }
@@ -9013,7 +9201,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
 // loaded the peptide data, so that mass arrays reflect the exact static/variable mods used
 // when the index was built.
 //
-// Does NOT rebuild the MOD_NUMBERS/MOD_SEQS/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
+// Does NOT rebuild the MOD_NUMBERS_POOL/MOD_SEQS_POOL/PEPTIDE_MOD_SEQ_IDXS mod-permutation tables --
 // ReadPeptideIndex() already read them directly from the .idx file's persisted permutations
 // section (docs/20260730_PI_reduction.md Phase 0), rather than recomputing them here from
 // whatever mod settings happen to be active. An earlier version of this function called

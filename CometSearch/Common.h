@@ -90,7 +90,7 @@ inline struct tm* comet_localtime(const time_t* timep)
 #endif
 }
 
-#define comet_version   "2026.02 rev. 2"
+#define comet_version   "2026.02 rev. 3"
 #define copyright "(c) University of Washington"
 extern string g_sCometVersion;   // version string including git hash
 

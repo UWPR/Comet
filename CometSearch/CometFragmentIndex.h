@@ -29,15 +29,33 @@ public:
    // WriteFIPlainPeptideIndex()/ReadPlainPeptideIndex() retired (docs/20260730_PI_reduction.md
    // Phase 0) -- superseded by CometPeptideIndex::WritePeptideIndex()/ReadPeptideIndex(),
    // which produce/consume the unified index format shared by PI_DB and FI_DB search modes.
-   static bool GeneratePlainPeptideIndex(ThreadPool *tp, vector<pair<size_t,size_t>>& slices);
+   static bool GeneratePlainPeptideIndex(ThreadPool *tp);
 
    static bool CreateFragmentIndex(ThreadPool *tp, bool bIsRTS);
    static int WhichPrecursorBin(double dMass);
 
    // Public for reuse by CometPeptideIndex (PI_DB build, see
-   // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS/MOD_NUMBERS/
-   // MOD_SEQ_MOD_NUM_START/CNT/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
-   static void PermuteIndexPeptideMods(vector<PlainPeptideIndexStruct>& vRawPeptides);
+   // docs/20260713_PIidxformat.md Phase B): builds MOD_SEQS_POOL/MOD_NUMBERS_POOL/
+   // MOD_SEQ_MOD_NUM_START/CNT/POOL_START/PEPTIDE_MOD_SEQ_IDXS from g_vRawPeptides.
+   static void PermuteIndexPeptideMods(const RawPeptideTable& vRawPeptides);
+
+   // docs/20260827_PI_memory.md Section 7.1 (FI_DB Phase 2 port): the residue-by-residue
+   // precursor-mass computation for one (peptide, mod combination, terminal mods) tuple,
+   // extracted from AddFragments()'s fresh-compute branch so search-time callers
+   // (CometSearch::SearchFragmentIndex()) can reproduce the mass a variant was stored with
+   // BIT-IDENTICALLY (same accumulator, same summation order) -- g_fragmentPeptides stores
+   // only a fixed-point key, and FI_DB reports this recomputed value as the candidate's
+   // calculated mass. Deliberately NOT unified with PI_DB's tryPush/MaterializeOneEntry
+   // computation (raw.dPepMass + mod deltas): the two have always differed in summation
+   // path and protein-terminal-static-mod handling, and each mode must keep recomputing
+   // exactly what its own build historically stored. pdResidueOnlyMass (optional) returns
+   // the unmodified residue-only sum for AddFragments()'s hardening check.
+   static double ComputeIndexedPepMass(size_t iWhichPeptide,
+                                       int modNumIdx,
+                                       char cNtermMod,
+                                       char cCtermMod,
+                                       const vector<int>& vModSlotForAllModsIdx,
+                                       double* pdResidueOnlyMass);
 
 private:
 
@@ -68,7 +86,7 @@ private:
    // pointer is non-null -- see the definition -- so there is no separate bCountOnly flag:
    // pLocalFragPeptides non-null selects the count pass; null selects a fill sub-pass,
    // where pFillWriteCursor non-null vs. null further selects fill-write vs. fill-count.
-   static void AddFragments(vector<PlainPeptideIndexStruct>& vRawPeptides,
+   static void AddFragments(const RawPeptideTable& vRawPeptides,
                             size_t iWhichPeptide,
                             size_t iWhichFragmentPeptide,
                             int modNumIdx,

@@ -32,14 +32,14 @@ Used only in the batch search path (`DoSearch` -> `Pipeline` -> strategies). The
 
 Populated during index build / load; treated as read-only during all searches. Safe for concurrent reads from RTS threads.
 
-The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fragment mass bin `b`, the entries in `g_vFragmentPeptides` are at positions `g_iFragmentIndexOffset[b]` through `g_iFragmentIndexOffset[b+1] - 1` (half-open interval), and the values stored there are indices into `g_vFragmentPeptides`.
+The fragment index uses a **CSR (Compressed Sparse Row)** layout. For a given fragment mass bin `b`, the entries in `g_fragmentPeptides` are at positions `g_iFragmentIndexOffset[b]` through `g_iFragmentIndexOffset[b+1] - 1` (half-open interval), and the values stored there are indices into `g_fragmentPeptides`.
 
 | Variable | Type | Notes |
 |----------|------|-------|
-| `g_iFragmentIndex` | `unsigned int*` | Flat CSR data array. Each element is an index into `g_vFragmentPeptides`. Entries for bin `b` span `[g_iFragmentIndexOffset[b], g_iFragmentIndexOffset[b+1])`. |
+| `g_iFragmentIndex` | `unsigned int*` | Flat CSR data array. Each element is an index into `g_fragmentPeptides`. Entries for bin `b` span `[g_iFragmentIndexOffset[b], g_iFragmentIndexOffset[b+1])`. |
 | `g_iFragmentIndexOffset` | `uint64_t*` | CSR offset array; length = (max bin + 1) + 1. Must be 64-bit -- the total entry count can exceed UINT_MAX for large databases with many variable mods. |
-| `g_vFragmentPeptides` | `vector<FragmentPeptidesStruct>` | Mass-sorted list of all (peptide, mod-state) combinations. Each entry references a row in `g_vRawPeptides` via `iWhichPeptide`. |
-| `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | List of unique unmodified peptide sequences with protein file-position pointers. |
+| `g_fragmentPeptides` | `VariantArray` (SoA, core/Types.h) | Mass-sorted list of all (peptide, mod-state) combinations, 13B/entry with a fixed-point mass key (docs/20260827_PI_memory.md Section 7.1). Each entry references a row in `g_vRawPeptides` via `vuiWhichPeptide`; exact masses are recomputed per candidate via `CometFragmentIndex::ComputeIndexedPepMass()`. |
+| `g_vRawPeptides` | `RawPeptideTable` (pooled, core/Types.h) | List of unique unmodified peptide sequences with protein row references; sequences in one flat NUL-terminated pool + parallel fixed-field arrays (docs/20260827_PI_memory.md Phase 3). |
 | `g_bIndexPrecursors` | `bool*` | Boolean bitmap over precursor mass bins; marks which precursor masses are present in the current input file(s). |
 | `g_bPeptideIndexRead` | `std::atomic<bool>` | Set to `true` by `CometPeptideIndex::ReadPeptideIndex()` once the `.idx` file itself has been read -- **not** the same as "fully initialized" (see `g_bPeptideIndexFullyInitialized` below, which gates on more than this). |
 | `g_bPeptideIndexFullyInitialized` | `std::atomic<bool>` | Set to `true` only after `CometSearch::EnsurePeptideIndexLoaded()` has completed *all* of: `ReadPeptideIndex()` (which sets `g_bPeptideIndexRead`), `InitializeMassesFromPeptideIndex()`, and (if `print_ascorepro_score`) AScorePro interface creation. This exists because a second concurrent caller (another RTS Task's thread, which the API permits) could otherwise observe `g_bPeptideIndexRead == true` while the first caller is still finishing mass-init/AScorePro setup under the lock, and search with masses that aren't ready yet. `EnsurePeptideIndexLoaded()`'s unlocked fast-path check gates on this flag, not on `g_bPeptideIndexRead`. |
@@ -84,20 +84,20 @@ document. `Load(strMaskFile)` is a no-op (leaves `s_bEnabled == false`) when
 PI_DB and FI_DB share one unified `.idx` format and one reader,
 `CometPeptideIndex::ReadPeptideIndex()` (`docs/20260730_PI_reduction.md` Phase 0). Both
 modes populate `g_vRawPeptides` and the protein-list globals below identically -- these are
-the only peptide-level data actually read from disk. `g_vDBIndexVariants` is PI_DB-specific,
+the only peptide-level data actually read from disk. `g_dbIndexVariants` is PI_DB-specific,
 built once per session (not read from disk, see Phase 0.5) only when `iDbType == PI_DB`, and
-`g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_vFragmentPeptides` (built separately by
+`g_iFragmentIndex`/`g_iFragmentIndexOffset`/`g_fragmentPeptides` (built separately by
 FI_DB, once per session, from the same `g_vRawPeptides` + regenerated permutation tables --
 not listed in this table, see `RealTimeSearch.md`'s thread-safety table) are FI_DB-specific.
 
 | Variable | Type | Notes |
 |----------|------|-------|
 | `g_pvDBIndex` | `vector<DBIndex>` | **Build-time only, no longer the search-time index.** Phase A digestion output (`CometFragmentIndex::GeneratePlainPeptideIndex()`) inside `CometPeptideIndex::WritePeptideIndex()`: one entry per unique raw peptide, copied into `g_vRawPeptides` and cleared before the function returns. `DBIndex` itself is also used as a transient, stack-local, per-candidate reconstruction target at PI_DB search time (`CometPeptideIndex::MaterializeOneEntry()`, called from `CometSearch::SearchPeptideIndex()`) -- that usage never touches this global. |
-| `g_vRawPeptides` | `vector<PlainPeptideIndexStruct>` | One entry per unique unmodified peptide (sequence, protein reference, flank AAs, unmodified mass), loaded from the `.idx` file at search init and kept resident for the whole session. Shared by both search modes. |
-| `g_vDBIndexVariants` | `vector<FragmentPeptidesStruct>` | PI_DB's compact per-variant array (one entry per (peptide, mod combination) pair: mass + a reference back into `g_vRawPeptides`), mass-sorted. Built once per search session by `CometPeptideIndex::GenerateVariantArray()` from `g_vRawPeptides` + whichever variable mods are active in `g_staticParams.variableModParameters` at that moment -- as of `docs/20260811_restore_idx_header_mods.md`, that's the `.idx` file's own `VariableMod:` header line (parsed into `g_staticParams` by `ParsePeptideIndexHeader()`, overwriting whatever `comet.params` supplied), not live `comet.params` directly. The array itself is still never persisted to disk -- rebuilt fresh every session. `CometSearch::SearchPeptideIndex()` binary-searches this by mass; `CometPeptideIndex::MaterializeOneEntry()` reconstructs a full `DBIndex` per surviving candidate. Only populated when `iDbType == PI_DB`. |
+| `g_vRawPeptides` | `RawPeptideTable` (pooled, core/Types.h) | One entry per unique unmodified peptide (sequence, protein reference, flank AAs, unmodified mass), loaded from the `.idx` file at search init and kept resident for the whole session; sequences live NUL-terminated in one flat char pool with fixed fields in parallel arrays (~24B/entry + seq bytes, formerly 72B/entry AoS -- docs/20260827_PI_memory.md Phase 3), accessed via `RawPeptideView`. Shared by both search modes. |
+| `g_dbIndexVariants` | `PiVariantArray` (SoA, core/Types.h) | PI_DB's compact per-variant array (one entry per (peptide, mod combination) pair: a 4-byte fixed-point mass key + a reference back into `g_vRawPeptides`; 13B/entry across four parallel arrays -- docs/20260827_PI_memory.md Phase 2), mass-sorted. Built once per search session by `CometPeptideIndex::GenerateVariantArray()` from `g_vRawPeptides` + whichever variable mods are active in `g_staticParams.variableModParameters` at that moment -- as of `docs/20260811_restore_idx_header_mods.md`, that's the `.idx` file's own `VariableMod:` header line (parsed into `g_staticParams` by `ParsePeptideIndexHeader()`, overwriting whatever `comet.params` supplied), not live `comet.params` directly. The array itself is still never persisted to disk -- rebuilt fresh every session. `CometSearch::SearchPeptideIndex()` binary-searches this by mass; `CometPeptideIndex::MaterializeOneEntry()` reconstructs a full `DBIndex` per surviving candidate. Only populated when `iDbType == PI_DB`. |
 | `g_pvProteinNames` | `map<long long, IndexProteinStruct>` | **Build-time only -- not search-time readable.** Populated only while *building* a `.idx` (`CometPeptideIndex::WritePeptideIndex()`'s digestion path); never repopulated when an existing `.idx` is read back for a search, so a search-time lookup silently finds nothing rather than erroring. This exact confusion caused a real bug: `CometSearch.cpp`'s decoy-classification check read this map and always found nothing, so `bDecoyPep` was unconditionally `false` for every PI_DB search of an already-built index (see the comment at `CometSearch.cpp:2269`). Use `g_pvProteinNameCache` (below) for any search-time protein-name lookup instead. |
-| `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein file offsets (for multi-protein peptides). `ProteinsListCSR` is a CSR-layout replacement for `vector<vector<comet_fileoffset_t>>`; exposes the same `operator[]`/`size()`/range-for interface but uses only two heap allocations total. |
-| `g_pvProteinNameCache` | `unordered_map<comet_fileoffset_t, string>` | Protein name lookup cache for index-based searches. Populated at index load time from the protein name blocks in the `.idx` file. Maps protein file-position offsets to accession strings. ~7 MB for a human target-decoy database. Allows O(1) protein name resolution during RTS without file I/O. |
+| `g_pvProteinsList` | `ProteinsListCSR` | Maps peptide index positions to lists of protein references (for multi-protein peptides). CSR layout, two heap allocations total; since docs/20260827_PI_memory.md Phase 4 both values and CSR offsets are `uint32` (halving it -- ~1.5 GB at MHC scale): at build time a value is the protein's FASTA byte offset (FASTA must be < 4 GB, checked up front), after index load it is the protein's name-section ORDINAL. |
+| `g_pvProteinNameCache` | `vector<string>` | Protein name lookup for index-based searches, indexed by name-section ordinal (Phase 4; formerly an `unordered_map` keyed by file offset). Populated at index load by one sequential read of the whole name section -- every protein, so ordinal lookups never miss. Allows O(1) protein name resolution during RTS without file I/O. |
 
 ---
 
@@ -128,9 +128,10 @@ from the file before this regeneration runs, the same way `StaticMod:` already d
 
 | Variable | Notes |
 |----------|-------|
-| `MOD_NUMBERS` | `vector<ModificationNumber>` -- precomputed modification number combinations. |
-| `MOD_SEQS` | `vector<string>` -- unique modifiable sequences. |
-| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- index into `MOD_NUMBERS` per modifiable sequence. |
+| `MOD_NUMBERS_POOL` | `vector<char>` -- flat pool holding every precomputed mod-combination entry's `modifications[]` array, concatenated (docs/20260827_PI_memory.md Phase 1; formerly `vector<ModificationNumber>` with one heap allocation per entry). Entries are addressed arithmetically via `GetModNumEntry()` (core/Types.h). |
+| `MOD_SEQ_MOD_NUM_POOL_START` | `uint64_t*` -- per modifiable sequence, offset of its first entry in `MOD_NUMBERS_POOL`. |
+| `MOD_SEQS_POOL` / `MOD_SEQS_OFFSET` | `vector<char>` / `vector<unsigned int>` -- unique modifiable sequences, flat-pooled (formerly `vector<string> MOD_SEQS`); sequence text is not NUL-terminated, accessed via `GetModSeq()`. |
+| `MOD_SEQ_MOD_NUM_START` / `MOD_SEQ_MOD_NUM_CNT` | `int*` -- mod-combination entry index range per modifiable sequence. |
 | `PEPTIDE_MOD_SEQ_IDXS` | `int*` -- maps peptides to their modifiable sequence index. |
 | `MOD_NUM` | `int` -- total number of distinct modification combinations. |
 | `g_vvvPepGenShort` / `g_vvvPepGenLong` | Per-thread peptide generation scratch buffers; populated during index build and reused across peptides to avoid repeated allocation. |
@@ -215,9 +216,9 @@ The happens-before edge that makes the `acquire`/`release` ordering meaningful c
 ```
 Safe to read from any concurrent RTS thread (after init):
   g_staticParams, g_iFragmentIndex, g_iFragmentIndexOffset,
-  g_vFragmentPeptides, g_vRawPeptides, g_pvProteinsList,
+  g_fragmentPeptides, g_vRawPeptides, g_pvProteinsList,
   g_pvProteinNameCache, g_vSpecLib, g_vulSpecLibPrecursorIndex,
-  g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS, MOD_SEQS,
+  g_AScoreOptions, g_AScoreInterface, MOD_NUMBERS_POOL, MOD_SEQS_POOL, MOD_SEQS_OFFSET,
   g_massRange.dMinMass / dMaxMass / bNarrowMassRange (written once at init on
   either path -- not batch-only, see "Core search state" above)
 
