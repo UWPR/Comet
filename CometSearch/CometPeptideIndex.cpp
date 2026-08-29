@@ -189,57 +189,85 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       return false;
    }
 
+   // Streamed read of the raw-peptide section (docs/20260827_PI_memory.md follow-up to
+   // Phase 4): a fixed carry buffer replaces the former whole-section vBuf, which at
+   // MHC scale held ~8 GB alongside the growing table and -- with the pool over-reserve's
+   // shrink_to_fit() copy on top -- WAS the process's peak-RSS moment. The on-disk fixed
+   // overhead is exactly 24 B/entry (iLen int + 2 flanks + double + ushort + 8-byte protein
+   // reference) and the pool stores (iLen + 1) bytes per entry, so the pool's final size is
+   // computable up front: tSectionSize - 23 * tNumRaw. Reserving exactly makes the trailing
+   // shrink_to_fit() a no-op instead of a multi-GB copy.
+   const size_t tFixedDiskBytesPerEntry = sizeof(int) + 2 + sizeof(double)
+      + sizeof(unsigned short) + (size_t)clSizeCometFileOffset;   // == tMinEntrySize above
+   size_t tSeqPoolBytes = tSectionSize - (size_t)tNumRaw * (tFixedDiskBytesPerEntry - 1);
+
    g_vRawPeptides.clear();
-   // tSectionSize (the on-disk table: sequence bytes + per-entry fixed fields) is a close
-   // upper bound for the sequence pool; shrink_to_fit() below trims the overshoot.
-   g_vRawPeptides.reserve((size_t)tNumRaw, tSectionSize);
+   g_vRawPeptides.reserve((size_t)tNumRaw, tSeqPoolBytes);
    {
-      vector<char> vBuf(tSectionSize);
-      if (fread(vBuf.data(), 1, tSectionSize, fp) != tSectionSize)
-      {
-         fclose(fp);
-         logout(" Error - failed to read raw peptide table from .idx file; file may be truncated or corrupt.\n");
-         return false;
-      }
-      const char* p = vBuf.data();
-      const char* pEnd = vBuf.data() + tSectionSize;
+      // largest possible entry: fixed fields + a (MAX_PEPTIDE_LEN - 1)-residue sequence
+      const size_t tMaxEntryBytes = tFixedDiskBytesPerEntry + MAX_PEPTIDE_LEN;
+      const size_t tBufCap = 16 * 1024 * 1024;
+      vector<char> vBuf(tBufCap);
+      size_t tHave = 0;                          // valid bytes currently in vBuf
+      size_t tPos = 0;                           // parse cursor within vBuf
+      uint64_t tFileRemaining = tSectionSize;    // section bytes not yet read from disk
+
       for (uint64_t i = 0; i < tNumRaw; ++i)
       {
+         // refill when the window can no longer be guaranteed to hold one whole entry
+         if (tHave - tPos < tMaxEntryBytes && tFileRemaining > 0)
+         {
+            memmove(vBuf.data(), vBuf.data() + tPos, tHave - tPos);
+            tHave -= tPos;
+            tPos = 0;
+            size_t tToRead = tBufCap - tHave;
+            if ((uint64_t)tToRead > tFileRemaining)
+               tToRead = (size_t)tFileRemaining;
+            if (fread(vBuf.data() + tHave, 1, tToRead, fp) != tToRead)
+            {
+               fclose(fp);
+               logout(" Error - failed to read raw peptide table from .idx file; file may be truncated or corrupt.\n");
+               return false;
+            }
+            tHave += tToRead;
+            tFileRemaining -= tToRead;
+         }
+
          int iLen;
 
-         if (p + sizeof(int) > pEnd)
+         if (tHave - tPos < sizeof(int))
          {
             fclose(fp);
             logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
-         memcpy(&iLen, p, sizeof(int)); p += sizeof(int);
+         memcpy(&iLen, vBuf.data() + tPos, sizeof(int)); tPos += sizeof(int);
          if (iLen < 0 || iLen >= MAX_PEPTIDE_LEN)
          {
             fclose(fp);
             logout(" Error - corrupt raw peptide entry " + to_string(i) + " in .idx file.\n");
             return false;
          }
-         // Every fixed-size field this entry still needs to read, checked in one shot: the
-         // peptide sequence itself (iLen bytes) plus cPrevAA/cNextAA/dPepMass/
-         // siVarModProteinFilter/lIndexProteinFilePosition. tNumRaw not matching what the
-         // section actually holds (a corrupt/truncated file) would otherwise walk p past
-         // vBuf's end -- a heap-buffer-overread -- instead of erroring cleanly here.
-         if (p + (size_t)iLen + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset > pEnd)
+         // Every fixed-size field this entry still needs, checked in one shot: the peptide
+         // sequence itself (iLen bytes) plus cPrevAA/cNextAA/dPepMass/siVarModProteinFilter/
+         // lIndexProteinFilePosition. tNumRaw not matching what the section actually holds
+         // (a corrupt/truncated file) would otherwise walk the cursor past the window -- a
+         // heap-buffer-overread -- instead of erroring cleanly here.
+         if (tHave - tPos < (size_t)iLen + 2 + sizeof(double) + sizeof(unsigned short) + (size_t)clSizeCometFileOffset)
          {
             fclose(fp);
             logout(" Error - raw peptide table ran short of its section in .idx file at entry " + to_string(i) + ".\n");
             return false;
          }
-         const char* pSeq = p; p += iLen;
-         char cPrevAA = *p++;
-         char cNextAA = *p++;
+         const char* pSeq = vBuf.data() + tPos; tPos += iLen;
+         char cPrevAA = vBuf[tPos++];
+         char cNextAA = vBuf[tPos++];
          double dPepMass;
          unsigned short siVarModProteinFilter;
          comet_fileoffset_t lIndexProteinFilePosition;
-         memcpy(&dPepMass, p, sizeof(double)); p += sizeof(double);
-         memcpy(&siVarModProteinFilter, p, sizeof(unsigned short)); p += sizeof(unsigned short);
-         memcpy(&lIndexProteinFilePosition, p, clSizeCometFileOffset); p += clSizeCometFileOffset;
+         memcpy(&dPepMass, vBuf.data() + tPos, sizeof(double)); tPos += sizeof(double);
+         memcpy(&siVarModProteinFilter, vBuf.data() + tPos, sizeof(unsigned short)); tPos += sizeof(unsigned short);
+         memcpy(&lIndexProteinFilePosition, vBuf.data() + tPos, clSizeCometFileOffset); tPos += (size_t)clSizeCometFileOffset;
          if (!g_vRawPeptides.push_back(pSeq, iLen, cPrevAA, cNextAA, dPepMass,
                siVarModProteinFilter, lIndexProteinFilePosition))
          {
@@ -250,7 +278,7 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             return false;
          }
       }
-      g_vRawPeptides.shrink_to_fit();
+      g_vRawPeptides.shrink_to_fit();   // no-op when the exact pool estimate held
    }
 
    // --- Proteins list (ProteinsListCSR) ---
@@ -1223,10 +1251,7 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // instead of the legacy RunSearch() path (one heap-allocated DBIndex push per
    // protein occurrence, under a global mutex). See docs/20260713_PIidxformat.md.
    if (bSucceeded)
-   {
-      vector<pair<size_t,size_t>> slices;
-      bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp, slices);
-   }
+      bSucceeded = CometFragmentIndex::GeneratePlainPeptideIndex(tp);
 
    if (bSwapIdxExtension)
       strcat(g_staticParams.databaseInfo.szDatabase, ".idx");
@@ -1244,34 +1269,12 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
       return false;
    }
 
-   // g_vRawPeptides supplies the sequence/protein/flank data shared by every mod-variant of
-   // a given raw peptide; kept alive (not cleared) for the rest of this function -- it's
-   // written to the .idx file below and read back at search time
-   // (CometPeptideIndex::ReadPeptideIndex()).
-   g_vRawPeptides.clear();
-   g_vRawPeptides.reserve(g_pvDBIndex.size(), 0);
-   for (const auto& entry : g_pvDBIndex)
-   {
-      if (!g_vRawPeptides.push_back(entry.sPeptide, (int)strlen(entry.sPeptide),
-            entry.cPrevAA, entry.cNextAA, entry.dPepMass, entry.siVarModProteinFilter,
-            entry.lIndexProteinFilePosition))
-      {
-         // Unreachable on the live build path (Phase A stores g_pvProteinsList row
-         // indices, bounded by the peptide count) -- fail loudly rather than truncate
-         // if a resurrected legacy path ever handed a >32-bit value here.
-         logerr(" Error - protein reference out of range while building the raw peptide table.\n");
-         CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
-         fclose(fptr);
-         remove(strIndexFile.c_str());
-         return false;
-      }
-   }
-   g_vRawPeptides.shrink_to_fit();
-
-   // g_pvDBIndex (Phase A's per-unique-raw-peptide DBIndex entries) has now been fully
-   // copied into g_vRawPeptides; nothing below needs the DBIndex-format copy any more.
-   g_pvDBIndex.clear();
-   vector<DBIndex>().swap(g_pvDBIndex);
+   // g_vRawPeptides was populated (pooled, mass-sorted per length) directly by
+   // GeneratePlainPeptideIndex()'s merge -- the former 88B/entry g_pvDBIndex intermediate,
+   // which briefly DOUBLED the peptide table's footprint here, is gone
+   // (docs/20260827_PI_memory.md build-path follow-up). Kept alive (not cleared) for the
+   // rest of this function: it's written to the .idx file below and read back at search
+   // time (CometPeptideIndex::ReadPeptideIndex()).
 
    // Phase 0.5 (docs/20260730_PI_reduction.md): no mod-related build step here any more.
    // g_vRawPeptides -- unmodified peptides only, filtered by peptide mass/length range and

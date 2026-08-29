@@ -982,7 +982,7 @@ if (!(iWhichPeptide%1000))
 //                      is an index into g_pvProteinsList
 //   - g_pvProteinsList: ProteinsListCSR (flat CSR), one row per unique peptide
 //   - g_vvvPepGenShort / g_vvvPepGenLong: cleared (memory freed)
-bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<size_t,size_t>>& slices)
+bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 {
    // docs/20260827_PI_memory.md Phase 4: ProteinsListCSR stores protein references as
    // uint32 -- at build time these are FASTA byte offsets, so the FASTA must fit in 32
@@ -1150,6 +1150,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          }
 
          vector<PepGenTuple>().swap(buf);
+
+         // Mass-sort this length's entries here, inside the per-length job (still fully
+         // parallel across lengths), instead of the former post-merge parallel slice sort
+         // over g_pvDBIndex: the merge below now pools entries straight into
+         // g_vRawPeptides, so the 88B DBIndex form must already be in its final (on-disk)
+         // order when merged. Same comparator, element type, and per-length input order as
+         // the slice sort it replaces -- the resulting order, ties included, is identical.
+         sort(r.dbIdx.begin(), r.dbIdx.end(), CometMassSpecUtils::DBICompareByMass);
       });
    }
 
@@ -1229,6 +1237,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
          }
 
          vector<PepGenTupleShort>().swap(buf);
+
+         // Mass-sort this length's entries here, inside the per-length job (still fully
+         // parallel across lengths), instead of the former post-merge parallel slice sort
+         // over g_pvDBIndex: the merge below now pools entries straight into
+         // g_vRawPeptides, so the 88B DBIndex form must already be in its final (on-disk)
+         // order when merged. Same comparator, element type, and per-length input order as
+         // the slice sort it replaces -- the resulting order, ties included, is identical.
+         sort(r.dbIdx.begin(), r.dbIdx.end(), CometMassSpecUtils::DBICompareByMass);
       });
    }
 
@@ -1236,9 +1252,34 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
    g_vvvPepGenShort.clear();
    g_vvvPepGenLong.clear();
 
-   // Sequential merge: fix up lIndexProteinFilePosition (local->global offset),
-   // append to global vectors, and record each non-empty length's slice boundary.
-   // Long results first to match submission order, then short results.
+   // Sequential merge: fix up lIndexProteinFilePosition (local->global offset) and append
+   // to the global structures -- since the g_pvDBIndex-transient removal
+   // (docs/20260827_PI_memory.md build-path follow-up), entries pool STRAIGHT into
+   // g_vRawPeptides (already mass-sorted per length by the jobs above) and each length's
+   // 88B/entry DBIndex staging is freed as soon as it is consumed, instead of a second
+   // full-size 88B/entry copy accumulating in g_pvDBIndex (~17.5 GB of transient at the
+   // 199M-peptide MHC scale; the reason the ~400M-peptide target-decoy MHC config could
+   // not be built in 54 GB at all). Long results first to match submission order, then
+   // short results -- the same on-disk order as before.
+   {
+      size_t tTotalPeptides = 0;
+      size_t tTotalSeqBytes = 0;
+      for (const auto& r : longResults)
+      {
+         tTotalPeptides += r.dbIdx.size();
+         for (const auto& dbi : r.dbIdx)
+            tTotalSeqBytes += strlen(dbi.sPeptide) + 1;
+      }
+      for (const auto& r : shortResults)
+      {
+         tTotalPeptides += r.dbIdx.size();
+         for (const auto& dbi : r.dbIdx)
+            tTotalSeqBytes += strlen(dbi.sPeptide) + 1;
+      }
+      g_vRawPeptides.clear();
+      g_vRawPeptides.reserve(tTotalPeptides, tTotalSeqBytes);
+   }
+
    size_t iProtBase = 0;
    auto mergeResults = [&](vector<LenResult>& results)
    {
@@ -1255,14 +1296,21 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
             logerr(strErrorMsg);
             return false;
          }
-         if (!r.dbIdx.empty())
+         for (const auto& dbi : r.dbIdx)
          {
-            const size_t iStart = g_pvDBIndex.size();
-            const size_t iCount = r.dbIdx.size();
-            for (auto& dbi : r.dbIdx)
-               g_pvDBIndex.push_back(std::move(dbi));
-            slices.push_back({iStart, iCount});
+            if (!g_vRawPeptides.push_back(dbi.sPeptide, (int)strlen(dbi.sPeptide),
+                  dbi.cPrevAA, dbi.cNextAA, dbi.dPepMass, dbi.siVarModProteinFilter,
+                  dbi.lIndexProteinFilePosition))
+            {
+               // Unreachable on this path (values are g_pvProteinsList row indices,
+               // bounded by the peptide count) -- fail loudly rather than truncate.
+               string strErrorMsg = " Error - protein reference out of range while pooling the raw peptide table.\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               return false;
+            }
          }
+         vector<DBIndex>().swap(r.dbIdx);   // free this length's 88B/entry staging now
       }
 
       return true;
@@ -1270,22 +1318,6 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp, vector<pair<s
 
    if (!mergeResults(longResults) || !mergeResults(shortResults))
       return false;
-
-   if (g_pvDBIndex.empty())
-      return true;   // caller prints the "no peptides" error
-
-   // Parallel per-length mass sort: each slice is a disjoint range of g_pvDBIndex;
-   // tasks run concurrently with no data races.  Replaces the single global sort.
-   for (auto& [iStart, iCount] : slices)
-   {
-      tp->doJob([iStart, iCount]()
-      {
-         sort(g_pvDBIndex.begin() + iStart,
-              g_pvDBIndex.begin() + iStart + iCount,
-              CometMassSpecUtils::DBICompareByMass);
-      });
-   }
-   tp->wait_on_threads();
 
    return true;
 }

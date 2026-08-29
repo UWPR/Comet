@@ -29,7 +29,7 @@ public:
    // WriteFIPlainPeptideIndex()/ReadPlainPeptideIndex() retired (docs/20260730_PI_reduction.md
    // Phase 0) -- superseded by CometPeptideIndex::WritePeptideIndex()/ReadPeptideIndex(),
    // which produce/consume the unified index format shared by PI_DB and FI_DB search modes.
-   static bool GeneratePlainPeptideIndex(ThreadPool *tp, vector<pair<size_t,size_t>>& slices);
+   static bool GeneratePlainPeptideIndex(ThreadPool *tp);
 
    static bool CreateFragmentIndex(ThreadPool *tp, bool bIsRTS);
    static int WhichPrecursorBin(double dMass);
