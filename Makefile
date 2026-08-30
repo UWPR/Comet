@@ -50,13 +50,24 @@ endif
 # whose generated headers Comet.cpp and CometSearch both #include (via
 # MSReader.h/mzParser.h) -- it must run before either compiles, not just
 # before the final comet.exe link, or a from-scratch checkout fails with
-# "expat.h: No such file or directory".
-$(LIBCOMETSEARCH): $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp)
+# "expat.h: No such file or directory". A single shared target (rather than a
+# "cd $(MSTOOLKIT) && $(MAKE) all" line duplicated in both recipes) so a
+# parallel make (-j) runs the MSToolkit sub-make exactly ONCE: with the
+# duplicated lines, $(LIBCOMETSEARCH) and Comet.o built concurrently and the
+# two sub-make instances raced on MSToolkit's .PHONY lib/libextern targets,
+# one rewriting mstoolkit(extern).mri while the other's "ar -M" was reading
+# it ("ar: no open output archive"). Referenced below as an ORDER-ONLY
+# prerequisite (after the |): mstoolkit is .PHONY, so as a normal
+# prerequisite it would count as always-newer and force both dependents to
+# rebuild on every invocation.
+.PHONY: mstoolkit
+mstoolkit:
 	cd $(MSTOOLKIT) && $(MAKE) all
+
+$(LIBCOMETSEARCH): $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp) | mstoolkit
 	cd $(COMETSEARCH) && $(MAKE)
 
-Comet.o: Comet.cpp $(DEPS)
-	cd $(MSTOOLKIT) && $(MAKE) all
+Comet.o: Comet.cpp $(DEPS) | mstoolkit
 	${CXX} ${CXXFLAGS} Comet.cpp -c
 
 # Dependency-free unit tests (tests/unit/MiniTest.h -- no gtest, no CMake).
