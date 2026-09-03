@@ -17,6 +17,7 @@
 #include "CometDataInternal.h"
 #include "CometMassSpecUtils.h"
 #include "CometWritePercolator.h"
+#include "CometIntensityStore.h"
 #include "CometStatus.h"
 #include <math.h>
 
@@ -70,6 +71,8 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "lnExpect\t");
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
+   if (CometIntensityStore::IsEnabled())
+      fprintf(fpout, "IntensityScore\t");
    fprintf(fpout, "IonFrac\t");
    fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
@@ -205,6 +208,8 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
 
    fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fXcorr); // xcorr
    fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fScoreSp); // Sp
+   if (CometIntensityStore::IsEnabled())
+      fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScore); // IntensityScore
 
    if (pOutput[iWhichResult].usiTotalIons > 0)
       fprintf(fpout, "%0.4f\t", (double)pOutput[iWhichResult].usiMatchedIons / pOutput[iWhichResult].usiTotalIons); // IonFrac

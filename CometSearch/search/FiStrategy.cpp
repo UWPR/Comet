@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include "Common.h"
 #include "FiStrategy.h"
+#include "CometIntensityStore.h"
 #include "SearchUtils.h"
 #include "CometFragmentIndex.h"
 #include "CometPreprocess.h"
@@ -183,6 +184,8 @@ void FiStrategy::finalize()
       g_iFragmentIndex         = nullptr;
       g_iFragmentIndexOffset   = nullptr;
       g_bPlainPeptideIndexRead = false;
+
+      CometIntensityStore::Free();
    }
 
    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);

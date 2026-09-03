@@ -38,6 +38,7 @@ class CometWriteMzIdentML
       float  fCn;
       float  fSp;
       float  fAScorePro;
+      float  fIntensityScore;  // Carafe predicted-intensity cosine score; tmp field 23
       char   cHasVariableMod;
       char   cPrevNext[3];
       string strPeptide;

@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include "Common.h"
 #include "PiStrategy.h"
+#include "CometIntensityStore.h"
 #include "SearchUtils.h"
 #include "CometPreprocess.h"
 #include "CometSearch.h"
@@ -116,6 +117,7 @@ void PiStrategy::closeFiles(FILE* fpfasta, FILE* fpidx)
 
 void PiStrategy::finalize()
 {
+   CometIntensityStore::Free();
    CometPreprocess::DeallocateMemory(g_staticParams.options.iNumThreads);
    CometSearch::DeallocateMemory(g_staticParams.options.iNumThreads);
 }

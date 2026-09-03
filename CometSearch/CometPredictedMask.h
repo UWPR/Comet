@@ -189,6 +189,9 @@ private:
    // outside the class can't name a private nested type even from the same translation unit.
    static bool EntryKeyLess(const Entry& a, const Entry& b);
 
+public:
+   // Also used by CometIntensityStore (docs/20260903_IntensityScore_design.md) to bind a
+   // .carafe_inten file to the loaded .idx with the identical check.
    // CRC-32 (zlib's crc32(), matching tools/carafe_ms2_to_fi_mask.py's idx_fingerprint() --
    // see that function's docstring for why CRC-32 rather than a cryptographic hash: this is a
    // "did I point the mask at the wrong .idx" sanity check, not a security boundary, and zlib

@@ -16,6 +16,7 @@
 #include "CometFragmentIndex.h"
 #include "CometPeptideIndex.h"
 #include "CometPredictedMask.h"
+#include "CometIntensityStore.h"
 #include "CometSearch.h"
 #include "ThreadPool.h"
 #include "CometStatus.h"
@@ -147,6 +148,13 @@ bool CometFragmentIndex::CreateFragmentIndex(ThreadPool *tp, bool bIsRTS)
    // CometPredictedMask::FreeAfterIndexBuild()'s header comment for the ~GB-scale motivation and
    // the shared safety precondition with Load()'s one-shot guard).
    CometPredictedMask::FreeAfterIndexBuild();
+
+   // Intensity score (docs/20260903_IntensityScore_design.md Section 2.3): load the predicted-
+   // intensity file, if configured, and bind it to the now-final FI variant array so
+   // XcorrScoreI() can look a candidate's record up by uiWhichVariant. No-op when unset.
+   // Freed in FiStrategy::finalize().
+   if (!CometIntensityStore::LoadAndBind(g_staticParams.options.sPredictedIntensityFile, g_fragmentPeptides))
+      return false;   // LoadAndBind() already reported the specific error
 
    return true;
 }

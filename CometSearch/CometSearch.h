@@ -220,7 +220,12 @@ private:
                            // (CometSearchManager.cpp's clamp), so index MAX_PRECURSOR_CHARGE itself
                            // must be valid, not one past the end.
                            unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE+1],
-                           int iNumMatchedFragmentIons);
+                           int iNumMatchedFragmentIons,
+                           // Variant index into the search mode's VariantArray (g_fragmentPeptides
+                           // for FI_DB, g_dbIndexVariants for PI_DB) for the intensity score's
+                           // predicted-record lookup; CometIntensityStore::NO_VARIANT when the
+                           // candidate has no index identity (PI_DB on-the-fly reversed decoys).
+                           unsigned int uiVariant);
 /*
    static double GetFragmentIonMass(int iWhichIonSeries,
                              int i,
@@ -269,6 +274,7 @@ private:
                              char *szProteinSeq,
                              double dCalcPepMass,
                              double dXcorr,
+                             double dIntensityScore,
                              bool bStoreSeparateDecoy,
                              int *piVarModSites,
                              struct sDBEntry *dbe);
@@ -325,7 +331,8 @@ private:
                                    const DBIndex& sDBI,
                                    bool* pbDuplFragment,
                                    struct sDBEntry* dbe,
-                                   int iSlot);
+                                   int iSlot,
+                                   unsigned int uiVariant);   // position in g_dbIndexVariants (see XcorrScoreI)
 
    // P6: dbe taken by reference, not by value -- DoSearch calls this up to twice per
    // protein (once for the full sequence, once more for the N-term-Met-clipped variant),

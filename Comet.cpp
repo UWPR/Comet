@@ -376,6 +376,7 @@ void LoadParameters(char* pszParamsFile,
       {"peff_obo",                     { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("peff_obo", szFile, szFile); }}},
       {"compoundmods_file",            { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("compoundmods_file", szFile, szFile); }}},
       {"fragment_index_predicted_mask_file", { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("fragment_index_predicted_mask_file", szFile, szFile); }}},
+      {"predicted_intensity_file",     { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("predicted_intensity_file", szFile, szFile); }}},
       {"spectral_library_name",        { [&]() { trim_whitespace(szParamVal); char szFile[SIZE_FILE]; strcpy(szFile, szParamVal); pSearchMgr->SetParam("spectral_library_name", szFile, szFile); }}},
       // Accepted but not read anywhere in comet.exe -- these two are only consumed by
       // `tools/carafe.py prerun --params` when it builds fragment_index_predicted_mask_
@@ -398,6 +399,7 @@ void LoadParameters(char* pszParamsFile,
       {"clip_nterm_methionine",        { [&]() { parse_int("clip_nterm_methionine"); }}},
       {"correct_mass",                 { [&]() { parse_int("correct_mass"); }}},
       {"decoy_search",                 { [&]() { parse_int("decoy_search"); }}},
+      {"primary_score",                { [&]() { parse_int("primary_score"); }}},
       {"equal_I_and_L",                { [&]() { parse_int("equal_I_and_L"); }}},
       {"explicit_deltacn",             { [&]() { parse_int("explicit_deltacn"); }}},
       {"export_additional_pepxml_scores", { [&]() { parse_int("export_additional_pepxml_scores"); }}},
@@ -1001,6 +1003,11 @@ carafe_mask_min_relative_intensity = 0.10 # not read by comet.exe -- recorded he
                                         # --min-relative-intensity)\n\
 carafe_mask_min_peaks = 6              # not read by comet.exe -- same as above, for\n\
                                         # carafe_cps_to_fi_mask.py's --min-kept-peaks\n\
+predicted_intensity_file =             # path to a Carafe predicted-intensity file (.carafe_inten,\n\
+                                        # tools/carafe_cps_to_inten.py) for the intensity score;\n\
+                                        # indexed (FI_DB/PI_DB) searches only; empty = disabled (default)\n\
+primary_score = 0                      # 0=xcorr (default), 1=intensity score ranks results (requires\n\
+                                        # predicted_intensity_file; not yet honored in this build)\n\
 spectral_library_name = /some/path/speclib.file\n\
 spectral_library_ms_level = 1\n\n");
    }

@@ -242,12 +242,24 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   (`WWWWWWWS[+79.966331]WWWWWWW`) is hand-derived so the fix's effect is an exact,
   verifiable count -- 42 FI entries with the fix vs. 40 under the old buggy break -- not
   just "some difference."
-- **T38** (`t38_carafe_python_suites`) -- runs the five standalone pure-Python Carafe tool
+- **T39** (`t39_intensity_store_guards`) / **T40** (`t40_intensity_score_exact`) -- the
+  Carafe predicted-intensity score (`docs/20260903_IntensityScore_design.md`;
+  `CometSearch/CometIntensityStore.{h,cpp}`, params `predicted_intensity_file` /
+  `primary_score`). T39: with a `.carafe_inten` file loaded the txt gains an
+  `intensity_score` column right after `delta_cn` and every other column is byte-identical;
+  coverage is logged; a variant without a record scores 0.0 with a warning; a file whose
+  `.idx` fingerprint, raw-peptide count, VarModConfig, or channel layout mismatches is
+  rejected loudly. T40: the reported score equals a cosine recomputed from first principles
+  on the T25 fixture (b2-b8 @100, y2-y8 @110, NL-shifted b3-b8 @80 / y6-y8 @90) for a
+  hand-written record, with and without modloss channels. Both build the fixture as FI_DB
+  and write their `.carafe_inten` files via `tools/carafe_cps_to_inten.py`'s writer.
+- **T38** (`t38_carafe_python_suites`) -- runs the six standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
-  `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`, and
+  `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`,
   `test_carafe_pipeline_drivers.py`, which pins the bash/awk-port semantics of the
   pipeline drivers -- chunk splitting, variant-map row_index rewrite, `--ignore-modloss`
-  auto-detection, `--params` threshold precedence, and the `carafe.py` dispatch table; no
+  auto-detection, `--params` threshold precedence, and the `carafe.py` dispatch table --
+  and `test_carafe_inten.py` for the `.carafe_inten` predicted-intensity builder; no
   comet.exe/Carafe-venv dependency). Runs once per invocation, not per `--comet` binary.
 
 ### The Carafe ahead-of-time pipeline (tools/)
@@ -290,7 +302,9 @@ from the flavor's VarModConfig). `carafe.py mask-tsv` (`carafe_ms2_to_fi_mask.py
 remains the TSV-direct mask builder (tests, small runs); `carafe.py mask-chunks` +
 `carafe.py merge-masks` (`build_carafe_mask_chunked.py`, `merge_carafe_fi_masks.py`) are
 the legacy chunked-TSV mask path, superseded by the store but kept for TSV-only
-situations.
+situations. `carafe.py inten` (`carafe_cps_to_inten.py`; `prerun --inten` runs it as stage
+s7 per flavor) builds `<flavor>.carafe_inten`, the `.idx`-bound sparse predicted-intensity
+file the intensity score consumes (`docs/20260903_IntensityScore_design.md` Section 2.2).
 
 Two hard-won invariants (do not rediscover these at scale): the variant map's enumeration
 order is NOT key order (any consumer must sort/merge -- `carafe_cps_to_fi_mask.py` does);

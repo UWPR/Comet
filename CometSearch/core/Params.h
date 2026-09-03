@@ -95,6 +95,13 @@ struct Options
    string sFragIndexPredictedMaskFile; // path to a Carafe predicted-fragment keep/drop mask file
                                   // (tools/carafe_ms2_to_fi_mask.py, docs/20260805_carafe.md);
                                   // empty = disabled (default, matches sCompoundModsFile's convention)
+   string sPredictedIntensityFile; // path to a Carafe predicted-intensity file (.carafe_inten,
+                                  // tools/carafe_cps_to_inten.py, docs/20260903_IntensityScore_design.md)
+                                  // consumed by CometIntensityStore for the intensity score;
+                                  // empty = disabled (default). Indexed searches (FI_DB/PI_DB) only.
+   int iPrimaryScore;            // 0 = xcorr (default), 1 = intensity score. Which score gates
+                                  // candidate retention and ranks results (Phase 2 of the design
+                                  // doc; Phase 1 accepts the key but only honors 0).
    double dMS1MinMass;           // low mass cutoff in MS1 query/library spectra
    double dMS1MaxMass;           // high mass cutoff in MS1 query/library spectra
    IntRange scanRange;
@@ -426,6 +433,8 @@ struct StaticParams
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
       options.sFragIndexPredictedMaskFile = "";
+      options.sPredictedIntensityFile = "";
+      options.iPrimaryScore = 0;
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

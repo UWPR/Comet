@@ -25,7 +25,7 @@ DEPFLAGS := -MMD -MP
 OBJDIR = obj
 COMETSEARCH_SRC = Threading CometInterfaces CometSearch CometPreprocess CometPostAnalysis CometMassSpecUtils \
 					CometWriteSqt CometWritePepXML CometWriteMzIdentML CometWritePercolator CometWriteTxt CometSearchManager \
-					CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometPredictedMask CometSpecLib CometAlignment
+					CombinatoricsUtils CometModificationsPermuter CometFragmentIndex CometPeptideIndex CometPredictedMask CometIntensityStore CometSpecLib CometAlignment
 
 THREADING_SRC = threading/SearchMemoryPool
 

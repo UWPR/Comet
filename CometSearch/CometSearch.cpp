@@ -14,6 +14,7 @@
 
 #include "Common.h"
 #include "CometSearch.h"
+#include "CometIntensityStore.h"
 #include "threading/SearchMemoryPool.h"
 #include <atomic>
 #include <unordered_map>
@@ -2166,7 +2167,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          dbe.lProteinFilePosition = rawView.lIndexProteinFilePosition;
 
          XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, pQuery,
-            iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
+            iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second,
+            uiWhichVariant);
 
          uiNumScored++;
          if (uiNumScored >= FRAGINDEX_MAX_NUMSCORED)
@@ -2331,7 +2333,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
          continue;
 
       dbe.lProteinFilePosition = dbiLocal.lIndexProteinFilePosition;
-      AnalyzePeptideIndex(pQuery, dbiLocal, pbDuplFragment, &dbe, iSlot);
+      AnalyzePeptideIndex(pQuery, dbiLocal, pbDuplFragment, &dbe, iSlot, (unsigned int)i);
 
       if (g_staticParams.options.iMaxIndexRunTime > 0)
       {
@@ -2350,7 +2352,8 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
                                       const DBIndex& sDBI,
                                       bool* pbDuplFragment,
                                       struct sDBEntry* dbe,
-                                      int iSlot)
+                                      int iSlot,
+                                      unsigned int uiVariant)
 {
    int iLenPeptide = (int)strlen(sDBI.sPeptide);
    int iLenMinus1 = iLenPeptide - 1;
@@ -2692,7 +2695,7 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    // Score the peptide - bDecoyPep tells XcorrScore/StorePeptideI whether
    // to store into target or decoy results on pQuery
    XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, sDBI.dPepMass, bDecoyPep,
-      pQuery, iLenPeptide, piVarModSites, dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, 0);
+      pQuery, iLenPeptide, piVarModSites, dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, 0, uiVariant);
 
    if (g_staticParams.options.iDecoySearch)
    {
@@ -2993,8 +2996,11 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       szDecoyProtein[iDecoyPos] = '\0';
 
       // Score the decoy peptide
+      // On-the-fly reversed decoy: no peptide-index identity, hence no predicted-intensity
+      // record (docs/20260903_IntensityScore_design.md Section 1.7) -- NO_VARIANT scores 0.0.
       XcorrScoreI(szDecoyProtein, iDecoyStartPos, iDecoyEndPos, iFoundVariableModDecoy, sDBI.dPepMass, true,
-         pQuery, iLenPeptide, piVarModSitesDecoy, dbe, uiBinnedIonMassesDecoy, uiBinnedPrecursorNLDecoy, 0);
+         pQuery, iLenPeptide, piVarModSitesDecoy, dbe, uiBinnedIonMassesDecoy, uiBinnedPrecursorNLDecoy, 0,
+         CometIntensityStore::NO_VARIANT);
    }
 }
 
@@ -8436,13 +8442,21 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
                               struct sDBEntry* dbe,
                               unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
                               unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1],
-                              int iNumMatchedFragmentIons)
+                              int iNumMatchedFragmentIons,
+                              unsigned int uiVariant)
 {
    int ctLen,
        ctIonSeries,
        ctCharge;
    double dXcorr = 0.0;
    int iLenPeptideMinus1 = iLenPeptide - 1;
+
+   // Intensity score (docs/20260903_IntensityScore_design.md): cosine between this variant's
+   // Carafe-predicted fragment intensities and the observed spectrum over the same ladder
+   // uiBinnedIonMasses holds. 0.0 when no predicted_intensity_file is loaded. Computed for
+   // every scored candidate alongside xcorr so both scores exist on every stored result.
+   double dIntensityScore = CometIntensityStore::Score(uiVariant, uiBinnedIonMasses, iLenPeptide,
+      iFoundVariableMod, pQuery);
 
    bool bPeptideIndex = (g_staticParams.iDbType == DbType::PI_DB);
 
@@ -8605,7 +8619,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8625,7 +8639,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8743,6 +8757,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
                                 char* szProteinSeq,
                                 double dCalcPepMass,
                                 double dXcorr,
+                                double dIntensityScore,
                                 bool bDecoyPep,
                                 int* piVarModSites,
                                 struct sDBEntry* dbe)
@@ -8888,6 +8903,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
       }
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fIntensityScore = (float)dIntensityScore;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)
@@ -9094,6 +9110,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
       }
 
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
+      pQuery->_pResults[siLowestXcorrScoreIndex].fIntensityScore = (float)dIntensityScore;
       pQuery->_pResults[siLowestXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)

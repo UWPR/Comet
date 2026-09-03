@@ -21,9 +21,12 @@ Usage
     python tools/qvalue.py results_a.txt results_b.txt
     python tools/qvalue.py --diff results_a.txt results_b.txt
     python tools/qvalue.py --threshold 0.01 --threshold 0.05 results.txt
+    python tools/qvalue.py --score-col intensity_score results.txt   # rank by any named column
 
 Columns are located by name from the header line, so the script is independent of
-column position.  Comet's default txt layout is a one-line "CometVersion ..." banner
+column position. --score-col NAME adds a third ranking (descending, like xcorr) by any
+numeric column present in the header, e.g. intensity_score, reported alongside the two
+standard ones.  Comet's default txt layout is a one-line "CometVersion ..." banner
 followed by the tab-separated column header; the header is found by scanning the first
 few lines for one containing every required column name.  Required columns:
     scan, num (hit rank; 1 = top hit), charge, e-value, xcorr, modified_peptide, protein
@@ -48,7 +51,8 @@ REQUIRED_COLUMNS = ("scan", "num", "charge", "e-value", "xcorr",
 # foreign file fails fast instead of being silently mis-parsed.
 _HEADER_SEARCH_LINES = 5
 
-# Field indices within each PSM tuple: (xcorr, evalue, is_decoy, scan, charge, pep, prot)
+# Field indices within each PSM tuple:
+# (xcorr, evalue, is_decoy, scan, charge, pep, prot[, extra_score])
 _F_XCORR  = 0
 _F_EVALUE = 1
 _F_DECOY  = 2
@@ -56,6 +60,7 @@ _F_SCAN   = 3
 _F_CHARGE = 4
 _F_PEP    = 5
 _F_PROT   = 6
+_F_EXTRA  = 7   # only present when load_rank1(..., score_col=NAME) was used
 
 
 def is_decoy(protein: str) -> bool:
@@ -96,12 +101,14 @@ def find_header(fh) -> dict[str, int]:
         f"{_HEADER_SEARCH_LINES} lines (need columns: {', '.join(REQUIRED_COLUMNS)})")
 
 
-def load_rank1(path: str) -> list[tuple[float, float, bool, int, int, str, str]]:
+def load_rank1(path: str, score_col: str | None = None) -> list[tuple]:
     """
     Return a list of (xcorr, evalue, is_decoy, scan, charge, modified_peptide, protein)
     for rank-1 PSMs from a Comet txt file.  List is unsorted.
     Columns are resolved by header name (see find_header); a file without a
     recognizable header raises ValueError rather than returning an empty list.
+    With score_col=NAME, an 8th tuple field holds that column's float value (the
+    column must exist in the header, else ValueError).
     """
     psms = []
     with open(path) as fh:
@@ -109,7 +116,15 @@ def load_rank1(path: str) -> list[tuple[float, float, bool, int, int, str, str]]
         c_scan, c_num, c_charge = col["scan"], col["num"], col["charge"]
         c_evalue, c_xcorr = col["e-value"], col["xcorr"]
         c_pep, c_prot = col["modified_peptide"], col["protein"]
-        required_col = max(c_scan, c_num, c_charge, c_evalue, c_xcorr, c_pep, c_prot)
+        c_extra = None
+        if score_col is not None:
+            key = score_col.strip().lower()
+            if key not in col:
+                raise ValueError(f"{path}: --score-col {score_col!r} not in header columns "
+                                 f"{sorted(col)}")
+            c_extra = col[key]
+        required_col = max(c_scan, c_num, c_charge, c_evalue, c_xcorr, c_pep, c_prot,
+                           c_extra if c_extra is not None else 0)
         for line in fh:
             cols = line.rstrip("\r\n").split("\t")
             if len(cols) <= required_col:
@@ -122,20 +137,29 @@ def load_rank1(path: str) -> list[tuple[float, float, bool, int, int, str, str]]
                 charge = int(cols[c_charge])
                 pep    = cols[c_pep]
                 prot   = cols[c_prot]
+                extra  = float(cols[c_extra]) if c_extra is not None else None
             except ValueError:
                 continue
             if num != 1:
                 continue
             if not math.isfinite(xcorr) or not math.isfinite(evalue):
                 continue
-            psms.append((xcorr, evalue, is_decoy(prot), scan, charge, pep, prot))
+            if extra is not None and not math.isfinite(extra):
+                continue
+            row = (xcorr, evalue, is_decoy(prot), scan, charge, pep, prot)
+            if c_extra is not None:
+                row = row + (extra,)
+            psms.append(row)
     return psms
 
 
 def _sort_psms(psms: list[tuple], by: str) -> list[tuple]:
-    """Return a copy of psms sorted best-first by 'xcorr' or 'evalue'."""
+    """Return a copy of psms sorted best-first by 'xcorr', 'evalue', or 'extra' (the
+    --score-col column, descending like xcorr)."""
     if by == "xcorr":
         return sorted(psms, key=lambda r: r[_F_XCORR], reverse=True)
+    if by == "extra":
+        return sorted(psms, key=lambda r: r[_F_EXTRA], reverse=True)
     return sorted(psms, key=lambda r: r[_F_EVALUE], reverse=False)
 
 
@@ -182,29 +206,45 @@ def _count_passing(sorted_psms: list[tuple], qvals: list[float],
 def summarise(path: str,
               psms_x: list[tuple], qvals_x: list[float],
               psms_e: list[tuple], qvals_e: list[float],
-              thresholds: list[float]) -> dict:
+              thresholds: list[float],
+              extra: tuple[str, list[tuple], list[float]] | None = None) -> dict:
     """
-    Print a side-by-side xcorr / evalue result table.
-    Returns {thresh: {'xcorr': (count, cutoff), 'evalue': (count, cutoff)}}.
+    Print a side-by-side xcorr / evalue result table, plus a third column pair for
+    extra=(name, sorted_psms, qvals) when --score-col was given.
+    Returns {thresh: {'xcorr': (count, cutoff), 'evalue': (count, cutoff)[, 'extra': ...]}}.
     """
     results = {}
     for thresh in thresholds:
         cx, cut_x = _count_passing(psms_x, qvals_x, thresh, _F_XCORR)
         ce, cut_e = _count_passing(psms_e, qvals_e, thresh, _F_EVALUE)
         results[thresh] = {"xcorr": (cx, cut_x), "evalue": (ce, cut_e)}
+        if extra is not None:
+            cs, cut_s = _count_passing(extra[1], extra[2], thresh, _F_EXTRA)
+            results[thresh]["extra"] = (cs, cut_s)
 
+    name = extra[0] if extra is not None else ""
     print(f"\n{'='*76}")
     print(f"  {Path(path).name}")
     print(f"{'='*76}")
-    print(f"  {'Q-value':>10}  {'xcorr PSMs':>12}  {'xcorr cut':>11}"
-          f"  {'evalue PSMs':>12}  {'evalue cut':>12}")
-    print(f"  {'-'*10}  {'-'*12}  {'-'*11}  {'-'*12}  {'-'*12}")
+    hdr = (f"  {'Q-value':>10}  {'xcorr PSMs':>12}  {'xcorr cut':>11}"
+           f"  {'evalue PSMs':>12}  {'evalue cut':>12}")
+    sep = f"  {'-'*10}  {'-'*12}  {'-'*11}  {'-'*12}  {'-'*12}"
+    if extra is not None:
+        hdr += f"  {name[:12] + ' PSMs':>18}  {name[:12] + ' cut':>16}"
+        sep += f"  {'-'*18}  {'-'*16}"
+    print(hdr)
+    print(sep)
     for thresh in thresholds:
         cx, cut_x = results[thresh]["xcorr"]
         ce, cut_e = results[thresh]["evalue"]
         sx = f"{cut_x:.4f}" if cut_x is not None else "n/a"
         se = f"{cut_e:.2e}" if cut_e is not None else "n/a"
-        print(f"  {thresh*100:>9.1f}%  {cx:>12,}  {sx:>11}  {ce:>12,}  {se:>12}")
+        line = f"  {thresh*100:>9.1f}%  {cx:>12,}  {sx:>11}  {ce:>12,}  {se:>12}"
+        if extra is not None:
+            cs, cut_s = results[thresh]["extra"]
+            ss = f"{cut_s:.4f}" if cut_s is not None else "n/a"
+            line += f"  {cs:>18,}  {ss:>16}"
+        print(line)
 
     return results
 
@@ -269,6 +309,9 @@ def main():
                         help="Q-value threshold(s) to report (default: 0.01 and 0.05).")
     parser.add_argument("--diff", action="store_true",
                         help="When two files are given, print PSMs unique to each file.")
+    parser.add_argument("--score-col", metavar="NAME", default=None,
+                        help="Additionally rank by this header column (descending), e.g. "
+                             "intensity_score; reported next to the xcorr/e-value results.")
     args = parser.parse_args()
 
     thresholds = sorted(args.thresholds) if args.thresholds else [0.01, 0.05]
@@ -276,18 +319,24 @@ def main():
     all_data = []   # (path, psms_x, qvals_x, psms_e, qvals_e, res)
 
     for path in args.files:
-        psms   = load_rank1(path)
+        psms   = load_rank1(path, score_col=args.score_col)
         psms_x = _sort_psms(psms, "xcorr")
         psms_e = _sort_psms(psms, "evalue")
         qvals_x = compute_qvalues(psms_x)
         qvals_e = compute_qvalues(psms_e)
-        res = summarise(path, psms_x, qvals_x, psms_e, qvals_e, thresholds)
+        extra = None
+        if args.score_col is not None:
+            psms_s = _sort_psms(psms, "extra")
+            extra = (args.score_col, psms_s, compute_qvalues(psms_s))
+        res = summarise(path, psms_x, qvals_x, psms_e, qvals_e, thresholds, extra)
         all_data.append((path, psms_x, qvals_x, psms_e, qvals_e, res))
 
     # Side-by-side summary table when multiple files given
     if len(args.files) > 1:
         col_headers = [f"xcorr {t*100:.0f}%" for t in thresholds] \
                     + [f"eval  {t*100:.0f}%" for t in thresholds]
+        if args.score_col is not None:
+            col_headers += [f"{args.score_col[:5]} {t*100:.0f}%" for t in thresholds]
         print(f"\n{'='*90}")
         print("  Summary table")
         print(f"{'='*90}")
@@ -297,7 +346,10 @@ def main():
             name = Path(path).name[:35]
             xcorr_vals = "".join(f"  {res[t]['xcorr'][0]:>10,}" for t in thresholds)
             eval_vals  = "".join(f"  {res[t]['evalue'][0]:>10,}" for t in thresholds)
-            print(f"  {name:<35}{xcorr_vals}{eval_vals}")
+            extra_vals = ""
+            if args.score_col is not None:
+                extra_vals = "".join(f"  {res[t]['extra'][0]:>10,}" for t in thresholds)
+            print(f"  {name:<35}{xcorr_vals}{eval_vals}{extra_vals}")
 
     # Diff output for exactly two files
     if args.diff and len(args.files) == 2:

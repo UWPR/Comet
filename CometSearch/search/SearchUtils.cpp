@@ -166,6 +166,7 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
          pQuery->_pResults[j].dExpect = 999;
          pQuery->_pResults[j].fScoreSp = 0.0;
          pQuery->_pResults[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+         pQuery->_pResults[j].fIntensityScore = 0.0;
          pQuery->_pResults[j].fDeltaCn = 0.0;
          pQuery->_pResults[j].fLastDeltaCn = 0.0;
          pQuery->_pResults[j].fAScorePro = 0.0;
@@ -195,6 +196,7 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
             pQuery->_pDecoys[j].dExpect = 999;
             pQuery->_pDecoys[j].fScoreSp = 0.0;
             pQuery->_pDecoys[j].fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+            pQuery->_pDecoys[j].fIntensityScore = 0.0;
             pQuery->_pDecoys[j].fDeltaCn = 0.0;
             pQuery->_pDecoys[j].fLastDeltaCn = 0.0;
             pQuery->_pDecoys[j].fAScorePro = 0.0;

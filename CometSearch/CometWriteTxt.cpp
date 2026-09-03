@@ -17,6 +17,7 @@
 #include "CometDataInternal.h"
 #include "CometMassSpecUtils.h"
 #include "CometWriteTxt.h"
+#include "CometIntensityStore.h"
 
 
 CometWriteTxt::CometWriteTxt()
@@ -91,6 +92,8 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "\te-value");
    fprintf(fpout, "\txcorr");
    fprintf(fpout, "\tdelta_cn");
+   if (CometIntensityStore::IsEnabled())
+      fprintf(fpout, "\tintensity_score");
    fprintf(fpout, "\tsp_score");
    fprintf(fpout, "\tions_matched");
    fprintf(fpout, "\tions_total");
@@ -302,6 +305,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.2E\t", pOutput[iWhichResult].dExpect);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
+         if (CometIntensityStore::IsEnabled())
+            fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScore);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);

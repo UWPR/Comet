@@ -15,6 +15,7 @@
 
 #include "CometPeptideIndex.h"
 #include "CometPredictedMask.h"
+#include "CometIntensityStore.h"
 
 // For GenerateVariantArray()'s page-granular staging buffer (AllocStagingPages() et al.):
 // mmap/madvise/munmap on POSIX; Windows uses plain malloc/free (see AllocStagingPages()'s
@@ -498,6 +499,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS, bool bForceExportMode)
    if (g_staticParams.iDbType == DbType::PI_DB)
    {
       if (!GenerateVariantArray())
+         return false;
+
+      // Intensity score (docs/20260903_IntensityScore_design.md Section 2.3): bind the
+      // predicted-intensity file, if configured, to the final PI variant array (position i in
+      // g_dbIndexVariants is what SearchPeptideIndex() hands XcorrScoreI()). FI_DB binds to
+      // g_fragmentPeptides in CometFragmentIndex::CreateFragmentIndex() instead. Freed in
+      // PiStrategy::finalize().
+      if (!CometIntensityStore::LoadAndBind(g_staticParams.options.sPredictedIntensityFile, g_dbIndexVariants))
          return false;
    }
 

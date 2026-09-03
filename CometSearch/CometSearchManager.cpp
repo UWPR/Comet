@@ -534,6 +534,27 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("fragment_index_predicted_mask_file", strData))
       g_staticParams.options.sFragIndexPredictedMaskFile = strData;
 
+   if (GetParamValue("predicted_intensity_file", strData))
+      g_staticParams.options.sPredictedIntensityFile = strData;
+
+   // docs/20260903_IntensityScore_design.md Section 2.4/2.5: which score is primary.
+   // Phase 1 ships the intensity score as a secondary reported column only; value 1 is
+   // accepted (so params files can already carry it) but not yet honored.
+   if (GetParamValue("primary_score", iIntData))
+   {
+      if (iIntData < 0 || iIntData > 1)
+      {
+         logout(" Warning - primary_score must be 0 (xcorr) or 1 (intensity); using 0.\n");
+         iIntData = 0;
+      }
+      if (iIntData == 1)
+      {
+         logout(" Warning - primary_score = 1 (intensity score as primary) is not implemented in this build; ranking by xcorr. The intensity score is still reported.\n");
+         iIntData = 0;
+      }
+      g_staticParams.options.iPrimaryScore = iIntData;
+   }
+
    GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 
    GetParamValue("mass_offsets", g_staticParams.vectorMassOffsets);
@@ -3157,6 +3178,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.totalIons = pOutput[iWhichResult].usiTotalIons;
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
+         score.dIntensityScore = pOutput[iWhichResult].fIntensityScore;
 
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
@@ -3341,6 +3363,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dAScorePro = 0;
          score.dCn = 0;
          score.sAScoreProSiteScores.clear();
+         score.dIntensityScore = 0.0;
       }
 
       if (false)  // set to true to enable debug mass check

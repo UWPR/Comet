@@ -98,30 +98,41 @@ says so).
 ### 2.2 Search-time data: a new `.idx`-bound intensity file
 
 New artifact `<flavor>.carafe_inten`, built offline by `tools/carafe_cps_to_inten.py`
-(stdlib-only, same worker/merge skeleton as `carafe_cps_to_fi_mask.py`, wired into
-`carafe.py` as `inten` and into `prerun` as an optional stage). Format mirrors `.fi_mask` v3:
+(stdlib-only; reuses `carafe_cps_to_fi_mask.py`'s variant-map byte-range streaming,
+worker-side sort + parent k-way merge, and post-write verification; `carafe.py inten`;
+`prerun --inten` runs it as stage s7 per flavor). **Implemented 2026-09-03 (Phase 0).**
+Format mirrors `.fi_mask` v3:
 
 ```
 magic    "Comet Carafe intensity v1\n"
-header   SourceIdxFingerprint, SourceIdxNumRawPeptides, SourceIdxPath, VarModConfig,
-         Mode (general|phospho), Channels (bitmask: b_z1 y_z1 bML_z1 yML_z1 [b_z2 y_z2 ...]),
-         Transform (sqrt|none), Quant (u8), MinRelativeIntensity, MaxPeaks
+header   SourceIdxFingerprint, SourceIdxNumRawPeptides, SourceIdxPath, SourceCpsPath,
+         VarModConfig, Mode (general|phospho),
+         Channels (names in channel-code order: b_z1,y_z1[,b_modloss_z1,y_modloss_z1]),
+         Transform (sqrt), Quant (u8), MinRelativeIntensity, MaxPeaks
 u64      entry count
-entries  sorted strictly increasing by (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod):
-           u32 iWhichPeptide, i32 modNumIdx, i8 cNtermMod, i8 cCtermMod,   (10 B key)
-           f32 pNorm  (|p| over the stored peaks),                          (4 B)
-           u8  nPeaks,                                                      (1 B)
-           nPeaks x { u16 code, u8 q }   code = channel(4b) | ladderPos(6b); q = round(255*sqrt(rel))
+entries  variable length, sorted strictly increasing by (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod):
+           u32 iWhichPeptide, i32 modNumIdx, i8 cNtermMod, i8 cCtermMod   (10 B key)
+           u8  nPeaks                                                      (1 B)
+           nPeaks x { u16 code, u8 q }   code = (channel << 8) | ladderPos; q = round(255*sqrt(rel))
+         peaks within an entry sorted by code
 ```
 
-Sparse on purpose: keep peaks with relative intensity >= `MinRelativeIntensity` (proposed
-0.01) up to `MaxPeaks` (proposed 32). Estimated sizes at ~12-20 kept peaks per variant:
-OxMet ~250 MB, Phospho-large ~2.5 GB (vs 1.87 GB for the phospho `.fi_mask`, 8.7 GB `.cps`).
-Zero-prediction positions are implicit, so `|o|` still ranges over the full ladder at score
+Ladder position = Comet's per-peptide loop index i (b-ion length i+1 and y-ion length i+1
+both at i), the same coordinate as the mask bit before its "-2" shift; b maps from AlphaBase
+row r directly (ladderPos r), y is mirrored (ladderPos nAA-2-r). Unlike the mask there is
+no "i > 1" gate: b1/y1/b2/y2 are scoreable and kept when above threshold. The per-entry
+norm |p| is not stored: it is a pure function of the stored bytes and the C++ decoder
+recomputes it (storing it would only invite inconsistency).
+
+Sparse on purpose: keep peaks with relative intensity >= `MinRelativeIntensity` (default
+0.01) up to `MaxPeaks` (default 32), highest first, ties broken by code; peaks quantizing
+to 0 are dropped; an entry with zero peaks is still written so coverage is exact. Zero-
+prediction positions are implicit, so `|o|` still ranges over the full ladder at score
 time (the scorer iterates all positions anyway).
 
 The `Channels` header field is what lets a later `.cps` v2 (or a parquet-direct builder) add
-z2 without a format break; the C++ loader ignores channels it does not score.
+z2 without a format break; the C++ loader dispatches on it and ignores channels it does
+not score. Measured sizes are recorded in Section 3 (Phase 0).
 
 ### 2.3 C++ module `CometIntensityStore` (new files `CometSearch/CometIntensityStore.{h,cpp}`)
 
@@ -206,19 +217,88 @@ Introduce the notion of a *primary score* once, mechanically, rather than specia
 
 ## 3. Phasing
 
-**Phase 0: offline artifact (Python only).** `carafe_cps_to_inten.py`, `carafe.py inten`,
-`prerun` stage, `test_carafe_inten.py` added to T38's suite list. Build `oxmet.carafe_inten`
-and `phospholarge.carafe_inten` from the existing stores (minutes, no inference).
+**Phase 0: offline artifact (Python only). DONE 2026-09-03.** `carafe_cps_to_inten.py`,
+`carafe.py inten`, `prerun --inten` (stage s7), `test_carafe_inten.py` in T38's suite list
+(9 tests). Both files built from the existing stores, no inference; each validated three
+ways: header fingerprint / raw-peptide count / VarModConfig identical to the flavor's
+existing `.fi_mask`, the post-write strictly-increasing verifier, and hundreds of random
+variants re-derived independently from the `.cps` matching the file byte for byte.
 
-**Phase 1: secondary score + evaluation (decides the formula).** `CometIntensityStore` load
-+ positional build + fused scoring in `XcorrScoreI()`, `primary_score` accepted but only
-value 0 honored, output columns, `qvalue.py --score-col`. Evaluate on the oxmet workdir
-against `20170103_HelaQC_01.mzXML` (Linux-readable) and phospho against `MM2_R1/R2.mzXML`:
-(a) rank by `intensity_score` vs `xcorr` via `qvalue.py`; (b) Percolator on the pin with and
-without `IntensityScore`. Compare `cos`, spectral angle, and explained-intensity-weighted
-variants here, then freeze one. New tests T39 (loader guards: VarModConfig / fingerprint
-rejection, coverage), T40 (exact score on a hand-built fixture: known predicted vector x
-crafted spectrum -> known cosine; missing-record -> 0).
+| | OxMet | Phospho-large |
+|---|---|---|
+| Entries | 3,760,672 | 46,588,597 |
+| Peaks (mean/entry) | 63.4M (16.9) | 1,001.9M (21.5) |
+| Entries at the 32-peak cap | 14,891 (0.4%) | 4,722,457 (10.1%) |
+| Zero-peak entries | 271 | 423 |
+| Entries with modloss peaks | 0 (general mode) | 40,228,543 |
+| File size | 231 MB | 3.52 GB |
+| Build wall / peak RSS (16 workers) | 32 s / 0.38 GB | 8m02s / 3.9 GB |
+
+Phospho came in above the 2.5 GB estimate because the variant-weighted mean peptide is
+long (23.8 residues, up to 4 channels) and 10% of entries hit the cap; the cap is a build
+flag (`--max-peaks`) if Phase 1 shows the tail matters either way.
+
+**Phase 1: secondary score + evaluation. DONE 2026-09-03 (formula decision below).**
+Implemented: `CometSearch/CometIntensityStore.{h,cpp}` (load + guards + variant binding +
+`Score()`), fused into `XcorrScoreI()` via a new `uiVariant` argument (FI_DB passes
+`uiWhichVariant`, PI_DB passes its `g_dbIndexVariants` position, PI on-the-fly decoys pass
+`NO_VARIANT`), `Results::fIntensityScore`, params `predicted_intensity_file` /
+`primary_score` (value 1 accepted with a warning, not yet honored), output in txt (after
+`delta_cn`), pepXML (`intensity_score`), pin (`IntensityScore` after `Sp`), mzIdentML
+(`userParam Comet:intensity_score`), `CometScores::dIntensityScore` + `ScoreWrapper`
+property for RTS, `qvalue.py --score-col`. Tests T39 (plumbing + guards) and T40 (exact
+cosine vs a first-principles oracle, with and without modloss channels) pass; the full
+fast suite is 59/59 on both the Linux build and the MSVC `x64/Release/Comet.exe` (full
+Windows solution incl. `CometWrapper.dll` / `RealtimeSearch.exe` builds clean). Overhead on the OxMet FI_DB search of `20170103_HelaQC_01.mzXML`:
++1 s load, +0.25 GB RSS, 100.00% of the 3.75M FI variants bound.
+
+Evaluation (OxMet, all 24,460 spectra with results, `num_output_lines = 5`, rank-1 unless
+"rerank", target-decoy FDR via `qvalue.py`-equivalent counting):
+
+| Ranking score | PSMs @1% FDR | @5% | vs xcorr @1% |
+|---|---|---|---|
+| xcorr | 12,992 | 15,169 | -- |
+| -log10 e-value | 13,677 | 15,564 | +5.3% |
+| cosine alone (rank-1 by xcorr) | 10,564 | 15,325 | -18.7% |
+| cosine alone (rerank top 5 by cosine) | 9,703 | 14,681 | -25.3% |
+| xcorr * cosine (rerank top 5) | 14,238 | 15,765 | +9.6% |
+| xcorr + 2*cosine (rerank top 5) | 14,275 | 15,788 | +9.9% |
+| -log10 e-value + 3*cosine (rerank top 5) | 14,358 | 15,854 | +10.5% |
+
+Split by precursor charge (the file has no 1+ precursors), the all-charge deficit of the
+pure cosine turns out to come entirely from 3+ and higher -- the population where a z1-only
+prediction of a 2+ precursor is compared against spectra dominated by z2 fragments:
+
+| Ranking score | 2+ only (14,762 spectra) @1% | vs xcorr | 3+ and up (9,698) @1% | vs xcorr |
+|---|---|---|---|---|
+| xcorr | 9,402 | -- | 3,832 | -- |
+| -log10 e-value | 9,528 | +1.3% | 4,043 | +5.5% |
+| cosine alone (rank-1 by xcorr) | 9,733 | +3.5% | 2,827 | -26.2% |
+| cosine alone (rerank top 5) | 9,261 | -1.5% | 1,194 | -68.8% |
+| xcorr * cosine (rerank top 5) | 10,263 | +9.2% | 3,968 | +3.5% |
+| xcorr + 2*cosine (rerank top 5) | 10,330 | +9.9% | 3,987 | +4.0% |
+
+Rank-1 median cosine for 2+: targets 0.931, decoys 0.414; for 3+ and up: 0.572 / 0.267. On
+the precursors the predictions actually model, the cosine alone already beats xcorr and
+e-value at 1% FDR. Conclusion: the z2 fragment channels (dropped by the .cps v1 store and
+not read by the scorer) and eventually 3+ inference are prerequisites for judging the
+formula, not Phase 3 polish -- do the z2 extension before freezing the Phase 2 primary score.
+
+Rank-1 median cosine over all charges: targets 0.825, decoys 0.320 -- the score separates well, but as a
+pure PSM ranking over all charges it is length-blind (a 7-residue peptide matching 5 of 12 positions can
+out-cosine a 25-residue peptide matching 30 of 48), which is why it loses to xcorr alone at
+1% FDR while every xcorr-times/plus-cosine combination gains ~10%. Percolator was not
+available on this machine, so the "as a rescoring feature" measurement is the top-5
+re-rank above rather than a full semi-supervised model.
+
+**Formula decision for Phase 2.** Keep `intensity_score` = cosine on sqrt intensities as
+the reported column (decision 1), but make the *primary* score for `primary_score = 1` a
+combined score rather than raw cosine: the working proposal is `xcorr * intensity_score`
+(no tuned constants, both factors already computed per candidate, +9.6% here); the additive
+`xcorr + 2*cos` is within noise of it and needs a constant. E-value-based combinations are
+not usable as a primary score because the E-value is only known after all candidates are
+scored. This changes Section 2.5's premise (the eviction gate, sort, deltaCn and writer
+gates would key on the combined score) and needs sign-off before Phase 2 starts.
 
 **Phase 2: primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;

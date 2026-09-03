@@ -1586,6 +1586,7 @@ def test_t22_rts_pi(comet_exe):
 sys.path.insert(0, str(REPO_ROOT / "tools"))
 import qvalue  # noqa: E402
 import carafe_ms2_to_fi_mask as fi_mask  # noqa: E402
+import carafe_cps_to_inten as inten  # noqa: E402
 
 
 def _q1pct_counts(txt_path):
@@ -2776,6 +2777,272 @@ def test_t36_predicted_mask_integration(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T39/T40 -- the Carafe predicted-intensity score (docs/20260903_IntensityScore_design.md,
+# Phase 1): CometIntensityStore loads a .carafe_inten file, binds it to the FI variant
+# array, and XcorrScoreI() computes a cosine between predicted and observed fragment
+# intensities that is reported as the txt column right after delta_cn (and in pepXML /
+# pin / mzIdentML), while xcorr and every other column stay byte-identical.
+#
+# Both reuse T25/T36's fixture: protein ACDSEFGHIK, spectrum of ACDS[+79.966331]EFGHIK 2+
+# with 14 unshifted b/y ions (b2..b8 at intensity 100, y2..y8 at 110) plus 9 NL-shifted
+# (-97.976896) ions (b3..b8 at 80, y6..y8 at 90), built as FI_DB with the phospho mod in
+# variable_mod02 (slot 1). Its PI variant tuples are (0, 0, -1, -1) for the modified
+# peptide and (0, -1, -1, -1) for the unmodified one (T36 uses the same).
+#
+# T40 is an EXACT-value test: the predicted record is hand-written, and the expected
+# cosine is recomputed here from first principles -- Comet's observed vector is the
+# binned sqrt(intensity) at every charge-1 b/y ladder position (0.0 where the spectrum
+# has no peak, including b1/b2/y1/y2 which the FI mask would not even index), plus the
+# NL-shifted bins of fragments carrying the phospho when the file has modloss channels --
+# so a mismatch pins down a convention error (b vs mirrored y, ladder offset, NL slot,
+# sqrt transform, full-ladder |o|) rather than "some difference".
+# ---------------------------------------------------------------------------
+
+T39_VAR_MOD_CONFIG = T36_VAR_MOD_CONFIG   # same params template, same live varModList
+
+# (channel, ladderPos) -> observed intensity in the fixture spectrum; ladderPos i holds
+# b_{i+1} and y_{i+1} (the same coordinate uiBinnedIonMasses uses).
+T40_OBSERVED = {}
+for _pos in range(2, 9):
+    T40_OBSERVED[(inten.CH_B, _pos)] = 100.0
+    T40_OBSERVED[(inten.CH_Y, _pos)] = 110.0
+for _pos in range(3, 9):
+    T40_OBSERVED[(inten.CH_B_ML, _pos)] = 80.0
+for _pos in range(6, 9):
+    T40_OBSERVED[(inten.CH_Y_ML, _pos)] = 90.0
+# Ladder positions whose bin exists (so they enter |o| even when unobserved): every
+# unshifted position 0..8 for both series; NL-shifted only where the fragment contains S4
+# (b length >= 4 -> pos >= 3; y length >= 7 -> pos >= 6).
+T40_LADDER_POSITIONS = ([(inten.CH_B, i) for i in range(9)] + [(inten.CH_Y, i) for i in range(9)],
+                        [(inten.CH_B_ML, i) for i in range(3, 9)] + [(inten.CH_Y_ML, i) for i in range(6, 9)])
+
+
+def _t40_expected_cosine(peaks, with_modloss):
+    """peaks: [(code, q)] as written to the file. Cosine over the ladder exactly as
+    CometIntensityStore::Score() defines it (sqrt(rel) = q/255 predicted; observed =
+    sqrt(intensity), scale-free)."""
+    import math
+    pred = {inten.decode_peak_code(c): q / 255.0 for c, q in peaks}
+    positions = list(T40_LADDER_POSITIONS[0]) + (list(T40_LADDER_POSITIONS[1]) if with_modloss else [])
+    dot = onorm2 = 0.0
+    for key in positions:
+        o = math.sqrt(T40_OBSERVED.get(key, 0.0))
+        dot += pred.get(key, 0.0) * o
+        onorm2 += o * o
+    pnorm2 = sum(v * v for (ch, _pos), v in pred.items()
+                 if with_modloss or ch in (inten.CH_B, inten.CH_Y))
+    if pnorm2 <= 0 or onorm2 <= 0 or dot <= 0:
+        return 0.0
+    return round(dot / math.sqrt(pnorm2 * onorm2), 4)
+
+
+def _t39_write_inten(path, idx_path, entries, fingerprint=None, num_raw=None,
+                     var_mod_config=T39_VAR_MOD_CONFIG, general_mode=False, channels=None):
+    """entries: [(key_tuple, [(code, q), ...])] -- sorted here. Header fingerprint defaults
+    to the real one for idx_path."""
+    real_fp, real_num = fi_mask.idx_fingerprint(str(idx_path))
+    fp = fingerprint if fingerprint is not None else real_fp
+    nr = num_raw if num_raw is not None else real_num
+    hdr = inten.header_lines(fp, nr, str(idx_path), "hand-written", var_mod_config,
+                             general_mode=general_mode, min_rel=0.01, max_peaks=32)
+    if channels is not None:
+        hdr = [f"Channels: {channels}" if h.startswith("Channels: ") else h for h in hdr]
+    entries = sorted(entries, key=lambda e: e[0])
+    inten.write_inten_file(str(path), hdr, len(entries),
+                           (inten.pack_entry(k, sorted(pk)) for k, pk in entries))
+    return real_fp, real_num
+
+
+def _t39_build_idx(comet_exe, failures):
+    """Builds the T25 fixture as FI_DB (mirrors T36). Returns (idx, ms2, txt, fmt) or None."""
+    fasta = DATA_DIR / "t25_fragment_nl.fasta"
+    ms2   = DATA_DIR / "t25_fragment_nl.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    idx.unlink(missing_ok=True)
+    build_params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), neutral_loss=T36_NEUTRAL_LOSS)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(build_params)
+        build_params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return None
+    finally:
+        build_params_file.unlink(missing_ok=True)
+    return idx, ms2, txt, fmt
+
+
+def _t39_search(comet_exe, idx, ms2, txt, fmt, inten_file):
+    """Runs the FI_DB search with predicted_intensity_file = inten_file (None = unset).
+    Returns (rc, out, header_cols, rows)."""
+    params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T36_NEUTRAL_LOSS)
+    if inten_file is not None:
+        # before [COMET_ENZYME_INFO]: keys after that marker are silently ignored (T36)
+        params = params.replace("[COMET_ENZYME_INFO]",
+                                f"predicted_intensity_file = {fmt(inten_file)}\n[COMET_ENZYME_INFO]")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(params)
+        pf_path = Path(pf.name)
+    txt.unlink(missing_ok=True)
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pf_path)}", fmt(ms2)])
+        header, rows = None, None
+        if txt.exists():
+            lines = txt.read_text().splitlines()
+            if len(lines) >= 2:
+                header = lines[1].split("\t")
+                rows = [l.split("\t") for l in lines[2:] if l.strip()]
+        return rc, out, header, rows
+    finally:
+        pf_path.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+
+@register("t39_intensity_store_guards")
+def test_t39_intensity_store_guards(comet_exe):
+    """T39: predicted_intensity_file plumbing and CometIntensityStore's guards -- the
+    column appears right after delta_cn only when a file is loaded, every other column is
+    unchanged, coverage is logged, a variant without a record scores 0.0 with a warning,
+    and a file whose .idx fingerprint / VarModConfig / channel layout doesn't match is
+    rejected loudly."""
+    failures = []
+    built = _t39_build_idx(comet_exe, failures)
+    if built is None:
+        return failures
+    idx, ms2, txt, fmt = built
+    good = DATA_DIR / "t39_good.carafe_inten"
+    scratch = [good]
+    try:
+        peaks_mod = [(inten.peak_code(inten.CH_B, 4), 255), (inten.peak_code(inten.CH_Y, 5), 200)]
+        peaks_unmod = [(inten.peak_code(inten.CH_B, 4), 255)]
+        fp, nr = _t39_write_inten(good, idx, [((0, 0, -1, -1), peaks_mod), ((0, -1, -1, -1), peaks_unmod)])
+
+        # --- baseline: no file -> no column ---
+        rc0, out0, hdr0, rows0 = _t39_search(comet_exe, idx, ms2, txt, fmt, None)
+        check(rc0 == 0, f"baseline search failed (rc={rc0}):\n{out0}", failures)
+        check(hdr0 is not None and "intensity_score" not in hdr0,
+              f"no intensity file -> no intensity_score column, header={hdr0}", failures)
+        check(rows0 is not None and len(rows0) == 1, f"baseline: expected 1 PSM row, got {rows0}", failures)
+
+        # --- with file: column after delta_cn, other columns identical, coverage logged ---
+        rc1, out1, hdr1, rows1 = _t39_search(comet_exe, idx, ms2, txt, fmt, good)
+        check(rc1 == 0, f"search with intensity file failed (rc={rc1}):\n{out1}", failures)
+        check("Predicted-intensity file: 2 entries" in out1 and "bound 2 of 2" in out1,
+              f"expected the load/coverage log line, got:\n{out1}", failures)
+        if hdr1 is not None and hdr0 is not None and rows1 and rows0:
+            check("intensity_score" in hdr1 and hdr1.index("intensity_score") == hdr1.index("delta_cn") + 1,
+                  f"intensity_score must be the column right after delta_cn: {hdr1}", failures)
+            i_sc = hdr1.index("intensity_score")
+            stripped = [r[:i_sc] + r[i_sc + 1:] for r in rows1]
+            check(stripped == rows0,
+                  f"all non-intensity columns must be identical to the baseline:\n{rows0}\n{stripped}", failures)
+            score = float(rows1[0][i_sc])
+            check(0.0 < score <= 1.0, f"intensity_score must be in (0, 1], got {score}", failures)
+            # b5 and y6 are both real peaks (b pos 4 = b5 @100, y pos 5 = y6 @110)
+            want = _t40_expected_cosine(peaks_mod, with_modloss=True)
+            check(abs(score - want) <= 1e-4, f"score {score} != expected {want}", failures)
+        else:
+            check(False, f"missing header/rows with intensity file: hdr={hdr1} rows={rows1}", failures)
+
+        # --- determinism ---
+        rc2, _out2, hdr2, rows2 = _t39_search(comet_exe, idx, ms2, txt, fmt, good)
+        check(rc2 == 0 and hdr2 == hdr1 and rows2 == rows1, "two runs with the same file must be identical", failures)
+
+        # --- missing record: only the unmodified variant present -> modified scores 0.0 + warning ---
+        partial = DATA_DIR / "t39_partial.carafe_inten"
+        scratch.append(partial)
+        _t39_write_inten(partial, idx, [((0, -1, -1, -1), peaks_unmod)])
+        rc3, out3, hdr3, rows3 = _t39_search(comet_exe, idx, ms2, txt, fmt, partial)
+        check(rc3 == 0, f"partial-coverage search must succeed (rc={rc3}):\n{out3}", failures)
+        check("bound 1 of 2" in out3 and "have no predicted-intensity record" in out3,
+              f"expected a partial-coverage warning, got:\n{out3}", failures)
+        if hdr3 and rows3:
+            check(float(rows3[0][hdr3.index("intensity_score")]) == 0.0,
+                  f"variant without a record must score 0.0, got {rows3[0]}", failures)
+
+        # --- rejections ---
+        def expect_reject(tag, path, needle, **kw):
+            scratch.append(path)
+            _t39_write_inten(path, idx, [((0, 0, -1, -1), peaks_mod)], **kw)
+            rc, out, _h, _r = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+            check(rc != 0, f"{tag}: search must fail (rc != 0), got rc={rc}:\n{out}", failures)
+            check(needle in out, f"{tag}: expected '{needle}' in the error, got:\n{out}", failures)
+
+        expect_reject("bad fingerprint", DATA_DIR / "t39_bad_fp.carafe_inten", "different .idx", fingerprint="deadbeef")
+        expect_reject("bad raw count", DATA_DIR / "t39_bad_num.carafe_inten", "SourceIdxNumRawPeptides", num_raw=nr + 1)
+        expect_reject("bad VarModConfig", DATA_DIR / "t39_bad_vmc.carafe_inten", "variable-mod configuration",
+                      var_mod_config="15.994915M--0.000000|0.000000X--0.000000|0.000000X--0.000000|"
+                                     "0.000000X--0.000000|0.000000X--0.000000")
+        expect_reject("bad channel order", DATA_DIR / "t39_bad_ch.carafe_inten", "Channels",
+                      channels="y_z1,b_z1")
+    finally:
+        for f in scratch:
+            f.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+    return failures
+
+
+@register("t40_intensity_score_exact")
+def test_t40_intensity_score_exact(comet_exe):
+    """T40: the reported intensity_score equals the cosine recomputed from first principles
+    for a hand-written predicted record -- with modloss channels (phospho-mode file: the
+    NL-shifted bins of S4-containing fragments join the ladder) and without (general-mode
+    file: only unshifted b/y), including a predicted-but-unobserved peak (b2) and observed-
+    but-unpredicted positions (y8, all NL ions) that must lower the cosine."""
+    failures = []
+    built = _t39_build_idx(comet_exe, failures)
+    if built is None:
+        return failures
+    idx, ms2, txt, fmt = built
+    scratch = []
+    try:
+        # predicted record: descending b ladder, a flat y ladder missing y8 (pos 7),
+        # a predicted-but-absent b2 (pos 1), and modloss peaks on b5..b7 / y7..y8
+        peaks = ([(inten.peak_code(inten.CH_B, 1), 255)]
+                 + [(inten.peak_code(inten.CH_B, pos), q) for pos, q in zip(range(2, 9), (240, 200, 160, 120, 80, 40, 20))]
+                 + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
+                 + [(inten.peak_code(inten.CH_B_ML, pos), 90) for pos in range(4, 7)]
+                 + [(inten.peak_code(inten.CH_Y_ML, pos), 60) for pos in (6, 7)])
+        for general_mode in (False, True):
+            path = DATA_DIR / f"t40_{'general' if general_mode else 'phospho'}.carafe_inten"
+            scratch.append(path)
+            file_peaks = [(c, q) for c, q in peaks
+                          if not general_mode or inten.decode_peak_code(c)[0] in (inten.CH_B, inten.CH_Y)]
+            _t39_write_inten(path, idx, [((0, 0, -1, -1), file_peaks), ((0, -1, -1, -1), [])],
+                             general_mode=general_mode)
+            rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+            check(rc == 0, f"general_mode={general_mode}: search failed (rc={rc}):\n{out}", failures)
+            if general_mode:
+                check("modloss channels active" not in out, "general-mode file must not activate modloss", failures)
+            else:
+                check("modloss channels active" in out, f"phospho file must activate modloss:\n{out}", failures)
+            if not (hdr and rows):
+                check(False, f"general_mode={general_mode}: no output rows", failures)
+                continue
+            got = float(rows[0][hdr.index("intensity_score")])
+            want = _t40_expected_cosine(file_peaks, with_modloss=not general_mode)
+            check(abs(got - want) <= 1e-4,
+                  f"general_mode={general_mode}: intensity_score {got} != expected cosine {want}", failures)
+            check(rows[0][hdr.index("plain_peptide")] == "ACDSEFGHIK", f"unexpected PSM row {rows[0]}", failures)
+        # sanity on the oracle itself: the two expectations must differ (modloss changes |o| and dot)
+        w_ph = _t40_expected_cosine(peaks, with_modloss=True)
+        w_gen = _t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] < 2], with_modloss=False)
+        check(w_ph != w_gen and 0 < w_ph < 1 and 0 < w_gen < 1,
+              f"oracle sanity: phospho {w_ph} vs general {w_gen}", failures)
+    finally:
+        for f in scratch:
+            f.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # T37 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
 # ---------------------------------------------------------------------------
 #
@@ -2941,6 +3208,9 @@ def test_t37_fragment_nl_break_boundary(comet_exe):
 # module and runs its suite; a False return (any internal failure -- the module prints its
 # own per-test detail to stdout) fails T38 with the module named.
 #
+# test_carafe_inten.py (tools/carafe_cps_to_inten.py, the .carafe_inten predicted-
+# intensity builder -- docs/20260903_IntensityScore_design.md Phase 0) joined 2026-09-03.
+#
 # test_carafe_pipeline_drivers.py joined the list when the bash/awk pipeline drivers
 # (carafe_prerun.sh, run_carafe_chunked.sh, build_carafe_mask_chunked.sh,
 # params_to_fi_mask.sh, split_variant_map_for_chunks.awk) were ported to stdlib-only
@@ -2955,7 +3225,7 @@ _T38_RAN = False
 
 @register("t38_carafe_python_suites")
 def test_t38_carafe_python_suites(comet_exe):
-    """T38: run the five standalone Carafe pure-Python test suites in-process."""
+    """T38: run the six standalone Carafe pure-Python test suites in-process."""
     global _T38_RAN
     failures = []
     if _T38_RAN:
@@ -2965,7 +3235,7 @@ def test_t38_carafe_python_suites(comet_exe):
     import importlib
     for mod_name in ("test_carafe_ms2_to_fi_mask", "test_carafe_alignment",
                       "test_idx_to_carafe_dedup_key", "test_carafe_cps",
-                      "test_carafe_pipeline_drivers"):
+                      "test_carafe_pipeline_drivers", "test_carafe_inten"):
         try:
             mod = importlib.import_module(mod_name)
             ok = mod.run_test()

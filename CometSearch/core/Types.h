@@ -47,6 +47,8 @@ struct Results
    double dExpect;
    float  fScoreSp;
    float  fXcorr;
+   float  fIntensityScore;                    // Carafe predicted-intensity cosine score (CometIntensityStore);
+                                              // 0.0 when no intensity file is loaded or the variant has no record
    float  fDeltaCn;
    float  fLastDeltaCn;
    float  fAScorePro;                         // AScorePro score
@@ -166,6 +168,7 @@ inline void ResetOneResult(Results& r)
    r.dExpect = 999;
    r.fScoreSp = 0.0;
    r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
+   r.fIntensityScore = 0.0;
    r.fAScorePro = 0.0;
    r.usiLenPeptide = 0;
    r.usiRankSp = 0;
