@@ -368,7 +368,8 @@ def test_carafe_dispatch_table(failures):
     import importlib
     import inspect
     stdlib_only = {"carafe_prerun", "run_carafe_chunked", "build_carafe_mask_chunked",
-                   "carafe_ms2_to_fi_mask", "merge_carafe_fi_masks", "idx_to_carafe"}
+                   "carafe_ms2_to_fi_mask", "merge_carafe_fi_masks", "idx_to_carafe",
+                   "carafe_cps_to_inten"}
     for cmd, (mod_name, desc) in carafe.COMMANDS.items():
         check((TOOLS_DIR / f"{mod_name}.py").is_file(),
               f"carafe.py maps {cmd!r} to missing module {mod_name}.py", failures)

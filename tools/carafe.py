@@ -37,6 +37,9 @@ COMMANDS = {
     "mask":        ("carafe_cps_to_fi_mask",
                     "build/re-sweep a .fi_mask from a .cps store (the normal mask "
                     "path)"),
+    "inten":       ("carafe_cps_to_inten",
+                    "build a .carafe_inten predicted-intensity file from a .cps store "
+                    "(input for the intensity score)"),
     "mask-tsv":    ("carafe_ms2_to_fi_mask",
                     "build a .fi_mask directly from ms2_df/ms2_pred TSVs (tests, "
                     "small runs)"),

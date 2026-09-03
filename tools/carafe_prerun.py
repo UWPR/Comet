@@ -18,6 +18,10 @@ Carafe, ai_pred.py, or any Python):
                                                  AUTO-DETECTED per flavor from its own
                                                  VarModConfig: all neutral-loss deltas
                                                  0.0 -> general mode)
+  per flavor:  [s7] carafe_cps_to_inten.py        (opt-in via --inten: the .carafe_inten
+                                                 predicted-intensity file for the
+                                                 intensity score; same auto-detected
+                                                 --ignore-modloss as s6)
 
 (Python port of the original tools/carafe_prerun.sh, so the pipeline also runs in a
 native Windows terminal. Stage names, marker files, and log layout are identical to the
@@ -64,9 +68,13 @@ Options:
   --quant u8|u16          store quantization (default u16 -- the validated choice;
                           u8 diverges on ~2.8% of variants, see plan doc Section 5.4)
   --min-relative-intensity F / --min-kept-peaks N   mask thresholds (defaults 0.10 / 6)
+  --inten                 also build NAME.carafe_inten per flavor (stage s7; default OFF)
+  --inten-min-relative-intensity F / --inten-max-peaks N
+                          .carafe_inten peak selection (defaults 0.01 / 32; independent
+                          of the mask thresholds above)
   --workers N             parallelism for translation + mask builds (default: cpus-2)
   --venv-python PATH / --ai-pred-py PATH   forwarded to run_carafe_chunked.py
-  --stop-after STAGE      stop after: idx, export, convert, predict, cps, mask
+  --stop-after STAGE      stop after: idx, export, convert, predict, cps, mask, inten
   --delete-raw            after the store verifies (s5), delete the raw per-chunk Carafe
                           prediction output (the ~hundreds-of-GB transient). Default OFF.
 
@@ -158,7 +166,7 @@ class PrerunDriver:
             pass
 
     def maybe_stop(self, kind):
-        """Call after finishing stage-kind `kind` (idx/export/convert/predict/cps/mask)."""
+        """Call after finishing stage-kind `kind` (idx/export/convert/predict/cps/mask/inten)."""
         if self.args.stop_after == kind:
             print(f"[driver] --stop-after {kind} reached; stopping.")
             sys.exit(0)
@@ -325,16 +333,44 @@ class PrerunDriver:
                            mask_cmd)
         self.maybe_stop("mask")
 
+    # ---- stage 7 (opt-in): predicted-intensity files, per flavor ----
+    def run_intens(self):
+        a = self.args
+        for name in self.flavor_names:
+            vmap = os.path.join(a.out_dir, f"{name}.carafe_peptides.variants.tsv")
+            with open(vmap, errors="replace") as f:
+                vmc = f.readline()
+            cmd = [sys.executable, os.path.join(SCRIPT_DIR, "carafe_cps_to_inten.py"),
+                   os.path.join(a.out_dir, f"{name}.fasta.idx"), vmap,
+                   os.path.join(a.out_dir, f"{self.primary}.cps"),
+                   os.path.join(a.out_dir, f"{name}.carafe_inten"),
+                   "--min-relative-intensity", str(a.inten_min_relative_intensity),
+                   "--max-peaks", str(a.inten_max_peaks),
+                   "--workers", str(a.workers),
+                   "--verify-out-tsv",
+                   os.path.join(a.out_dir, f"{self.primary}.carafe_peptides.tsv")]
+            if not varmodconfig_has_nl(vmc):
+                cmd += ["--ignore-modloss"]
+            self.run_stage(f"s7_inten_{name}", f"build {name}.carafe_inten from store", cmd)
+        self.maybe_stop("inten")
+
     def run(self):
         self.run_idx_export_convert()
         self.check_population_identity()
         self.run_predict()
         self.run_cps()
         self.run_masks()
+        if self.args.inten:
+            self.run_intens()
         print("[driver] complete. Masks:")
         for name in self.flavor_names:
             mask = os.path.join(self.args.out_dir, f"{name}.fi_mask")
             print(f"  {os.path.getsize(mask):>14,} bytes  {mask}")
+        if self.args.inten:
+            print("[driver] Intensity files:")
+            for name in self.flavor_names:
+                fn = os.path.join(self.args.out_dir, f"{name}.carafe_inten")
+                print(f"  {os.path.getsize(fn):>14,} bytes  {fn}")
         print("[driver] point comet.params fragment_index_predicted_mask_file (or RTS "
               "--mask) at the")
         print("[driver] flavor-matching .fi_mask, with database_name = that flavor's "
@@ -404,11 +440,16 @@ def main(argv=None):
     ap.add_argument("--quant", choices=("u8", "u16"), default="u16")
     ap.add_argument("--min-relative-intensity", type=float, default=None)
     ap.add_argument("--min-kept-peaks", type=int, default=None)
+    ap.add_argument("--inten", action="store_true",
+                    help="also build NAME.carafe_inten per flavor (stage s7)")
+    ap.add_argument("--inten-min-relative-intensity", type=float, default=0.01)
+    ap.add_argument("--inten-max-peaks", type=int, default=32)
     ap.add_argument("--workers", type=int, default=common.default_workers())
     ap.add_argument("--venv-python", default="")
     ap.add_argument("--ai-pred-py", default="")
     ap.add_argument("--stop-after", default="",
-                    choices=("", "idx", "export", "convert", "predict", "cps", "mask"))
+                    choices=("", "idx", "export", "convert", "predict", "cps", "mask",
+                             "inten"))
     ap.add_argument("--delete-raw", action="store_true")
     args = ap.parse_args(argv)
 
