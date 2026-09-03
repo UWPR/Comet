@@ -22,14 +22,14 @@ Usage
     python tools/qvalue.py --diff results_a.txt results_b.txt
     python tools/qvalue.py --threshold 0.01 --threshold 0.05 results.txt
 
-Column indices in Comet tab-delimited output (0-based, after 2 header lines):
-    0  scan
-    1  num       (hit rank; 1 = top hit)
-    2  charge
-    5  e-value
-    6  xcorr
-    12 modified_peptide
-    15 protein
+Columns are located by name from the header line, so the script is independent of
+column position.  Comet's default txt layout is a one-line "CometVersion ..." banner
+followed by the tab-separated column header; the header is found by scanning the first
+few lines for one containing every required column name.  Required columns:
+    scan, num (hit rank; 1 = top hit), charge, e-value, xcorr, modified_peptide, protein
+Optional columns present in some runs (peff_modified_peptide, ascorepro, intensity_score,
+...) are simply ignored, and inserting a new column anywhere in the row no longer breaks
+parsing.
 """
 
 import argparse
@@ -39,18 +39,14 @@ from pathlib import Path
 
 DECOY_PREFIXES = ("decoy_", "rev_")
 
-# 0-based column indices in Comet txt body rows (after 2 header lines)
-COL_SCAN   = 0
-COL_NUM    = 1
-COL_CHARGE = 2
-COL_EVALUE = 5
-COL_XCORR  = 6
-COL_MODPEP = 12
-COL_PROT   = 15
+# Column names required in the header line (matched case-insensitively).
+REQUIRED_COLUMNS = ("scan", "num", "charge", "e-value", "xcorr",
+                    "modified_peptide", "protein")
 
-# Minimum column count needed to parse a row
-_REQUIRED_COL = max(COL_SCAN, COL_NUM, COL_CHARGE, COL_EVALUE, COL_XCORR,
-                    COL_MODPEP, COL_PROT)
+# How many leading lines to scan for the header before giving up.  Default Comet
+# output puts it on line 2 (after the CometVersion banner); a headerless or
+# foreign file fails fast instead of being silently mis-parsed.
+_HEADER_SEARCH_LINES = 5
 
 # Field indices within each PSM tuple: (xcorr, evalue, is_decoy, scan, charge, pep, prot)
 _F_XCORR  = 0
@@ -66,27 +62,66 @@ def is_decoy(protein: str) -> bool:
     return any(protein.lower().startswith(p) for p in DECOY_PREFIXES)
 
 
+def parse_header(fields: list[str]) -> dict[str, int] | None:
+    """
+    Given one line split on tabs, return {column_name: index} if the line is a Comet
+    txt column header (contains every REQUIRED_COLUMNS entry), else None.
+    Names are compared case-insensitively and whitespace-stripped.
+    """
+    idx = {}
+    for i, name in enumerate(fields):
+        key = name.strip().lower()
+        if key and key not in idx:      # first occurrence wins
+            idx[key] = i
+    if all(req in idx for req in REQUIRED_COLUMNS):
+        return idx
+    return None
+
+
+def find_header(fh) -> dict[str, int]:
+    """
+    Consume lines from an open file until the column header is found and return its
+    {column_name: index} map.  The file position is left at the first body row.
+    Raises ValueError if no header appears within _HEADER_SEARCH_LINES lines.
+    """
+    for lineno in range(_HEADER_SEARCH_LINES):
+        line = fh.readline()
+        if not line:
+            break
+        cols = parse_header(line.rstrip("\r\n").split("\t"))
+        if cols is not None:
+            return cols
+    raise ValueError(
+        f"{getattr(fh, 'name', '<file>')}: no Comet txt column header found in the first "
+        f"{_HEADER_SEARCH_LINES} lines (need columns: {', '.join(REQUIRED_COLUMNS)})")
+
+
 def load_rank1(path: str) -> list[tuple[float, float, bool, int, int, str, str]]:
     """
     Return a list of (xcorr, evalue, is_decoy, scan, charge, modified_peptide, protein)
     for rank-1 PSMs from a Comet txt file.  List is unsorted.
+    Columns are resolved by header name (see find_header); a file without a
+    recognizable header raises ValueError rather than returning an empty list.
     """
     psms = []
     with open(path) as fh:
-        for lineno, line in enumerate(fh):
-            if lineno < 2:          # skip two header lines
-                continue
-            cols = line.rstrip("\n").split("\t")
-            if len(cols) <= _REQUIRED_COL:
+        col = find_header(fh)
+        c_scan, c_num, c_charge = col["scan"], col["num"], col["charge"]
+        c_evalue, c_xcorr = col["e-value"], col["xcorr"]
+        c_pep, c_prot = col["modified_peptide"], col["protein"]
+        required_col = max(c_scan, c_num, c_charge, c_evalue, c_xcorr, c_pep, c_prot)
+        for line in fh:
+            cols = line.rstrip("\r\n").split("\t")
+            if len(cols) <= required_col:
                 continue
             try:
-                num    = int(cols[COL_NUM])
-                xcorr  = float(cols[COL_XCORR])
-                evalue = float(cols[COL_EVALUE])
-                scan   = int(cols[COL_SCAN])
-                charge = int(cols[COL_CHARGE])
-                pep    = cols[COL_MODPEP]
-                prot   = cols[COL_PROT]
+                num    = int(cols[c_num])
+                xcorr  = float(cols[c_xcorr])
+                evalue = float(cols[c_evalue])
+                scan   = int(cols[c_scan])
+                charge = int(cols[c_charge])
+                pep    = cols[c_pep]
+                prot   = cols[c_prot]
             except ValueError:
                 continue
             if num != 1:
