@@ -537,19 +537,14 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("predicted_intensity_file", strData))
       g_staticParams.options.sPredictedIntensityFile = strData;
 
-   // docs/20260903_IntensityScore_design.md Section 2.4/2.5: which score is primary.
-   // Phase 1 ships the intensity score as a secondary reported column only; value 1 is
-   // accepted (so params files can already carry it) but not yet honored.
+   // docs/20260903_IntensityScore_design.md Section 2.4/2.5 (Phase 2): which score is
+   // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg. See PrimaryScore() in
+   // core/Types.h for everything the choice governs.
    if (GetParamValue("primary_score", iIntData))
    {
-      if (iIntData < 0 || iIntData > 1)
+      if (iIntData < 0 || iIntData > 2)
       {
-         logout(" Warning - primary_score must be 0 (xcorr) or 1 (intensity); using 0.\n");
-         iIntData = 0;
-      }
-      if (iIntData == 1)
-      {
-         logout(" Warning - primary_score = 1 (intensity score as primary) is not implemented in this build; ranking by xcorr. The intensity score is still reported.\n");
+         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score) or 2 (intensity_score_bg); using 0.\n");
          iIntData = 0;
       }
       g_staticParams.options.iPrimaryScore = iIntData;
@@ -2360,6 +2355,27 @@ bool CometSearchManager::DoSearch()
    session.bPerformDatabaseSearch = g_bPerformDatabaseSearch;
    session.bPerformSpecLibSearch  = g_bPerformSpecLibSearch;
 
+   // primary_score 1/2 (intensity score as primary) needs the predicted-intensity file, an
+   // indexed search (FASTA candidates have no peptide-index identity to look predictions up
+   // by) and no internally generated decoys (reversed on the fly, hence no predictions) --
+   // docs/20260903_IntensityScore_design.md Sections 1.3, 1.7, 2.4.
+   if (g_staticParams.options.iPrimaryScore != 0)
+   {
+      string strErr;
+      if (g_staticParams.options.sPredictedIntensityFile.empty())
+         strErr = " Error - primary_score = " + std::to_string(g_staticParams.options.iPrimaryScore) + " requires predicted_intensity_file to be set.\n";
+      else if (g_staticParams.options.iDecoySearch != 0)
+         strErr = " Error - primary_score = " + std::to_string(g_staticParams.options.iPrimaryScore) + " cannot be combined with decoy_search (internally reversed decoys have no predicted intensities); use a target-decoy FASTA.\n";
+      else if (g_staticParams.iDbType != DbType::FI_DB && g_staticParams.iDbType != DbType::PI_DB)
+         strErr = " Error - primary_score = " + std::to_string(g_staticParams.options.iPrimaryScore) + " requires an indexed (FI_DB or PI_DB) search; a plain FASTA search has no predicted intensities.\n";
+      if (!strErr.empty())
+      {
+         g_cometStatus.SetStatus(CometResult_Failed, strErr);
+         logerr(strErr);
+         return false;
+      }
+   }
+
    // Select strategy and create writers, then run the pipeline.
    std::unique_ptr<ISearchStrategy> pStrategy;
    if (g_staticParams.iDbType == DbType::FI_DB)
@@ -3012,7 +3028,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       std::string eachStrReturnProtein;
       vector<Fragment> eachMatchedFragments;
 
-      if (iSize > 0 && pQuery->_pResults[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr
+      if (iSize > 0 && ResultIsReportable(pQuery->_pResults[iWhichResult])
          && pQuery->_pResults[iWhichResult].usiLenPeptide > 0)
       {
          Results* pOutput = pQuery->_pResults;

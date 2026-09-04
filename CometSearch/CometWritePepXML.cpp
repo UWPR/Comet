@@ -517,7 +517,7 @@ void CometWritePepXML::PrintResults(int iWhichQuery,
 
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
-      if (pOutput[iWhichResult].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (ResultIsReportable(pOutput[iWhichResult]))
          PrintPepXMLSearchHit(iWhichQuery, iWhichResult, iPrintTargetDecoy, pOutput, fpout, fpdb, queries);
    }
 

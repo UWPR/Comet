@@ -8458,6 +8458,9 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    double dIntensityScoreBg = 0.0;
    double dIntensityScore = CometIntensityStore::Score(uiVariant, uiBinnedIonMasses, iLenPeptide,
       iFoundVariableMod, pQuery, dIntensityScoreBg);
+   // The score that gates retention below (primary_score; PrimaryScoreOf() in core/Types.h);
+   // assigned once dXcorr is final.
+   double dPrimary = 0.0;
 
    bool bPeptideIndex = (g_staticParams.iDbType == DbType::PI_DB);
 
@@ -8565,6 +8568,10 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
 
    dXcorr = std::round(dXcorr * 1000.0) / 1000.0;  // round to 3 decimal points
 
+   dPrimary = PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg);
+   // minimum_xcorr applies to xcorr only; the intensity primaries have no floor.
+   bool bPassMinimum = (g_staticParams.options.iPrimaryScore != 0) || (dXcorr >= g_staticParams.options.dMinimumXcorr);
+
    Threading::LockMutex(pQuery->accessMutex);
 
    // Increment matched peptide counts.
@@ -8613,9 +8620,9 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       // tie-break logic downstream. Confirmed empirically: for a large sample of
       // 3-decimal-rounded xcorr values, "dXcorr >= (double)(float)dXcorr" is false
       // ~50% of the time.
-      if (dXcorr >= g_staticParams.options.dMinimumXcorr
+      if (bPassMinimum
          && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
-         && dXcorr + 0.00005 >= pQuery->dLowestXcorrScore)
+         && dPrimary + 0.00005 >= pQuery->dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
@@ -8633,8 +8640,8 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       else
          dLowestXcorrScore = pQuery->dLowestXcorrScore;
 
-      if (dXcorr >= g_staticParams.options.dMinimumXcorr
-         && dXcorr + 0.00005 >= dLowestXcorrScore
+      if (bPassMinimum
+         && dPrimary + 0.00005 >= dLowestXcorrScore
          && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
@@ -8802,11 +8809,11 @@ void CometSearch::StorePeptideI(Query* pQuery,
             // current lowest is already an empty slot; only another empty slot could
             // tie it and it doesn't matter which empty slot we keep pointing at
          }
-         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr > pQuery->_pDecoys[siA].fXcorr)
+         else if (PrimaryScore(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]) > PrimaryScore(pQuery->_pDecoys[siA]))
          {
             siLowestDecoyXcorrScoreIndex = siA;
          }
-         else if (pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr == pQuery->_pDecoys[siA].fXcorr)
+         else if (PrimaryScore(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]) == PrimaryScore(pQuery->_pDecoys[siA]))
          {
             int iCmp = strcmp(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].szPeptide, pQuery->_pDecoys[siA].szPeptide);
 
@@ -8844,13 +8851,13 @@ void CometSearch::StorePeptideI(Query* pQuery,
       // the double/float round-trip -- silently rejecting a tied candidate before it ever
       // reaches the sequence tie-break below.
       {
-         float fIncomingXcorr = (float)dXcorr;
+         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg);   // the primary score (variable name kept)
 
-         if (fIncomingXcorr < pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+         if (fIncomingXcorr < PrimaryScore(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]))
          {
             return;
          }
-         else if (fIncomingXcorr == pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr)
+         else if (fIncomingXcorr == PrimaryScore(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]))
          {
             char szIncomingPeptide[MAX_PEPTIDE_LEN];
             memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
@@ -8985,14 +8992,22 @@ void CometSearch::StorePeptideI(Query* pQuery,
       }
 
       // Get new lowest decoy score.
-      pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[0].fXcorr;
+      // An empty slot means anything may still enter: report "no floor" for it rather than
+      // its reset value (0.0 for the intensity primaries, which would wrongly block negative
+      // intensity_score_bg candidates).
+      pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[0].usiLenPeptide == 0 ? LowestPrimaryScoreInit() : PrimaryScore(pQuery->_pDecoys[0]);
       siLowestDecoyXcorrScoreIndex = 0;
 
       for (short siA = (short)(g_staticParams.options.iNumStored - 1); siA > 0; --siA)
       {
-         if (pQuery->_pDecoys[siA].fXcorr < pQuery->dLowestDecoyXcorrScore || pQuery->_pDecoys[siA].usiLenPeptide == 0)
+         if (pQuery->_pDecoys[siA].usiLenPeptide == 0)
          {
-            pQuery->dLowestDecoyXcorrScore = pQuery->_pDecoys[siA].fXcorr;
+            pQuery->dLowestDecoyXcorrScore = LowestPrimaryScoreInit();
+            siLowestDecoyXcorrScoreIndex = siA;
+         }
+         else if (PrimaryScore(pQuery->_pDecoys[siA]) < pQuery->dLowestDecoyXcorrScore)
+         {
+            pQuery->dLowestDecoyXcorrScore = PrimaryScore(pQuery->_pDecoys[siA]);
             siLowestDecoyXcorrScoreIndex = siA;
          }
       }
@@ -9020,11 +9035,11 @@ void CometSearch::StorePeptideI(Query* pQuery,
             // current lowest is already an empty slot; only another empty slot could
             // tie it and it doesn't matter which empty slot we keep pointing at
          }
-         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr > pQuery->_pResults[i].fXcorr)
+         else if (PrimaryScore(pQuery->_pResults[siLowestXcorrScoreIndex]) > PrimaryScore(pQuery->_pResults[i]))
          {
             siLowestXcorrScoreIndex = i;
          }
-         else if (pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr == pQuery->_pResults[i].fXcorr)
+         else if (PrimaryScore(pQuery->_pResults[siLowestXcorrScoreIndex]) == PrimaryScore(pQuery->_pResults[i]))
          {
             int iCmp = strcmp(pQuery->_pResults[siLowestXcorrScoreIndex].szPeptide, pQuery->_pResults[i].szPeptide);
 
@@ -9052,13 +9067,13 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
       // See the matching check in the decoy branch above for rationale.
       {
-         float fIncomingXcorr = (float)dXcorr;
+         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg);   // the primary score (variable name kept)
 
-         if (fIncomingXcorr < pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+         if (fIncomingXcorr < PrimaryScore(pQuery->_pResults[siLowestXcorrScoreIndex]))
          {
             return;
          }
-         else if (fIncomingXcorr == pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr)
+         else if (fIncomingXcorr == PrimaryScore(pQuery->_pResults[siLowestXcorrScoreIndex]))
          {
             char szIncomingPeptide[MAX_PEPTIDE_LEN];
             memcpy(szIncomingPeptide, szProteinSeq + iStartPos, iLenPeptide * sizeof(char));
@@ -9199,14 +9214,22 @@ void CometSearch::StorePeptideI(Query* pQuery,
       }
 
       // Get new lowest score.
-      pQuery->dLowestXcorrScore = pQuery->_pResults[0].fXcorr;
+      // An empty slot means anything may still enter: report "no floor" for it rather than
+      // its reset value (0.0 for the intensity primaries, which would wrongly block negative
+      // intensity_score_bg candidates).
+      pQuery->dLowestXcorrScore = pQuery->_pResults[0].usiLenPeptide == 0 ? LowestPrimaryScoreInit() : PrimaryScore(pQuery->_pResults[0]);
       siLowestXcorrScoreIndex = 0;
 
       for (int i = g_staticParams.options.iNumStored - 1; i > 0; --i)
       {
-         if (pQuery->_pResults[i].fXcorr < pQuery->dLowestXcorrScore || pQuery->_pResults[i].usiLenPeptide == 0)
+         if (pQuery->_pResults[i].usiLenPeptide == 0)
          {
-            pQuery->dLowestXcorrScore = pQuery->_pResults[i].fXcorr;
+            pQuery->dLowestXcorrScore = LowestPrimaryScoreInit();
+            siLowestXcorrScoreIndex = i;
+         }
+         else if (PrimaryScore(pQuery->_pResults[i]) < pQuery->dLowestXcorrScore)
+         {
+            pQuery->dLowestXcorrScore = PrimaryScore(pQuery->_pResults[i]);
             siLowestXcorrScoreIndex = i;
          }
       }

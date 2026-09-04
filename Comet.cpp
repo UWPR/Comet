@@ -1006,8 +1006,9 @@ carafe_mask_min_peaks = 6              # not read by comet.exe -- same as above,
 predicted_intensity_file =             # path to a Carafe predicted-intensity file (.carafe_inten,\n\
                                         # tools/carafe_cps_to_inten.py) for the intensity score;\n\
                                         # indexed (FI_DB/PI_DB) searches only; empty = disabled (default)\n\
-primary_score = 0                      # 0=xcorr (default), 1=intensity score ranks results (requires\n\
-                                        # predicted_intensity_file; not yet honored in this build)\n\
+primary_score = 0                      # 0=xcorr (default), 1=intensity_score, 2=intensity_score_bg as the\n\
+                                        # primary (retention/ranking) score; 1 and 2 require predicted_intensity_file,\n\
+                                        # an indexed (FI_DB/PI_DB) search and decoy_search=0; e-value stays xcorr-based\n\
 spectral_library_name = /some/path/speclib.file\n\
 spectral_library_ms_level = 1\n\n");
    }

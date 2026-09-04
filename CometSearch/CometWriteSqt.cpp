@@ -213,7 +213,7 @@ void CometWriteSqt::PrintResults(int iWhichQuery,
 
    for (i=0; i<iNumPrintLines; ++i)
    {
-      if (pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (ResultIsReportable(pOutput[i]))
          PrintSqtLine(iWhichQuery, i, pOutput, fpout, fpdb, iPrintTargetDecoy, queries);
    }
 }

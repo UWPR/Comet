@@ -42,12 +42,12 @@ bool CometWritePercolator::WritePercolator(FILE *fpout,
    // Print results.
    for (i=0; i<(int)queries.size(); ++i)
    {
-      if (queries.at(i)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (ResultIsReportable(queries.at(i)->_pResults[0]))
       {
          PrintResults(i, fpout, fpdb, 0, iLenDecoyPrefix, queries);
       }
 
-      if (g_staticParams.options.iDecoySearch == 2 && queries.at(i)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr)
+      if (g_staticParams.options.iDecoySearch == 2 && ResultIsReportable(queries.at(i)->_pDecoys[0]))
       {
          PrintResults(i, fpout, fpdb, 2, iLenDecoyPrefix, queries);
       }
@@ -118,7 +118,7 @@ bool CometWritePercolator::PrintResults(int iWhichQuery,
 
    for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
    {
-      if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
+      if (!ResultIsReportable(pOutput[iWhichResult]))
          continue;
 
       fprintf(fpout, "%s_%d_%d_%d\t",    // id

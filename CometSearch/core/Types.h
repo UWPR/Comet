@@ -165,6 +165,53 @@ struct ProteinEntryStruct
 // Results' member declarations). MSVC's STL and libstdc++ tolerate instantiating
 // vector<T>::clear() against an incomplete T in this situation, but libc++
 // (macOS) does not and fails to compile.
+// Primary score selection (docs/20260903_IntensityScore_design.md Section 2.5, Phase 2):
+// primary_score = 0 -> xcorr (default), 1 -> intensity_score (Carafe cosine), 2 ->
+// intensity_score_bg. The primary score gates candidate retention (XcorrScoreI's early
+// reject, StorePeptideI's eviction and Query::dLowestXcorrScore -- which, despite the
+// name, holds the lowest PRIMARY score of the stored set), orders results (SortFnXcorr),
+// and defines usiRankXcorr and deltaCn. The E-value stays xcorr-derived in every mode.
+inline float PrimaryScore(const Results& r)
+{
+   switch (g_staticParams.options.iPrimaryScore)
+   {
+      case 1:  return r.fIntensityScore;
+      case 2:  return r.fIntensityScoreBg;
+      default: return r.fXcorr;
+   }
+}
+
+inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg)
+{
+   switch (g_staticParams.options.iPrimaryScore)
+   {
+      case 1:  return dIntensityScore;
+      case 2:  return dIntensityScoreBg;
+      default: return dXcorr;
+   }
+}
+
+// A stored result worth reporting: a filled slot whose primary score passes the mode's
+// minimum. xcorr mode keeps its historical "fXcorr > minimum_xcorr" gate (which also
+// filters empty slots, since ResetOneResult() seeds fXcorr to that minimum); the intensity
+// modes have no minimum (intensity_score_bg may legitimately be negative), so emptiness
+// is decided by usiLenPeptide alone.
+inline bool ResultIsReportable(const Results& r)
+{
+   if (r.usiLenPeptide == 0)
+      return false;
+   if (g_staticParams.options.iPrimaryScore == 0)
+      return r.fXcorr > g_staticParams.options.dMinimumXcorr;
+   return true;
+}
+
+// Initial / empty-slot value for Query::dLowestXcorrScore: the xcorr mode's near-zero
+// cutoff, or "no floor" for the intensity modes.
+inline double LowestPrimaryScoreInit()
+{
+   return g_staticParams.options.iPrimaryScore == 0 ? XCORR_CUTOFF : -1.0e30;
+}
+
 inline void ResetOneResult(Results& r)
 {
    r.dPepMass = 0.0;
@@ -1081,8 +1128,8 @@ struct Query
       siLowestXcorrScoreIndex = 0;
       siLowestDecoyXcorrScoreIndex = 0;
 
-      dLowestXcorrScore = XCORR_CUTOFF;
-      dLowestDecoyXcorrScore = XCORR_CUTOFF;
+      dLowestXcorrScore = LowestPrimaryScoreInit();
+      dLowestDecoyXcorrScore = LowestPrimaryScoreInit();
 
       fLowestSpecLibScore = SPECLIB_CUTOFF;
 

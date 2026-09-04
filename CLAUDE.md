@@ -255,6 +255,12 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   selection (exact charge, merged charge-0, nearest-lower and lowest-higher fallbacks). Both
   build the fixture as FI_DB and write their `.carafe_inten` files via
   `tools/carafe_cps_to_inten.py`'s writer.
+- **T41** (`t41_primary_score_switch`) -- `primary_score` = 1 (intensity_score) / 2
+  (intensity_score_bg) as the retention/ranking score (`PrimaryScore()` in `core/Types.h`
+  governs the gate, eviction, sort, rank, deltaCn and writer gates; e-value stays xcorr):
+  all three modes yield the same PSM with identical xcorr/e-value/cosine columns on the
+  single-candidate fixture; a missing intensity file or an index built with internal decoys
+  is refused; an out-of-range value warns and falls back to xcorr.
 - **T38** (`t38_carafe_python_suites`) -- runs the six standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
   `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`,

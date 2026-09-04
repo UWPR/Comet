@@ -3145,6 +3145,118 @@ def test_t40_intensity_score_exact(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T41 -- primary_score switch (docs/20260903_IntensityScore_design.md Section 2.5, Phase 2):
+# primary_score = 1 (intensity_score) / 2 (intensity_score_bg) make the intensity score
+# govern retention, ranking, rank numbering and deltaCn while xcorr and the e-value stay
+# reported. On the single-candidate T25 fixture the same PSM must come out in all three
+# modes with identical xcorr/e-value/cosine columns (only the gating score changed), the
+# run must log the load, and the three misconfigurations (no intensity file, plain FASTA
+# search, internal decoys) must be refused loudly rather than silently falling back.
+# ---------------------------------------------------------------------------
+
+def _t41_search_params(comet_exe, idx, ms2, txt, fmt, inten_file, primary, extra=""):
+    params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T36_NEUTRAL_LOSS)
+    ins = f"primary_score = {primary}\n" + extra
+    if inten_file is not None:
+        ins += f"predicted_intensity_file = {fmt(inten_file)}\n"
+    params = params.replace("[COMET_ENZYME_INFO]", ins + "[COMET_ENZYME_INFO]")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(params)
+        pf_path = Path(pf.name)
+    txt.unlink(missing_ok=True)
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pf_path)}", fmt(ms2)])
+        header, rows = None, None
+        if txt.exists():
+            lines = txt.read_text().splitlines()
+            if len(lines) >= 2:
+                header = lines[1].split("\t")
+                rows = [l.split("\t") for l in lines[2:] if l.strip()]
+        return rc, out, header, rows
+    finally:
+        pf_path.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+
+@register("t41_primary_score_switch")
+def test_t41_primary_score_switch(comet_exe):
+    """T41: primary_score = 1 / 2 run end to end and produce the same PSM as xcorr mode on the
+    single-candidate fixture (identical xcorr, e-value and cosine columns; num/rank 1);
+    primary_score without an intensity file, with decoy_search, or an out-of-range value
+    are refused or reset as documented."""
+    failures = []
+    built = _t39_build_idx(comet_exe, failures)
+    if built is None:
+        return failures
+    idx, ms2, txt, fmt = built
+    good = DATA_DIR / "t41.carafe_inten"
+    scratch = [good]
+    try:
+        peaks = [(inten.peak_code(inten.CH_B, pos), q) for pos, q in zip(range(2, 9), (240, 200, 160, 120, 80, 40, 20))] \
+                + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
+        _t39_write_inten(good, idx, [((0, 0, -1, -1), peaks), ((0, -1, -1, -1), [])])
+        rows_by_mode = {}
+        for primary in (0, 1, 2):
+            rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, primary)
+            check(rc == 0, f"primary_score={primary}: search failed (rc={rc}):\n{out[-800:]}", failures)
+            check("Predicted-intensity file:" in out, f"primary_score={primary}: intensity file not loaded", failures)
+            if hdr and rows:
+                check(len(rows) == 1 and rows[0][hdr.index("num")] == "1" and rows[0][hdr.index("plain_peptide")] == "ACDSEFGHIK",
+                      f"primary_score={primary}: unexpected rows {rows}", failures)
+                rows_by_mode[primary] = (hdr, rows[0])
+            else:
+                check(False, f"primary_score={primary}: no output row", failures)
+        if len(rows_by_mode) == 3:
+            h0, r0 = rows_by_mode[0]
+            for primary in (1, 2):
+                h, r = rows_by_mode[primary]
+                for col in ("xcorr", "e-value", "intensity_score", "intensity_score_bg", "sp_score", "ions_matched", "modified_peptide"):
+                    check(r[h.index(col)] == r0[h0.index(col)],
+                          f"primary_score={primary}: column {col} {r[h.index(col)]} != xcorr-mode {r0[h0.index(col)]}", failures)
+            cos = float(r0[h0.index("intensity_score")]); bg = float(r0[h0.index("intensity_score_bg")])
+            check(cos > 0 and abs(cos - bg) < 1e-4, f"fixture sanity: cosine {cos}, bg {bg}", failures)
+
+        # --- refusals ---
+        rc, out, _h, _r = _t41_search_params(comet_exe, idx, ms2, txt, fmt, None, 1)
+        check(rc != 0 and "requires predicted_intensity_file" in out,
+              f"primary_score=1 without a file must be refused, got rc={rc}:\n{out[-500:]}", failures)
+        # decoy_search on an indexed search is taken from the .idx header, not the params
+        # file, so the internal-decoy refusal needs an index BUILT with decoy_search = 1
+        idx.unlink(missing_ok=True)
+        build_params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
+            comet_version="2026.02 rev. 0", database=fmt(idx.with_suffix("")), neutral_loss=T36_NEUTRAL_LOSS)
+        build_params = re.sub(r"(?m)^decoy_search = .*$", "decoy_search = 1", build_params)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(build_params)
+            bp = Path(pf.name)
+        try:
+            rc_b, out_b = _run_t19_step(comet_exe, ["-i", f"-P{fmt(bp)}"])
+        finally:
+            bp.unlink(missing_ok=True)
+        check(rc_b == 0 and idx.exists(), f"internal-decoy index build failed (rc={rc_b}):\n{out_b[-400:]}", failures)
+        if idx.exists():
+            decoy_inten = DATA_DIR / "t41_decoy.carafe_inten"
+            scratch.append(decoy_inten)
+            _t39_write_inten(decoy_inten, idx, [((0, 0, -1, -1), peaks), ((0, -1, -1, -1), [])])
+            rc, out, _h, _r = _t41_search_params(comet_exe, idx, ms2, txt, fmt, decoy_inten, 2, extra="decoy_search = 1\n")
+            check(rc != 0 and "cannot be combined with decoy_search" in out,
+                  f"primary_score=2 with an internal-decoy index must be refused, got rc={rc}:\n{out[-500:]}", failures)
+            # rebuild the plain index for the remaining sub-case
+            idx.unlink(missing_ok=True)
+            rebuilt = _t39_build_idx(comet_exe, failures)
+            check(rebuilt is not None, "rebuilding the plain fixture index failed", failures)
+        rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, 7)
+        check(rc == 0 and "primary_score must be 0" in out and rows is not None and len(rows) == 1,
+              f"out-of-range primary_score must warn and fall back to xcorr, got rc={rc}:\n{out[-500:]}", failures)
+    finally:
+        for f in scratch:
+            f.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # T37 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
 # ---------------------------------------------------------------------------
 #

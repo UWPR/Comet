@@ -123,8 +123,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
                                  const vector<Query*>& queries)  //fpdb is file pointer for either FASTA or .idx file
 {
 #ifdef CRUX
-   if ((iPrintTargetDecoy != 2 && queries.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
-         || (iPrintTargetDecoy == 2 && queries.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
+   if ((iPrintTargetDecoy != 2 && ResultIsReportable(queries.at(iWhichQuery)->_pResults[0]))
+         || (iPrintTargetDecoy == 2 && ResultIsReportable(queries.at(iWhichQuery)->_pDecoys[0])))
    {
       Query* pQuery = queries.at(iWhichQuery);
 
@@ -154,7 +154,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
       for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
       {
-         if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
+         if (!ResultIsReportable(pOutput[iWhichResult]))
             continue;
 
          fprintf(fpout, "%d\t", pQuery->_spectrumInfoInternal.iScanNumber);
@@ -232,8 +232,8 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
    }
 
 #else
-   if ((iPrintTargetDecoy != 2 && queries.at(iWhichQuery)->_pResults[0].fXcorr > g_staticParams.options.dMinimumXcorr)
-         || (iPrintTargetDecoy == 2 && queries.at(iWhichQuery)->_pDecoys[0].fXcorr > g_staticParams.options.dMinimumXcorr))
+   if ((iPrintTargetDecoy != 2 && ResultIsReportable(queries.at(iWhichQuery)->_pResults[0]))
+         || (iPrintTargetDecoy == 2 && ResultIsReportable(queries.at(iWhichQuery)->_pDecoys[0])))
    {
       Query* pQuery = queries.at(iWhichQuery);
 
@@ -268,7 +268,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
 
       for (int iWhichResult=0; iWhichResult<iNumPrintLines; ++iWhichResult)
       {
-         if (pOutput[iWhichResult].fXcorr <= g_staticParams.options.dMinimumXcorr)
+         if (!ResultIsReportable(pOutput[iWhichResult]))
             continue;
 
          iLineCount++;

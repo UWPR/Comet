@@ -304,7 +304,7 @@ void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput,
 
    int iLastEntry = 0;
    for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
-      if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO)
+      if (PrimaryScore(pOutput[iWhichResult]) > FLOAT_ZERO)
          iLastEntry = iWhichResult;
 
    for (int iWhichResult = 0; iWhichResult < iNumPrintLines; ++iWhichResult)
@@ -341,9 +341,9 @@ void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput,
             // calculate deltaCn only if sequences are less than 0.75 similar
             if (g_staticParams.options.bExplicitDeltaCn || ((double)(iMinLength - iDiffCt) / iMinLength) < 0.75)
             {
-               if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO && pOutput[j].fXcorr > FLOAT_ZERO)
-                  dDeltaCn = 1.0 - (pOutput[j].fXcorr / pOutput[iWhichResult].fXcorr);
-               else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[j].fXcorr < 0.0)
+               if (PrimaryScore(pOutput[iWhichResult]) > FLOAT_ZERO && PrimaryScore(pOutput[j]) > FLOAT_ZERO)
+                  dDeltaCn = 1.0 - (PrimaryScore(pOutput[j]) / PrimaryScore(pOutput[iWhichResult]));
+               else if (PrimaryScore(pOutput[iWhichResult]) > 0.0 && PrimaryScore(pOutput[j]) < 0.0)
                   dDeltaCn = 0.0;
                else
                   dDeltaCn = 0.0;
@@ -358,16 +358,16 @@ void CometPostAnalysis::CalculateDeltaCnsAndRank(Results* pOutput,
       if (bNoDeltaCnYet || iNumPrintLines == 1)
          dDeltaCn = 0.0;
 
-      if (iWhichResult > 0 && !isEqual(pOutput[iWhichResult].fXcorr, pOutput[iWhichResult - 1].fXcorr))
+      if (iWhichResult > 0 && !isEqual(PrimaryScore(pOutput[iWhichResult]), PrimaryScore(pOutput[iWhichResult - 1])))
          usiRankXcorr++;
 
       double dLastDeltaCn = 1.0;  // this is deltaCn between first and last peptide in output list
 
       if (g_staticParams.options.bExportAdditionalScoresPepXML)
       {
-         if (pOutput[iWhichResult].fXcorr > FLOAT_ZERO && pOutput[iLastEntry].fXcorr > FLOAT_ZERO)
-            dLastDeltaCn = 1.0 - (pOutput[iLastEntry].fXcorr / pOutput[iWhichResult].fXcorr);
-         else if (pOutput[iWhichResult].fXcorr > 0.0 && pOutput[iLastEntry].fXcorr < 0.0)
+         if (PrimaryScore(pOutput[iWhichResult]) > FLOAT_ZERO && PrimaryScore(pOutput[iLastEntry]) > FLOAT_ZERO)
+            dLastDeltaCn = 1.0 - (PrimaryScore(pOutput[iLastEntry]) / PrimaryScore(pOutput[iWhichResult]));
+         else if (PrimaryScore(pOutput[iWhichResult]) > 0.0 && PrimaryScore(pOutput[iLastEntry]) < 0.0)
             dLastDeltaCn = 0.0;
          else
             dLastDeltaCn = 0.0;
@@ -454,7 +454,7 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
 
          // increment j if fXcorr is same and peptide is the same; this implies multiple
          // different mod forms of this peptide
-         while (j<iSize && (pQuery->_pResults[j].fXcorr == pQuery->_pResults[ii].fXcorr)
+         while (j<iSize && (PrimaryScore(pQuery->_pResults[j]) == PrimaryScore(pQuery->_pResults[ii]))
                && !strcmp(pQuery->_pResults[j].szPeptide,  pQuery->_pResults[ii].szPeptide))
          {
             j++;
@@ -523,7 +523,7 @@ void CometPostAnalysis::AnalyzeSP(Query* pQuery)
          {
             int j=ii+1;
 
-            while (j<iSize && (pQuery->_pDecoys[j].fXcorr == pQuery->_pDecoys[ii].fXcorr)
+            while (j<iSize && (PrimaryScore(pQuery->_pDecoys[j]) == PrimaryScore(pQuery->_pDecoys[ii]))
                   && !strcmp(pQuery->_pDecoys[j].szPeptide, pQuery->_pDecoys[ii].szPeptide))
             {
                j++;
@@ -594,7 +594,7 @@ void CometPostAnalysis::CalculateSP(Results* pOutput,
          }
       }
 
-      if (pOutput[i].usiLenPeptide > 0 && pOutput[i].fXcorr > g_staticParams.options.dMinimumXcorr) // take care of possible edge case
+      if (ResultIsReportable(pOutput[i])) // take care of possible edge case
       {
          int  ii;
          int  ctCharge;
@@ -1097,7 +1097,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results& a,
    // isEqual (not raw >) must be checked first; see SortFnSp for why -- the
    // usiRankXcorr assignment groups consecutive entries via isEqual, so the
    // sort has to use the same tie definition or ranks become order-dependent.
-   if (isEqual(a.fXcorr, b.fXcorr))
+   if (isEqual(PrimaryScore(a), PrimaryScore(b)))
    {
       int iCmp = strcmp(a.szPeptide, b.szPeptide);
 
@@ -1116,7 +1116,7 @@ bool CometPostAnalysis::SortFnXcorr(const Results& a,
          }
       }
    }
-   else if (a.fXcorr > b.fXcorr)
+   else if (PrimaryScore(a) > PrimaryScore(b))
       return true;
 
    return false;

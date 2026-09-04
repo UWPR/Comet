@@ -509,7 +509,60 @@ charge classes with different score distributions (xcorr's all-charge count is b
 2+-only count for that reason -- per-charge FDR or Percolator would be the fair accounting),
 and the HCD-trained predictions are being applied to CID spectra.
 
-**Phase 2: primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
+**Phase 2 (2026-09-04): primary_score switch implemented and evaluated for raw cosine and
+cosine_bg.** `primary_score` = 0 xcorr / 1 intensity_score / 2 intensity_score_bg selects the
+score that gates retention (XcorrScoreI's early reject, StorePeptideI's eviction and the
+lowest-stored-score threshold -- `PrimaryScore()`, `PrimaryScoreOf()`, `ResultIsReportable()`,
+`LowestPrimaryScoreInit()` in core/Types.h), orders results (SortFnXcorr), and defines
+usiRankXcorr, deltaCn and the writers' report gates; empty slots read as "no floor" so a
+negative intensity_score_bg can be stored; the E-value stays xcorr-derived; minimum_xcorr
+applies to xcorr mode only. Modes 1/2 require predicted_intensity_file, an indexed search
+and decoy_search 0 (refused loudly; for an indexed search decoy_search comes from the .idx
+header). T41 covers the three modes on the fixture and the refusals; fast suite 60/60.
+Combined scoring as a primary is deferred (user decision).
+
+Results, rank-1 PSMs at 1% FDR; rows = which score chose each spectrum's peptide (the run's
+primary), columns = which column ranked spectra for the FDR:
+
+| Run | ranked by xcorr | by cosine | by E | by cosine_bg |
+|---|---|---|---|---|
+| **HeLa OxMet, high-res** (24,460 spectra) | | | | |
+| primary = xcorr | 12,992 | 13,973 | 13,691 | 13,954 |
+| primary = cosine | 13,822 | **13,100** | 13,934 | 13,067 |
+| primary = cosine_bg | 13,790 | 13,067 | 13,917 | **13,059** |
+| **MM2_R1 phospho, high-res** (34,445) | | | | |
+| primary = xcorr | 14,831 | 17,927 | 16,611 | 17,937 |
+| primary = cosine | 17,508 | **16,562** | 17,373 | 16,487 |
+| primary = cosine_bg | 17,514 | 16,562 | 17,421 | **16,488** |
+| **ITMS2 HeLa OxMet, low-res** (127,665) | | | | |
+| primary = xcorr | 5,442 | 15,116 | 15,261 | 6,206 |
+| primary = cosine | 21,138 | **3,976** | 23,515 | 755 |
+| primary = cosine_bg | 15,829 | 5,552 | 20,685 | **1,126** |
+
+The bold diagonal is "the score as a true primary" (it chose the peptide and ranks the
+spectra). Cosine as primary: HeLa 13,100 (+0.8% over xcorr as primary, but 6% below
+using the cosine to rescore xcorr's picks), MM2_R1 16,562 (+11.7% / 7.6% below rescoring),
+ITMS2 3,976 (-27% / far below rescoring's 15,116). cosine_bg as primary is indistinguishable
+from cosine at high resolution and worse at low. "E-value as primary" is not a separate
+search-time option -- within a spectrum the E-value is a monotone transform of xcorr, so it
+picks the same peptide as xcorr in 100% of spectra -- but ranking xcorr's picks by E is the
+best true primary among the existing scores on every dataset: HeLa 13,677, MM2_R1 16,616,
+ITMS2 15,273. The cosine as primary is 4% below that on HeLa, effectively tied on MM2_R1
+(16,562 vs 16,616) and far below at low resolution. The peptide choice differs from xcorr's
+in 17% (HeLa), 29% (MM2_R1) and 74% (ITMS2) of spectra, with symmetric target/decoy label
+flips -- the primary-cosine losses come from the inflated decoy tail when the max over all
+candidates is taken, as the top-5 analysis predicted, and they grow with candidate count
+(1 Da bins).
+
+Unexpected and useful: the cosine-primary run *rescored by the E-value* is the best single-
+column result on the low-res data (23,515; xcorr-mode E 15,261; the offline xcorr + 3*cos
+rerank gave 24,863), and second-best at high resolution (HeLa 13,934 vs 13,973; MM2_R1
+17,373 vs 17,927). Letting the cosine choose the peptide and xcorr/E rank the spectra is an
+implicit two-factor score -- a decoy that wins on cosine rarely also has a high xcorr -- and
+it is available today without any combined-score code. It is the natural bridge to the
+deferred combined-score work.
+
+**Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR
 for `primary_score=1` vs 0 on both datasets, target to beat: masking-only +3.7-6.2%.
