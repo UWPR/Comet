@@ -108,6 +108,7 @@ struct CometScores
     int totalIons;
     string sAScoreProSiteScores;  // AScore site scores as string
     double dIntensityScore;       // Carafe predicted-intensity cosine score, 0.0 when disabled
+    double dIntensityScoreBg;     // its background-subtracted variant (may be negative), 0.0 when disabled
 
     CometScores() :
         xCorr(0),
@@ -119,7 +120,8 @@ struct CometScores
         matchedIons(0),
         totalIons(0),
         sAScoreProSiteScores(""),
-        dIntensityScore(0)
+        dIntensityScore(0),
+        dIntensityScoreBg(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores, double dIntensityScore = 0.0) :
@@ -132,7 +134,8 @@ struct CometScores
         matchedIons(matchedIons),
         totalIons(totalIons),
         sAScoreProSiteScores(sAScoreProSiteScores),
-        dIntensityScore(dIntensityScore)
+        dIntensityScore(dIntensityScore),
+        dIntensityScoreBg(0)
     { }
 
     CometScores(const CometScores& a) :
@@ -145,7 +148,8 @@ struct CometScores
         matchedIons(a.matchedIons),
         totalIons(a.totalIons),
         sAScoreProSiteScores(a.sAScoreProSiteScores),
-        dIntensityScore(a.dIntensityScore)
+        dIntensityScore(a.dIntensityScore),
+        dIntensityScoreBg(a.dIntensityScoreBg)
     { }
 
     CometScores& operator=(const CometScores& a)
@@ -160,6 +164,7 @@ struct CometScores
         totalIons = a.totalIons;
         sAScoreProSiteScores = a.sAScoreProSiteScores;
         dIntensityScore = a.dIntensityScore;
+        dIntensityScoreBg = a.dIntensityScoreBg;
         return *this;
     }
 };

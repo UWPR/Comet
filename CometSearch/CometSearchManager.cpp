@@ -3179,6 +3179,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
          score.dIntensityScore = pOutput[iWhichResult].fIntensityScore;
+         score.dIntensityScoreBg = pOutput[iWhichResult].fIntensityScoreBg;
 
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
@@ -3364,6 +3365,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dCn = 0;
          score.sAScoreProSiteScores.clear();
          score.dIntensityScore = 0.0;
+         score.dIntensityScoreBg = 0.0;
       }
 
       if (false)  // set to true to enable debug mass check

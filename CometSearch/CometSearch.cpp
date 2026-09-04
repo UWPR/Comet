@@ -8455,8 +8455,9 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    // Carafe-predicted fragment intensities and the observed spectrum over the same ladder
    // uiBinnedIonMasses holds. 0.0 when no predicted_intensity_file is loaded. Computed for
    // every scored candidate alongside xcorr so both scores exist on every stored result.
+   double dIntensityScoreBg = 0.0;
    double dIntensityScore = CometIntensityStore::Score(uiVariant, uiBinnedIonMasses, iLenPeptide,
-      iFoundVariableMod, pQuery);
+      iFoundVariableMod, pQuery, dIntensityScoreBg);
 
    bool bPeptideIndex = (g_staticParams.iDbType == DbType::PI_DB);
 
@@ -8619,7 +8620,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, dIntensityScore, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8639,7 +8640,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, dIntensityScore, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8758,6 +8759,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
                                 double dCalcPepMass,
                                 double dXcorr,
                                 double dIntensityScore,
+                                double dIntensityScoreBg,
                                 bool bDecoyPep,
                                 int* piVarModSites,
                                 struct sDBEntry* dbe)
@@ -8904,6 +8906,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorr = (float)dXcorr;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fIntensityScore = (float)dIntensityScore;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fIntensityScoreBg = (float)dIntensityScoreBg;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)
@@ -9111,6 +9114,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorr = (float)dXcorr;
       pQuery->_pResults[siLowestXcorrScoreIndex].fIntensityScore = (float)dIntensityScore;
+      pQuery->_pResults[siLowestXcorrScoreIndex].fIntensityScoreBg = (float)dIntensityScoreBg;
       pQuery->_pResults[siLowestXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)

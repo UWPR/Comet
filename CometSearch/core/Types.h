@@ -49,6 +49,9 @@ struct Results
    float  fXcorr;
    float  fIntensityScore;                    // Carafe predicted-intensity cosine score (CometIntensityStore);
                                               // 0.0 when no intensity file is loaded or the variant has no record
+   float  fIntensityScoreBg;                  // the same cosine minus the mean over the +/- xcorr_processing_offset
+                                              // bin shifts of the normalized spectrum (XCorr-style background
+                                              // subtraction, docs/20260903_IntensityScore_design.md Phase 1e); may be < 0
    float  fDeltaCn;
    float  fLastDeltaCn;
    float  fAScorePro;                         // AScorePro score
@@ -169,6 +172,7 @@ inline void ResetOneResult(Results& r)
    r.fScoreSp = 0.0;
    r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
    r.fIntensityScore = 0.0;
+   r.fIntensityScoreBg = 0.0;
    r.fAScorePro = 0.0;
    r.usiLenPeptide = 0;
    r.usiRankSp = 0;

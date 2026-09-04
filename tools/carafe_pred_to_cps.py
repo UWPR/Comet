@@ -22,6 +22,11 @@ nAA-sort reordering; rows are then quantized and appended to the store in row_in
 Chunks are processed by a multiprocessing pool (--workers) but appended strictly in chunk
 order (imap preserves it), so the output is deterministic regardless of worker count.
 
+--channels 8 (the default since 2026-09-03) writes a v2 store carrying all eight predicted
+channels, including the doubly-charged b_z2/y_z2 (and modloss z2) intensities the intensity
+score consumes (docs/20260903_IntensityScore_design.md); --channels 4 writes the original
+v1 z1-only layout at half the size. Mask builds read either.
+
 Writes <out>.building alongside the store while running; the final .cps only appears on
 success (CpsWriter.finalize() renames nothing -- it writes the real file only at the end --
 so a crashed run leaves a .payload.tmp and no misleading half-store).
@@ -102,8 +107,9 @@ def process_chunk(job):
     result buffer accumulated dozens of those -- ~44GB parent RSS within minutes on the
     first full-scale attempt. Packed, a chunk is ~7MB of bytes and the parent's only work
     is a write, so no backlog can form."""
-    chunk_base, chunk_tsv, ms2_df_path, ms2_pred_path, quant = job
+    chunk_base, chunk_tsv, ms2_df_path, ms2_pred_path, quant, n_channels = job
     qchar, qmax = carafe_cps.QUANT_PARAMS[quant]
+    keep = tuple(range(8)) if n_channels == carafe_cps.CHANNELS_V2 else carafe_cps.V1_FROM_V2
 
     out_rows = fi_mask.read_out_tsv(chunk_tsv)           # row_index -> content tuple
     if ms2_df_path.endswith(".parquet"):
@@ -128,7 +134,8 @@ def process_chunk(job):
             # count it; the caller fails loudly if any chunk has misses.
             n_missing += 1
             nAA = len(content[0])
-            packed = carafe_cps.pack_row(nAA, 0.0, 0.0, [(0, 0, 0, 0)] * (nAA - 1), qchar)
+            packed = carafe_cps.pack_row(nAA, 0.0, 0.0, [(0,) * n_channels] * (nAA - 1), qchar,
+                                         n_channels)
             blob_parts.append(packed)
             row_sizes.append(len(packed))
             n_rows += 1
@@ -140,15 +147,11 @@ def process_chunk(job):
         quantized = []
         if base8 > 0.0:
             scale = qmax / base8
-            for b_z1, _b2, y_z1, _y2, b_ml, _bml2, y_ml, _yml2 in rows8:
-                quantized.append((
-                    min(qmax, int(b_z1 * scale + 0.5)),
-                    min(qmax, int(y_z1 * scale + 0.5)),
-                    min(qmax, int(b_ml * scale + 0.5)),
-                    min(qmax, int(y_ml * scale + 0.5))))
+            for row in rows8:
+                quantized.append(tuple(min(qmax, int(row[i] * scale + 0.5)) for i in keep))
         else:
-            quantized = [(0, 0, 0, 0)] * (nAA - 1)
-        packed = carafe_cps.pack_row(nAA, base8, base4, quantized, qchar)
+            quantized = [(0,) * n_channels] * (nAA - 1)
+        packed = carafe_cps.pack_row(nAA, base8, base4, quantized, qchar, n_channels)
         blob_parts.append(packed)
         row_sizes.append(len(packed))
         n_rows += 1
@@ -164,6 +167,10 @@ def main(argv=None):
     ap.add_argument("--source-out-tsv", required=True)
     ap.add_argument("--out", required=True, help="Output .cps path")
     ap.add_argument("--quant", choices=sorted(carafe_cps.QUANT_PARAMS), default="u8")
+    ap.add_argument("--channels", type=int, choices=(carafe_cps.CHANNELS_V1, carafe_cps.CHANNELS_V2),
+                     default=carafe_cps.CHANNELS_V2,
+                     help="8 (default): v2 store with all predicted channels incl. z2 "
+                          "fragments; 4: the original z1-only v1 layout")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--limit-chunks", type=int, default=0,
                      help="Process only the first N chunks (0 = all). A limited run FAILS "
@@ -195,7 +202,7 @@ def main(argv=None):
             print(f"missing prediction files (parquet or tsv) for {base} under {pdir}",
                   file=sys.stderr)
             sys.exit(1)
-        jobs.append((base, str(ct), str(ms2_df), str(ms2_pred), args.quant))
+        jobs.append((base, str(ct), str(ms2_df), str(ms2_pred), args.quant, args.channels))
 
     # Source provenance: head CRC ties the store to the specific out_tsv; the row COUNT in
     # the header is the count actually written (== the source's data-row count when run over
@@ -220,7 +227,7 @@ def main(argv=None):
                 mode = "phospho" if has_modloss else "general"
                 writer = carafe_cps.CpsWriter(
                     args.out, source_rows=0, source_head_crc=src_crc,
-                    quant=args.quant, mode=mode)
+                    quant=args.quant, mode=mode, channels=args.channels)
             writer.append_packed(blob, row_sizes)
             written += n_rows
             n_chunks_done += 1
@@ -246,7 +253,7 @@ def main(argv=None):
     writer.source_rows = written   # finalize() checks written == header row count
     writer.finalize()
     print(f"Done: {args.out!r}, {written} rows, quant={args.quant}, mode={mode}, "
-          f"{time.time() - t0:.0f}s total", file=sys.stderr)
+          f"channels={args.channels}, {time.time() - t0:.0f}s total", file=sys.stderr)
 
 
 if __name__ == "__main__":

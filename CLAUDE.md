@@ -251,8 +251,10 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   `.idx` fingerprint, raw-peptide count, VarModConfig, or channel layout mismatches is
   rejected loudly. T40: the reported score equals a cosine recomputed from first principles
   on the T25 fixture (b2-b8 @100, y2-y8 @110, NL-shifted b3-b8 @80 / y6-y8 @90) for a
-  hand-written record, with and without modloss channels. Both build the fixture as FI_DB
-  and write their `.carafe_inten` files via `tools/carafe_cps_to_inten.py`'s writer.
+  hand-written record, with and without modloss channels, plus per-precursor-charge record
+  selection (exact charge, merged charge-0, nearest-lower and lowest-higher fallbacks). Both
+  build the fixture as FI_DB and write their `.carafe_inten` files via
+  `tools/carafe_cps_to_inten.py`'s writer.
 - **T38** (`t38_carafe_python_suites`) -- runs the six standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
   `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`,
@@ -295,8 +297,10 @@ Stages (each resumable via `workdir/.prerun/<stage>.done` markers): per flavor,
 `carafe.py predict` (`run_carafe_chunked.py` -- the expensive Carafe `ai_pred.py`
 inference: hours; chunk-resumable; `--parquet` for ~8x smaller transient output,
 verified byte-identical stores) and `carafe.py cps` (`carafe_pred_to_cps.py` -- compact
-prediction store, `.cps`, ~31GB vs ~390GB raw at full phospho scale, u16-quantized, the
-durable artifact); per flavor, `carafe.py mask` (`carafe_cps_to_fi_mask.py` -- mask
+prediction store, `.cps`, u16-quantized, the durable artifact; since 2026-09-03 a v2
+store with all 8 channels incl. z2 fragments by default, `--channels 4` for the original
+z1-only v1 layout -- ~31GB v1 / ~62GB v2 vs ~390GB raw at full phospho scale; readers
+accept both); per flavor, `carafe.py mask` (`carafe_cps_to_fi_mask.py` -- mask
 build/re-sweep from the store, ~24 min at full scale, `--ignore-modloss` auto-detected
 from the flavor's VarModConfig). `carafe.py mask-tsv` (`carafe_ms2_to_fi_mask.py`)
 remains the TSV-direct mask builder (tests, small runs); `carafe.py mask-chunks` +
@@ -304,7 +308,11 @@ remains the TSV-direct mask builder (tests, small runs); `carafe.py mask-chunks`
 the legacy chunked-TSV mask path, superseded by the store but kept for TSV-only
 situations. `carafe.py inten` (`carafe_cps_to_inten.py`; `prerun --inten` runs it as stage
 s7 per flavor) builds `<flavor>.carafe_inten`, the `.idx`-bound sparse predicted-intensity
-file the intensity score consumes (`docs/20260903_IntensityScore_design.md` Section 2.2).
+file the intensity score consumes (`docs/20260903_IntensityScore_design.md` Section 2.2);
+`--per-charge` writes one record per predicted precursor charge (the scorer selects by the
+spectrum's charge), `--only-charges` restricts the store rows used, and `carafe.py
+inten-merge` (`carafe_inten_merge.py`) combines per-charge files from separate prediction
+runs against the same `.idx` (e.g. an existing 2+ run plus a later 3+-only run).
 
 Two hard-won invariants (do not rediscover these at scale): the variant map's enumeration
 order is NOT key order (any consumer must sort/merge -- `carafe_cps_to_fi_mask.py` does);

@@ -16,6 +16,14 @@ tools/carafe_ms2_to_fi_mask.py's mask computation consumes and nothing else:
     quantized relative to the all-8 base_peak (u8 or u16 -- header-declared; every stored
     value is <= that base peak by construction, so quantization never saturates)
 
+  v2 (2026-09-03, docs/20260903_IntensityScore_design.md z2 extension): the same layout with
+  ALL 8 channels per row, in carafe_ms2_to_fi_mask.CHANNELS order (b_z1, b_z2, y_z1, y_z2,
+  b_modloss_z1, b_modloss_z2, y_modloss_z1, y_modloss_z2) -- the intensity score needs the
+  doubly-charged fragment predictions the mask never did. Magic line "Comet Carafe CPS v2",
+  header key "Channels: 8". CpsReader reads both versions: read_row() keeps returning the 4
+  z1 channels (so every mask consumer is untouched), read_row8() returns all 8 (zero-filled
+  z2 columns for a v1 store).
+
 Keyed by out_tsv row_index (0-based data-row position), the same key idx_to_carafe.py's
 variant-map sidecar uses -- so the store is .idx-flavor-neutral: one store built from a
 phospho-mode (withNL) Carafe run serves BOTH the withNL mask build and the
@@ -26,7 +34,7 @@ join carafe_ms2_to_fi_mask.py does), not at every mask build.
 
 File layout (little-endian throughout):
 
-  magic line        b"Comet Carafe CPS v1\\n"
+  magic line        b"Comet Carafe CPS v1\\n"   (4 channels)  |  b"Comet Carafe CPS v2\\n" (8)
   header lines      "Key: Value\\n" ASCII, terminated by one blank line. Required keys:
                       SourceOutTsvRows      (data-row count of the source out_tsv)
                       SourceOutTsvHeadCRC32 (zlib.crc32 of the source out_tsv's first
@@ -35,6 +43,7 @@ File layout (little-endian throughout):
                       Quant                 (u8 | u16)
                       Mode                  (phospho | general -- whether modloss channels
                                              carried real data in the source prediction)
+                      Channels              (v2 only: 8; a v1 store implicitly has 4)
   u64               row_count (== SourceOutTsvRows; both present so a truncated header or a
                     header/payload mismatch is loudly detectable)
   directory         row_count x u64 -- absolute file offset of each row's payload
@@ -64,7 +73,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import carafe_ms2_to_fi_mask as fi_mask  # noqa: E402
 
-CPS_MAGIC = b"Comet Carafe CPS v1\n"
+CPS_MAGIC = b"Comet Carafe CPS v1\n"       # 4 channels per position (b_z1, y_z1, b_ml_z1, y_ml_z1)
+CPS_MAGIC_V2 = b"Comet Carafe CPS v2\n"    # 8 channels per position (fi_mask.CHANNELS order)
+CHANNELS_V1 = 4
+CHANNELS_V2 = 8
+# indices of the 4 v1 channels within an 8-channel (fi_mask.CHANNELS-order) row
+V1_FROM_V2 = (0, 2, 4, 6)
 QUANT_PARAMS = {"u8": ("B", 255), "u16": ("H", 65535)}
 HEAD_CRC_BYTES = 65536
 
@@ -95,13 +109,17 @@ def quantize_row_values(values, base8, qmax):
     return out
 
 
-def pack_row(nAA, base8, base4, quantized_rows, qchar):
+def pack_row(nAA, base8, base4, quantized_rows, qchar, n_channels=CHANNELS_V1):
     """Serialize one row's payload -- the single definition both CpsWriter.append_row() and
     any out-of-process packer (carafe_pred_to_cps.py's workers) share, so worker-packed
-    bytes are definitionally identical to parent-packed ones."""
+    bytes are definitionally identical to parent-packed ones. Every row must have exactly
+    n_channels values (4 for a v1 store, 8 for v2)."""
     n_pos = nAA - 1
     if len(quantized_rows) != n_pos:
         raise ValueError(f"nAA={nAA} implies {n_pos} rows, got {len(quantized_rows)}")
+    for row in quantized_rows:
+        if len(row) != n_channels:
+            raise ValueError(f"expected {n_channels} channels per row, got {len(row)}")
     flat = [q for row in quantized_rows for q in row]
     return struct.pack("<Bff", nAA, base8, base4) + struct.pack(f"<{len(flat)}{qchar}", *flat)
 
@@ -113,9 +131,12 @@ class CpsWriter:
     appended in row_index order; append_row() returns the row's payload size for callers that
     track progress."""
 
-    def __init__(self, path, source_rows, source_head_crc, quant, mode):
+    def __init__(self, path, source_rows, source_head_crc, quant, mode, channels=CHANNELS_V1):
         if quant not in QUANT_PARAMS:
             raise ValueError(f"quant must be one of {sorted(QUANT_PARAMS)}, got {quant!r}")
+        if channels not in (CHANNELS_V1, CHANNELS_V2):
+            raise ValueError(f"channels must be {CHANNELS_V1} (v1) or {CHANNELS_V2} (v2), got {channels}")
+        self.channels = channels
         self.path = str(path)
         self.tmp_path = self.path + ".payload.tmp"
         self.source_rows = int(source_rows)
@@ -130,8 +151,9 @@ class CpsWriter:
         self._tmp = open(self.tmp_path, "wb")
 
     def append_row(self, nAA, base8, base4, quantized_rows):
-        """quantized_rows: (nAA-1) sequences of 4 ints (b_z1, y_z1, b_ml_z1, y_ml_z1)."""
-        blob = pack_row(nAA, base8, base4, quantized_rows, self._qchar)
+        """quantized_rows: (nAA-1) sequences of self.channels ints -- 4 = (b_z1, y_z1,
+        b_ml_z1, y_ml_z1); 8 = fi_mask.CHANNELS order."""
+        blob = pack_row(nAA, base8, base4, quantized_rows, self._qchar, self.channels)
         self._offsets.append(self._payload_pos)
         self._tmp.write(blob)
         self._payload_pos += len(blob)
@@ -162,11 +184,12 @@ class CpsWriter:
                 f"wrote {n} rows but header says SourceOutTsvRows={self.source_rows} -- "
                 f"refusing to finalize a store that silently disagrees with its own header")
         header = (
-            CPS_MAGIC
+            (CPS_MAGIC_V2 if self.channels == CHANNELS_V2 else CPS_MAGIC)
             + f"SourceOutTsvRows: {self.source_rows}\n".encode("ascii")
             + f"SourceOutTsvHeadCRC32: {self.source_head_crc}\n".encode("ascii")
             + f"Quant: {self.quant}\n".encode("ascii")
             + f"Mode: {self.mode}\n".encode("ascii")
+            + (f"Channels: {self.channels}\n".encode("ascii") if self.channels == CHANNELS_V2 else b"")
             + b"\n"
         )
         payload_base = len(header) + 8 + 8 * n
@@ -191,8 +214,9 @@ class CpsReader:
         self.path = str(path)
         self._f = open(self.path, "rb")
         magic = self._f.readline()
-        if magic != CPS_MAGIC:
-            raise ValueError(f"{path!r}: not a {CPS_MAGIC!r} store (got {magic!r})")
+        if magic not in (CPS_MAGIC, CPS_MAGIC_V2):
+            raise ValueError(f"{path!r}: not a {CPS_MAGIC!r}/{CPS_MAGIC_V2!r} store (got {magic!r})")
+        self.version = 2 if magic == CPS_MAGIC_V2 else 1
         self.header = {}
         while True:
             line = self._f.readline()
@@ -210,6 +234,10 @@ class CpsReader:
             raise ValueError(f"{path!r}: unknown Quant {self.quant!r}")
         self._qchar, self.qmax = QUANT_PARAMS[self.quant]
         self._qsize = struct.calcsize(self._qchar)
+        self.channels = int(self.header.get("Channels", CHANNELS_V1))
+        if (self.version == 1 and self.channels != CHANNELS_V1) or \
+           (self.version == 2 and self.channels != CHANNELS_V2):
+            raise ValueError(f"{path!r}: v{self.version} store declares Channels={self.channels}")
         self._offsets = array.array("Q")
         self._offsets.frombytes(self._f.read(8 * self.row_count))
         if sys.byteorder != "little":
@@ -228,23 +256,41 @@ class CpsReader:
                 f"{self.path!r} row_count {self.row_count} != caller's out_tsv data-row "
                 f"count {n_data_rows}")
 
-    def read_row(self, row_index):
-        """Returns (nAA, base8, base4, rows4) where rows4 is a list of (nAA-1) 4-tuples of
-        DEQUANTIZED floats (b_z1, y_z1, b_modloss_z1, y_modloss_z1)."""
+    def _read_rows(self, row_index):
+        """Returns (nAA, base8, base4, rows) with rows as stored: self.channels floats each."""
         if not (0 <= row_index < self.row_count):
             raise IndexError(row_index)
         self._f.seek(self._offsets[row_index])
         nAA, base8, base4 = struct.unpack("<Bff", self._f.read(9))
         n_pos = nAA - 1
-        flat = struct.unpack(f"<{n_pos * 4}{self._qchar}",
-                              self._f.read(n_pos * 4 * self._qsize))
+        nch = self.channels
+        flat = struct.unpack(f"<{n_pos * nch}{self._qchar}",
+                              self._f.read(n_pos * nch * self._qsize))
         if base8 > 0.0:
             inv = base8 / self.qmax
             vals = [q * inv for q in flat]
         else:
             vals = [0.0] * len(flat)
-        rows4 = [tuple(vals[i * 4:(i + 1) * 4]) for i in range(n_pos)]
-        return nAA, base8, base4, rows4
+        return nAA, base8, base4, [tuple(vals[i * nch:(i + 1) * nch]) for i in range(n_pos)]
+
+    def read_row(self, row_index):
+        """Returns (nAA, base8, base4, rows4) where rows4 is a list of (nAA-1) 4-tuples of
+        DEQUANTIZED floats (b_z1, y_z1, b_modloss_z1, y_modloss_z1) -- the v1 view, served
+        identically from a v1 or a v2 store (mask consumers never see the difference)."""
+        nAA, base8, base4, rows = self._read_rows(row_index)
+        if self.channels == CHANNELS_V2:
+            rows = [tuple(r[i] for i in V1_FROM_V2) for r in rows]
+        return nAA, base8, base4, rows
+
+    def read_row8(self, row_index):
+        """Returns (nAA, base8, base4, rows8): (nAA-1) 8-tuples in fi_mask.CHANNELS order
+        (b_z1, b_z2, y_z1, y_z2, b_modloss_z1, b_modloss_z2, y_modloss_z1, y_modloss_z2). For
+        a v1 store the z2 columns are 0.0 (never predicted there); check .channels == 8 to
+        know whether z2 carries data."""
+        nAA, base8, base4, rows = self._read_rows(row_index)
+        if self.channels == CHANNELS_V1:
+            rows = [(b, 0.0, y, 0.0, bml, 0.0, yml, 0.0) for b, y, bml, yml in rows]
+        return nAA, base8, base4, rows
 
     def close(self):
         self._f.close()

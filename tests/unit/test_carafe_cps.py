@@ -73,6 +73,38 @@ def test_roundtrip_u8_and_u16(failures):
             r.close()
 
 
+def test_v2_store_read_row_compat(failures):
+    """A v2 (8-channel) store must serve read_row() exactly like a v1 store holding the same
+    z1 channels, so the mask path is unaffected; read_row8() on a v1 store zero-fills z2."""
+    with tempfile.TemporaryDirectory() as tmp:
+        p1 = os.path.join(tmp, "v1.cps")
+        p2 = os.path.join(tmp, "v2.cps")
+        rows4 = [(100, 50, 25, 10), (7, 8, 9, 11)]
+        rows8 = [(100, 60, 50, 40, 25, 30, 10, 20), (7, 1, 8, 2, 9, 3, 11, 4)]
+        _write_store(p1, [(3, 2.0, 1.0, rows4)], quant="u8")
+        w = cps.CpsWriter(p2, source_rows=0, source_head_crc="deadbeef", quant="u8", mode="phospho",
+                          channels=8)
+        w.append_row(3, 2.0, 1.0, rows8)
+        w.source_rows = 1
+        w.finalize()
+        r1, r2 = cps.CpsReader(p1), cps.CpsReader(p2)
+        check((r1.version, r1.channels, r2.version, r2.channels) == (1, 4, 2, 8),
+              "version/channels detection", failures)
+        check(r1.read_row(0) == r2.read_row(0), "read_row identical across v1/v2", failures)
+        _, _, _, v1r8 = r1.read_row8(0)
+        _, _, _, v2r8 = r2.read_row8(0)
+        check(all(v1r8[i][j] == 0.0 for i in range(2) for j in (1, 3, 5, 7)),
+              "v1 read_row8 zero-fills z2 columns", failures)
+        check(abs(v2r8[0][1] - 60 / 255 * 2.0) < 1e-9 and abs(v2r8[1][7] - 4 / 255 * 2.0) < 1e-9,
+              f"v2 read_row8 z2 values: {v2r8}", failures)
+        r1.close(); r2.close()
+        try:
+            cps.pack_row(3, 1.0, 1.0, rows4, "B", 8)
+            check(False, "pack_row must reject 4-value rows for an 8-channel store", failures)
+        except ValueError:
+            pass
+
+
 def test_append_packed_identical_to_append_row(failures):
     """append_packed() (the worker-packed bulk path -- the fix for the 44GB parent-RSS
     Pool.imap buffering incident) must produce a byte-identical store to per-row
@@ -380,6 +412,7 @@ def test_worker_sorts_and_merge_restores_global_order(failures):
 
 TESTS = [
     test_roundtrip_u8_and_u16,
+    test_v2_store_read_row_compat,
     test_append_packed_identical_to_append_row,
     test_row_count_mismatch_refused,
     test_truncated_store_detected,

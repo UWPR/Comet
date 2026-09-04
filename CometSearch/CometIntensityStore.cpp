@@ -21,14 +21,18 @@
 #include <cstring>
 #include <map>
 
-// tools/carafe_cps_to_inten.py's INTEN_FILE_MAGIC
-static const char* INTEN_FILE_MAGIC = "Comet Carafe intensity v1\n";
+// tools/carafe_cps_to_inten.py's INTEN_FILE_MAGIC / CHANNEL_NAMES
+static const char* INTEN_FILE_MAGIC = "Comet Carafe intensity v3\n";
+static const char* CHANNEL_NAMES[8] = { "b_z1", "y_z1", "b_modloss_z1", "y_modloss_z1",
+                                        "b_z2", "y_z2", "b_modloss_z2", "y_modloss_z2" };
 
 bool CometIntensityStore::s_bEnabled = false;
 bool CometIntensityStore::s_bHasModloss = false;
+bool CometIntensityStore::s_bChannelPresent[CometIntensityStore::NUM_CH] = { false };
 int  CometIntensityStore::s_iNlSlot = -1;
 std::vector<unsigned char> CometIntensityStore::s_blob;
 std::vector<uint64_t> CometIntensityStore::s_offsets;
+bool CometIntensityStore::s_bPerCharge = false;
 std::atomic<uint64_t> CometIntensityStore::s_missing(0);
 
 
@@ -48,7 +52,10 @@ void CometIntensityStore::Free()
 {
    s_bEnabled = false;
    s_bHasModloss = false;
+   for (int i = 0; i < NUM_CH; ++i)
+      s_bChannelPresent[i] = false;
    s_iNlSlot = -1;
+   s_bPerCharge = false;
    std::vector<unsigned char>().swap(s_blob);
    std::vector<uint64_t>().swap(s_offsets);
    s_missing.store(0);
@@ -83,7 +90,7 @@ bool CometIntensityStore::ParseHeader(FILE* fp, const std::string& strFile,
    std::vector<char> magic(magicLen + 1, '\0');
    if (fread(magic.data(), 1, magicLen, fp) != magicLen || strncmp(magic.data(), INTEN_FILE_MAGIC, magicLen) != 0)
    {
-      return Fail(" Error - \"" + strFile + "\" is not a Comet Carafe intensity v1 file (bad magic line).\n");
+      return Fail(" Error - \"" + strFile + "\" is not a Comet Carafe intensity v3 file (bad magic line).\n");
    }
 
    char szLine[4096];
@@ -129,7 +136,7 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
    std::map<std::string, std::string> header(headerList.begin(), headerList.end());
 
    const char* required[] = { "SourceIdxFingerprint", "SourceIdxNumRawPeptides", "VarModConfig",
-                              "Channels", "Transform", "Quant" };
+                              "Channels", "Transform", "Quant", "PerCharge" };
    for (const char* key : required)
    {
       if (header.find(key) == header.end())
@@ -138,6 +145,7 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
          return Fail(" Error - \"" + strFile + "\": header lacks required field \"" + std::string(key) + "\".\n");
       }
    }
+   s_bPerCharge = (header["PerCharge"] == "1");
    if (header["Transform"] != "sqrt" || header["Quant"] != "u8")
    {
       fclose(fp);
@@ -177,38 +185,43 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
          + "\n Its modNumIdx keys are meaningless against the current comet.params; rebuild it.\n");
    }
 
-   // --- channels: which of the file's channel codes we score ---
+   // --- channels: "code=name" pairs; the code is fixed per name (CHANNEL_NAMES), so a
+   // file simply lists the subset it carries. Any pair this build doesn't know is an error
+   // rather than a silent skip -- a code collision would misassign peaks. ---
    {
       std::string ch = header["Channels"];
-      std::vector<std::string> names;
       size_t start = 0;
-      while (start <= ch.size())
+      int nPairs = 0;
+      while (start < ch.size())
       {
          size_t comma = ch.find(',', start);
          if (comma == std::string::npos) comma = ch.size();
-         names.push_back(ch.substr(start, comma - start));
+         std::string pair = ch.substr(start, comma - start);
          start = comma + 1;
+         size_t eq = pair.find('=');
+         int code = -1;
+         if (eq != std::string::npos && eq > 0)
+         {
+            try { code = std::stoi(pair.substr(0, eq)); } catch (...) { code = -1; }
+         }
+         std::string name = (eq == std::string::npos) ? pair : pair.substr(eq + 1);
+         if (code < 0 || code >= NUM_CH || name != CHANNEL_NAMES[code] || s_bChannelPresent[code])
+         {
+            fclose(fp);
+            return Fail(" Error - \"" + strFile + "\": Channels field \"" + ch + "\" -- entry \"" + pair
+               + "\" is not one this build understands (expected code=name pairs from: 0=b_z1, 1=y_z1, "
+               + "2=b_modloss_z1, 3=y_modloss_z1, 4=b_z2, 5=y_z2, 6=b_modloss_z2, 7=y_modloss_z2).\n");
+         }
+         s_bChannelPresent[code] = true;
+         ++nPairs;
       }
-      static const char* expected[NUM_CH] = { "b_z1", "y_z1", "b_modloss_z1", "y_modloss_z1" };
-      // The builder writes channel codes in Channels order, so name i must be the code-i
-      // channel; anything beyond the four known codes is ignored (warned once).
-      for (size_t i = 0; i < names.size(); ++i)
+      if (!s_bChannelPresent[CH_B] || !s_bChannelPresent[CH_Y])
       {
-         if (i < NUM_CH)
-         {
-            if (names[i] != expected[i])
-            {
-               fclose(fp);
-               return Fail(" Error - \"" + strFile + "\": Channels field \"" + ch + "\" -- channel code "
-                  + std::to_string(i) + " is \"" + names[i] + "\", this build expects \"" + expected[i] + "\".\n");
-            }
-         }
-         else
-         {
-            logout(" Warning - predicted-intensity file declares channel \"" + names[i] + "\" which this build does not score; ignored.\n");
-         }
+         fclose(fp);
+         return Fail(" Error - \"" + strFile + "\": Channels field must include 0=b_z1 and 1=y_z1.\n");
       }
-      s_bHasModloss = names.size() >= NUM_CH;
+      s_bHasModloss = s_bChannelPresent[CH_B_ML] || s_bChannelPresent[CH_Y_ML]
+                   || s_bChannelPresent[CH_B2_ML] || s_bChannelPresent[CH_Y2_ML];
    }
 
    // Which variable-mod slot the modloss channels correspond to: the first slot carrying a
@@ -275,7 +288,8 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
    uint64_t off = 0;
    uint64_t nEntries = 0;
    uint64_t nPeaksTotal = 0;
-   while (off + KEY_SIZE + 1 <= blobSize)
+   int iPrevCharge = -1;
+   while (off + ENTRY_HDR_SIZE <= blobSize)
    {
       KeyOff k;
       memcpy(&k.iWhichPeptide, s_blob.data() + off, 4);
@@ -283,13 +297,26 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
       k.cNtermMod = (signed char)s_blob[off + 8];
       k.cCtermMod = (signed char)s_blob[off + 9];
       k.offset = off;
-      unsigned int nPeaks = s_blob[off + KEY_SIZE];
-      uint64_t entryLen = KEY_SIZE + 1 + (uint64_t)nPeaks * PEAK_SIZE;
+      int iCharge = s_blob[off + KEY_SIZE];
+      unsigned int nPeaks = s_blob[off + KEY_SIZE + 1];
+      uint64_t entryLen = ENTRY_HDR_SIZE + (uint64_t)nPeaks * PEAK_SIZE;
       if (off + entryLen > blobSize)
          return Fail(" Error - \"" + strFile + "\": entry " + std::to_string(nEntries) + " runs past end of file.\n");
-      if (!keys.empty() && !KeyLess(keys.back(), k))
-         return Fail(" Error - \"" + strFile + "\": entries not strictly increasing by key at entry " + std::to_string(nEntries) + ".\n");
-      keys.push_back(k);
+      // strictly increasing by (key, charge); only a key's FIRST entry goes in the index --
+      // its other per-charge entries follow it consecutively and Score() walks them
+      bool bSameKey = !keys.empty() && !KeyLess(keys.back(), k) && !KeyLess(k, keys.back());
+      if (bSameKey)
+      {
+         if (iCharge <= iPrevCharge)
+            return Fail(" Error - \"" + strFile + "\": entries not strictly increasing by (key, charge) at entry " + std::to_string(nEntries) + ".\n");
+      }
+      else
+      {
+         if (!keys.empty() && !KeyLess(keys.back(), k))
+            return Fail(" Error - \"" + strFile + "\": entries not strictly increasing by key at entry " + std::to_string(nEntries) + ".\n");
+         keys.push_back(k);
+      }
+      iPrevCharge = iCharge;
       nPeaksTotal += nPeaks;
       off += entryLen;
       ++nEntries;
@@ -332,10 +359,12 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
    s_missing.store(0);
 
    char szMsg[512];
-   snprintf(szMsg, sizeof(szMsg), " Predicted-intensity file: %llu entries, %llu peaks; bound %zu of %zu index variants (%.2f%%)%s\n",
-      (unsigned long long)nEntries, (unsigned long long)nPeaksTotal, nBound, nVariants,
+   snprintf(szMsg, sizeof(szMsg), " Predicted-intensity file: %llu entries%s, %llu peaks; bound %zu of %zu index variants (%.2f%%)%s%s\n",
+      (unsigned long long)nEntries, (s_bPerCharge ? " (per precursor charge)" : ""),
+      (unsigned long long)nPeaksTotal, nBound, nVariants,
       nVariants ? 100.0 * nBound / nVariants : 0.0,
-      (s_bHasModloss ? (s_iNlSlot >= 0 ? "; modloss channels active" : "; modloss channels present but no fragment NL active -- ignored") : ""));
+      (s_bHasModloss ? (s_iNlSlot >= 0 ? "; modloss channels active" : "; modloss channels present but no fragment NL active -- ignored") : ""),
+      ((s_bChannelPresent[CH_B2] || s_bChannelPresent[CH_Y2]) ? "; z2 channels present" : "; z1 channels only"));
    logout(szMsg);
    if (nBound < nVariants)
    {
@@ -351,8 +380,10 @@ double CometIntensityStore::Score(unsigned int uiVariant,
                                   const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
                                   int iLenPeptide,
                                   int iFoundVariableMod,
-                                  const Query* pQuery)
+                                  const Query* pQuery,
+                                  double& dScoreBg)
 {
+   dScoreBg = 0.0;
    if (!s_bEnabled || uiVariant == NO_VARIANT)
       return 0.0;
    if (uiVariant >= s_offsets.size() || s_offsets[uiVariant] == NO_RECORD)
@@ -361,8 +392,62 @@ double CometIntensityStore::Score(unsigned int uiVariant,
       return 0.0;
    }
 
-   // Decode the sparse record into a dense predicted ladder, sqrt(rel) = q/255.
-   const unsigned char* p = s_blob.data() + s_offsets[uiVariant] + KEY_SIZE;
+   // Fragment charges this spectrum's ladder actually holds: 1..min(2, usiMaxFragCharge).
+   // (uiBinnedIonMasses rows above usiMaxFragCharge are never written for this candidate.)
+   int iMaxZ = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+   if (iMaxZ > 2)
+      iMaxZ = 2;
+
+   // Pick this variant's record: the file holds its entries consecutively from s_offsets
+   // (one per predicted precursor charge when PerCharge, else a single charge-0 merge).
+   // Exact precursor-charge match wins; else a charge-0 (merged) record; else the nearest
+   // lower predicted charge; else the lowest higher one.
+   const unsigned char* pBase = s_blob.data();
+   const unsigned char* pEnd = pBase + s_blob.size();
+   const unsigned char* pEntry = pBase + s_offsets[uiVariant];
+   const unsigned char* pChosen = NULL;
+   if (s_bPerCharge)
+   {
+      int iWantZ = pQuery->_spectrumInfoInternal.usiChargeState;
+      int iBestLower = -1, iBestHigher = 1000;
+      const unsigned char* pLower = NULL;
+      const unsigned char* pHigher = NULL;
+      const unsigned char* pMerged = NULL;
+      const unsigned char* q = pEntry;
+      while (q + ENTRY_HDR_SIZE <= pEnd && memcmp(q, pEntry, KEY_SIZE) == 0)
+      {
+         int z = q[KEY_SIZE];
+         if (z == iWantZ)
+         {
+            pChosen = q;
+            break;
+         }
+         if (z == 0)
+            pMerged = q;
+         else if (z < iWantZ && z > iBestLower)
+         {
+            iBestLower = z;
+            pLower = q;
+         }
+         else if (z > iWantZ && z < iBestHigher)
+         {
+            iBestHigher = z;
+            pHigher = q;
+         }
+         q += ENTRY_HDR_SIZE + (size_t)q[KEY_SIZE + 1] * PEAK_SIZE;
+      }
+      if (pChosen == NULL)
+         pChosen = pMerged ? pMerged : (pLower ? pLower : pHigher);
+      if (pChosen == NULL)
+         return 0.0;
+   }
+   else
+      pChosen = pEntry;
+
+   // Decode the sparse record into a dense predicted ladder, sqrt(rel) = q/255. Channels
+   // 4-7 are the z2 predictions; they are skipped (and left out of |p|) when the spectrum
+   // does not score z2 fragments, so the cosine is taken over exactly the ladder Comet scores.
+   const unsigned char* p = pChosen + KEY_SIZE + 1;   // skip key + charge byte
    unsigned int nPeaks = *p++;
    float pred[NUM_CH][MAX_PEPTIDE_LEN];
    memset(pred, 0, sizeof(pred));
@@ -374,7 +459,7 @@ double CometIntensityStore::Score(unsigned int uiVariant,
       unsigned int ch = code >> 8;
       unsigned int pos = code & 0xFF;
       float v = (float)p[2] / 255.0f;
-      if (ch < NUM_CH && (int)pos < iLenMinus1)
+      if (ch < NUM_CH && (int)pos < iLenMinus1 && (ch < CH_B2 || iMaxZ >= 2))
       {
          pred[ch][pos] = v;
          dPredNorm2 += (double)v * v;
@@ -383,62 +468,98 @@ double CometIntensityStore::Score(unsigned int uiVariant,
    if (dPredNorm2 <= 0.0)
       return 0.0;
 
-   // Observed: charge-1 b/y bins of this candidate, looked up in the SP-score sparse array
-   // (binned sqrt intensities, max 100). |o| ranges over every ladder position with a
-   // valid bin, including positions the prediction leaves at zero.
+   // Observed: this candidate's b/y bins looked up in the SP-score sparse array (binned sqrt
+   // intensities, max 100). |o| ranges over every ladder position with a valid bin,
+   // including positions the prediction leaves at zero.
    int iMax = pQuery->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE;
    float** ppSp = pQuery->ppfSparseSpScoreData;
    bool bModloss = s_bHasModloss && s_iNlSlot >= 0 && iFoundVariableMod == 2;
    double dDot = 0.0;
    double dObsNorm2 = 0.0;
+   double dShiftDot = 0.0;   // sum_i p_i * (W_i - o_i): the 2*offset shifted dot products summed
+   const int iOffset = g_staticParams.iXcorrProcessingOffset;
+   const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;
 
-   for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
+   // Observed value at a bin, 0 past either edge or in an unallocated sparse block.
+   auto obs = [&](int b) -> double
    {
-      int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
-      int ch, chMl;
-      if (iWhichIonSeries == ION_SERIES_B)
+      if (b <= 0 || b >= iArraySize)
+         return 0.0;
+      int xx = b / SPARSE_MATRIX_SIZE;
+      if (xx > iMax || ppSp[xx] == NULL)
+         return 0.0;
+      return ppSp[xx][b - xx * SPARSE_MATRIX_SIZE];
+   };
+   // Sum of observed values over [b - iOffset, b + iOffset] (the shifted-spectrum window).
+   auto window = [&](int b) -> double
+   {
+      double w = 0.0;
+      int lo = b - iOffset, hi = b + iOffset;
+      if (lo < 1) lo = 1;
+      if (hi > iArraySize - 1) hi = iArraySize - 1;
+      for (int bb = lo; bb <= hi; ++bb)
       {
-         ch = CH_B;
-         chMl = CH_B_ML;
+         int xx = bb / SPARSE_MATRIX_SIZE;
+         if (xx <= iMax && ppSp[xx] != NULL)
+            w += ppSp[xx][bb - xx * SPARSE_MATRIX_SIZE];
       }
-      else if (iWhichIonSeries == ION_SERIES_Y)
-      {
-         ch = CH_Y;
-         chMl = CH_Y_ML;
-      }
-      else
-         continue;   // no predictions for a/c/x/z series
+      return w;
+   };
 
-      for (int ctLen = 0; ctLen < iLenMinus1; ++ctLen)
+   for (int ctCharge = 1; ctCharge <= iMaxZ; ++ctCharge)
+   {
+      int chOffset = (ctCharge == 2) ? CH_B2 : CH_B;   // z2 codes = z1 codes + 4
+      for (int ctIonSeries = 0; ctIonSeries < g_staticParams.ionInformation.iNumIonSeriesUsed; ++ctIonSeries)
       {
-         unsigned int bin = uiBinnedIonMasses[1][ctIonSeries][ctLen][0];
-         int x = (int)(bin / SPARSE_MATRIX_SIZE);
-         if (bin > 0 && x <= iMax && ppSp[x] != NULL)
-         {
-            double o = ppSp[x][bin - x * SPARSE_MATRIX_SIZE];
-            dDot += pred[ch][ctLen] * o;
-            dObsNorm2 += o * o;
-         }
-         // else: bin 0 (e.g. duplicate-collapsed) -- position contributes nothing observed
+         int iWhichIonSeries = g_staticParams.ionInformation.piSelectedIonSeries[ctIonSeries];
+         int ch;
+         if (iWhichIonSeries == ION_SERIES_B)
+            ch = chOffset + CH_B;
+         else if (iWhichIonSeries == ION_SERIES_Y)
+            ch = chOffset + CH_Y;
+         else
+            continue;   // no predictions for a/c/x/z series
+         int chMl = ch + CH_B_ML;   // modloss code = unshifted code + 2
 
-         if (bModloss)
+         for (int ctLen = 0; ctLen < iLenMinus1; ++ctLen)
          {
-            bin = uiBinnedIonMasses[1][ctIonSeries][ctLen][s_iNlSlot + 1];
-            x = (int)(bin / SPARSE_MATRIX_SIZE);
-            if (bin > 0 && x <= iMax && ppSp[x] != NULL)
+            unsigned int bin = uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][0];
+            if (bin > 0)
             {
-               double o = ppSp[x][bin - x * SPARSE_MATRIX_SIZE];
-               dDot += pred[chMl][ctLen] * o;
+               double o = obs((int)bin);
+               dDot += pred[ch][ctLen] * o;
                dObsNorm2 += o * o;
+               if (pred[ch][ctLen] > 0.0f)
+                  dShiftDot += pred[ch][ctLen] * (window((int)bin) - o);
+            }
+            // else: bin 0 (e.g. duplicate-collapsed) -- position contributes nothing observed
+
+            if (bModloss)
+            {
+               bin = uiBinnedIonMasses[ctCharge][ctIonSeries][ctLen][s_iNlSlot + 1];
+               if (bin > 0)
+               {
+                  double o = obs((int)bin);
+                  dDot += pred[chMl][ctLen] * o;
+                  dObsNorm2 += o * o;
+                  if (pred[chMl][ctLen] > 0.0f)
+                     dShiftDot += pred[chMl][ctLen] * (window((int)bin) - o);
+               }
             }
          }
       }
    }
 
-   if (dObsNorm2 <= 0.0 || dDot <= 0.0)
+   if (dObsNorm2 <= 0.0)
       return 0.0;
-   double dCos = dDot / std::sqrt(dPredNorm2 * dObsNorm2);
+   double dNorm = std::sqrt(dPredNorm2 * dObsNorm2);
+   double dCos = dDot / dNorm;
    if (dCos > 1.0)
       dCos = 1.0;
+   // background: mean of the 2*offset nonzero shifts of the normalized spectrum
+   double dMeanShift = (iOffset > 0) ? dShiftDot / (2.0 * iOffset) / dNorm : 0.0;
+   dScoreBg = std::round((dCos - dMeanShift) * 10000.0) / 10000.0;
+   if (dDot <= 0.0)
+      return 0.0;
    return std::round(dCos * 10000.0) / 10000.0;
 }

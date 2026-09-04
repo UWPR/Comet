@@ -32,7 +32,7 @@ Usage:
 
 File layout (little-endian throughout):
 
-  magic line   b"Comet Carafe intensity v1\\n"
+  magic line   b"Comet Carafe intensity v3\\n"
   header       "Key: Value\\n" ASCII lines, terminated by one blank line:
                  SourceIdxFingerprint     zlib CRC-32 of the .idx [pep_pos, footer_pos)
                                           (carafe_ms2_to_fi_mask.idx_fingerprint(), the
@@ -42,19 +42,27 @@ File layout (little-endian throughout):
                  SourceCpsPath            informational
                  VarModConfig             the exact string comet.exe -x emitted, verbatim
                  Mode                     phospho | general
-                 Channels                 comma-joined channel names in channel-code order
-                                          (b_z1,y_z1[,b_modloss_z1,y_modloss_z1])
+                 Channels                 comma-joined "code=name" pairs for the channels this
+                                          file can contain, e.g. 0=b_z1,1=y_z1,4=b_z2,5=y_z2;
+                                          codes are fixed per name (CHANNEL_NAMES index), so a
+                                          general-mode or z1-only file simply omits codes
                  Transform                sqrt   (q encodes sqrt(relative intensity))
                  Quant                    u8
                  MinRelativeIntensity     peak-keep threshold (relative to the base peak)
                  MaxPeaks                 per-variant cap on stored peaks
+                 PerCharge                0 | 1 -- see "Per-charge records" below
   u64          entry count
   entries      variable length, sorted strictly increasing by
-               (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod):
+               (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, charge):
                  u32 iWhichPeptide, i32 modNumIdx, i8 cNtermMod, i8 cCtermMod   (KEY_FMT)
+                 u8  charge   -- precursor charge this record was predicted for; 0 = the
+                                 max-merge over every predicted charge (PerCharge: 0 files)
                  u8  nPeaks
                  nPeaks x { u16 code, u8 q }                                     (PEAK_FMT)
-                   code = (channel << 8) | ladderPos     -- see peak_code()
+                   code = (channel << 8) | ladderPos     -- see peak_code(); channel codes:
+                                                            0 b_z1, 1 y_z1, 2 b_modloss_z1,
+                                                            3 y_modloss_z1, 4 b_z2, 5 y_z2,
+                                                            6 b_modloss_z2, 7 y_modloss_z2
                    q    = round(255 * sqrt(rel))         -- rel = intensity / base_peak
                peaks within an entry are sorted by code (ascending), so a consumer can
                scatter them into a dense [channel][ladderPos] array in one pass.
@@ -69,13 +77,28 @@ Ladder-position convention (must match the C++ scorer, and is the SAME coordinat
 
 Unlike the FI mask there is no "i > 1" gate: lengths 1 and 2 are scoreable fragments in
 XcorrScore*'s ladder and are kept here when they pass the threshold. ladderPos ranges over
-0..nAA-2 (nAA <= MAX_PEPTIDE_LEN 51), so it fits the 8 bits reserved for it; the channel
-code occupies the high byte, leaving room for z2 channels in a later store format without
-changing this file's layout (a reader dispatches on the Channels header, not on assumed
-positions).
+0..nAA-2 (nAA <= MAX_PEPTIDE_LEN 51), so it fits the 8 bits reserved for it.
+
+Doubly-charged fragments (v2, 2026-09-03): a v2 .cps store (carafe_pred_to_cps.py
+--channels 8) carries b_z2/y_z2 (and modloss z2) predictions; those become channel codes
+4-7 with the same ladder-position mapping as their z1 counterparts. From a v1 (z1-only)
+store the z2 codes are simply absent from Channels. At score time Comet only reads fragment
+charges up to the spectrum's max fragment charge (precursor charge - 1, capped by
+max_fragment_charge), so z2 predicted peaks are ignored entirely -- excluded from |p| as
+well -- for 2+ precursors, exactly as XCorr never scores z2 fragments there.
+
+Per-charge records (v3, 2026-09-03): the store holds one row per predicted precursor
+charge of each variant (idx_to_carafe.py --charges). By default (PerCharge: 0) those rows
+are max-merged into one record per variant with charge byte 0, the FI-mask convention.
+With --per-charge (needs --out-tsv, the <flavor>.carafe_peptides.tsv whose charge column,
+in row_index order, tells each store row's precursor charge) one record is written per
+(variant, charge), and the C++ scorer picks the record matching the spectrum's precursor
+charge -- falling back to a charge-0 record, else the nearest lower predicted charge, else
+the lowest higher one. Records of one variant are consecutive in the file (sorted by
+charge within the key), which is what lets the loader keep one offset per variant.
 
 Peak selection per variant: predictions are max-merged across the variant's charge rows
-(the store holds one row per predicted precursor charge), scaled by the base peak (all-8-
+(unless --per-charge), scaled by the base peak (all-8-
 channel base8 in phospho mode, first-4-channel base4 in general/--ignore-modloss mode --
 the same reference the mask builder uses), peaks with rel >= MinRelativeIntensity are kept
 up to MaxPeaks (highest rel first; ties broken by code for determinism), quantized as
@@ -107,17 +130,39 @@ import carafe_cps  # noqa: E402
 import carafe_cps_to_fi_mask as cfm  # noqa: E402
 import carafe_ms2_to_fi_mask as fi_mask  # noqa: E402
 
-INTEN_FILE_MAGIC = b"Comet Carafe intensity v1\n"
+INTEN_FILE_MAGIC = b"Comet Carafe intensity v3\n"
 
 KEY_FMT = "<Iibb"
 KEY_SIZE = struct.calcsize(KEY_FMT)        # 10
+CHARGE_FMT = "<B"                          # per-entry precursor charge (0 = merged)
 COUNT_FMT = "<B"
 PEAK_FMT = "<HB"
 PEAK_SIZE = struct.calcsize(PEAK_FMT)      # 3
 
-CHANNELS_PHOSPHO = ("b_z1", "y_z1", "b_modloss_z1", "y_modloss_z1")
-CHANNELS_GENERAL = ("b_z1", "y_z1")
-CH_B, CH_Y, CH_B_ML, CH_Y_ML = 0, 1, 2, 3
+# Channel code -> name; the code is FIXED per name (a file lists the subset it carries).
+CHANNEL_NAMES = ("b_z1", "y_z1", "b_modloss_z1", "y_modloss_z1",
+                 "b_z2", "y_z2", "b_modloss_z2", "y_modloss_z2")
+CH_B, CH_Y, CH_B_ML, CH_Y_ML, CH_B2, CH_Y2, CH_B2_ML, CH_Y2_ML = range(8)
+# index of each channel code's value within a fi_mask.CHANNELS-order 8-tuple
+# (b_z1, b_z2, y_z1, y_z2, b_modloss_z1, b_modloss_z2, y_modloss_z1, y_modloss_z2)
+ROW8_INDEX = {CH_B: 0, CH_B2: 1, CH_Y: 2, CH_Y2: 3, CH_B_ML: 4, CH_B2_ML: 5, CH_Y_ML: 6, CH_Y2_ML: 7}
+Y_CHANNELS = (CH_Y, CH_Y_ML, CH_Y2, CH_Y2_ML)
+
+
+def channels_present(has_modloss, has_z2):
+    """The channel codes a file built under these settings can contain, in code order."""
+    codes = [CH_B, CH_Y]
+    if has_modloss:
+        codes += [CH_B_ML, CH_Y_ML]
+    if has_z2:
+        codes += [CH_B2, CH_Y2]
+        if has_modloss:
+            codes += [CH_B2_ML, CH_Y2_ML]
+    return sorted(codes)
+
+
+def channels_header_value(codes):
+    return ",".join(f"{c}={CHANNEL_NAMES[c]}" for c in codes)
 
 QMAX = 255
 MAX_LADDER_POS = 255      # 8 bits; Comet's MAX_PEPTIDE_LEN 51 -> ladderPos <= 49
@@ -125,6 +170,7 @@ MAX_PEAKS_LIMIT = 255     # nPeaks is a u8
 
 DEFAULT_MIN_RELATIVE_INTENSITY = 0.01
 DEFAULT_MAX_PEAKS = 32
+EXCLUDED_CHARGE = 255     # row_charges marker for rows dropped by --only-charges
 
 
 # ---------------------------------------------------------------------------
@@ -159,43 +205,46 @@ def dequantize_sqrt(q):
 # Per-variant computation
 # ---------------------------------------------------------------------------
 
-def compute_variant_intensity(rows4_per_charge, nAA, base8_per_charge, base4_per_charge,
-                              min_relative_intensity, max_peaks, has_modloss, is_modified):
-    """rows4_per_charge: one list of (nAA-1) 4-tuples (b_z1, y_z1, b_modloss_z1,
-    y_modloss_z1) per charge row sharing this variant (CpsReader.read_row() output);
-    base8/base4 likewise per charge. Returns the entry's peak list [(code, q), ...] sorted
-    by code, per the module docstring's selection rules."""
+def compute_variant_intensity(rows8_per_charge, nAA, base8_per_charge, base4_per_charge,
+                              min_relative_intensity, max_peaks, has_modloss, is_modified,
+                              has_z2=True):
+    """rows8_per_charge: one list of (nAA-1) 8-tuples in fi_mask.CHANNELS order (b_z1, b_z2,
+    y_z1, y_z2, b_modloss_z1, b_modloss_z2, y_modloss_z1, y_modloss_z2) per predicted-charge
+    row sharing this variant (CpsReader.read_row8() output); base8/base4 likewise per
+    charge. has_z2=False (a v1 store) skips the z2 channels even if nonzero values are
+    passed. Returns the entry's peak list [(code, q), ...] sorted by code, per the module
+    docstring's selection rules."""
     n_pos = nAA - 1
     if n_pos < 1:
         raise ValueError(f"nAA={nAA}: no fragment positions")
     if n_pos - 1 > MAX_LADDER_POS:
         raise ValueError(f"nAA={nAA} exceeds the ladder-position range")
-    for rows4 in rows4_per_charge:
-        if len(rows4) != n_pos:
-            raise ValueError(f"nAA={nAA} implies {n_pos} rows, got {len(rows4)}")
+    for rows8 in rows8_per_charge:
+        if len(rows8) != n_pos:
+            raise ValueError(f"nAA={nAA} implies {n_pos} rows, got {len(rows8)}")
+        if rows8 and len(rows8[0]) != 8:
+            raise ValueError(f"expected 8-channel rows (CpsReader.read_row8), got {len(rows8[0])}")
     if max_peaks < 0 or max_peaks > MAX_PEAKS_LIMIT:
         raise ValueError(f"max_peaks must be in [0, {MAX_PEAKS_LIMIT}], got {max_peaks}")
 
-    merged = rows4_per_charge[0]
-    if len(rows4_per_charge) > 1:
+    merged = rows8_per_charge[0]
+    if len(rows8_per_charge) > 1:
         merged = [tuple(max(vals) for vals in zip(*rows_at_r))
-                  for rows_at_r in zip(*rows4_per_charge)]
+                  for rows_at_r in zip(*rows8_per_charge)]
 
     base_peak = max(base8_per_charge) if has_modloss else max(base4_per_charge)
     if base_peak <= 0.0:
         return []
     inv_base = 1.0 / base_peak
-    use_modloss = has_modloss and is_modified
+    codes = channels_present(has_modloss and is_modified, has_z2)
 
     candidates = []   # (rel, code)
-    for r, (b_z1, y_z1, b_ml_z1, y_ml_z1) in enumerate(merged):
+    for r, row in enumerate(merged):
         pos_b = r               # b_{r+1}
         pos_y = nAA - 2 - r     # y_{nAA-r-1}
-        candidates.append((b_z1 * inv_base, peak_code(CH_B, pos_b)))
-        candidates.append((y_z1 * inv_base, peak_code(CH_Y, pos_y)))
-        if use_modloss:
-            candidates.append((b_ml_z1 * inv_base, peak_code(CH_B_ML, pos_b)))
-            candidates.append((y_ml_z1 * inv_base, peak_code(CH_Y_ML, pos_y)))
+        for ch in codes:
+            pos = pos_y if ch in Y_CHANNELS else pos_b
+            candidates.append((row[ROW8_INDEX[ch]] * inv_base, peak_code(ch, pos)))
 
     kept = [c for c in candidates if c[0] >= min_relative_intensity]
     kept.sort(key=lambda c: (-c[0], c[1]))
@@ -220,43 +269,66 @@ def peak_norm(peaks):
 # Entry (de)serialization
 # ---------------------------------------------------------------------------
 
-def pack_entry(key, peaks):
+def pack_entry(key, peaks, charge=0):
     """key: (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod); peaks: [(code, q), ...]
-    already sorted by code."""
+    already sorted by code; charge: precursor charge of this record (0 = merged)."""
     if len(peaks) > MAX_PEAKS_LIMIT:
         raise ValueError(f"{len(peaks)} peaks exceeds the u8 count field")
-    parts = [struct.pack(KEY_FMT, *key), struct.pack(COUNT_FMT, len(peaks))]
+    if not (0 <= charge <= 255):
+        raise ValueError(f"charge {charge} out of u8 range")
+    parts = [struct.pack(KEY_FMT, *key), struct.pack(CHARGE_FMT, charge),
+             struct.pack(COUNT_FMT, len(peaks))]
     parts.extend(struct.pack(PEAK_FMT, code, q) for code, q in peaks)
     return b"".join(parts)
 
 
 def unpack_entry_at(buf, off):
-    """Parse one entry starting at buf[off]. Returns (key, peaks, next_off)."""
+    """Parse one entry starting at buf[off]. Returns (key, charge, peaks, next_off)."""
     key = struct.unpack_from(KEY_FMT, buf, off)
     off += KEY_SIZE
+    (charge,) = struct.unpack_from(CHARGE_FMT, buf, off)
+    off += 1
     (n,) = struct.unpack_from(COUNT_FMT, buf, off)
     off += 1
     peaks = list(struct.iter_unpack(PEAK_FMT, buf[off:off + n * PEAK_SIZE]))
     if len(peaks) != n:
-        raise ValueError(f"truncated entry at offset {off - KEY_SIZE - 1}")
-    return key, peaks, off + n * PEAK_SIZE
+        raise ValueError(f"truncated entry at offset {off - KEY_SIZE - 2}")
+    return key, charge, peaks, off + n * PEAK_SIZE
 
 
 def iter_packed_entries(blob):
-    """Yield (key, entry_bytes) from one packed run of variable-length entries."""
+    """Yield ((key, charge), entry_bytes) from one packed run of variable-length entries."""
     off = 0
     end = len(blob)
     while off < end:
-        key, _peaks, nxt = unpack_entry_at(blob, off)
-        yield key, blob[off:nxt]
+        key, charge, _peaks, nxt = unpack_entry_at(blob, off)
+        yield (key, charge), blob[off:nxt]
         off = nxt
 
 
 def merge_sorted_runs(blobs):
     """k-way merge of per-range sorted packed-entry runs -> entry_bytes in global key
     order (streaming; memory = the blobs + the heap)."""
-    return (e for _key, e in heapq.merge(
+    return (e for _keyz, e in heapq.merge(
         *(iter_packed_entries(b) for b in blobs if b), key=lambda kp: kp[0]))
+
+
+def load_row_charges(out_tsv_path):
+    """Precursor charge per out_tsv row_index (the 4th column of <flavor>.carafe_peptides.tsv,
+    row order == row_index order) as a bytes object indexable by row_index."""
+    charges = bytearray()
+    with open(out_tsv_path, "rb") as f:
+        header = f.readline().rstrip(b"\r\n").split(b"\t")
+        try:
+            ci = header.index(b"charge")
+        except ValueError:
+            raise ValueError(f"{out_tsv_path!r}: no 'charge' column in header {header!r}")
+        for line in f:
+            parts = line.rstrip(b"\r\n").split(b"\t")
+            if len(parts) <= ci:
+                raise ValueError(f"{out_tsv_path!r}: short line {line!r}")
+            charges.append(int(parts[ci]))
+    return bytes(charges)
 
 
 # ---------------------------------------------------------------------------
@@ -267,23 +339,38 @@ def process_range(job):
     """Worker: one variant-map byte range -> (range_index, packed_entries SORTED by key,
     n_entries, n_peaks). Mirrors carafe_cps_to_fi_mask.process_range()."""
     (range_index, vmap_path, data_start, byte_start, byte_end, cps_path,
-     min_rel, max_peaks, has_modloss) = job
+     min_rel, max_peaks, has_modloss, row_charges, per_charge) = job
 
     reader = carafe_cps.CpsReader(cps_path)
-    keyed = []
+    has_z2 = reader.channels == carafe_cps.CHANNELS_V2
+    keyed = []   # ((key, charge), packed)
     n_peaks = 0
     for key, row_indices in cfm.iter_vmap_groups(vmap_path, data_start, byte_start, byte_end):
-        rows4_pc, b8s, b4s, nAA_seen = [], [], [], None
-        for ri in row_indices:
-            nAA, b8, b4, rows4 = reader.read_row(ri)
-            nAA_seen = nAA
-            rows4_pc.append(rows4)
-            b8s.append(b8)
-            b4s.append(b4)
-        peaks = compute_variant_intensity(rows4_pc, nAA_seen, b8s, b4s, min_rel, max_peaks,
-                                          has_modloss=has_modloss, is_modified=(key[1] != -1))
-        n_peaks += len(peaks)
-        keyed.append((key, pack_entry(key, peaks)))
+        if row_charges is not None:
+            # EXCLUDED_CHARGE marks rows dropped by --only-charges
+            row_indices = [ri for ri in row_indices if row_charges[ri] != EXCLUDED_CHARGE]
+            if not row_indices:
+                continue   # variant has no row at a kept charge -> no record (scores 0.0)
+        if not per_charge:
+            groups = [(0, row_indices)]           # merged: one record, charge 0
+        else:
+            by_z = {}
+            for ri in row_indices:
+                by_z.setdefault(row_charges[ri], []).append(ri)
+            groups = sorted(by_z.items())
+        for charge, ris in groups:
+            rows8_pc, b8s, b4s, nAA_seen = [], [], [], None
+            for ri in ris:
+                nAA, b8, b4, rows8 = reader.read_row8(ri)
+                nAA_seen = nAA
+                rows8_pc.append(rows8)
+                b8s.append(b8)
+                b4s.append(b4)
+            peaks = compute_variant_intensity(rows8_pc, nAA_seen, b8s, b4s, min_rel, max_peaks,
+                                              has_modloss=has_modloss, is_modified=(key[1] != -1),
+                                              has_z2=has_z2)
+            n_peaks += len(peaks)
+            keyed.append(((key, charge), pack_entry(key, peaks, charge)))
     reader.close()
     keyed.sort(key=lambda kp: kp[0])
     return range_index, b"".join(p for _, p in keyed), len(keyed), n_peaks
@@ -294,11 +381,11 @@ def process_range(job):
 # ---------------------------------------------------------------------------
 
 def header_lines(fingerprint, num_raw_peptides, idx_path, cps_path, var_mod_config,
-                 general_mode, min_rel, max_peaks):
+                 general_mode, min_rel, max_peaks, has_z2=True, per_charge=False):
     if var_mod_config is None:
         raise ValueError("var_mod_config is required -- the variant map has no "
                          "'# VarModConfig:' line; rebuild the export with a current comet.exe -x")
-    channels = CHANNELS_GENERAL if general_mode else CHANNELS_PHOSPHO
+    channels = channels_header_value(channels_present(not general_mode, has_z2))
     return [
         f"SourceIdxFingerprint: {fingerprint}",
         f"SourceIdxNumRawPeptides: {num_raw_peptides}",
@@ -306,11 +393,12 @@ def header_lines(fingerprint, num_raw_peptides, idx_path, cps_path, var_mod_conf
         f"SourceCpsPath: {cps_path}",
         f"VarModConfig: {var_mod_config}",
         f"Mode: {'general' if general_mode else 'phospho'}",
-        f"Channels: {','.join(channels)}",
+        f"Channels: {channels}",
         "Transform: sqrt",
         "Quant: u8",
         f"MinRelativeIntensity: {min_rel}",
         f"MaxPeaks: {max_peaks}",
+        f"PerCharge: {1 if per_charge else 0}",
     ]
 
 
@@ -354,22 +442,22 @@ def read_header(f):
 
 
 def read_inten_file(path):
-    """Companion reader (tests / prototyping): returns (header, [(key, peaks), ...])."""
+    """Companion reader (tests / prototyping): returns (header, [(key, charge, peaks), ...])."""
     with open(path, "rb") as f:
         header, count = read_header(f)
         blob = f.read()
     entries = []
     off = 0
     while off < len(blob):
-        key, peaks, off = unpack_entry_at(blob, off)
-        entries.append((key, peaks))
+        key, charge, peaks, off = unpack_entry_at(blob, off)
+        entries.append((key, charge, peaks))
     if len(entries) != count:
         raise ValueError(f"header count {count} != entries read {len(entries)}")
     return header, entries
 
 
 def verify_written_inten_sorted(path):
-    """Stream the finished file: entries strictly increasing by key (sort order AND key
+    """Stream the finished file: entries strictly increasing by (key, charge) (sort order AND
     uniqueness), peak codes within an entry strictly increasing, count matches the header.
     Returns (n_entries, n_peaks)."""
     with open(path, "rb") as f:
@@ -385,24 +473,25 @@ def verify_written_inten_sorted(path):
             buf = carry + chunk
             off = 0
             while True:
-                # need key + count to know the entry length
-                if off + KEY_SIZE + 1 > len(buf):
+                # need key + charge + count to know the entry length
+                if off + KEY_SIZE + 2 > len(buf):
                     break
-                (npk,) = struct.unpack_from(COUNT_FMT, buf, off + KEY_SIZE)
-                entry_len = KEY_SIZE + 1 + npk * PEAK_SIZE
+                (npk,) = struct.unpack_from(COUNT_FMT, buf, off + KEY_SIZE + 1)
+                entry_len = KEY_SIZE + 2 + npk * PEAK_SIZE
                 if off + entry_len > len(buf):
                     break
-                key, peaks, nxt = unpack_entry_at(buf, off)
-                if prev is not None and key <= prev:
+                key, charge, peaks, nxt = unpack_entry_at(buf, off)
+                keyz = (key, charge)
+                if prev is not None and keyz <= prev:
                     raise ValueError(f"entries not strictly increasing at entry {n}: "
-                                     f"{prev} -> {key}")
+                                     f"{prev} -> {keyz}")
                 prev_code = -1
                 for code, _q in peaks:
                     if code <= prev_code:
                         raise ValueError(f"entry {n} key {key}: peak codes not strictly "
                                          f"increasing")
                     prev_code = code
-                prev = key
+                prev = keyz
                 n += 1
                 n_peaks += len(peaks)
                 off = nxt
@@ -440,6 +529,17 @@ def main(argv=None):
     ap.add_argument("--verify-out-tsv", default=None,
                     help="Optional: the original out_tsv, to check the store's provenance "
                          "head-CRC against")
+    ap.add_argument("--per-charge", action="store_true",
+                    help="one record per (variant, predicted precursor charge) instead of "
+                         "the max-merge over charges; requires --out-tsv")
+    ap.add_argument("--out-tsv", default=None,
+                    help="<flavor>.carafe_peptides.tsv (row_index order) -- supplies each "
+                         "store row's precursor charge for --per-charge / --only-charges "
+                         "(defaults to --verify-out-tsv's value)")
+    ap.add_argument("--only-charges", default=None,
+                    help="comma-separated predicted precursor charges to keep (e.g. 2); other "
+                         "store rows are ignored and a variant with no kept row gets no "
+                         "record. Requires --out-tsv. Works with or without --per-charge.")
     ap.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     args = ap.parse_args(argv)
 
@@ -447,14 +547,33 @@ def main(argv=None):
         sys.exit("--min-relative-intensity must be in [0, 1]")
     if not (0 <= args.max_peaks <= MAX_PEAKS_LIMIT):
         sys.exit(f"--max-peaks must be in [0, {MAX_PEAKS_LIMIT}]")
+    out_tsv = args.out_tsv or args.verify_out_tsv
+    if (args.per_charge or args.only_charges) and not out_tsv:
+        sys.exit("--per-charge / --only-charges require --out-tsv (or --verify-out-tsv)")
 
     t0 = time.time()
+    row_charges = None
+    if args.per_charge or args.only_charges:
+        print(f"Reading per-row precursor charges from {out_tsv} ...", file=sys.stderr)
+        row_charges = load_row_charges(out_tsv)
+        if args.only_charges:
+            keep = {int(z) for z in args.only_charges.split(",")}
+            if EXCLUDED_CHARGE in keep:
+                sys.exit(f"charge {EXCLUDED_CHARGE} is reserved")
+            row_charges = bytes(z if z in keep else EXCLUDED_CHARGE for z in row_charges)
+            n_keep = sum(1 for z in row_charges if z != EXCLUDED_CHARGE)
+            print(f"--only-charges {sorted(keep)}: keeping {n_keep} of {len(row_charges)} store rows",
+                  file=sys.stderr)
     reader = carafe_cps.CpsReader(args.cps_file)
     store_rows = reader.row_count
     store_mode = reader.header.get("Mode", "phospho")
+    store_has_z2 = reader.channels == carafe_cps.CHANNELS_V2
+    store_version = reader.version
     if args.verify_out_tsv:
         reader.verify_source(args.verify_out_tsv)
         print(f"store provenance vs {args.verify_out_tsv!r}: OK", file=sys.stderr)
+    if row_charges is not None and len(row_charges) != store_rows:
+        sys.exit(f"--out-tsv has {len(row_charges)} data rows but the store has {store_rows}")
     reader.close()
     has_modloss = (store_mode == "phospho") and not args.ignore_modloss
 
@@ -473,9 +592,10 @@ def main(argv=None):
             break
         jobs.append((i, args.variant_map_tsv, data_start, byte_start, byte_end,
                      args.cps_file, args.min_relative_intensity, args.max_peaks,
-                     has_modloss))
+                     has_modloss, row_charges, args.per_charge))
 
     print(f"{len(jobs)} ranges, {args.workers} workers, has_modloss={has_modloss}, "
+          f"z2={store_has_z2} (store v{store_version}), per_charge={args.per_charge}, "
           f"min_rel={args.min_relative_intensity}, max_peaks={args.max_peaks}",
           file=sys.stderr)
 
@@ -503,7 +623,8 @@ def main(argv=None):
           f"({total_peaks} peaks) to {args.out_inten_file!r} ...", file=sys.stderr)
     hdr = header_lines(fingerprint, num_raw_peptides, args.idx_file, args.cps_file,
                        var_mod_config, general_mode=not has_modloss,
-                       min_rel=args.min_relative_intensity, max_peaks=args.max_peaks)
+                       min_rel=args.min_relative_intensity, max_peaks=args.max_peaks,
+                       has_z2=store_has_z2, per_charge=args.per_charge)
     write_inten_file(args.out_inten_file, hdr, total, merge_sorted_runs(blobs))
 
     n_verified, n_peaks_verified = verify_written_inten_sorted(args.out_inten_file)

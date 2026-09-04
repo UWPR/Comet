@@ -291,14 +291,223 @@ out-cosine a 25-residue peptide matching 30 of 48), which is why it loses to xco
 available on this machine, so the "as a rescoring feature" measurement is the top-5
 re-rank above rather than a full semi-supervised model.
 
-**Formula decision for Phase 2.** Keep `intensity_score` = cosine on sqrt intensities as
-the reported column (decision 1), but make the *primary* score for `primary_score = 1` a
-combined score rather than raw cosine: the working proposal is `xcorr * intensity_score`
-(no tuned constants, both factors already computed per candidate, +9.6% here); the additive
-`xcorr + 2*cos` is within noise of it and needs a constant. E-value-based combinations are
-not usable as a primary score because the E-value is only known after all candidates are
-scored. This changes Section 2.5's premise (the eviction gate, sort, deltaCn and writer
-gates would key on the combined score) and needs sign-off before Phase 2 starts.
+**Formula decision for Phase 2 (updated after Phases 1b-1d).** Keep `intensity_score` =
+cosine on sqrt intensities as the reported column (decision 1). For `primary_score = 1` the
+candidates are (a) raw cosine -- viable only with charge-matched predictions, where it beats
+xcorr by +7.5% (OxMet) as a rank-1 score but loses ~6% of that when allowed to re-pick
+candidates (N=5), or (b) a combined `xcorr + 2*intensity_score`, which is +12% (OxMet,
+per-charge) / +20% (phospho, 2+-only preds) over xcorr, robust to the cosine weight (2-3),
+equivalent to `xcorr * (0.25 + cos)`, and insensitive to N. E-value combinations are a
+post-search ranking only (the E-value is not known when a candidate is scored). Working
+proposal: (b). This changes Section 2.5's premise (the eviction gate, sort, deltaCn and
+writer gates would key on the combined score) and needs sign-off before Phase 2 starts.
+
+**Phase 1b: doubly-charged fragments (z2). DONE 2026-09-03.** The `.cps` v1 store had
+dropped the b_z2/y_z2 (and modloss z2) predictions and the scorer read only charge-1 bins.
+Now: `.cps` v2 (`carafe_pred_to_cps.py --channels 8`, the default; `CpsReader.read_row8()`,
+with `read_row()` still serving the v1 4-channel view so mask tooling is untouched);
+`.carafe_inten` v2 with explicit `code=name` channel pairs (codes 4-7 = z2) and the C++
+scorer reading fragment charges 1..min(2, usiMaxFragCharge), excluding higher-charge
+channels from both the dot product and |p| -- so for 2+ precursors (usiMaxFragCharge 1) z2
+predictions are ignored entirely, exactly as XCorr never scores z2 fragments there, and
+the 2+ numbers are unchanged by construction (T40 asserts this on the fixture). Rebuilt
+stores: oxmet.v2.cps 1.05 GB (21 s), phospholarge.v2.cps 17.8 GB (5.5 min); oxmet.v2
+.carafe_inten 267 MB, 20.0 peaks/entry (13% of peaks are z2); phospholarge.v2.carafe_inten
+3.80 GB, 23.5 peaks/entry (13 min, 4.2 GB RSS).
+
+| Ranking score | 3+ and up, z1 only | 3+ and up, z1+z2 | vs xcorr (3,832) |
+|---|---|---|---|
+| cosine alone (rank-1 by xcorr) | 2,827 | 3,327 | -26.2% -> -13.2% |
+| cosine alone (rerank top 5) | 1,194 | 2,419 | -68.8% -> -36.9% |
+| xcorr * cosine (rerank top 5) | 3,968 | 4,019 | +3.5% -> +4.9% |
+| xcorr + 2*cosine (rerank top 5) | 3,987 | 4,050 | +4.0% -> +5.7% |
+
+Rank-1 median cosine for 3+ and up: targets 0.572 -> 0.520, decoys 0.267 -> 0.215 (|o| now
+spans the z2 ladder too; separation improves). All-charge totals: cosine alone 10,216,
+xcorr * cosine 14,128 (+8.7%), xcorr + 2*cosine 14,212 (+9.4%). So z2 recovers about half
+of the pure-cosine deficit on 3+ precursors; the rest is the prediction itself, which
+Carafe made for 2+ precursors only (`--charges 2`). Closing it needs inference at 3+ (the
+per-charge rows the store and builder already merge across), not more scorer work.
+
+**Phase 1c: combination grid on both datasets (2026-09-03).** Unmasked FI_DB searches,
+`num_output_lines = 5`, z2 intensity files; scores combined from xcorr, cosine and
+E = -log10 e-value; PSMs at 1% FDR ranking spectra by the combined score (N=1 keeps
+xcorr's peptide, N=5 lets the score re-pick among the stored 5 -- the two agree to ~1%,
+i.e. the gain is cross-spectrum ordering, not peptide choice). MM2_R1 phospho: 34,445
+spectra (13,005 at 2+, 21,440 at 3+ and up), 2.0e9 FI entries, 58 s, 14.4 GB RSS, 100% of
+46.58M variants bound.
+
+| Score | OxMet HeLa (xcorr 12,992) | MM2_R1 phospho (xcorr 14,831) |
+|---|---|---|
+| E alone | 13,677 (+5.3%) | 16,616 (+12.0%) |
+| cosine alone (rank-1) | 10,216 (-21%) | 10,167 (-31%) |
+| cosine alone, 2+ only | 9,733 vs xcorr 9,402 (+3.5%) | 8,128 vs xcorr 6,446 (+26%) |
+| xcorr * cos | 14,158 (+9.0%) | 17,789 (+19.9%) |
+| xcorr + 2*cos | 14,302 (+10.1%) | 17,850 (+20.4%) |
+| E + 3*cos | 14,303 (+10.2%) | 17,776 (+19.9%) |
+| E + xcorr + 3*cos | 14,403 (+10.9%) | 18,046 (+21.7%) |
+| E + 2*xcorr + 3*cos | 14,403 (+10.9%) | 18,086 (+21.9%) |
+
+Same plateau shape on both: every base score plus ~2-4 units of cosine gains the same
+amount within ~1%, the cosine weight 2-3 transfers, products and sums are equivalent, and
+three-term scores add <1% over the best two-term one. The absolute gain is twice as large
+on phospho (+20% vs +10%), where the mod-site ambiguity gives the intensity pattern more
+to disambiguate. Rank-1 median cosine on MM2_R1: targets 0.636, decoys 0.155.
+
+**Phase 1d: per-charge records and 3+ predictions (2026-09-03, in progress).** Carafe was
+run for 2+ precursors only on both datasets, so every 3+ spectrum was scored against the 2+
+fragmentation pattern -- the remaining half of the pure-cosine 3+ deficit after z2. Format
+v3 of `.carafe_inten` adds a per-entry precursor-charge byte (0 = the max-merge over all
+predicted charges, the previous behaviour) and a `PerCharge` header; `carafe_cps_to_inten.py
+--per-charge` (charges read from the peptides TSV by row_index, needs `--out-tsv`) writes one
+record per (variant, predicted charge), `--only-charges` restricts which store rows are used
+(for a same-.idx 2+-only baseline). Entries of one variant are consecutive, so the loader
+still keeps one offset per variant; `Score()` walks them and takes the exact precursor-charge
+match, else a charge-0 record, else the nearest lower predicted charge, else the lowest
+higher (T40 covers all four cases). OxMet predictions were regenerated with `--charges 2,3`
+in `carafe_oxmet_z23_20260903/` (7.52M rows, 150 chunks, 90 min inference, `primary.cps` v2
+2.09 GB); three intensity files on that one .idx: `--only-charges 2` (the 2+-only baseline,
+75,103,786 peaks -- identical to the old oxmet.v2 file, so inference is reproducible),
+`--per-charge` (7.52M records, 543 MB), and the default max-merge over both charges.
+xcorr and E-value are identical across the three runs (same index, same candidates); only
+the cosine differs. HeLa, PSMs at 1% FDR, N=1 / N=5:
+
+| Score | 2+-only preds | per-charge preds | merged max(2+,3+) |
+|---|---|---|---|
+| **All charges** (xcorr 12,992; E 13,677) | | | |
+| cosine alone | 10,216 / 9,436 | **13,969 / 13,120** | 12,251 / 10,451 |
+| xcorr * cos | 14,158 / 14,128 | 14,505 / 14,468 | 14,276 / 14,334 |
+| xcorr + 2*cos | 14,302 / 14,212 | **14,570 / 14,521** | 14,303 / 14,346 |
+| E + 3*cos | 14,303 / 14,317 | 14,525 / 14,541 | 14,422 / 14,454 |
+| **3+ and up** (xcorr 3,832; E 4,043) | | | |
+| cosine alone | 3,327 / 2,419 | **4,143 / 4,032** | 4,145 / 4,053 |
+| xcorr + 2*cos | 4,048 / 4,050 | 4,190 / 4,203 | 4,163 / 4,163 |
+| E + 3*cos | 4,194 / 4,200 | 4,241 / 4,247 | 4,239 / 4,244 |
+| rank-1 median cosine, 3+ (targets/decoys) | 0.520 / 0.215 | 0.801 / 0.231 | 0.683 / 0.239 |
+
+(2+ numbers are identical for the 2+-only and per-charge files by construction.) With
+charge-matched predictions the pure cosine beats xcorr on every charge class and on all
+charges combined (+7.5%, above the E-value's +5.3%), the 3+ target median cosine rises from
+0.52 to 0.80, and xcorr + 2*cos reaches +12.1% over xcorr (+9.3% on 3+). Max-merging the
+two charges' predictions is clearly worse than selecting by charge (it dilutes both
+patterns), which settles the record design. Charges 4+ still fall back to the 3+ record
+(1,034 spectra here); predicting 4+ as well is cheap at OxMet scale.
+
+Phospho at 2+/3+ (2026-09-04): charge-3 predictions only were generated in
+`carafe_phospholarge_z3_20260903/` (46.6M rows, 19.2 h inference, `primary.cps` 17.8 GB),
+verified to share variant numbering with the existing 2+ workdir (all 46,588,597 tuples
+identical; only the .idx fingerprint differs, because it encodes absolute file positions
+shifted by the header's path string), so both per-charge files were built against the
+existing `phospholarge.fasta.idx` and merged with `carafe.py inten-merge` into
+`phospholarge.z23.percharge.carafe_inten` (93.18M records, 2.31e9 peaks, 8.06 GB; the MM2_R1 search then peaks at 18.6 GB RSS).
+MM2_R1, same index, xcorr/E identical across runs, PSMs at 1% FDR, N=1 / N=5:
+
+| Score | 2+-only preds | per-charge 2+/3+ preds |
+|---|---|---|
+| **All charges** (xcorr 14,831; E 16,616) | | |
+| cosine alone | 10,167 / 8,539 | **18,039 / 17,312** |
+| xcorr * cos | 17,789 / 17,631 | 18,575 / 18,585 |
+| xcorr + 2*cos | 17,850 / 17,796 | 18,524 / 18,549 |
+| xcorr + 3*cos | 17,683 / 17,634 | **18,650 / 18,705** |
+| E + xcorr + 3*cos | 18,012 / 18,046 | 18,301 / 18,333 |
+| **3+ and up** (xcorr 8,874; E 9,648) | | |
+| cosine alone | 8,256 / 6,356 | **10,615 / 10,228** |
+| xcorr + 3*cos | 10,311 / 10,162 | 10,674 / 10,668 |
+| rank-1 median cosine, 3+ (targets/decoys) | 0.497 / 0.117 | 0.798 / 0.134 |
+
+Same picture as OxMet, larger: with charge-matched predictions the pure cosine beats xcorr
+by +21.6% and the E-value by +8.6% over all charges (3+: +19.6% over xcorr), the 3+ target
+median cosine rises from 0.50 to 0.80, and xcorr + 3*cos reaches +26% over xcorr. Charges 4+
+(4,903 spectra) still use the 3+ record.
+
+**Phase 1e: XCorr-style background subtraction of the cosine (2026-09-04).** `intensity_score_bg`
+= cosine minus the mean, over the 2*`xcorr_processing_offset` (150) nonzero bin shifts, of the
+shifted *normalized* dot product (the normalized spectrum is shifted; the denominator stays
+the unshifted |p||o|, so the mean is linear and reduces to one 151-bin window sum per ladder
+position minus the centre; bins past the array edges count as 0, as in XCorr). Always
+reported next to `intensity_score` (txt/pepXML/pin/mzIdentML/RTS); may be negative. T40
+checks it equals the cosine on the plain fixture (no two peaks within 75 bins) and drops by
+exactly p_b5*sqrt(49)/150/(|p||o|) when a noise peak is placed 0.5 Da above b5.
+
+Effect: none to speak of. Rank-1 median cos - bg is 0.003 for targets and decoys alike on
+both datasets; every ranking in the grid moves by < 0.2% (HeLa per-charge: cos 13,969 vs bg
+13,953; xcorr + 2*cos 14,570 vs 14,553. MM2_R1: 10,167 vs 10,106; 17,850 vs 17,847). The
+reason is the bin width: at `fragment_bin_tol` 0.02 the +/-75-bin window is +/-1.5 Da, so
+apart from a fragment's own isotope peak the 150 shifted bins are almost all empty and the
+subtracted mean is ~0. XCorr's construction was calibrated for 1 Da bins (+/-75 Da). A
+mass-based window (e.g. +/-75 Da) would be the faithful analogue at high resolution, at
+7,500 bins per ladder position -- only worth doing with the precomputed-array approach.
+
+Low-resolution check (`fragment_bin_tol` 1.0005, `fragment_bin_offset` 0.4; the only local
+human low-res data is the 2009 LTQ Orbitrap pair `20130226-comet-tests/sh_1617_JX_070209p_
+KO410_run{1,2}.mzXML`, ion-trap CID, 1,252 MS2 scans with results pooled; OxMet per-charge
+predictions, which are HCD-trained -- so a fragmentation-type mismatch is folded in). Here
+the subtraction bites: rank-1 median cos - bg is 0.09 for targets vs 0.12 for decoys, so
+the medians move from 0.512/0.376 (cos) to 0.386/0.220 (bg) and the rank-1 target-vs-decoy
+AUC goes xcorr 0.648, E 0.652, cos 0.669, bg 0.677. PSM counts are too small for 1% FDR to
+be meaningful (xcorr 102; a single decoy moves things by ~1%); at 5-10% FDR bg-based
+combinations edge out cos-based ones by a few PSMs, consistent with the AUC. Also notable:
+at 0.02 bins the ion-trap data yields results for only 86 of ~660 scans (the FI candidate
+stage needs 0.02-Da matches), so the low-res settings are mandatory for such data.
+
+Full-scale low-res check: `C:\Work\data\20231228_Lu_100ng_Hela_ITMS2_01.raw` (Lumos, ion-trap
+MS2, 132,125 scans; searched with the Windows build, which reads .raw directly), same OxMet
+per-charge predictions, 1.0005/0.4 bins, all-charge FDR, PSMs at 1%, N=1 / N=5:
+
+| Score | ITMS2 HeLa |
+|---|---|
+| xcorr | 4,006 |
+| -log10 e-value | 9,776 |
+| cosine alone | 13,853 / 7,446 |
+| cosine_bg alone | 5,861 / 2,791 |
+| xcorr + 2*cos | 14,166 / 14,604 |
+| xcorr + 2*bg | 14,580 / 14,948 |
+| xcorr + 3*cos | **17,837 / 18,227** |
+| xcorr + 3*bg | 16,736 / 16,961 |
+| xcorr * cos | 16,961 / 17,182 |
+| xcorr * max(bg, 0) | 17,149 / 17,217 |
+| E + 3*cos | 15,468 / 15,857 |
+
+Cross-check against a plain FASTA search with the user's standard low-res params
+(`C:\Work\Data\comet.params`: same FASTA, Cys +57, 20 ppm, `isotope_error 0`, but
+`theoretical_fragment_ions = 1`): xcorr 5,332 / E 15,107 at 1% FDR. With
+`theoretical_fragment_ions = 0` (what the FI run above used) the FASTA search gives 3,834 /
+9,704 -- i.e. the FI_DB run reproduces plain FASTA to within 5%, and the 1.5x E-value gap
+was entirely the flanking-peak setting. **Rule (2026-09-04): low-res MS/MS searches with
+`fragment_bin_tol = 1.0005` must use `theoretical_fragment_ions = 1` (M peak only); flanking
+peaks (`theoretical_fragment_ions = 0`) are for high-res settings only.** The earlier ITMS2
+table above (flanking peaks) is kept for the record; the M-peak-only table below is the one
+to quote.
+Re-running the FI + intensity search with `theoretical_fragment_ions = 1` (cosine is
+unaffected; xcorr/E improve):
+
+| Score | ITMS2 HeLa, M-peak-only (N=1 / N=5) |
+|---|---|
+| xcorr | 5,442 |
+| -log10 e-value | 15,273 |
+| cosine alone | 15,117 / 7,947 |
+| cosine_bg alone | 6,207 / 2,539 |
+| xcorr + 2*cos | 22,315 / 22,763 |
+| xcorr + 3*cos | **24,863 / 25,126** |
+| xcorr + 3*bg | 20,821 / 20,762 |
+| xcorr * cos | 23,020 / 23,261 |
+| E + 3*cos | 20,549 / 20,718 |
+
+So on ion-trap data with the proper xcorr settings: cosine alone matches the E-value
+(15,117 vs 15,273; 2.8x xcorr), and xcorr + 3*cos is 4.6x xcorr and 1.6x the E-value.
+
+Rank-1 medians targets/decoys (flanking run): cos 0.677/0.532, bg 0.366/0.226 (the
+subtraction removes 0.27 from targets and 0.29 from decoys -- at 1 Da bins the 150-shift
+window really is noise). Two conclusions: (1) on ion-trap data the cosine is far stronger than XCorr as a
+score (3.5x the PSMs alone; xcorr + 3*cos is 4.5x xcorr and 1.8x the E-value), so the
+intensity score matters MORE at low resolution, where XCorr's 1 Da bins discard most of the
+discriminating information; (2) the background subtraction still does not pay: bg alone is
+much worse than cos (it removes a constant-ish offset whose size tracks |o|, i.e. spectrum
+density, which the cosine's own normalisation already handles), and in combinations it is
+a wash (better at weight 2, worse at weight 3). Caveats: all-charge FDR with 1 Da bins mixes
+charge classes with different score distributions (xcorr's all-charge count is below its
+2+-only count for that reason -- per-charge FDR or Percolator would be the fair accounting),
+and the HCD-trained predictions are being applied to CID spectra.
 
 **Phase 2: primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
@@ -310,8 +519,7 @@ for `primary_score=1` vs 0 on both datasets, target to beat: masking-only +3.7-6
   flat predicted pattern (cheap, distribution mismatch), (ii) shifted-ladder self-decoys
   (score each candidate's prediction against the spectrum with randomly shifted bins),
   (iii) target-decoy empirical calibration only. Decide from Phase 2 histograms.
-- z2 channels: `.cps` v2 storing 8 channels (the parquet trees still exist: 1.5 GB / 21 GB;
-  regenerating the store is minutes), then `Channels` bit in the intensity file.
+- z2 channels: DONE (Phase 1b above).
 - Precursor z >= 3: new inference with `--charges 2,3` if the z2-channel approximation
   underperforms on high-charge spectra.
 - Intensity-aware FI candidate counting (weighting posting hits by predicted intensity) if

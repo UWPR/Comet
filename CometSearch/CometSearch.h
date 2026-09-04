@@ -275,6 +275,7 @@ private:
                              double dCalcPepMass,
                              double dXcorr,
                              double dIntensityScore,
+                             double dIntensityScoreBg,
                              bool bStoreSeparateDecoy,
                              int *piVarModSites,
                              struct sDBEntry *dbe);

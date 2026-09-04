@@ -2817,39 +2817,61 @@ T40_LADDER_POSITIONS = ([(inten.CH_B, i) for i in range(9)] + [(inten.CH_Y, i) f
                         [(inten.CH_B_ML, i) for i in range(3, 9)] + [(inten.CH_Y_ML, i) for i in range(6, 9)])
 
 
-def _t40_expected_cosine(peaks, with_modloss):
+def _t40_expected_cosine(peaks, with_modloss, extra_window=None):
     """peaks: [(code, q)] as written to the file. Cosine over the ladder exactly as
     CometIntensityStore::Score() defines it (sqrt(rel) = q/255 predicted; observed =
-    sqrt(intensity), scale-free)."""
+    sqrt(intensity), scale-free). The fixture precursor is 2+, so usiMaxFragCharge is 1 and
+    every z2 channel (codes 4-7) is excluded from both the dot product and |p|.
+
+    extra_window: optional {(channel, ladderPos): sum of sqrt(intensity) of OTHER peaks within
+    +/- xcorr_processing_offset bins of that fragment's bin}. When given, returns
+    (cosine, cosine_bg) where cosine_bg = cosine - sum_i p_i * extra_i / (2*75) / (|p||o|) --
+    the background term of intensity_score_bg. On the plain fixture every fragment is more
+    than 1.5 Da (75 bins at 0.02) from every other peak, so extra is 0 and bg == cosine."""
     import math
-    pred = {inten.decode_peak_code(c): q / 255.0 for c, q in peaks}
+    pred = {inten.decode_peak_code(c): q / 255.0 for c, q in peaks
+            if inten.decode_peak_code(c)[0] < inten.CH_B2}
     positions = list(T40_LADDER_POSITIONS[0]) + (list(T40_LADDER_POSITIONS[1]) if with_modloss else [])
-    dot = onorm2 = 0.0
+    dot = onorm2 = shift = 0.0
     for key in positions:
         o = math.sqrt(T40_OBSERVED.get(key, 0.0))
-        dot += pred.get(key, 0.0) * o
+        p = pred.get(key, 0.0)
+        dot += p * o
         onorm2 += o * o
+        if extra_window is not None and p > 0:
+            shift += p * extra_window.get(key, 0.0)
     pnorm2 = sum(v * v for (ch, _pos), v in pred.items()
                  if with_modloss or ch in (inten.CH_B, inten.CH_Y))
-    if pnorm2 <= 0 or onorm2 <= 0 or dot <= 0:
-        return 0.0
-    return round(dot / math.sqrt(pnorm2 * onorm2), 4)
+    if pnorm2 <= 0 or onorm2 <= 0:
+        return (0.0, 0.0) if extra_window is not None else 0.0
+    norm = math.sqrt(pnorm2 * onorm2)
+    cos = round(dot / norm, 4) if dot > 0 else 0.0
+    if extra_window is None:
+        return cos
+    bg = round(dot / norm - shift / 150.0 / norm, 4)
+    return cos, bg
 
 
 def _t39_write_inten(path, idx_path, entries, fingerprint=None, num_raw=None,
-                     var_mod_config=T39_VAR_MOD_CONFIG, general_mode=False, channels=None):
-    """entries: [(key_tuple, [(code, q), ...])] -- sorted here. Header fingerprint defaults
-    to the real one for idx_path."""
+                     var_mod_config=T39_VAR_MOD_CONFIG, general_mode=False, channels=None,
+                     per_charge=False):
+    """entries: [(key_tuple, [(code, q), ...])] or, with per_charge, [(key_tuple, charge,
+    peaks)] -- sorted here. Header fingerprint defaults to the real one for idx_path."""
     real_fp, real_num = fi_mask.idx_fingerprint(str(idx_path))
     fp = fingerprint if fingerprint is not None else real_fp
     nr = num_raw if num_raw is not None else real_num
     hdr = inten.header_lines(fp, nr, str(idx_path), "hand-written", var_mod_config,
-                             general_mode=general_mode, min_rel=0.01, max_peaks=32)
+                             general_mode=general_mode, min_rel=0.01, max_peaks=32, has_z2=True,
+                             per_charge=per_charge)
     if channels is not None:
         hdr = [f"Channels: {channels}" if h.startswith("Channels: ") else h for h in hdr]
-    entries = sorted(entries, key=lambda e: e[0])
-    inten.write_inten_file(str(path), hdr, len(entries),
-                           (inten.pack_entry(k, sorted(pk)) for k, pk in entries))
+    if per_charge:
+        entries = sorted(entries, key=lambda e: (e[0], e[1]))
+        packed = (inten.pack_entry(k, sorted(pk), charge=z) for k, z, pk in entries)
+    else:
+        entries = sorted(entries, key=lambda e: e[0])
+        packed = (inten.pack_entry(k, sorted(pk)) for k, pk in entries)
+    inten.write_inten_file(str(path), hdr, len(entries), packed)
     return real_fp, real_num
 
 
@@ -2936,10 +2958,11 @@ def test_t39_intensity_store_guards(comet_exe):
         check("Predicted-intensity file: 2 entries" in out1 and "bound 2 of 2" in out1,
               f"expected the load/coverage log line, got:\n{out1}", failures)
         if hdr1 is not None and hdr0 is not None and rows1 and rows0:
-            check("intensity_score" in hdr1 and hdr1.index("intensity_score") == hdr1.index("delta_cn") + 1,
-                  f"intensity_score must be the column right after delta_cn: {hdr1}", failures)
+            check("intensity_score" in hdr1 and hdr1.index("intensity_score") == hdr1.index("delta_cn") + 1
+                  and hdr1.index("intensity_score_bg") == hdr1.index("intensity_score") + 1,
+                  f"intensity_score and intensity_score_bg must follow delta_cn: {hdr1}", failures)
             i_sc = hdr1.index("intensity_score")
-            stripped = [r[:i_sc] + r[i_sc + 1:] for r in rows1]
+            stripped = [r[:i_sc] + r[i_sc + 2:] for r in rows1]
             check(stripped == rows0,
                   f"all non-intensity columns must be identical to the baseline:\n{rows0}\n{stripped}", failures)
             score = float(rows1[0][i_sc])
@@ -2979,8 +3002,10 @@ def test_t39_intensity_store_guards(comet_exe):
         expect_reject("bad VarModConfig", DATA_DIR / "t39_bad_vmc.carafe_inten", "variable-mod configuration",
                       var_mod_config="15.994915M--0.000000|0.000000X--0.000000|0.000000X--0.000000|"
                                      "0.000000X--0.000000|0.000000X--0.000000")
-        expect_reject("bad channel order", DATA_DIR / "t39_bad_ch.carafe_inten", "Channels",
-                      channels="y_z1,b_z1")
+        expect_reject("bad channel pairs", DATA_DIR / "t39_bad_ch.carafe_inten", "Channels",
+                      channels="0=y_z1,1=b_z1")
+        expect_reject("unknown channel", DATA_DIR / "t39_bad_ch2.carafe_inten", "Channels",
+                      channels="0=b_z1,1=y_z1,9=b_z3")
     finally:
         for f in scratch:
             f.unlink(missing_ok=True)
@@ -3004,16 +3029,20 @@ def test_t40_intensity_score_exact(comet_exe):
     try:
         # predicted record: descending b ladder, a flat y ladder missing y8 (pos 7),
         # a predicted-but-absent b2 (pos 1), and modloss peaks on b5..b7 / y7..y8
+        # z2 peaks (codes 4/5) are included on purpose: the 2+ fixture has usiMaxFragCharge 1,
+        # so the scorer must ignore them entirely (they'd otherwise inflate |p|)
         peaks = ([(inten.peak_code(inten.CH_B, 1), 255)]
                  + [(inten.peak_code(inten.CH_B, pos), q) for pos, q in zip(range(2, 9), (240, 200, 160, 120, 80, 40, 20))]
                  + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
                  + [(inten.peak_code(inten.CH_B_ML, pos), 90) for pos in range(4, 7)]
-                 + [(inten.peak_code(inten.CH_Y_ML, pos), 60) for pos in (6, 7)])
+                 + [(inten.peak_code(inten.CH_Y_ML, pos), 60) for pos in (6, 7)]
+                 + [(inten.peak_code(inten.CH_B2, pos), 200) for pos in range(2, 6)]
+                 + [(inten.peak_code(inten.CH_Y2, 4), 255)])
         for general_mode in (False, True):
             path = DATA_DIR / f"t40_{'general' if general_mode else 'phospho'}.carafe_inten"
             scratch.append(path)
             file_peaks = [(c, q) for c, q in peaks
-                          if not general_mode or inten.decode_peak_code(c)[0] in (inten.CH_B, inten.CH_Y)]
+                          if not general_mode or inten.decode_peak_code(c)[0] in (inten.CH_B, inten.CH_Y, inten.CH_B2, inten.CH_Y2)]
             _t39_write_inten(path, idx, [((0, 0, -1, -1), file_peaks), ((0, -1, -1, -1), [])],
                              general_mode=general_mode)
             rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
@@ -3022,6 +3051,7 @@ def test_t40_intensity_score_exact(comet_exe):
                 check("modloss channels active" not in out, "general-mode file must not activate modloss", failures)
             else:
                 check("modloss channels active" in out, f"phospho file must activate modloss:\n{out}", failures)
+            check("z2 channels present" in out, f"file declares z2 channels; expected the load line to say so:\n{out}", failures)
             if not (hdr and rows):
                 check(False, f"general_mode={general_mode}: no output rows", failures)
                 continue
@@ -3030,9 +3060,81 @@ def test_t40_intensity_score_exact(comet_exe):
             check(abs(got - want) <= 1e-4,
                   f"general_mode={general_mode}: intensity_score {got} != expected cosine {want}", failures)
             check(rows[0][hdr.index("plain_peptide")] == "ACDSEFGHIK", f"unexpected PSM row {rows[0]}", failures)
+        # --- per-charge records: the 2+ fixture must use the charge-2 record when present,
+        # a charge-0 (merged) record next, else the nearest predicted charge ---
+        rec2 = [(inten.peak_code(inten.CH_B, pos), 200) for pos in range(2, 9)]          # b-only
+        rec3 = [(inten.peak_code(inten.CH_Y, pos), 200) for pos in range(2, 9)]          # y-only (different score)
+        rec0 = [(inten.peak_code(inten.CH_B, 4), 255)]                                     # merged stand-in
+        want2 = _t40_expected_cosine(rec2, with_modloss=True)
+        want3 = _t40_expected_cosine(rec3, with_modloss=True)
+        want0 = _t40_expected_cosine(rec0, with_modloss=True)
+        check(len({want2, want3, want0}) == 3, f"per-charge oracle values must differ: {want2} {want3} {want0}", failures)
+        cases = [
+            ("exact charge-2 record", [((0, 0, -1, -1), 2, rec2), ((0, 0, -1, -1), 3, rec3)], want2),
+            ("charge-0 merged beats nearest", [((0, 0, -1, -1), 0, rec0), ((0, 0, -1, -1), 3, rec3)], want0),
+            ("only charge 3 -> fallback to it", [((0, 0, -1, -1), 3, rec3)], want3),
+            ("charges 1 and 3 -> nearest lower (1)", [((0, 0, -1, -1), 1, rec2), ((0, 0, -1, -1), 3, rec3)], want2),
+        ]
+        for tag, ents, want in cases:
+            path = DATA_DIR / "t40_percharge.carafe_inten"
+            scratch.append(path)
+            _t39_write_inten(path, idx, ents + [((0, -1, -1, -1), 2, [])], per_charge=True)
+            rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+            check(rc == 0 and "(per precursor charge)" in out, f"{tag}: search failed or per-charge not logged (rc={rc}):\n{out[-800:]}", failures)
+            if hdr and rows:
+                got = float(rows[0][hdr.index("intensity_score")])
+                check(abs(got - want) <= 1e-4, f"{tag}: score {got} != expected {want}", failures)
+        # --- background subtraction (intensity_score_bg) ---
+        # (a) plain fixture: no two peaks within 75 bins (1.5 Da) -> bg == cosine exactly
+        # (b) a copy of the spectrum with one extra noise peak 0.5 Da above b5 (ladderPos 4,
+        #     m/z 586.1215) at intensity 49 -> only b5's window gains sqrt(49) = 7; the
+        #     y-series and NL windows are untouched
+        rec = [(inten.peak_code(inten.CH_B, pos), q) for pos, q in zip(range(2, 9), (240, 200, 160, 120, 80, 40, 20))] \
+              + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
+        path = DATA_DIR / "t40_bg.carafe_inten"
+        scratch.append(path)
+        _t39_write_inten(path, idx, [((0, 0, -1, -1), rec), ((0, -1, -1, -1), [])], general_mode=True)
+        rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+        if rc == 0 and hdr and rows:
+            cos_got = float(rows[0][hdr.index("intensity_score")])
+            bg_got = float(rows[0][hdr.index("intensity_score_bg")])
+            cos_w, bg_w = _t40_expected_cosine(rec, with_modloss=False, extra_window={})
+            check(abs(cos_got - cos_w) <= 1e-4 and abs(bg_got - bg_w) <= 1e-4 and cos_w == bg_w,
+                  f"plain fixture: cosine {cos_got} bg {bg_got}, expected both {cos_w}", failures)
+        else:
+            check(False, f"bg plain search failed (rc={rc}):\n{out[-600:]}", failures)
+        ms2_bg = DATA_DIR / "t40_bg.ms2"
+        scratch.append(ms2_bg)
+        lines = ms2.read_text().splitlines()
+        out_lines = []
+        inserted = False
+        for line in lines:
+            parts = line.split("\t")
+            if not inserted and len(parts) == 2 and parts[0][0].isdigit() and float(parts[0]) > 586.6215:
+                out_lines.append("586.621500\t49.0")
+                inserted = True
+            out_lines.append(line)
+        check(inserted, "noise peak insertion point not found", failures)
+        ms2_bg.write_text("\n".join(out_lines) + "\n")
+        txt_bg = ms2_bg.with_suffix(".txt")
+        scratch.append(txt_bg)
+        rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2_bg, txt_bg, fmt, path)
+        if rc == 0 and hdr and rows:
+            cos_got = float(rows[0][hdr.index("intensity_score")])
+            bg_got = float(rows[0][hdr.index("intensity_score_bg")])
+            cos_w, bg_w = _t40_expected_cosine(rec, with_modloss=False,
+                                               extra_window={(inten.CH_B, 4): 7.0})
+            check(abs(cos_got - cos_w) <= 1e-4, f"noise fixture: cosine {cos_got} != {cos_w} (noise peak is not a ladder position)", failures)
+            check(abs(bg_got - bg_w) <= 1e-4 and bg_w < cos_w,
+                  f"noise fixture: bg {bg_got} != expected {bg_w} (cosine {cos_w})", failures)
+        else:
+            check(False, f"bg noise search failed (rc={rc}):\n{out[-600:]}", failures)
         # sanity on the oracle itself: the two expectations must differ (modloss changes |o| and dot)
         w_ph = _t40_expected_cosine(peaks, with_modloss=True)
-        w_gen = _t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] < 2], with_modloss=False)
+        w_gen = _t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] in (0, 1, 4, 5)], with_modloss=False)
+        # oracle sanity: z2 peaks must not move the expectation for a 2+ precursor
+        check(_t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] < 4], True) == w_ph,
+              "oracle must ignore z2 codes for the 2+ fixture", failures)
         check(w_ph != w_gen and 0 < w_ph < 1 and 0 < w_gen < 1,
               f"oracle sanity: phospho {w_ph} vs general {w_gen}", failures)
     finally:

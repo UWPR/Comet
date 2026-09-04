@@ -238,6 +238,9 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
             case 23:
                Stmp.fIntensityScore = std::stof(field);
                break;
+            case 24:
+               Stmp.fIntensityScoreBg = std::stof(field);
+               break;
             default:
                string strErrorMsg = " Error parsing mzid temp file (" + std::to_string(iWhichField) + "): " + strLine + "\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1373,6 +1376,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002253\" name=\"Comet:deltacn\" value=\"%0.4f\" />\n", (*itMzid).fCn);
       if (CometIntensityStore::IsEnabled())
          fprintf(fpout, "      <userParam name=\"Comet:intensity_score\" value=\"%0.4f\" />\n", (*itMzid).fIntensityScore);
+         fprintf(fpout, "      <userParam name=\"Comet:intensity_score_bg\" value=\"%0.4f\" />\n", (*itMzid).fIntensityScoreBg);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
@@ -1555,7 +1559,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pQuery->_spectrumInfoInternal.fRTime);
 
          // always written (0.0 when disabled) so the tmp-file field count stays fixed
-         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fIntensityScore);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScore);
+         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fIntensityScoreBg);
 
          fprintf(fpout, "\n");
       }

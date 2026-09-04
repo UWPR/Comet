@@ -93,7 +93,7 @@ void CometWriteTxt::PrintTxtHeader(FILE *fpout)
    fprintf(fpout, "\txcorr");
    fprintf(fpout, "\tdelta_cn");
    if (CometIntensityStore::IsEnabled())
-      fprintf(fpout, "\tintensity_score");
+      fprintf(fpout, "\tintensity_score\tintensity_score_bg");
    fprintf(fpout, "\tsp_score");
    fprintf(fpout, "\tions_matched");
    fprintf(fpout, "\tions_total");
@@ -306,7 +306,7 @@ void CometWriteTxt::PrintResults(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorr);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fDeltaCn);
          if (CometIntensityStore::IsEnabled())
-            fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScore);
+            fprintf(fpout, "%0.4f\t%0.4f\t", pOutput[iWhichResult].fIntensityScore, pOutput[iWhichResult].fIntensityScoreBg);
          fprintf(fpout, "%0.1f\t", pOutput[iWhichResult].fScoreSp);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiMatchedIons);
          fprintf(fpout, "%d\t", pOutput[iWhichResult].usiTotalIons);

@@ -40,6 +40,9 @@ COMMANDS = {
     "inten":       ("carafe_cps_to_inten",
                     "build a .carafe_inten predicted-intensity file from a .cps store "
                     "(input for the intensity score)"),
+    "inten-merge": ("carafe_inten_merge",
+                    "merge per-charge .carafe_inten files from separate prediction runs "
+                    "(same .idx) into one"),
     "mask-tsv":    ("carafe_ms2_to_fi_mask",
                     "build a .fi_mask directly from ms2_df/ms2_pred TSVs (tests, "
                     "small runs)"),
