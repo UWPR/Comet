@@ -2959,10 +2959,13 @@ def test_t39_intensity_store_guards(comet_exe):
               f"expected the load/coverage log line, got:\n{out1}", failures)
         if hdr1 is not None and hdr0 is not None and rows1 and rows0:
             check("intensity_score" in hdr1 and hdr1.index("intensity_score") == hdr1.index("delta_cn") + 1
-                  and hdr1.index("intensity_score_bg") == hdr1.index("intensity_score") + 1,
-                  f"intensity_score and intensity_score_bg must follow delta_cn: {hdr1}", failures)
+                  and hdr1.index("intensity_score_bg") == hdr1.index("intensity_score") + 1
+                  and hdr1.index("xcorr_pred") == hdr1.index("intensity_score") + 2
+                  and hdr1.index("xcorr_pred_g") == hdr1.index("intensity_score") + 3
+                  and hdr1.index("xcorr_pred_lin") == hdr1.index("intensity_score") + 4,
+                  f"intensity_score, intensity_score_bg, xcorr_pred, xcorr_pred_g, xcorr_pred_lin must follow delta_cn: {hdr1}", failures)
             i_sc = hdr1.index("intensity_score")
-            stripped = [r[:i_sc] + r[i_sc + 2:] for r in rows1]
+            stripped = [r[:i_sc] + r[i_sc + 5:] for r in rows1]
             check(stripped == rows0,
                   f"all non-intensity columns must be identical to the baseline:\n{rows0}\n{stripped}", failures)
             score = float(rows1[0][i_sc])
@@ -2986,8 +2989,9 @@ def test_t39_intensity_store_guards(comet_exe):
         check("bound 1 of 2" in out3 and "have no predicted-intensity record" in out3,
               f"expected a partial-coverage warning, got:\n{out3}", failures)
         if hdr3 and rows3:
-            check(float(rows3[0][hdr3.index("intensity_score")]) == 0.0,
-                  f"variant without a record must score 0.0, got {rows3[0]}", failures)
+            check(float(rows3[0][hdr3.index("intensity_score")]) == 0.0 and float(rows3[0][hdr3.index("xcorr_pred")]) == 0.0
+                  and float(rows3[0][hdr3.index("xcorr_pred_g")]) == 0.0 and float(rows3[0][hdr3.index("xcorr_pred_lin")]) == 0.0,
+                  f"variant without a record must score 0.0 (cosine, xcorr_pred, xcorr_pred_g, xcorr_pred_lin), got {rows3[0]}", failures)
 
         # --- rejections ---
         def expect_reject(tag, path, needle, **kw):
@@ -3129,6 +3133,42 @@ def test_t40_intensity_score_exact(comet_exe):
                   f"noise fixture: bg {bg_got} != expected {bg_w} (cosine {cos_w})", failures)
         else:
             check(False, f"bg noise search failed (rc={rc}):\n{out[-600:]}", failures)
+        # --- xcorr_pred invariants (weights 0.1 + 0.9*sqrt(pred)): a record predicting q=255 at
+        # every b/y position the ladder can hold (unshifted AND NL-shifted -- the fixture is
+        # 2+, so z1 only; b/y are the only ion series; no precursor-loss peaks configured)
+        # gives weight 1 everywhere -> xcorr_pred == xcorr exactly; a record with no peaks at
+        # all -> every weight is the 0.1 floor -> xcorr_pred == 0.1 * xcorr (to the 3-decimal
+        # rounding both scores use); no record -> 0.0 ---
+        full = [(inten.peak_code(ch, pos), 255) for ch in (inten.CH_B, inten.CH_Y, inten.CH_B_ML, inten.CH_Y_ML) for pos in range(9)]
+        for tag, rec, expect in (("full-weight record", full, "equal"), ("empty record", [(inten.peak_code(inten.CH_B, 0), 1)], "floor")):
+            path = DATA_DIR / "t40_xp.carafe_inten"
+            scratch.append(path)
+            _t39_write_inten(path, idx, [((0, 0, -1, -1), rec), ((0, -1, -1, -1), [])])
+            rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+            if rc == 0 and hdr and rows:
+                xc = float(rows[0][hdr.index("xcorr")]); xp = float(rows[0][hdr.index("xcorr_pred")])
+                xg = float(rows[0][hdr.index("xcorr_pred_g")]); xl = float(rows[0][hdr.index("xcorr_pred_lin")])
+                # xcorr_pred_g oracle: globally normalized sqrt spectrum (base peak 50 -> the
+                # fixture's max intensity 110). No two peaks lie within 75 bins, so each matched
+                # bin's own window mean is 0; but the template has theoretical_fragment_ions = 0,
+                # and the two EMPTY flanking bins each see the main peak in their window, so each
+                # contributes -o/150 at half weight: an isolated peak scores o * (1 - 1/150).
+                # Score = 0.005 * sum over the 23 matched ladder positions of w * that.
+                import math
+                obs = [100.0] * 7 + [110.0] * 7 + [80.0] * 6 + [90.0] * 3
+                g_full = 0.005 * sum(50.0 * math.sqrt(v) / math.sqrt(110.0) for v in obs) * (1.0 - 1.0 / 150.0)
+                if expect == "equal":
+                    check(abs(xp - xc) <= 0.0015, f"{tag}: xcorr_pred {xp} != xcorr {xc}", failures)
+                    check(abs(xg - g_full) <= 0.0015, f"{tag}: xcorr_pred_g {xg} != oracle {g_full:.4f}", failures)
+                    check(abs(xl - xc) <= 0.0015, f"{tag}: xcorr_pred_lin {xl} != xcorr {xc} (rel = 1 everywhere)", failures)
+                else:
+                    # one q=1 peak keeps the record valid (a zero-peak record is 'no prediction' -> 0.0)
+                    # but its weight 0.1 + 0.9/255 at b1 is within rounding of the floor
+                    check(abs(xp - 0.1 * xc) <= 0.0025, f"{tag}: xcorr_pred {xp} != 0.1 * xcorr {0.1 * xc:.4f}", failures)
+                    check(abs(xg - 0.1 * g_full) <= 0.0025, f"{tag}: xcorr_pred_g {xg} != 0.1 * oracle {0.1 * g_full:.4f}", failures)
+                    check(abs(xl - 0.1 * xc) <= 0.0025, f"{tag}: xcorr_pred_lin {xl} != 0.1 * xcorr {0.1 * xc:.4f}", failures)
+            else:
+                check(False, f"{tag}: search failed (rc={rc}):\n{out[-600:]}", failures)
         # sanity on the oracle itself: the two expectations must differ (modloss changes |o| and dot)
         w_ph = _t40_expected_cosine(peaks, with_modloss=True)
         w_gen = _t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] in (0, 1, 4, 5)], with_modloss=False)
@@ -3181,7 +3221,7 @@ def _t41_search_params(comet_exe, idx, ms2, txt, fmt, inten_file, primary, extra
 
 @register("t41_primary_score_switch")
 def test_t41_primary_score_switch(comet_exe):
-    """T41: primary_score = 1 / 2 run end to end and produce the same PSM as xcorr mode on the
+    """T41: primary_score = 1 / 2 / 3 / 4 / 5 run end to end and produce the same PSM as xcorr mode on the
     single-candidate fixture (identical xcorr, e-value and cosine columns; num/rank 1);
     primary_score without an intensity file, with decoy_search, or an out-of-range value
     are refused or reset as documented."""
@@ -3197,7 +3237,7 @@ def test_t41_primary_score_switch(comet_exe):
                 + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
         _t39_write_inten(good, idx, [((0, 0, -1, -1), peaks), ((0, -1, -1, -1), [])])
         rows_by_mode = {}
-        for primary in (0, 1, 2):
+        for primary in (0, 1, 2, 3, 4, 5):
             rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, primary)
             check(rc == 0, f"primary_score={primary}: search failed (rc={rc}):\n{out[-800:]}", failures)
             check("Predicted-intensity file:" in out, f"primary_score={primary}: intensity file not loaded", failures)
@@ -3207,11 +3247,11 @@ def test_t41_primary_score_switch(comet_exe):
                 rows_by_mode[primary] = (hdr, rows[0])
             else:
                 check(False, f"primary_score={primary}: no output row", failures)
-        if len(rows_by_mode) == 3:
+        if len(rows_by_mode) == 6:
             h0, r0 = rows_by_mode[0]
-            for primary in (1, 2):
+            for primary in (1, 2, 3, 4, 5):
                 h, r = rows_by_mode[primary]
-                for col in ("xcorr", "e-value", "intensity_score", "intensity_score_bg", "sp_score", "ions_matched", "modified_peptide"):
+                for col in ("xcorr", "e-value", "intensity_score", "intensity_score_bg", "xcorr_pred", "xcorr_pred_g", "xcorr_pred_lin", "sp_score", "ions_matched", "modified_peptide"):
                     check(r[h.index(col)] == r0[h0.index(col)],
                           f"primary_score={primary}: column {col} {r[h.index(col)]} != xcorr-mode {r0[h0.index(col)]}", failures)
             cos = float(r0[h0.index("intensity_score")]); bg = float(r0[h0.index("intensity_score_bg")])

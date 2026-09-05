@@ -562,6 +562,118 @@ implicit two-factor score -- a decoy that wins on cosine rarely also has a high 
 it is available today without any combined-score code. It is the natural bridge to the
 deferred combined-score work.
 
+**Phase 3a (2026-09-04): predicted-intensity-weighted XCorr (`xcorr_pred`).** The user's
+second score-function change. XcorrScoreI()'s fast-xcorr sum with every ladder term weighted
+by w = 0.1 + 0.9*sqrt(predicted relative intensity) for a b/y position at fragment charge
+1/2 (unshifted, or the modloss channel at the NL-shifted slot) and w = 0.1 for anything
+without a prediction (other ion series, z3+, other NL slots, precursor-loss peaks);
+`CometIntensityStore::Decode()` now decodes a variant's record once per candidate and both
+the cosine (`Score()`) and the weights (`Weight()`) read it. Same 0.005 scale and 3-decimal
+rounding as xcorr; 0.0 when the variant has no record. Unlike the cosine it is an
+unnormalised sum over the full XCorr ladder (all series, all fragment charges, flanking
+bins and neutral losses) of the windowed, background-subtracted array -- i.e. XCorr with
+intensity weights, not a cosine. Reported as `xcorr_pred` (txt after intensity_score_bg;
+pepXML/pin/mzIdentML/RTS) and selectable as `primary_score = 3`. T40 pins two exact
+invariants: a record predicting q=255 at every ladder position reproduces xcorr exactly, an
+all-floor record gives 0.1*xcorr. Fast suite 60/60 on Linux; T39-T41 pass on MSVC.
+
+| Run (its primary chose the peptide) | ranked by xcorr | by cosine | by E | by xcorr_pred |
+|---|---|---|---|---|
+| **HeLa OxMet, high-res** | | | | |
+| primary = xcorr | 12,992 | 13,969 | 13,677 | 13,870 |
+| primary = cosine | 13,822 | 13,100 | 13,934 | -- |
+| primary = xcorr_pred | 13,236 | 13,436 | 13,770 | **13,504** |
+| **MM2_R1 phospho, high-res** | | | | |
+| primary = xcorr | 14,831 | 18,039 | 16,616 | 18,209 |
+| primary = cosine | 17,508 | 16,562 | 17,371 | -- |
+| primary = xcorr_pred | 15,859 | 17,345 | 16,710 | **17,484** |
+| **ITMS2 HeLa OxMet, low-res** | | | | |
+| primary = xcorr | 5,442 | 15,117 | 15,273 | 18,284 |
+| primary = cosine | 21,164 | 3,976 | 23,541 | -- |
+| primary = xcorr_pred | 8,917 | 9,183 | 16,755 | **17,185** |
+
+As a TRUE primary xcorr_pred is the best single score on MM2_R1 (17,484 vs E 16,616, cosine
+16,562) and ITMS2 (17,185 vs E 15,273, cosine 3,976) and second to the E-value on HeLa
+(13,504 vs 13,677) -- it keeps xcorr's within-spectrum behaviour (peptide choice differs
+from xcorr's in 12% / 22% / 55% of spectra vs the cosine's 17% / 29% / 74%, flips symmetric)
+while carrying the intensity agreement. As a rescoring column on xcorr's picks it is the best
+single column on MM2_R1 (18,209) and ITMS2 (18,284, vs cosine 15,117 and E 15,273) and just
+behind the cosine on HeLa (13,870 vs 13,969). So the prediction from the design discussion
+held on the primary side (unnormalised sum -> good chooser) and was pessimistic on the
+ranking side: the windowed, background-subtracted observed array plus intensity weights
+ranks as well as or better than the cosine except on the cleanest high-res data. The pure
+cosine still wins one thing: choose-by-cosine then rank-by-E (23,541 on ITMS2).
+
+**Phase 3b (2026-09-04): globally normalized xcorr_pred (`xcorr_pred_g`).** Same weighted
+sum as xcorr_pred but over the spectrum normalized ONCE (base peak 50 over the whole
+spectrum -- the SP-score array scaled by 0.5, sqrt intensities, no 5% floor) instead of
+MakeCorrData()'s 10-window normalization, with the same +/-75-bin mean subtraction and,
+when theoretical_fragment_ions = 0, the same half-weight +/-1-bin flanking terms
+(`CometIntensityStore::GlobalXcorrValue()`, one 151-bin window sum per term, three with
+flanking). Column `xcorr_pred_g`, `primary_score = 4`. T40's oracle for it is exact: on the
+isolated-peak fixture each matched peak contributes o*(1 - 1/150) because the two empty
+flanking bins each carry the peak's negative window mean. Fast suite 60/60; T39-T41 on MSVC.
+
+| Run (its primary chose the peptide) | by xcorr | by E | by xcorr_pred | by xcorr_pred_g |
+|---|---|---|---|---|
+| **HeLa OxMet, high-res** | | | | |
+| primary = xcorr | 12,992 | 13,677 | 13,870 | 11,965 |
+| primary = xcorr_pred | 13,236 | 13,770 | **13,504** | -- |
+| primary = xcorr_pred_g | 13,301 | 13,801 | 13,563 | **11,726** |
+| **MM2_R1 phospho, high-res** | | | | |
+| primary = xcorr | 14,831 | 16,616 | 18,209 | 16,505 |
+| primary = xcorr_pred | 15,859 | 16,710 | **17,484** | -- |
+| primary = xcorr_pred_g | 16,164 | 17,022 | 17,619 | **15,343** |
+| **ITMS2 HeLa OxMet, low-res** | | | | |
+| primary = xcorr | 5,442 | 15,273 | 18,284 | 12,315 |
+| primary = xcorr_pred | 8,917 | 16,755 | **17,185** | -- |
+| primary = xcorr_pred_g | 10,480 | 16,862 | 17,554 | **10,661** |
+
+Uniformly worse than the windowed xcorr_pred: as a true primary 11,726 vs 13,504 (HeLa,
+below even xcorr), 15,343 vs 17,484 (MM2_R1), 10,661 vs 17,185 (ITMS2); as a rescoring
+column on xcorr's picks 11,965 vs 13,870, 16,505 vs 18,209, 12,315 vs 18,284. So the
+10-window normalization is doing real work even when predicted intensities supply the
+weights -- a globally normalized spectrum lets the base-peak region dominate the sum and
+any prediction error on the few dominant peaks swamps the rest, while windowing keeps every
+m/z region's evidence in play. The hypothesis that windowing "fights" the weights is
+rejected; xcorr_pred (windowed) stays the candidate. One oddity for later: the
+xcorr_pred_g-primary run rescored by xcorr_pred (17,554 on ITMS2) edges out xcorr_pred's
+own diagonal, i.e. the two normalizations pick slightly different peptides.
+
+**Phase 3c (2026-09-05): linear-weight xcorr_pred (`xcorr_pred_lin`).** Same as xcorr_pred
+(windowed array) but w = 0.1 + 0.9*rel with no sqrt (rel = stored sqrt value squared;
+`CometIntensityStore::WeightLin()`). Column `xcorr_pred_lin`, `primary_score = 5`; T40's
+full-weight / all-floor invariants hold for it too. Fast suite 60/60; T39-T41 on MSVC.
+
+| Run (its primary chose the peptide) | by xcorr | by E | by xcorr_pred | by xcorr_pred_lin |
+|---|---|---|---|---|
+| **HeLa OxMet, high-res** | | | | |
+| primary = xcorr | 12,992 | 13,677 | 13,870 | 13,137 |
+| primary = xcorr_pred | 13,236 | 13,770 | **13,504** | -- |
+| primary = xcorr_pred_lin | 13,057 | 13,588 | 13,123 | **11,661** |
+| **MM2_R1 phospho, high-res** | | | | |
+| primary = xcorr | 14,831 | 16,616 | 18,209 | 17,706 |
+| primary = xcorr_pred | 15,859 | 16,710 | **17,484** | -- |
+| primary = xcorr_pred_lin | 15,709 | 16,481 | 17,042 | **16,032** |
+| **ITMS2 HeLa OxMet, low-res** | | | | |
+| primary = xcorr | 5,442 | 15,273 | 18,284 | 15,153 |
+| primary = xcorr_pred | 8,917 | 16,755 | **17,185** | -- |
+| primary = xcorr_pred_lin | 9,018 | 16,674 | 16,971 | **12,238** |
+
+Uniformly worse than the sqrt weights: as a true primary 11,661 vs 13,504 (HeLa), 16,032
+vs 17,484 (MM2_R1), 12,238 vs 17,185 (ITMS2); as a rescoring column 13,137 vs 13,870,
+17,706 vs 18,209, 15,153 vs 18,284. The linear weight is steeper (a fragment predicted at
+25% of the base peak gets w = 0.33 instead of 0.55), so the few dominant predicted peaks
+carry the score and the many weaker fragments -- which are still real evidence, and whose
+observed intensities Comet has already sqrt-compressed -- are down-weighted below their
+worth. sqrt weights match the sqrt on the observed side and stay the choice.
+
+Standing after Phases 3a-3c: `xcorr_pred` (windowed array, sqrt weights, 0.1 floor) is the
+best single true primary (best on MM2_R1 and ITMS2, within 1.3% of the E-value on HeLa) and
+the best single rescoring column on MM2_R1 and ITMS2; the cosine remains the best rescoring
+column on clean high-res HeLa by 0.7%, and choose-by-cosine / rank-by-E remains the best
+single-column result on ion-trap data (23,541).
+
 **Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR

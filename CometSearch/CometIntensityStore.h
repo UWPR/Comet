@@ -57,13 +57,30 @@ public:
 
    static bool IsEnabled();
 
-   // Cosine similarity in [0, 1] between the variant's predicted peaks and the observed
-   // spectrum, over the candidate's b/y ladder as binned in uiBinnedIonMasses for fragment
-   // charges 1..min(2, usiMaxFragCharge) (slot [z][series][ladderPos][0], plus the NL-shifted
-   // slot [..][iNlSlot+1] when the file carries modloss channels and iFoundVariableMod == 2).
-   // Rounded to 4 decimals.
-   // Returns 0.0 when disabled, for NO_VARIANT, or when the variant has no record (the
-   // latter increments the missing-lookup counter reported by MissingLookups()).
+   // Channel codes as written by tools/carafe_cps_to_inten.py (high byte of the peak code;
+   // its CHANNEL_NAMES order). The file's Channels header lists "code=name" pairs for the
+   // subset it carries; codes are fixed per name.
+   enum Channel { CH_B = 0, CH_Y = 1, CH_B_ML = 2, CH_Y_ML = 3,
+                  CH_B2 = 4, CH_Y2 = 5, CH_B2_ML = 6, CH_Y2_ML = 7, NUM_CH = 8 };
+
+   // A variant's predicted ladder, decoded once per candidate: sqrt(rel) = q/255 per
+   // (channel, ladderPos), zero where nothing was predicted; z2 channels are dropped when
+   // the spectrum's usiMaxFragCharge < 2 so every consumer sees exactly the ladder Comet
+   // scores. bValid is false when the store is disabled, the variant has no record (counted
+   // in MissingLookups()) or the record has no usable peak.
+   struct Decoded
+   {
+      bool   bValid;
+      double dPredNorm2;
+      float  pred[NUM_CH][MAX_PEPTIDE_LEN];
+   };
+   static bool Decode(unsigned int uiVariant, const Query* pQuery, int iLenPeptide, Decoded& out);
+
+   // Cosine similarity in [0, 1] between the decoded prediction and the observed spectrum,
+   // over the candidate's b/y ladder as binned in uiBinnedIonMasses for fragment charges
+   // 1..min(2, usiMaxFragCharge) (slot [z][series][ladderPos][0], plus the NL-shifted slot
+   // [..][iNlSlot+1] when the file carries modloss channels and iFoundVariableMod == 2).
+   // Rounded to 4 decimals; 0.0 when !d.bValid.
    //
    // dScoreBg receives the background-subtracted variant: the same cosine minus the mean,
    // over the 2*xcorr_processing_offset nonzero bin shifts k, of the shifted normalized
@@ -71,12 +88,63 @@ public:
    // shifted, the denominator stays the unshifted one (XCorr's own construction applied
    // to the cosine). Linear in o, so it reduces to one 151-bin window sum per ladder
    // position; bins past either array edge count as 0 like XCorr. May be negative.
-   static double Score(unsigned int uiVariant,
+   static double Score(const Decoded& d,
                        const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
                        int iLenPeptide,
                        int iFoundVariableMod,
                        const Query* pQuery,
                        double& dScoreBg);
+
+   // Predicted-intensity-weighted XCorr (docs/20260903_IntensityScore_design.md Phase 3a):
+   // XcorrScoreI() multiplies each ladder term of its fast-xcorr sum by this weight,
+   // WEIGHT_FLOOR + (1 - WEIGHT_FLOOR) * sqrt(predicted relative intensity) for a b/y
+   // position at fragment charge 1/2 (slot 0 unshifted, slot iNlSlot+1 the modloss channel)
+   // and WEIGHT_FLOOR for everything without a prediction (other ion series, z3+, other
+   // NL slots, precursor-loss peaks). Only meaningful when d.bValid.
+   static constexpr float WEIGHT_FLOOR = 0.1f;
+
+   // For xcorr_pred_g (Phase 3b): the observed value XCorr would see at `bin` if the spectrum
+   // were normalized ONCE (base peak 50 over the whole spectrum, sqrt intensities -- i.e. the
+   // SP-score array scaled by 0.5) instead of MakeCorrData()'s 10-window normalization, then
+   // background-subtracted by the same +/- xcorr_processing_offset mean; with bFlank the
+   // +/-1-bin half-weight flanking terms XCorr adds when theoretical_fragment_ions = 0.
+   // No 5%-of-window floor. Costs one 151-bin window sum per term (three with flanking).
+   static double GlobalXcorrValue(const Query* pQuery, int bin, bool bFlank);
+   static inline float Weight(const Decoded& d, int iWhichIonSeries, int ctCharge, int ctLen, int iSlot)
+   {
+      if (!d.bValid)
+         return WEIGHT_FLOOR;
+      int ch;
+      if (iWhichIonSeries == ION_SERIES_B)
+         ch = CH_B;
+      else if (iWhichIonSeries == ION_SERIES_Y)
+         ch = CH_Y;
+      else
+         return WEIGHT_FLOOR;
+      if (ctCharge == 2)
+         ch += CH_B2;
+      else if (ctCharge != 1)
+         return WEIGHT_FLOOR;
+      if (iSlot != 0)
+      {
+         if (s_iNlSlot >= 0 && iSlot == s_iNlSlot + 1)
+            ch += CH_B_ML;
+         else
+            return WEIGHT_FLOOR;
+      }
+      return WEIGHT_FLOOR + (1.0f - WEIGHT_FLOOR) * d.pred[ch][ctLen];
+   }
+
+   // Same as Weight() but linear in the predicted RELATIVE intensity (no sqrt): the stored
+   // value is sqrt(rel), so rel = pred^2. For xcorr_pred_lin (Phase 3c).
+   static inline float WeightLin(const Decoded& d, int iWhichIonSeries, int ctCharge, int ctLen, int iSlot)
+   {
+      float w = Weight(d, iWhichIonSeries, ctCharge, ctLen, iSlot);
+      if (w <= WEIGHT_FLOOR)
+         return WEIGHT_FLOOR;
+      float p = (w - WEIGHT_FLOOR) / (1.0f - WEIGHT_FLOOR);   // back to sqrt(rel)
+      return WEIGHT_FLOOR + (1.0f - WEIGHT_FLOOR) * p * p;
+   }
 
    static uint64_t MissingLookups();
 
@@ -84,12 +152,6 @@ public:
    static void Free();
 
 private:
-   // Channel codes as written by tools/carafe_cps_to_inten.py (high byte of the peak code;
-   // its CHANNEL_NAMES order). The file's Channels header lists "code=name" pairs for the
-   // subset it carries; codes are fixed per name.
-   enum Channel { CH_B = 0, CH_Y = 1, CH_B_ML = 2, CH_Y_ML = 3,
-                  CH_B2 = 4, CH_Y2 = 5, CH_B2_ML = 6, CH_Y2_ML = 7, NUM_CH = 8 };
-
    static constexpr size_t KEY_SIZE = 10;   // u32 iWhichPeptide, i32 modNumIdx, i8 nterm, i8 cterm
    // entry = key, u8 precursor charge (0 = merged over all predicted charges), u8 nPeaks, peaks
    static constexpr size_t ENTRY_HDR_SIZE = KEY_SIZE + 2;

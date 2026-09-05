@@ -109,6 +109,9 @@ struct CometScores
     string sAScoreProSiteScores;  // AScore site scores as string
     double dIntensityScore;       // Carafe predicted-intensity cosine score, 0.0 when disabled
     double dIntensityScoreBg;     // its background-subtracted variant (may be negative), 0.0 when disabled
+    double dXcorrPred;            // predicted-intensity-weighted xcorr, 0.0 when disabled
+    double dXcorrPredG;           // its globally-normalized variant, 0.0 when disabled
+    double dXcorrPredLin;         // its linear-weight variant, 0.0 when disabled
 
     CometScores() :
         xCorr(0),
@@ -121,7 +124,10 @@ struct CometScores
         totalIons(0),
         sAScoreProSiteScores(""),
         dIntensityScore(0),
-        dIntensityScoreBg(0)
+        dIntensityScoreBg(0),
+        dXcorrPred(0),
+        dXcorrPredG(0),
+        dXcorrPredLin(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores, double dIntensityScore = 0.0) :
@@ -135,7 +141,10 @@ struct CometScores
         totalIons(totalIons),
         sAScoreProSiteScores(sAScoreProSiteScores),
         dIntensityScore(dIntensityScore),
-        dIntensityScoreBg(0)
+        dIntensityScoreBg(0),
+        dXcorrPred(0),
+        dXcorrPredG(0),
+        dXcorrPredLin(0)
     { }
 
     CometScores(const CometScores& a) :
@@ -149,7 +158,10 @@ struct CometScores
         totalIons(a.totalIons),
         sAScoreProSiteScores(a.sAScoreProSiteScores),
         dIntensityScore(a.dIntensityScore),
-        dIntensityScoreBg(a.dIntensityScoreBg)
+        dIntensityScoreBg(a.dIntensityScoreBg),
+        dXcorrPred(a.dXcorrPred),
+        dXcorrPredG(a.dXcorrPredG),
+        dXcorrPredLin(a.dXcorrPredLin)
     { }
 
     CometScores& operator=(const CometScores& a)
@@ -165,6 +177,9 @@ struct CometScores
         sAScoreProSiteScores = a.sAScoreProSiteScores;
         dIntensityScore = a.dIntensityScore;
         dIntensityScoreBg = a.dIntensityScoreBg;
+        dXcorrPred = a.dXcorrPred;
+        dXcorrPredG = a.dXcorrPredG;
+        dXcorrPredLin = a.dXcorrPredLin;
         return *this;
     }
 };

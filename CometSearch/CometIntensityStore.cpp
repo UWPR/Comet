@@ -376,27 +376,17 @@ bool CometIntensityStore::LoadAndBind(const std::string& strFile, const VariantA
 }
 
 
-double CometIntensityStore::Score(unsigned int uiVariant,
-                                  const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
-                                  int iLenPeptide,
-                                  int iFoundVariableMod,
-                                  const Query* pQuery,
-                                  double& dScoreBg)
+bool CometIntensityStore::Decode(unsigned int uiVariant, const Query* pQuery, int iLenPeptide, Decoded& out)
 {
-   dScoreBg = 0.0;
+   out.bValid = false;
+   out.dPredNorm2 = 0.0;
    if (!s_bEnabled || uiVariant == NO_VARIANT)
-      return 0.0;
+      return false;
    if (uiVariant >= s_offsets.size() || s_offsets[uiVariant] == NO_RECORD)
    {
       s_missing.fetch_add(1);
-      return 0.0;
+      return false;
    }
-
-   // Fragment charges this spectrum's ladder actually holds: 1..min(2, usiMaxFragCharge).
-   // (uiBinnedIonMasses rows above usiMaxFragCharge are never written for this candidate.)
-   int iMaxZ = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
-   if (iMaxZ > 2)
-      iMaxZ = 2;
 
    // Pick this variant's record: the file holds its entries consecutively from s_offsets
    // (one per predicted precursor charge when PerCharge, else a single charge-0 merge).
@@ -439,19 +429,21 @@ double CometIntensityStore::Score(unsigned int uiVariant,
       if (pChosen == NULL)
          pChosen = pMerged ? pMerged : (pLower ? pLower : pHigher);
       if (pChosen == NULL)
-         return 0.0;
+         return false;
    }
    else
       pChosen = pEntry;
 
-   // Decode the sparse record into a dense predicted ladder, sqrt(rel) = q/255. Channels
-   // 4-7 are the z2 predictions; they are skipped (and left out of |p|) when the spectrum
-   // does not score z2 fragments, so the cosine is taken over exactly the ladder Comet scores.
+   // Fragment charges this spectrum's ladder actually holds: 1..min(2, usiMaxFragCharge).
+   int iMaxZ = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+   if (iMaxZ > 2)
+      iMaxZ = 2;
+
+   // Dense predicted ladder, sqrt(rel) = q/255. Channels 4-7 are the z2 predictions; they
+   // are skipped (and left out of |p|) when the spectrum does not score z2 fragments.
    const unsigned char* p = pChosen + KEY_SIZE + 1;   // skip key + charge byte
    unsigned int nPeaks = *p++;
-   float pred[NUM_CH][MAX_PEPTIDE_LEN];
-   memset(pred, 0, sizeof(pred));
-   double dPredNorm2 = 0.0;
+   memset(out.pred, 0, sizeof(out.pred));
    int iLenMinus1 = iLenPeptide - 1;
    for (unsigned int i = 0; i < nPeaks; ++i, p += PEAK_SIZE)
    {
@@ -461,12 +453,72 @@ double CometIntensityStore::Score(unsigned int uiVariant,
       float v = (float)p[2] / 255.0f;
       if (ch < NUM_CH && (int)pos < iLenMinus1 && (ch < CH_B2 || iMaxZ >= 2))
       {
-         pred[ch][pos] = v;
-         dPredNorm2 += (double)v * v;
+         out.pred[ch][pos] = v;
+         out.dPredNorm2 += (double)v * v;
       }
    }
-   if (dPredNorm2 <= 0.0)
+   out.bValid = (out.dPredNorm2 > 0.0);
+   return out.bValid;
+}
+
+
+double CometIntensityStore::GlobalXcorrValue(const Query* pQuery, int bin, bool bFlank)
+{
+   const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;
+   const int iMax = iArraySize / SPARSE_MATRIX_SIZE;
+   float** ppSp = pQuery->ppfSparseSpScoreData;
+   const int iOffset = g_staticParams.iXcorrProcessingOffset;
+
+   auto obs = [&](int b) -> double
+   {
+      if (b <= 0 || b >= iArraySize)
+         return 0.0;
+      int xx = b / SPARSE_MATRIX_SIZE;
+      if (xx > iMax || ppSp[xx] == NULL)
+         return 0.0;
+      return ppSp[xx][b - xx * SPARSE_MATRIX_SIZE];
+   };
+   // o(b) minus the mean of the 2*iOffset neighbouring bins (0 past the edges, like XCorr)
+   auto bgsub = [&](int b) -> double
+   {
+      if (b <= 0 || b >= iArraySize)
+         return 0.0;
+      double o = obs(b);
+      double w = 0.0;
+      int lo = b - iOffset, hi = b + iOffset;
+      if (lo < 1) lo = 1;
+      if (hi > iArraySize - 1) hi = iArraySize - 1;
+      for (int bb = lo; bb <= hi; ++bb)
+      {
+         int xx = bb / SPARSE_MATRIX_SIZE;
+         if (xx <= iMax && ppSp[xx] != NULL)
+            w += ppSp[xx][bb - xx * SPARSE_MATRIX_SIZE];
+      }
+      return iOffset > 0 ? o - (w - o) / (2.0 * iOffset) : o;
+   };
+
+   double v = bgsub(bin);
+   if (bFlank)
+      v += 0.5 * (bgsub(bin - 1) + bgsub(bin + 1));
+   return 0.5 * v;   // SP array is normalized to 100; XCorr's convention is 50
+}
+
+
+double CometIntensityStore::Score(const Decoded& d,
+                                  const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
+                                  int iLenPeptide,
+                                  int iFoundVariableMod,
+                                  const Query* pQuery,
+                                  double& dScoreBg)
+{
+   dScoreBg = 0.0;
+   if (!d.bValid)
       return 0.0;
+
+   int iMaxZ = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
+   if (iMaxZ > 2)
+      iMaxZ = 2;
+   int iLenMinus1 = iLenPeptide - 1;
 
    // Observed: this candidate's b/y bins looked up in the SP-score sparse array (binned sqrt
    // intensities, max 100). |o| ranges over every ladder position with a valid bin,
@@ -527,10 +579,10 @@ double CometIntensityStore::Score(unsigned int uiVariant,
             if (bin > 0)
             {
                double o = obs((int)bin);
-               dDot += pred[ch][ctLen] * o;
+               dDot += d.pred[ch][ctLen] * o;
                dObsNorm2 += o * o;
-               if (pred[ch][ctLen] > 0.0f)
-                  dShiftDot += pred[ch][ctLen] * (window((int)bin) - o);
+               if (d.pred[ch][ctLen] > 0.0f)
+                  dShiftDot += d.pred[ch][ctLen] * (window((int)bin) - o);
             }
             // else: bin 0 (e.g. duplicate-collapsed) -- position contributes nothing observed
 
@@ -540,10 +592,10 @@ double CometIntensityStore::Score(unsigned int uiVariant,
                if (bin > 0)
                {
                   double o = obs((int)bin);
-                  dDot += pred[chMl][ctLen] * o;
+                  dDot += d.pred[chMl][ctLen] * o;
                   dObsNorm2 += o * o;
-                  if (pred[chMl][ctLen] > 0.0f)
-                     dShiftDot += pred[chMl][ctLen] * (window((int)bin) - o);
+                  if (d.pred[chMl][ctLen] > 0.0f)
+                     dShiftDot += d.pred[chMl][ctLen] * (window((int)bin) - o);
                }
             }
          }
@@ -552,7 +604,7 @@ double CometIntensityStore::Score(unsigned int uiVariant,
 
    if (dObsNorm2 <= 0.0)
       return 0.0;
-   double dNorm = std::sqrt(dPredNorm2 * dObsNorm2);
+   double dNorm = std::sqrt(d.dPredNorm2 * dObsNorm2);
    double dCos = dDot / dNorm;
    if (dCos > 1.0)
       dCos = 1.0;

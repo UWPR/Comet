@@ -276,6 +276,9 @@ private:
                              double dXcorr,
                              double dIntensityScore,
                              double dIntensityScoreBg,
+                             double dXcorrPred,
+                             double dXcorrPredG,
+                             double dXcorrPredLin,
                              bool bStoreSeparateDecoy,
                              int *piVarModSites,
                              struct sDBEntry *dbe);

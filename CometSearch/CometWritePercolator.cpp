@@ -72,7 +72,7 @@ void CometWritePercolator::WritePercolatorHeader(FILE *fpout)
    fprintf(fpout, "Xcorr\t");
    fprintf(fpout, "Sp\t");
    if (CometIntensityStore::IsEnabled())
-      fprintf(fpout, "IntensityScore\tIntensityScoreBg\t");
+      fprintf(fpout, "IntensityScore\tIntensityScoreBg\tXcorrPred\tXcorrPredG\tXcorrPredLin\t");
    fprintf(fpout, "IonFrac\t");
    fprintf(fpout, "Mass\t");
    fprintf(fpout, "PepLen\t");
@@ -209,7 +209,7 @@ void CometWritePercolator::PrintPercolatorSearchHit(int iWhichQuery,
    fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fXcorr); // xcorr
    fprintf(fpout, "%0.6f\t", pOutput[iWhichResult].fScoreSp); // Sp
    if (CometIntensityStore::IsEnabled())
-      fprintf(fpout, "%0.4f\t%0.4f\t", pOutput[iWhichResult].fIntensityScore, pOutput[iWhichResult].fIntensityScoreBg); // IntensityScore, IntensityScoreBg
+      fprintf(fpout, "%0.4f\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t", pOutput[iWhichResult].fIntensityScore, pOutput[iWhichResult].fIntensityScoreBg, pOutput[iWhichResult].fXcorrPred, pOutput[iWhichResult].fXcorrPredG, pOutput[iWhichResult].fXcorrPredLin); // IntensityScore, IntensityScoreBg, XcorrPred, XcorrPredG, XcorrPredLin
 
    if (pOutput[iWhichResult].usiTotalIons > 0)
       fprintf(fpout, "%0.4f\t", (double)pOutput[iWhichResult].usiMatchedIons / pOutput[iWhichResult].usiTotalIons); // IonFrac

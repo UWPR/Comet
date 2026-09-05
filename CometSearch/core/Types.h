@@ -52,6 +52,12 @@ struct Results
    float  fIntensityScoreBg;                  // the same cosine minus the mean over the +/- xcorr_processing_offset
                                               // bin shifts of the normalized spectrum (XCorr-style background
                                               // subtraction, docs/20260903_IntensityScore_design.md Phase 1e); may be < 0
+   float  fXcorrPred;                         // predicted-intensity-weighted xcorr: the xcorr sum with each ladder
+                                              // term weighted 0.1 + 0.9*sqrt(predicted rel. intensity), 0.1 where
+                                              // nothing is predicted (CometIntensityStore::Weight()); 0.0 without a record
+   float  fXcorrPredG;                        // xcorr_pred computed on the GLOBALLY normalized (base peak 50, no
+                                              // 10-window MakeCorrData) background-subtracted spectrum; 0.0 without a record
+   float  fXcorrPredLin;                      // xcorr_pred with LINEAR weights 0.1 + 0.9*rel (no sqrt); 0.0 without a record
    float  fDeltaCn;
    float  fLastDeltaCn;
    float  fAScorePro;                         // AScorePro score
@@ -167,7 +173,7 @@ struct ProteinEntryStruct
 // (macOS) does not and fails to compile.
 // Primary score selection (docs/20260903_IntensityScore_design.md Section 2.5, Phase 2):
 // primary_score = 0 -> xcorr (default), 1 -> intensity_score (Carafe cosine), 2 ->
-// intensity_score_bg. The primary score gates candidate retention (XcorrScoreI's early
+// intensity_score_bg, 3 -> xcorr_pred, 4 -> xcorr_pred_g, 5 -> xcorr_pred_lin. The primary score gates candidate retention (XcorrScoreI's early
 // reject, StorePeptideI's eviction and Query::dLowestXcorrScore -- which, despite the
 // name, holds the lowest PRIMARY score of the stored set), orders results (SortFnXcorr),
 // and defines usiRankXcorr and deltaCn. The E-value stays xcorr-derived in every mode.
@@ -177,16 +183,22 @@ inline float PrimaryScore(const Results& r)
    {
       case 1:  return r.fIntensityScore;
       case 2:  return r.fIntensityScoreBg;
+      case 3:  return r.fXcorrPred;
+      case 4:  return r.fXcorrPredG;
+      case 5:  return r.fXcorrPredLin;
       default: return r.fXcorr;
    }
 }
 
-inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg)
+inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg, double dXcorrPred, double dXcorrPredG, double dXcorrPredLin)
 {
    switch (g_staticParams.options.iPrimaryScore)
    {
       case 1:  return dIntensityScore;
       case 2:  return dIntensityScoreBg;
+      case 3:  return dXcorrPred;
+      case 4:  return dXcorrPredG;
+      case 5:  return dXcorrPredLin;
       default: return dXcorr;
    }
 }
@@ -220,6 +232,9 @@ inline void ResetOneResult(Results& r)
    r.fXcorr = (float)g_staticParams.options.dMinimumXcorr;
    r.fIntensityScore = 0.0;
    r.fIntensityScoreBg = 0.0;
+   r.fXcorrPred = 0.0;
+   r.fXcorrPredG = 0.0;
+   r.fXcorrPredLin = 0.0;
    r.fAScorePro = 0.0;
    r.usiLenPeptide = 0;
    r.usiRankSp = 0;

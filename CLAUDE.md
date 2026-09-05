@@ -252,11 +252,17 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   rejected loudly. T40: the reported score equals a cosine recomputed from first principles
   on the T25 fixture (b2-b8 @100, y2-y8 @110, NL-shifted b3-b8 @80 / y6-y8 @90) for a
   hand-written record, with and without modloss channels, plus per-precursor-charge record
-  selection (exact charge, merged charge-0, nearest-lower and lowest-higher fallbacks). Both
+  selection (exact charge, merged charge-0, nearest-lower and lowest-higher fallbacks), the
+  background-subtracted cosine (equals the cosine on the plain fixture, drops by the exact
+  predicted amount with a noise peak), `xcorr_pred` (a full-weight record reproduces
+  xcorr, an all-floor record gives 0.1*xcorr) and `xcorr_pred_g` (exact oracle incl. the
+  flanking bins' negative window mean). Both
   build the fixture as FI_DB and write their `.carafe_inten` files via
   `tools/carafe_cps_to_inten.py`'s writer.
 - **T41** (`t41_primary_score_switch`) -- `primary_score` = 1 (intensity_score) / 2
-  (intensity_score_bg) as the retention/ranking score (`PrimaryScore()` in `core/Types.h`
+  (intensity_score_bg) / 3 (xcorr_pred, the predicted-intensity-weighted xcorr) / 4
+  (xcorr_pred_g, the same on a globally rather than 10-window normalized spectrum) / 5
+  (xcorr_pred_lin, linear instead of sqrt weights) as the retention/ranking score (`PrimaryScore()` in `core/Types.h`
   governs the gate, eviction, sort, rank, deltaCn and writer gates; e-value stays xcorr):
   all three modes yield the same PSM with identical xcorr/e-value/cosine columns on the
   single-candidate fixture; a missing intensity file or an index built with internal decoys

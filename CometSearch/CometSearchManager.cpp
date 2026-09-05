@@ -538,13 +538,13 @@ bool CometSearchManager::InitializeStaticParams()
       g_staticParams.options.sPredictedIntensityFile = strData;
 
    // docs/20260903_IntensityScore_design.md Section 2.4/2.5 (Phase 2): which score is
-   // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg. See PrimaryScore() in
+   // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg, 3 xcorr_pred, 4 xcorr_pred_g, 5 xcorr_pred_lin. See PrimaryScore() in
    // core/Types.h for everything the choice governs.
    if (GetParamValue("primary_score", iIntData))
    {
-      if (iIntData < 0 || iIntData > 2)
+      if (iIntData < 0 || iIntData > 5)
       {
-         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score) or 2 (intensity_score_bg); using 0.\n");
+         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score), 2 (intensity_score_bg), 3 (xcorr_pred), 4 (xcorr_pred_g) or 5 (xcorr_pred_lin); using 0.\n");
          iIntData = 0;
       }
       g_staticParams.options.iPrimaryScore = iIntData;
@@ -3196,6 +3196,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
          score.dIntensityScore = pOutput[iWhichResult].fIntensityScore;
          score.dIntensityScoreBg = pOutput[iWhichResult].fIntensityScoreBg;
+         score.dXcorrPred = pOutput[iWhichResult].fXcorrPred;
+         score.dXcorrPredG = pOutput[iWhichResult].fXcorrPredG;
+         score.dXcorrPredLin = pOutput[iWhichResult].fXcorrPredLin;
 
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
@@ -3382,6 +3385,9 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.sAScoreProSiteScores.clear();
          score.dIntensityScore = 0.0;
          score.dIntensityScoreBg = 0.0;
+         score.dXcorrPred = 0.0;
+         score.dXcorrPredG = 0.0;
+         score.dXcorrPredLin = 0.0;
       }
 
       if (false)  // set to true to enable debug mass check

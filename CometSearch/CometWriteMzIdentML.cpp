@@ -241,6 +241,15 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
             case 24:
                Stmp.fIntensityScoreBg = std::stof(field);
                break;
+            case 25:
+               Stmp.fXcorrPred = std::stof(field);
+               break;
+            case 26:
+               Stmp.fXcorrPredG = std::stof(field);
+               break;
+            case 27:
+               Stmp.fXcorrPredLin = std::stof(field);
+               break;
             default:
                string strErrorMsg = " Error parsing mzid temp file (" + std::to_string(iWhichField) + "): " + strLine + "\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1377,6 +1386,9 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
       if (CometIntensityStore::IsEnabled())
          fprintf(fpout, "      <userParam name=\"Comet:intensity_score\" value=\"%0.4f\" />\n", (*itMzid).fIntensityScore);
          fprintf(fpout, "      <userParam name=\"Comet:intensity_score_bg\" value=\"%0.4f\" />\n", (*itMzid).fIntensityScoreBg);
+         fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPred);
+         fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred_g\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPredG);
+         fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred_lin\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPredLin);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
@@ -1560,7 +1572,10 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
 
          // always written (0.0 when disabled) so the tmp-file field count stays fixed
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScore);
-         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fIntensityScoreBg);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScoreBg);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPred);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPredG);
+         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fXcorrPredLin);
 
          fprintf(fpout, "\n");
       }
