@@ -58,6 +58,7 @@ struct Results
    float  fXcorrPredG;                        // xcorr_pred computed on the GLOBALLY normalized (base peak 50, no
                                               // 10-window MakeCorrData) background-subtracted spectrum; 0.0 without a record
    float  fXcorrPredLin;                      // xcorr_pred with LINEAR weights 0.1 + 0.9*rel (no sqrt); 0.0 without a record
+   float  fXcorrPredN;                        // xcorr_pred over the experimentally normalized spectrum (xcorr_pred_norm_mode); 0.0 when off
    float  fDeltaCn;
    float  fLastDeltaCn;
    float  fAScorePro;                         // AScorePro score
@@ -186,11 +187,12 @@ inline float PrimaryScore(const Results& r)
       case 3:  return r.fXcorrPred;
       case 4:  return r.fXcorrPredG;
       case 5:  return r.fXcorrPredLin;
+      case 6:  return r.fXcorrPredN;
       default: return r.fXcorr;
    }
 }
 
-inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg, double dXcorrPred, double dXcorrPredG, double dXcorrPredLin)
+inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg, double dXcorrPred, double dXcorrPredG, double dXcorrPredLin, double dXcorrPredN)
 {
    switch (g_staticParams.options.iPrimaryScore)
    {
@@ -199,6 +201,7 @@ inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dInte
       case 3:  return dXcorrPred;
       case 4:  return dXcorrPredG;
       case 5:  return dXcorrPredLin;
+      case 6:  return dXcorrPredN;
       default: return dXcorr;
    }
 }
@@ -235,6 +238,7 @@ inline void ResetOneResult(Results& r)
    r.fXcorrPred = 0.0;
    r.fXcorrPredG = 0.0;
    r.fXcorrPredLin = 0.0;
+   r.fXcorrPredN = 0.0;
    r.fAScorePro = 0.0;
    r.usiLenPeptide = 0;
    r.usiRankSp = 0;
@@ -1099,6 +1103,15 @@ struct Query
    // docs/20260714_rtspostprocessing.md finding 1 for the original RTS pool.
    bool bResultsFromPool;
 
+   // xcorr_pred_n's experimental observed-spectrum normalization (xcorr_pred_norm_mode,
+   // docs/20260903_IntensityScore_design.md Phase 3d): per-cell maxima of the SP-score
+   // (sqrt, base peak 100) spectrum, built by CometPreprocess::BuildNormGrid(). Mode 1/2:
+   // one cell = one window, scale = 50/cell max; mode 3: cells are W/4 wide and the local
+   // max is taken over the cells covering +/-W. Empty (iNormMode 0) when the mode is off.
+   int iNormMode;
+   int iNormCellBins;
+   std::vector<float> vfNormGridMax;
+
    // Sparse matrix representation of data
    int iSpScoreData;    //size of sparse matrix
    int iFastXcorrDataSize;
@@ -1145,6 +1158,8 @@ struct Query
 
       dLowestXcorrScore = LowestPrimaryScoreInit();
       dLowestDecoyXcorrScore = LowestPrimaryScoreInit();
+      iNormMode = 0;
+      iNormCellBins = 1;
 
       fLowestSpecLibScore = SPECLIB_CUTOFF;
 

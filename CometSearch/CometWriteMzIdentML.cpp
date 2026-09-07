@@ -250,6 +250,9 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
             case 27:
                Stmp.fXcorrPredLin = std::stof(field);
                break;
+            case 28:
+               Stmp.fXcorrPredN = std::stof(field);
+               break;
             default:
                string strErrorMsg = " Error parsing mzid temp file (" + std::to_string(iWhichField) + "): " + strLine + "\n";
                g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
@@ -1389,6 +1392,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
          fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPred);
          fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred_g\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPredG);
          fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred_lin\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPredLin);
+         fprintf(fpout, "      <userParam name=\"Comet:xcorr_pred_n\" value=\"%0.4f\" />\n", (*itMzid).fXcorrPredN);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002255\" name=\"Comet:spscore\" value=\"%0.4f\" />\n", (*itMzid).fSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002256\" name=\"Comet:sprank\" value=\"%d\" />\n", (*itMzid).iRankSp);
       fprintf(fpout, "      <cvParam cvRef=\"PSI-MS\" accession=\"MS:1002257\" name=\"Comet:expectation value\" value=\"%0.2E\" />\n", (*itMzid).dExpect);
@@ -1575,7 +1579,8 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fIntensityScoreBg);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPred);
          fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPredG);
-         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fXcorrPredLin);
+         fprintf(fpout, "%0.4f\t", pOutput[iWhichResult].fXcorrPredLin);
+         fprintf(fpout, "%0.4f", pOutput[iWhichResult].fXcorrPredN);
 
          fprintf(fpout, "\n");
       }

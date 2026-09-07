@@ -110,6 +110,13 @@ public:
    // +/-1-bin half-weight flanking terms XCorr adds when theoretical_fragment_ions = 0.
    // No 5%-of-window floor. Costs one 151-bin window sum per term (three with flanking).
    static double GlobalXcorrValue(const Query* pQuery, int bin, bool bFlank);
+
+   // For xcorr_pred_n (Phase 3d): like GlobalXcorrValue() but each bin is scaled by
+   // 50 / (local maximum) from the per-spectrum grid CometPreprocess::BuildNormGrid() built
+   // under xcorr_pred_norm_mode (N windows / W-Da windows / sliding +/-W max), with
+   // MakeCorrData()'s 5%-of-base-peak floor, the +/-offset mean subtraction taken over the
+   // scaled values, and the flanking terms when bFlank. 0 when the mode is off.
+   static double NormXcorrValue(const Query* pQuery, int bin, bool bFlank);
    static inline float Weight(const Decoded& d, int iWhichIonSeries, int ctCharge, int ctLen, int iSlot)
    {
       if (!d.bValid)

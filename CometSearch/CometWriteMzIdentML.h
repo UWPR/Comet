@@ -43,6 +43,7 @@ class CometWriteMzIdentML
       float  fXcorrPred;       // predicted-intensity-weighted xcorr; tmp field 25
       float  fXcorrPredG;      // its globally-normalized variant; tmp field 26
       float  fXcorrPredLin;    // its linear-weight variant; tmp field 27
+      float  fXcorrPredN;      // its experimentally-normalized variant; tmp field 28
       char   cHasVariableMod;
       char   cPrevNext[3];
       string strPeptide;

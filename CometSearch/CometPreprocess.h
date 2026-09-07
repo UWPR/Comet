@@ -224,6 +224,10 @@ private:
                             double* pdTmpCorrelationData,
                             int iHighestIon,
                             double dHighestIntensity);
+   // xcorr_pred_n (docs/20260903_IntensityScore_design.md Phase 3d): per-cell maxima of the
+   // just-built SP-score array for the experimental normalization modes; no-op when
+   // xcorr_pred_norm_mode is 0.
+   static void BuildNormGrid(Query* pScoring, const float* pfSpScoreData, int iArraySize, int iHighestIon);
 
    // Core of PreprocessSingleSpectrumThreadLocal.
    // Builds a fully preprocessed Query* from the input spectrum data.

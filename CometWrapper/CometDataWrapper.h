@@ -386,6 +386,11 @@ namespace CometWrapper {
             double get() { return pScores->dXcorrPredLin; }
         }
 
+        property double dXcorrPredN
+        {
+            double get() { return pScores->dXcorrPredN; }
+        }
+
         property double dIntensityScore
         {
             double get() { return pScores->dIntensityScore; }

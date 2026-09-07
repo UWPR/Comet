@@ -537,14 +537,27 @@ bool CometSearchManager::InitializeStaticParams()
    if (GetParamValue("predicted_intensity_file", strData))
       g_staticParams.options.sPredictedIntensityFile = strData;
 
+   if (GetParamValue("xcorr_pred_norm_mode", iIntData))
+   {
+      if (iIntData < 0 || iIntData > 3)
+      {
+         logout(" Warning - xcorr_pred_norm_mode must be 0-3; using 0.\n");
+         iIntData = 0;
+      }
+      g_staticParams.options.iXcorrPredNormMode = iIntData;
+   }
+   GetParamValue("xcorr_pred_norm_param", g_staticParams.options.dXcorrPredNormParam);
+   if (g_staticParams.options.dXcorrPredNormParam <= 0.0)
+      g_staticParams.options.dXcorrPredNormParam = 75.0;
+
    // docs/20260903_IntensityScore_design.md Section 2.4/2.5 (Phase 2): which score is
-   // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg, 3 xcorr_pred, 4 xcorr_pred_g, 5 xcorr_pred_lin. See PrimaryScore() in
+   // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg, 3 xcorr_pred, 4 xcorr_pred_g, 5 xcorr_pred_lin, 6 xcorr_pred_n. See PrimaryScore() in
    // core/Types.h for everything the choice governs.
    if (GetParamValue("primary_score", iIntData))
    {
-      if (iIntData < 0 || iIntData > 5)
+      if (iIntData < 0 || iIntData > 6)
       {
-         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score), 2 (intensity_score_bg), 3 (xcorr_pred), 4 (xcorr_pred_g) or 5 (xcorr_pred_lin); using 0.\n");
+         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score), 2 (intensity_score_bg), 3 (xcorr_pred), 4 (xcorr_pred_g), 5 (xcorr_pred_lin) or 6 (xcorr_pred_n); using 0.\n");
          iIntData = 0;
       }
       g_staticParams.options.iPrimaryScore = iIntData;
@@ -3199,6 +3212,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dXcorrPred = pOutput[iWhichResult].fXcorrPred;
          score.dXcorrPredG = pOutput[iWhichResult].fXcorrPredG;
          score.dXcorrPredLin = pOutput[iWhichResult].fXcorrPredLin;
+         score.dXcorrPredN = pOutput[iWhichResult].fXcorrPredN;
 
          // Conversion table from b/y ions to the other types (a,c,x,z)
          const double ionMassesRelative[NUM_ION_SERIES] =
@@ -3388,6 +3402,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
          score.dXcorrPred = 0.0;
          score.dXcorrPredG = 0.0;
          score.dXcorrPredLin = 0.0;
+         score.dXcorrPredN = 0.0;
       }
 
       if (false)  // set to true to enable debug mass check

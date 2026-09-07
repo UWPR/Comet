@@ -171,6 +171,7 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
          pQuery->_pResults[j].fXcorrPred = 0.0;
          pQuery->_pResults[j].fXcorrPredG = 0.0;
          pQuery->_pResults[j].fXcorrPredLin = 0.0;
+         pQuery->_pResults[j].fXcorrPredN = 0.0;
          pQuery->_pResults[j].fDeltaCn = 0.0;
          pQuery->_pResults[j].fLastDeltaCn = 0.0;
          pQuery->_pResults[j].fAScorePro = 0.0;
@@ -205,6 +206,7 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
             pQuery->_pDecoys[j].fXcorrPred = 0.0;
             pQuery->_pDecoys[j].fXcorrPredG = 0.0;
             pQuery->_pDecoys[j].fXcorrPredLin = 0.0;
+            pQuery->_pDecoys[j].fXcorrPredN = 0.0;
             pQuery->_pDecoys[j].fDeltaCn = 0.0;
             pQuery->_pDecoys[j].fLastDeltaCn = 0.0;
             pQuery->_pDecoys[j].fAScorePro = 0.0;

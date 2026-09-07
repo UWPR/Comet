@@ -2899,11 +2899,13 @@ def _t39_build_idx(comet_exe, failures):
     return idx, ms2, txt, fmt
 
 
-def _t39_search(comet_exe, idx, ms2, txt, fmt, inten_file):
-    """Runs the FI_DB search with predicted_intensity_file = inten_file (None = unset).
-    Returns (rc, out, header_cols, rows)."""
+def _t39_search(comet_exe, idx, ms2, txt, fmt, inten_file, extra=""):
+    """Runs the FI_DB search with predicted_intensity_file = inten_file (None = unset) and
+    any extra "key = value\n" lines. Returns (rc, out, header_cols, rows)."""
     params = CARAFE_FRAGMENT_NL_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(idx), neutral_loss=T36_NEUTRAL_LOSS)
+    if extra:
+        params = params.replace("[COMET_ENZYME_INFO]", extra + "[COMET_ENZYME_INFO]")
     if inten_file is not None:
         # before [COMET_ENZYME_INFO]: keys after that marker are silently ignored (T36)
         params = params.replace("[COMET_ENZYME_INFO]",
@@ -2962,10 +2964,11 @@ def test_t39_intensity_store_guards(comet_exe):
                   and hdr1.index("intensity_score_bg") == hdr1.index("intensity_score") + 1
                   and hdr1.index("xcorr_pred") == hdr1.index("intensity_score") + 2
                   and hdr1.index("xcorr_pred_g") == hdr1.index("intensity_score") + 3
-                  and hdr1.index("xcorr_pred_lin") == hdr1.index("intensity_score") + 4,
-                  f"intensity_score, intensity_score_bg, xcorr_pred, xcorr_pred_g, xcorr_pred_lin must follow delta_cn: {hdr1}", failures)
+                  and hdr1.index("xcorr_pred_lin") == hdr1.index("intensity_score") + 4
+                  and hdr1.index("xcorr_pred_n") == hdr1.index("intensity_score") + 5,
+                  f"the six intensity-derived columns must follow delta_cn: {hdr1}", failures)
             i_sc = hdr1.index("intensity_score")
-            stripped = [r[:i_sc] + r[i_sc + 5:] for r in rows1]
+            stripped = [r[:i_sc] + r[i_sc + 6:] for r in rows1]
             check(stripped == rows0,
                   f"all non-intensity columns must be identical to the baseline:\n{rows0}\n{stripped}", failures)
             score = float(rows1[0][i_sc])
@@ -3169,6 +3172,28 @@ def test_t40_intensity_score_exact(comet_exe):
                     check(abs(xl - 0.1 * xc) <= 0.0025, f"{tag}: xcorr_pred_lin {xl} != 0.1 * xcorr {0.1 * xc:.4f}", failures)
             else:
                 check(False, f"{tag}: search failed (rc={rc}):\n{out[-600:]}", failures)
+        # --- xcorr_pred_n (experimental normalization): mode 1 with N = 10 reproduces
+        # MakeCorrData()'s construction, so it must equal xcorr_pred exactly; mode 2 with one
+        # huge window is a global normalization and must equal xcorr_pred_g (every fixture
+        # peak is above the 5% floor) ---
+        path = DATA_DIR / "t40_n.carafe_inten"
+        scratch.append(path)
+        _t39_write_inten(path, idx, [((0, 0, -1, -1), rec), ((0, -1, -1, -1), [])], general_mode=True)
+        for extra, ref_col, tag in (("xcorr_pred_norm_mode = 1\nxcorr_pred_norm_param = 10\n", "xcorr_pred", "mode 1 / N=10 == xcorr_pred"),
+                                    ("xcorr_pred_norm_mode = 2\nxcorr_pred_norm_param = 5000\n", "xcorr_pred_g", "mode 2 / W=5000 == xcorr_pred_g")):
+            rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path, extra=extra)
+            if rc == 0 and hdr and rows:
+                xn = float(rows[0][hdr.index("xcorr_pred_n")]); ref = float(rows[0][hdr.index(ref_col)])
+                check(xn > 0 and abs(xn - ref) <= 0.0015, f"{tag}: xcorr_pred_n {xn} != {ref_col} {ref}", failures)
+            else:
+                check(False, f"{tag}: search failed (rc={rc}):\n{out[-500:]}", failures)
+        rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path, extra="xcorr_pred_norm_mode = 0\n")
+        if rc == 0 and hdr and rows:
+            check(float(rows[0][hdr.index("xcorr_pred_n")]) == 0.0, "xcorr_pred_n must be 0.0 when the norm mode is off", failures)
+        # default (mode 2 / 75 Da) is on: the column is populated without any norm params
+        rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, path)
+        if rc == 0 and hdr and rows:
+            check(float(rows[0][hdr.index("xcorr_pred_n")]) > 0.0, "xcorr_pred_n must be populated under the default mode 2 / 75 Da", failures)
         # sanity on the oracle itself: the two expectations must differ (modloss changes |o| and dot)
         w_ph = _t40_expected_cosine(peaks, with_modloss=True)
         w_gen = _t40_expected_cosine([(c, q) for c, q in peaks if inten.decode_peak_code(c)[0] in (0, 1, 4, 5)], with_modloss=False)
@@ -3221,7 +3246,7 @@ def _t41_search_params(comet_exe, idx, ms2, txt, fmt, inten_file, primary, extra
 
 @register("t41_primary_score_switch")
 def test_t41_primary_score_switch(comet_exe):
-    """T41: primary_score = 1 / 2 / 3 / 4 / 5 run end to end and produce the same PSM as xcorr mode on the
+    """T41: primary_score = 1-6 run end to end and produce the same PSM as xcorr mode on the
     single-candidate fixture (identical xcorr, e-value and cosine columns; num/rank 1);
     primary_score without an intensity file, with decoy_search, or an out-of-range value
     are refused or reset as documented."""
@@ -3237,8 +3262,9 @@ def test_t41_primary_score_switch(comet_exe):
                 + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
         _t39_write_inten(good, idx, [((0, 0, -1, -1), peaks), ((0, -1, -1, -1), [])])
         rows_by_mode = {}
-        for primary in (0, 1, 2, 3, 4, 5):
-            rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, primary)
+        for primary in (0, 1, 2, 3, 4, 5, 6):
+            rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, primary,
+                                                    extra="xcorr_pred_norm_mode = 2\nxcorr_pred_norm_param = 100\n")
             check(rc == 0, f"primary_score={primary}: search failed (rc={rc}):\n{out[-800:]}", failures)
             check("Predicted-intensity file:" in out, f"primary_score={primary}: intensity file not loaded", failures)
             if hdr and rows:
@@ -3247,11 +3273,11 @@ def test_t41_primary_score_switch(comet_exe):
                 rows_by_mode[primary] = (hdr, rows[0])
             else:
                 check(False, f"primary_score={primary}: no output row", failures)
-        if len(rows_by_mode) == 6:
+        if len(rows_by_mode) == 7:
             h0, r0 = rows_by_mode[0]
-            for primary in (1, 2, 3, 4, 5):
+            for primary in (1, 2, 3, 4, 5, 6):
                 h, r = rows_by_mode[primary]
-                for col in ("xcorr", "e-value", "intensity_score", "intensity_score_bg", "xcorr_pred", "xcorr_pred_g", "xcorr_pred_lin", "sp_score", "ions_matched", "modified_peptide"):
+                for col in ("xcorr", "e-value", "intensity_score", "intensity_score_bg", "xcorr_pred", "xcorr_pred_g", "xcorr_pred_lin", "xcorr_pred_n", "sp_score", "ions_matched", "modified_peptide"):
                     check(r[h.index(col)] == r0[h0.index(col)],
                           f"primary_score={primary}: column {col} {r[h.index(col)]} != xcorr-mode {r0[h0.index(col)]}", failures)
             cos = float(r0[h0.index("intensity_score")]); bg = float(r0[h0.index("intensity_score_bg")])

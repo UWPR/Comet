@@ -504,6 +504,73 @@ double CometIntensityStore::GlobalXcorrValue(const Query* pQuery, int bin, bool 
 }
 
 
+double CometIntensityStore::NormXcorrValue(const Query* pQuery, int bin, bool bFlank)
+{
+   const int iMode = pQuery->iNormMode;
+   if (iMode == 0 || pQuery->vfNormGridMax.empty())
+      return 0.0;
+   const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;
+   const int iMax = iArraySize / SPARSE_MATRIX_SIZE;
+   float** ppSp = pQuery->ppfSparseSpScoreData;
+   const int iOffset = g_staticParams.iXcorrProcessingOffset;
+   const int iCell = pQuery->iNormCellBins;
+   const std::vector<float>& grid = pQuery->vfNormGridMax;
+   const int nCells = (int)grid.size();
+
+   auto obs = [&](int b) -> double
+   {
+      if (b <= 0 || b >= iArraySize)
+         return 0.0;
+      int xx = b / SPARSE_MATRIX_SIZE;
+      if (xx > iMax || ppSp[xx] == NULL)
+         return 0.0;
+      return ppSp[xx][b - xx * SPARSE_MATRIX_SIZE];
+   };
+   auto localMax = [&](int b) -> double
+   {
+      int c = b / iCell;
+      if (iMode != 3)
+         return (c < nCells) ? grid[c] : 0.0;
+      // sliding: max over the cells covering [b - W, b + W]; cells are W/4 wide
+      int c0 = c - 4, c1 = c + 4;
+      if (c0 < 0) c0 = 0;
+      if (c1 > nCells - 1) c1 = nCells - 1;
+      double m = 0.0;
+      for (int cc = c0; cc <= c1; ++cc)
+         if (grid[cc] > m) m = grid[cc];
+      return m;
+   };
+   // scaled value: 0 below the 5%-of-base-peak floor (SP array base peak is 100), else o*50/localMax
+   auto val = [&](int b) -> double
+   {
+      double o = obs(b);
+      if (o < 5.0)
+         return 0.0;
+      double m = localMax(b);
+      return m > 0.0 ? o * 50.0 / m : 0.0;
+   };
+   auto bgsub = [&](int b) -> double
+   {
+      if (b <= 0 || b >= iArraySize)
+         return 0.0;
+      double v = val(b);
+      double w = 0.0;
+      int lo = b - iOffset, hi = b + iOffset;
+      if (lo < 1) lo = 1;
+      if (hi > iArraySize - 1) hi = iArraySize - 1;
+      for (int bb = lo; bb <= hi; ++bb)
+         if (bb != b)
+            w += val(bb);
+      return iOffset > 0 ? v - w / (2.0 * iOffset) : v;
+   };
+
+   double v = bgsub(bin);
+   if (bFlank)
+      v += 0.5 * (bgsub(bin - 1) + bgsub(bin + 1));
+   return v;
+}
+
+
 double CometIntensityStore::Score(const Decoded& d,
                                   const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
                                   int iLenPeptide,

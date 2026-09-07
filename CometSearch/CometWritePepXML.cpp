@@ -844,6 +844,7 @@ void CometWritePepXML::PrintPepXMLSearchHit(int iWhichQuery,
       fprintf(fpout, "    <search_score name=\"xcorr_pred\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorrPred);
       fprintf(fpout, "    <search_score name=\"xcorr_pred_g\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorrPredG);
       fprintf(fpout, "    <search_score name=\"xcorr_pred_lin\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorrPredLin);
+      fprintf(fpout, "    <search_score name=\"xcorr_pred_n\" value=\"%0.4f\"/>\n", pOutput[iWhichResult].fXcorrPredN);
    fprintf(fpout, "    <search_score name=\"spscore\" value=\"%0.1f\"/>\n", pOutput[iWhichResult].fScoreSp);
    fprintf(fpout, "    <search_score name=\"sprank\" value=\"%d\"/>\n", pOutput[iWhichResult].usiRankSp);
    fprintf(fpout, "    <search_score name=\"expect\" value=\"%0.2E\"/>\n", pOutput[iWhichResult].dExpect);

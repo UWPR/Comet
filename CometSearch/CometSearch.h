@@ -279,6 +279,7 @@ private:
                              double dXcorrPred,
                              double dXcorrPredG,
                              double dXcorrPredLin,
+                             double dXcorrPredN,
                              bool bStoreSeparateDecoy,
                              int *piVarModSites,
                              struct sDBEntry *dbe);

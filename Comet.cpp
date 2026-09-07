@@ -385,6 +385,7 @@ void LoadParameters(char* pszParamsFile,
       // carrying them doesn't print "Warning - invalid parameter found" during an
       // actual search.
       {"carafe_mask_min_relative_intensity", { [&]() { parse_double("carafe_mask_min_relative_intensity"); }}},
+      {"xcorr_pred_norm_param",        { [&]() { parse_double("xcorr_pred_norm_param"); }}},
       {"carafe_mask_min_peaks",        { [&]() { parse_int("carafe_mask_min_peaks"); }}},
       // Simple strings
       {"activation_method",            { [&]() { parse_string("activation_method", 23); }}},
@@ -400,6 +401,7 @@ void LoadParameters(char* pszParamsFile,
       {"correct_mass",                 { [&]() { parse_int("correct_mass"); }}},
       {"decoy_search",                 { [&]() { parse_int("decoy_search"); }}},
       {"primary_score",                { [&]() { parse_int("primary_score"); }}},
+      {"xcorr_pred_norm_mode",         { [&]() { parse_int("xcorr_pred_norm_mode"); }}},
       {"equal_I_and_L",                { [&]() { parse_int("equal_I_and_L"); }}},
       {"explicit_deltacn",             { [&]() { parse_int("explicit_deltacn"); }}},
       {"export_additional_pepxml_scores", { [&]() { parse_int("export_additional_pepxml_scores"); }}},
@@ -1003,11 +1005,14 @@ carafe_mask_min_relative_intensity = 0.10 # not read by comet.exe -- recorded he
                                         # --min-relative-intensity)\n\
 carafe_mask_min_peaks = 6              # not read by comet.exe -- same as above, for\n\
                                         # carafe_cps_to_fi_mask.py's --min-kept-peaks\n\
+xcorr_pred_norm_mode = 2               # observed-spectrum normalization for the xcorr_pred_n column: 0=off,\n\
+                                        # 1=N equal windows over the spectrum span, 2=fixed W-Da windows (default), 3=sliding +/-W Da local max\n\
+xcorr_pred_norm_param = 75             # N (mode 1) or W in Da (modes 2 and 3); default 75 Da\n\
 predicted_intensity_file =             # path to a Carafe predicted-intensity file (.carafe_inten,\n\
                                         # tools/carafe_cps_to_inten.py) for the intensity score;\n\
                                         # indexed (FI_DB/PI_DB) searches only; empty = disabled (default)\n\
 primary_score = 0                      # 0=xcorr (default), 1=intensity_score, 2=intensity_score_bg, 3=xcorr_pred,\n\
-                                        # 4=xcorr_pred_g, 5=xcorr_pred_lin as the primary (retention/ranking) score; 1-5 require predicted_intensity_file,\n\
+                                        # 4=xcorr_pred_g, 5=xcorr_pred_lin, 6=xcorr_pred_n as the primary (retention/ranking) score; 1-6 require predicted_intensity_file,\n\
                                         # an indexed (FI_DB/PI_DB) search and decoy_search=0; e-value stays xcorr-based\n\
 spectral_library_name = /some/path/speclib.file\n\
 spectral_library_ms_level = 1\n\n");

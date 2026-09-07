@@ -674,6 +674,83 @@ the best single rescoring column on MM2_R1 and ITMS2; the cosine remains the bes
 column on clean high-res HeLa by 0.7%, and choose-by-cosine / rank-by-E remains the best
 single-column result on ion-trap data (23,541).
 
+**Phase 3d (2026-09-05): observed-spectrum normalization sweep for xcorr_pred (`xcorr_pred_n`).**
+MakeCorrData()'s 10 windows span 0..highest observed ion, so the window width scales with
+precursor mass (~120 Da for a 2+ at m/z 600, ~270 Da for a 3+ at m/z 900) and the number of
+fragments per window grows with peptide length -- an untuned length dependence. New
+experimental params `xcorr_pred_norm_mode` (1 = N equal windows over the span, 2 = fixed
+W-Da windows, 3 = sliding +/-W Da local maximum on a W/4-Da grid) and
+`xcorr_pred_norm_param` (N or W) build a per-spectrum grid of SP-array maxima in
+preprocessing (`CometPreprocess::BuildNormGrid()`, `Query::vfNormGridMax`); the column
+`xcorr_pred_n` (`primary_score = 6`) is xcorr_pred's weighted sum over that normalized array
+(50/local max, MakeCorrData's 5% floor, the +/-75-bin mean over the scaled values, flanking
+when theoretical_fragment_ions = 0; `CometIntensityStore::NormXcorrValue()`). xcorr itself
+is untouched. T40 checks mode 1/N=10 == xcorr_pred and mode 2/W=5000 == xcorr_pred_g exactly.
+
+Sweep, xcorr's rank-1 picks ranked by xcorr_pred_n, PSMs at 1% FDR, all charges (reference
+xcorr_pred: 13,870 / 18,209 / 18,284):
+
+| Mode | Param | HeLa OxMet | MM2_R1 phospho | ITMS2 HeLa |
+|---|---|---|---|---|
+| 1: N windows | 5 | 13,650 | 17,884 | 16,563 |
+| 1: N windows | 10 | 13,872 | 18,223 | 18,382 |
+| 1: N windows | 20 | 13,850 | 18,249 | 18,728 |
+| 1: N windows | 40 | 13,902 | 18,336 | 17,094 |
+| 2: fixed Da | 50 | 13,859 | 18,475 | 17,838 |
+| 2: fixed Da | 100 | 13,813 | **18,478** | **19,358** |
+| 2: fixed Da | 200 | 13,664 | 18,228 | 18,440 |
+| 3: sliding +/-Da | 50 | 13,769 | 18,443 | 19,058 |
+| 3: sliding +/-Da | 100 | 13,529 | 18,241 | 17,778 |
+| 3: sliding +/-Da | 200 | 13,107 | 17,759 | 16,953 |
+
+Mode 1 / N=10 reproduces xcorr_pred to within 0.5% on real data (the residual is
+MakeCorrData's bins-past-highest-ion handling). At high resolution the normalization is a
+weak lever: every config is within +/-1.5% except the widest sliding windows. At low
+resolution it matters: fixed 100-Da windows +5.9%, sliding +/-50 Da +4.2%, 20 spectrum-
+relative windows +2.4%, while both finer and coarser settings lose. Fixed 100-Da windows are
+the robust choice (best on MM2_R1 and ITMS2, -0.4% on HeLa), consistent with the length-
+dependence hypothesis: a fixed mass window removes the precursor-mass scaling of the window
+width.
+
+As a TRUE primary (`primary_score = 6`, the diagonal), vs xcorr_pred's 13,504 / 17,484 / 17,185:
+
+| xcorr_pred_n config | HeLa OxMet | MM2_R1 phospho | ITMS2 HeLa |
+|---|---|---|---|
+| mode 2, fixed 100 Da | 13,422 (-0.6%) | **17,717 (+1.3%)** | **18,138 (+5.5%)** |
+| mode 3, sliding +/-50 Da | 13,373 (-1.0%) | 17,684 (+1.1%) | 18,075 (+5.2%) |
+
+Same shape as the rescoring sweep: neutral at high resolution, a clear gain on phospho and
+especially on ion-trap data. Fixed 100-Da windows are the recommended normalization for the
+intensity-weighted score; whether to adopt them for xcorr itself is a separate question
+(xcorr was not touched here) that would need its own sweep against Comet's baseline.
+
+**Phase 3d, 15-file confirmation (2026-09-07).** Six configs (N=10, N=20, fixed 50/100/200
+Da, sliding +/-50 Da) on 5 ion-trap HeLa runs (`/mnt/c/Work/data/HeLa_ITMS2`, Lumos/Fusion
+HCD with ion-trap detection, 1.0005/0.4/M-peak, 126-140k MS2 each), 5 high-res HeLa runs
+(`HeLa_OTMS2`, Exploris 480, 34-47k MS2 each) and 5 phospho runs (`human_phos`: MM2_R1/R2 plus
+three QE PXD001546 TiOx runs, ~30k MS2 each; all Monocle mzXML, centroided). Totals of rank-1
+PSMs at 1% FDR ranking xcorr's picks by xcorr_pred_n:
+
+| Set | xcorr | E | xcorr_pred | N=10 | N=20 | fixed 50 | fixed 75 | fixed 100 | fixed 200 | sliding 50 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| ITMS2 (5 files) | 80,876 | 135,172 | 154,125 | +0.0% | +0.3% | -2.0% | +1.2% | +2.1% | -1.5% | **+2.2%** |
+| OTMS2 (5 files) | 106,606 | 114,871 | 116,698 | +0.1% | +3.6% | **+4.9%** | +3.1% | +2.5% | -1.6% | +1.1% |
+| phospho (5 files) | 59,467 | 71,350 | 78,416 | +0.1% | +0.4% | **+0.7%** | +0.6% | +0.6% | -0.2% | +0.5% |
+
+Per file the winner is consistent within each set (fixed 50 on all five OTMS2 files; fixed
+100 or sliding 50 on every ITMS2 file; phospho flat within +/-0.7%). Fixed-mass windows beat
+the spectrum-relative ones everywhere; the best width depends on the fragment bin: ~50 Da at
+0.02 Da bins, ~100 Da at 1.0005 Da bins (50 Da is -2% there). Summed over the 15 files, a
+single fixed width gains most at 100 Da (+6.6k PSMs; 75 Da +5.9k; 50 Da +3.3k), while a
+bin-width-dependent choice (50 Da at 0.02, 100 Da at 1.0005) gains +9.5k -- the
+two tested bin sizes cannot define a rule for other fragment_bin_tol values (0.33 and 0.5 are
+in use), so a single default was chosen: **fixed 75 Da (`xcorr_pred_norm_mode = 2`,
+`xcorr_pred_norm_param = 75`)** -- positive on all three sets and within 1.8 points of each
+set's best; xcorr_pred keeps MakeCorrData's array as the reference. Note the Monocle
+mzXML of 20231228_ITMS2_01 identifies more than the .raw read directly (xcorr 7,373 vs
+5,442) -- Monocle's monoisotopic precursor correction -- so the earlier single-file ion-trap
+numbers are not directly comparable to this table.
+
 **Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR

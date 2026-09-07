@@ -112,6 +112,7 @@ struct CometScores
     double dXcorrPred;            // predicted-intensity-weighted xcorr, 0.0 when disabled
     double dXcorrPredG;           // its globally-normalized variant, 0.0 when disabled
     double dXcorrPredLin;         // its linear-weight variant, 0.0 when disabled
+    double dXcorrPredN;           // its experimentally-normalized variant, 0.0 when disabled/off
 
     CometScores() :
         xCorr(0),
@@ -127,7 +128,8 @@ struct CometScores
         dIntensityScoreBg(0),
         dXcorrPred(0),
         dXcorrPredG(0),
-        dXcorrPredLin(0)
+        dXcorrPredLin(0),
+        dXcorrPredN(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores, double dIntensityScore = 0.0) :
@@ -144,7 +146,8 @@ struct CometScores
         dIntensityScoreBg(0),
         dXcorrPred(0),
         dXcorrPredG(0),
-        dXcorrPredLin(0)
+        dXcorrPredLin(0),
+        dXcorrPredN(0)
     { }
 
     CometScores(const CometScores& a) :
@@ -161,7 +164,8 @@ struct CometScores
         dIntensityScoreBg(a.dIntensityScoreBg),
         dXcorrPred(a.dXcorrPred),
         dXcorrPredG(a.dXcorrPredG),
-        dXcorrPredLin(a.dXcorrPredLin)
+        dXcorrPredLin(a.dXcorrPredLin),
+        dXcorrPredN(a.dXcorrPredN)
     { }
 
     CometScores& operator=(const CometScores& a)
@@ -180,6 +184,7 @@ struct CometScores
         dXcorrPred = a.dXcorrPred;
         dXcorrPredG = a.dXcorrPredG;
         dXcorrPredLin = a.dXcorrPredLin;
+        dXcorrPredN = a.dXcorrPredN;
         return *this;
     }
 };

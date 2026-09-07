@@ -99,6 +99,10 @@ struct Options
                                   // tools/carafe_cps_to_inten.py, docs/20260903_IntensityScore_design.md)
                                   // consumed by CometIntensityStore for the intensity score;
                                   // empty = disabled (default). Indexed searches (FI_DB/PI_DB) only.
+   int iXcorrPredNormMode;       // observed-spectrum normalization for xcorr_pred_n (default 2 / 75 Da): 0 off,
+                                  // 1 = N equal windows over the spectrum span (MakeCorrData-style),
+                                  // 2 = fixed-mass windows of W Da, 3 = sliding +/-W Da local maximum
+   double dXcorrPredNormParam;   // N (mode 1) or W in Da (modes 2/3)
    int iPrimaryScore;            // 0 = xcorr (default), 1 = intensity score. Which score gates
                                   // candidate retention and ranks results (Phase 2 of the design
                                   // doc; Phase 1 accepts the key but only honors 0).
@@ -435,6 +439,8 @@ struct StaticParams
       options.sFragIndexPredictedMaskFile = "";
       options.sPredictedIntensityFile = "";
       options.iPrimaryScore = 0;
+      options.iXcorrPredNormMode = 2;      // fixed 75-Da windows: the 15-file sweep's single-value choice
+      options.dXcorrPredNormParam = 75.0;  // (docs/20260903_IntensityScore_design.md Phase 3d)
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

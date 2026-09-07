@@ -1576,6 +1576,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    {
       pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
+   BuildNormGrid(pScoring, pfSpScoreData, pScoring->_spectrumInfoInternal.iArraySize, pPre.iHighestIon);
 
    // MH: Fill sparse matrix for SpScore
    pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
@@ -2263,6 +2264,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    {
       pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
    }
+   BuildNormGrid(pScoring, pfSpScoreData, iArraySize, pPre.iHighestIon);
 
    for (i = 0; i < iArraySize; ++i)
    {
@@ -3093,6 +3095,49 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
 // pdTmpRawData now holds raw data, pdTmpCorrelationData is windowed data after this function
 // FIX: need to check why both iArraySize and iHighestIons are used
+void CometPreprocess::BuildNormGrid(Query* pScoring, const float* pfSpScoreData, int iArraySize, int iHighestIon)
+{
+   int iMode = g_staticParams.options.iXcorrPredNormMode;
+   pScoring->iNormMode = iMode;
+   pScoring->vfNormGridMax.clear();
+   pScoring->iNormCellBins = 1;
+   if (iMode == 0 || iArraySize <= 0)
+      return;
+
+   double dParam = g_staticParams.options.dXcorrPredNormParam;
+   int iCell;
+   if (iMode == 1)
+   {
+      // MakeCorrData()'s construction with N windows: equal cells over [0, highest ion]
+      int iN = (int)dParam;
+      if (iN < 1)
+         iN = 1;
+      int iHi = iHighestIon;
+      if (iHi > iArraySize - 1)
+         iHi = iArraySize - 1;
+      if (iHi < 0)
+         iHi = 0;
+      iCell = iHi / iN + 1;
+   }
+   else
+   {
+      // fixed-mass windows of W Da (mode 2); W/4-Da cells for the sliding +/-W max (mode 3)
+      double dW = (iMode == 3) ? dParam / 4.0 : dParam;
+      iCell = (int)(dW * g_staticParams.dInverseBinWidth);
+      if (iCell < 1)
+         iCell = 1;
+   }
+   pScoring->iNormCellBins = iCell;
+   pScoring->vfNormGridMax.assign((size_t)iArraySize / iCell + 1, 0.0f);
+   for (int i = 0; i < iArraySize; ++i)
+   {
+      float v = pfSpScoreData[i];
+      if (v > pScoring->vfNormGridMax[i / iCell])
+         pScoring->vfNormGridMax[i / iCell] = v;
+   }
+}
+
+
 void CometPreprocess::MakeCorrData(double* pdTmpRawData,
    double* pdTmpCorrelationData,
    int iHighestIon,
