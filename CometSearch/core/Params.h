@@ -103,6 +103,10 @@ struct Options
                                   // 1 = N equal windows over the spectrum span (MakeCorrData-style),
                                   // 2 = fixed-mass windows of W Da, 3 = sliding +/-W Da local maximum
    double dXcorrPredNormParam;   // N (mode 1) or W in Da (modes 2/3)
+   int iXcorrNormMode;           // the same normalization choice applied to XCORR ITSELF (MakeCorrData(),
+                                  // so xcorr, e-value, xcorr_pred/_lin all follow): 0 = classic 10 windows
+                                  // over the spectrum span (default), 1 = N windows, 2 = fixed W Da, 3 = sliding +/-W
+   double dXcorrNormParam;       // N (mode 1) or W in Da (modes 2/3)
    int iPrimaryScore;            // 0 = xcorr (default), 1 = intensity score. Which score gates
                                   // candidate retention and ranks results (Phase 2 of the design
                                   // doc; Phase 1 accepts the key but only honors 0).
@@ -441,6 +445,8 @@ struct StaticParams
       options.iPrimaryScore = 0;
       options.iXcorrPredNormMode = 2;      // fixed 75-Da windows: the 15-file sweep's single-value choice
       options.dXcorrPredNormParam = 75.0;  // (docs/20260903_IntensityScore_design.md Phase 3d)
+      options.iXcorrNormMode = 0;          // xcorr keeps its classic windows unless asked (Phase 3e)
+      options.dXcorrNormParam = 75.0;
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

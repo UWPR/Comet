@@ -550,6 +550,19 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.options.dXcorrPredNormParam <= 0.0)
       g_staticParams.options.dXcorrPredNormParam = 75.0;
 
+   if (GetParamValue("xcorr_norm_mode", iIntData))
+   {
+      if (iIntData < 0 || iIntData > 3)
+      {
+         logout(" Warning - xcorr_norm_mode must be 0-3; using 0.\n");
+         iIntData = 0;
+      }
+      g_staticParams.options.iXcorrNormMode = iIntData;
+   }
+   GetParamValue("xcorr_norm_param", g_staticParams.options.dXcorrNormParam);
+   if (g_staticParams.options.dXcorrNormParam <= 0.0)
+      g_staticParams.options.dXcorrNormParam = 75.0;
+
    // docs/20260903_IntensityScore_design.md Section 2.4/2.5 (Phase 2): which score is
    // primary -- 0 xcorr, 1 intensity_score, 2 intensity_score_bg, 3 xcorr_pred, 4 xcorr_pred_g, 5 xcorr_pred_lin, 6 xcorr_pred_n. See PrimaryScore() in
    // core/Types.h for everything the choice governs.

@@ -751,6 +751,31 @@ mzXML of 20231228_ITMS2_01 identifies more than the .raw read directly (xcorr 7,
 5,442) -- Monocle's monoisotopic precursor correction -- so the earlier single-file ion-trap
 numbers are not directly comparable to this table.
 
+**Phase 3e (2026-09-07): fixed-mass windows for XCorr itself (`xcorr_norm_mode`).** The
+same window construction made selectable inside MakeCorrData() (`xcorr_norm_mode` 0 = classic
+10 windows, default; 1 = N windows; 2 = fixed W Da; 3 = sliding +/-W on a W/4 grid;
+`xcorr_norm_param`), so xcorr, the e-value and xcorr_pred/_lin all follow; T42 pins mode
+1/N=10 == classic exactly and the default unchanged. 15-file totals, rank-1 PSMs at 1% FDR
+ranked by xcorr / E / xcorr_pred, fixed windows vs classic:
+
+| Set | classic (xcorr / E / xcorr_pred) | fixed 50 Da | fixed 75 Da | fixed 100 Da |
+|---|---|---|---|---|
+| ITMS2 (5) | 80,876 / 135,172 / 154,125 | -24.2% / -10.3% / -4.4% | -13.1% / -2.7% / -0.6% | -8.4% / +0.6% / +1.5% |
+| OTMS2 (5) | 106,606 / 114,871 / 116,698 | +0.1% / +3.3% / +5.4% | -0.9% / +1.4% / +3.1% | -1.6% / +0.3% / +2.2% |
+| phospho (5) | 59,467 / 71,350 / 78,416 | -- | -4.6% / +2.1% / +0.6% | -- |
+
+Verdict: do NOT change XCorr's own normalization. Raw xcorr as a cross-spectrum ranker gets
+worse under fixed-mass windows everywhere (badly so at low resolution: -13% at 75 Da, -24%
+at 50 Da), because the number of windows then scales with precursor mass and the raw sum
+picks up a stronger length/mass dependence; the e-value, fit per spectrum, absorbs part of
+that (+1 to +3% at high resolution, -3% at low resolution for 75 Da) and xcorr_pred most of
+it -- but xcorr_pred reaches the same gains from its own array (`xcorr_pred_n`, fixed 75
+Da default) without touching xcorr, its e-value, or Comet's default output. The one place
+fixed windows help xcorr's e-value at low resolution (100 Da, +0.6%) is within noise.
+`xcorr_norm_mode` stays at 0 and is kept as an experiment knob. Consistency check: xcorr_pred
+under xcorr_norm_mode 2/50 on OTMS2 (123,000) matches xcorr_pred_n mode 2/50 (122,474),
+the same normalization reached two ways.
+
 **Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR

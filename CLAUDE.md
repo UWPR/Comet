@@ -270,6 +270,10 @@ filenames still say `t25_`/`t27_`/`t28_` (predating this renumbering); only
   all three modes yield the same PSM with identical xcorr/e-value/cosine columns on the
   single-candidate fixture; a missing intensity file or an index built with internal decoys
   is refused; an out-of-range value warns and falls back to xcorr.
+- **T42** (`t42_xcorr_norm_mode`) -- `xcorr_norm_mode` / `xcorr_norm_param` make
+  `MakeCorrData()`'s window construction selectable for xcorr itself (experiment knob, default
+  0 = classic): mode 1 with N = 10 reproduces the classic xcorr row exactly, an explicit mode 0
+  equals the baseline, modes 2/3 run, an out-of-range value warns and falls back.
 - **T38** (`t38_carafe_python_suites`) -- runs the six standalone pure-Python Carafe tool
   test suites in-process (`test_carafe_ms2_to_fi_mask.py`, `test_carafe_alignment.py`,
   `test_idx_to_carafe_dedup_key.py`, `test_carafe_cps.py`,

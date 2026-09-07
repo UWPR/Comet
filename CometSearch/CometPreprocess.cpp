@@ -3152,7 +3152,57 @@ void CometPreprocess::MakeCorrData(double* pdTmpRawData,
       dTmp1,
       dTmp2;
 
-   iWindowSize = (int)((iHighestIon) / iNumWindows) + 1;
+   // Phase 3e (docs/20260903_IntensityScore_design.md): xcorr_norm_mode selects the window
+   // construction. 0 = classic (10 equal windows over [0, highest ion]); 1 = N equal windows;
+   // 2 = fixed W-Da windows; 3 = sliding +/-W Da local maximum (on a W/4-Da grid, like
+   // xcorr_pred_n's). The 5%-of-base-peak floor and the 50 scale are unchanged in every mode.
+   const int iMode = g_staticParams.options.iXcorrNormMode;
+   const double dParam = g_staticParams.options.dXcorrNormParam;
+   if (iMode == 3)
+   {
+      int iCell = (int)((dParam / 4.0) * g_staticParams.dInverseBinWidth);
+      if (iCell < 1)
+         iCell = 1;
+      int iHi = iHighestIon;
+      if (iHi > g_staticParams.iArraySizeGlobal - 1)
+         iHi = g_staticParams.iArraySizeGlobal - 1;
+      int nCells = iHi / iCell + 1;
+      std::vector<double> vGrid(nCells, 0.0);
+      for (iBin = 0; iBin <= iHi; ++iBin)
+         if (pdTmpRawData[iBin] > vGrid[iBin / iCell])
+            vGrid[iBin / iCell] = pdTmpRawData[iBin];
+      dTmp2 = 0.05 * dHighestIntensity;
+      for (iBin = 0; iBin <= iHi; ++iBin)
+      {
+         if (pdTmpRawData[iBin] <= dTmp2)
+            continue;
+         int c = iBin / iCell, c0 = c - 4, c1 = c + 4;
+         if (c0 < 0) c0 = 0;
+         if (c1 > nCells - 1) c1 = nCells - 1;
+         double dLocalMax = 0.0;
+         for (int cc = c0; cc <= c1; ++cc)
+            if (vGrid[cc] > dLocalMax) dLocalMax = vGrid[cc];
+         if (dLocalMax > 0.0)
+            pdTmpCorrelationData[iBin] = pdTmpRawData[iBin] * 50.0 / dLocalMax;
+      }
+      return;
+   }
+   if (iMode == 1)
+   {
+      iNumWindows = (int)dParam;
+      if (iNumWindows < 1)
+         iNumWindows = 1;
+      iWindowSize = (int)((iHighestIon) / iNumWindows) + 1;
+   }
+   else if (iMode == 2)
+   {
+      iWindowSize = (int)(dParam * g_staticParams.dInverseBinWidth);
+      if (iWindowSize < 1)
+         iWindowSize = 1;
+      iNumWindows = iHighestIon / iWindowSize + 1;
+   }
+   else
+      iWindowSize = (int)((iHighestIon) / iNumWindows) + 1;
 
    for (i = 0; i < iNumWindows; ++i)
    {

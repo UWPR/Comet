@@ -386,6 +386,7 @@ void LoadParameters(char* pszParamsFile,
       // actual search.
       {"carafe_mask_min_relative_intensity", { [&]() { parse_double("carafe_mask_min_relative_intensity"); }}},
       {"xcorr_pred_norm_param",        { [&]() { parse_double("xcorr_pred_norm_param"); }}},
+      {"xcorr_norm_param",             { [&]() { parse_double("xcorr_norm_param"); }}},
       {"carafe_mask_min_peaks",        { [&]() { parse_int("carafe_mask_min_peaks"); }}},
       // Simple strings
       {"activation_method",            { [&]() { parse_string("activation_method", 23); }}},
@@ -402,6 +403,7 @@ void LoadParameters(char* pszParamsFile,
       {"decoy_search",                 { [&]() { parse_int("decoy_search"); }}},
       {"primary_score",                { [&]() { parse_int("primary_score"); }}},
       {"xcorr_pred_norm_mode",         { [&]() { parse_int("xcorr_pred_norm_mode"); }}},
+      {"xcorr_norm_mode",              { [&]() { parse_int("xcorr_norm_mode"); }}},
       {"equal_I_and_L",                { [&]() { parse_int("equal_I_and_L"); }}},
       {"explicit_deltacn",             { [&]() { parse_int("explicit_deltacn"); }}},
       {"export_additional_pepxml_scores", { [&]() { parse_int("export_additional_pepxml_scores"); }}},
@@ -1008,6 +1010,9 @@ carafe_mask_min_peaks = 6              # not read by comet.exe -- same as above,
 xcorr_pred_norm_mode = 2               # observed-spectrum normalization for the xcorr_pred_n column: 0=off,\n\
                                         # 1=N equal windows over the spectrum span, 2=fixed W-Da windows (default), 3=sliding +/-W Da local max\n\
 xcorr_pred_norm_param = 75             # N (mode 1) or W in Da (modes 2 and 3); default 75 Da\n\
+xcorr_norm_mode = 0                    # experimental: the same normalization applied to xcorr itself (affects xcorr,\n\
+                                        # e-value and xcorr_pred): 0=classic 10 windows (default), 1=N windows, 2=fixed W Da, 3=sliding\n\
+xcorr_norm_param = 75                  # N (mode 1) or W in Da (modes 2 and 3)\n\
 predicted_intensity_file =             # path to a Carafe predicted-intensity file (.carafe_inten,\n\
                                         # tools/carafe_cps_to_inten.py) for the intensity score;\n\
                                         # indexed (FI_DB/PI_DB) searches only; empty = disabled (default)\n\

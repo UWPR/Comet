@@ -3323,6 +3323,42 @@ def test_t41_primary_score_switch(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T42 -- xcorr_norm_mode (docs/20260903_IntensityScore_design.md Phase 3e): MakeCorrData()'s
+# window construction made selectable for xcorr itself. Mode 1 with N = 10 is the classic
+# construction and must reproduce the default xcorr (and e-value) exactly; the fixed-window
+# and sliding modes must run and give a positive xcorr for the fixture PSM; the default (0)
+# must be byte-identical to a run with no xcorr_norm_* keys at all.
+# ---------------------------------------------------------------------------
+
+@register("t42_xcorr_norm_mode")
+def test_t42_xcorr_norm_mode(comet_exe):
+    """T42: xcorr_norm_mode 1/N=10 == classic xcorr; modes 2/3 run; default unchanged."""
+    failures = []
+    built = _t39_build_idx(comet_exe, failures)
+    if built is None:
+        return failures
+    idx, ms2, txt, fmt = built
+    try:
+        rc0, out0, hdr0, rows0 = _t39_search(comet_exe, idx, ms2, txt, fmt, None)
+        check(rc0 == 0 and rows0 and len(rows0) == 1, f"baseline search failed (rc={rc0}):\n{out0[-400:]}", failures)
+        rcd, outd, hdrd, rowsd = _t39_search(comet_exe, idx, ms2, txt, fmt, None, extra="xcorr_norm_mode = 0\nxcorr_norm_param = 75\n")
+        check(rcd == 0 and rowsd == rows0, "explicit mode 0 must equal the baseline row exactly", failures)
+        rc1, out1, hdr1, rows1 = _t39_search(comet_exe, idx, ms2, txt, fmt, None, extra="xcorr_norm_mode = 1\nxcorr_norm_param = 10\n")
+        check(rc1 == 0 and rows1 == rows0, f"mode 1 / N=10 must reproduce the classic construction exactly:\n{rows0}\n{rows1}", failures)
+        for extra, tag in (("xcorr_norm_mode = 2\nxcorr_norm_param = 75\n", "fixed 75 Da"), ("xcorr_norm_mode = 3\nxcorr_norm_param = 75\n", "sliding 75 Da")):
+            rc, out, hdr, rows = _t39_search(comet_exe, idx, ms2, txt, fmt, None, extra=extra)
+            check(rc == 0 and rows and len(rows) == 1 and rows[0][hdr.index("plain_peptide")] == "ACDSEFGHIK"
+                  and float(rows[0][hdr.index("xcorr")]) > 0.0,
+                  f"{tag}: search failed or lost the PSM (rc={rc}): {rows}", failures)
+        rc9, out9, _h, rows9 = _t39_search(comet_exe, idx, ms2, txt, fmt, None, extra="xcorr_norm_mode = 9\n")
+        check(rc9 == 0 and "xcorr_norm_mode must be 0-3" in out9 and rows9 == rows0,
+              "out-of-range mode must warn and fall back to classic", failures)
+    finally:
+        idx.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # T37 -- CometFragmentIndex.cpp AddFragments() early-exit break vs. NL-shifted insertions
 # ---------------------------------------------------------------------------
 #
