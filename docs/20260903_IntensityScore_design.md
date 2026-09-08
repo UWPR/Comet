@@ -776,6 +776,73 @@ fixed windows help xcorr's e-value at low resolution (100 Da, +0.6%) is within n
 under xcorr_norm_mode 2/50 on OTMS2 (123,000) matches xcorr_pred_n mode 2/50 (122,474),
 the same normalization reached two ways.
 
+**Phase 3f (2026-09-08): 15-file confirmation of the score comparison.** The Phase 1-2
+score-family conclusions rested on one file per set; repeated on the 15-file sets of Phase 3d
+(classic xcorr windows, xcorr_pred_n at its fixed 75-Da default, charge-matched predictions).
+Rank-1 PSMs at 1% FDR. (a) Rescoring: xcorr's rank-1 pick per spectrum, ranked by each column
+(free, from the baseline runs). (b) True primary: `primary_score` set so the score also chooses
+the candidate, ranked by itself.
+
+| Set | xcorr | E | cosine | cosine_bg | xcorr_pred | xcorr_pred_n |
+|---|---|---|---|---|---|---|
+| (a) ITMS2 (5) | 80,876 | 135,172 | 137,582 | 87,147 | 154,125 | 155,965 |
+| (a) OTMS2 (5) | 106,606 | 114,871 | 111,471 | 111,337 | 116,698 | 120,281 |
+| (a) phospho (5) | 59,467 | 71,350 | 77,933 | 77,868 | 78,416 | 78,911 |
+| (a) all 15, vs E | -23.2% | 321,393 | +1.7% | -14.0% | +8.7% | +10.5% |
+| (b) ITMS2 (5) | 80,876 | 135,172 | 56,299 | -- | 144,572 | 143,395 |
+| (b) OTMS2 (5) | 106,606 | 114,871 | 92,471 | -- | 111,283 | 114,940 |
+| (b) phospho (5) | 59,467 | 71,350 | 69,432 | -- | 76,697 | 77,283 |
+| (b) all 15, vs E | -23.2% | 321,393 | -32.1% | -- | +3.5% | +4.4% |
+
+Confirmed on 15 files: the cosine is a useful cross-spectrum ranker (E-value strength on
+HeLa, +9% over E on phospho) but a poor chooser (-32% as true primary); background
+subtraction is neutral at high resolution and destroys the cosine at 1.0005-Da bins (the
++/-75-bin window spans 150 Da of a dense ion-trap spectrum); xcorr_pred_n is the best
+rescoring column on 13/15 files and the best true primary overall (+4.4% over E), with
+xcorr_pred slightly ahead of it as a true primary on ion trap (+7.0% vs +6.1%). Two
+corrections to the single-file picture: on the Exploris HeLa set neither xcorr_pred (-3.1%)
+nor xcorr_pred_n (+0.1%) beats the E-value as a true primary (the HeLa QC file had suggested
+they did), and on every set rescoring xcorr's picks by xcorr_pred_n beats making xcorr_pred_n
+the chooser (355,157 vs 335,618) -- a true primary also maximizes the decoys' scores over
+their candidates, so its null distribution moves up with the targets'; xcorr choosing and
+xcorr_pred_n ranking is the stronger arrangement until the intensity score gets its own
+e-value. The ion-trap file `MS1_windows_02` is a BoxCar-style windowed-MS1 acquisition (four
+Orbitrap MS1 segments 375-550/540-650/640-800/790-1575 per cycle, MS2 identical to the
+others): more 2+ precursors, a much cleaner rank-1 population (decoy fraction 23% vs 34%),
+5x the raw-xcorr PSMs of its siblings and about a third of the set's totals; the cosine
+beats xcorr_pred_n on it, the only ion-trap file where it does.
+
+**Phase 3g (2026-09-08): mokapot (Percolator) evaluation of each primary score.** mokapot
+(/mnt/c/Work/mokapot, 0.10.1.dev8; installed in ~/.mokapot/.venv) consumes Comet's own
+`output_percolatorfile = 1` .pin directly (traditional tab-separated protein tail; the six
+intensity columns are already pin features on this branch) -- no converter needed. It competes
+per (ScanNr, ExpMass) = per (scan, charge) like tools/qvalue.py, but re-picks among all
+`num_output_lines` (5) PSMs with the learned linear SVM (Percolator-style), and its tdc
+q-value uses (decoys+1)/targets (4 PSMs more conservative than qvalue.py on a 34k-spectrum
+file). Bug to remember: `read_percolator` chunks feature columns 19 at a time and splits the
+ScanNr/ExpMass/Label identifiers across chunks unless the column count happens to leave
+remainder 1 ("No objects to concatenate") -- set
+`MOKAPOT_CHUNK_SIZE_COLUMNS_FOR_DROP_COLUMNS=10000`. Design (user decision): for each primary
+score S the pin comes from the true-primary search (retention and the 5 lines governed by S)
+and the features are S plus the non-xcorr pin columns only (lnrSp, Sp, IonFrac, Mass, PepLen,
+Charge flags, enzN/enzC/enzInt, lnNumSP, dM, absdM); lnExpect, deltCn, deltLCn and the other
+Xcorr* variants are dropped, Xcorr itself kept only in the xcorr run. Mean of seeds 1-3
+(per-file seed spread <= 254 PSMs, i.e. < 1%), rank-1 PSMs at 1% mokapot q-value:
+
+| Set | xcorr | cosine | xcorr_pred | xcorr_pred_n |
+|---|---|---|---|---|
+| ITMS2 (5) | 167,297 | 233,233 (+39.4%) | 209,789 (+25.4%) | 213,696 (+27.7%) |
+| OTMS2 (5) | 131,208 | 139,414 (+6.3%) | 136,151 (+3.8%) | 137,104 (+4.5%) |
+| phospho (5) | 75,479 | 82,926 (+9.9%) | 80,915 (+7.2%) | 81,427 (+7.9%) |
+| all 15 | 373,984 | 455,573 (+21.8%) | 426,855 (+14.1%) | 432,227 (+15.6%) |
+
+The ordering cosine > xcorr_pred_n > xcorr_pred > xcorr holds on every set and on all 15
+individual files. This reverses the single-score verdict on the cosine: sorted alone it is a
+poor chooser (-32% vs E as a true primary), but with Sp / lnrSp / IonFrac in the model
+supplying the explained-intensity information it lacks, its strength as a cross-spectrum
+ranker carries it. (Scripts: scratchpad eval/mokapot_primary.py; outputs under
+eval/mokapot/primary/.)
+
 **Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR
