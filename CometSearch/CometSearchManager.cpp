@@ -568,13 +568,16 @@ bool CometSearchManager::InitializeStaticParams()
    // core/Types.h for everything the choice governs.
    if (GetParamValue("primary_score", iIntData))
    {
-      if (iIntData < 0 || iIntData > 6)
+      if (iIntData < 0 || iIntData > 7)
       {
-         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score), 2 (intensity_score_bg), 3 (xcorr_pred), 4 (xcorr_pred_g), 5 (xcorr_pred_lin) or 6 (xcorr_pred_n); using 0.\n");
+         logout(" Warning - primary_score must be 0 (xcorr), 1 (intensity_score), 2 (intensity_score_bg), 3 (xcorr_pred), 4 (xcorr_pred_g), 5 (xcorr_pred_lin), 6 (xcorr_pred_n) or 7 (intensity_score_m); using 0.\n");
          iIntData = 0;
       }
       g_staticParams.options.iPrimaryScore = iIntData;
    }
+
+   // m0 of the matched-count-shrunk cosine (Phase 3j); <= 0 turns the shrinkage off.
+   GetParamValue("intensity_score_m0", g_staticParams.options.dIntensityScoreM0);
 
    GetParamValue("peff_format", g_staticParams.peffInfo.iPeffSearch);
 

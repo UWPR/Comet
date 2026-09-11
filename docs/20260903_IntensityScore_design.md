@@ -843,6 +843,290 @@ supplying the explained-intensity information it lacks, its strength as a cross-
 ranker carries it. (Scripts: scratchpad eval/mokapot_primary.py; outputs under
 eval/mokapot/primary/.)
 
+**Phase 3h (2026-09-08): offline estimate of a dimension-conditioned cosine.** Motivated by
+Phase 3g: the cosine's decoy null falls steeply with the size of the vectors it is computed over
+(decoy mean cosine by `ions_total` n, the theoretical b/y count over the charges considered and
+a proxy for the cosine's dimension count: ion trap 0.68 at n=12 -> 0.43 at n=80, high-res
+0.62 -> 0.23, phospho 0.52 -> 0.15; sd 0.11-0.22, mildly declining), so a single cosine
+threshold is set by short decoys. Estimate from the existing 15 baseline outputs (xcorr
+chooses, column ranks): z_n = (cos - mu_n) / sd_n with mu/sd from the rank-1 decoys of the
+same file per n (sparse bins merged with neighbours to >= 50 decoys); rank-1 PSMs at 1% FDR:
+
+| Set | E | cosine | xcorr_pred_n | z_n (self) | z_L (length) | z_n (other files of set) |
+|---|---|---|---|---|---|---|
+| ITMS2 (5) | 135,172 | 137,582 | 155,965 | 194,151 (+43.6%) | 181,297 | 192,787 |
+| OTMS2 (5) | 114,871 | 111,471 | 120,281 | 130,190 (+13.3%) | 131,179 | 130,235 |
+| phospho (5) | 71,350 | 77,933 | 78,911 | 79,578 (+11.5%) | 79,573 | 79,557 |
+| all 15, vs E | 321,393 | +1.7% | +10.5% | +25.7% | +22.0% | +25.3% |
+
+Calibrating from the other files of the same set (no circularity with the evaluated decoys)
+reproduces the self-calibrated result, and n beats plain length on ion trap (194k vs 181k).
+The calibrated cosine as a rescoring column exceeds xcorr_pred_n on every set and approaches
+the mokapot cosine model (Phase 3g: 233k / 139k / 83k) with a two-parameter-per-bin
+correction. The null is instrument-dependent: applying the high-res table to the ion-trap set
+drops it to 125,666, so the calibration must be per run (or per spectrum, i.e. a cosine
+e-value), not a shipped table. Applying z_n to the cosine-primary p1 outputs is not
+meaningful (the raw cosine already chose the short-peptide decoys there; -13% vs E) -- the
+true-primary form needs the calibrated score at choose time and cannot be estimated offline.
+Next step: implement the per-run/per-spectrum calibrated cosine in Comet (design Option 1,
+cosine e-value in post-analysis, first) and verify against this +25.7% estimate.
+(Script: scratchpad eval/cos_calib.py.)
+
+**Phase 3i (2026-09-09): target match percentage (TMP) and ceiling recovery.** TMP
+(user-proposed statistic): the percentage of query units -- (scan, charge), the same
+competition unit as tools/qvalue.py and mokapot -- whose top-ranked peptide is a target.
+Computed on the raw search output before any FDR thresholding or re-ranking, so it is
+independent of score calibration; Comet reports score ties with equal `num`, so rank-1 is
+deduped per unit (first row wins), and within a spectrum the e-value is a monotone
+transform of xcorr, so E's per-spectrum pick and TMP are identical to xcorr's by
+construction. The Phase 3f/3g outputs did not survive (session scratchpad), so the 15-file
+runs were regenerated (baseline p0 plus true-primary p1/p3/p6 per file) in
+`/mnt/c/Work/data/inten_eval/tmp15_20260909/` (60 searches, Linux HEAD build; scripts
+`tmp_stat.py`, `confirm_fdr.py`, `ab_sweep.py` alongside). The regeneration reproduces
+the Phase 3f (b) true-primary table EXACTLY -- all 12 set x primary cells, including
+phospho, once PSMs are counted one per (scan, charge) unit (first rank-1 row wins). The
+phospho params, lost with the original scratchpad and reconstructed here (high-res
+template + the `carafe_phospholarge_parquet_20260902` idx / z23-percharge inten pairing),
+are therefore confirmed equivalent. Counting convention gotcha: `tools/qvalue.py` counts
+every rank-1 ROW, and Comet reports score ties as multiple num==1 rows -- phospho-site
+positional isomers tie constantly, so raw row counting runs ~2% high on the phospho set
+(and ~0.1% on HeLa) vs the deduped-per-unit numbers recorded in Phase 3f. Operational
+trap hit on the way: a `primary_score` line appended AFTER `[COMET_ENZYME_INFO]` is
+silently ignored (that section must end the file) -- the first regeneration ran all
+"primaries" as xcorr baselines; params edits must land before the enzyme section, and a
+loud warning in Comet would be worth adding.
+
+TMP, % of units whose top pick is a target (~1.03M units over the 15 files).
+(a) = column rescoring of the baseline's 5 retained candidates; (b) = each score as true
+primary, its own rank-1:
+
+| Set | (a) xcorr/E | (a) cosine | (a) cosine_bg | (a) xcorr_pred | (a) xcorr_pred_n | (b) cosine | (b) xcorr_pred | (b) xcorr_pred_n |
+|---|---|---|---|---|---|---|---|---|
+| ITMS2 (5) | 68.35 | 70.41 | 70.81 | 69.79 | 69.78 | 69.34 | 70.19 | 70.13 |
+| OTMS2 (5) | 83.73 | 84.43 | 84.41 | 84.11 | 84.17 | 84.49 | 84.15 | 84.17 |
+| phospho (5) | 75.41 | 75.79 | 75.79 | 75.58 | 75.61 | 75.88 | 75.60 | 75.63 |
+| all 15 | 72.61 | 74.12 | 74.37 | 73.63 | 73.63 | 73.45 | 73.89 | 73.86 |
+
+The cosine family has the highest column-TMP of any score (74.12; cosine_bg 74.37)
+despite the worst true-primary 1% FDR yield -- the calibration-free confirmation of the
+Phase 3g/3h diagnosis that its target-picking signal is the strongest in the family and
+only its decoy null placement fails. Per-file consistency check: MS1_windows_02 TMP 77.3%
+vs ~66% for its ITMS2 siblings, matching the decoy-fraction 23%-vs-34% note in Phase 3f.
+
+Ceiling recovery: TMP has a ~50% guessing floor (a 1:1 target-decoy database means each
+rank-1 decoy implies ~1 false target among the rank-1 targets), so the calibration-free
+estimate of genuinely identifiable units is `N x (2*TMP - 1)` -- at 72.6% TMP that is
+~45% of units (~466k of 1.03M), not 73%. Recovery = (rank-1 PSMs at 1% FDR) / that
+ceiling, per true-primary score:
+
+| Set | xcorr | cosine | xcorr_pred | xcorr_pred_n |
+|---|---|---|---|---|
+| ITMS2 (5) | 33.4% | 22.0% | 54.3% | 54.0% |
+| OTMS2 (5) | 74.9% | 63.6% | 77.2% | 79.7% |
+| phospho (5) | 72.5% | 83.7% | 92.8% | 93.4% |
+| all 15, single score | 53.0% | 45.1% | 67.5% | 68.2% |
+| all 15, mokapot (Phase 3g) | 80.2% | 94.1% | 86.6% | 87.8% |
+
+Readings: (1) high-res and phospho 1% FDR results largely reflect TMP (74-94% of the
+implied correct population passes); ion trap does not -- xcorr recovers a third of its
+ceiling, and xcorr_pred's +79% ITMS2 gain over xcorr comes mostly from separation, not
+picking (its TMP is only ~1.8 points higher, ~24k more correct picks, but it accepts 63k
+more PSMs -- the same correct picks scoring further clear of the null). (2) The cosine's
+gap between ceiling and single-score yield is the largest, and mokapot closes it to 94.1%
+of ceiling -- the best of any score -- so TMP predicts the post-re-ranking outcome far
+better than raw single-score 1% FDR counts do, and `2*TMP-1` minus the single-score yield
+is a direct measure of what a calibrator (mokapot, or the planned cosine e-value) has
+left to harvest. Caveats: the estimator assumes false rank-1 hits split evenly between
+targets and decoys (blurred by homology and composite spectra), and mokapot re-picks
+among all 5 candidates so it can in principle slightly exceed the rank-1 ceiling.
+(Scripts and outputs: `/mnt/c/Work/data/inten_eval/tmp15_20260909/`.)
+
+**Phase 3j (2026-09-10): offline sweep of length/matched-peak-aware cosine variants.**
+Design goal (discussion 2026-09-10): stop 1-2 high-intensity peak coincidences from
+scoring high -- the cosine's failure mode is positive-orthant baseline + predicted-peak
+concentration + few dimensions on short peptides. Principle adopted: candidate-intrinsic
+covariates (length, ions_total n, prediction concentration) may condition the NULL;
+matched-peak count m is evidence and may only enter the SCORE. Variants, computed from
+the baseline outputs' (intensity_score, ions_matched m, ions_total n) -- m is the SP
+ladder count, a proxy for the cosine's own matched-peak count:
+B (score-side): shrinkage `cos * m/(m+m0)`, m0 in {1,2,4,8}; hard gates m>=3, m>=4.
+A (null-side): `z_n` = per-file decoy-calibrated z over n (Phase 3h binning);
+`fisher` = `atanh(cos)*sqrt(n-3)`, fully analytic, zero fitted parameters.
+Combo: z_n of the m0=4-shrunk cosine. Evaluated as rescoring columns (xcorr's deduped
+rank-1 picks, ranked by the column), rank-1 PSMs at 1% FDR (script `ab_sweep.py`):
+
+| Set | cosine | shr m0=1 | shr m0=2 | shr m0=4 | shr m0=8 | gate>=3 | fisher | z_n | z_n(shr4) |
+|---|---|---|---|---|---|---|---|---|---|
+| ITMS2 (5) | 137,582 | 159,465 | 174,223 | **187,632** | 185,210 | 137,582 | 165,508 | **194,317** | 187,047 |
+| OTMS2 (5) | 111,471 | 120,992 | 124,378 | 127,466 | 128,812 | 111,471 | 128,797 | 130,603 | **132,358** |
+| phospho (5) | 77,933 | 79,752 | 80,415 | 80,855 | 80,953 | 78,017 | 79,761 | 79,481 | **81,357** |
+| all 15 | 326,986 | 360,209 | 379,016 | 395,953 | 394,975 | 327,070 | 374,066 | **404,401** | 400,762 |
+
+(z_n reproduces Phase 3h within 0.3%; the cosine reference row equals Phase 3f (a)
+exactly under the dedup convention.) Findings:
+
+1. **Plain m-shrinkage at m0=4 gains +21.1% (395,953) with zero calibration** -- ~89% of
+   empirical z_n's +23.7%, no decoy fitting, no per-run tables, trivially cheap at choose
+   time and RTS-safe. It also beats every previously known rescoring column: the Phase 3f
+   champion xcorr_pred_n totals 355,157 (a); shr m0=4 exceeds it by +11.5%. m0=4 is the
+   optimum on ITMS2, m0=8 marginally better on OTMS2/phospho (flat 4->8).
+2. The analytic `fisher` form, with NO fitted parameters, gains +14.4% -- the n-dependence
+   of the null is substantially analytic, supporting the plan of an analytic shape plus a
+   small per-run scale rather than shipped/binned tables.
+3. z_n remains the single best column overall (+23.7%); the z_n(shr4) combo wins OTMS2 and
+   phospho but loses ITMS2 to plain z_n -- shrinkage and n-conditioning overlap (m
+   correlates with n), so B+A stacks only partially.
+4. Hard gates (m>=3, m>=4) are useless as rescoring columns (ranking of passing rows
+   unchanged) -- the shrinkage form, not a cutoff, is what matters.
+5. TMP is FLAT across all variants (all 15: 74.12 -> 74.21 at best): among xcorr's top-5
+   the cosine's picks barely change -- ALL of the +21-24% FDR gain is cross-spectrum null
+   placement (separation), not picking. This is the ceiling-recovery story of Phase 3i in
+   action, and it means the offline sweep likely UNDERSTATES the true-primary gain, where
+   the chooser confronts short-decoy candidates the xcorr shortlist filtered out; the
+   chooser-side test needs the score in `CometIntensityStore` (choose-time, not
+   post-analysis).
+
+Design implication: B (shrinkage, one parameter m0~4, using the cosine's own matched-peak
+count instead of the SP proxy) as the always-on score-side guard; A as the calibration
+layer, preferring the effective-dimension form d_eff = (sum p)^2 / sum p^2 of the
+predicted vector (precomputable per variant at .inten build time; captures concentration,
+which n misses) with an analytic shape + per-run scale, per finding 2. Next steps:
+(i) compute d_eff offline from the .inten/.cps store and test z_{d_eff} vs z_n on these
+outputs; (ii) implement cos*m/(m+m0) in `CometIntensityStore` as a primary-score variant
+and measure the true-primary (chooser) gain the offline sweep cannot see.
+
+**Phase 3k (2026-09-10): shrunk cosine implemented in Comet; chooser verdict; d_eff
+retired.** Implementation: `CometIntensityStore::Score()` gained an `iMatched` out-param
+and `Decode()` a `dPredSum` field; new txt columns `intensity_score_m` and `inten_deff`
+(after `xcorr_pred_n`), new param `intensity_score_m0` (default 4, <= 0 disables), and
+**`primary_score = 7`** selects the shrunk cosine as the chooser. T39/T41 extended
+(eight intensity columns; primary 7 in the end-to-end loop; out-of-range probe now 8);
+61/61 fast suite; a 118k-row real-file regression shows every pre-existing column
+byte-identical. Config check that preceded it: the `.inten` stores carry
+`MinRelativeIntensity 0.01` / `MaxPeaks 32` (~20-25 peaks/record) -- full distributions,
+so short-peptide thinness is intrinsic, not a store-threshold artifact (the 32-peak cap
+only truncates long peptides).
+
+Two design questions settled empirically along the way (baselines re-run as `*_p0n.txt`
+with the new columns; all numbers rank-1 PSMs @1% FDR, dedup convention):
+
+1. **The shrinkage input m must be the FULL-LADDER matched count, not the cosine's own
+   matched-predicted-peak count**: as a rescoring column, cos*m/(m+4) with the cosine's
+   own m (<= 32 stored peaks) totals 361,494 vs 395,953 for the SP-ladder count -- and as
+   a chooser the difference is dramatic (below). Implementation counts observed-nonzero
+   slots over the cosine's own ladder (z <= 2), reproducing the SP semantics at choose
+   time; note `iNumMatchedFragmentIons` at the call site is the FI posting-hit count
+   (fragment-index mass window), NOT this quantity. Offline check: the ladder-m column
+   totals 394,426 =~ the Phase 3j SP-proxy 395,953, validating the equivalence.
+2. **d_eff (participation ratio) loses to n as the calibration covariate**: z_{d_eff}
+   140,048 on ITMS2 vs z_n 194,317 (=~ tie on the other sets; z_{d_eff}(ism) 366,302 and
+   fisher_{d_eff} 365,343 both < z_n 404,401). The d_eff hypothesis is retired; the
+   calibration layer should condition on n (free at choose time, no store change).
+
+**Chooser verdict** (true primary, ranked by itself; `*_p7.txt` = ladder-m,
+`*_p7predm.txt` = the rejected predicted-peaks-m variant):
+
+| Set | xcorr | cosine | xcorr_pred | xcorr_pred_n | shrunk cosine (pred-m) | shrunk cosine (ladder-m) |
+|---|---|---|---|---|---|---|
+| ITMS2 (5) | 80,876 | 56,299 | **144,572** | 143,395 | 79,433 | 139,159 |
+| OTMS2 (5) | 106,606 | 92,471 | 111,283 | 114,940 | 126,212 | **125,311** |
+| phospho (5) | 59,467 | 69,432 | 76,697 | 77,283 | **79,848** | 79,345 |
+| all 15 | 246,949 | 218,202 | 332,552 | 335,618 | 285,493 | **343,815** |
+| all-15 chooser TMP | 72.61% | -- | 73.89% | 73.86% | 72.10% | **73.92%** |
+
+The ladder-m shrunk cosine is the **best true primary measured to date** (+2.4% over
+xcorr_pred_n, +39% over raw xcorr) and the best on high-res HeLa (+9.0%) and phospho
+(+2.7%); on ion trap it repairs the raw cosine's collapse (56,299 -> 139,159) to within
+3.7% of xcorr_pred but does not take the lead -- the weighted-xcorr family keeps the
+low-res crown. The Phase 3f asymmetry persists: rescoring xcorr's picks by the shrunk
+cosine (394,426; z_n over it 400,293) still beats letting it choose (343,815), since a
+true primary maximizes decoys over their candidates too. Conclusions: `primary_score = 7`
+is the strongest chooser for high-res/phospho work and the sane default where a single
+primary must serve (RTS); the ion-trap chooser and the calibrated-score work (cosine
+e-value over z_n) remain with the weighted-xcorr family and Phase 3h's plan. Next:
+mokapot over the p7 pins (needs `intensity_score_m` as a pin feature -- not yet written
+to .pin) to test whether the shrunk-cosine primary lifts the Phase 3g ceiling-recovery
+further.
+
+**Phase 3l (2026-09-10): mokapot over the shrunk-cosine (p7) primary -- new best on
+every set.** `IntensityScoreM` added as a pin feature (`CometWritePercolator.cpp`; suite
+still 61/61), the 15 p7 searches re-run with `output_percolatorfile = 1`, and the Phase
+3g protocol applied (driver rewritten as `tmp15_20260909/mokapot_p7.py` -- the original
+scratchpad driver is gone; note this mokapot build writes `{root}.targets.psms.tsv` with
+a `mokapot_qvalue` column, not the names Phase 3g's text implied): features =
+IntensityScoreM + lnrSp/Sp/IonFrac/Mass/PepLen/Charge*/enzN/enzC/enzInt/lnNumSP/dM/absdM,
+mean of seeds 1-3 (spreads 8-63 PSMs), rank-1 PSMs at 1% mokapot q:
+
+| Set | xcorr | cosine | xcorr_pred | xcorr_pred_n | shrunk cosine (p7) |
+|---|---|---|---|---|---|
+| ITMS2 (5) | 167,297 | 233,233 | 209,789 | 213,696 | **233,278** |
+| OTMS2 (5) | 131,208 | 139,414 | 136,151 | 137,104 | **140,833** (+1.0%) |
+| phospho (5) | 75,479 | 82,926 | 80,915 | 81,427 | **83,246** (+0.4%) |
+| all 15 | 373,984 | 455,573 | 426,855 | 432,227 | **457,357** (+0.39% vs cosine) |
+
+Readings: (1) after mokapot the raw-vs-shrunk cosine gap nearly closes (ITMS2 +45 is a
+tie) -- the SVM already synthesizes most of the m-correction from Sp/lnrSp/IonFrac, as
+step 3's framing predicted -- but the shrunk primary still wins all three sets, the
+residual coming from better search-time retention (the 5 pin rows per spectrum are
+chosen by the better chooser). (2) Ceiling recovery (Phase 3i estimator, p7's own
+chooser TMPs): ITMS2 88.7%, OTMS2 95.9%, phospho 99.0%, all-15 92.6% -- on phospho
+mokapot has essentially exhausted the rank-1 population's TMP-implied information.
+(3) Practical verdict for the score design: `primary_score = 7` + mokapot is the
+strongest full pipeline measured (+22.3% over xcorr's mokapot, +5.8% over
+xcorr_pred_n's); as a SINGLE score (no re-ranking, the RTS regime) it is also the best
+chooser overall (Phase 3k, 343,815). Remaining upside per the ceiling analysis is
+concentrated on ion trap (88.7% recovery), consistent with Phase 3h's per-run z_n /
+cosine-e-value plan being the next lever there.
+
+**m0 confirmation sweep, chooser role (2026-09-10)** -- Phase 3j's m0 choice rested on
+the rescoring arrangement, where 4 -> 8 was nearly flat; as a TRUE PRIMARY it is not
+(true-primary rank-1 PSMs @1% FDR, `*_p7m2.txt` / `*_p7m8.txt`):
+
+| Set | m0=2 | m0=4 | m0=5 | m0=8 |
+|---|---|---|---|---|
+| ITMS2 (5) | 126,122 | **139,159** | 139,151 | 126,001 |
+| OTMS2 (5) | 120,730 | 125,311 | 126,275 | **127,572** |
+| phospho (5) | 77,954 | 79,345 | 79,636 | **80,017** |
+| all 15 | 324,806 | 343,815 | **345,062** | 333,590 |
+
+The chooser is non-monotonic in m0 on ion trap with a plateau at 4-5 (m0=2 and m0=8 both
+lose ~9.5% there -- too little shrinkage re-admits short-decoy picks, too much lets long
+peptides win on breadth alone at low resolution), while high-res and phospho rise gently
+toward 8. **m0 = 5 is the all-15 optimum** (+0.36% over 4: it holds the ion-trap peak,
+139,151 =~ 139,159, while capturing part of the high-res/phospho preference for larger
+m0); a fully per-instrument m0 would add only a further +0.5%. Chooser TMPs stay flat
+across m0 (69.8-70.0 / 84.7-84.8 / 76.0-76.1), i.e. m0 moves the null placement, not the
+picking -- consistent with every prior TMP observation. **m0 = 5 was adopted as the
+default (user decision 2026-09-10; Phase 3m below has the re-measured numbers).**
+
+**Phase 3m (2026-09-10): m0 = 5 adopted; all headline numbers re-measured.** Default
+changed in `core/Params.h` (`dIntensityScoreM0 = 5.0`); the 15 p7 searches and the
+45-fit mokapot protocol re-run at the new default. Build-hygiene gotcha that cost one
+round: the Makefile does not track header dependencies, so `make -j12` after the
+header-only default change rebuilt nothing and the first "m0=5" pins silently carried
+m0=4 values (caught because the mokapot set means were digit-identical to Phase 3l's;
+no test asserts a default's value). **A header edit requires `make cclean && make`**;
+verified by the pin value itself before re-running (ism 0.0238 = cos*1/6 for an m=1
+row). Final numbers, m0 = 4 vs m0 = 5 (rank-1 PSMs @1% FDR; mokapot = mean of seeds
+1-3, spreads 5-63):
+
+| Arrangement | m0 = 4 | m0 = 5 | delta |
+|---|---|---|---|
+| chooser (true primary), all 15 | 343,815 | **345,062** | +0.36% |
+| -- ITMS2 / OTMS2 / phospho | 139,159 / 125,311 / 79,345 | 139,151 / 126,275 / 79,636 | |
+| rescoring column on xcorr picks, all 15 | 394,426 | **396,545** | +0.54% |
+| mokapot (p7 pins, 3g protocol), all 15 | **457,357** | 456,865 | -0.11% |
+| -- ITMS2 / OTMS2 / phospho | 233,278 / 140,833 / 83,246 | 232,631 / 140,978 / 83,256 | |
+
+The adoption trades a real single-score gain (+0.36% chooser, +0.54% rescoring -- the
+regimes where the default binds, RTS included) for a marginal mokapot dip (-0.11%,
+entirely ITMS2's -647; OTMS2/phospho tick up). Ceiling recovery is unchanged within
+rounding (ITMS2 88.4%, OTMS2 96.0%, phospho 99.0%, all-15 92.5%). Verdict: m0 = 5
+stands as the default; mokapot users re-rank anyway and the -0.11% there is within a
+seed spread of two files. Artifacts: m0=4 p7 outputs/pins archived as `*_p7m4.*` with
+their mokapot fits in `mokapot_p7_m04/`; current-default outputs are `*_p7.*` +
+`mokapot_p7/`; the m0 sweep chooser outputs remain `*_p7m2/5/8.txt`.
+
 **Phase 2 (original plan): primary-score switch.** Section 2.5 in full, RTS plumbing, init validation.
 T41: same fixture searched with `primary_score=0/1` changes rank order as predicted;
 T22-style 1-vs-8-thread RTS determinism with `primary_score=1`. Full-scale: PSMs at 1% FDR

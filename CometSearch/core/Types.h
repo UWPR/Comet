@@ -59,6 +59,12 @@ struct Results
                                               // 10-window MakeCorrData) background-subtracted spectrum; 0.0 without a record
    float  fXcorrPredLin;                      // xcorr_pred with LINEAR weights 0.1 + 0.9*rel (no sqrt); 0.0 without a record
    float  fXcorrPredN;                        // xcorr_pred over the experimentally normalized spectrum (xcorr_pred_norm_mode); 0.0 when off
+   float  fIntensityScoreM;                   // matched-count-shrunk cosine: intensity_score * m/(m + intensity_score_m0),
+                                              // m = ladder positions with predicted peak AND nonzero observed intensity
+                                              // (docs/20260903_IntensityScore_design.md Phase 3j); 0.0 without a record
+   float  fInDeff;                            // effective dimension of the scored predicted vector, (sum q)^2 / sum q^2
+                                              // over the charge-allowed sqrt-intensity peaks -- calibration covariate,
+                                              // not a score (Phase 3j design); 0.0 without a record
    float  fDeltaCn;
    float  fLastDeltaCn;
    float  fAScorePro;                         // AScorePro score
@@ -188,11 +194,12 @@ inline float PrimaryScore(const Results& r)
       case 4:  return r.fXcorrPredG;
       case 5:  return r.fXcorrPredLin;
       case 6:  return r.fXcorrPredN;
+      case 7:  return r.fIntensityScoreM;
       default: return r.fXcorr;
    }
 }
 
-inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg, double dXcorrPred, double dXcorrPredG, double dXcorrPredLin, double dXcorrPredN)
+inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dIntensityScoreBg, double dXcorrPred, double dXcorrPredG, double dXcorrPredLin, double dXcorrPredN, double dIntensityScoreM)
 {
    switch (g_staticParams.options.iPrimaryScore)
    {
@@ -202,6 +209,7 @@ inline double PrimaryScoreOf(double dXcorr, double dIntensityScore, double dInte
       case 4:  return dXcorrPredG;
       case 5:  return dXcorrPredLin;
       case 6:  return dXcorrPredN;
+      case 7:  return dIntensityScoreM;
       default: return dXcorr;
    }
 }
@@ -239,6 +247,8 @@ inline void ResetOneResult(Results& r)
    r.fXcorrPredG = 0.0;
    r.fXcorrPredLin = 0.0;
    r.fXcorrPredN = 0.0;
+   r.fIntensityScoreM = 0.0;
+   r.fInDeff = 0.0;
    r.fAScorePro = 0.0;
    r.usiLenPeptide = 0;
    r.usiRankSp = 0;

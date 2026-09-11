@@ -2965,10 +2965,12 @@ def test_t39_intensity_store_guards(comet_exe):
                   and hdr1.index("xcorr_pred") == hdr1.index("intensity_score") + 2
                   and hdr1.index("xcorr_pred_g") == hdr1.index("intensity_score") + 3
                   and hdr1.index("xcorr_pred_lin") == hdr1.index("intensity_score") + 4
-                  and hdr1.index("xcorr_pred_n") == hdr1.index("intensity_score") + 5,
-                  f"the six intensity-derived columns must follow delta_cn: {hdr1}", failures)
+                  and hdr1.index("xcorr_pred_n") == hdr1.index("intensity_score") + 5
+                  and hdr1.index("intensity_score_m") == hdr1.index("intensity_score") + 6
+                  and hdr1.index("inten_deff") == hdr1.index("intensity_score") + 7,
+                  f"the eight intensity-derived columns must follow delta_cn: {hdr1}", failures)
             i_sc = hdr1.index("intensity_score")
-            stripped = [r[:i_sc] + r[i_sc + 6:] for r in rows1]
+            stripped = [r[:i_sc] + r[i_sc + 8:] for r in rows1]
             check(stripped == rows0,
                   f"all non-intensity columns must be identical to the baseline:\n{rows0}\n{stripped}", failures)
             score = float(rows1[0][i_sc])
@@ -3262,7 +3264,7 @@ def test_t41_primary_score_switch(comet_exe):
                 + [(inten.peak_code(inten.CH_Y, pos), 150) for pos in range(2, 7)]
         _t39_write_inten(good, idx, [((0, 0, -1, -1), peaks), ((0, -1, -1, -1), [])])
         rows_by_mode = {}
-        for primary in (0, 1, 2, 3, 4, 5, 6):
+        for primary in (0, 1, 2, 3, 4, 5, 6, 7):
             rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, primary,
                                                     extra="xcorr_pred_norm_mode = 2\nxcorr_pred_norm_param = 100\n")
             check(rc == 0, f"primary_score={primary}: search failed (rc={rc}):\n{out[-800:]}", failures)
@@ -3312,7 +3314,7 @@ def test_t41_primary_score_switch(comet_exe):
             idx.unlink(missing_ok=True)
             rebuilt = _t39_build_idx(comet_exe, failures)
             check(rebuilt is not None, "rebuilding the plain fixture index failed", failures)
-        rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, 7)
+        rc, out, hdr, rows = _t41_search_params(comet_exe, idx, ms2, txt, fmt, good, 8)
         check(rc == 0 and "primary_score must be 0" in out and rows is not None and len(rows) == 1,
               f"out-of-range primary_score must warn and fall back to xcorr, got rc={rc}:\n{out[-500:]}", failures)
     finally:

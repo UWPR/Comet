@@ -380,6 +380,7 @@ bool CometIntensityStore::Decode(unsigned int uiVariant, const Query* pQuery, in
 {
    out.bValid = false;
    out.dPredNorm2 = 0.0;
+   out.dPredSum = 0.0;
    if (!s_bEnabled || uiVariant == NO_VARIANT)
       return false;
    if (uiVariant >= s_offsets.size() || s_offsets[uiVariant] == NO_RECORD)
@@ -455,6 +456,7 @@ bool CometIntensityStore::Decode(unsigned int uiVariant, const Query* pQuery, in
       {
          out.pred[ch][pos] = v;
          out.dPredNorm2 += (double)v * v;
+         out.dPredSum += (double)v;
       }
    }
    out.bValid = (out.dPredNorm2 > 0.0);
@@ -576,9 +578,11 @@ double CometIntensityStore::Score(const Decoded& d,
                                   int iLenPeptide,
                                   int iFoundVariableMod,
                                   const Query* pQuery,
-                                  double& dScoreBg)
+                                  double& dScoreBg,
+                                  int& iMatched)
 {
    dScoreBg = 0.0;
+   iMatched = 0;
    if (!d.bValid)
       return 0.0;
 
@@ -648,6 +652,8 @@ double CometIntensityStore::Score(const Decoded& d,
                double o = obs((int)bin);
                dDot += d.pred[ch][ctLen] * o;
                dObsNorm2 += o * o;
+               if (o > 0.0)
+                  ++iMatched;
                if (d.pred[ch][ctLen] > 0.0f)
                   dShiftDot += d.pred[ch][ctLen] * (window((int)bin) - o);
             }
@@ -661,6 +667,8 @@ double CometIntensityStore::Score(const Decoded& d,
                   double o = obs((int)bin);
                   dDot += d.pred[chMl][ctLen] * o;
                   dObsNorm2 += o * o;
+                  if (o > 0.0)
+                     ++iMatched;
                   if (d.pred[chMl][ctLen] > 0.0f)
                      dShiftDot += d.pred[chMl][ctLen] * (window((int)bin) - o);
                }

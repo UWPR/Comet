@@ -8458,8 +8458,22 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    CometIntensityStore::Decoded predDec;
    bool bPred = CometIntensityStore::Decode(uiVariant, pQuery, iLenPeptide, predDec);
    double dIntensityScoreBg = 0.0;
+   int iIntenMatched = 0;
    double dIntensityScore = bPred ? CometIntensityStore::Score(predDec, uiBinnedIonMasses, iLenPeptide,
-      iFoundVariableMod, pQuery, dIntensityScoreBg) : 0.0;
+      iFoundVariableMod, pQuery, dIntensityScoreBg, iIntenMatched) : 0.0;
+   // Matched-count-shrunk cosine (Phase 3j/3k): cos * m/(m + m0) damps 1-2 matched-peak
+   // coincidences; m0 <= 0 disables the shrinkage (column equals intensity_score).
+   // m = iIntenMatched, the SP-style matched-ion count over the cosine's full ladder
+   // (nonzero observed at any theoretical slot, predicted or not) -- the full-ladder count
+   // outperformed the predicted-slots-only variant decisively offline (395,953 vs 361,494
+   // all-15 @1% FDR as a rescoring column). NOT iNumMatchedFragmentIons, which counts FI
+   // posting hits (fragment-index mass window) rather than the SP ladder.
+   double dM0 = g_staticParams.options.dIntensityScoreM0;
+   double dIntensityScoreM = (dM0 > 0.0)
+      ? dIntensityScore * iIntenMatched / (iIntenMatched + dM0) : dIntensityScore;
+   // Effective dimension of the scored predicted vector -- calibration covariate (Phase 3j).
+   double dInDeff = (bPred && predDec.dPredNorm2 > 0.0)
+      ? predDec.dPredSum * predDec.dPredSum / predDec.dPredNorm2 : 0.0;
    // Predicted-intensity-weighted xcorr: the same fast-xcorr sum below, each term times
    // CometIntensityStore::Weight() (0.1 + 0.9*sqrt(pred), 0.1 where nothing is predicted);
    // stays 0.0 when the variant has no record. dXcorrPredG is the same weighted sum over the
@@ -8616,7 +8630,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
    dXcorrPredN *= 0.005;
    dXcorrPredN = std::round(dXcorrPredN * 1000.0) / 1000.0;
 
-   dPrimary = PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN);
+   dPrimary = PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, dIntensityScoreM);
    // minimum_xcorr applies to xcorr only; the intensity primaries have no floor.
    bool bPassMinimum = (g_staticParams.options.iPrimaryScore != 0) || (dXcorr >= g_staticParams.options.dMinimumXcorr);
 
@@ -8675,7 +8689,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, dIntensityScoreM, dInDeff, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8695,7 +8709,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
             StorePeptideI(pQuery, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
-               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, bDecoyPep, piVarModSites, dbe);
+               dCalcPepMass, dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, dIntensityScoreM, dInDeff, bDecoyPep, piVarModSites, dbe);
          }
       }
    }
@@ -8819,6 +8833,8 @@ void CometSearch::StorePeptideI(Query* pQuery,
                                 double dXcorrPredG,
                                 double dXcorrPredLin,
                                 double dXcorrPredN,
+                                double dIntensityScoreM,
+                                double dInDeff,
                                 bool bDecoyPep,
                                 int* piVarModSites,
                                 struct sDBEntry* dbe)
@@ -8903,7 +8919,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
       // the double/float round-trip -- silently rejecting a tied candidate before it ever
       // reaches the sequence tie-break below.
       {
-         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN);   // the primary score (variable name kept)
+         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, dIntensityScoreM);   // the primary score (variable name kept)
 
          if (fIncomingXcorr < PrimaryScore(pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex]))
          {
@@ -8970,6 +8986,8 @@ void CometSearch::StorePeptideI(Query* pQuery,
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorrPredG = (float)dXcorrPredG;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorrPredLin = (float)dXcorrPredLin;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fXcorrPredN = (float)dXcorrPredN;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fIntensityScoreM = (float)dIntensityScoreM;
+      pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].fInDeff = (float)dInDeff;
       pQuery->_pDecoys[siLowestDecoyXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)
@@ -9123,7 +9141,7 @@ void CometSearch::StorePeptideI(Query* pQuery,
 
       // See the matching check in the decoy branch above for rationale.
       {
-         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN);   // the primary score (variable name kept)
+         float fIncomingXcorr = (float)PrimaryScoreOf(dXcorr, dIntensityScore, dIntensityScoreBg, dXcorrPred, dXcorrPredG, dXcorrPredLin, dXcorrPredN, dIntensityScoreM);   // the primary score (variable name kept)
 
          if (fIncomingXcorr < PrimaryScore(pQuery->_pResults[siLowestXcorrScoreIndex]))
          {
@@ -9190,6 +9208,8 @@ void CometSearch::StorePeptideI(Query* pQuery,
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorrPredG = (float)dXcorrPredG;
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorrPredLin = (float)dXcorrPredLin;
       pQuery->_pResults[siLowestXcorrScoreIndex].fXcorrPredN = (float)dXcorrPredN;
+      pQuery->_pResults[siLowestXcorrScoreIndex].fIntensityScoreM = (float)dIntensityScoreM;
+      pQuery->_pResults[siLowestXcorrScoreIndex].fInDeff = (float)dInDeff;
       pQuery->_pResults[siLowestXcorrScoreIndex].bClippedM = false;
 
       if (iStartPos == 0)

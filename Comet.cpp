@@ -386,6 +386,7 @@ void LoadParameters(char* pszParamsFile,
       // actual search.
       {"carafe_mask_min_relative_intensity", { [&]() { parse_double("carafe_mask_min_relative_intensity"); }}},
       {"xcorr_pred_norm_param",        { [&]() { parse_double("xcorr_pred_norm_param"); }}},
+      {"intensity_score_m0",           { [&]() { parse_double("intensity_score_m0"); }}},
       {"xcorr_norm_param",             { [&]() { parse_double("xcorr_norm_param"); }}},
       {"carafe_mask_min_peaks",        { [&]() { parse_int("carafe_mask_min_peaks"); }}},
       // Simple strings

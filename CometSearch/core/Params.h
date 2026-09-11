@@ -110,6 +110,10 @@ struct Options
    int iPrimaryScore;            // 0 = xcorr (default), 1 = intensity score. Which score gates
                                   // candidate retention and ranks results (Phase 2 of the design
                                   // doc; Phase 1 accepts the key but only honors 0).
+   double dIntensityScoreM0;     // m0 of the matched-count-shrunk cosine intensity_score_m =
+                                  // cos * m/(m + m0) (Phase 3j); <= 0 disables the shrinkage
+                                  // (the column then equals intensity_score). Default 5
+                                  // (chooser m0 sweep, design doc Phase 3l addendum).
    double dMS1MinMass;           // low mass cutoff in MS1 query/library spectra
    double dMS1MaxMass;           // high mass cutoff in MS1 query/library spectra
    IntRange scanRange;
@@ -443,6 +447,7 @@ struct StaticParams
       options.sFragIndexPredictedMaskFile = "";
       options.sPredictedIntensityFile = "";
       options.iPrimaryScore = 0;
+      options.dIntensityScoreM0 = 5.0;   // (docs/20260903_IntensityScore_design.md Phase 3l m0 sweep)
       options.iXcorrPredNormMode = 2;      // fixed 75-Da windows: the 15-file sweep's single-value choice
       options.dXcorrPredNormParam = 75.0;  // (docs/20260903_IntensityScore_design.md Phase 3d)
       options.iXcorrNormMode = 0;          // xcorr keeps its classic windows unless asked (Phase 3e)

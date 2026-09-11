@@ -72,6 +72,8 @@ public:
    {
       bool   bValid;
       double dPredNorm2;
+      double dPredSum;   // sum of the same charge-allowed q values dPredNorm2 squares;
+                         // (dPredSum^2 / dPredNorm2) is the vector's effective dimension
       float  pred[NUM_CH][MAX_PEPTIDE_LEN];
    };
    static bool Decode(unsigned int uiVariant, const Query* pQuery, int iLenPeptide, Decoded& out);
@@ -88,12 +90,17 @@ public:
    // shifted, the denominator stays the unshifted one (XCorr's own construction applied
    // to the cosine). Linear in o, so it reduces to one 151-bin window sum per ladder
    // position; bins past either array edge count as 0 like XCorr. May be negative.
+   // iMatched receives the number of ladder slots with a nonzero observed intensity at the
+   // slot's bin (predicted or not) -- the SP-style matched-ion count over the cosine's own
+   // ladder (z <= 2), intensity_score_m's shrinkage input (Phase 3j/3k; counting only
+   // predicted slots was tested and is decisively worse). 0 when !d.bValid.
    static double Score(const Decoded& d,
                        const unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
                        int iLenPeptide,
                        int iFoundVariableMod,
                        const Query* pQuery,
-                       double& dScoreBg);
+                       double& dScoreBg,
+                       int& iMatched);
 
    // Predicted-intensity-weighted XCorr (docs/20260903_IntensityScore_design.md Phase 3a):
    // XcorrScoreI() multiplies each ladder term of its fast-xcorr sum by this weight,
