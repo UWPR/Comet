@@ -3,9 +3,10 @@
 Status: **Plan reviewed 2026-09-14; all five Section 7 recommendations accepted.** The Section 4.5
 RTS reporting fix was pulled forward and landed first (commit 94a854ef; it is a live bug for PI_DB
 RTS with `decoy_search = 1`, independent of FI_DB). **Phases 1 and 2 implemented 2026-09-14**
-(Section 6 has the measurements; Phase 1 = commit d208e7d1). FI_DB internal decoys are
-functional in batch and RTS for `decoy_search = 1|2`. Phase 3 (guard rail, doc wording) and
-Phase 4 (T34, T24 parity, benchmarks) remain. Branch: `FI_internaldecoys`.
+(Section 6 has the measurements; Phase 1 = commit d208e7d1, Phase 2 = afe18ea5). FI_DB internal
+decoys are functional in batch and RTS for `decoy_search = 1|2`. **Phase 3 implemented
+2026-09-14** (guard rail + doc wording). Phase 4 (T34, T24 parity, benchmarks) remains.
+Branch: `FI_internaldecoys`.
 
 ## 1. Goal
 
@@ -185,9 +186,16 @@ not supported yet") is updated.
 ### 4.6 Guard rails
 
 - If `iDecoySearch != 0` and any protein name in `g_pvProteinNameCache` starts with
-  `szDecoyPrefix`, log a one-line warning at FI build: internal decoys on top of a target-decoy
-  index double-count decoys. PI_DB has the same exposure today (its reversal block at 2697 is
-  not gated on `!bDecoyPep`). Warn only; do not change behavior (Decision D4).
+  `szDecoyPrefix`, log a warning: internal decoys on top of a target-decoy index double-count
+  decoys. PI_DB has the same exposure (its reversal block is not gated on `!bDecoyPep`). Warn
+  only; do not change behavior (Decision D4).
+
+  *DONE 2026-09-14.* Placed in `CometPeptideIndex::ReadPeptideIndex()` right after the name
+  cache is loaded rather than in the FI build, so it covers PI_DB and FI_DB, batch and RTS,
+  with one check per index load. `iDecoySearch` there is the header-restored value (the one
+  that actually governs the search). Verified with `tests/unit/data/t29_decoyprefix.fasta`
+  (`REV_` prefix): fires for PI_DB `decoy_search = 1` and FI_DB `= 2` on both load paths;
+  silent for the same index with `= 0` and for a target-only index with `= 1`.
 
 ## 5. Cost
 
@@ -262,6 +270,23 @@ decoy output.
 `rts_fi` and verify), 4.6 warning, comment/doc cleanups (CometSearch.cpp:5005, `CheckDuplicateI()`
 doc, CLAUDE.md "FI_DB searches currently don't support internal decoys" wording, the Key Globals
 `g_fragmentPeptides` row).
+
+*DONE 2026-09-14.* The T22 `rts_fi` sub-case and the two code-comment cleanups landed with
+Phase 2; this phase added the 4.6 warning and updated CLAUDE.md's Key Globals row,
+`docs/GlobalVariables.md` (`g_fragmentPeptides`) and `docs/DataStructures.md`
+(`FragmentPeptidesStruct` / `VariantArray`) to describe the decoy flag. Unit suite and T22
+re-run on the build (results in the Phase 3 commit message).
+
+Testing note: `tests/rts_repro/rts_repro` links `libcometsearch.a` statically and the harness
+only rebuilds it when the binary is missing, so after any library change delete it first (the
+first warning test here silently ran a stale driver). The unit suite also rebuilds the committed
+`tests/unit/data/*.fasta.idx` fixtures in place; `git checkout -- tests/unit/data/` before
+committing. T22's FI_DB ground-truth check produced one transient `NO_MATCH` (1 of 17 runs
+today, directly after a full unit-suite run, never in isolation): `rts_repro.cpp` mirrors real
+RTS with `max_index_runtime = 200` ms per spectrum, so a load spike on the first search after a
+fresh index build + driver relink on `/mnt/c` can time the fragment-index walk out. Harness
+timing, not a search-side regression -- re-run to confirm before treating a single T22 FI
+`NO_MATCH` as real.
 
 **Phase 4 -- Tests, parity, performance.**
 - New unit test (next free ID, T34): small fixture with (i) a palindromic tryptic peptide and

@@ -83,7 +83,7 @@ The codebase has three layers:
 | Global | Thread-safe? | Notes |
 |--------|-------------|-------|
 | `g_staticParams` | [x] Read-only after init | All search parameters |
-| `g_iFragmentIndex`, `g_fragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index |
+| `g_iFragmentIndex`, `g_fragmentPeptides`, `g_vRawPeptides` | [x] Read-only after init | Fragment index. With `decoy_search != 0` (the `.idx` header's `DecoySearch:` value wins at load) every target variant in `g_fragmentPeptides` has a pseudo-reverse decoy twin flagged by `VariantArray::DECOY_FLAG` (bit 7 of `vucTermMods`; `IsDecoy()`), sharing its raw-peptide row, mods, mass key and protein list -- `SearchFragmentIndex()` reverses the sequence + mod sites on the fly for flagged candidates. See `docs/20260914_FI_internal_decoys.md`. |
 | `g_pvProteinsList` | [x] Read-only after init | Populated on both a fresh build and a search-only read-back of an existing `.idx` |
 | `g_pvProteinNames` | [ ] Build-time only | **Not** search-time readable: populated only while *building* a `.idx`, never repopulated when an existing `.idx` is read back for a search -- reading it during a search-only run silently finds nothing (this exact confusion caused a real bug, decoy peptides misclassified as targets in every PI_DB search of a pre-built index). Use `g_pvProteinNameCache` for search-time protein-name lookups instead. |
 | `g_pvProteinNameCache` | [x] Read-only after index load | Protein-name strings indexed by name-section ordinal (`vector<string>`; every protein, read sequentially at index load) -- the search-time-safe counterpart to `g_pvProteinNames` above. `g_pvProteinsList` rows hold matching ordinals after a load (FASTA offsets during a build). |
