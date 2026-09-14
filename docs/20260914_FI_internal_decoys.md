@@ -5,8 +5,9 @@ RTS reporting fix was pulled forward and landed first (commit 94a854ef; it is a 
 RTS with `decoy_search = 1`, independent of FI_DB). **Phases 1 and 2 implemented 2026-09-14**
 (Section 6 has the measurements; Phase 1 = commit d208e7d1, Phase 2 = afe18ea5). FI_DB internal
 decoys are functional in batch and RTS for `decoy_search = 1|2`. **Phase 3 implemented
-2026-09-14** (guard rail + doc wording). Phase 4 (T34, T24 parity, benchmarks) remains.
-Branch: `FI_internaldecoys`.
+2026-09-14** (guard rail + doc wording; commit 3958e94e). **Phase 4 implemented 2026-09-14**
+(T34, T22 2b, T24b parity, benchmarks -- Section 6). All phases complete. Branch:
+`FI_internaldecoys`.
 
 ## 1. Goal
 
@@ -305,6 +306,64 @@ timing, not a search-side regression -- re-run to confirm before treating a sing
 - Performance: `comet-benchmark` skill, batch and RTS Hz, `decoy_search = 0` vs `1`, plus
   `_check_timing()` against the baseline for the `= 0` case (must be within noise -- the target
   path only gains an array materialization per variant).
+
+*Progress 2026-09-14:*
+
+- T34 landed as `t34_internal_decoys_fi` / `t34_internal_decoys_pi` (fixture
+  `tests/unit/data/t34_fi_internal_decoys.{fasta,ms2}`: PEPTMIDEK with oxidizable M, palindromic
+  LSAGGASLK, four synthetic 2+ spectra). Asserts per mode: `decoy_search = 0` no decoys and no
+  match to the decoy sequence; `= 1` scan 2 -> `EDIM[15.9949]TPEPK` / exactly `DECOY_T34_ox`,
+  scan 3 -> a single LSAGGASLK row carrying both `T34_pal` and `DECOY_T34_pal` (palindrome merged),
+  FI log reports exactly 3 internal decoy variants; `= 2` decoys only in `.decoy.txt`, palindrome
+  present in both files unmerged. Passes for FI_DB and PI_DB. The cross-version byte-identity idea
+  was dropped: the `.idx` header and output header both carry the Comet version, and the
+  before/after byte-identity was already established in Phases 1-2 with the same source tree.
+- T22 gained a `decoy_search = 1` determinism sub-case (2b) for both index types: 1- vs 8-thread
+  outputs byte-identical over the 197 spectra, with 36 (FI_DB) / 96 (PI_DB) decoy top-1 hits.
+- T24b (`t24_internal_decoy_parity`, `--integration --bigdata`): plain-FASTA vs FI_DB vs PI_DB
+  with `decoy_search = 1` on the target-only `human.fasta`, plus FI_DB internal decoys vs the
+  FI_DB target-decoy-FASTA workaround, all within 5% at 1% FDR; build/search timings printed.
+
+  Results (comet-debug3: 20170103_HelaQC_01.mzXML, 42,030 MS2 scans; `num_threads = 0` from that
+  `comet.params`; single-sample wall clock on the WSL2 dev box):
+
+  | Search | PSMs at 1% FDR (xcorr) | ratio | index build | search |
+  |---|---|---|---|---|
+  | plain FASTA, `human.fasta`, `decoy_search = 1` | 17,701 | 1.000 (reference) | -- | 83.6 s |
+  | FI_DB, `human.fasta`, `decoy_search = 1` | 17,717 | 1.001 | 51.7 s | 35.6 s |
+  | PI_DB, `human.fasta`, `decoy_search = 1` | 17,701 | 1.000 | 49.2 s | 42.0 s |
+  | FI_DB, `human.target-decoy.fasta`, `decoy_search = 0` (the former workaround) | 17,736 | 0.999 vs FI internal | 102.0 s | 48.1 s |
+
+  FI_DB internal decoys match PI_DB/FASTA internal decoys and the target-decoy-FASTA workaround
+  to within 0.2%. (The timings in this table were taken with T22 running concurrently and with
+  the `.idx` written to the `/mnt/c` DrvFS mount; the quiet-machine benchmark below is the one
+  to quote.) The same invocation also re-ran T24 proper: FI_DB 17,736 / PI_DB 17,660 / plain
+  17,660, each identical to the `v2026.02.2` baseline's count (ratio 1.000), with FI_DB and
+  PI_DB searches ~45% faster than the baseline binary.
+- Benchmark (`decoy_search = 0` vs `1`), quiet machine, 8 threads, same mzXML (40,302 MS2 scans
+  searched by batch; 42,030 in the RTS fixture converted from it), FASTA and `.idx` on ext4
+  (scratchpad), single sample each. Batch Hz/RSS from Comet's own `searching ... Hz` / `done.
+  (…GB)` lines; RTS via `tests/rts_repro` with the fixture, Hz = spectra / (full-run wall clock
+  minus an empty-fixture run's wall clock, i.e. minus index load + FI regeneration):
+
+  | Index | Variants / FI entries | Batch Hz (ms/spec) | Batch peak RSS | RTS init (s) | RTS Hz | RTS decoy top-1 |
+  |---|---|---|---|---|---|---|
+  | FI_DB `human.fasta`, `decoy_search = 0` | 4.55e6 / 1.10e8 | 2885 (0.35) | 1.3 GB | 1.2 | 12,003 | 0 |
+  | FI_DB `human.fasta`, `decoy_search = 1` | 9.11e6 / 2.19e8 | 3120 (0.32) | 1.8 GB | 2.1 | 11,888 | 5,502 |
+  | FI_DB `human.target-decoy.fasta`, `decoy_search = 0` (former workaround) | 9.08e6 / 2.19e8 | 3123 (0.32) | 2.0 GB | 2.4 | 11,677 | 5,521 |
+  | PI_DB `human.fasta`, `decoy_search = 1` | -- | 2938 (0.34) | 849 MB | 0.8 | 7,575 | 11,742 |
+
+  Reading: turning internal decoys on in FI_DB costs ~0.5 GB of RSS (the doubled variant array
+  + postings, as Section 5 predicted) and ~0.9 s of RTS initialization (the FI build runs over
+  twice the variants), while per-spectrum throughput is unchanged within noise in both batch
+  (2885 -> 3120 Hz, the decoy run being *faster* is single-sample noise) and RTS (12,003 ->
+  11,888 Hz, -1%): the posting-list walk sees 2x entries but scoring stays capped at
+  `FRAGINDEX_MAX_NUMSCORED`. Versus the target-decoy-FASTA workaround the internal-decoy index is
+  0.2 GB smaller and initializes faster, with identical throughput and decoy top-1 rate (5,502 vs
+  5,521 of 42,030). The index-build time itself is unchanged for `decoy_search = 1` (5.1 s vs 5.2 s
+  -- decoys are generated at load, not at build) and half the workaround's 12.1 s (target-only
+  digest). The 1% FDR counts reproduce T24b's (17,717 / 17,736 / 17,701); the `decoy_search = 0`
+  `human.fasta` row has no decoys, so its 1% FDR count is not meaningful.
 
 ## 7. Decisions for review
 
