@@ -1553,7 +1553,95 @@ def _test_rts_index_type(comet_exe, index_flag, label):
         if hs_idx and hs_idx.exists():
             hs_idx.unlink()
 
+    # --- 3. Internal-decoy labeling (docs/20260914_FI_internal_decoys.md Section 4.5) ---
+    #
+    # DoSingleSpectrumSearchMultiResults() (CometSearchManager.cpp) used to classify an
+    # indexed-DB hit's proteins as target vs decoy purely by name prefix. An internal
+    # (pseudo-reverse) decoy carries the TARGET's protein-list row -- StorePeptideI()
+    # routes it to pWhichDecoyProtein with the same lProteinFilePosition -- so every
+    # decoy_search=1 decoy hit came back to the C# layer with unprefixed target protein
+    # names, indistinguishable from a real identification. Build the t19 index with
+    # decoy_search=1 and feed two synthetic spectra: the target's b/y ions (control: must
+    # still be reported as a target) and the DECOY's b/y ions with the phospho moved along
+    # with its serine (must be reported as the decoy sequence with a DECOY_-prefixed protein).
+    #
+    # FI_DB skips this sub-case until the plan's Phase 2 lands FI_DB internal decoys.
+    if index_flag == "-j":
+        target_pep = "ACDEFGSK"
+        # search_enzyme_number = 0 (Cut_everywhere) has enzyme offset 0, so the PI_DB
+        # reversal keeps the FIRST residue fixed: ABCDEK -> AKEDCB (CometSearch.cpp,
+        # AnalyzePeptideIndex()). The mod site moves with its residue.
+        decoy_pep = target_pep[0] + target_pep[:0:-1]
+        target_mods = {6: 79.966331}                                # 0-based S position
+        decoy_mods = {len(target_pep) - i: m for i, m in target_mods.items()}
+        assert decoy_pep == "AKSGFEDC" and decoy_pep[2] == "S" and decoy_mods == {2: 79.966331}
+
+        decoy_fixture = Path(tempfile.mktemp(suffix=".decoy.fixture.txt", dir=str(DATA_DIR)))
+        decoy_fixture.write_text(
+            "\n".join(_theoretical_fixture_lines(1, target_pep, target_mods, 2)
+                      + _theoretical_fixture_lines(2, decoy_pep, decoy_mods, 2)) + "\n")
+        decoy_idx_params = t19_params.replace("decoy_search = 0", "decoy_search = 1")
+        assert decoy_idx_params != t19_params
+        decoy_idx = None
+        try:
+            decoy_idx = _rts_build_index(comet_exe, t19_fasta, decoy_idx_params, index_flag)
+            out_path = Path(tempfile.mktemp(suffix=".out", dir=str(DATA_DIR)))
+            rc, out = _rts_run(decoy_idx, decoy_fixture, 1, out_path, index_search_type=index_search_type)
+            if not check(rc == 0, f"{label}: rts_repro exits 0 on internal-decoy fixture", failures):
+                print(out)
+                return failures
+            lines = _rts_sorted_lines(out_path) if out_path.exists() else []
+            out_path.unlink(missing_ok=True)
+            if not check(len(lines) == 2, f"{label}: 2 internal-decoy result lines, got {len(lines)}", failures):
+                return failures
+            tgt_parts = lines[0].split("\t")
+            dec_parts = lines[1].split("\t")
+            tgt_pep = tgt_parts[1] if len(tgt_parts) > 1 else "NO_MATCH"
+            dec_pep = dec_parts[1] if len(dec_parts) > 1 else "NO_MATCH"
+            check("ACDEFGS" in tgt_pep and "79.9663" in tgt_pep,
+                  f"{label}: control spectrum still matches target ACDEFGS[79.9663]K, got {tgt_pep!r}", failures)
+            check("prot '" in tgt_parts[-1] and "prot 'DECOY_" not in tgt_parts[-1],
+                  f"{label}: control target hit is reported WITHOUT decoy prefix, got {tgt_parts[-1]!r}", failures)
+            check("AKS" in dec_pep and "79.9663" in dec_pep and "GFEDC" in dec_pep,
+                  f"{label}: decoy spectrum matches internal decoy AKS[79.9663]GFEDC, got {dec_pep!r}", failures)
+            check("prot 'DECOY_" in dec_parts[-1],
+                  f"{label}: internal-decoy hit is reported WITH decoy prefix, got {dec_parts[-1]!r}", failures)
+        finally:
+            if decoy_idx and decoy_idx.exists():
+                decoy_idx.unlink()
+            decoy_fixture.unlink(missing_ok=True)
+
     return failures
+
+
+# Monoisotopic residue masses for synthesizing fixture spectra (b/y singly-charged
+# ladders), matching the constants the committed t19_ascore_fidb.ms2 was built from.
+_MONO_RESIDUE_MASS = {
+    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
+    "T": 101.047679, "C": 103.009185, "L": 113.084064, "I": 113.084064, "N": 114.042927,
+    "D": 115.026943, "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485,
+    "H": 137.058912, "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
+}
+_PROTON_MASS = 1.007276
+_H2O_MASS = 18.010565
+
+
+def _theoretical_fixture_lines(scan, peptide, mods, charge):
+    """One rts_repro fixture SPECTRUM block: every singly-charged b and y ion of
+    `peptide` (mods = {0-based residue index: delta mass}) at intensity 100, with the
+    precursor m/z computed for `charge`."""
+    res = [_MONO_RESIDUE_MASS[aa] + mods.get(i, 0.0) for i, aa in enumerate(peptide)]
+    n = len(res)
+    peaks = []
+    for k in range(1, n):
+        peaks.append(sum(res[:k]) + _PROTON_MASS)                 # b_k
+        peaks.append(sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS)  # y_k
+    peaks.sort()
+    neutral = sum(res) + _H2O_MASS
+    mz = (neutral + charge * _PROTON_MASS) / charge
+    lines = [f"SPECTRUM {scan} {charge} {mz:.6f} {len(peaks)}"]
+    lines += [f"{m:.6f} 100.0" for m in peaks]
+    return lines
 
 
 @register("t22_rts_fi")

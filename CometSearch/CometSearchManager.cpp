@@ -2980,13 +2980,29 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
             int iPrintDuplicateProteinCt = 0;
 
+            // An internal (pseudo-reverse) decoy hit -- decoy_search = 1, PI_DB's
+            // AnalyzePeptideIndex() reversal and, once supported, FI_DB's too -- carries
+            // the TARGET's protein-list row (StorePeptideI() routes it to
+            // pWhichDecoyProtein with the same lProteinFilePosition; see also
+            // docs/20260914_FI_internal_decoys.md Section 4.5). Its protein names
+            // therefore never carry the decoy prefix, so classifying by name alone
+            // (the only test here before this fix) reported every internal decoy as a
+            // target -- the reversed peptide reached the C# layer indistinguishable from
+            // a real identification. Route the whole row to the decoy list instead; the
+            // decoy-string loop below prepends the prefix only when it isn't already
+            // present, so FASTA-level decoy names from a target-decoy index are not
+            // double-prefixed. The batch writers already do this via
+            // CometMassSpecUtils::GetProteinNameString()'s pWhichDecoyProtein walk.
+            const bool bInternalDecoy = pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
+               && pOutput[iWhichResult].pWhichProtein.empty();
+
             for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
             {
                if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                   continue;
 
                const string& sName = g_pvProteinNameCache[*itProt];
-               if (!strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+               if (bInternalDecoy || !strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
                   vProteinDecoys.push_back(sName);
                else
                   vProteinTargets.push_back(sName);
