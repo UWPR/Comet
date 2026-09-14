@@ -1565,51 +1565,53 @@ def _test_rts_index_type(comet_exe, index_flag, label):
     # still be reported as a target) and the DECOY's b/y ions with the phospho moved along
     # with its serine (must be reported as the decoy sequence with a DECOY_-prefixed protein).
     #
-    # FI_DB skips this sub-case until the plan's Phase 2 lands FI_DB internal decoys.
-    if index_flag == "-j":
-        target_pep = "ACDEFGSK"
-        # search_enzyme_number = 0 (Cut_everywhere) has enzyme offset 0, so the PI_DB
-        # reversal keeps the FIRST residue fixed: ABCDEK -> AKEDCB (CometSearch.cpp,
-        # AnalyzePeptideIndex()). The mod site moves with its residue.
-        decoy_pep = target_pep[0] + target_pep[:0:-1]
-        target_mods = {6: 79.966331}                                # 0-based S position
-        decoy_mods = {len(target_pep) - i: m for i, m in target_mods.items()}
-        assert decoy_pep == "AKSGFEDC" and decoy_pep[2] == "S" and decoy_mods == {2: 79.966331}
+    # Runs for both index types: PI_DB reverses at score time (AnalyzePeptideIndex()),
+    # FI_DB indexes a decoy variant per target variant at fragment-index build and
+    # reconstructs it in SearchFragmentIndex() (plan Phases 1-2) -- same helper, same
+    # expected decoy string.
+    target_pep = "ACDEFGSK"
+    # search_enzyme_number = 0 (Cut_everywhere) has enzyme offset 0, so
+    # CometSearch::PseudoReversePeptide() keeps the FIRST residue fixed:
+    # ABCDEK -> AKEDCB. The mod site moves with its residue.
+    decoy_pep = target_pep[0] + target_pep[:0:-1]
+    target_mods = {6: 79.966331}                                # 0-based S position
+    decoy_mods = {len(target_pep) - i: m for i, m in target_mods.items()}
+    assert decoy_pep == "AKSGFEDC" and decoy_pep[2] == "S" and decoy_mods == {2: 79.966331}
 
-        decoy_fixture = Path(tempfile.mktemp(suffix=".decoy.fixture.txt", dir=str(DATA_DIR)))
-        decoy_fixture.write_text(
-            "\n".join(_theoretical_fixture_lines(1, target_pep, target_mods, 2)
-                      + _theoretical_fixture_lines(2, decoy_pep, decoy_mods, 2)) + "\n")
-        decoy_idx_params = t19_params.replace("decoy_search = 0", "decoy_search = 1")
-        assert decoy_idx_params != t19_params
-        decoy_idx = None
-        try:
-            decoy_idx = _rts_build_index(comet_exe, t19_fasta, decoy_idx_params, index_flag)
-            out_path = Path(tempfile.mktemp(suffix=".out", dir=str(DATA_DIR)))
-            rc, out = _rts_run(decoy_idx, decoy_fixture, 1, out_path, index_search_type=index_search_type)
-            if not check(rc == 0, f"{label}: rts_repro exits 0 on internal-decoy fixture", failures):
-                print(out)
-                return failures
-            lines = _rts_sorted_lines(out_path) if out_path.exists() else []
-            out_path.unlink(missing_ok=True)
-            if not check(len(lines) == 2, f"{label}: 2 internal-decoy result lines, got {len(lines)}", failures):
-                return failures
-            tgt_parts = lines[0].split("\t")
-            dec_parts = lines[1].split("\t")
-            tgt_pep = tgt_parts[1] if len(tgt_parts) > 1 else "NO_MATCH"
-            dec_pep = dec_parts[1] if len(dec_parts) > 1 else "NO_MATCH"
-            check("ACDEFGS" in tgt_pep and "79.9663" in tgt_pep,
-                  f"{label}: control spectrum still matches target ACDEFGS[79.9663]K, got {tgt_pep!r}", failures)
-            check("prot '" in tgt_parts[-1] and "prot 'DECOY_" not in tgt_parts[-1],
-                  f"{label}: control target hit is reported WITHOUT decoy prefix, got {tgt_parts[-1]!r}", failures)
-            check("AKS" in dec_pep and "79.9663" in dec_pep and "GFEDC" in dec_pep,
-                  f"{label}: decoy spectrum matches internal decoy AKS[79.9663]GFEDC, got {dec_pep!r}", failures)
-            check("prot 'DECOY_" in dec_parts[-1],
-                  f"{label}: internal-decoy hit is reported WITH decoy prefix, got {dec_parts[-1]!r}", failures)
-        finally:
-            if decoy_idx and decoy_idx.exists():
-                decoy_idx.unlink()
-            decoy_fixture.unlink(missing_ok=True)
+    decoy_fixture = Path(tempfile.mktemp(suffix=".decoy.fixture.txt", dir=str(DATA_DIR)))
+    decoy_fixture.write_text(
+        "\n".join(_theoretical_fixture_lines(1, target_pep, target_mods, 2)
+                  + _theoretical_fixture_lines(2, decoy_pep, decoy_mods, 2)) + "\n")
+    decoy_idx_params = t19_params.replace("decoy_search = 0", "decoy_search = 1")
+    assert decoy_idx_params != t19_params
+    decoy_idx = None
+    try:
+        decoy_idx = _rts_build_index(comet_exe, t19_fasta, decoy_idx_params, index_flag)
+        out_path = Path(tempfile.mktemp(suffix=".out", dir=str(DATA_DIR)))
+        rc, out = _rts_run(decoy_idx, decoy_fixture, 1, out_path, index_search_type=index_search_type)
+        if not check(rc == 0, f"{label}: rts_repro exits 0 on internal-decoy fixture", failures):
+            print(out)
+            return failures
+        lines = _rts_sorted_lines(out_path) if out_path.exists() else []
+        out_path.unlink(missing_ok=True)
+        if not check(len(lines) == 2, f"{label}: 2 internal-decoy result lines, got {len(lines)}", failures):
+            return failures
+        tgt_parts = lines[0].split("\t")
+        dec_parts = lines[1].split("\t")
+        tgt_pep = tgt_parts[1] if len(tgt_parts) > 1 else "NO_MATCH"
+        dec_pep = dec_parts[1] if len(dec_parts) > 1 else "NO_MATCH"
+        check("ACDEFGS" in tgt_pep and "79.9663" in tgt_pep,
+              f"{label}: control spectrum still matches target ACDEFGS[79.9663]K, got {tgt_pep!r}", failures)
+        check("prot '" in tgt_parts[-1] and "prot 'DECOY_" not in tgt_parts[-1],
+              f"{label}: control target hit is reported WITHOUT decoy prefix, got {tgt_parts[-1]!r}", failures)
+        check("AKS" in dec_pep and "79.9663" in dec_pep and "GFEDC" in dec_pep,
+              f"{label}: decoy spectrum matches internal decoy AKS[79.9663]GFEDC, got {dec_pep!r}", failures)
+        check("prot 'DECOY_" in dec_parts[-1],
+              f"{label}: internal-decoy hit is reported WITH decoy prefix, got {dec_parts[-1]!r}", failures)
+    finally:
+        if decoy_idx and decoy_idx.exists():
+            decoy_idx.unlink()
+        decoy_fixture.unlink(missing_ok=True)
 
     return failures
 

@@ -267,8 +267,15 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                break;
          }
       }
-      else if (g_staticParams.iDbType == DbType::FI_DB)
+      else if (g_staticParams.iDbType == DbType::FI_DB && pOutput[iWhichResult].pWhichDecoyProtein.empty())
       {
+         // Legacy FI_DB fallback for a row with neither protein list populated. Must NOT
+         // fire for an FI_DB internal decoy (docs/20260914_FI_internal_decoys.md Section
+         // 4.5): such a row has pWhichProtein empty and pWhichDecoyProtein set, and
+         // resolving lProteinFilePosition here as targets emitted every decoy protein
+         // twice -- once bare, once (from the decoy walk below) with decoy_prefix -- so
+         // the row's protein column began with a target accession and every FDR tool
+         // counted the decoy as a target.
          comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
 
          *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();

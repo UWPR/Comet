@@ -2,8 +2,10 @@
 
 Status: **Plan reviewed 2026-09-14; all five Section 7 recommendations accepted.** The Section 4.5
 RTS reporting fix was pulled forward and landed first (commit 94a854ef; it is a live bug for PI_DB
-RTS with `decoy_search = 1`, independent of FI_DB). **Phase 1 implemented 2026-09-14** (Section 6
-has the measurements); Phase 2 next. Branch: `FI_internaldecoys`.
+RTS with `decoy_search = 1`, independent of FI_DB). **Phases 1 and 2 implemented 2026-09-14**
+(Section 6 has the measurements; Phase 1 = commit d208e7d1). FI_DB internal decoys are
+functional in batch and RTS for `decoy_search = 1|2`. Phase 3 (guard rail, doc wording) and
+Phase 4 (T34, T24 parity, benchmarks) remain. Branch: `FI_internaldecoys`.
 
 ## 1. Goal
 
@@ -155,7 +157,13 @@ not supported yet") is updated.
 
 ### 4.5 Reporting
 
-- **Batch**: no changes (Section 3).
+- **Batch**: one change (found in Phase 2 testing): `CometMassSpecUtils::GetProteinNameString()`'s
+  indexed-DB branch has a legacy FI_DB fallback (CometMassSpecUtils.cpp:270) that resolves the
+  row from `lProteinFilePosition` as *targets* whenever `pWhichProtein` is empty -- which is
+  exactly the shape of an internal-decoy row -- and then the decoy walk added the prefixed
+  copies, so every FI_DB decoy row listed each protein twice (`sp|X ; DECOY_sp|X`) and began
+  with a target accession. Gated the fallback on `pWhichDecoyProtein.empty()`. PI_DB never
+  took that branch, so its output is unchanged.
 - **RTS** (`CometSearchManager::DoSingleSpectrumSearchMultiResults()`, CometSearchManager.cpp:2978-2996) -- **DONE 2026-09-14**, ahead of Phase 1:
   for indexed DBs it resolves names from `g_pvProteinsList[lProteinFilePosition]` and classifies
   each as target/decoy **by name prefix only**. An internal decoy's proteins are the target's, so
@@ -237,6 +245,18 @@ FI_DB until Phase 2 lands.
 sequence is the pseudo-reverse of a target sequence present in the fixture FASTA with mods at
 mirrored positions (small Python check in the test); `decoy_search = 2` populates the separate
 decoy output.
+
+*DONE 2026-09-14* (plus the 4.5 batch-helper fix above). Same data as Phase 1:
+
+| Check | Result |
+|---|---|
+| T22 `rts_fi` internal-decoy sub-case (guard removed) | passes: decoy spectrum -> `AKS[79.9663]GFEDC`, `DECOY_`-prefixed; control target unprefixed |
+| FI_DB `decoy_search = 0` and PI_DB `decoy_search = 1`, all outputs | still byte-identical to the pre-Phase-1 baseline |
+| FI_DB `decoy_search = 1`, batch, 197 spectra, top 3 | 87 rank-1 PSMs (67 without decoys), 36 rank-1 decoys; all 95 decoy rows un-reverse to a sequence present in the FASTA (I/L-aware) |
+| FI_DB vs PI_DB `decoy_search = 1`, batch | same rank-1 modified peptide on 46/87 shared scans (the known ~51% FI-vs-PI agreement on this fixture, see T22's comment); target/decoy label agrees on every one; for the 34 (scan, charge, decoy sequence) keys both report, the phospho-isomer sets differ only by top-3 truncation |
+| FI_DB `decoy_search = 2`, batch | target file has 0 `DECOY_` rows; `.decoy.txt` has 117 rows, all prefixed, all valid pseudo-reverses |
+| FI_DB `decoy_search = 1`, RTS, 1 vs 8 threads | byte-identical; 36 decoy top-1 hits |
+| Unit suite + T22 | 52/52, 2/2 |
 
 **Phase 3 -- Reporting + guard rails.** 4.5 RTS fix already landed (enable its T22 sub-case for
 `rts_fi` and verify), 4.6 warning, comment/doc cleanups (CometSearch.cpp:5005, `CheckDuplicateI()`

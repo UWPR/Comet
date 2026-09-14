@@ -1841,6 +1841,24 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             }
          }
 
+         // Internal decoy variant (docs/20260914_FI_internal_decoys.md Section 4.4): the
+         // posting lists matched this candidate on its pseudo-reverse ladder, so rebuild
+         // that same sequence here -- reverse the raw sequence and move every residue-level
+         // mod site with its residue, exactly as AddFragments() did at index build (same
+         // helper). Terminal mods are set below and stay on their terminus; precursor mass,
+         // flanking residues and the protein-list row are the target's (shared by
+         // composition / by design -- the decoy references the same proteins, and the
+         // reporting layer prepends decoy_prefix to them via pWhichDecoyProtein).
+         const bool bDecoyPep = g_fragmentPeptides.IsDecoy(uiWhichVariant);
+         if (bDecoyPep)
+         {
+            char szDecoyPeptide[MAX_PEPTIDE_LEN];
+            int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
+            PseudoReversePeptide(szPeptide, iLenPeptide, piVarModSites, szDecoyPeptide, piVarModSitesDecoy);
+            memcpy(szPeptide, szDecoyPeptide, (iLenPeptide + 1) * sizeof(char));
+            memcpy(piVarModSites, piVarModSitesDecoy, (iLenPeptide + 2) * sizeof(int));
+         }
+
          double dBion = g_staticParams.precalcMasses.dNtermProton;
          double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
 
@@ -2165,7 +2183,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          dbe.strSeq = szProtein;
          dbe.lProteinFilePosition = rawView.lIndexProteinFilePosition;
 
-         XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, false, pQuery,
+         XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, dCalcPepMass, bDecoyPep, pQuery,
             iLenPeptide, piVarModSites, &dbe, uiBinnedIonMasses, uiBinnedPrecursorNL, ix->second);
 
          uiNumScored++;
@@ -5022,8 +5040,9 @@ void CometSearch::XcorrScore(char* szProteinSeq,
       && dXcorr + 0.00005 >= dLowestXcorrScore
       && iLenPeptide <= g_staticParams.options.peptideLengthRange.iEnd)
    {
-      // no need to check duplicates if fragment ion indexed database search (internal decoys not supported yet)
-      // and !g_staticParams.options.bTreatSameIL and no internal decoys
+      // no need to check duplicates if fragment ion indexed database search and
+      // !g_staticParams.options.bTreatSameIL (FI_DB internal decoys are scored through
+      // XcorrScoreI()/CheckDuplicateI(), not this path)
       if (g_staticParams.iDbType == DbType::FI_DB && !g_staticParams.options.bTreatSameIL)
       {
          StorePeptide(iWhichQuery, iStartResidue, iStartPos, iEndPos, iFoundVariableMod, szProteinSeq,
@@ -8618,9 +8637,19 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       // tie-break logic downstream. Confirmed empirically: for a large sample of
       // 3-decimal-rounded xcorr values, "dXcorr >= (double)(float)dXcorr" is false
       // ~50% of the time.
+      // Same list-specific floor the PI_DB branch below already uses: a decoy_search = 2
+      // candidate competes for a slot in _pDecoys, not _pResults (FI_DB internal decoys,
+      // docs/20260914_FI_internal_decoys.md Section 4.4).
+      double dLowestXcorrScore;
+
+      if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
+         dLowestXcorrScore = pQuery->dLowestDecoyXcorrScore;
+      else
+         dLowestXcorrScore = pQuery->dLowestXcorrScore;
+
       if (dXcorr >= g_staticParams.options.dMinimumXcorr
          && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
-         && dXcorr + 0.00005 >= pQuery->dLowestXcorrScore)
+         && dXcorr + 0.00005 >= dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
          {
@@ -8661,19 +8690,19 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
 // is found in in a single Results row -- instead of letting StorePeptideI() create a
 // second, separate row for what is really the same peptide identification.
 //
-// Only relevant for PI_DB with iDecoySearch == 1 (internal/concatenated decoys):
-// AnalyzePeptideIndex() additionally scores an on-the-fly reversed decoy of every
-// candidate, reusing the same protein bucket reference (dbe->lProteinFilePosition),
-// so a single g_pvDBIndex entry can be stored twice for one query -- once as itself
-// (target-labeled) and once as its own reversed decoy -- unless merged here. That is
-// the only remaining source of same-query duplicate peptide+mod-state matches for
-// indexed search: WritePeptideIndex() now folds I/L-equivalent peptides from
-// different proteins into a single build-time entry (see ILAwarePeptideCompare() in
-// core/Types.h), so cross-entry duplicates from that source no longer occur, and
-// FI_DB never performs an on-the-fly reversal (bDecoyPep is always false there), so
-// it never re-scores the same bucket under a different label either. Elsewhere
-// (FI_DB, or PI_DB without iDecoySearch == 1) this scenario cannot happen, so the
-// scan is skipped.
+// Only relevant for indexed searches with iDecoySearch == 1 (internal/concatenated
+// decoys): PI_DB's AnalyzePeptideIndex() additionally scores an on-the-fly reversed decoy
+// of every candidate, and FI_DB indexes a pseudo-reverse decoy variant per target variant
+// (docs/20260914_FI_internal_decoys.md) -- both reuse the target's protein bucket
+// reference (dbe->lProteinFilePosition), so a self-palindromic peptide (its pseudo-reverse
+// is itself, e.g. AGGAK under trypsin) can be stored twice for one query -- once as itself
+// (target-labeled) and once as its own decoy -- unless merged here. That is the only
+// remaining source of same-query duplicate peptide+mod-state matches for indexed search:
+// WritePeptideIndex() now folds I/L-equivalent peptides from different proteins into a
+// single build-time entry (see ILAwarePeptideCompare() in core/Types.h), so cross-entry
+// duplicates from that source no longer occur. Without iDecoySearch == 1 (including
+// iDecoySearch == 2, where decoys go to the separate _pDecoys list) this scenario cannot
+// happen, so the scan is skipped.
 bool CometSearch::CheckDuplicateI(Query* pQuery,
                                   int iStartPos,
                                   int iEndPos,
@@ -8682,8 +8711,11 @@ bool CometSearch::CheckDuplicateI(Query* pQuery,
                                   int* piVarModSites,
                                   struct sDBEntry* dbe)
 {
-   if (g_staticParams.iDbType != DbType::PI_DB || g_staticParams.options.iDecoySearch != 1)
+   if ((g_staticParams.iDbType != DbType::PI_DB && g_staticParams.iDbType != DbType::FI_DB)
+      || g_staticParams.options.iDecoySearch != 1)
+   {
       return false;
+   }
 
    int iLenPeptide = iEndPos - iStartPos + 1;
 
