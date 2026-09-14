@@ -3503,6 +3503,19 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
 {
    using namespace AScoreProCpp;
 
+   // Start from a default-constructed options object so this function is idempotent. It is
+   // called more than once on the same global g_AScoreOptions in some paths (Pipeline::init
+   // and then CometSearch::EnsurePeptideIndexLoaded() for a batch PI_DB search; the RTS init
+   // paths call it after ReadPeptideIndex()), and the static-mod block at the end applies
+   // each static mod to the options' residue-mass table with the CUMULATIVE
+   // AminoAcidMasses::modifyAminoAcidMass() (+=). Without this reset a second call added
+   // e.g. add_C_cysteine to cysteine a second time, so every C-containing theoretical
+   // fragment AScorePro built was off by +57.02 in the indexed batch mode only -- the same
+   // PSM with byte-identical AScorePro inputs scored 15.06 in FASTA_DB and 12.78 in PI_DB
+   // (docs/20260914_FI_internal_decoys.md D6). Every field below is set explicitly, so
+   // resetting first changes nothing for a first call.
+   options = AScoreProCpp::AScoreOptions();
+
    std::vector<std::string> ionSeriesList;
    unsigned int uiIonSeriesMask = 0;
    bool bSetNeutralLossMask = false;

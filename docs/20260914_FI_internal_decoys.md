@@ -459,6 +459,36 @@ dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked 
   determinism tests, run with `print_ascorepro_score = 0`. Recommended: (a) + (c), then re-run
   the Section 6.2 comparison expecting zero rank-1 differences.
 
+  *Implemented 2026-09-14: (a) + (c), plus the actual root cause of the AScore gap.*
+  - (a) `CometPreprocess::LoadIons()` now fills `vRawFragmentPeakMassIntensity` in one order for
+    every mode (descending m/z over the original spectrum, what FASTA_DB batch and the RTS
+    `PreprocessSingleSpectrumCore()` path always produced); the intensity sort is left to the FI
+    candidate-peak pick only.
+  - (c) `CometPostAnalysis::CalculateAScorePro()` still reports an internal decoy's AScore but no
+    longer rewrites its site (`pWhichDecoyProtein` non-empty, `pWhichProtein` empty).
+  - Root cause of the *score* gap, found after (a) alone left 15.06 vs 12.78 with byte-identical
+    AScorePro inputs (sequence, precursor, options, mods and all 88 peaks dumped and diffed):
+    `CometSearchManager::SetAScoreOptions()` applies each static mod to the options' residue-mass
+    table with the cumulative `AminoAcidMasses::modifyAminoAcidMass()` (`+=`), and a batch PI_DB
+    search calls it twice on the same global `g_AScoreOptions` (`Pipeline::init()` and then
+    `CometSearch::EnsurePeptideIndexLoaded()`), so cysteine carried +57.02 twice and every
+    C-containing theoretical fragment was wrong in that mode. FASTA_DB batch calls it once.
+    Fixed by resetting `options` to a default-constructed `AScoreOptions` at the top of
+    `SetAScoreOptions()` (every field is set explicitly, so a first call is unchanged). Scan
+    42900 now scores 15.0624 in both engines. This changes indexed-batch AScorePro values for
+    peptides containing statically modified residues; T19/T20 use `add_C_cysteine = 0` and are
+    unaffected.
+  - Section 6.2 rerun on the final binary (197-spectrum phospho fixture, `decoy_search = 1`, top 3):
+    FASTA vs PI_DB rank-1 rows with the same sequence agree on modified peptide and xcorr for
+    88/88 targets and 97/97 decoys; FASTA vs FI_DB 34 targets / 12 decoys and PI_DB vs FI_DB
+    34 / 12 agree except one target (scan 26100, `QGGPS[80]AGKWVELPIT[80]KSPK`, xcorr 1.1210 vs
+    1.0970) -- FI_DB's `XcorrScoreI()` scores 1+ ions without the neutral-loss sparse array
+    that FASTA_DB/PI_DB use (documented at the top of that function), a pre-existing FI
+    scoring nuance unrelated to decoys. Before/after per engine: 46 (FASTA), 48 (PI_DB) and 21
+    (FI_DB) rows changed, only in `ascore_sitescores`, `ascorepro` (PI_DB, the static-mod fix) and
+    the 7-9 rank-1 `modified_peptide`/`modifications` whose decoy relocalization is now
+    suppressed by (c). Unit suite 55/55, T22 2/2.
+
 ## 8. Files touched (expected)
 
 | File | Change |
