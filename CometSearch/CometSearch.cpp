@@ -2346,6 +2346,52 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
 
 // Thread-local overload of AnalyzePeptideIndex: scores a single peptide index
 // entry against a caller-owned Query*. Does not access g_pvQuery.
+// See the declaration comment in CometSearch.h. Extracted verbatim from
+// AnalyzePeptideIndex()'s decoy block so FI_DB (CometFragmentIndex::AddFragments() at index
+// build, SearchFragmentIndex() at score time) reverses exactly the way PI_DB always has.
+void CometSearch::PseudoReversePeptide(const char* szPeptide,
+                                       int iLen,
+                                       const int* piSites,
+                                       char* szDecoy,
+                                       int* piSitesDecoy)
+{
+   if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
+   {
+      // Last residue stays the same:  ABCDEK -> EDCBAK
+      for (int i = iLen - 2; i >= 0; --i)
+      {
+         szDecoy[iLen - 2 - i] = szPeptide[i];
+         if (piSites != NULL)
+            piSitesDecoy[iLen - 2 - i] = piSites[i];
+      }
+      szDecoy[iLen - 1] = szPeptide[iLen - 1];
+      if (piSites != NULL)
+         piSitesDecoy[iLen - 1] = piSites[iLen - 1];
+   }
+   else
+   {
+      // First residue stays the same:  ABCDEK -> AKEDCB
+      szDecoy[0] = szPeptide[0];
+      if (piSites != NULL)
+         piSitesDecoy[0] = piSites[0];
+      for (int i = iLen - 1; i >= 1; --i)
+      {
+         szDecoy[iLen - i] = szPeptide[i];
+         if (piSites != NULL)
+            piSitesDecoy[iLen - i] = piSites[i];
+      }
+   }
+   szDecoy[iLen] = '\0';
+
+   // Terminal mod sites stay on their terminus
+   if (piSites != NULL)
+   {
+      piSitesDecoy[iLen] = piSites[iLen];         // N-term
+      piSitesDecoy[iLen + 1] = piSites[iLen + 1]; // C-term
+   }
+}
+
+
 void CometSearch::AnalyzePeptideIndex(Query* pQuery,
                                       const DBIndex& sDBI,
                                       bool* pbDuplFragment,
@@ -2704,35 +2750,9 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       auto& uiBinnedPrecursorNLDecoy = *reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1]>(s_pool.binnedPrecursorNLDecoy(iSlot));
       int iFoundVariableModDecoy = 0;
 
-      // Reverse the peptide sequence, keeping the terminal residue fixed
-      // based on enzyme offset (same logic as batch path)
-      if (g_staticParams.enzymeInformation.iSearchEnzymeOffSet == 1)
-      {
-         // Last residue stays the same:  ABCDEK -> EDCBAK
-         for (int i = iLenPeptide - 2; i >= 0; --i)
-         {
-            szDecoyPeptide[iLenPeptide - 2 - i] = sDBI.sPeptide[i];
-            piVarModSitesDecoy[iLenPeptide - 2 - i] = piVarModSites[i];
-         }
-         szDecoyPeptide[iLenPeptide - 1] = sDBI.sPeptide[iLenPeptide - 1];
-         piVarModSitesDecoy[iLenPeptide - 1] = piVarModSites[iLenPeptide - 1];
-      }
-      else
-      {
-         // First residue stays the same:  ABCDEK -> AKEDCB
-         szDecoyPeptide[0] = sDBI.sPeptide[0];
-         piVarModSitesDecoy[0] = piVarModSites[0];
-         for (int i = iLenPeptide - 1; i >= 1; --i)
-         {
-            szDecoyPeptide[iLenPeptide - i] = sDBI.sPeptide[i];
-            piVarModSitesDecoy[iLenPeptide - i] = piVarModSites[i];
-         }
-      }
-      szDecoyPeptide[iLenPeptide] = '\0';
-
-      // Copy terminal mod sites
-      piVarModSitesDecoy[iLenPeptide] = piVarModSites[iLenPeptide];         // N-term
-      piVarModSitesDecoy[iLenPeptide + 1] = piVarModSites[iLenPeptide + 1]; // C-term
+      // Pseudo-reverse the sequence and move every variable mod with its residue
+      // (terminal mod sites copied through) -- shared helper, also used by FI_DB
+      PseudoReversePeptide(sDBI.sPeptide, iLenPeptide, piVarModSites, szDecoyPeptide, piVarModSitesDecoy);
 
       // Build decoy ion ladders
       double dBionDecoy = g_staticParams.precalcMasses.dNtermProton;

@@ -1,8 +1,9 @@
 # Internal (pseudo-reverse) decoys for FI_DB searches -- design and plan
 
 Status: **Plan reviewed 2026-09-14; all five Section 7 recommendations accepted.** The Section 4.5
-RTS reporting fix was pulled forward and landed first (it is a live bug for PI_DB RTS with
-`decoy_search = 1`, independent of FI_DB); Phase 1 is in progress. Branch: `FI_internaldecoys`.
+RTS reporting fix was pulled forward and landed first (commit 94a854ef; it is a live bug for PI_DB
+RTS with `decoy_search = 1`, independent of FI_DB). **Phase 1 implemented 2026-09-14** (Section 6
+has the measurements); Phase 2 next. Branch: `FI_internaldecoys`.
 
 ## 1. Goal
 
@@ -213,6 +214,23 @@ comparisons).
 Acceptance: with `decoy_search = 0`, FI_DB batch and RTS outputs are byte-identical to Phase 0;
 PI_DB `decoy_search = 1` output byte-identical after the helper refactor; with `decoy_search = 1`
 the build log reports exactly one decoy variant per target variant and roughly 2x postings.
+
+*DONE 2026-09-14.* Measured on `data/human.small.fasta` + `data/comet_phospho.params` (M ox +
+STY phospho, trypsin), 197-spectrum `tests/rts_repro` fixture (also converted to `.ms2` for the
+batch runs), before vs. after with the same source tree otherwise:
+
+| Check | Result |
+|---|---|
+| FI_DB `decoy_search = 0`: `.idx`, RTS output, batch `.txt` body | byte-identical (only the output-path header line differs) |
+| PI_DB `decoy_search = 1`: `.idx`, RTS output, batch `.txt` body (296 decoy rows) | byte-identical after the `PseudoReversePeptide()` refactor |
+| FI_DB `decoy_search = 1` build | 5,444,902 decoy variants for 5,444,902 target variants (10.89M total); posting entries 1.532e8 -> 3.064e8 (2.00x); build 3 s -> 7 s |
+| Unit suite (52 tests) + T22 `rts_fi`/`rts_pi` | see Phase 1 report in the conversation / commit message |
+
+Note for Phase 2: an FI_DB built with `decoy_search != 0` is already searchable after Phase 1 but
+NOT yet correct -- `SearchFragmentIndex()` still reconstructs every candidate from the raw (target)
+sequence and passes `bDecoyPep = false`, so a decoy variant that survives the fragment pre-filter
+is scored with the target's ladder and stored as a target. Do not use `decoy_search = 1|2` with
+FI_DB until Phase 2 lands.
 
 **Phase 2 -- Search-time scoring.** 4.4 including both gate fixes. Acceptance: FI_DB
 `decoy_search = 1` on the T22 fixture produces `DECOY_`-prefixed hits; every reported decoy

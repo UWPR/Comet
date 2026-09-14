@@ -648,9 +648,9 @@ private:
    vector<char>           m_nextAA;
 };
 
-// Field order matters: dPepMass (8-byte aligned) first, then the two 4-byte fields, then the two
-// 1-byte fields, packs to 24 bytes with no internal padding (vs. 32 bytes for the original
-// size_t-first ordering). At 80M+ entries for a heavily-modified fragment index build, that's a
+// Field order matters: dPepMass (8-byte aligned) first, then the two 4-byte fields, then the
+// 1-byte fields, packs to 24 bytes (19 bytes of payload + tail padding; vs. 32 bytes for the
+// original size_t-first ordering) -- cIsDecoy rides in that padding for free. At 80M+ entries for a heavily-modified fragment index build, that's a
 // real reduction -- see docs/20260715_fusedflush.md's follow-up investigation (RTS PI_DB/FI_DB
 // memory) for the sizing rationale.
 struct FragmentPeptidesStruct
@@ -664,12 +664,18 @@ struct FragmentPeptidesStruct
    int modNumIdx;
    char cNtermMod;
    char cCtermMod;
+   char cIsDecoy;          // 1 = internal (pseudo-reverse) decoy of this same (peptide, mods)
+                           // tuple; shares dPepMass with its target (reversal preserves
+                           // composition), differs only in its fragment ladder --
+                           // docs/20260914_FI_internal_decoys.md Section 4.3
 
    bool operator<(const FragmentPeptidesStruct& a) const
    {
       return dPepMass < a.dPepMass;
    }
 };
+static_assert(sizeof(FragmentPeptidesStruct) == 24,
+   "FragmentPeptidesStruct must stay 24 bytes: cIsDecoy is meant to live in the tail padding");
 
 struct SpecLibStruct
 {
@@ -728,7 +734,17 @@ struct VariantArray
    vector<unsigned int>  vuiWhichPeptide;  // index into g_vRawPeptides
    vector<unsigned int>  vuiModNumIdx;     // mod-combination entry index; 0xFFFFFFFF = unmodified
    vector<unsigned char> vucTermMods;      // hi nibble cNtermMod+1, lo nibble cCtermMod+1; 0 = none
-                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4)
+                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4,
+                                           // i.e. stored nibble values 0..5 -- bit 7 is DECOY_FLAG below)
+
+   // Internal (pseudo-reverse) decoy marker, FI_DB only (docs/20260914_FI_internal_decoys.md
+   // Section 4.1): a decoy variant shares vuiWhichPeptide, vuiModNumIdx, the terminal mods
+   // and (by composition) vuiMassKey with its target; only its b/y ladder -- and hence which
+   // g_iFragmentIndex bins reference it -- differs. SearchFragmentIndex() reverses the raw
+   // sequence + mod sites on the fly for flagged candidates. Never set on PI_DB's
+   // g_dbIndexVariants (PI_DB reverses at score time instead).
+   static constexpr unsigned char DECOY_FLAG = 0x80;
+   bool IsDecoy(size_t i) const { return (vucTermMods[i] & DECOY_FLAG) != 0; }
 
    size_t size() const { return vuiMassKey.size(); }
    bool empty() const { return vuiMassKey.empty(); }
@@ -746,7 +762,7 @@ struct VariantArray
       unsigned int ui = vuiModNumIdx[i];
       return ui == 0xFFFFFFFFu ? -1 : (int)ui;
    }
-   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x0F) - 1; }
+   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x07) - 1; }   // & 0x07: strip DECOY_FLAG
    char GetCtermMod(size_t i) const { return (char)(vucTermMods[i] & 0x0F) - 1; }
 
    // Smallest key a mass >= dMass could have encoded to, minus 1 LSB of margin; with

@@ -138,6 +138,22 @@ public:
                               double dCalcPepMass,
                               double dTolWiden = 0.0);
 
+   // Pseudo-reverse szPeptide[0..iLen) into szDecoy (NUL-terminated), keeping the
+   // enzyme-side terminal residue fixed per enzymeInformation.iSearchEnzymeOffSet (1:
+   // last residue fixed, ABCDEK -> EDCBAK; otherwise first residue fixed, ABCDEK ->
+   // AKEDCB), and permute the per-residue variable-mod site array the same way so every
+   // mod travels with its residue. piSites/piSitesDecoy are iLen+2 ints (peptide N-term
+   // at [iLen], C-term at [iLen+1], both copied through unchanged) and may both be NULL.
+   // szDecoy needs iLen+1 bytes; the outputs must not alias the inputs. Shared by PI_DB's
+   // AnalyzePeptideIndex() (score-time reversal) and FI_DB's fragment-index build/search
+   // (docs/20260914_FI_internal_decoys.md Section 4.2). The three FASTA-path reversals in
+   // SearchForPeptides()/CalcVarModIons() keep their own flanking-residue-in-string layout.
+   static void PseudoReversePeptide(const char* szPeptide,
+                                    int iLen,
+                                    const int* piSites,
+                                    char* szDecoy,
+                                    int* piSitesDecoy);
+
    bool SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries);
 
    struct ProteinInfo
