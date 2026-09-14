@@ -180,9 +180,9 @@ not supported yet") is updated.
   sub-case is PI_DB-only until Phase 2 and is enabled for `rts_fi` then.
 - RTS reports `_pResults` only (2931-2934), so `decoy_search = 2` yields no decoys in RTS output.
   Document that RTS should use `decoy_search = 1`; no code change.
-- `RealtimeSearch/Search.cs:265` and `SearchMS1MS2.cs:867` set `decoy_search = 0` before init,
-  but the `.idx` header value overrides it at load, so C# needs no change to *use* the feature;
-  whether to expose it is a follow-up (Decision D3).
+- `RealtimeSearch/SearchMS1MS2.cs` used to set `decoy_search = 0` before init (ineffective: the
+  `.idx` header value overrides it at load). Removed 2026-09-14 per Decision D3 -- the header
+  controls internal decoys in RTS.
 
 ### 4.6 Guard rails
 
@@ -365,6 +365,61 @@ timing, not a search-side regression -- re-run to confirm before treating a sing
   digest). The 1% FDR counts reproduce T24b's (17,717 / 17,736 / 17,701); the `decoy_search = 0`
   `human.fasta` row has no decoys, so its 1% FDR count is not meaningful.
 
+### 6.1 Windows build and RealtimeSearch.exe verification (2026-09-14)
+
+- `Comet.sln` Release/x64 via MSBuild from WSL (`/t:Clean`, `/t:Restore` -- the worktree had no
+  NuGet `packages/` yet -- then a full build): 0 errors. `Comet.exe`, `CometWrapper.dll`,
+  `RealtimeSearch.exe` produced; the wrapper DLL in `RealtimeSearch\bin\x64\Release` is
+  byte-identical to `x64\Release`. The only MSVC warnings in touched files are on pre-existing
+  lines (CometSearch.cpp `iEndPos = strlen(szProtein) - N`, May 2026).
+- Windows `Comet.exe` passes T34 (FI_DB and PI_DB) and both T26 cases.
+- `RealtimeSearch.exe 20170103_HelaQC_01.raw <same> human.fasta.idx 8 0 1` (FI_DB, 8 threads,
+  AScorePro off) against indexes built from the target-only `human.fasta`:
+
+  | `.idx` built with | scored MS2 scans | decoy top-1 | rows mixing bare + `DECOY_` names | un-reversed decoy not in FASTA | init | peak RSS |
+  |---|---|---|---|---|---|---|
+  | `decoy_search = 1` | 26,050 | 5,504 (21.1%; 1,344 with a variable mod) | 0 | 0 of 5,504 | 1.90 s | 2.0 GB |
+  | `decoy_search = 0` | 23,795 | 0 | 0 | -- | 1.21 s | 1.6 GB |
+
+  The C# harness sets nothing decoy-related any more (D3); the `.idx` header alone switched the
+  decoys on. The 5,504 decoy top-1 hits agree with the Linux `rts_repro` run on the same
+  acquisition (5,502 of 42,030, mzXML-derived fixture) despite the different centroiding.
+
+### 6.2 Modified-decoy equivalence across FASTA_DB / PI_DB / FI_DB (2026-09-14)
+
+Direct per-peptide check on the 197-spectrum phospho fixture (`human.small.fasta`,
+`comet_phospho.params`, `decoy_search = 1`, top 3 per spectrum), comparing the FASTA_DB search
+(its own inline reversal in `CalcVarModIons()`) against PI_DB and FI_DB (shared
+`PseudoReversePeptide()`):
+
+| Comparison | shared decoy (scan, charge, sequence) keys | of which modified | modified-peptide set differs | rank-1 decoys, same sequence | modified string or xcorr differs |
+|---|---|---|---|---|---|
+| FASTA vs PI_DB | 260 | 140 | 1 | 97 | 1 |
+| FASTA vs FI_DB | 34 | 18 | 3 | 12 | 0 |
+
+Every difference is a phospho positional-isomer artifact, not a reversal difference: the three
+FASTA-vs-FI set differences are which equal-sequence isomers made each engine's top 3. The single
+FASTA-vs-PI rank-1 difference (scan 42900, z4) was first read as an xcorr tie broken in a
+different order; it is not. Both store paths (`StorePeptide()`, `StorePeptideI()`) and the final
+`SortFnXcorr()` already break exact ties canonically (lower sequence, then the mod-state array
+with the mod later in the sequence), so candidate iteration order cannot decide a tie in either
+engine. Traced with debug prints on a single-protein database: both engines score and store the
+same four decoy isomers with identical xcorr and identical labels (S7 0.4770, Y11 0.2710, Y18
+0.2560, T31 0.2470; the 4-ion match is the S7 ladder). The rank-1 label then diverges in
+**AScorePro post-analysis** (`print_ascorepro_score = -1` in `comet_phospho.params`):
+`CalculateAScorePro()` relocalizes the top hit's site when the AScore is >= `ASCORE_CUTOFF_TO_ACCEPT`
+(13.0). FASTA scored 15.06 and moved the phospho S7 -> Y11 (leaving a second, genuine Y11 row at
+0.2710 below it); PI_DB scored 12.78 and kept S7. The AScores differ because
+`CometPreprocess.cpp:2937` hands the indexed modes an intensity-sorted peak list
+(`vRawFragmentPeakMassIntensity`) while FASTA_DB gets it in m/z order, and AScorePro's result
+depends on that order. Neither is a decoy-generation difference: whenever the two engines report
+the same decoy sequence, xcorr is identical and the stored mod position is identical before
+post-analysis. Combined with the index mapping in Section 4.2 (the FASTA inline reversal and the
+helper implement the same last-/first-residue-fixed rule with the same mod-site permutation),
+modified decoys are generated the same way in all three modes. The AScorePro peak-order
+dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked separately
+(Section 7, D6).
+
 ## 7. Decisions for review
 
 - **D1 -- Decoy flag location.** Recommended: bit 7 of `vucTermMods` (free, zero growth, no
@@ -377,12 +432,32 @@ timing, not a search-side regression -- re-run to confirm before treating a sing
   Recommended: keep the current semantics for now (matches PI_DB, and the C# layer hard-codes
   `decoy_search = 0`), and open a follow-up to let the search-time value win for both indexed
   modes if you want RTS to toggle decoys without rebuilding.
+
+  *Resolved 2026-09-14: the `.idx` header's `DecoySearch:` value wins, for both indexed modes,
+  batch and RTS.* The C# layer no longer sets `decoy_search` at all
+  (`RealtimeSearch/SearchMS1MS2.cs`; `Search.cs`'s copy was already commented out) -- the
+  `SetParam()` was ineffective anyway, since `ReadPeptideIndex()` restored the header value
+  after it. To get internal decoys in RTS, build the `.idx` with `decoy_search = 1`. The
+  comet.params template text for `decoy_search` (Comet.cpp) now says so.
 - **D4 -- Internal decoys on a target-decoy index.** Recommended: warn only (Section 4.6).
   Alternative: skip decoy generation for raw peptides whose protein rows are all decoy-prefixed
   (needs `g_pvProteinNameCache` lookups per raw peptide at build; cheap but more code, and PI_DB
   would still differ).
 - **D5 -- Scope of the reversal refactor.** Recommended: share the helper between PI_DB and
   FI_DB only; leave the three FASTA-path inline reversals as they are.
+- **D6 -- (found 2026-09-14, outside this feature) AScorePro relocalization differs between
+  FASTA_DB and the indexed modes.** Same PSM, same peaks, different AScore (15.06 vs 12.78 on scan
+  42900) because `CometPreprocess.cpp` fills `vRawFragmentPeakMassIntensity` in m/z order for
+  FASTA_DB and in descending-intensity order for PI_DB/FI_DB, and the accepted relocalization
+  (>= 13.0) then rewrites the stored site without re-checking for a now-duplicate row. Options:
+  (a) fill the AScorePro peak list in one canonical order for every mode (m/z, matching FASTA_DB
+  -- the indexed sort exists only for the FI candidate-peak pick, `vfRawFragmentPeakMass`);
+  (b) additionally make AScorePro order-independent on its side; (c) skip relocalization for
+  decoy hits (`pWhichDecoyProtein` non-empty) -- a decoy's site is by construction arbitrary and
+  relocalizing it only manufactures label collisions; (d) after an accepted relocalization,
+  merge/drop a stored row that now has the identical sequence + mod state; (e) for cross-mode
+  determinism tests, run with `print_ascorepro_score = 0`. Recommended: (a) + (c), then re-run
+  the Section 6.2 comparison expecting zero rank-1 differences.
 
 ## 8. Files touched (expected)
 

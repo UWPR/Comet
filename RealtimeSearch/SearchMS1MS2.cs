@@ -864,9 +864,13 @@ namespace RealTimeSearch
                   sTmp = iTmp.ToString();
                   SearchMgr.SetParam("num_enzyme_termini", sTmp, iTmp);
 
-                  iTmp = 0; // 0=no decoys (default), 1=internal decoy concatenated, 2=internal decoy separate
-                  sTmp = iTmp.ToString();
-                  SearchMgr.SetParam("decoy_search", sTmp, iTmp);
+                  // decoy_search is deliberately NOT set here: for indexed (.idx) searches the
+                  // value the index was built with is restored from the .idx header's
+                  // "DecoySearch:" line at load (CometPeptideIndex::ReadPeptideIndex()) and
+                  // overrides anything set through SetParam(), so the header controls whether
+                  // internal decoys are generated -- build the .idx with decoy_search = 1 to
+                  // get DECOY_-prefixed internal decoys in RTS results
+                  // (docs/20260914_FI_internal_decoys.md, Decision D3).
 
                   iTmp = 0; // 0=leave protein sequences alone (default), 1=also consider w/o N-term methionine
                   sTmp = iTmp.ToString();
