@@ -984,8 +984,11 @@ allowed_missed_cleavage = 2            # maximum value is 5; for enzyme search\n
 \n\
 #\n\
 # Up to 15 variable_mod entries are supported for a standard search; manually add additional entries as needed\n\
-# format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <term_distance> <n/c-term> <required> <neutral_loss>\n\
+# format:  <mass> <residues> <0=variable/else binary> <max_mods_per_peptide> <deprecated> <deprecated> <required> <neutral_loss>\n\
 #     e.g. 79.966331 STY 0 3 -1 0 0 97.976896\n\
+#     <residues> may also contain terminal codes: n = any peptide N-terminus, c = any peptide C-terminus,\n\
+#     ^ = protein N-terminus only, $ = protein C-terminus only (e.g. 42.010565 ^ 0 1 -1 0 0 0.0).\n\
+#     Fields 5 and 6 (formerly term_distance and n/c-term) are deprecated and ignored; keep -1 0.\n\
 #\n\
 variable_mod01 = 15.9949 M 0 3 -1 0 0 0.0\n\
 variable_mod02 = 0.0 X 0 3 -1 0 0 0.0\n\

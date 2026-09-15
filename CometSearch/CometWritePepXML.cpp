@@ -329,77 +329,65 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
 
       for (int i=0; i<iLen; ++i)
       {
-         if (bWriteTerminalMods)
+         char c = varModsParam.szVarModChar[i];
+
+         // Terminal codes: 'n'/'c' = any peptide terminus; '^'/'$' = protein N-/C-terminus only.
+         if (c == 'n' || c == 'c' || c == '^' || c == '$')
          {
-            if (varModsParam.szVarModChar[i] == 'n')
+            if (!bWriteTerminalMods)
+               continue;
+
+            if (c == 'n' || c == '^')
             {
-               if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
+               if (c == '^')
                {
-                  // ignore if N-term mod on C-term
+                  // massdiff = mod mass + h
+                  fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
+                     varModsParam.dVarModMass,
+                     varModsParam.dVarModMass
+                     + g_staticParams.staticModifications.dAddNterminusProtein
+                     + g_staticParams.precalcMasses.dNtermProton
+                     - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                }
                else
                {
-                  // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
-                  if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
-                  {
-                     // massdiff = mod mass + h
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
-                        varModsParam.dVarModMass,
-                        varModsParam.dVarModMass
-                        + g_staticParams.staticModifications.dAddNterminusProtein
-                        + g_staticParams.precalcMasses.dNtermProton
-                        - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
-                  }
-                  // print this if non-protein N-term variable mod
-                  else
-                  {
-                     fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
-                        varModsParam.dVarModMass,
-                        varModsParam.dVarModMass
-                        + g_staticParams.precalcMasses.dNtermProton
-                        - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
-                  }
+                  fprintf(fpout, "  <terminal_modification terminus=\"N\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
+                     varModsParam.dVarModMass,
+                     varModsParam.dVarModMass
+                     + g_staticParams.precalcMasses.dNtermProton
+                     - PROTON_MASS + g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                }
             }
-            else if (varModsParam.szVarModChar[i] == 'c')
+            else
             {
-               if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
+               if (c == '$')
                {
-                  // ignore if C-term mod on N-term
+                  // massdiff = mod mass + oh
+                  fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
+                     varModsParam.dVarModMass,
+                     varModsParam.dVarModMass
+                     + g_staticParams.staticModifications.dAddCterminusProtein
+                     + g_staticParams.precalcMasses.dCtermOH2Proton
+                     - PROTON_MASS
+                     - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                }
                else
                {
-                  // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
-                  if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
-                  {
-                     // massdiff = mod mass + oh
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"Y\"/>\n",
-                        varModsParam.dVarModMass,
-                        varModsParam.dVarModMass
-                        + g_staticParams.staticModifications.dAddCterminusProtein
-                        + g_staticParams.precalcMasses.dCtermOH2Proton
-                        - PROTON_MASS
-                        - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
-                  }
-                  // print this if non-protein C-term variable mod
-                  else
-                  {
-                     fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
-                        varModsParam.dVarModMass,
-                        varModsParam.dVarModMass
-                        + g_staticParams.precalcMasses.dCtermOH2Proton
-                        - PROTON_MASS
-                        - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
-                  }
+                  fprintf(fpout, "  <terminal_modification terminus=\"C\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\" protein_terminus=\"N\"/>\n",
+                     varModsParam.dVarModMass,
+                     varModsParam.dVarModMass
+                     + g_staticParams.precalcMasses.dCtermOH2Proton
+                     - PROTON_MASS
+                     - g_staticParams.massUtility.pdAAMassFragment[(int)'h']);
                }
             }
          }
-         else if (varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
+         else
          {
             fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"%s/>\n",
-                  varModsParam.szVarModChar[i],
+                  c,
                   varModsParam.dVarModMass,
-                  g_staticParams.massUtility.pdAAMassParent[(int)varModsParam.szVarModChar[i]] + varModsParam.dVarModMass,
+                  g_staticParams.massUtility.pdAAMassParent[(int)c] + varModsParam.dVarModMass,
                   (varModsParam.iBinaryMod?" binary=\"Y\"":""));
          }
       }

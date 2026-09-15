@@ -3423,6 +3423,191 @@ def test_t33_param_robustness(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T37 / T41 -- protein-terminal variable mods ('^' / '$') on the plain-FASTA path, and
+# the deprecation of variable_mod fields 5/6 (docs/20260915_permuter_terminal_mods.md,
+# Phase 0).
+#
+# Fixture t37_protein_term.fasta holds three proteins cut from the legacy
+# epgc_9entry.fasta protein (which *starts* with YFDSFGDLSSASAIMGNPK):
+#   t37_full  the whole protein                    -> YFDSF...GNPK is protein-N-terminal
+#   t37_noY   the protein minus its leading Y       -> FDSF...GNPK  is protein-N-terminal
+#   t37_toP   the first 18 residues only            -> YFDSF...GNP  is protein-C-terminal
+# The legacy term-mod2 spectrum is YFDSFGDLSSASAIMGNPK + M oxidation. With a
+# 163.063 (= Tyr) N-term mod and a 128.095 (= Lys) C-term mod, Comet reports the
+# mass-equivalent truncated peptides carrying a terminal mod as co-ranked hits (the
+# T21 "permutations"). Whether such a variant is *allowed* is exactly what the new
+# codes control:
+#   'n' (any peptide N-term):  FDSF...GNPK+n is legal from t37_full (internal) AND t37_noY
+#   '^' (protein N-term only): FDSF...GNPK+^ is legal from t37_noY ONLY
+#   'c' / '$' likewise for YFDSF...GNP+c from t37_full (internal) vs. t37_toP only.
+# ---------------------------------------------------------------------------
+
+_T37_FASTA = DATA_DIR / "t37_protein_term.fasta"
+_T37_MS2   = legacy_cases.LEGACY_DIR / "term-mod2" / "input.ms2"
+_T37_MOX   = "15.9949 M 0 3 -1 0 0 0.0"
+
+
+def _t37_search(comet_exe, mods, num_output_lines=12):
+    """No-enzyme search of the term-mod2 spectrum against t37_protein_term.fasta with the
+    given variable_mod strings. Returns (rc, rows, combined stdout+stderr)."""
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    txt = _T37_MS2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+
+    params = legacy_cases.build_params(
+        database=fmt(_T37_FASTA), enzyme1=0, mods=mods, num_output_lines=num_output_lines)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(_T37_MS2)])
+        rows = legacy_cases.parse_txt(txt) if txt.exists() else []
+        return rc, rows, out
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+
+_T37_TERM_CODES = ("_n", "_c", "_N", "_C")
+
+
+def _t37_find(rows, plain_peptide, mod_substr=None, no_term_mod=False):
+    """First row with this plain_peptide whose modifications column contains mod_substr
+    (if given) and, if no_term_mod, carries none of the terminal-mod codes."""
+    for r in rows:
+        if r.get("plain_peptide") != plain_peptide:
+            continue
+        mods = r.get("modifications", "")
+        if mod_substr is not None and mod_substr not in mods:
+            continue
+        if no_term_mod and any(code in mods for code in _T37_TERM_CODES):
+            continue
+        return r
+    return None
+
+
+def _t37_proteins(row):
+    return set(row.get("protein", "").split(",")) if row else set()
+
+
+def _t37_signature(rows):
+    """Order-independent summary of a result set for identical-output comparisons."""
+    return sorted((r.get("plain_peptide"), r.get("modifications"), r.get("protein")) for r in rows)
+
+
+@register("t37_protein_term_plain")
+def test_t37_protein_term_plain(comet_exe):
+    """T37: '^'/'$' protein-terminal variable mods on the plain-FASTA path."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    # --- protein-terminus-only codes
+    rc, rows, out = _t37_search(comet_exe, (_T37_MOX,
+                                             "128.094963050 $ 0 3 -1 0 0 0.0",
+                                             "163.063328575 ^ 0 3 -1 0 0 0.0"))
+    if not check(rc == 0 and rows, f"'^'/'$' search ran and produced rows (rc={rc})", failures):
+        print(out[-2000:])
+        return failures
+
+    r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_N")
+    check(r is not None, "FDSFGDLSSASAIMGNPK carrying the '^' mod (reported as _N) is present", failures)
+    check(_t37_proteins(r) == {"t37_noY"},
+          f"'^' variant is attributed to t37_noY only (protein-N-terminal there), got {sorted(_t37_proteins(r))}", failures)
+
+    r = _t37_find(rows, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_C")
+    check(r is not None, "YFDSFGDLSSASAIMGNP carrying the '$' mod (reported as _C) is present", failures)
+    check(_t37_proteins(r) == {"t37_toP"},
+          f"'$' variant is attributed to t37_toP only (protein-C-terminal there), got {sorted(_t37_proteins(r))}", failures)
+
+    check(_t37_find(rows, "FDSFGDLSSASAIMGNP", mod_substr="_N") is None,
+          "no doubly-truncated FDSFGDLSSASAIMGNP with a protein-N-term mod (it is protein-N-terminal in no protein "
+          "where it is also protein-C-terminal)", failures)
+    check(not any("_n" in r.get("modifications", "") or "_c" in r.get("modifications", "") for r in rows),
+          "no lowercase _n/_c terminal-mod codes when only '^'/'$' are declared", failures)
+
+    r = _t37_find(rows, "YFDSFGDLSSASAIMGNPK", no_term_mod=True)
+    check(r is not None and "t37_full" in _t37_proteins(r),
+          "the intact YFDSFGDLSSASAIMGNPK (no terminal mod) is still found from t37_full", failures)
+
+    # --- control: peptide-terminus codes admit the internal copies too
+    rc, rows_nc, out = _t37_search(comet_exe, (_T37_MOX,
+                                                "128.094963050 c 0 3 -1 0 0 0.0",
+                                                "163.063328575 n 0 3 -1 0 0 0.0"))
+    if check(rc == 0 and rows_nc, f"'n'/'c' control search ran (rc={rc})", failures):
+        r = _t37_find(rows_nc, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_n")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_noY"},
+              f"'n' variant is attributed to both t37_full (internal) and t37_noY, got {sorted(_t37_proteins(r))}", failures)
+        r = _t37_find(rows_nc, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_c")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_toP"},
+              f"'c' variant is attributed to both t37_full (internal) and t37_toP, got {sorted(_t37_proteins(r))}", failures)
+        check(_t37_find(rows_nc, "FDSFGDLSSASAIMGNP", mod_substr="_n") is not None,
+              "doubly-truncated FDSFGDLSSASAIMGNP with both peptide-terminal mods is present under 'n'/'c'", failures)
+
+    # --- 'n^' in one slot is just 'n'
+    rc, rows_mix, out = _t37_search(comet_exe, (_T37_MOX, "163.063328575 n^ 0 3 -1 0 0 0.0"))
+    if check(rc == 0 and rows_mix, f"'n^' search ran (rc={rc})", failures):
+        r = _t37_find(rows_mix, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_n")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_noY"},
+              f"'n^' behaves as 'n' (both proteins, lowercase code), got {sorted(_t37_proteins(r))}", failures)
+
+    return failures
+
+
+@register("t41_termmod_deprecation")
+def test_t41_termmod_deprecation(comet_exe):
+    """T41: variable_mod fields 5/6 (term_distance, n/c-term) are deprecated: the legacy
+    protein-terminus idiom is bridged to '^'/'$' with a warning; other non-default values
+    warn and are ignored."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    rc, ref_rows, out = _t37_search(comet_exe, (_T37_MOX,
+                                                 "128.094963050 $ 0 3 -1 0 0 0.0",
+                                                 "163.063328575 ^ 0 3 -1 0 0 0.0"))
+    if not check(rc == 0 and ref_rows, f"reference '^'/'$' search ran (rc={rc})", failures):
+        return failures
+    check("deprecated" not in out, "no deprecation warning for default fields 5/6 (-1 0)", failures)
+
+    # legacy idiom: n + distance 0 + which_term 0 (protein N), c + distance 0 + which_term 1 (protein C)
+    rc, rows, out = _t37_search(comet_exe, (_T37_MOX,
+                                             "128.094963050 c 0 3 0 1 0 0.0",
+                                             "163.063328575 n 0 3 0 0 0 0.0"))
+    if check(rc == 0 and rows, f"legacy protein-terminus idiom search ran (rc={rc})", failures):
+        check(_t37_signature(rows) == _t37_signature(ref_rows),
+              "legacy 'n 0 3 0 0' / 'c 0 3 0 1' params give results identical to '^' / '$'", failures)
+        check("translated 'n' with distance 0 to '^'" in out,
+              "bridge warning names the 'n' -> '^' translation", failures)
+        check("translated 'c' with distance 0 to '$'" in out,
+              "bridge warning names the 'c' -> '$' translation", failures)
+
+    # residue restricted to the protein terminus by distance 0: restriction dropped, warned
+    rc, rows_ref_m, _ = _t37_search(comet_exe, (_T37_MOX,))
+    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 0 0 0 0.0",))
+    if check(rc == 0 and rows, f"'M 0 3 0 0' search ran (rc={rc})", failures):
+        check("restricted residues \"M\"" in out and "dropped" in out,
+              "warning says the residue restriction was dropped", failures)
+        check(_t37_signature(rows) == _t37_signature(rows_ref_m),
+              "'M 0 3 0 0' now behaves as unrestricted 'M 0 3 -1 0'", failures)
+
+    # positive distance: ignored, warned
+    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 2 0 0 0.0",))
+    if check(rc == 0 and rows, f"'M 0 3 2 0' search ran (rc={rc})", failures):
+        check("term_distance 2 is deprecated and ignored" in out,
+              "warning names the ignored positive distance", failures)
+        check(_t37_signature(rows) == _t37_signature(rows_ref_m),
+              "'M 0 3 2 0' now behaves as unrestricted 'M 0 3 -1 0'", failures)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
