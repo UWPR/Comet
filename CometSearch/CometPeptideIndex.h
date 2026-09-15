@@ -75,8 +75,7 @@ public:
    // not happen in practice since Phase 1's build-time enumeration already
    // validated every (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple it
    // wrote to the compact array.
-   static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, char cNtermMod,
-      char cCtermMod, DBIndex& out);
+   static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, DBIndex& out);
 
    // docs/20260827_PI_memory.md Phase 0: one-shot, structure-by-structure index memory
    // report, logged at the end of ReadPeptideIndex() when the COMET_MEMREPORT environment

@@ -52,8 +52,6 @@ public:
    // the unmodified residue-only sum for AddFragments()'s hardening check.
    static double ComputeIndexedPepMass(size_t iWhichPeptide,
                                        int modNumIdx,
-                                       char cNtermMod,
-                                       char cCtermMod,
                                        const vector<int>& vModSlotForAllModsIdx,
                                        double* pdResidueOnlyMass);
 
@@ -98,8 +96,6 @@ private:
                               size_t iWhichPeptide,
                               size_t iWhichFragmentPeptide,
                               int modNumIdx,
-                              char cNtermMod,
-                              char cCtermMod,
                               bool bDecoy,
                               const vector<int>& vModSlotForAllModsIdx,
                               double dKnownPepMass,

@@ -661,9 +661,9 @@ struct FragmentPeptidesStruct
                                  // g_vRawPeptides.size() is checked to fit in unsigned int
                                  // before this struct is ever populated (CometFragmentIndex.cpp,
                                  // CreateFragmentIndex())
-   int modNumIdx;
-   char cNtermMod;
-   char cCtermMod;
+   int modNumIdx;          // MOD_NUMBERS_POOL entry (-1 = fully unmodified). Terminal variable
+                           // mods are bytes 0/1 of that entry (docs/20260915_permuter_terminal_mods.md),
+                           // so no separate terminal-slot fields are carried here any more.
    char cIsDecoy;          // 1 = internal (pseudo-reverse) decoy of this same (peptide, mods)
                            // tuple; shares dPepMass with its target (reversal preserves
                            // composition), differs only in its fragment ladder --
@@ -733,9 +733,10 @@ struct VariantArray
    vector<unsigned int>  vuiMassKey;       // llround(dPepMass * MASS_KEY_SCALE), non-decreasing
    vector<unsigned int>  vuiWhichPeptide;  // index into g_vRawPeptides
    vector<unsigned int>  vuiModNumIdx;     // mod-combination entry index; 0xFFFFFFFF = unmodified
-   vector<unsigned char> vucTermMods;      // hi nibble cNtermMod+1, lo nibble cCtermMod+1; 0 = none
-                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4,
-                                           // i.e. stored nibble values 0..5 -- bit 7 is DECOY_FLAG below)
+   vector<unsigned char> vucFlags;         // bit 7 = DECOY_FLAG; other bits unused. (Until
+                                           // docs/20260915_permuter_terminal_mods.md Phase 2 the low
+                                           // 7 bits packed the two terminal-mod slots; those now live in
+                                           // bytes 0/1 of the MOD_NUMBERS_POOL entry, see ModEntryTermSlot().)
 
    // Internal (pseudo-reverse) decoy marker, FI_DB only (docs/20260914_FI_internal_decoys.md
    // Section 4.1): a decoy variant shares vuiWhichPeptide, vuiModNumIdx, the terminal mods
@@ -744,7 +745,7 @@ struct VariantArray
    // sequence + mod sites on the fly for flagged candidates. Never set on PI_DB's
    // g_dbIndexVariants (PI_DB reverses at score time instead).
    static constexpr unsigned char DECOY_FLAG = 0x80;
-   bool IsDecoy(size_t i) const { return (vucTermMods[i] & DECOY_FLAG) != 0; }
+   bool IsDecoy(size_t i) const { return (vucFlags[i] & DECOY_FLAG) != 0; }
 
    size_t size() const { return vuiMassKey.size(); }
    bool empty() const { return vuiMassKey.empty(); }
@@ -754,7 +755,7 @@ struct VariantArray
       vector<unsigned int>().swap(vuiMassKey);
       vector<unsigned int>().swap(vuiWhichPeptide);
       vector<unsigned int>().swap(vuiModNumIdx);
-      vector<unsigned char>().swap(vucTermMods);
+      vector<unsigned char>().swap(vucFlags);
    }
 
    int GetModNumIdx(size_t i) const
@@ -762,9 +763,6 @@ struct VariantArray
       unsigned int ui = vuiModNumIdx[i];
       return ui == 0xFFFFFFFFu ? -1 : (int)ui;
    }
-   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x07) - 1; }   // & 0x07: strip DECOY_FLAG
-   char GetCtermMod(size_t i) const { return (char)(vucTermMods[i] & 0x0F) - 1; }
-
    // Smallest key a mass >= dMass could have encoded to, minus 1 LSB of margin; with
    // QuantizeHigh() below, brackets a [low, high] mass window conservatively: rounding
    // error can only ADMIT extra borderline entries (rejected by the exact per-candidate
@@ -794,7 +792,7 @@ struct VariantArray
       return vuiMassKey.capacity() * sizeof(unsigned int)
          + vuiWhichPeptide.capacity() * sizeof(unsigned int)
          + vuiModNumIdx.capacity() * sizeof(unsigned int)
-         + vucTermMods.capacity() * sizeof(unsigned char);
+         + vucFlags.capacity() * sizeof(unsigned char);
    }
 };
 extern VariantArray g_dbIndexVariants;    // PI_DB's variant array (GenerateVariantArray())
@@ -976,6 +974,31 @@ inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
 {
    return MOD_NUMBERS_POOL.data() + MOD_SEQ_MOD_NUM_POOL_START[modSeqIdx]
       + (uint64_t)(modNumIdx - MOD_SEQ_MOD_NUM_START[modSeqIdx]) * (uint64_t)iModSeqLen;
+}
+
+// Entry layout (docs/20260915_permuter_terminal_mods.md section 3.3). When the permuter ran
+// with terminal positions enabled (g_iTermSlotBytes == ModificationsPermuter::TERM_SLOT_BYTES,
+// i.e. bVarTermModSearch), every modifiable sequence starts with two sentinel positions and
+// every entry with two bytes: [0] = N-term slot, [1] = C-term slot (compacted ALL_MODS index
+// or -1), then one byte per modifiable residue. Otherwise g_iTermSlotBytes == 0 and the
+// entry is residue bytes only, exactly the historical layout. Consumers walk the residue
+// bytes from ModEntryResidueOffset() and read the terminal slots via ModEntryTermSlot(); the
+// stride arithmetic in GetModNumEntry() is unaffected because iModSeqLen already includes
+// the sentinel positions. Set once per session by CometFragmentIndex::PermuteIndexPeptideMods().
+extern int g_iTermSlotBytes;
+
+inline int ModEntryResidueOffset()
+{
+   return g_iTermSlotBytes;
+}
+
+// Compacted ALL_MODS index of the variable mod on the N-terminus (bTerminusN) or C-terminus
+// of this entry, or -1 when unmodified / when terminal positions are not enabled.
+inline int ModEntryTermSlot(const char* pEntry, bool bTerminusN)
+{
+   if (g_iTermSlotBytes == 0 || pEntry == NULL)
+      return -1;
+   return (int)(signed char)pEntry[bTerminusN ? 0 : 1];
 }
 
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)

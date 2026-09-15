@@ -832,7 +832,8 @@ void ModificationsPermuter::getModificationCombinations(vector<int>& vMaxNumVarM
    MOD_SEQ_MOD_NUM_CNT = new int[iNumModSeqs];
    MOD_SEQ_MOD_NUM_POOL_START = new uint64_t[iNumModSeqs];
 
-   CombinatoricsUtils::initBinomialCoefficients(g_staticParams.options.peptideLengthRange.iEnd, MAX_K_VAL);
+   // + TERM_SLOT_BYTES: a modifiable sequence may carry the two terminal sentinel positions.
+   CombinatoricsUtils::initBinomialCoefficients(g_staticParams.options.peptideLengthRange.iEnd + TERM_SLOT_BYTES, MAX_K_VAL);
 
    for (int i = 0; i < iNumModSeqs; ++i)
    {

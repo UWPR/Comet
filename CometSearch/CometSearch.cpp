@@ -1672,7 +1672,6 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                         // exact recomputed mass -- rare
                         if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
                               g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
-                              g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
                               vModSlotForAllModsIdx, NULL)))
                            mPeptides[iTmp] += 1;
                      }
@@ -1717,7 +1716,6 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
                         {
                            if (CheckMassMatch(pQuery, CometFragmentIndex::ComputeIndexedPepMass(
                                  g_fragmentPeptides.vuiWhichPeptide[iTmp], g_fragmentPeptides.GetModNumIdx(iTmp),
-                                 g_fragmentPeptides.GetNtermMod(iTmp), g_fragmentPeptides.GetCtermMod(iTmp),
                                  vModSlotForAllModsIdx, NULL)))
                               mPeptides[iTmp] += 1;
                         }
@@ -1806,8 +1804,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          const unsigned int uiWhichVariant = ix->first;
          size_t iWhichPeptide = g_fragmentPeptides.vuiWhichPeptide[uiWhichVariant];
          int modNumIdx = g_fragmentPeptides.GetModNumIdx(uiWhichVariant);
-         char cVariantNtermMod = g_fragmentPeptides.GetNtermMod(uiWhichVariant);
-         char cVariantCtermMod = g_fragmentPeptides.GetCtermMod(uiWhichVariant);
+         int cVariantNtermMod = -1;   // real varModList slot, -1 = none; from the entry's bytes 0/1
+         int cVariantCtermMod = -1;
 
          const RawPeptideView rawView = g_vRawPeptides.at(iWhichPeptide);
          strcpy(szPeptide, rawView.szPeptide);
@@ -1817,7 +1815,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          // variant was stored with -- bit-identical to the formerly stored double
          // (docs/20260827_PI_memory.md Section 7.1) -- for scoring and reporting.
          double dCalcPepMass = CometFragmentIndex::ComputeIndexedPepMass(iWhichPeptide,
-            modNumIdx, cVariantNtermMod, cVariantCtermMod, vModSlotForAllModsIdx, NULL);
+            modNumIdx, vModSlotForAllModsIdx, NULL);
 
          iEndPos = iLenMinus1 = iLenPeptide - 1;
 
@@ -1833,6 +1831,8 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             int iModSeqLen;
             const char* pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
             const char* mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
+            cVariantNtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
+            cVariantCtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
 
             // Bugfix: mods[j] (this entry's MOD_NUMBERS_POOL slice) is a 0-based
             // COMPACTED variable-mod-slot index -- an index into
@@ -1847,7 +1847,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             // CometPeptideIndex.cpp's MaterializeOneEntry() (the PI_DB-mode equivalent) already
             // does this translation correctly; this mirrors it. vModSlotForAllModsIdx is
             // fetched once at the top of this function.
-            int j = 0;
+            int j = ModEntryResidueOffset();
             for (int k = 0; k <= iEndPos; ++k)
             {
                // j bound: pool mod-seq entries are not NUL-terminated (the former
@@ -1889,13 +1889,13 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          if (cVariantNtermMod > -1)
          {
             piVarModSites[iLenPeptide] = cVariantNtermMod + 1;
-            dBion += g_staticParams.variableModParameters.varModList[(int)cVariantNtermMod].dVarModMass;
+            dBion += g_staticParams.variableModParameters.varModList[cVariantNtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
          if (cVariantCtermMod > -1)
          {
             piVarModSites[iLenPeptide + 1] = cVariantCtermMod + 1;
-            dYion += g_staticParams.variableModParameters.varModList[(int)cVariantCtermMod].dVarModMass;
+            dYion += g_staticParams.variableModParameters.varModList[cVariantCtermMod].dVarModMass;
             iFoundVariableMod = 1;
          }
 
@@ -2357,8 +2357,7 @@ void CometSearch::SearchPeptideIndex(Query* pQuery,
       // the full reconstruction, since only the handful of candidates surviving this
       // mass-window filter ever need it. See docs/20260730_PI_reduction.md Phase 3.
       DBIndex dbiLocal;
-      if (!CometPeptideIndex::MaterializeOneEntry(uiWhichPeptide, g_dbIndexVariants.GetModNumIdx(i),
-            g_dbIndexVariants.GetNtermMod(i), g_dbIndexVariants.GetCtermMod(i), dbiLocal))
+      if (!CometPeptideIndex::MaterializeOneEntry(uiWhichPeptide, g_dbIndexVariants.GetModNumIdx(i), dbiLocal))
       {
          continue;
       }
@@ -6952,6 +6951,15 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
    else
       iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
+   // Static protein-terminal mods. VariableModSearch() seeds its running mass with
+   // dAddNterminusProtein for iStartPos == 0 (and dAddCterminusProtein at the end position),
+   // but this function recomputes the mass from scratch and only ever added the C-term one,
+   // so a variable-mod peptide at the protein N-terminus with add_Nterm_protein != 0 was
+   // reported (and mass-checked) short by that amount while its b-ion ladder below did carry
+   // it. Found by T42 (docs/20260915_permuter_terminal_mods.md, D9) when the same static
+   // was added to the fragment-index path.
+   if (_varModInfo.iStartPos == 0)
+      dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
    if (_varModInfo.iEndPos == iLenProteinMinus1)
       dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
