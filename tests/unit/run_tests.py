@@ -3689,16 +3689,21 @@ def test_t34_internal_decoys_pi(comet_exe):
 # T35 -- AScorePro must be identical across FASTA_DB / PI_DB / FI_DB
 # ---------------------------------------------------------------------------
 #
-# docs/20260914_FI_internal_decoys.md D6 (PR #129 review). Two regressions this guards:
-#  1. CometPreprocess::LoadIons() used to fill AScorePro's peak list (vRawFragmentPeakMassIntensity)
-#     in descending-INTENSITY order for the indexed modes whenever the spectrum had more than
-#     fragindex_num_spectrumpeaks peaks, but in descending m/z for FASTA_DB; AScorePro's result
-#     depends on peak order. The fixture spectrum has 356 peaks (cap 150) so the indexed modes
-#     take that branch.
-#  2. CometSearchManager::SetAScoreOptions() applies static mods to AScorePro's residue-mass table
-#     cumulatively and was called twice for batch PI_DB, so add_C_cysteine was applied to C twice
-#     in that mode only. The fixture peptide TSCEPYSDLK carries a static C and add_C_cysteine is
-#     57.021464 here (the T19/T20 AScore tests use 0.0 and could never see this).
+# docs/20260914_FI_internal_decoys.md D6 (PR #129 review). What this guards:
+#  1. The SCORE regression: CometSearchManager::SetAScoreOptions() applies static mods to
+#     AScorePro's residue-mass table cumulatively and was called twice for batch PI_DB, so
+#     add_C_cysteine was applied to C twice in that mode only (same PSM: 15.06 in FASTA_DB,
+#     12.78 in PI_DB). The fixture peptide TSCEPYSDLK carries a static C and add_C_cysteine is
+#     57.021464 here (the T19/T20 AScore tests use 0.0 and could never see this). Negative
+#     control: with only the SetAScoreOptions() reset reverted this test fails (PI_DB AScore
+#     110.17 vs FASTA_DB 339.46).
+#  2. The peak-list NORMALIZATION: CometPreprocess::LoadIons() now fills AScorePro's peak list
+#     (vRawFragmentPeakMassIntensity) in the same descending-m/z order for every mode instead of
+#     descending intensity for the indexed modes above fragindex_num_spectrumpeaks peaks. This
+#     is not score-affecting -- AScorePro re-sorts its input by m/z (AScoreTopIonsFilter), and
+#     reverting only that change leaves this test passing -- but the 356-peak fixture (cap 150)
+#     does drive the indexed modes through the formerly intensity-sorted branch, so a future
+#     order-sensitive consumer of that list would be caught here.
 # The synthetic spectrum is the full 1+/2+ b/y ladder of TSCEPYS[79.966331]DLK plus seeded noise;
 # competing sites T1/S2/Y6 make the localization non-trivial. All three modes must report the
 # same localized peptide, the same AScore and the same site-score string; FASTA_DB and PI_DB
@@ -3711,7 +3716,7 @@ assert "add_C_cysteine = 57.021464" in T35_PARAMS_TEMPLATE, "T35_PARAMS_TEMPLATE
 
 @register("t35_ascore_crossmode")
 def test_t35_ascore_crossmode(comet_exe):
-    """T35: AScorePro localization/score identical for FASTA_DB, PI_DB and FI_DB (static C mod, >150-peak spectrum)."""
+    """T35: AScorePro identical across FASTA_DB/PI_DB/FI_DB -- guards the double-applied static mod (score regression) and exercises the >150-peak normalized peak-list branch."""
     failures = []
     fasta = DATA_DIR / "t35_ascore_crossmode.fasta"
     ms2   = DATA_DIR / "t35_ascore_crossmode.ms2"
@@ -3794,6 +3799,104 @@ def test_t35_ascore_crossmode(comet_exe):
         if results.get("PI_DB") is not None:
             check(results["PI_DB"].get("xcorr") == ref.get("xcorr"),
                   f"PI_DB xcorr equals FASTA_DB's ({results['PI_DB'].get('xcorr')!r} vs {ref.get('xcorr')!r})", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T36 -- AScorePro must not relocalize an internal decoy's site
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md D6 option (c), PR #129 review. Real spectrum (scan 42900
+# of 20170103_HelaQC_01, copied from tests/rts_repro/fixture_spectra.txt) searched against the
+# single protein CNOT4_HUMAN with decoy_search = 1: the rank-1 hit is the internal decoy
+# IRQLEEQS[79.9663]LPKYVAPDEPYPKRCAPCLGNEDTK (xcorr 0.477, 4 matched ions -- the S7 ladder) and
+# its AScorePro score (15.06) clears ASCORE_CUTOFF_TO_ACCEPT (13.0). Before (c),
+# CalculateAScorePro() therefore rewrote the stored site to Y11 (position 12) AFTER the duplicate
+# check had run, producing a second row labeled identically to the genuine Y11 isomer (0.271)
+# and a FASTA_DB-vs-PI_DB label disagreement (PI_DB happened not to relocalize only because of
+# the double-applied static mod T35 now guards). A decoy's site is arbitrary by construction, so
+# the stored site must stay put while the AScore is still reported. Checked for FASTA_DB and
+# PI_DB (FI_DB's fragment pre-filter ranks a different decoy first on this spectrum).
+
+
+@register("t36_decoy_norelocalize")
+def test_t36_decoy_norelocalize(comet_exe):
+    """T36: AScorePro reports but never relocalizes an internal decoy's site (FASTA_DB and PI_DB, real scan 42900)."""
+    failures = []
+    fasta = DATA_DIR / "t36_decoy_norelocalize.fasta"
+    ms2   = DATA_DIR / "t36_decoy_norelocalize.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    if not fasta.exists() or not ms2.exists():
+        failures.append(f"fixture missing: {fasta} / {ms2}")
+        return failures
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    DECOY_PLAIN = "IRQLEEQSLPKYVAPDEPYPKRCAPCLGNEDTK"
+    KEPT_SITE = "IRQLEEQS[79.9663]LPKY"         # phospho on S7 (1-based 8) as scored
+    RELOCALIZED = "IRQLEEQSLPKY[79.9663]VAPDE"   # what an accepted relocalization produced before (c)
+
+    def make_params(db, ist=None):
+        p = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(db), ascorepro=-1,
+                                       mod1="79.966331 STY 0 2 -1 0 0 97.976896",
+                                       decoy_search=1, len_min=8, len_max=40)
+        p = _set_param_line(p, "allowed_missed_cleavage", 2)
+        p = _set_param_line(p, "digest_mass_range", "600.0 5000.0")
+        if ist is not None:
+            p = _set_param_line(p, "index_search_type", ist)
+        return p
+
+    def run_search(db, ist, label):
+        txt.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(db, ist))
+            params_file = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                print(out[-1500:])
+                return None
+            r1 = _t34_rank1(_t34_read_rows(txt), 42900)
+            if not check(r1 is not None, f"{label}: scan 42900 has a rank-1 row", failures):
+                return None
+            return r1
+        finally:
+            params_file.unlink(missing_ok=True)
+            txt.unlink(missing_ok=True)
+
+    results = {"FASTA_DB": run_search(fasta, None, "FASTA_DB")}
+    idx.unlink(missing_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(make_params(fasta))
+        build_params = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params)}"])
+        if check(rc == 0 and idx.exists(), f"PI_DB: index builds (rc={rc})", failures):
+            results["PI_DB"] = run_search(idx, 0, "PI_DB")
+        else:
+            print(out[-1500:])
+    finally:
+        build_params.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+    for label, r in results.items():
+        if r is None:
+            continue
+        check(r.get("plain_peptide") == DECOY_PLAIN and r.get("protein", "").startswith("DECOY_"),
+              f"{label}: rank-1 is the internal decoy {DECOY_PLAIN}, got "
+              f"{(r.get('plain_peptide'), r.get('protein'))!r}", failures)
+        check(float(r.get("ascorepro", "0") or 0) >= 13.0,
+              f"{label}: decoy's AScorePro ({r.get('ascorepro')!r}) clears the 13.0 acceptance cutoff, so the "
+              f"relocalization branch is genuinely exercised", failures)
+        check(KEPT_SITE in r.get("modified_peptide", "") and RELOCALIZED not in r.get("modified_peptide", ""),
+              f"{label}: decoy keeps its scored site S7 -- {KEPT_SITE} -- and is NOT relocalized to Y11, got "
+              f"{r.get('modified_peptide')!r}", failures)
+        check(r.get("modifications", "").startswith("8_V_79.966331"),
+              f"{label}: modifications column starts with 8_V_79.966331, got {r.get('modifications')!r}", failures)
+    if results.get("FASTA_DB") and results.get("PI_DB"):
+        check(results["FASTA_DB"].get("modified_peptide") == results["PI_DB"].get("modified_peptide")
+              and results["FASTA_DB"].get("ascorepro") == results["PI_DB"].get("ascorepro"),
+              f"FASTA_DB and PI_DB agree on the decoy's label and AScore", failures)
     return failures
 
 

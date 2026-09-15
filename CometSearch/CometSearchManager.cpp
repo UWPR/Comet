@@ -3000,6 +3000,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             // Within each bucket a name that already carries the prefix (a FASTA-level decoy
             // from a target-decoy index) still goes to the decoy list. The legacy single
             // lProteinFilePosition row is used only when both lists are empty.
+            // max_duplicate_proteins caps the ADDITIONAL names: the first resolved name is
+            // always reported (max_duplicate_proteins = 0 -> exactly one protein), then the cap
+            // applies across both lists -- same count/break semantics as the single loop this
+            // replaced, which appended a name before testing the cap.
             auto resolveBucket = [&](comet_fileoffset_t lBucket, bool bDecoyList)
             {
                if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
@@ -3007,8 +3011,11 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
 
                for (auto itProt = g_pvProteinsList.at(lBucket).begin(); itProt != g_pvProteinsList.at(lBucket).end(); ++itProt)
                {
-                  if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                  if (iPrintDuplicateProteinCt > 0
+                     && iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                  {
                      break;
+                  }
 
                   if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                      continue;

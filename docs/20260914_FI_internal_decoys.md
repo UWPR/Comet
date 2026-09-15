@@ -453,6 +453,25 @@ dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked 
   sorting its input internally.
 - **Section 4.4 snippet** no longer aliases the helper's inputs and outputs.
 
+Second round (after 70b17994):
+
+- **`max_duplicate_proteins = 0` in RTS.** The bucket walk tested the cap before appending, so
+  a cap of 0 (documented as limiting the *additional* names) reported no protein at all. The
+  first resolved name is now always reported, then the cap applies across both lists -- the
+  append-then-test semantics of the single loop it replaced (`-1` is already mapped to
+  `INT_MAX` at param load).
+- **T35 description** rewritten: the static-mod reset is the score regression it guards; the
+  peak-order change is a normalization that the >150-peak fixture exercises but that cannot
+  change a score (AScorePro re-sorts by m/z internally).
+- **T36 (`t36_decoy_norelocalize`)**, regression for option (c), which the first round noted
+  had no coverage. Fixture: the real scan 42900 (copied from the committed
+  `tests/rts_repro/fixture_spectra.txt`) against the single protein CNOT4_HUMAN with
+  `decoy_search = 1`, static C, phospho STY with neutral loss, 2 missed cleavages. The rank-1
+  hit is the internal decoy `IRQLEEQS[79.9663]LPKY...` with AScorePro 15.0624 (above the 13.0
+  acceptance cutoff, so the relocalization branch is genuinely reached); FASTA_DB and PI_DB must
+  keep the scored S7 site (`8_V_79.966331`) and agree with each other. Negative control in the
+  commit message: with only (c) reverted, FASTA_DB relocalizes to Y11 and the test fails.
+
 ## 7. Decisions for review
 
 - **D1 -- Decoy flag location.** Recommended: bit 7 of `vucTermMods` (free, zero growth, no
