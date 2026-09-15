@@ -37,7 +37,13 @@ Two things had to change for v145; both are in the tree, so this is history, not
   `CometUseInstalledNetPacks` target at the bottom of `CometWrapperCore.vcxproj` falls back
   to the newest installed 8.0.x packs, and is a no-op when the SDK's expected version exists.
   It prints one `CometWrapperCore: .NET SDK ... using installed 8.0.29 instead.` line when it
-  engages.
+  engages.  `CometWrapperCore` stays on **net8.0** on purpose: its downstream consumers are
+  .NET 8 apps and a .NET 8 process cannot load a net10.0 assembly.  .NET 8 leaves support
+  2026-11-10; when the consumers move to .NET 10, flip
+  `<TargetFramework>` to net10.0 -- that build was verified 2026-09-15 (Release + Debug, and
+  `Assembly.LoadFrom` + `new CometWrapper.CometSearchManagerWrapper()` from a net10.0 console
+  app under .NET 10.0.12), and the pack fallback stays idle for it because VS 2026 keeps its
+  own .NET 10 packs in step with its SDK.
 
 ## Full solution build (Release x64)
 

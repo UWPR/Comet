@@ -149,17 +149,23 @@
   <!--
     .NET pack-version fallback (added for the VS 2022 -> VS 2026 move).
 
-    This is a C++/CLI project targeting net8.0, so the .NET SDK needs two
+    This is a C++/CLI project targeting net8.0 (kept there deliberately for
+    its downstream .NET 8 consumers; a .NET 8 process cannot load a net10.0
+    assembly), so the .NET SDK needs two
     reference-only packs at build time: Microsoft.NETCore.App.Ref (targeting
     pack) and Microsoft.NETCore.App.Host.<rid> (which supplies Ijwhost.dll for
     C++/CLI).  Because a .vcxproj cannot NuGet-restore them, the SDK insists
     they already be installed under $(NetCoreTargetingPackRoot) at the *exact*
     patch version its own BundledVersions.props names (error NETSDK1145).
 
-    After the VS 2026 install this machine had SDK 10.0.300, whose table says
-    net8.0 -> 8.0.27, while the packs VS actually installed are 8.0.29, so
-    the stock build fails even though a perfectly good .NET 8 targeting pack is
-    present.  Copilot's cppbuildtoolsupgrade assessment hit the same error.
+    The SDK bundled with VS 2026 (10.0.300, later 10.0.401) expects the net8.0
+    packs at 8.0.27 / 8.0.31, while the only .NET 8 packs on the build machine
+    (installed by VS 2022) are 8.0.29, so the stock build fails even though a
+    perfectly good .NET 8 targeting pack is present.  VS 2026 only keeps its
+    own .NET 10 packs in step with its SDK, so this drift recurs on every VS
+    update until .NET 8 leaves support (2026-11-10) and its versions freeze.
+    Once the consumers move to .NET 10 this project should follow (a net10.0
+    build was verified on 2026-09-15: builds, loads and instantiates under 10.0.12).
 
     When the SDK's expected version is present this target does nothing.  When
     it is missing, it picks the newest installed $(_TargetFrameworkVersionWithoutV).x
