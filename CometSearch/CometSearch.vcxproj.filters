@@ -96,9 +96,6 @@
     <ClInclude Include="BS_thread_pool.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CometFragmentIndexReader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="core\Constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>

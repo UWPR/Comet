@@ -20,6 +20,9 @@
     <ClInclude Include="..\CometWrapper\Stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\MSToolkit\include\RAWReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AssemblyInfo.cpp">
@@ -29,6 +32,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\CometWrapper\Stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MSToolkit\src\MSToolkit\RAWReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
