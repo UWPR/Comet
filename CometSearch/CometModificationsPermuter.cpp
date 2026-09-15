@@ -41,13 +41,14 @@ ModificationsPermuter::~ModificationsPermuter()
 
 //bool DEBUG = false;
 
-// Maximum number of candidate (modifiable) residue positions for a single mod type within a
+// Maximum number of candidate (modifiable) positions for a single mod type within a
 // peptide's modifiable sequence. Set to MAX_PEPTIDE_LEN - 1 (the hard peptide-length ceiling
-// enforced at CometSearchManager.cpp, peptideLengthRange.iEnd = MAX_PEPTIDE_LEN - 1), so no real
+// enforced at CometSearchManager.cpp, peptideLengthRange.iEnd = MAX_PEPTIDE_LEN - 1) plus the
+// two terminal sentinel positions (ModificationsPermuter::TERM_SLOT_BYTES), so no real
 // peptide can ever exceed this -- i.e. this cap is effectively disabled. See
 // docs/20260714_modifications.md for verification (including at this exact boundary) and the
 // prior, much lower default (24) this replaced.
-unsigned int MAX_BITCOUNT = 50;
+unsigned int MAX_BITCOUNT = (MAX_PEPTIDE_LEN - 1) + ModificationsPermuter::TERM_SLOT_BYTES;
 int MAX_K_VAL = 10;
 
 int IGNORED_SEQ_CNT = 0; // Sequences that were ignored because they would generate more than FRAGINDEX_MAX_COMBINATIONS combinations.
@@ -254,6 +255,43 @@ vector<string> ModificationsPermuter::readPeptides(string file)
 }
 
 
+string ModificationsPermuter::TranslateModCharsForPermuter(const char* szVarModChar)
+{
+   string sOut;
+
+   for (const char* p = szVarModChar; *p; ++p)
+   {
+      switch (*p)
+      {
+         case 'n':
+            sOut += TERM_PEP_N;
+            sOut += TERM_PROT_N;
+            break;
+         case '^':
+            sOut += TERM_PROT_N;
+            break;
+         case 'c':
+            sOut += TERM_PEP_C;
+            sOut += TERM_PROT_C;
+            break;
+         case '$':
+            sOut += TERM_PROT_C;
+            break;
+         default:
+            sOut += *p;
+            break;
+      }
+   }
+
+   // 'n^' (or 'c$') yields a duplicated sentinel; harmless for matching, but keep the
+   // string canonical so equal mods translate to equal strings.
+   std::sort(sOut.begin(), sOut.end());
+   sOut.erase(std::unique(sOut.begin(), sOut.end()), sOut.end());
+
+   return sOut;
+}
+
+
 // Return a sequence comprising the amino acids in the given peptide that can have a modification. 
 string ModificationsPermuter::getModifiableAas(std::string peptide,
                                                vector<string>& ALL_MODS)
@@ -284,7 +322,8 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 // map itself stays a transient unordered_map, freed when this function returns.
 void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPeptides,
                                                    int* PEPTIDE_MOD_SEQ_IDXS,
-                                                   vector<string>& ALL_MODS)
+                                                   vector<string>& ALL_MODS,
+                                                   bool bIncludeTermini)
 {
    std::unordered_map<string, int> modifiableSeqMap;
    int pepIdx = 0;
@@ -299,6 +338,19 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
    {
       //FIX: put restriction here for protein mod filter
       string modifiableAas = getModifiableAas(string((*it).szPeptide, (size_t)(*it).iLen), ALL_MODS);
+
+      if (bIncludeTermini)
+      {
+         // Prefix the two terminal sentinel positions, chosen from the peptide's protein
+         // context (the '-' flank marks a protein terminus; the clipped-Met digest pass
+         // records '-' too).  This makes the context part of the dedup key, so peptides that
+         // share modifiable residues but differ in protein-terminus eligibility get distinct
+         // permutation sets and no per-peptide filtering is needed downstream.
+         string sPrefix;
+         sPrefix += ((*it).cPrevAA == '-') ? TERM_PROT_N : TERM_PEP_N;
+         sPrefix += ((*it).cNextAA == '-') ? TERM_PROT_C : TERM_PEP_C;
+         modifiableAas = sPrefix + modifiableAas;
+      }
 
       if (!modifiableAas.empty())
       {
@@ -317,10 +369,6 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
             int idx = iter->second;
             PEPTIDE_MOD_SEQ_IDXS[pepIdx] = idx;
          }
-      }
-      else if (g_staticParams.variableModParameters.bVarTermModSearch)
-      {
-         PEPTIDE_MOD_SEQ_IDXS[pepIdx] = -2;
       }
       else
       {
@@ -551,6 +599,12 @@ void ModificationsPermuter::generateModifications(const char* sequence,
             IGNORED_SEQ_CNT++;
             return;
          }
+
+         // A mod whose per-mod maximum is 0 (or that otherwise yields no valid combination)
+         // contributes nothing; carrying it into Steps 2-3 would allocate a zero-length
+         // combination array that the odometer then reads past.
+         if (combinationCount <= 0)
+            continue;
 
          modIndices.push_back(m);
 

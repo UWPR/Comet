@@ -35,7 +35,7 @@ endif
 LIBCOMETSEARCH = $(COMETSEARCH)/libcometsearch.a
 
 UNITTEST_BIN = tests/unit/test_comet_internal
-UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp
+UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp tests/unit/TestModificationsPermuter.cpp
 
 comet.exe: $(OBJS) $(LIBCOMETSEARCH)
 	cd $(ASCOREPRO) && $(MAKE) all

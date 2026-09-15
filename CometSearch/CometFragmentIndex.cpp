@@ -51,7 +51,7 @@ vector<char> MOD_SEQS_POOL;            // unique modifiable sequences, concatena
 vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 offsets into MOD_SEQS_POOL; [0] == 0
 int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
-int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
+int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable sequence.
 int MOD_NUM = 0;
 size_t tTmp;
 
@@ -177,6 +177,19 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
    }
    cout << endl;
 
+   // Terminal-mod permutation inside the permuter (docs/20260915_permuter_terminal_mods.md).
+   // Phase 1: the permuter supports it but the index build does not ask for it yet, so
+   // every index stays byte-identical to the pre-change build; the callers still enumerate
+   // terminal mods themselves (AddFragmentsThreadProcRange / EnumerateIndexPeptideMods).
+   // Phase 2 sets this to g_staticParams.variableModParameters.bVarTermModSearch and
+   // removes those loops.  Translating ALL_MODS is a no-op in effect while this is false:
+   // the sentinel characters never occur in a residue-only modifiable sequence, exactly as
+   // 'n'/'c' never did.
+   const bool bIncludeTermini = false;
+
+   for (int i = 0; i < MOD_CNT; ++i)
+      ALL_MODS[i] = ModificationsPermuter::TranslateModCharsForPermuter(ALL_MODS[i].c_str());
+
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
@@ -187,14 +200,15 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, iMaxNumVariableMods,
-         &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
+   ModificationsPermuter::initCombinations(
+         g_staticParams.options.peptideLengthRange.iEnd + (bIncludeTermini ? ModificationsPermuter::TERM_SLOT_BYTES : 0),
+         iMaxNumVariableMods, &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides (fills the MOD_SEQS_POOL/
    // MOD_SEQS_OFFSET flat pool -- docs/20260827_PI_memory.md Phase 1)
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
+   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini);
 
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(vMaxNumVarModsPerMod, ALL_MODS,
