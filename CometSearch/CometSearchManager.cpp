@@ -2988,28 +2988,51 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             // therefore never carry the decoy prefix, so classifying by name alone
             // (the only test here before this fix) reported every internal decoy as a
             // target -- the reversed peptide reached the C# layer indistinguishable from
-            // a real identification. Route the whole row to the decoy list instead; the
-            // decoy-string loop below prepends the prefix only when it isn't already
-            // present, so FASTA-level decoy names from a target-decoy index are not
-            // double-prefixed. The batch writers already do this via
-            // CometMassSpecUtils::GetProteinNameString()'s pWhichDecoyProtein walk.
-            const bool bInternalDecoy = pOutput[iWhichResult].pWhichDecoyProtein.size() > 0
-               && pOutput[iWhichResult].pWhichProtein.empty();
-
-            for (auto itProt = g_pvProteinsList.at(lEntry).begin(); itProt != g_pvProteinsList.at(lEntry).end(); ++itProt)
+            // a real identification. The decoy-string loop below prepends the prefix only
+            // when it isn't already present, so FASTA-level decoy names from a
+            // target-decoy index are not double-prefixed.
+            //
+            // Walk the two per-result protein-bucket lists separately, exactly as
+            // GetProteinNameString() does: a row can carry BOTH (CheckDuplicateI() merges a
+            // self-palindromic internal decoy into its identical target, attaching the
+            // decoy bucket to pWhichDecoyProtein while pWhichProtein keeps the target's),
+            // and that row must report the target names bare and the decoy names prefixed.
+            // Within each bucket a name that already carries the prefix (a FASTA-level decoy
+            // from a target-decoy index) still goes to the decoy list. The legacy single
+            // lProteinFilePosition row is used only when both lists are empty.
+            auto resolveBucket = [&](comet_fileoffset_t lBucket, bool bDecoyList)
             {
-               if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
-                  continue;
+               if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
+                  return;
 
-               const string& sName = g_pvProteinNameCache[*itProt];
-               if (bInternalDecoy || !strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
-                  vProteinDecoys.push_back(sName);
-               else
-                  vProteinTargets.push_back(sName);
+               for (auto itProt = g_pvProteinsList.at(lBucket).begin(); itProt != g_pvProteinsList.at(lBucket).end(); ++itProt)
+               {
+                  if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
+                     break;
 
-               iPrintDuplicateProteinCt++;
-               if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
-                  break;
+                  if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
+                     continue;
+
+                  const string& sName = g_pvProteinNameCache[*itProt];
+                  if (bDecoyList || !strncmp(sName.c_str(), g_staticParams.szDecoyPrefix, iLenDecoyPrefix))
+                     vProteinDecoys.push_back(sName);
+                  else
+                     vProteinTargets.push_back(sName);
+
+                  iPrintDuplicateProteinCt++;
+               }
+            };
+
+            if (pOutput[iWhichResult].pWhichProtein.empty() && pOutput[iWhichResult].pWhichDecoyProtein.empty())
+            {
+               resolveBucket(lEntry, false);
+            }
+            else
+            {
+               for (const auto& protEntry : pOutput[iWhichResult].pWhichProtein)
+                  resolveBucket(protEntry.lWhichProtein, false);
+               for (const auto& protEntry : pOutput[iWhichResult].pWhichDecoyProtein)
+                  resolveBucket(protEntry.lWhichProtein, true);
             }
          }
          else

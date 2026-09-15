@@ -2948,13 +2948,14 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    // AScorePro peak list, filled in ONE order for every search mode: descending m/z over
    // the original (m/z-sorted) spectrum -- the order FASTA_DB batch and the RTS path
    // (PreprocessSingleSpectrumCore()) have always produced. It used to be filled inside the
-   // main loop below, so for PI_DB/FI_DB with more than fragindex_num_spectrum_peaks peaks
+   // main loop below, so for PI_DB/FI_DB with more than fragindex_num_spectrumpeaks peaks
    // it came out in descending-intensity order instead (that sort exists only to pick the
-   // most intense peaks for vfRawFragmentPeakMass). AScorePro's localization score depends
-   // on peak order, so the same PSM got a different AScore -- and hence a different
-   // accepted/rejected site relocalization -- in FASTA_DB vs. the indexed modes
-   // (docs/20260914_FI_internal_decoys.md Section 6.2 / D6 option a). Same intensity
-   // filters as the main loop.
+   // most intense peaks for vfRawFragmentPeakMass). This is a normalization, not a scoring
+   // fix: AScorePro re-sorts its input by m/z before ranking peaks per window
+   // (AScoreTopIonsFilter), so the order never changed a score -- the cross-mode AScore
+   // difference that prompted it was SetAScoreOptions()'s double-applied static mods
+   // (docs/20260914_FI_internal_decoys.md D6; T35 covers both). Same intensity filters as
+   // the main loop.
    if (g_staticParams.options.iPrintAScoreProScore)
    {
       for (i = (int)mstSpectrum.size() - 1; i >= 0; --i)

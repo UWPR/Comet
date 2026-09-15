@@ -134,7 +134,14 @@ After `rawView`/`szPeptide`/`piVarModSites` are materialized for a candidate var
 ```cpp
 const bool bDecoyPep = g_fragmentPeptides.IsDecoy(uiWhichVariant);
 if (bDecoyPep)
-   CometSearch::PseudoReversePeptide(szPeptide, iLenPeptide, piVarModSites, szPeptide, piVarModSites);  // in place via temps
+{
+   // the helper forbids aliasing its inputs and outputs -- reverse into temporaries, copy back
+   char szDecoyPeptide[MAX_PEPTIDE_LEN];
+   int piVarModSitesDecoy[MAX_PEPTIDE_LEN_P2];
+   CometSearch::PseudoReversePeptide(szPeptide, iLenPeptide, piVarModSites, szDecoyPeptide, piVarModSitesDecoy);
+   memcpy(szPeptide, szDecoyPeptide, (iLenPeptide + 1) * sizeof(char));
+   memcpy(piVarModSites, piVarModSitesDecoy, (iLenPeptide + 2) * sizeof(int));
+}
 ```
 
 Everything downstream (ladder build with NL tracking, `szProtein` flanking assembly from
@@ -409,16 +416,42 @@ same four decoy isomers with identical xcorr and identical labels (S7 0.4770, Y1
 **AScorePro post-analysis** (`print_ascorepro_score = -1` in `comet_phospho.params`):
 `CalculateAScorePro()` relocalizes the top hit's site when the AScore is >= `ASCORE_CUTOFF_TO_ACCEPT`
 (13.0). FASTA scored 15.06 and moved the phospho S7 -> Y11 (leaving a second, genuine Y11 row at
-0.2710 below it); PI_DB scored 12.78 and kept S7. The AScores differ because
-`CometPreprocess.cpp:2937` hands the indexed modes an intensity-sorted peak list
-(`vRawFragmentPeakMassIntensity`) while FASTA_DB gets it in m/z order, and AScorePro's result
-depends on that order. Neither is a decoy-generation difference: whenever the two engines report
+0.2710 below it); PI_DB scored 12.78 and kept S7. The AScores differed because batch PI_DB
+called `SetAScoreOptions()` twice and its cumulative static-mod application gave cysteine
++57.02 twice (see D6). An earlier reading of this section blamed the peak order handed to
+AScorePro (`CometPreprocess.cpp` sorted the indexed modes' list by intensity); that was wrong --
+AScorePro sorts its input by m/z internally (`AScoreTopIonsFilter`), this 88-peak spectrum was
+below the 150-peak cap and never sorted anyway, and reverting the order change alone leaves
+T35 passing. Neither is a decoy-generation difference: whenever the two engines report
 the same decoy sequence, xcorr is identical and the stored mod position is identical before
 post-analysis. Combined with the index mapping in Section 4.2 (the FASTA inline reversal and the
 helper implement the same last-/first-residue-fixed rule with the same mod-site permutation),
 modified decoys are generated the same way in all three modes. The AScorePro peak-order
 dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked separately
 (Section 7, D6).
+
+### 6.3 PR #129 review (Copilot) -- responses (2026-09-14)
+
+- **RTS protein resolution for merged rows.** The 4.5 fix classified a row as an internal decoy
+  only when `pWhichProtein` was empty. `CheckDuplicateI()` merges a self-palindromic internal
+  decoy into its identical target, leaving BOTH lists populated, and that row then fell back to
+  the single `lProteinFilePosition` resolved by name prefix, dropping the decoy association in
+  RTS. `DoSingleSpectrumSearchMultiResults()` now walks `pWhichProtein` (targets) and
+  `pWhichDecoyProtein` (decoys) separately, as `GetProteinNameString()` does, and uses
+  `lProteinFilePosition` only when both are empty.
+- **`t24_internal_decoy_parity` added to `INTEGRATION_TESTS`**, so the default unit run skips it
+  properly and `--integration` selects it.
+- **T35 (`t35_ascore_crossmode`)**: cross-mode AScorePro regression for both D6 fixes. Fixture
+  `tests/unit/data/t35_ascore_crossmode.{fasta,ms2}`: tryptic `TSCEPYSDLK` (static C,
+  `add_C_cysteine = 57.021464`; competing T1/S2/Y6 sites) with the full 1+/2+ ladder of
+  `TSCEPYS[79.966331]DLK` plus 320 seeded noise peaks (356 total, above the 150-peak
+  `fragindex_num_spectrumpeaks` cap so the indexed modes take the intensity-sorted branch).
+  Asserts FASTA_DB, PI_DB and FI_DB report the same localized peptide, AScore and site-score
+  string, and FASTA_DB/PI_DB the same xcorr. Negative controls: with only the `SetAScoreOptions()`
+  reset reverted, T35 fails (PI_DB AScore 110.17 vs FASTA 339.46, site scores 7:20.68 vs
+  7:46.12); with only the peak-order change reverted it passes, consistent with AScorePro
+  sorting its input internally.
+- **Section 4.4 snippet** no longer aliases the helper's inputs and outputs.
 
 ## 7. Decisions for review
 
@@ -447,9 +480,10 @@ dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked 
   FI_DB only; leave the three FASTA-path inline reversals as they are.
 - **D6 -- (found 2026-09-14, outside this feature) AScorePro relocalization differs between
   FASTA_DB and the indexed modes.** Same PSM, same peaks, different AScore (15.06 vs 12.78 on scan
-  42900) because `CometPreprocess.cpp` fills `vRawFragmentPeakMassIntensity` in m/z order for
-  FASTA_DB and in descending-intensity order for PI_DB/FI_DB, and the accepted relocalization
-  (>= 13.0) then rewrites the stored site without re-checking for a now-duplicate row. Options:
+  42900), first attributed to `CometPreprocess.cpp` filling `vRawFragmentPeakMassIntensity` in
+  m/z order for FASTA_DB and descending-intensity order for PI_DB/FI_DB (wrong -- see the
+  resolution below), while the accepted relocalization (>= 13.0) rewrites the stored site
+  without re-checking for a now-duplicate row. Options:
   (a) fill the AScorePro peak list in one canonical order for every mode (m/z, matching FASTA_DB
   -- the indexed sort exists only for the FI candidate-peak pick, `vfRawFragmentPeakMass`);
   (b) additionally make AScorePro order-independent on its side; (c) skip relocalization for
@@ -463,7 +497,9 @@ dependence is a pre-existing FASTA-vs-indexed post-analysis difference, tracked 
   - (a) `CometPreprocess::LoadIons()` now fills `vRawFragmentPeakMassIntensity` in one order for
     every mode (descending m/z over the original spectrum, what FASTA_DB batch and the RTS
     `PreprocessSingleSpectrumCore()` path always produced); the intensity sort is left to the FI
-    candidate-peak pick only.
+    candidate-peak pick only. Kept as a normalization: AScorePro sorts its input by m/z before
+    ranking peaks per window (`AScoreTopIonsFilter`), so this never changed a score -- T35 with
+    only this change reverted still passes.
   - (c) `CometPostAnalysis::CalculateAScorePro()` still reports an internal decoy's AScore but no
     longer rewrites its site (`pWhichDecoyProtein` non-empty, `pWhichProtein` empty).
   - Root cause of the *score* gap, found after (a) alone left 15.06 vs 12.78 with byte-identical

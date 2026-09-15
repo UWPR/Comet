@@ -65,7 +65,8 @@ _BASELINE_EXE    = str(DEFAULT_BASELINE_EXE)
 
 # Tests gated behind --integration: they need large/manually-supplied data
 # and/or take much longer than the T1-T16/T19-T21 unit tests.
-INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity")
+INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity",
+                     "t24_internal_decoy_parity")
 
 # Set by main() for T23/T24 (--bigdata)
 _BIGDATA_DIR = str(REPO_ROOT.parent / "20130226-comet-tests")
@@ -3682,6 +3683,118 @@ def test_t34_internal_decoys_fi(comet_exe):
 def test_t34_internal_decoys_pi(comet_exe):
     """T34: PI_DB internal decoys -- same fixture and assertions as the FI_DB variant."""
     return _test_t34_index_type(comet_exe, "-j", "PI_DB")
+
+
+# ---------------------------------------------------------------------------
+# T35 -- AScorePro must be identical across FASTA_DB / PI_DB / FI_DB
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md D6 (PR #129 review). Two regressions this guards:
+#  1. CometPreprocess::LoadIons() used to fill AScorePro's peak list (vRawFragmentPeakMassIntensity)
+#     in descending-INTENSITY order for the indexed modes whenever the spectrum had more than
+#     fragindex_num_spectrumpeaks peaks, but in descending m/z for FASTA_DB; AScorePro's result
+#     depends on peak order. The fixture spectrum has 356 peaks (cap 150) so the indexed modes
+#     take that branch.
+#  2. CometSearchManager::SetAScoreOptions() applies static mods to AScorePro's residue-mass table
+#     cumulatively and was called twice for batch PI_DB, so add_C_cysteine was applied to C twice
+#     in that mode only. The fixture peptide TSCEPYSDLK carries a static C and add_C_cysteine is
+#     57.021464 here (the T19/T20 AScore tests use 0.0 and could never see this).
+# The synthetic spectrum is the full 1+/2+ b/y ladder of TSCEPYS[79.966331]DLK plus seeded noise;
+# competing sites T1/S2/Y6 make the localization non-trivial. All three modes must report the
+# same localized peptide, the same AScore and the same site-score string; FASTA_DB and PI_DB
+# must also agree on xcorr (FI_DB's 1+ neutral-loss ion handling is a separate, documented
+# scoring nuance, so xcorr is not compared against it).
+
+T35_PARAMS_TEMPLATE = T26_PARAMS_TEMPLATE.replace("add_C_cysteine = 0.0", "add_C_cysteine = 57.021464")
+assert "add_C_cysteine = 57.021464" in T35_PARAMS_TEMPLATE, "T35_PARAMS_TEMPLATE: add_C_cysteine replacement didn't fire"
+
+
+@register("t35_ascore_crossmode")
+def test_t35_ascore_crossmode(comet_exe):
+    """T35: AScorePro localization/score identical for FASTA_DB, PI_DB and FI_DB (static C mod, >150-peak spectrum)."""
+    failures = []
+    fasta = DATA_DIR / "t35_ascore_crossmode.fasta"
+    ms2   = DATA_DIR / "t35_ascore_crossmode.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    if not fasta.exists() or not ms2.exists():
+        failures.append(f"fixture missing: {fasta} / {ms2}")
+        return failures
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    mod1 = "79.966331 STY 0 3 -1 0 0 97.976896"
+    EXPECTED = "TSCEPYS[79.9663]DLK"
+
+    n_peaks = sum(1 for l in ms2.read_text().splitlines() if l and l[0].isdigit())
+    check(n_peaks > 150, f"fixture spectrum has more than fragindex_num_spectrumpeaks (150) peaks: {n_peaks}", failures)
+
+    def make_params(db, ist=None):
+        p = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(db), ascorepro=-1, mod1=mod1,
+                                       decoy_search=0, len_min=8, len_max=12)
+        if ist is not None:
+            p = _set_param_line(p, "index_search_type", ist)
+        return p
+
+    def run_search(db, ist, label):
+        txt.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(db, ist))
+            params_file = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                print(out[-1500:])
+                return None
+            rows = _t34_read_rows(txt)
+            r1 = _t34_rank1(rows, 1)
+            if not check(r1 is not None, f"{label}: scan 1 has a rank-1 row", failures):
+                return None
+            return r1
+        finally:
+            params_file.unlink(missing_ok=True)
+            txt.unlink(missing_ok=True)
+
+    results = {}
+    results["FASTA_DB"] = run_search(fasta, None, "FASTA_DB")
+    for flag, label, ist in (("-j", "PI_DB", 0), ("-i", "FI_DB", 1)):
+        idx.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(fasta))
+            build_params = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [flag, f"-P{fmt(build_params)}"])
+            if not check(rc == 0 and idx.exists(), f"{label}: index builds (rc={rc})", failures):
+                print(out[-1500:])
+                continue
+            results[label] = run_search(idx, ist, label)
+        finally:
+            build_params.unlink(missing_ok=True)
+            idx.unlink(missing_ok=True)
+
+    for label, r in results.items():
+        if r is None:
+            continue
+        check(EXPECTED in r.get("modified_peptide", ""),
+              f"{label}: rank-1 is {EXPECTED}, got {r.get('modified_peptide')!r}", failures)
+        check(float(r.get("ascorepro", "0") or 0) > 0.0,
+              f"{label}: AScorePro score is populated ({r.get('ascorepro')!r})", failures)
+    ref = results.get("FASTA_DB")
+    if ref is not None:
+        for label in ("PI_DB", "FI_DB"):
+            r = results.get(label)
+            if r is None:
+                continue
+            check(r.get("ascorepro") == ref.get("ascorepro"),
+                  f"{label} AScorePro equals FASTA_DB's ({r.get('ascorepro')!r} vs {ref.get('ascorepro')!r}) -- "
+                  f"a difference means AScorePro saw different peaks (order) or a different residue-mass table (static mods)", failures)
+            check(r.get("ascore_sitescores") == ref.get("ascore_sitescores"),
+                  f"{label} AScorePro site scores equal FASTA_DB's ({r.get('ascore_sitescores')!r} vs {ref.get('ascore_sitescores')!r})", failures)
+            check(r.get("modified_peptide") == ref.get("modified_peptide"),
+                  f"{label} localized peptide equals FASTA_DB's", failures)
+        if results.get("PI_DB") is not None:
+            check(results["PI_DB"].get("xcorr") == ref.get("xcorr"),
+                  f"PI_DB xcorr equals FASTA_DB's ({results['PI_DB'].get('xcorr')!r} vs {ref.get('xcorr')!r})", failures)
+    return failures
 
 
 if __name__ == "__main__":
