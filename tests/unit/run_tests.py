@@ -197,6 +197,19 @@ def _binary_uses_win_paths(binary):
         return False
 
 
+def _localize_params_for(binary, params_text):
+    """Rewrite the `database_name = /mnt/<drive>/...` line of a params blob into
+    Drive:\\... form when `binary` is a Windows PE. T23/T24's params are built
+    from real fixtures with WSL-style absolute paths and are then handed, verbatim,
+    to whichever binary (current or baseline) is being timed -- the two can even be
+    different platforms -- so the conversion has to happen per-binary, at the point
+    of use, not once up front. Everything else in comet.params is path-free."""
+    if not _binary_uses_win_paths(binary):
+        return params_text
+    return re.sub(r"(?m)^(database_name = )(/mnt/\S+)$",
+                  lambda m: m.group(1) + _to_win(m.group(2)), params_text)
+
+
 # ---------------------------------------------------------------------------
 # .idx reader
 # ---------------------------------------------------------------------------
@@ -1730,10 +1743,11 @@ def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
     """Returns (returncode, txt_path, output, elapsed_seconds). elapsed_seconds
     is wall-clock time around the subprocess call -- a single-sample real-machine
     measurement, not an average of repeated runs; see _check_timing()."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
-        pf.write(params_content)
+        pf.write(_localize_params_for(comet_exe, params_content))
         params_file = Path(pf.name)
     txt_path = Path(mzxml_path).with_suffix(".txt")
     if txt_path.exists():
@@ -1741,7 +1755,7 @@ def _run_bigdata_search(comet_exe, params_content, mzxml_path, timeout=600):
     try:
         t0 = time.perf_counter()
         result = subprocess.run(
-            [str(comet_exe), f"-P{params_file}", str(mzxml_path)],
+            [str(comet_exe), f"-P{fmt(params_file)}", fmt(mzxml_path)],
             capture_output=True, text=True, timeout=timeout,
         )
         elapsed = time.perf_counter() - t0
@@ -1782,14 +1796,15 @@ def _index_build_and_search(binary, flag, label, plain_params, idx_path, mzxml, 
     prefix = f"{tag} " if tag else ""
     if idx_path.exists():
         idx_path.unlink()
+    fmt = _to_win if _binary_uses_win_paths(binary) else str
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
-        pf.write(plain_params)
+        pf.write(_localize_params_for(binary, plain_params))
         idx_params_file = Path(pf.name)
     try:
         t0 = time.perf_counter()
-        r = subprocess.run([str(binary), flag, f"-P{idx_params_file}"],
+        r = subprocess.run([str(binary), flag, f"-P{fmt(idx_params_file)}"],
                             capture_output=True, text=True, timeout=400)
         build_elapsed = time.perf_counter() - t0
         if not check(r.returncode == 0 and idx_path.exists(),
