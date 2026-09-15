@@ -1,5 +1,7 @@
 # Internal (pseudo-reverse) decoys for FI_DB searches -- design and plan
 
+> **Superseded in part (2026-09-15):** `vucTermMods` was renamed `vucFlags` and no longer carries terminal-mod slots (they moved into the `MOD_NUMBERS_POOL` entry); `DECOY_FLAG` is still bit 7 and `IsDecoy()` is unchanged. `FragmentPeptidesStruct` lost `cNtermMod`/`cCtermMod` (still 24 bytes). `AddFragments()`/`SearchFragmentIndex()` read terminal slots from the entry and apply them after reversal exactly as described here. See `docs/20260915_permuter_terminal_mods.md`.
+
 Status: **Plan reviewed 2026-09-14; all five Section 7 recommendations accepted.** The Section 4.5
 RTS reporting fix was pulled forward and landed first (commit 94a854ef; it is a live bug for PI_DB
 RTS with `decoy_search = 1`, independent of FI_DB). **Phases 1 and 2 implemented 2026-09-14**

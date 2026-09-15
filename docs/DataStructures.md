@@ -165,13 +165,14 @@ Each `VarMods` entry:
 |-------|---------|
 | `dVarModMass` | Mass delta (monoisotopic or average per `massUtility` setting). |
 | `dNeutralLoss` | Fragment neutral loss mass for this mod. |
-| `szVarModChar[MAX_VARMOD_AA]` | AAs this mod applies to (e.g. `"STY"`). |
+| `szVarModChar[MAX_VARMOD_AA]` | Residues this mod applies to (e.g. `"STY"`), plus optional terminal codes: `n`/`c` = any peptide N-/C-terminus, `^`/`$` = protein N-/C-terminus only (docs/20260915_permuter_terminal_mods.md). |
 | `iMaxNumVarModAAPerMod` / `iMinNumVarModAAPerMod` | Per-mod occurrence limits. |
 | `iBinaryMod` | If 1, either all eligible residues in the peptide are modified or none. |
 | `iRequireThisMod` | Tri-state, not a bool: `0` = not required; `1` = required (only report peptides carrying this mod); negative = "exactly one from this set of mods" grouping. |
-| `iVarModTermDistance` / `iWhichTerm` | Terminal-distance constraint. |
+| `iVarModTermDistance` / `iWhichTerm` | **Deprecated (2026-09).** Parsed from `variable_modNN` fields 5/6 for backward compatibility, normalized to -1/0 in `InitializeStaticParams()` (with a warning, and a one-release bridge translating the legacy `n 0 3 0 0` protein-terminus idiom to `^`), never consulted by the search. |
 | `dNeutralLoss2` | Second fragment neutral-loss mass for this mod. |
-| `bNtermMod` / `bCtermMod` | Set if this mod is constrained to the peptide N-/C-terminus. |
+| `bNtermMod` / `bCtermMod` | Set if this mod can occupy the N-/C-terminus (`n`/`^` resp. `c`/`$` present). |
+| `bProteinNtermOnly` / `bProteinCtermOnly` | Set if the terminal mod is restricted to the protein terminus (`^` without `n`, `$` without `c`). |
 | `bUseMod` | Set if this mod slot has a non-zero mass (i.e. is active). |
 
 ---
@@ -252,7 +253,7 @@ struct RawPeptideView;    // core/Types.h -- per-entry accessor, fields below
 
 One entry in the fragment index peptide list. Represents one (peptide, mod-state) combination. Since the FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1) this 24B struct is only the BUILD-TIME STAGING element for both modes; the resident arrays (`g_fragmentPeptides` for FI_DB, `g_dbIndexVariants` for PI_DB) are 13B/entry `VariantArray` SoAs, sorted by mass so searches can binary-search for mass-matching candidates.
 
-Both carry an FI_DB-only internal-decoy marker (docs/20260914_FI_internal_decoys.md): the staging struct's `cIsDecoy` byte (in the 24B struct's tail padding, `static_assert`-guarded) and, in the resident `VariantArray`, bit 7 of `vucTermMods` (`VariantArray::DECOY_FLAG`, read via `IsDecoy()`; the two nibbles only use values 0..5, and `GetNtermMod()` masks the flag). With `decoy_search != 0` `CometFragmentIndex::AddFragmentsThreadProcRange()` emits one pseudo-reverse decoy twin right after each accepted target variant, with the same `iWhichPeptide`, `modNumIdx`, terminal mods and (by composition) mass; only its b/y ladder -- built by `AddFragments(bDecoy = true)` from the `CometSearch::PseudoReversePeptide()`-permuted sequence and mod-slot array -- differs. PI_DB's `g_dbIndexVariants` never sets the flag (PI_DB reverses at score time in `AnalyzePeptideIndex()`).
+Both carry an FI_DB-only internal-decoy marker (docs/20260914_FI_internal_decoys.md): the staging struct's `cIsDecoy` byte (in the 24B struct's tail padding, `static_assert`-guarded) and, in the resident `VariantArray`, bit 7 of `vucFlags` (`VariantArray::DECOY_FLAG`, read via `IsDecoy()`). Until docs/20260915_permuter_terminal_mods.md Phase 2 that byte was `vucTermMods` and packed the two terminal-mod slots into its low 7 bits; terminal mods now live in the `MOD_NUMBERS_POOL` entry (see below), so the byte holds only the flag. With `decoy_search != 0` `CometFragmentIndex::AddFragmentsThreadProcRange()` emits one pseudo-reverse decoy twin right after each accepted target variant, with the same `iWhichPeptide`, `modNumIdx`, terminal mods and (by composition) mass; only its b/y ladder -- built by `AddFragments(bDecoy = true)` from the `CometSearch::PseudoReversePeptide()`-permuted sequence and mod-slot array -- differs. PI_DB's `g_dbIndexVariants` never sets the flag (PI_DB reverses at score time in `AnalyzePeptideIndex()`).
 
 **PI_DB's compact per-variant array used to be this same type** (`g_vDBIndexVariants`,
 `docs/20260730_PI_reduction.md`); as of docs/20260827_PI_memory.md Phase 2 it is
@@ -269,9 +270,10 @@ struct FragmentPeptidesStruct  // core/Types.h
 ```
 
 Field order is deliberately packing-optimized, not declaration-convenience order:
-`dPepMass` (8-byte aligned) first, then the two 4-byte fields, then the two 1-byte
-fields, with no internal padding -- 24 bytes total vs. 32 bytes for the original
-size_t-first ordering. At 80M+ entries for a heavily-modified fragment index build,
+`dPepMass` (8-byte aligned) first, then the two 4-byte fields, then the 1-byte
+decoy flag in the tail padding -- 24 bytes total vs. 32 bytes for the original
+size_t-first ordering (the two terminal-mod chars that used to sit here moved into the
+pool entry, docs/20260915_permuter_terminal_mods.md). At 80M+ entries for a heavily-modified fragment index build,
 that's a real reduction (see `docs/20260715_fusedflush.md`'s follow-up investigation
 for the sizing rationale).
 
@@ -279,8 +281,35 @@ for the sizing rationale).
 |-------|---------|
 | `dPepMass` | Modified MH+ mass (= unmodified mass + sum of applied mod masses). |
 | `iWhichPeptide` | Index into `g_vRawPeptides`; provides sequence and protein info. Narrowed to `unsigned int` from `size_t` since `g_vRawPeptides.size()` is checked to fit before this struct is ever populated. |
-| `modNumIdx` | Mod-combination entry index (resolved against `MOD_NUMBERS_POOL` via `GetModNumEntry()`); -1 = unmodified. |
-| `cNtermMod` / `cCtermMod` | N/C-terminal variable mod codes (index into `varModList`). |
+| `modNumIdx` | Mod-combination entry index (resolved against `MOD_NUMBERS_POOL` via `GetModNumEntry()`); -1 = fully unmodified. Terminal variable mods are part of the entry. |
+| `cIsDecoy` | 1 = internal pseudo-reverse decoy twin of the same (peptide, mods) tuple (FI_DB only). |
+
+---
+
+## MOD_NUMBERS_POOL entry layout
+
+One permutation entry is a fixed-width `char` array, one byte per position of the peptide's
+*modifiable sequence*, holding the compacted `ALL_MODS` index of the mod at that position or -1.
+Compacted indices are translated to real `varModList` slots with
+`CometPeptideIndex::TranslateVarModSlot()`.
+
+When any variable mod has a terminal code (`bVarTermModSearch`), `ModificationsPermuter` prefixes
+every modifiable sequence with two sentinel positions chosen from the peptide's flanks
+(`TERM_PEP_N` `<` / `TERM_PROT_N` `{` for `cPrevAA != '-'` / `== '-'`, then `TERM_PEP_C` `>` /
+`TERM_PROT_C` `}`), and every entry begins with two bytes:
+
+| Byte | Meaning |
+|------|---------|
+| 0 | N-terminal variable mod slot (compacted index), -1 = none |
+| 1 | C-terminal variable mod slot, -1 = none |
+| 2.. | one byte per modifiable residue, in sequence order |
+
+`g_iTermSlotBytes` (0 or 2) says which layout is in force; consumers read the terminal slots with
+`ModEntryTermSlot(entry, bTerminusN)` and walk residues from `ModEntryResidueOffset()`. Because
+the sentinel is part of the modifiable-sequence dedup key, a `^`/`$` mod can only ever appear on a
+peptide whose flank marks that protein terminus -- no per-peptide filtering downstream. Residue-only
+configurations keep the historical layout (no sentinels, stride = number of modifiable residues).
+See docs/20260915_permuter_terminal_mods.md.
 
 ---
 

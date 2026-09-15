@@ -13,7 +13,8 @@ implementation and testing plan for it. That change has not been made yet. Secti
 evaluates the complexity-ordering question for which combinations to keep when truncating; the
 decision there (Option C, simplest-to-most-complex by total mod count with mod-type-breadth
 tiebreak) is deferred until after a prerequisite change adds N-terminal/C-terminal modification
-support to `ModificationsPermuter`.
+support to `ModificationsPermuter`. *(That prerequisite landed 2026-09-15 --
+docs/20260915_permuter_terminal_mods.md -- so Option C is now unblocked.)*
 
 ## 1. What they are and where they live
 
@@ -438,7 +439,10 @@ principled way.
 - Cost: same order of effort as Option A -- it's Option A's rewrite with an extra comparator field on
   ties, not meaningfully harder once the two axes are already being unified.
 
-**Decision: Option C**, deferred. This work will be taken up after a prerequisite change to
+**Decision: Option C**, deferred. *(Update 2026-09-15: the prerequisite terminal-mod change has
+landed -- docs/20260915_permuter_terminal_mods.md; the enumeration structure gained two sentinel
+positions but its order is unchanged, so this reorder can proceed as designed.)* This work will be
+taken up after a prerequisite change to
 `ModificationsPermuter` to support N-terminal and C-terminal modifications, since that change is
 also expected to touch the combinatorics/enumeration structure this reorder depends on -- doing the
 complexity-ordering rewrite first would mean redoing part of it once terminal-mod support lands.

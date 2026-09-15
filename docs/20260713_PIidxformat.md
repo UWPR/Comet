@@ -1,5 +1,7 @@
 # PI_DB index build: reusing FI_DB's peptide-generation and mod-permutation code
 
+> **Superseded in part (2026-09-15):** the per-variant `cNtermMod`/`cCtermMod` fields described here were retired; terminal variable mods are permuted by `ModificationsPermuter` and stored in bytes 0/1 of each `MOD_NUMBERS_POOL` entry. The `.idx` header is now v5. See `docs/20260915_permuter_terminal_mods.md`.
+
 Status: PLANNING ONLY. No implementation yet.
 
 ## 1. Request

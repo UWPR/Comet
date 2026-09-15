@@ -579,10 +579,67 @@ spectrum), `t39_cap.ms2`, `t43_v4.fasta.idx` (frozen copy of a current v4 file).
 7. No terminal-mod loop remains in `CometFragmentIndex.cpp` or `CometPeptideIndex.cpp`;
    `GetNtermMod` / `GetCtermMod` / `cNtermMod` / `cCtermMod` no longer exist.
 
-## 10. Open items
+## 10. Open items (historical)
 
 - ~~Upstream source access~~ -- resolved 2026-09-15 via the local clone; see section 2b.
 - **Sentinel character choice** (section 3.2): any four non-letter printable characters
   absent from `szVarModChar`'s grammar; decide at Phase 1.
 - **Output formatting** of `^`/`$` mods in text/pepXML (Phase 0): confirm no writer echoes
   `szVarModChar` characters into user-visible strings where `^`/`$` would surprise.
+
+## 11. As built (2026-09-15)
+
+Phases 0-2 landed on `ModificationsPermuter` in three commits (`0ff2805b`, `3a821bb7`,
+`73de1373`); this section records where the implementation deviated from, or decided
+things left open by, sections 1-9.
+
+**Decided during implementation**
+
+- **Sentinel characters** (3.2): `<` peptide N-term, `{` protein N-term, `>` peptide C-term,
+  `}` protein C-term (`ModificationsPermuter::TERM_*`). Both sentinels are always prefixed
+  when terminal search is on, so the entry layout is `[N][C][residues...]` (upstream's), and
+  `combine()` needed no change.
+- **Phase 1 bisectability** (4): landed with `bIncludeTermini = false` in the index driver,
+  as planned; index identity was proven against the Phase 0 binary (81/81 `.idx` files
+  across three mod configs, identical phospho-reference permutation ledger).
+- **Shared raw-peptide rows** (new, 3.4 / D5): the raw-peptide table holds one row per unique
+  sequence, so a peptide that is protein-terminal in one protein and internal in another
+  carries a single flank pair. The dedup merge in `GeneratePlainPeptideIndex()` now OR's the
+  protein-terminus context across the run ("terminal in ANY protein"), adjusting the stored
+  mass when the union adds a static-carrying terminus the representative lacked. Index-path
+  consequences (tests assert only what both paths agree on): a `^` variant of a shared peptide
+  is attributed to every protein containing it, and a peptide N-terminal in one protein and
+  C-terminal in another may carry `^` and `$` together. The plain-FASTA path evaluates each
+  protein separately. Real proteomes hit this rarely; it is the price of one row per sequence.
+- **Plain-FASTA bug found by T42**: `MergeVarMods()` rebuilt the precursor mass from scratch
+  adding only `dAddCterminusProtein`; variable-mod peptides at the protein N-terminus with
+  `add_Nterm_protein != 0` were reported (and mass-checked) short by that amount. Fixed in
+  Phase 2 alongside D9.
+- **`AddFragments()` hardening check** now expects the flank statics in the stored mass;
+  before D9 any `add_Nterm_protein` above 10 Da (acetyl included) would have warned on every
+  protein-N-terminal peptide.
+- **Phase 0 deprecation bridge** also handles `term_distance < -1` (the undocumented `-2`
+  "not on the C-terminal residue" special case) with a warning; that check is removed.
+- **Zero-combination guard** (2b): a mod whose per-mod max is 0 is dropped in Step 1.
+- **`MAX_BITCOUNT`** widened by `TERM_SLOT_BYTES`; `initBinomialCoefficients()` width too.
+
+**Tests as built**
+
+- P1-P12 in `tests/unit/TestModificationsPermuter.cpp` (P10 is a run-twice pool identity
+  check rather than a golden file; P11 pins exact order). `std::max`/`std::min` must be
+  parenthesized there because `windows.h` defines `max`/`min`.
+- T37, T41 (Phase 0); T38, T39, T40, T42, T43 (Phase 2); `t22_rts_{fi,pi}_protterm`
+  (integration-gated RTS determinism with a `^` acetyl) instead of extending T22 in place.
+- T40 uses the T37 fixture with `decoy_search = 1` rather than the T34 fixture.
+- Committed `.idx` fixtures regenerated as v5; `tests/unit/data/t43_v4.fasta.idx` is a
+  frozen v4 copy for T43.
+
+**Measured**
+
+- Phospho reference (current `20260420-human-phosho/comet.params`, M x3 + STY x3, 8 threads):
+  194,673 modifiable sequences, 72,881,595 permutation entries, `MOD_NUMBERS_POOL` 866.8 MB
+  -- larger than section 3.3's 498 MB figure because the reference params have grown since
+  the memory doc; identical between the Phase 0 and Phase 1 binaries.
+- Run counts: `CometUnitTests` 71 (59 + 12); `run_tests.py` 65 on both Linux and Windows.
+
+**Phase 4** (validation at scale) follows in the next commit; its numbers go here.

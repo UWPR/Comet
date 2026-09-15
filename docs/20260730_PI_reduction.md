@@ -1,5 +1,7 @@
 # PI_DB memory reduction: splitting DBIndex into a raw-peptide table + compact per-variant record
 
+> **Superseded in part (2026-09-15):** the `(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod)` tuple described here is now `(iWhichPeptide, modNumIdx)`: terminal variable mods are part of the `MOD_NUMBERS_POOL` entry, and `MaterializeOneEntry()` takes `(iWhichPeptide, modNumIdx, out)`. See `docs/20260915_permuter_terminal_mods.md`.
+
 > **Phase 0.5's mod-header removal and Phase 0's `index_search_type`-only dispatch were
 > partially reverted on 2026-08-11 -- see `docs/20260811_restore_idx_header_mods.md`.**
 > The `.idx` header carries `VariableMod:`/`ProteinModList:`/`RequireVariableMod:` again
