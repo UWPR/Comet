@@ -2945,6 +2945,26 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    pPre->iHighestIon = 0;
    pPre->dHighestIntensity = 0.0;
 
+   // AScorePro peak list, filled in ONE order for every search mode: descending m/z over
+   // the original (m/z-sorted) spectrum -- the order FASTA_DB batch and the RTS path
+   // (PreprocessSingleSpectrumCore()) have always produced. It used to be filled inside the
+   // main loop below, so for PI_DB/FI_DB with more than fragindex_num_spectrumpeaks peaks
+   // it came out in descending-intensity order instead (that sort exists only to pick the
+   // most intense peaks for vfRawFragmentPeakMass). This is a normalization, not a scoring
+   // fix: AScorePro re-sorts its input by m/z before ranking peaks per window
+   // (AScoreTopIonsFilter), so the order never changed a score -- the cross-mode AScore
+   // difference that prompted it was SetAScoreOptions()'s double-applied static mods
+   // (docs/20260914_FI_internal_decoys.md D6; T35 covers both). Same intensity filters as
+   // the main loop.
+   if (g_staticParams.options.iPrintAScoreProScore)
+   {
+      for (i = (int)mstSpectrum.size() - 1; i >= 0; --i)
+      {
+         if (mstSpectrum.at(i).intensity >= dIntensityCutoff && mstSpectrum.at(i).intensity > 0.0)
+            pScoring->vRawFragmentPeakMassIntensity.emplace_back(mstSpectrum.at(i).mz, mstSpectrum.at(i).intensity);
+      }
+   }
+
    // read peaks in reverse order as they're possibly sorted in ascending order by
    // intensity and vfRawFragmentPeakMass needs most intense peaks
    for (i = pSpec->size() - 1; i >= 0; --i)
@@ -2970,11 +2990,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
             iNumFragmentPeaks++;
          }
-         if (g_staticParams.options.iPrintAScoreProScore)
-         {
-            // Store list of fragment masses and intensities for AScore and ProScore
-            pScoring->vRawFragmentPeakMassIntensity.emplace_back(dIon, dIntensity);
-         }
+         // (vRawFragmentPeakMassIntensity is filled above, in canonical m/z order)
 
          if (dIon < (pScoring->_pepMassInfo.dExpPepMass + FASTXCORR_ZERO_BOUND_CUSHION))
          {

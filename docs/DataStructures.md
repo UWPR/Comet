@@ -252,6 +252,8 @@ struct RawPeptideView;    // core/Types.h -- per-entry accessor, fields below
 
 One entry in the fragment index peptide list. Represents one (peptide, mod-state) combination. Since the FI_DB Phase 2 port (docs/20260827_PI_memory.md Section 7.1) this 24B struct is only the BUILD-TIME STAGING element for both modes; the resident arrays (`g_fragmentPeptides` for FI_DB, `g_dbIndexVariants` for PI_DB) are 13B/entry `VariantArray` SoAs, sorted by mass so searches can binary-search for mass-matching candidates.
 
+Both carry an FI_DB-only internal-decoy marker (docs/20260914_FI_internal_decoys.md): the staging struct's `cIsDecoy` byte (in the 24B struct's tail padding, `static_assert`-guarded) and, in the resident `VariantArray`, bit 7 of `vucTermMods` (`VariantArray::DECOY_FLAG`, read via `IsDecoy()`; the two nibbles only use values 0..5, and `GetNtermMod()` masks the flag). With `decoy_search != 0` `CometFragmentIndex::AddFragmentsThreadProcRange()` emits one pseudo-reverse decoy twin right after each accepted target variant, with the same `iWhichPeptide`, `modNumIdx`, terminal mods and (by composition) mass; only its b/y ladder -- built by `AddFragments(bDecoy = true)` from the `CometSearch::PseudoReversePeptide()`-permuted sequence and mod-slot array -- differs. PI_DB's `g_dbIndexVariants` never sets the flag (PI_DB reverses at score time in `AnalyzePeptideIndex()`).
+
 **PI_DB's compact per-variant array used to be this same type** (`g_vDBIndexVariants`,
 `docs/20260730_PI_reduction.md`); as of docs/20260827_PI_memory.md Phase 2 it is
 `g_dbIndexVariants` (`PiVariantArray`, core/Types.h) -- a 13B/entry structure-of-arrays

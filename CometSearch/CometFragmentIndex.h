@@ -86,17 +86,26 @@ private:
    // pointer is non-null -- see the definition -- so there is no separate bCountOnly flag:
    // pLocalFragPeptides non-null selects the count pass; null selects a fill sub-pass,
    // where pFillWriteCursor non-null vs. null further selects fill-write vs. fill-count.
-   static void AddFragments(const RawPeptideTable& vRawPeptides,
-                            size_t iWhichPeptide,
-                            size_t iWhichFragmentPeptide,
-                            int modNumIdx,
-                            char cNtermMod,
-                            char cCtermMod,
-                            const vector<int>& vModSlotForAllModsIdx,
-                            double dKnownPepMass,
-                            vector<FragmentPeptidesStruct>* pLocalFragPeptides,
-                            uint64_t* pFillBinCounts,
-                            uint64_t* pFillWriteCursor);
+   //
+   // bDecoy (docs/20260914_FI_internal_decoys.md Section 4.3): build the b/y ladder of the
+   // tuple's internal pseudo-reverse decoy instead of the target's, and tag the staging
+   // entry (count pass) as a decoy. Precursor mass and every precursor-side filter are
+   // identical for target and decoy (reversal preserves composition and the mod set).
+   // Returns the variant's precursor mass, or -1.0 when the length / mass-range /
+   // precursor-presence filters rejected it (nothing was recorded) -- the count pass feeds
+   // the target's returned mass back in as dKnownPepMass for its decoy twin.
+   static double AddFragments(const RawPeptideTable& vRawPeptides,
+                              size_t iWhichPeptide,
+                              size_t iWhichFragmentPeptide,
+                              int modNumIdx,
+                              char cNtermMod,
+                              char cCtermMod,
+                              bool bDecoy,
+                              const vector<int>& vModSlotForAllModsIdx,
+                              double dKnownPepMass,
+                              vector<FragmentPeptidesStruct>* pLocalFragPeptides,
+                              uint64_t* pFillBinCounts,
+                              uint64_t* pFillWriteCursor);
 
    // Count pass, one raw-peptide index range per thread. Enumerates every mod
    // combination for peptides [iPeptideStart, iPeptideEnd) exactly as the old

@@ -928,7 +928,7 @@ void PrintParams(int iPrintParams)
    fprintf(fp,
 "#\n\
 database_name = /some/path/db.fasta\n\
-decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate\n\
+decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate; .idx searches use the value the index was built with\n\
 \n\
 # Only relevant when database_name points at a NOT-YET-BUILT .idx file whose corresponding\n\
 # FASTA is auto-digested to create it -- selects which format that new index is built as.\n\

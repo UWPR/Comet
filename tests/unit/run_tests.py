@@ -65,7 +65,8 @@ _BASELINE_EXE    = str(DEFAULT_BASELINE_EXE)
 
 # Tests gated behind --integration: they need large/manually-supplied data
 # and/or take much longer than the T1-T16/T19-T21 unit tests.
-INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity")
+INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity",
+                     "t24_internal_decoy_parity")
 
 # Set by main() for T23/T24 (--bigdata)
 _BIGDATA_DIR = str(REPO_ROOT.parent / "20130226-comet-tests")
@@ -1553,7 +1554,133 @@ def _test_rts_index_type(comet_exe, index_flag, label):
         if hs_idx and hs_idx.exists():
             hs_idx.unlink()
 
+    # --- 2b. Same determinism check with internal decoys on (decoy_search=1): the
+    #        decoy variants double FI_DB's candidate population and PI_DB reverses every
+    #        candidate at score time; both must stay thread-count-independent, and some
+    #        decoys must actually win spectra (docs/20260914_FI_internal_decoys.md Phase 4).
+    hs_dec_params = hs_params_content.replace("decoy_search = 0 ", "decoy_search = 1 ")
+    assert hs_dec_params != hs_params_content, "comet_phospho.params decoy_search line changed shape?"
+    hs_idx = None
+    try:
+        hs_idx = _rts_build_index(comet_exe, small_fasta, hs_dec_params, index_flag)
+        out1 = Path(tempfile.mktemp(suffix=".dec.1thread.out", dir=str(DATA_DIR)))
+        out8 = Path(tempfile.mktemp(suffix=".dec.8thread.out", dir=str(DATA_DIR)))
+        try:
+            rc1, log1 = _rts_run(hs_idx, RTS_FIXTURE, 1, out1, index_search_type=index_search_type)
+            if not check(rc1 == 0, f"{label} decoy_search=1: rts_repro (1 thread) exits 0", failures):
+                print(log1)
+                return failures
+            rc8, log8 = _rts_run(hs_idx, RTS_FIXTURE, 8, out8, index_search_type=index_search_type)
+            if not check(rc8 == 0, f"{label} decoy_search=1: rts_repro (8 threads) exits 0", failures):
+                print(log8)
+                return failures
+            lines1 = _rts_sorted_lines(out1)
+            lines8 = _rts_sorted_lines(out8)
+            n_decoy = sum(1 for l in lines1 if "prot 'DECOY_" in l)
+            check(len(lines1) == 197, f"{label} decoy_search=1: 1-thread run covers all 197 spectra, got {len(lines1)}", failures)
+            check(n_decoy > 0, f"{label} decoy_search=1: some top-1 hits are internal decoys ({n_decoy} of 197)", failures)
+            check(lines1 == lines8,
+                  f"{label} decoy_search=1: 1-thread and 8-thread outputs are byte-identical after sorting by scan "
+                  f"({sum(a != b for a, b in zip(lines1, lines8))} differing lines out of {len(lines1)})",
+                  failures)
+        finally:
+            out1.unlink(missing_ok=True)
+            out8.unlink(missing_ok=True)
+    finally:
+        if hs_idx and hs_idx.exists():
+            hs_idx.unlink()
+
+    # --- 3. Internal-decoy labeling (docs/20260914_FI_internal_decoys.md Section 4.5) ---
+    #
+    # DoSingleSpectrumSearchMultiResults() (CometSearchManager.cpp) used to classify an
+    # indexed-DB hit's proteins as target vs decoy purely by name prefix. An internal
+    # (pseudo-reverse) decoy carries the TARGET's protein-list row -- StorePeptideI()
+    # routes it to pWhichDecoyProtein with the same lProteinFilePosition -- so every
+    # decoy_search=1 decoy hit came back to the C# layer with unprefixed target protein
+    # names, indistinguishable from a real identification. Build the t19 index with
+    # decoy_search=1 and feed two synthetic spectra: the target's b/y ions (control: must
+    # still be reported as a target) and the DECOY's b/y ions with the phospho moved along
+    # with its serine (must be reported as the decoy sequence with a DECOY_-prefixed protein).
+    #
+    # Runs for both index types: PI_DB reverses at score time (AnalyzePeptideIndex()),
+    # FI_DB indexes a decoy variant per target variant at fragment-index build and
+    # reconstructs it in SearchFragmentIndex() (plan Phases 1-2) -- same helper, same
+    # expected decoy string.
+    target_pep = "ACDEFGSK"
+    # search_enzyme_number = 0 (Cut_everywhere) has enzyme offset 0, so
+    # CometSearch::PseudoReversePeptide() keeps the FIRST residue fixed:
+    # ABCDEK -> AKEDCB. The mod site moves with its residue.
+    decoy_pep = target_pep[0] + target_pep[:0:-1]
+    target_mods = {6: 79.966331}                                # 0-based S position
+    decoy_mods = {len(target_pep) - i: m for i, m in target_mods.items()}
+    assert decoy_pep == "AKSGFEDC" and decoy_pep[2] == "S" and decoy_mods == {2: 79.966331}
+
+    decoy_fixture = Path(tempfile.mktemp(suffix=".decoy.fixture.txt", dir=str(DATA_DIR)))
+    decoy_fixture.write_text(
+        "\n".join(_theoretical_fixture_lines(1, target_pep, target_mods, 2)
+                  + _theoretical_fixture_lines(2, decoy_pep, decoy_mods, 2)) + "\n")
+    decoy_idx_params = t19_params.replace("decoy_search = 0", "decoy_search = 1")
+    assert decoy_idx_params != t19_params
+    decoy_idx = None
+    try:
+        decoy_idx = _rts_build_index(comet_exe, t19_fasta, decoy_idx_params, index_flag)
+        out_path = Path(tempfile.mktemp(suffix=".out", dir=str(DATA_DIR)))
+        rc, out = _rts_run(decoy_idx, decoy_fixture, 1, out_path, index_search_type=index_search_type)
+        if not check(rc == 0, f"{label}: rts_repro exits 0 on internal-decoy fixture", failures):
+            print(out)
+            return failures
+        lines = _rts_sorted_lines(out_path) if out_path.exists() else []
+        out_path.unlink(missing_ok=True)
+        if not check(len(lines) == 2, f"{label}: 2 internal-decoy result lines, got {len(lines)}", failures):
+            return failures
+        tgt_parts = lines[0].split("\t")
+        dec_parts = lines[1].split("\t")
+        tgt_pep = tgt_parts[1] if len(tgt_parts) > 1 else "NO_MATCH"
+        dec_pep = dec_parts[1] if len(dec_parts) > 1 else "NO_MATCH"
+        check("ACDEFGS" in tgt_pep and "79.9663" in tgt_pep,
+              f"{label}: control spectrum still matches target ACDEFGS[79.9663]K, got {tgt_pep!r}", failures)
+        check("prot '" in tgt_parts[-1] and "prot 'DECOY_" not in tgt_parts[-1],
+              f"{label}: control target hit is reported WITHOUT decoy prefix, got {tgt_parts[-1]!r}", failures)
+        check("AKS" in dec_pep and "79.9663" in dec_pep and "GFEDC" in dec_pep,
+              f"{label}: decoy spectrum matches internal decoy AKS[79.9663]GFEDC, got {dec_pep!r}", failures)
+        check("prot 'DECOY_" in dec_parts[-1],
+              f"{label}: internal-decoy hit is reported WITH decoy prefix, got {dec_parts[-1]!r}", failures)
+    finally:
+        if decoy_idx and decoy_idx.exists():
+            decoy_idx.unlink()
+        decoy_fixture.unlink(missing_ok=True)
+
     return failures
+
+
+# Monoisotopic residue masses for synthesizing fixture spectra (b/y singly-charged
+# ladders), matching the constants the committed t19_ascore_fidb.ms2 was built from.
+_MONO_RESIDUE_MASS = {
+    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
+    "T": 101.047679, "C": 103.009185, "L": 113.084064, "I": 113.084064, "N": 114.042927,
+    "D": 115.026943, "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485,
+    "H": 137.058912, "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
+}
+_PROTON_MASS = 1.007276
+_H2O_MASS = 18.010565
+
+
+def _theoretical_fixture_lines(scan, peptide, mods, charge):
+    """One rts_repro fixture SPECTRUM block: every singly-charged b and y ion of
+    `peptide` (mods = {0-based residue index: delta mass}) at intensity 100, with the
+    precursor m/z computed for `charge`."""
+    res = [_MONO_RESIDUE_MASS[aa] + mods.get(i, 0.0) for i, aa in enumerate(peptide)]
+    n = len(res)
+    peaks = []
+    for k in range(1, n):
+        peaks.append(sum(res[:k]) + _PROTON_MASS)                 # b_k
+        peaks.append(sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS)  # y_k
+    peaks.sort()
+    neutral = sum(res) + _H2O_MASS
+    mz = (neutral + charge * _PROTON_MASS) / charge
+    lines = [f"SPECTRUM {scan} {charge} {mz:.6f} {len(peaks)}"]
+    lines += [f"{m:.6f} 100.0" for m in peaks]
+    return lines
 
 
 @register("t22_rts_fi")
@@ -1938,6 +2065,94 @@ def test_t24_index_parity(comet_exe):
         _check_timing(current_search_times[label], bsearch_s, f"{label} search time", failures)
 
     idx_path.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T24b -- internal-decoy parity across FASTA / FI_DB / PI_DB (--bigdata gated)
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md Phase 4. Same comet-debug3 data as T23/T24, but with
+# Comet's internal decoys (decoy_search=1) on the TARGET-ONLY human.fasta in all three search
+# modes. FI_DB indexes one pseudo-reverse decoy variant per target variant, PI_DB and FASTA_DB
+# reverse each candidate at score time -- the three must agree on PSMs at 1% FDR within the
+# same 5% T23/T24 use for FI_DB, and FI_DB's internal decoys must agree with the pre-existing
+# workaround (an FI_DB built from human.target-decoy.fasta, decoy_search=0) too. Timings are
+# printed (build and search wall-clock, single sample) so the decoy_search=0 vs =1 FI_DB cost
+# can be read off the log; they are not asserted.
+
+@register("t24_internal_decoy_parity")
+def test_t24_internal_decoy_parity(comet_exe):
+    """T24b [integration, bigdata]: internal-decoy (decoy_search=1) 1% FDR parity, FASTA vs FI_DB vs PI_DB."""
+    if not _RUN_INTEGRATION:
+        print("  SKIP: pass --integration to run this test")
+        return []
+
+    failures = []
+    d3 = Path(_BIGDATA_DIR) / "comet-debug3"
+    mzxml = d3 / "20170103_HelaQC_01.mzXML"
+    human_fasta = d3 / "human.fasta"
+    human_td_fasta = d3 / "human.target-decoy.fasta"
+    base_params_file = d3 / "comet.params"
+    if not (mzxml.exists() and human_fasta.exists() and human_td_fasta.exists() and base_params_file.exists()):
+        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR")
+        return []
+
+    base = base_params_file.read_text()
+    dec_params = _set_param_line(base, "database_name", human_fasta)
+    dec_params = _set_param_line(dec_params, "decoy_search", "1")
+
+    print("  Running plain-FASTA internal-decoy search (human.fasta, decoy_search=1) ...")
+    rc0, txt0, out0, t0 = _run_bigdata_search(comet_exe, dec_params, mzxml)
+    if not check(rc0 == 0, f"plain-FASTA internal-decoy search exits 0 (rc={rc0})", failures):
+        print(out0[-2000:])
+        return failures
+    n0, cx0, ce0 = _q1pct_counts(txt0)
+    txt0.unlink(missing_ok=True)
+    print(f"    plain-FASTA decoy_search=1: {cx0:,} PSMs at 1% FDR (xcorr), {n0:,} rank-1 PSMs, search {t0:.1f}s")
+    check(10_000 <= cx0 <= 30_000,
+          f"plain-FASTA internal decoys: {cx0:,} PSMs at 1% FDR (xcorr) in plausible range [10k, 30k]", failures)
+
+    idx_path = human_fasta.with_suffix(".fasta.idx")
+    counts = {"plain-FASTA": cx0}
+    for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+        print(f"  Building {label} index (human.fasta) and searching with decoy_search=1 ...")
+        result = _index_build_and_search(comet_exe, flag, label, dec_params, idx_path, mzxml, failures)
+        if result is None:
+            continue
+        cx, build_s, search_s = result
+        counts[label] = cx
+        print(f"    {label} decoy_search=1: {cx:,} PSMs at 1% FDR (xcorr); build {build_s:.1f}s, search {search_s:.1f}s")
+        ratio = (cx / cx0) if cx0 else float("inf")
+        check(0.95 <= ratio <= 1.05,
+              f"{label} internal decoys ({cx:,}) agree with plain-FASTA internal decoys ({cx0:,}) "
+              f"within 5% at 1% FDR xcorr (ratio {ratio:.3f})", failures)
+    idx_path.unlink(missing_ok=True)
+
+    if "FI_DB" in counts and "PI_DB" in counts:
+        ratio = counts["FI_DB"] / counts["PI_DB"] if counts["PI_DB"] else float("inf")
+        check(0.95 <= ratio <= 1.05,
+              f"FI_DB internal decoys ({counts['FI_DB']:,}) agree with PI_DB internal decoys "
+              f"({counts['PI_DB']:,}) within 5% (ratio {ratio:.3f})", failures)
+
+    # FI_DB internal decoys vs the pre-existing FI_DB workaround: target-decoy FASTA, decoy_search=0
+    if "FI_DB" in counts:
+        td_params = _set_param_line(base, "database_name", human_td_fasta)
+        td_params = _set_param_line(td_params, "decoy_search", "0")
+        td_idx = human_td_fasta.with_suffix(".fasta.idx")
+        print("  Building FI_DB index (human.target-decoy.fasta) and searching with decoy_search=0 ...")
+        result = _index_build_and_search(comet_exe, "-i", "FI_DB", td_params, td_idx, mzxml, failures,
+                                         tag="target-decoy FASTA")
+        td_idx.unlink(missing_ok=True)
+        if result is not None:
+            cx_td, build_s, search_s = result
+            print(f"    FI_DB target-decoy FASTA decoy_search=0: {cx_td:,} PSMs at 1% FDR (xcorr); "
+                  f"build {build_s:.1f}s, search {search_s:.1f}s")
+            ratio = counts["FI_DB"] / cx_td if cx_td else float("inf")
+            check(0.95 <= ratio <= 1.05,
+                  f"FI_DB internal decoys ({counts['FI_DB']:,}) agree with FI_DB target-decoy FASTA "
+                  f"({cx_td:,}) within 5% (ratio {ratio:.3f})", failures)
+
     return failures
 
 
@@ -3284,6 +3499,405 @@ def main():
         print(f"{'#'*60}")
     print(f"{'='*60}")
     sys.exit(0 if grand_fail == 0 else 1)
+
+
+# ---------------------------------------------------------------------------
+# T34 -- FI_DB (and PI_DB) internal decoys on a crafted fixture
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md Phase 4. Fixture data/t34_fi_internal_decoys.{fasta,ms2}:
+# two tryptic peptides -- PEPTMIDEK (oxidizable M; its pseudo-reverse under trypsin's
+# last-residue-fixed rule is EDIMTPEPK, and the M-oxidation must travel with the M to
+# EDIM[15.9949]TPEPK) and LSAGGASLK (self-palindromic: its pseudo-reverse is itself) -- and four
+# synthetic 2+ spectra: (1) PEPTM[ox]IDEK, (2) EDIM[ox]TPEPK, (3) LSAGGASLK, (4) PEPTMIDEK.
+#
+# Asserts, per index type (FI_DB via -i, PI_DB via -j):
+#   decoy_search=0: no DECOY_ anywhere; scan 2 does NOT match EDIM...TPEPK; scan 3 lists only T34_pal.
+#   decoy_search=1: scan 1 -> target, unprefixed; scan 2 -> EDIM[15.9949]TPEPK labeled DECOY_T34_ox
+#                   (and NOT also the bare T34_ox -- the batch protein-name helper's former
+#                   FI_DB fallback emitted both); scan 3 -> exactly ONE LSAGGASLK row whose
+#                   protein column carries both T34_pal and DECOY_T34_pal (target + palindromic
+#                   decoy merged by CheckDuplicateI()); FI_DB search log reports exactly
+#                   3 internal decoy variants (PEPTMIDEK, PEPTM[ox]IDEK, LSAGGASLK).
+#   decoy_search=2: target .txt has no DECOY_ rows and no EDIM...; .decoy.txt has scan 2 ->
+#                   EDIM[15.9949]TPEPK / DECOY_T34_ox and scan 3 -> LSAGGASLK / DECOY_T34_pal
+#                   (separate lists, no merge).
+
+T34_PARAMS_TEMPLATE = T26_PARAMS_TEMPLATE.replace("num_output_lines = 1", "num_output_lines = 3")
+assert "num_output_lines = 3" in T34_PARAMS_TEMPLATE, "T34_PARAMS_TEMPLATE: num_output_lines replacement didn't fire"
+
+
+def _t34_read_rows(txt):
+    if not txt.exists():
+        return []
+    lines = txt.read_text().splitlines()
+    if len(lines) < 2:
+        return []
+    header = lines[1].split("\t")
+    return [dict(zip(header, l.split("\t"))) for l in lines[2:] if l.strip()]
+
+
+def _t34_run_mode(comet_exe, index_flag, label, decoy_search, failures):
+    """Build the T34 index with `index_flag`, search the fixture with `decoy_search`; returns
+    (target_rows, decoy_rows, search_log) or None on a build/search failure."""
+    fasta = DATA_DIR / "t34_fi_internal_decoys.fasta"
+    ms2   = DATA_DIR / "t34_fi_internal_decoys.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    txt_d = ms2.with_suffix(".decoy.txt")
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    mod1 = "15.9949 M 0 3 -1 0 0 0.0"
+    tag = f"{label} decoy_search={decoy_search}"
+
+    for f in (idx, txt, txt_d):
+        f.unlink(missing_ok=True)
+    params_files = []
+    try:
+        build_params = T34_PARAMS_TEMPLATE.format(
+            comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0, mod1=mod1,
+            decoy_search=decoy_search, len_min=5, len_max=15)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(build_params)
+            params_files.append(Path(pf.name))
+        rc, out = _run_t19_step(comet_exe, [index_flag, f"-P{fmt(params_files[-1])}"])
+        if not check(rc == 0 and idx.exists(), f"{tag}: index builds (rc={rc})", failures):
+            print(out[-1500:])
+            return None
+
+        search_params = T34_PARAMS_TEMPLATE.format(
+            comet_version="2026.02 rev. 0", database=fmt(idx), ascorepro=0, mod1=mod1,
+            decoy_search=decoy_search, len_min=5, len_max=15)
+        search_params = _set_param_line(search_params, "index_search_type", 1 if index_flag == "-i" else 0)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(search_params)
+            params_files.append(Path(pf.name))
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_files[-1])}", fmt(ms2)])
+        if not check(rc == 0 and txt.exists(), f"{tag}: search exits 0 and writes .txt (rc={rc})", failures):
+            print(out[-1500:])
+            return None
+        return _t34_read_rows(txt), _t34_read_rows(txt_d), out
+    finally:
+        for f in params_files:
+            f.unlink(missing_ok=True)
+        for f in (idx, txt, txt_d):
+            f.unlink(missing_ok=True)
+
+
+def _t34_rank1(rows, scan):
+    r = [x for x in rows if x.get("scan") == str(scan) and x.get("num") == "1"]
+    return r[0] if r else None
+
+
+def _test_t34_index_type(comet_exe, index_flag, label):
+    failures = []
+    fasta = DATA_DIR / "t34_fi_internal_decoys.fasta"
+    ms2   = DATA_DIR / "t34_fi_internal_decoys.ms2"
+    if not fasta.exists() or not ms2.exists():
+        failures.append(f"fixture missing: {fasta} / {ms2}")
+        return failures
+    DECOY_PEP, DECOY_MOD = "EDIMTPEPK", "EDIM[15.9949]TPEPK"
+    PAL = "LSAGGASLK"
+
+    # --- decoy_search = 0: no decoys at all ---
+    res = _t34_run_mode(comet_exe, index_flag, label, 0, failures)
+    if res is not None:
+        rows, drows, out = res
+        check(not any("DECOY_" in r.get("protein", "") for r in rows),
+              f"{label} decoy_search=0: no DECOY_ protein anywhere in the target .txt", failures)
+        check(not drows, f"{label} decoy_search=0: no .decoy.txt rows", failures)
+        r1 = _t34_rank1(rows, 1)
+        check(r1 is not None and "PEPTM[15.9949]IDEK" in r1.get("modified_peptide", ""),
+              f"{label} decoy_search=0: scan 1 -> PEPTM[15.9949]IDEK, got {r1 and r1.get('modified_peptide')!r}", failures)
+        check(not any(r.get("scan") == "2" and r.get("plain_peptide") == DECOY_PEP for r in rows),
+              f"{label} decoy_search=0: scan 2 never matches the decoy sequence {DECOY_PEP}", failures)
+        r3 = _t34_rank1(rows, 3)
+        check(r3 is not None and r3.get("plain_peptide") == PAL and r3.get("protein") == "T34_pal",
+              f"{label} decoy_search=0: scan 3 -> {PAL} with protein exactly T34_pal, got "
+              f"{r3 and (r3.get('plain_peptide'), r3.get('protein'))!r}", failures)
+        check("internal decoy variants" not in out,
+              f"{label} decoy_search=0: search log does not report internal decoy variants", failures)
+
+    # --- decoy_search = 1: concatenated ---
+    res = _t34_run_mode(comet_exe, index_flag, label, 1, failures)
+    if res is not None:
+        rows, drows, out = res
+        check(not drows, f"{label} decoy_search=1: no .decoy.txt rows (concatenated mode)", failures)
+        r1 = _t34_rank1(rows, 1)
+        check(r1 is not None and "PEPTM[15.9949]IDEK" in r1.get("modified_peptide", "")
+              and r1.get("protein") == "T34_ox",
+              f"{label} decoy_search=1: scan 1 -> PEPTM[15.9949]IDEK / T34_ox (unprefixed), got "
+              f"{r1 and (r1.get('modified_peptide'), r1.get('protein'))!r}", failures)
+        r2 = _t34_rank1(rows, 2)
+        check(r2 is not None and DECOY_MOD in r2.get("modified_peptide", ""),
+              f"{label} decoy_search=1: scan 2 -> {DECOY_MOD} (M-oxidation moved with its residue), got "
+              f"{r2 and r2.get('modified_peptide')!r}", failures)
+        check(r2 is not None and r2.get("protein") == "DECOY_T34_ox",
+              f"{label} decoy_search=1: scan 2 protein is exactly DECOY_T34_ox (prefixed, not duplicated bare), got "
+              f"{r2 and r2.get('protein')!r}", failures)
+        pal_rows = [r for r in rows if r.get("scan") == "3" and r.get("plain_peptide") == PAL]
+        check(len(pal_rows) == 1,
+              f"{label} decoy_search=1: scan 3 has exactly one {PAL} row (palindromic decoy merged into the target), "
+              f"got {len(pal_rows)}", failures)
+        prots = set(pal_rows[0].get("protein", "").split(",")) if pal_rows else set()
+        check(prots == {"T34_pal", "DECOY_T34_pal"},
+              f"{label} decoy_search=1: scan 3 protein column carries T34_pal and DECOY_T34_pal, got {sorted(prots)!r}", failures)
+        if index_flag == "-i":
+            check("3 internal decoy variants" in out,
+                  f"{label} decoy_search=1: FI build log reports exactly 3 internal decoy variants "
+                  f"(PEPTMIDEK, PEPTM[ox]IDEK, LSAGGASLK)", failures)
+
+    # --- decoy_search = 2: separate decoy list ---
+    res = _t34_run_mode(comet_exe, index_flag, label, 2, failures)
+    if res is not None:
+        rows, drows, out = res
+        check(not any("DECOY_" in r.get("protein", "") for r in rows),
+              f"{label} decoy_search=2: no DECOY_ protein in the target .txt", failures)
+        check(not any(r.get("plain_peptide") == DECOY_PEP for r in rows),
+              f"{label} decoy_search=2: decoy sequence {DECOY_PEP} absent from the target .txt", failures)
+        check(drows and all(r.get("protein", "").startswith("DECOY_") for r in drows),
+              f"{label} decoy_search=2: .decoy.txt has rows and every protein is DECOY_-prefixed ({len(drows)} rows)", failures)
+        d2 = _t34_rank1(drows, 2)
+        check(d2 is not None and DECOY_MOD in d2.get("modified_peptide", "") and d2.get("protein") == "DECOY_T34_ox",
+              f"{label} decoy_search=2: decoy file scan 2 -> {DECOY_MOD} / DECOY_T34_ox, got "
+              f"{d2 and (d2.get('modified_peptide'), d2.get('protein'))!r}", failures)
+        d3 = _t34_rank1(drows, 3)
+        check(d3 is not None and d3.get("plain_peptide") == PAL and d3.get("protein") == "DECOY_T34_pal",
+              f"{label} decoy_search=2: decoy file scan 3 -> {PAL} / DECOY_T34_pal (separate list, no merge), got "
+              f"{d3 and (d3.get('plain_peptide'), d3.get('protein'))!r}", failures)
+        t3 = _t34_rank1(rows, 3)
+        check(t3 is not None and t3.get("plain_peptide") == PAL and t3.get("protein") == "T34_pal",
+              f"{label} decoy_search=2: target file scan 3 -> {PAL} / T34_pal, got "
+              f"{t3 and (t3.get('plain_peptide'), t3.get('protein'))!r}", failures)
+
+    return failures
+
+
+@register("t34_internal_decoys_fi")
+def test_t34_internal_decoys_fi(comet_exe):
+    """T34: FI_DB internal decoys -- reversal, mod mirroring, palindrome merge, separate-list mode."""
+    return _test_t34_index_type(comet_exe, "-i", "FI_DB")
+
+
+@register("t34_internal_decoys_pi")
+def test_t34_internal_decoys_pi(comet_exe):
+    """T34: PI_DB internal decoys -- same fixture and assertions as the FI_DB variant."""
+    return _test_t34_index_type(comet_exe, "-j", "PI_DB")
+
+
+# ---------------------------------------------------------------------------
+# T35 -- AScorePro must be identical across FASTA_DB / PI_DB / FI_DB
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md D6 (PR #129 review). What this guards:
+#  1. The SCORE regression: CometSearchManager::SetAScoreOptions() applies static mods to
+#     AScorePro's residue-mass table cumulatively and was called twice for batch PI_DB, so
+#     add_C_cysteine was applied to C twice in that mode only (same PSM: 15.06 in FASTA_DB,
+#     12.78 in PI_DB). The fixture peptide TSCEPYSDLK carries a static C and add_C_cysteine is
+#     57.021464 here (the T19/T20 AScore tests use 0.0 and could never see this). Negative
+#     control: with only the SetAScoreOptions() reset reverted this test fails (PI_DB AScore
+#     110.17 vs FASTA_DB 339.46).
+#  2. The peak-list NORMALIZATION: CometPreprocess::LoadIons() now fills AScorePro's peak list
+#     (vRawFragmentPeakMassIntensity) in the same descending-m/z order for every mode instead of
+#     descending intensity for the indexed modes above fragindex_num_spectrumpeaks peaks. This
+#     is not score-affecting -- AScorePro re-sorts its input by m/z (AScoreTopIonsFilter), and
+#     reverting only that change leaves this test passing -- but the 356-peak fixture (cap 150)
+#     does drive the indexed modes through the formerly intensity-sorted branch, so a future
+#     order-sensitive consumer of that list would be caught here.
+# The synthetic spectrum is the full 1+/2+ b/y ladder of TSCEPYS[79.966331]DLK plus seeded noise;
+# competing sites T1/S2/Y6 make the localization non-trivial. All three modes must report the
+# same localized peptide, the same AScore and the same site-score string; FASTA_DB and PI_DB
+# must also agree on xcorr (FI_DB's 1+ neutral-loss ion handling is a separate, documented
+# scoring nuance, so xcorr is not compared against it).
+
+T35_PARAMS_TEMPLATE = T26_PARAMS_TEMPLATE.replace("add_C_cysteine = 0.0", "add_C_cysteine = 57.021464")
+assert "add_C_cysteine = 57.021464" in T35_PARAMS_TEMPLATE, "T35_PARAMS_TEMPLATE: add_C_cysteine replacement didn't fire"
+
+
+@register("t35_ascore_crossmode")
+def test_t35_ascore_crossmode(comet_exe):
+    """T35: AScorePro identical across FASTA_DB/PI_DB/FI_DB -- guards the double-applied static mod (score regression) and exercises the >150-peak normalized peak-list branch."""
+    failures = []
+    fasta = DATA_DIR / "t35_ascore_crossmode.fasta"
+    ms2   = DATA_DIR / "t35_ascore_crossmode.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    if not fasta.exists() or not ms2.exists():
+        failures.append(f"fixture missing: {fasta} / {ms2}")
+        return failures
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    mod1 = "79.966331 STY 0 3 -1 0 0 97.976896"
+    EXPECTED = "TSCEPYS[79.9663]DLK"
+
+    n_peaks = sum(1 for l in ms2.read_text().splitlines() if l and l[0].isdigit())
+    check(n_peaks > 150, f"fixture spectrum has more than fragindex_num_spectrumpeaks (150) peaks: {n_peaks}", failures)
+
+    def make_params(db, ist=None):
+        p = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(db), ascorepro=-1, mod1=mod1,
+                                       decoy_search=0, len_min=8, len_max=12)
+        if ist is not None:
+            p = _set_param_line(p, "index_search_type", ist)
+        return p
+
+    def run_search(db, ist, label):
+        txt.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(db, ist))
+            params_file = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                print(out[-1500:])
+                return None
+            rows = _t34_read_rows(txt)
+            r1 = _t34_rank1(rows, 1)
+            if not check(r1 is not None, f"{label}: scan 1 has a rank-1 row", failures):
+                return None
+            return r1
+        finally:
+            params_file.unlink(missing_ok=True)
+            txt.unlink(missing_ok=True)
+
+    results = {}
+    results["FASTA_DB"] = run_search(fasta, None, "FASTA_DB")
+    for flag, label, ist in (("-j", "PI_DB", 0), ("-i", "FI_DB", 1)):
+        idx.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(fasta))
+            build_params = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [flag, f"-P{fmt(build_params)}"])
+            if not check(rc == 0 and idx.exists(), f"{label}: index builds (rc={rc})", failures):
+                print(out[-1500:])
+                continue
+            results[label] = run_search(idx, ist, label)
+        finally:
+            build_params.unlink(missing_ok=True)
+            idx.unlink(missing_ok=True)
+
+    for label, r in results.items():
+        if r is None:
+            continue
+        check(EXPECTED in r.get("modified_peptide", ""),
+              f"{label}: rank-1 is {EXPECTED}, got {r.get('modified_peptide')!r}", failures)
+        check(float(r.get("ascorepro", "0") or 0) > 0.0,
+              f"{label}: AScorePro score is populated ({r.get('ascorepro')!r})", failures)
+    ref = results.get("FASTA_DB")
+    if ref is not None:
+        for label in ("PI_DB", "FI_DB"):
+            r = results.get(label)
+            if r is None:
+                continue
+            check(r.get("ascorepro") == ref.get("ascorepro"),
+                  f"{label} AScorePro equals FASTA_DB's ({r.get('ascorepro')!r} vs {ref.get('ascorepro')!r}) -- "
+                  f"a difference means AScorePro saw different peaks (order) or a different residue-mass table (static mods)", failures)
+            check(r.get("ascore_sitescores") == ref.get("ascore_sitescores"),
+                  f"{label} AScorePro site scores equal FASTA_DB's ({r.get('ascore_sitescores')!r} vs {ref.get('ascore_sitescores')!r})", failures)
+            check(r.get("modified_peptide") == ref.get("modified_peptide"),
+                  f"{label} localized peptide equals FASTA_DB's", failures)
+        if results.get("PI_DB") is not None:
+            check(results["PI_DB"].get("xcorr") == ref.get("xcorr"),
+                  f"PI_DB xcorr equals FASTA_DB's ({results['PI_DB'].get('xcorr')!r} vs {ref.get('xcorr')!r})", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T36 -- AScorePro must not relocalize an internal decoy's site
+# ---------------------------------------------------------------------------
+#
+# docs/20260914_FI_internal_decoys.md D6 option (c), PR #129 review. Real spectrum (scan 42900
+# of 20170103_HelaQC_01, copied from tests/rts_repro/fixture_spectra.txt) searched against the
+# single protein CNOT4_HUMAN with decoy_search = 1: the rank-1 hit is the internal decoy
+# IRQLEEQS[79.9663]LPKYVAPDEPYPKRCAPCLGNEDTK (xcorr 0.477, 4 matched ions -- the S7 ladder) and
+# its AScorePro score (15.06) clears ASCORE_CUTOFF_TO_ACCEPT (13.0). Before (c),
+# CalculateAScorePro() therefore rewrote the stored site to Y11 (position 12) AFTER the duplicate
+# check had run, producing a second row labeled identically to the genuine Y11 isomer (0.271)
+# and a FASTA_DB-vs-PI_DB label disagreement (PI_DB happened not to relocalize only because of
+# the double-applied static mod T35 now guards). A decoy's site is arbitrary by construction, so
+# the stored site must stay put while the AScore is still reported. Checked for FASTA_DB and
+# PI_DB (FI_DB's fragment pre-filter ranks a different decoy first on this spectrum).
+
+
+@register("t36_decoy_norelocalize")
+def test_t36_decoy_norelocalize(comet_exe):
+    """T36: AScorePro reports but never relocalizes an internal decoy's site (FASTA_DB and PI_DB, real scan 42900)."""
+    failures = []
+    fasta = DATA_DIR / "t36_decoy_norelocalize.fasta"
+    ms2   = DATA_DIR / "t36_decoy_norelocalize.ms2"
+    idx   = fasta.with_suffix(".fasta.idx")
+    txt   = ms2.with_suffix(".txt")
+    if not fasta.exists() or not ms2.exists():
+        failures.append(f"fixture missing: {fasta} / {ms2}")
+        return failures
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    DECOY_PLAIN = "IRQLEEQSLPKYVAPDEPYPKRCAPCLGNEDTK"
+    KEPT_SITE = "IRQLEEQS[79.9663]LPKY"         # phospho on S7 (1-based 8) as scored
+    RELOCALIZED = "IRQLEEQSLPKY[79.9663]VAPDE"   # what an accepted relocalization produced before (c)
+
+    def make_params(db, ist=None):
+        p = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(db), ascorepro=-1,
+                                       mod1="79.966331 STY 0 2 -1 0 0 97.976896",
+                                       decoy_search=1, len_min=8, len_max=40)
+        p = _set_param_line(p, "allowed_missed_cleavage", 2)
+        p = _set_param_line(p, "digest_mass_range", "600.0 5000.0")
+        if ist is not None:
+            p = _set_param_line(p, "index_search_type", ist)
+        return p
+
+    def run_search(db, ist, label):
+        txt.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(make_params(db, ist))
+            params_file = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                print(out[-1500:])
+                return None
+            r1 = _t34_rank1(_t34_read_rows(txt), 42900)
+            if not check(r1 is not None, f"{label}: scan 42900 has a rank-1 row", failures):
+                return None
+            return r1
+        finally:
+            params_file.unlink(missing_ok=True)
+            txt.unlink(missing_ok=True)
+
+    results = {"FASTA_DB": run_search(fasta, None, "FASTA_DB")}
+    idx.unlink(missing_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(make_params(fasta))
+        build_params = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, ["-j", f"-P{fmt(build_params)}"])
+        if check(rc == 0 and idx.exists(), f"PI_DB: index builds (rc={rc})", failures):
+            results["PI_DB"] = run_search(idx, 0, "PI_DB")
+        else:
+            print(out[-1500:])
+    finally:
+        build_params.unlink(missing_ok=True)
+        idx.unlink(missing_ok=True)
+
+    for label, r in results.items():
+        if r is None:
+            continue
+        check(r.get("plain_peptide") == DECOY_PLAIN and r.get("protein", "").startswith("DECOY_"),
+              f"{label}: rank-1 is the internal decoy {DECOY_PLAIN}, got "
+              f"{(r.get('plain_peptide'), r.get('protein'))!r}", failures)
+        check(float(r.get("ascorepro", "0") or 0) >= 13.0,
+              f"{label}: decoy's AScorePro ({r.get('ascorepro')!r}) clears the 13.0 acceptance cutoff, so the "
+              f"relocalization branch is genuinely exercised", failures)
+        check(KEPT_SITE in r.get("modified_peptide", "") and RELOCALIZED not in r.get("modified_peptide", ""),
+              f"{label}: decoy keeps its scored site S7 -- {KEPT_SITE} -- and is NOT relocalized to Y11, got "
+              f"{r.get('modified_peptide')!r}", failures)
+        check(r.get("modifications", "").startswith("8_V_79.966331"),
+              f"{label}: modifications column starts with 8_V_79.966331, got {r.get('modifications')!r}", failures)
+    if results.get("FASTA_DB") and results.get("PI_DB"):
+        check(results["FASTA_DB"].get("modified_peptide") == results["PI_DB"].get("modified_peptide")
+              and results["FASTA_DB"].get("ascorepro") == results["PI_DB"].get("ascorepro"),
+              f"FASTA_DB and PI_DB agree on the decoy's label and AScore", failures)
+    return failures
 
 
 if __name__ == "__main__":

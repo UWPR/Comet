@@ -1,0 +1,4 @@
+>T34_ox oxidizable-M target PEPTMIDEK; trypsin pseudo-reverse decoy is EDIM[ox]TPEPK (mod moves with its M)
+PEPTMIDEKR
+>T34_pal self-palindromic tryptic peptide LSAGGASLK (pseudo-reverse == itself)
+LSAGGASLKR

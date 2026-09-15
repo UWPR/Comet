@@ -450,6 +450,35 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
          + to_string(tNumProteinEntries) + " protein groups\n");
    }
 
+   // Guard rail (docs/20260914_FI_internal_decoys.md Section 4.6, Decision D4): internal
+   // decoys on top of an index built from a target-decoy FASTA double-count decoys -- PI_DB
+   // reverses every candidate at score time and FI_DB indexes a decoy variant per target
+   // variant, and neither skips peptides whose proteins already carry decoy_prefix, so each
+   // FASTA-level decoy peptide also gets a decoy-of-a-decoy. iDecoySearch here is the value
+   // this .idx was built with (ParsePeptideIndexHeader() restored it from the DecoySearch:
+   // line above). Warn once at load; behavior is unchanged.
+   if (g_staticParams.options.iDecoySearch != 0)
+   {
+      const size_t tLenDecoyPrefix = strlen(g_staticParams.szDecoyPrefix);
+      size_t tNumDecoyPrefixedProteins = 0;
+
+      for (const auto& sName : g_pvProteinNameCache)
+      {
+         if (sName.compare(0, tLenDecoyPrefix, g_staticParams.szDecoyPrefix) == 0)
+            tNumDecoyPrefixedProteins++;
+      }
+
+      if (tNumDecoyPrefixedProteins > 0)
+      {
+         logout(" Warning - decoy_search = " + to_string(g_staticParams.options.iDecoySearch)
+            + " (internal decoys) on an index whose protein list already contains "
+            + to_string(tNumDecoyPrefixedProteins) + " decoy_prefix (\""
+            + string(g_staticParams.szDecoyPrefix) + "\") entries: those peptides will be\n"
+            + "           decoyed a second time. Use internal decoys with a target-only database, or\n"
+            + "           decoy_search = 0 with this target-decoy index.\n");
+      }
+   }
+
    // Phase 0.5 (docs/20260730_PI_reduction.md): regenerate the mod-permutation tables --
    // and, for PI_DB, the compact variant array -- fresh from g_vRawPeptides + whatever
    // variable mods are active in g_staticParams right now (comet.params for batch; RTS's

@@ -956,7 +956,17 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    {
       pQuery->_pResults[0].fAScorePro = (float)result.peptides[0].getScore();
 
-      if (pQuery->_pResults[0].fAScorePro >= ASCORE_CUTOFF_TO_ACCEPT)
+      // Internal (pseudo-reverse) decoy top hit: StorePeptide()/StorePeptideI() put it in
+      // pWhichDecoyProtein with pWhichProtein empty. Report its AScore but never rewrite its
+      // site: a decoy's mod placement is arbitrary by construction, and relocalizing it only
+      // manufactures a second row with the same sequence + mod state as an already-stored
+      // isomer (the duplicate check ran before post-analysis), which is how the same decoy
+      // came out labeled differently in FASTA_DB vs. PI_DB/FI_DB
+      // (docs/20260914_FI_internal_decoys.md Section 6.2 / D6 option c).
+      const bool bInternalDecoy = !pQuery->_pResults[0].pWhichDecoyProtein.empty()
+         && pQuery->_pResults[0].pWhichProtein.empty();
+
+      if (pQuery->_pResults[0].fAScorePro >= ASCORE_CUTOFF_TO_ACCEPT && !bInternalDecoy)
       {
          // set piVarModSites and pdVarModSites based on AScore localized peptide
          memset(pQuery->_pResults[0].piVarModSites, 0, (unsigned short)(sizeof(int) * MAX_PEPTIDE_LEN_P2));
