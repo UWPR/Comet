@@ -47,6 +47,20 @@ These DLLs can be obtained from Thermo's official
 been built and tested against version `5.0.0.93`. These two DLLs are also
 available as release assets in this repository.
 
+### CometWrapper.dll and CometWrapperCore.dll (Windows)
+
+Two C++/CLI wrapper assemblies are published as release assets for applications that
+call Comet's real-time search API from .NET code (for example, `RealtimeSearch`):
+
+- `CometWrapper.dll` -- built for .NET Framework 4.7.2.
+- `CometWrapperCore.dll` -- the same wrapper built for .NET 8 (`CLRSupport=NetCore`).
+  It has a hard dependency on `Ijwhost.dll`, the .NET shim that loads mixed-mode C++/CLI
+  code, so `Ijwhost.dll` (also a release asset) must sit in the same directory as
+  `CometWrapperCore.dll` or the assembly will fail to load.
+
+Both wrappers also need the two Thermo `RawFileReader` DLLs listed above next to them for
+`.raw` input. Neither is needed to run `comet.win64.exe` itself.
+
 `.raw` support is Windows-only. mzXML, mzML, and mgf/ms1/ms2-family inputs work on every platform
 without any of the above and require no additional files.
 
