@@ -79,6 +79,33 @@ void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
 }
 
 
+
+// Resolve one protein reference written to the .mzid tmp file into its accession. For a
+// plain FASTA search the value is the byte offset of the '>' line in the FASTA; for an
+// FI_DB/PI_DB search it is the protein's ordinal in the .idx name section (what
+// g_pvProteinsList rows hold after a load), resolved through g_pvProteinNameCache exactly as
+// GetProteinNameString() does -- seeking the .idx by that small integer would land in the
+// header text and yield garbage accessions.
+static void ResolveTmpProteinName(FILE *fpdb,
+                                  long lOffset,
+                                  char *szProteinName)
+{
+   if (g_staticParams.iDbType != DbType::FASTA_DB)
+   {
+      szProteinName[0] = '\0';
+      if (lOffset >= 0 && (size_t)lOffset < g_pvProteinNameCache.size())
+      {
+         const string& sName = g_pvProteinNameCache[(size_t)lOffset];
+         size_t tPos = sName.find_first_of(" \t\n\v\f\r");   // accession = first token, as fscanf("%s") would read
+         string sAcc = (tPos == string::npos) ? sName : sName.substr(0, tPos);
+         strncpy(szProteinName, sAcc.c_str(), WIDTH_REFERENCE - 1);
+         szProteinName[WIDTH_REFERENCE - 1] = '\0';
+      }
+      return;
+   }
+   CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+}
+
 bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 {
    time_t tTime;
@@ -324,7 +351,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    {
       if (*it >= 0)
       {
-         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         ResolveTmpProteinName(fpdb, *it, szProteinName);
          strProteinName = szProteinName;
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB\"", strProteinName.c_str(), strProteinName.c_str());
@@ -351,7 +378,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    {
       if (*it >= 0)
       {
-         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         ResolveTmpProteinName(fpdb, *it, szProteinName);
          strProteinName = szProteinName;
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB\" />\n",
@@ -467,7 +494,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                         iStartResidue = stoi(strOffset2);
                         iEndResidue = iStartResidue + (int)strPeptide.length() - 1;
 
-                        CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                         strProteinName = szProteinName;
                         CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -513,7 +540,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                         iStartResidue = stoi(strOffset2);
                         iEndResidue = iStartResidue + (int)strPeptide.length() - 1;
 
-                        CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                         strProteinName = szProteinName;
                         CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -1300,7 +1327,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
             if (lOffset >= 0)
             {
-               CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+               ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                strProteinName = szProteinName;
                CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -1324,7 +1351,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
             if (lOffset >= 0)
             {
-               CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+               ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                strProteinName = szProteinName;
                CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -1464,28 +1491,41 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          }
          fprintf(fpout, "\t");
 
-         // semicolon separated list of fpdb pointers for target proteins
+         // semicolon separated list of protein references ("ref:startResidue;") for target
+         // proteins, then for decoy proteins. Plain FASTA: ref = FASTA byte offset. FI_DB/PI_DB:
+         // ref = protein ordinal (start residue unknown, written as 0); every protein bucket
+         // in pWhichProtein / pWhichDecoyProtein is a g_pvProteinsList row and is expanded to
+         // its occurrences, filtered by the PSM's protein-scoped terminal-mod context -- the
+         // same walk as GetProteinNameString(), including its FI_DB fallback to
+         // lProteinFilePosition when neither bucket list is populated.
          std::vector<ProteinEntryStruct>::iterator it;
+         const bool bIndexed = (g_staticParams.iDbType != DbType::FASTA_DB);
+         const unsigned char ucTermMask = bIndexed
+            ? CometMassSpecUtils::ProteinTermContextMask(pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide)
+            : 0;
+         auto printIndexedRow = [&](comet_fileoffset_t lBucket)
+         {
+            if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
+               return;
+            ProteinsListCSR::Row row = g_pvProteinsList.at(lBucket);
+            for (size_t j = 0; j < row.size(); ++j)
+            {
+               if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
+                  continue;
+#ifdef _WIN32
+               fprintf(fpout, "%I64d:%d;", (long long)row[j], 0);
+#else
+               fprintf(fpout, "%ld:%d;", (long)row[j], 0);
+#endif
+            }
+         };
+
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
-            if (g_staticParams.iDbType != DbType::FASTA_DB)
+            if (bIndexed)
             {
-               comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
-               const unsigned char ucTermMask = CometMassSpecUtils::ProteinTermContextMask(
-                  pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide);
-               ProteinsListCSR::Row row = g_pvProteinsList.at(lEntry);
-
-               for (size_t j = 0; j < row.size(); ++j)
-               {
-                  if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
-                     continue;
-#ifdef _WIN32
-                  fprintf(fpout, "%I64d:%d;", (long long)row[j], 0);
-#else
-                  fprintf(fpout, "%ld:%d;", (long)row[j], 0);
-#endif
-               }
-
+               for (it = pOutput[iWhichResult].pWhichProtein.begin(); it != pOutput[iWhichResult].pWhichProtein.end(); ++it)
+                  printIndexedRow((*it).lWhichProtein);
             }
             else
             {
@@ -1500,21 +1540,35 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             }
             fprintf(fpout, "\t");
          }
+         else if (g_staticParams.iDbType == DbType::FI_DB && pOutput[iWhichResult].pWhichDecoyProtein.empty())
+         {
+            // legacy FI_DB row with neither list populated; never for an internal decoy
+            // (pWhichDecoyProtein set) -- see GetProteinNameString()
+            printIndexedRow(pOutput[iWhichResult].lProteinFilePosition);
+            fprintf(fpout, "\t");
+         }
          else
          {
             fprintf(fpout, "-1;\t");
          }
 
-         // semicolon separated list of fpdb pointers for decoy proteins
          if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
-            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            if (bIndexed)
             {
+               for (it = pOutput[iWhichResult].pWhichDecoyProtein.begin(); it != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+                  printIndexedRow((*it).lWhichProtein);
+            }
+            else
+            {
+               for (it = pOutput[iWhichResult].pWhichDecoyProtein.begin(); it != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+               {
 #ifdef _WIN32
-               fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #else
-               fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #endif
+               }
             }
             fprintf(fpout, "\t");
          }

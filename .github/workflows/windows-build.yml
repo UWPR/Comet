@@ -69,9 +69,11 @@ jobs:
 
     # Python test harness (tests/unit/run_tests.py): builds the small fixture indexes and
     # searches them; ~4 minutes. --integration (human.small.fasta, big data) is not run in CI.
+    # "py -3" (the Windows Python launcher, C:\Windows\py.exe) picks the newest registered
+    # Python 3 regardless of what "python" resolves to in the runner service's PATH.
     - name: Run test harness
       shell: cmd
-      run: python "%GITHUB_WORKSPACE%\\tests\\unit\\run_tests.py" --comet "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe"
+      run: py -3 "%GITHUB_WORKSPACE%\\tests\\unit\\run_tests.py" --comet "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe"
 
     - name: Prepare release directory (Windows native)
       shell: cmd

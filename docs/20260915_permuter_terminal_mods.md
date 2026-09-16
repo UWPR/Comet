@@ -646,6 +646,15 @@ things left open by, sections 1-9.
   refuse v5 by the header literal. There is no partial-acceptance path: every section is
   bounded by the footer pointers and the reader validates counts, offsets and the section
   end before anything is used.
+- **Indexed mzIdentML protein references (pre-existing, fixed 2026-09-16).** The `.mzid`
+  writer's tmp file carried `g_pvProteinsList` row values for FI_DB/PI_DB searches, and its
+  second pass seeked the `.idx` by those values as if they were FASTA byte offsets -- since
+  rows hold name-section ordinals after a load, every indexed `.mzid` came out with garbage
+  accessions ("Comet", "omet", ...). `PrintTmpPSM()` now walks every target and decoy bucket
+  (filtered by the PSM's protein-scoped terminal context, with the same FI_DB fallback as
+  `GetProteinNameString()`), and `ResolveTmpProteinName()` resolves an indexed reference
+  through `g_pvProteinNameCache`. T47 part 3 checks FI_DB/PI_DB internal-decoy `.mzid` output
+  end to end (resolvable evidence, real accessions, exact `^` attribution).
 - **Plain-FASTA bug found by T42**: `MergeVarMods()` rebuilt the precursor mass from scratch
   adding only `dAddCterminusProtein`; variable-mod peptides at the protein N-terminus with
   `add_Nterm_protein != 0` were reported (and mass-checked) short by that amount. Fixed in
@@ -665,9 +674,11 @@ things left open by, sections 1-9.
   parenthesized there because `windows.h` defines `max`/`min`.
 - T37, T41 (Phase 0); T38, T39, T40, T42, T43 (Phase 2); `t22_rts_{fi,pi}_protterm`
   (integration-gated RTS determinism with a `^` acetyl) instead of extending T22 in place.
-- Review follow-ups: T44 (big-data n/^/$ parity, `--integration --bigdata`), T45 (mixed
-  terminal codes on every path), T46 (shared-peptide attribution), T47 (pepXML/mzIdentML
-  terminal annotations), T48 (forged flags-less v5 rejected), T49 (deprecation-bridge edge
+- Review follow-ups: T42 covers both `add_Nterm_protein` and `add_Cterm_protein`; T44
+  (big-data n/^/$ parity, `--integration --bigdata`), T45 (mixed terminal codes on every
+  path), T46 (shared-peptide attribution), T47 (pepXML/mzIdentML terminal annotations,
+  single declarations for mixed slots, indexed internal-decoy `.mzid` evidence), T48
+  (forged flags-less v5 rejected), T49 (deprecation-bridge edge
   cases: legacy `term_distance`/`which_term` values that do and do not map to `^`/`$`), T50
   (per-occurrence context bytes read back from the `.idx`, including a sequence repeated at
   both termini of one protein and a shared peptide across proteins), T51 (`print_ascorepro_score`
