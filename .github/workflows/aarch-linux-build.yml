@@ -33,7 +33,7 @@ jobs:
         cp README.md release/README.md
 
     - name: Upload build artifiacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: comet-aarch64-linux
         path: release/*

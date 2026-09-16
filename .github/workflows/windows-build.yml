@@ -95,7 +95,7 @@ jobs:
         copy README.md release\README.md
 
     - name: Upload build artificats
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: comet-windows
         path: release/*
