@@ -621,6 +621,16 @@ things left open by, sections 1-9.
   (~5 MB on the phospho reference), plus one `hasContext()` scan per protein-scoped entry at
   build time. Consumers doing protein inference on N-terminal acetylation are the reason this
   was worth doing now, while v5 was still unreleased.
+- **Index-format compatibility story** (D6, tightened with option C). Three cases, each with
+  a test: a **v4** file fails at the header literal with the rebuild message (T43); a **v5**
+  file whose protein-list rows lack the per-occurrence context bytes -- the layout written by
+  this branch between the v5 bump and option C, never released -- fails deterministically
+  because `ReadPeptideIndex()` now requires the protein-list walk to end exactly at the
+  footer (T48 forges such a file from a fixture); a current **v5** file round-trips through
+  build, write, reload and search with exact shared-peptide attribution (T46). Old binaries
+  refuse v5 by the header literal. There is no partial-acceptance path: every section is
+  bounded by the footer pointers and the reader validates counts, offsets and the section
+  end before anything is used.
 - **Plain-FASTA bug found by T42**: `MergeVarMods()` rebuilt the precursor mass from scratch
   adding only `dAddCterminusProtein`; variable-mod peptides at the protein N-terminus with
   `add_Nterm_protein != 0` were reported (and mass-checked) short by that amount. Fixed in
@@ -666,6 +676,7 @@ T23, T24, T24b, T44, and the Phase 0-2 additions). Against the `v2026.02.2` Linu
 | T24b internal decoys plain / FI_DB / PI_DB | 17,701 / 17,717 / 17,701 |
 | T44 `n` acetyl (cap 3) plain / FI_DB / PI_DB | 17,654 / 17,734 / 17,654 (ratios 1.005 / 1.000) |
 | T44 `^` acetyl (cap 3) plain / FI_DB / PI_DB | 17,770 / 17,831 / 17,770 (ratios 1.003 / 1.000) |
+| T44 `$` amidation (cap 3) plain / FI_DB / PI_DB | 17,632 / 17,720 / 17,632 (ratios 1.005 / 1.000); added with option C, unchanged by it for `n`/`^` |
 | T22 RTS 1-vs-8 threads, FI_DB and PI_DB, with and without decoys | byte-identical, 197 spectra |
 | T22b RTS with `^` acetyl, FI_DB / PI_DB | byte-identical; 1 / 2 of 197 results carry the acetyl |
 | T18 two builds of human.small.fasta | byte-identical |

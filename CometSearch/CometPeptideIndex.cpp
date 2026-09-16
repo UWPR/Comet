@@ -403,6 +403,23 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
          logout(" Error - protein list exceeds the uint32 CSR limit (see ProteinsListCSR::append_flat); file may be corrupt.\n");
          return false;
       }
+
+      // The protein-list section must end exactly at the footer. Its row layout (count,
+      // offsets, then one context byte per occurrence) is how the reader paces itself, so a
+      // file whose rows lack the context bytes (a v5 index written before 2026-09-15, or a
+      // truncated/corrupt one) can only be detected reliably by where the walk stops --
+      // the per-row plausibility checks above may or may not trip on such a file.
+      if (comet_ftell(fp) != clFooterPos)
+      {
+         fclose(fp);
+         string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+            + "\" protein-list section does not end at the footer (read to "
+            + to_string((long long)comet_ftell(fp)) + ", footer at " + to_string((long long)clFooterPos)
+            + "): the file was written by an incompatible index layout or is corrupt. Rebuild it with -i or -j.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
    }
 
    // Build the in-memory protein name cache before closing the file: one sequential read

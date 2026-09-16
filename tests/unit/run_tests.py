@@ -3955,7 +3955,7 @@ def test_t22_rts_pi_protterm(comet_exe):
 
 @register("t44_termmod_parity_bigdata")
 def test_t44_termmod_parity_bigdata(comet_exe):
-    """T44 [integration, bigdata]: plain vs FI_DB vs PI_DB 1% FDR parity with 'n' and '^' acetyl."""
+    """T44 [integration, bigdata]: plain vs FI_DB vs PI_DB 1% FDR parity with 'n' and '^' acetyl and '$' amidation."""
     if not _RUN_INTEGRATION:
         print("  SKIP: pass --integration to run this test")
         return []
@@ -3974,8 +3974,9 @@ def test_t44_termmod_parity_bigdata(comet_exe):
     base = _set_param_line(base, "max_variable_mods_in_peptide", "3")
     idx_path = human_td_fasta.with_suffix(".fasta.idx")
 
-    for code, label in (("n", "peptide-N-term acetyl"), ("^", "protein-N-term acetyl")):
-        params = _set_param_line(base, "variable_mod02", f"42.010565 {code} 0 1 -1 0 0 0.0")
+    for code, label in (("n", "peptide-N-term acetyl"), ("^", "protein-N-term acetyl"), ("$", "protein-C-term amidation")):
+        mass = "-0.984016" if code == "$" else "42.010565"
+        params = _set_param_line(base, "variable_mod02", f"{mass} {code} 0 1 -1 0 0 0.0")
         print(f"  --- {label} ('{code}') ---")
         rc0, txt0, out0, t0 = _run_bigdata_search(comet_exe, params, mzxml)
         if not check(rc0 == 0, f"{label}: plain-FASTA search exits 0 (rc={rc0})", failures):
@@ -4185,6 +4186,67 @@ def test_t47_terminal_mod_xml_annotations(comet_exe):
     check(not any('residues="^"' in l or 'residues="$"' in l or 'residues="n"' in l or 'residues="c"' in l
                   for l in mzid.splitlines()),
           "mzIdentML: no terminal code leaks out as a residue SearchModification", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T48 -- a v5 .idx whose protein-list rows lack the per-occurrence context bytes (the layout
+# written by the branch between the v5 bump and option C, or any truncated/corrupt file) must
+# be rejected deterministically, not silently accepted with misread protein lists.
+# ---------------------------------------------------------------------------
+
+def _t48_strip_context_bytes(src, dst):
+    """Copy a v5 .idx, rewriting the protein-list section without the one-byte-per-occurrence
+    context flags and fixing nothing else (the footer pointers stay valid: both sections start
+    at the same offsets; only the file gets shorter)."""
+    data = src.read_bytes()
+    pep_pos, prot_pos = struct.unpack("<qq", data[-16:])
+    footer_pos = len(data) - 16
+    prot = data[prot_pos:footer_pos]
+    (num_lists,) = struct.unpack_from("<q", prot, 0)
+    out = bytearray(prot[:8]); pp = 8
+    for _ in range(num_lists):
+        (cnt,) = struct.unpack_from("<Q", prot, pp)
+        out += prot[pp:pp + 8 + cnt * 8]          # count + offsets
+        pp += 8 + cnt * 8 + cnt                   # skip the context bytes
+    assert pp == len(prot), "unexpected protein-list layout in the source fixture"
+    dst.write_bytes(data[:prot_pos] + bytes(out) + data[-16:])
+
+
+@register("t48_v5_missing_context_bytes_rejected")
+def test_t48_v5_missing_context_bytes_rejected(comet_exe):
+    """T48: a v5 .idx without protein-occurrence context bytes fails cleanly at load."""
+    failures = []
+    src = DATA_DIR / "t2_repeat.fasta.idx"
+    if not (src.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {src} / {_T37_MS2}")
+        return failures
+    with src.open("rb") as f:
+        if not check(f.readline().startswith(b"Comet index database v5"), "source fixture is v5", failures):
+            return failures
+
+    forged = DATA_DIR / "t48_forged.fasta.idx"
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    txt = _T37_MS2.with_suffix(".txt")
+    try:
+        _t48_strip_context_bytes(src, forged)
+        check(forged.stat().st_size < src.stat().st_size, "forged file is shorter (context bytes removed)", failures)
+        params = legacy_cases.build_params(database=fmt(forged), enzyme1=0, mods=(_T37_MOX,))
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+            pf.write(params); pfile = Path(pf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pfile)}", fmt(_T37_MS2)])
+        finally:
+            pfile.unlink(missing_ok=True)
+        check(rc != 0, f"search against the forged v5 .idx fails (rc={rc})", failures)
+        check("does not end at the footer" in out or "implausible protein count" in out
+              or "truncated or corrupt" in out,
+              "failure is a clean index-layout error naming a rebuild", failures)
+        check(not txt.exists(), "no .txt output was produced", failures)
+    finally:
+        forged.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
     return failures
 
 
