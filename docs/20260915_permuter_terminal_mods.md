@@ -2,7 +2,7 @@
 
 Date: 2026-09-15
 Branch: `ModificationsPermuter`
-Status: plan, agreed in design discussion; no code written yet
+Status: **implemented** (Phases 0-4 landed 2026-09-15; sections 1-10 are the plan as agreed, section 11 records what was built and measured, including deviations)
 
 ## 1. Goal
 
@@ -602,25 +602,37 @@ things left open by, sections 1-9.
 - **Phase 1 bisectability** (4): landed with `bIncludeTermini = false` in the index driver,
   as planned; index identity was proven against the Phase 0 binary (81/81 `.idx` files
   across three mod configs, identical phospho-reference permutation ledger).
-- **Shared raw-peptide rows -- option C (2026-09-15).** The raw-peptide table holds one row
-  per unique sequence, so a peptide that is protein-terminal in one protein and internal in
-  another carries a single flank pair. The row's flank is the OR over its occurrences
-  ("terminal in ANY protein") and stays the permuter's eligibility key, with the stored mass
-  adjusted when the union adds a static-carrying terminus the representative lacked. To keep
-  attribution exact anyway, every protein occurrence in `ProteinsListCSR` carries two context
-  bits (`PROT_NTERM_HERE`, `PROT_CTERM_HERE`; one byte per occurrence, persisted in the v5
-  protein-list section) set at the dedup merge. They are used twice: at build time an entry
-  whose terminal slots are protein-scoped is emitted only if some occurrence has the matching
-  bits -- both bits in ONE occurrence when `^` and `$` are both set -- and at output time
-  (`GetProteinNameString()`, the mzIdentML per-PSM list, the RTS result path) a PSM's protein
-  list is filtered to the occurrences that support its protein-scoped terminal mods. Result:
-  FI_DB/PI_DB attribute `^`/`$` PSMs exactly as the plain-FASTA path does (T46), and a
-  peptide N-terminal in one protein and C-terminal in another no longer carries both. An
-  earlier interim state (Phase 2 as first committed) attributed to every protein in the row;
-  T46 pinned that and now pins the exact behavior. Cost: one byte per protein occurrence
-  (~5 MB on the phospho reference), plus one `hasContext()` scan per protein-scoped entry at
-  build time. Consumers doing protein inference on N-terminal acetylation are the reason this
-  was worth doing now, while v5 was still unreleased.
+- **Shared raw-peptide rows -- option C plus static-mass row split (2026-09-15/16).** The
+  raw-peptide table normally holds one row per unique sequence, so a peptide that is
+  protein-terminal in one protein and internal in another shares a row. Two mechanisms keep
+  that exact:
+  - *Mass.* A shared row's stored mass must be correct for every occurrence, and it is not
+    when `add_Nterm_protein`/`add_Cterm_protein` is non-zero (D9 folds those statics into the
+    stored mass for `-` flanks). The digest and merge therefore key rows on
+    `PepRowSplitClass(cPrev, cNext, add_Nterm_protein, add_Cterm_protein)` (`core/Types.h`):
+    occurrences whose protein-terminal static differs land in separate rows with separate
+    masses; when both protein-terminal statics are zero (the common case) the class is always
+    0 and the table is one row per sequence as before. The union-with-mass-adjustment step
+    from the first option C commit remains as a safety net; with the split in place it never
+    changes a stored mass.
+  - *Attribution.* Every protein occurrence in `ProteinsListCSR` carries two context bits
+    (`PROT_NTERM_HERE`, `PROT_CTERM_HERE`; `PepOccurrenceContext()`; one byte per occurrence,
+    persisted in the v5 protein-list section). Within-protein dedup keys include the full
+    context, so a sequence repeated at both termini of one protein records both bits. The bits
+    are used twice: at build time an entry whose terminal slots are protein-scoped is emitted
+    only if some occurrence has the matching bits -- both bits in ONE occurrence when `^` and
+    `$` are both set -- and at output time (`GetProteinNameString()`, the mzIdentML per-PSM
+    list, the RTS result path) a PSM's protein list is filtered to the occurrences that
+    support its protein-scoped terminal mods.
+
+  Result: FI_DB/PI_DB attribute `^`/`$` PSMs exactly as the plain-FASTA path does (T46), a
+  peptide N-terminal in one protein and C-terminal in another no longer carries both, and a
+  shared peptide never scores with a protein-terminal static it does not carry in that
+  protein (T42 pins the attribution set against plain FASTA; T50 pins the on-disk context
+  bytes). Cost: one byte per protein occurrence (~5 MB on the phospho reference), one
+  `hasContext()` scan per protein-scoped entry at build time, and extra rows only when a
+  protein-terminal static is configured. Consumers doing protein inference on N-terminal
+  acetylation are the reason this was worth doing now, while v5 was still unreleased.
 - **Index-format compatibility story** (D6, tightened with option C). Three cases, each with
   a test: a **v4** file fails at the header literal with the rebuild message (T43); a **v5**
   file whose protein-list rows lack the per-occurrence context bytes -- the layout written by
@@ -650,6 +662,16 @@ things left open by, sections 1-9.
   parenthesized there because `windows.h` defines `max`/`min`.
 - T37, T41 (Phase 0); T38, T39, T40, T42, T43 (Phase 2); `t22_rts_{fi,pi}_protterm`
   (integration-gated RTS determinism with a `^` acetyl) instead of extending T22 in place.
+- Review follow-ups: T44 (big-data n/^/$ parity, `--integration --bigdata`), T45 (mixed
+  terminal codes on every path), T46 (shared-peptide attribution), T47 (pepXML/mzIdentML
+  terminal annotations), T48 (forged flags-less v5 rejected), T49 (deprecation-bridge edge
+  cases: legacy `term_distance`/`which_term` values that do and do not map to `^`/`$`), T50
+  (per-occurrence context bytes read back from the `.idx`, including a sequence repeated at
+  both termini of one protein and a shared peptide across proteins), T51 (`print_ascorepro_score`
+  with `^`/`$` configured: AScorePro is handed only the residue letters of each mod, a pure
+  protein-terminal mod registers nothing, and results match with AScorePro on and off).
+- Both CI workflows run `CometUnitTests` and the harness (`run_tests.py` without
+  `--integration`) after the build.
 - T40 uses the T37 fixture with `decoy_search = 1` rather than the T34 fixture.
 - Committed `.idx` fixtures regenerated as v5; `tests/unit/data/t43_v4.fasta.idx` is a
   frozen v4 copy for T43.

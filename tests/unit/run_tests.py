@@ -255,22 +255,27 @@ def parse_idx(path):
             (cnt,) = struct.unpack_from("<Q", prot_buf, pp);    pp += 8
             offsets = list(struct.unpack_from(f"<{cnt}q", prot_buf, pp));  pp += cnt*8
             # v5: one protein-terminus context byte per occurrence follows the offsets
-            # (ProteinsListCSR::PROT_NTERM_HERE=1 / PROT_CTERM_HERE=2); not surfaced here.
-            pp += cnt
-            prot_lists.append(offsets)
+            # (ProteinsListCSR::PROT_NTERM_HERE=1 / PROT_CTERM_HERE=2)
+            flags = list(prot_buf[pp:pp + cnt]);                       pp += cnt
+            prot_lists.append(list(zip(offsets, flags)))
+        if pp != len(prot_buf):
+            raise ValueError(f"protein-list section does not end at the footer ({pp} != {len(prot_buf)})")
 
         result = {}
         for pep in peptides:
             names = []
-            for off in prot_lists[pep["pidx"]]:
+            pflags = []
+            for off, flg in prot_lists[pep["pidx"]]:
                 f.seek(off)
                 raw = f.read(WIDTH_REFERENCE).rstrip(b"\x00").decode("ascii", errors="replace")
                 names.append(raw)
+                pflags.append(flg)
             result[pep["seq"]] = {
                 "mass":   pep["mass"],
                 "prevAA": pep["prevAA"],
                 "nextAA": pep["nextAA"],
                 "proteins": names,
+                "protein_flags": pflags,   # ProteinsListCSR context byte per protein: 1 = N-term here, 2 = C-term here
             }
     return result
 
@@ -3839,8 +3844,9 @@ def test_t42_static_protein_nterm_fidb(comet_exe):
     if check(rc == 0 and rows_plain, f"plain FASTA: search ran (rc={rc})", failures):
         # the static protein-N-term mass is annotated as "<pos>_S_<mass>_N" (S = static)
         r = _t37_find(rows_plain, "FDSFGDLSSASAIMGNPK", mod_substr="_S_163.063329_N")
-        check(r is not None and "t37_noY" in _t37_proteins(r),
-              "plain FASTA: FDSFGDLSSASAIMGNPK found via the static protein-N-term mass", failures)
+        check(r is not None and _t37_proteins(r) == {"t37_noY"},
+              f"plain FASTA: FDSFGDLSSASAIMGNPK found via the static protein-N-term mass, attributed to t37_noY only "
+              f"(internal in t37_full has a different mass), got {sorted(_t37_proteins(r)) if r else None}", failures)
         if r is not None:
             masses["plain"] = r.get("calc_neutral_mass")
 
@@ -3849,8 +3855,13 @@ def test_t42_static_protein_nterm_fidb(comet_exe):
         if not check(rc == 0 and rows, f"{label}: index build + search ran (rc={rc})", failures):
             print(out[-1500:])
             continue
+        # With a non-zero static protein-terminal mass the shared peptide is stored as two raw rows
+        # (protein-N-terminal in t37_noY, internal in t37_full) with different masses, so the
+        # matching PSM is attributed exactly like plain FASTA: t37_noY only.
         r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="_S_163.063329_N")
-        check(r is not None, f"{label}: FDSFGDLSSASAIMGNPK found via the static protein-N-term mass", failures)
+        check(r is not None and _t37_proteins(r) == {"t37_noY"},
+              f"{label}: FDSFGDLSSASAIMGNPK found via the static protein-N-term mass, attributed to t37_noY only, "
+              f"got {sorted(_t37_proteins(r)) if r else None}", failures)
         if r is not None:
             masses[label] = r.get("calc_neutral_mass")
 
@@ -4247,6 +4258,258 @@ def test_t48_v5_missing_context_bytes_rejected(comet_exe):
     finally:
         forged.unlink(missing_ok=True)
         txt.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T49 -- deprecation bridge edge cases on every path (review follow-up): a legacy mixed
+# residue+terminus slot ('nK 0 3 0 0', 'cM 0 3 0 1') collapses to the protein code plus an
+# unrestricted residue; peptide- and protein-scoped N-term mods coexisting in different slots.
+# T50 -- the persisted protein-occurrence context bytes are validated on disk against the
+# FASTA, including a peptide repeated in one protein with different context (bits OR'd) and a
+# peptide shared by proteins with different context (bits per occurrence), on a fresh build and
+# on the committed fixtures.
+# ---------------------------------------------------------------------------
+
+@register("t49_bridge_edge_cases")
+def test_t49_bridge_edge_cases(comet_exe):
+    """T49: legacy 'nK 0 3 0 0' / 'cM 0 3 0 1' == explicit '^K' / '$M' with a warning, on plain
+    FASTA, FI_DB and PI_DB; 'n' and '^' in different slots coexist without cross-talk."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    # (a) legacy mixed slot: N-term or K, "at the protein N-terminus" -> '^K' (K unrestricted, warned)
+    ref = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 ^K 0 3 -1 0 0 0.0"), failures, "^K")
+    got = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 nK 0 3 0 0 0 0.0"), failures, "legacy nK 0 3 0 0")
+    for label in ref:
+        if label in got:
+            check(_t37_signature(got[label]) == _t37_signature(ref[label]),
+                  f"{label}: legacy 'nK 0 3 0 0' equals explicit '^K'", failures)
+    rc, _, out = _t37_search(comet_exe, (_T37_MOX, "163.063328575 nK 0 3 0 0 0 0.0"))
+    check("translated 'n' with distance 0 to '^'" in out, "legacy nK: bridge translation warned", failures)
+    check('restricted residues "K"' in out and "dropped" in out, "legacy nK: dropped K restriction warned", failures)
+
+    # (b) legacy mixed C-term slot
+    ref = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 $M 0 3 -1 0 0 0.0"), failures, "$M")
+    got = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 cM 0 3 0 1 0 0.0"), failures, "legacy cM 0 3 0 1")
+    for label in ref:
+        if label in got:
+            check(_t37_signature(got[label]) == _t37_signature(ref[label]),
+                  f"{label}: legacy 'cM 0 3 0 1' equals explicit '$M'", failures)
+
+    # (c) 'n' (peptide) and '^' (protein) in different slots with different masses: the 'n'
+    # PSM keeps its peptide scope and full attribution; the '^' slot changes nothing about it.
+    res = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 n 0 3 -1 0 0 0.0", "42.010565 ^ 0 1 -1 0 0 0.0"),
+                         failures, "n + ^ slots")
+    for label, rows in res.items():
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_n")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_noY"},
+              f"n+^ {label}: 'n' PSM keeps both proteins, got {sorted(_t37_proteins(r)) if r else None}", failures)
+        check(not any("_N" in x.get("modifications", "") for x in rows),
+              f"n+^ {label}: no _N code appears (no spectrum matches the 42.01 protein mod)", failures)
+    return failures
+
+
+def _t50_expected_flags(fasta_path, seq):
+    """{protein accession: OR'd context bits} for every protein containing seq, from the FASTA."""
+    exp = {}
+    name = None
+    prot = {}
+    for line in Path(fasta_path).read_text().splitlines():
+        line = line.strip()
+        if line.startswith(">"):
+            name = line[1:].split()[0]
+            prot[name] = ""
+        elif name:
+            prot[name] += line
+    for name, s in prot.items():
+        bits = 0
+        start = s.find(seq)
+        while start >= 0:
+            if start == 0:
+                bits |= 1
+            if start + len(seq) == len(s):
+                bits |= 2
+            start = s.find(seq, start + 1)
+        if s.find(seq) >= 0:
+            exp[name] = bits
+    return exp
+
+
+def _t50_check_idx(idx, fasta, failures, tag):
+    data = parse_idx(idx)
+    n_checked = 0
+    for seq, entry in data.items():
+        exp = _t50_expected_flags(fasta, seq)
+        got = {}
+        for name, flg in zip(entry["proteins"], entry["protein_flags"]):
+            got[name.split()[0]] = flg
+        if check(got == exp, f"{tag} {seq}: per-protein context bytes {got} == FASTA-derived {exp}", failures):
+            n_checked += 1
+        # the row's own flanks are the OR over its occurrences
+        any_n = any(v & 1 for v in exp.values())
+        any_c = any(v & 2 for v in exp.values())
+        check((entry["prevAA"] == "-") == any_n and (entry["nextAA"] == "-") == any_c,
+              f"{tag} {seq}: row flanks ({entry['prevAA']},{entry['nextAA']}) match OR of occurrences", failures)
+    return n_checked
+
+
+@register("t50_idx_protein_context_bytes")
+def test_t50_idx_protein_context_bytes(comet_exe):
+    """T50: the v5 protein-list context bytes on disk equal the FASTA-derived per-protein
+    context for every peptide: repeated-in-one-protein (bits OR'd into one occurrence),
+    shared-with-different-context (bits per occurrence), plain internal (0). Checked on a
+    fresh build of t50_context.fasta and on the committed t2/t3/t6 fixtures."""
+    failures = []
+    fasta = DATA_DIR / "t50_context.fasta"
+    if not fasta.exists():
+        failures.append(f"fixture missing: {fasta}")
+        return failures
+    idx = run_comet_index(comet_exe, fasta, {
+        "enzyme": 0, "missed_cleavage": 0, "len_min": 8, "len_max": 8, "mass_low": 200.0,
+        "equal_IL": 0, "static_C": 0.0,
+    })
+    try:
+        data = parse_idx(idx)
+        # the three cases this fixture exists for
+        r = data.get("AAAKAAAK")
+        check(r is not None and r["protein_flags"] == [3],
+              f"AAAKAAAK repeated in T50_B at both termini -> one occurrence with bits N|C (3), got {r and r['protein_flags']}", failures)
+        r = data.get("ACDEFGHI")
+        check(r is not None and dict(zip([n.split()[0] for n in r["proteins"]], r["protein_flags"])) == {"T50_A": 1, "T50_C": 0},
+              f"ACDEFGHI: N-terminal in T50_A (1), internal in T50_C (0), got {r and list(zip([n.split()[0] for n in r['proteins']], r['protein_flags']))}", failures)
+        r = data.get("HIKLMNPQ")
+        check(r is not None and dict(zip([n.split()[0] for n in r["proteins"]], r["protein_flags"])) == {"T50_A": 2, "T50_C": 0},
+              f"HIKLMNPQ: C-terminal in T50_A (2), internal in T50_C (0), got {r and list(zip([n.split()[0] for n in r['proteins']], r['protein_flags']))}", failures)
+        r = data.get("GHIKLMNP")
+        check(r is not None and r["protein_flags"] == [0, 0],
+              f"GHIKLMNP: internal in both proteins (0, 0), got {r and r['protein_flags']}", failures)
+        n = _t50_check_idx(idx, fasta, failures, "fresh build")
+        print(f"  ({n} peptide rows checked on the fresh build)")
+    finally:
+        idx.unlink(missing_ok=True)
+
+    # committed fixtures: the bytes in the repo are what a reload sees
+    for name in ("t2_repeat", "t3_shared", "t6_flanking"):
+        cidx = DATA_DIR / f"{name}.fasta.idx"
+        cfa = DATA_DIR / f"{name}.fasta"
+        if cidx.exists() and cfa.exists():
+            n = _t50_check_idx(cidx, cfa, failures, f"committed {name}")
+            print(f"  ({n} peptide rows checked in the committed {name} fixture)")
+    return failures
+
+
+def _t51_plain_search(comet_exe, mods, extra_params):
+    """Plain-FASTA search of the term-mod2 spectrum against the T37 fixture with extra
+    `key: value` params applied. Returns (rc, rows, log)."""
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    txt = _T37_MS2.with_suffix(".txt"); txt.unlink(missing_ok=True)
+    params = legacy_cases.build_params(database=fmt(_T37_FASTA), enzyme1=0, mods=mods, num_output_lines=12)
+    for k, v in extra_params.items():
+        params = _set_param_line(params, k, v)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(params); pfile = Path(pf.name)
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pfile)}", fmt(_T37_MS2)])
+        return rc, (legacy_cases.parse_txt(txt) if txt.exists() else []), out
+    finally:
+        pfile.unlink(missing_ok=True); txt.unlink(missing_ok=True)
+
+
+# '^'/'$' alongside a residue-only mod and a mixed residue+protein-N-term mod ("K^": acetyl on
+# K or on the protein N-terminus). AScorePro must be handed "K" for the last one and nothing
+# for the two pure protein-terminal mods.
+_T51_MODS = _T38_PROT_MODS + ("42.010565 K^ 0 3 -1 0 0 0.0",)
+
+
+@register("t51_ascorepro_with_protein_term_mods")
+def test_t51_ascorepro_with_protein_term_mods(comet_exe):
+    """T51: print_ascorepro_score with '^'/'$' protein-terminal variable mods configured.
+    SetAScoreOptions() registers residue-specific mod definitions from each szVarModChar;
+    the terminal codes n/c/^/$ are stripped first and a mod left with no residues (a pure
+    '^' or '$' mod) is not registered at all. With AScorePro on and off, every path must run,
+    report the same (peptide, protein) result set, find the protein-N-terminal '^' PSM with
+    identical mods and attribution, and with AScorePro on the .txt must carry the ascorepro
+    column with a numeric value on that terminally-modified hit and on the unmodified top hit.
+    Part 2: a params file whose only variable mod is a pure '^' mod, AScorePro on."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    def run_all(mods, ascorepro):
+        extra = {"print_ascorepro_score": str(ascorepro)}
+        out = {}
+        rc, rows, log = _t51_plain_search(comet_exe, mods, extra)
+        if check(rc == 0 and rows, f"ascorepro={ascorepro}: plain-FASTA search ran (rc={rc})", failures):
+            out["plain"] = rows
+        else:
+            print(log[-1500:])
+        for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+            rc, rows, log, _, _ = _t38_index_search(comet_exe, flag, mods, extra_params=extra)
+            if check(rc == 0 and rows, f"ascorepro={ascorepro}: {label} build + search ran (rc={rc})", failures):
+                out[label] = rows
+            else:
+                print(log[-1500:])
+        return out
+
+    def pep_prot_set(rows):
+        return sorted((r.get("plain_peptide"), r.get("protein")) for r in rows)
+
+    def is_number(v):
+        try:
+            float(v); return True
+        except (TypeError, ValueError):
+            return False
+
+    off = run_all(_T51_MODS, 0)
+    on = run_all(_T51_MODS, 1)
+    for label in ("plain", "FI_DB", "PI_DB"):
+        if label not in off or label not in on:
+            continue
+        check(pep_prot_set(off[label]) == pep_prot_set(on[label]),
+              f"{label}: same (peptide, protein) result set with AScorePro off and on", failures)
+        r_off = _t37_find(off[label], "FDSFGDLSSASAIMGNPK", mod_substr="_V_163.063329_N")
+        r_on = _t37_find(on[label], "FDSFGDLSSASAIMGNPK", mod_substr="_V_163.063329_N")
+        if check(r_off is not None and r_on is not None,
+                 f"{label}: protein-N-terminal '^' PSM found with AScorePro off and on", failures):
+            check(r_off.get("modifications") == r_on.get("modifications")
+                  and _t37_proteins(r_on) == {"t37_noY"},
+                  f"{label}: '^' PSM keeps its mods and t37_noY-only attribution with AScorePro on, "
+                  f"got {r_on.get('modifications')!r} / {sorted(_t37_proteins(r_on))}", failures)
+            check("ascorepro" in r_on and is_number(r_on.get("ascorepro")),
+                  f"{label}: ascorepro column present and numeric on the '^' PSM, got {r_on.get('ascorepro')!r}", failures)
+        check("ascorepro" not in (off[label][0] if off[label] else {}),
+              f"{label}: no ascorepro column with print_ascorepro_score = 0", failures)
+        top = on[label][0]
+        check(is_number(top.get("ascorepro")),
+              f"{label}: top hit {top.get('plain_peptide')} ({top.get('modifications')!r}) has a numeric ascorepro value, "
+              f"got {top.get('ascorepro')!r}", failures)
+    if "plain" in on and "FI_DB" in on and "PI_DB" in on:
+        check(pep_prot_set(on["plain"]) == pep_prot_set(on["FI_DB"]) == pep_prot_set(on["PI_DB"]),
+              "AScorePro on: plain FASTA, FI_DB and PI_DB report the same (peptide, protein) result set", failures)
+
+    # Part 2: the only variable mod is a pure protein-N-terminal one -- AScorePro has no
+    # residue to register; the search must still run and find the '^' PSM. The spectrum's
+    # peptide carries an oxidized M, so without the M mod the '^' mass is Tyr + O.
+    only_caret = ("179.058228575 ^ 0 3 -1 0 0 0.0",)
+    rc, rows, log = _t51_plain_search(comet_exe, only_caret, {"print_ascorepro_score": "1"})
+    if check(rc == 0 and rows, f"'^'-only mod, AScorePro on: plain-FASTA search ran (rc={rc})", failures):
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="_V_179.058229_N")
+        check(r is not None and _t37_proteins(r) == {"t37_noY"},
+              f"'^'-only mod, AScorePro on: '^' PSM found, attributed to t37_noY, got {sorted(_t37_proteins(r)) if r else None}", failures)
+    else:
+        print(log[-1500:])
+    rc, rows, log, _, _ = _t38_index_search(comet_exe, "-j", only_caret, extra_params={"print_ascorepro_score": "1"})
+    if check(rc == 0 and rows, f"'^'-only mod, AScorePro on: PI_DB build + search ran (rc={rc})", failures):
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="_V_179.058229_N")
+        check(r is not None and _t37_proteins(r) == {"t37_noY"},
+              f"'^'-only mod, AScorePro on: PI_DB '^' PSM found, attributed to t37_noY, got {sorted(_t37_proteins(r)) if r else None}", failures)
+    else:
+        print(log[-1500:])
     return failures
 
 

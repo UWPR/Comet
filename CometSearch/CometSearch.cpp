@@ -3332,7 +3332,15 @@ bool CometSearch::SearchForPeptides(struct sDBEntry& dbe,
                      if (iPepLen <= 12)
                      {
                         uint64_t key = PackPeptide(szProteinSeq + iStartPos, iPepLen, bIL);
-                        if (_seenShort.insert(key).second)
+                        // Within-protein dedup keys include the protein-terminus context (bits
+                        // 60-61 are free above the 12 x 5-bit residues) so a peptide repeated
+                        // in one protein with different context -- e.g. at both termini --
+                        // reaches the merge as two occurrences whose bits get OR'd
+                        // (docs/20260915_permuter_terminal_mods.md section 11).
+                        const char cPrevHere = (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1];
+                        const char cNextHere = (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1];
+                        const uint64_t keyCtx = key | ((uint64_t)PepOccurrenceContext(cPrevHere, cNextHere) << 60);
+                        if (_seenShort.insert(keyCtx).second)
                         {
                            int li = iPepLen - iMinLen;
                            PepGenTupleShort t;
@@ -3366,7 +3374,11 @@ bool CometSearch::SearchForPeptides(struct sDBEntry& dbe,
                               if (szCanon[k] == 'L') szCanon[k] = 'I';
                            pCanon = szCanon;
                         }
-                        if (_seenLong.insert(std::string(pCanon, iPepLen)).second)
+                        std::string sKeyCtx(pCanon, iPepLen);
+                        sKeyCtx += (char)('0' + PepOccurrenceContext(
+                           (iStartPos == iFirstResiduePosition) ? '-' : szProteinSeq[iStartPos - 1],
+                           (iEndPos == iProteinSeqLengthMinus1) ? '-' : szProteinSeq[iEndPos + 1]));
+                        if (_seenLong.insert(sKeyCtx).second)   // sequence + protein-terminus context, see the short path
                         {
                            int li = iPepLen - 13;
                            PepGenTuple t;

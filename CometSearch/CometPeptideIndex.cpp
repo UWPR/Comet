@@ -409,13 +409,14 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
       // file whose rows lack the context bytes (a v5 index written before 2026-09-15, or a
       // truncated/corrupt one) can only be detected reliably by where the walk stops --
       // the per-row plausibility checks above may or may not trip on such a file.
-      if (comet_ftell(fp) != clFooterPos)
+      const comet_fileoffset_t clProteinListEnd = comet_ftell(fp);
+      if (clProteinListEnd != clFooterPos)
       {
-         fclose(fp);
          string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
             + "\" protein-list section does not end at the footer (read to "
-            + to_string((long long)comet_ftell(fp)) + ", footer at " + to_string((long long)clFooterPos)
-            + "): the file was written by an incompatible index layout or is corrupt. Rebuild it with -i or -j.\n";
+            + to_string((long long)clProteinListEnd) + ", footer at " + to_string((long long)clFooterPos)
+            + "): the file was written by an incompatible index layout or is corrupt. Rebuild it with -i (FI_DB) or -j (PI_DB).\n";
+         fclose(fp);
          g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
          logerr(strErrorMsg);
          return false;
@@ -1624,7 +1625,8 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
       // older binaries would silently drop '^'/'$' mods, so v4 and v5 files are mutually
       // unreadable on purpose (docs/20260915_permuter_terminal_mods.md, D6).
       string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
-         + "\" is not a v5 unified index file; rebuild it with -i or -j.\n";
+         + "\" is not a v5 unified index file (v4 and older are intentionally not read: the protein-list layout changed"
+           " for protein-terminal variable mods). Rebuild it from the FASTA with -i (FI_DB) or -j (PI_DB).\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;

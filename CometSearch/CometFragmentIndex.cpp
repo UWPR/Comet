@@ -1115,24 +1115,34 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             vector<PepGenTuple>().swap(v);
          }
 
-         sort(buf.begin(), buf.end(), [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) {
+         // Rows are keyed by (canonical sequence, PepRowSplitClass): occurrences at a protein
+         // terminus whose static mass is non-zero get their own row (different mass);
+         // otherwise all occurrences share one row (core/Types.h PepRowSplitClass()).
+         const double dAddNP = g_staticParams.staticModifications.dAddNterminusProtein;
+         const double dAddCP = g_staticParams.staticModifications.dAddCterminusProtein;
+         auto splitClass = [dAddNP, dAddCP](const PepGenTuple& t) {
+            return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
+         };
+
+         sort(buf.begin(), buf.end(), [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
             for (int k = 0; k < iLen; ++k)
             {
                char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
                char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
                if (ca != cb) return ca < cb;
             }
+            if (splitClass(a) != splitClass(b)) return splitClass(a) < splitClass(b);
             return a.lProteinFileOffset < b.lProteinFileOffset;
          });
 
-         auto bCanonEqual = [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) {
+         auto bCanonEqual = [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
             for (int k = 0; k < iLen; ++k)
             {
                char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
                char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
                if (ca != cb) return false;
             }
-            return true;
+            return splitClass(a) == splitClass(b);
          };
 
          vector<unsigned int> prot;
@@ -1192,10 +1202,10 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                DBIndex dbi;
                memcpy(dbi.sPeptide, rep.sPeptide, iLen);
                dbi.sPeptide[iLen] = '\0';
-               // The stored mass must describe the merged flanks: the digest folded the static
-               // protein-terminal masses into each occurrence's dPepMass, so when the union
-               // marks a terminus the representative occurrence did not have, add that static.
-               // Left untouched otherwise, so residue-only builds stay bit-identical.
+               // The stored mass must describe the merged flanks. Since rows are split by
+               // PepRowSplitClass(), every occurrence in this run agrees on each terminus whose
+               // static mass is non-zero, so this adjustment is a no-op by construction and is
+               // kept only as a safety net; residue-only builds stay bit-identical.
                dbi.dPepMass                  = rep.dPepMass;
                if (bAnyProtNterm && rep.cPrevAA != '-')
                   dbi.dPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
@@ -1263,9 +1273,18 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             vector<PepGenTupleShort>().swap(v);
          }
 
-         sort(buf.begin(), buf.end(), [](const PepGenTupleShort& a, const PepGenTupleShort& b) {
+         // same row key as the long path: (sequence, PepRowSplitClass)
+         const double dAddNP = g_staticParams.staticModifications.dAddNterminusProtein;
+         const double dAddCP = g_staticParams.staticModifications.dAddCterminusProtein;
+         auto splitClass = [dAddNP, dAddCP](const PepGenTupleShort& t) {
+            return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
+         };
+
+         sort(buf.begin(), buf.end(), [splitClass](const PepGenTupleShort& a, const PepGenTupleShort& b) {
             if (a.uPackedPep != b.uPackedPep)
                return a.uPackedPep < b.uPackedPep;
+            if (splitClass(a) != splitClass(b))
+               return splitClass(a) < splitClass(b);
             return a.lProteinFileOffset < b.lProteinFileOffset;
          });
 
@@ -1287,7 +1306,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          for (size_t i = 0; i <= buf.size(); ++i)
          {
             bool bFlush = (i == buf.size()) ||
-                          (i > 0 && buf[i].uPackedPep != buf[i - 1].uPackedPep);
+                          (i > 0 && (buf[i].uPackedPep != buf[i - 1].uPackedPep
+                                     || splitClass(buf[i]) != splitClass(buf[i - 1])));
             if (bFlush && i > 0)
             {
                // Sort by protein; duplicate occurrences within one protein merge by OR'ing
@@ -1326,10 +1346,10 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 
                DBIndex dbi;
                strcpy(dbi.sPeptide, szSeq);
-               // The stored mass must describe the merged flanks: the digest folded the static
-               // protein-terminal masses into each occurrence's dPepMass, so when the union
-               // marks a terminus the representative occurrence did not have, add that static.
-               // Left untouched otherwise, so residue-only builds stay bit-identical.
+               // The stored mass must describe the merged flanks. Since rows are split by
+               // PepRowSplitClass(), every occurrence in this run agrees on each terminus whose
+               // static mass is non-zero, so this adjustment is a no-op by construction and is
+               // kept only as a safety net; residue-only builds stay bit-identical.
                dbi.dPepMass                  = rep.dPepMass;
                if (bAnyProtNterm && rep.cPrevAA != '-')
                   dbi.dPepMass += g_staticParams.staticModifications.dAddNterminusProtein;

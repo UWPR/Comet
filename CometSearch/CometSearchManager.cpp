@@ -3667,8 +3667,18 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
       {
          AScoreProCpp::PeptideMod pepMod;
 
+         // AScorePro localizes residue-site mods only; Comet skips it for any PSM carrying a
+         // terminal variable mod (CometPostAnalysis.cpp). Register the residue letters only --
+         // the terminal codes n, c, ^, $ are not amino acids -- and skip a slot that has none.
+         std::string sResidues;
+         for (const char* pc = g_staticParams.variableModParameters.varModList[i].szVarModChar; *pc; ++pc)
+            if (*pc != 'n' && *pc != 'c' && *pc != '^' && *pc != '$')
+               sResidues += *pc;
+         if (sResidues.empty())
+            continue;
+
          pepMod.setSymbol(i + 1 + '0');
-         pepMod.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         pepMod.setResidues(sResidues.c_str());
          pepMod.setMass(g_staticParams.variableModParameters.varModList[i].dVarModMass);
          pepMod.setIsNTerm(false);
          pepMod.setIsCTerm(false);

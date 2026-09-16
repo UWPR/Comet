@@ -477,6 +477,29 @@ inline uint64_t PackPeptide(const char* seq, int iLen, bool bTreatSameIL)
    return key;
 }
 
+// Protein-terminus context of one peptide occurrence (ProteinsListCSR::PROT_*_HERE bits).
+inline unsigned char PepOccurrenceContext(char cPrevAA, char cNextAA)
+{
+   return (unsigned char)(((cPrevAA == '-') ? 0x01 : 0) | ((cNextAA == '-') ? 0x02 : 0));
+}
+
+// Raw-peptide ROW split class (docs/20260915_permuter_terminal_mods.md section 11). One
+// raw-peptide row normally holds every occurrence of a sequence, because all occurrences
+// share one mass. A non-zero static protein-terminal mass (add_Nterm_protein /
+// add_Cterm_protein) breaks that: the occurrence at the protein terminus weighs more than an
+// internal one. So occurrences are kept in separate rows -- distinct dedup keys here and in
+// the index build's merge -- exactly for the termini whose static mass is non-zero; for a
+// zero static the context stays a per-occurrence flag on the shared row.
+inline unsigned char PepRowSplitClass(char cPrevAA, char cNextAA, double dAddNtermProtein, double dAddCtermProtein)
+{
+   unsigned char uc = 0;
+   if (cPrevAA == '-' && dAddNtermProtein != 0.0)
+      uc |= 0x01;
+   if (cNextAA == '-' && dAddCtermProtein != 0.0)
+      uc |= 0x02;
+   return uc;
+}
+
 // Decode a packed key back to a null-terminated sequence of iLen characters.
 inline void UnpackPeptide(uint64_t key, int iLen, char* seq)
 {

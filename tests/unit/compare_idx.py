@@ -137,6 +137,9 @@ def _read_prot_counts(f, prot_pos, prot_section_size, num_lists):
         (cnt,) = struct.unpack_from("<Q", buf, p)
         p += 8 + cnt * 8 + cnt        # offsets, then one v5 context byte per occurrence
         counts.append(cnt & 0xFFFFFFFF)
+    if p != len(buf):
+        raise ValueError(f"protein-list section does not end at the footer ({p} != {len(buf)}); "
+                         "malformed or pre-context-byte v5 layout")
     return counts                              # buf freed after return
 
 

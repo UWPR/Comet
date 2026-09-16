@@ -58,6 +58,17 @@ jobs:
       shell: cmd
       run: "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe -p"
 
+    # tests/unit/MiniTest.h-based C++ unit tests (CometUnitTests project in Comet.sln)
+    - name: Run C++ unit tests
+      shell: cmd
+      run: "%GITHUB_WORKSPACE%\\x64\\Release\\CometUnitTests.exe"
+
+    # Python test harness (tests/unit/run_tests.py): builds the small fixture indexes and
+    # searches them; ~4 minutes. --integration (human.small.fasta, big data) is not run in CI.
+    - name: Run test harness
+      shell: cmd
+      run: python "%GITHUB_WORKSPACE%\\tests\\unit\\run_tests.py" --comet "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe"
+
     - name: Prepare release directory (Windows native)
       shell: cmd
       run: |
