@@ -477,6 +477,35 @@ inline uint64_t PackPeptide(const char* seq, int iLen, bool bTreatSameIL)
    return key;
 }
 
+// Protein-terminus context of one peptide occurrence (ProteinsListCSR::PROT_*_HERE bits).
+// 0x01 protein-N-terminal here, 0x02 protein-C-terminal here, 0x04 both in THIS occurrence
+// (the peptide is the whole protein) -- see ProteinsListCSR::PROT_BOTH_TERM_HERE for why the
+// third bit exists.
+inline unsigned char PepOccurrenceContext(char cPrevAA, char cNextAA)
+{
+   unsigned char uc = (unsigned char)(((cPrevAA == '-') ? 0x01 : 0) | ((cNextAA == '-') ? 0x02 : 0));
+   if (uc == 0x03)
+      uc |= 0x04;
+   return uc;
+}
+
+// Raw-peptide ROW split class (docs/20260915_permuter_terminal_mods.md section 11). One
+// raw-peptide row normally holds every occurrence of a sequence, because all occurrences
+// share one mass. A non-zero static protein-terminal mass (add_Nterm_protein /
+// add_Cterm_protein) breaks that: the occurrence at the protein terminus weighs more than an
+// internal one. So occurrences are kept in separate rows -- distinct dedup keys here and in
+// the index build's merge -- exactly for the termini whose static mass is non-zero; for a
+// zero static the context stays a per-occurrence flag on the shared row.
+inline unsigned char PepRowSplitClass(char cPrevAA, char cNextAA, double dAddNtermProtein, double dAddCtermProtein)
+{
+   unsigned char uc = 0;
+   if (cPrevAA == '-' && dAddNtermProtein != 0.0)
+      uc |= 0x01;
+   if (cNextAA == '-' && dAddCtermProtein != 0.0)
+      uc |= 0x02;
+   return uc;
+}
+
 // Decode a packed key back to a null-terminated sequence of iLen characters.
 inline void UnpackPeptide(uint64_t key, int iLen, char* seq)
 {
@@ -661,9 +690,9 @@ struct FragmentPeptidesStruct
                                  // g_vRawPeptides.size() is checked to fit in unsigned int
                                  // before this struct is ever populated (CometFragmentIndex.cpp,
                                  // CreateFragmentIndex())
-   int modNumIdx;
-   char cNtermMod;
-   char cCtermMod;
+   int modNumIdx;          // MOD_NUMBERS_POOL entry (-1 = fully unmodified). Terminal variable
+                           // mods are bytes 0/1 of that entry (docs/20260915_permuter_terminal_mods.md),
+                           // so no separate terminal-slot fields are carried here any more.
    char cIsDecoy;          // 1 = internal (pseudo-reverse) decoy of this same (peptide, mods)
                            // tuple; shares dPepMass with its target (reversal preserves
                            // composition), differs only in its fragment ladder --
@@ -733,9 +762,10 @@ struct VariantArray
    vector<unsigned int>  vuiMassKey;       // llround(dPepMass * MASS_KEY_SCALE), non-decreasing
    vector<unsigned int>  vuiWhichPeptide;  // index into g_vRawPeptides
    vector<unsigned int>  vuiModNumIdx;     // mod-combination entry index; 0xFFFFFFFF = unmodified
-   vector<unsigned char> vucTermMods;      // hi nibble cNtermMod+1, lo nibble cCtermMod+1; 0 = none
-                                           // (fits: terminal mod codes are -1..FRAGINDEX_VMODS-1 = -1..4,
-                                           // i.e. stored nibble values 0..5 -- bit 7 is DECOY_FLAG below)
+   vector<unsigned char> vucFlags;         // bit 7 = DECOY_FLAG; other bits unused. (Until
+                                           // docs/20260915_permuter_terminal_mods.md Phase 2 the low
+                                           // 7 bits packed the two terminal-mod slots; those now live in
+                                           // bytes 0/1 of the MOD_NUMBERS_POOL entry, see ModEntryTermSlot().)
 
    // Internal (pseudo-reverse) decoy marker, FI_DB only (docs/20260914_FI_internal_decoys.md
    // Section 4.1): a decoy variant shares vuiWhichPeptide, vuiModNumIdx, the terminal mods
@@ -744,7 +774,7 @@ struct VariantArray
    // sequence + mod sites on the fly for flagged candidates. Never set on PI_DB's
    // g_dbIndexVariants (PI_DB reverses at score time instead).
    static constexpr unsigned char DECOY_FLAG = 0x80;
-   bool IsDecoy(size_t i) const { return (vucTermMods[i] & DECOY_FLAG) != 0; }
+   bool IsDecoy(size_t i) const { return (vucFlags[i] & DECOY_FLAG) != 0; }
 
    size_t size() const { return vuiMassKey.size(); }
    bool empty() const { return vuiMassKey.empty(); }
@@ -754,7 +784,7 @@ struct VariantArray
       vector<unsigned int>().swap(vuiMassKey);
       vector<unsigned int>().swap(vuiWhichPeptide);
       vector<unsigned int>().swap(vuiModNumIdx);
-      vector<unsigned char>().swap(vucTermMods);
+      vector<unsigned char>().swap(vucFlags);
    }
 
    int GetModNumIdx(size_t i) const
@@ -762,9 +792,6 @@ struct VariantArray
       unsigned int ui = vuiModNumIdx[i];
       return ui == 0xFFFFFFFFu ? -1 : (int)ui;
    }
-   char GetNtermMod(size_t i) const { return (char)((vucTermMods[i] >> 4) & 0x07) - 1; }   // & 0x07: strip DECOY_FLAG
-   char GetCtermMod(size_t i) const { return (char)(vucTermMods[i] & 0x0F) - 1; }
-
    // Smallest key a mass >= dMass could have encoded to, minus 1 LSB of margin; with
    // QuantizeHigh() below, brackets a [low, high] mass window conservatively: rounding
    // error can only ADMIT extra borderline entries (rejected by the exact per-candidate
@@ -794,7 +821,7 @@ struct VariantArray
       return vuiMassKey.capacity() * sizeof(unsigned int)
          + vuiWhichPeptide.capacity() * sizeof(unsigned int)
          + vuiModNumIdx.capacity() * sizeof(unsigned int)
-         + vucTermMods.capacity() * sizeof(unsigned char);
+         + vucFlags.capacity() * sizeof(unsigned char);
    }
 };
 extern VariantArray g_dbIndexVariants;    // PI_DB's variant array (GenerateVariantArray())
@@ -830,9 +857,41 @@ class ProteinsListCSR
 {
 public:
    // Read-only proxy for a single row (one peptide's protein references).
+   // Per-occurrence protein-terminus context (docs/20260915_permuter_terminal_mods.md,
+   // section 11 "option C"): one row holds one peptide's protein references, but the
+   // peptide may sit at the protein N-terminus in one of those proteins and be internal in
+   // another. These bits record, per occurrence, whether the peptide is protein-N-terminal
+   // (PROT_NTERM_HERE) / protein-C-terminal (PROT_CTERM_HERE) in THAT protein, so a
+   // protein-scoped terminal variable mod ('^' / '$') is attributed exactly at output time
+   // and a variant needing both termini is emitted only if one occurrence has both.
+   //
+   // A protein that contains the peptide more than once keeps one reference whose byte is
+   // the OR of its copies' bits, so 0x01|0x02 alone cannot tell "one copy at each terminus"
+   // from "one copy that is the whole protein". PROT_BOTH_TERM_HERE records the latter
+   // explicitly (set only by PepOccurrenceContext() for a single occurrence with both '-'
+   // flanks, never fabricated by the OR); flagsSatisfy() demands it whenever a mask asks
+   // for both termini. All three bits are persisted in the v5 .idx protein-list section.
+   static constexpr unsigned char PROT_NTERM_HERE     = 0x01;
+   static constexpr unsigned char PROT_CTERM_HERE     = 0x02;
+   static constexpr unsigned char PROT_BOTH_TERM_HERE = 0x04;
+
+   // Does one occurrence's context byte support a PSM/variant whose protein-scoped terminal
+   // mods need ucMask (PROT_NTERM_HERE and/or PROT_CTERM_HERE)? Both bits -> that single
+   // occurrence must be the whole protein (PROT_BOTH_TERM_HERE). The one rule shared by the
+   // build-time check (CometPeptideIndex::PassesProteinTerminusContext()) and every output
+   // filter (GetProteinNameString(), mzIdentML per-PSM list, RTS result path).
+   static bool flagsSatisfy(unsigned char ucFlags, unsigned char ucMask)
+   {
+      unsigned char ucNeed = ucMask;
+      if ((ucMask & (PROT_NTERM_HERE | PROT_CTERM_HERE)) == (PROT_NTERM_HERE | PROT_CTERM_HERE))
+         ucNeed |= PROT_BOTH_TERM_HERE;
+      return (ucFlags & ucNeed) == ucNeed;
+   }
+
    struct Row
    {
-      const unsigned int* ptr;
+      const unsigned int*  ptr;
+      const unsigned char* pflags;   // parallel to ptr: PROT_*_HERE bits per occurrence
       size_t              n;
 
       size_t size()  const { return n; }
@@ -840,6 +899,18 @@ public:
 
       const unsigned int& operator[](size_t j) const { return ptr[j]; }
       unsigned int        at(size_t j)          const { return ptr[j]; }
+      unsigned char       flags(size_t j)       const { return pflags[j]; }
+
+      // True if some occurrence in this row carries every bit of ucMask (ucMask == 0: always).
+      bool hasContext(unsigned char ucMask) const
+      {
+         if (ucMask == 0)
+            return true;
+         for (size_t j = 0; j < n; ++j)
+            if (flagsSatisfy(pflags[j], ucMask))
+               return true;
+         return false;
+      }
 
       const unsigned int* begin() const { return ptr; }
       const unsigned int* end()   const { return ptr + n; }
@@ -853,6 +924,7 @@ public:
    void clear()
    {
       vector<unsigned int>().swap(m_flat);
+      vector<unsigned char>().swap(m_flags);
       vector<unsigned int>().swap(m_off);
    }
 
@@ -864,7 +936,8 @@ public:
    size_t total_offsets() const { return m_flat.size(); }
    size_t heap_bytes() const
    {
-      return m_flat.capacity() * sizeof(unsigned int) + m_off.capacity() * sizeof(unsigned int);
+      return m_flat.capacity() * sizeof(unsigned int) + m_flags.capacity() * sizeof(unsigned char)
+         + m_off.capacity() * sizeof(unsigned int);
    }
 
    // Batch-append from pre-built flat storage.
@@ -876,19 +949,27 @@ public:
    // nothing -- if the total entry count would exceed what the uint32 CSR
    // offsets can address (>4.29e9 (peptide, protein) pairs; callers fail the
    // build/load loudly).
-   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt)
+   // flags: one PROT_*_HERE byte per entry of `flat` (same order); an empty vector stores zeros.
+   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt, vector<unsigned char>& flags)
    {
       if (flat.empty())
          return true;
       if ((uint64_t)m_flat.size() + (uint64_t)flat.size() > 0xFFFFFFFFull)
          return false;
+      if (!flags.empty() && flags.size() != flat.size())
+         return false;
       if (m_off.empty())
          m_off.push_back(0);
       m_flat.insert(m_flat.end(), flat.begin(), flat.end());
+      if (flags.empty())
+         m_flags.insert(m_flags.end(), flat.size(), (unsigned char)0);
+      else
+         m_flags.insert(m_flags.end(), flags.begin(), flags.end());
       for (uint32_t n : cnt)
          m_off.push_back(m_off.back() + n);
       vector<unsigned int>().swap(flat);
       vector<uint32_t>().swap(cnt);
+      vector<unsigned char>().swap(flags);
       return true;
    }
 
@@ -896,6 +977,7 @@ public:
    Row operator[](size_t i) const
    {
       return {m_flat.data() + m_off[i],
+              m_flags.data() + m_off[i],
               static_cast<size_t>(m_off[i + 1] - m_off[i])};
    }
 
@@ -916,8 +998,9 @@ public:
    Iterator end()   const { return {this, size()}; }
 
 private:
-   vector<unsigned int> m_flat;   // all protein references concatenated (see class comment)
-   vector<unsigned int> m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
+   vector<unsigned int>  m_flat;   // all protein references concatenated (see class comment)
+   vector<unsigned char> m_flags;  // parallel to m_flat: PROT_NTERM_HERE / PROT_CTERM_HERE per occurrence
+   vector<unsigned int>  m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
 };
 
 extern ProteinsListCSR g_pvProteinsList;
@@ -948,9 +1031,10 @@ extern vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 entries; [0] 
 extern int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 
-// Index into the modifiable-sequence tables above
-// -1 for peptides that have no modifiable amino acids
-// -2 for peptides with no modifiable amino acids but contain n/c-term mods
+// Index into the modifiable-sequence tables above; -1 for peptides that have no modifiable
+// position. With terminal variable-mod search on (g_iTermSlotBytes == 2) every peptide's
+// modifiable sequence starts with the two terminal sentinel positions, so -1 then never
+// occurs; the former -2 "terminal mods only" state is gone (docs/20260915_permuter_terminal_mods.md).
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;
@@ -976,6 +1060,31 @@ inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
 {
    return MOD_NUMBERS_POOL.data() + MOD_SEQ_MOD_NUM_POOL_START[modSeqIdx]
       + (uint64_t)(modNumIdx - MOD_SEQ_MOD_NUM_START[modSeqIdx]) * (uint64_t)iModSeqLen;
+}
+
+// Entry layout (docs/20260915_permuter_terminal_mods.md section 3.3). When the permuter ran
+// with terminal positions enabled (g_iTermSlotBytes == ModificationsPermuter::TERM_SLOT_BYTES,
+// i.e. bVarTermModSearch), every modifiable sequence starts with two sentinel positions and
+// every entry with two bytes: [0] = N-term slot, [1] = C-term slot (compacted ALL_MODS index
+// or -1), then one byte per modifiable residue. Otherwise g_iTermSlotBytes == 0 and the
+// entry is residue bytes only, exactly the historical layout. Consumers walk the residue
+// bytes from ModEntryResidueOffset() and read the terminal slots via ModEntryTermSlot(); the
+// stride arithmetic in GetModNumEntry() is unaffected because iModSeqLen already includes
+// the sentinel positions. Set once per session by CometFragmentIndex::PermuteIndexPeptideMods().
+extern int g_iTermSlotBytes;
+
+inline int ModEntryResidueOffset()
+{
+   return g_iTermSlotBytes;
+}
+
+// Compacted ALL_MODS index of the variable mod on the N-terminus (bTerminusN) or C-terminus
+// of this entry, or -1 when unmodified / when terminal positions are not enabled.
+inline int ModEntryTermSlot(const char* pEntry, bool bTerminusN)
+{
+   if (g_iTermSlotBytes == 0 || pEntry == NULL)
+      return -1;
+   return (int)(signed char)pEntry[bTerminusN ? 0 : 1];
 }
 
 extern std::atomic<bool> g_bPlainPeptideIndexRead;   // set to true if plain peptide index file is read (and fragment index generated)

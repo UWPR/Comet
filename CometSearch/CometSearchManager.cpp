@@ -1401,11 +1401,105 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
+   // Deprecated variable_mod fields 5 (term_distance) and 6 (n/c-term), 2026-09.
+   //
+   // Terminus scope now lives in the residue string: 'n'/'c' = any peptide terminus,
+   // '^'/'$' = protein N-/C-terminus only.  The two integer fields are still parsed so
+   // existing params files load, but they are ignored.  The one legacy idiom that has an
+   // exact replacement -- 'n' with distance 0 + which_term 0 (protein N-term only), or 'c'
+   // with distance 0 + which_term 1 (protein C-term only) -- is translated to '^'/'$' here
+   // for one release so those searches keep their meaning; everything else non-default
+   // gets a warning saying what was dropped.  Afterwards both fields are normalized to their
+   // defaults so no downstream code can observe them.  See docs/20260915_permuter_terminal_mods.md
+   // sections 3.1 and 5.
+   for (int i=0; i<VMODS; ++i)
+   {
+      VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+
+      if (isEqual(vm.dVarModMass, 0.0) || vm.szVarModChar[0] == '-' || vm.szVarModChar[0] == '\0')
+      {
+         vm.iVarModTermDistance = -1;
+         vm.iWhichTerm = 0;
+         continue;
+      }
+
+      if (vm.iVarModTermDistance != -1 || vm.iWhichTerm != 0)
+      {
+         char szSlot[32];
+         char szMsg[512];
+         snprintf(szSlot, sizeof(szSlot), "variable_mod%02d", i + 1);
+
+         string strResidues;   // residue letters in this slot, excluding terminal codes
+         for (const char* p = vm.szVarModChar; *p; ++p)
+         {
+            if (*p != 'n' && *p != 'c' && *p != '^' && *p != '$')
+               strResidues += *p;
+         }
+
+         bool bBridged = false;
+
+         if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 0 && strchr(vm.szVarModChar, 'n'))
+         {
+            for (char* p = vm.szVarModChar; *p; ++p)
+               if (*p == 'n')
+                  *p = '^';
+            bBridged = true;
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'n' with distance 0 to '^'\n"
+                   "           (protein N-terminus only). Update the params file to use '^' directly.\n",
+                     szSlot);
+            logout(szMsg);
+         }
+         else if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 1 && strchr(vm.szVarModChar, 'c'))
+         {
+            for (char* p = vm.szVarModChar; *p; ++p)
+               if (*p == 'c')
+                  *p = '$';
+            bBridged = true;
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'c' with distance 0 to '$'\n"
+                   "           (protein C-terminus only). Update the params file to use '$' directly.\n",
+                     szSlot);
+            logout(szMsg);
+         }
+
+         if (vm.iVarModTermDistance == 0 && strResidues.length() > 0)
+         {
+            // legacy which_term: 0 protein N-term, 1 protein C-term, 2 peptide N-term, 3 peptide C-term
+            static const char* szLegacyTerm[4] = { "protein N-terminus", "protein C-terminus", "peptide N-terminus", "peptide C-terminus" };
+            const char* szTerm = (vm.iWhichTerm >= 0 && vm.iWhichTerm <= 3) ? szLegacyTerm[vm.iWhichTerm] : "a terminus";
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance 0 / which_term %d restricted residues \"%s\" to the %s; that\n"
+                   "           restriction is deprecated and dropped -- the residue modification now applies anywhere.\n",
+                     szSlot, vm.iWhichTerm, strResidues.c_str(), szTerm);
+            logout(szMsg);
+         }
+         else if (vm.iVarModTermDistance > 0)
+         {
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored (no distance constraint is applied).\n",
+                     szSlot, vm.iVarModTermDistance);
+            logout(szMsg);
+         }
+         else if (vm.iVarModTermDistance < -1)
+         {
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored.\n",
+                     szSlot, vm.iVarModTermDistance);
+            logout(szMsg);
+         }
+         else if (!bBridged)
+         {
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term (%d %d) are deprecated and ignored; 'n'/'c' mean any\n"
+                   "           peptide terminus, use '^'/'$' for protein N-/C-terminus only.\n",
+                     szSlot, vm.iVarModTermDistance, vm.iWhichTerm);
+            logout(szMsg);
+         }
+
+         vm.iVarModTermDistance = -1;
+         vm.iWhichTerm = 0;
+      }
+   }
+
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
    {
-      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0)
-            && g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == -1)
+      if (!isEqual(g_staticParams.variableModParameters.varModList[i].dVarModMass, 0.0))
       {
          g_staticParams.variableModParameters.bRareVarModPresent = true;
       }
@@ -1428,8 +1522,6 @@ bool CometSearchManager::InitializeStaticParams()
                      && (g_staticParams.variableModParameters.varModList[i].iBinaryMod == g_staticParams.variableModParameters.varModList[ii].iBinaryMod)
                      && (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMaxNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMinNumVarModAAPerMod)
-                     && (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == g_staticParams.variableModParameters.varModList[ii].iVarModTermDistance)
-                     && (g_staticParams.variableModParameters.varModList[i].iWhichTerm == g_staticParams.variableModParameters.varModList[ii].iWhichTerm)
                      && (g_staticParams.variableModParameters.varModList[i].iRequireThisMod == g_staticParams.variableModParameters.varModList[ii].iRequireThisMod)
                      &&  g_staticParams.variableModParameters.varModList[i].iRequireThisMod != -1)
                {
@@ -1466,22 +1558,31 @@ bool CometSearchManager::InitializeStaticParams()
 
          g_staticParams.variableModParameters.varModList[i].bUseMod = true;
 
-         if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n'))
+         // Terminal codes in the residue string: 'n'/'c' = any peptide terminus,
+         // '^'/'$' = protein N-/C-terminus only.  'n' together with '^' is just 'n'.
          {
-            g_staticParams.variableModParameters.varModList[i].bNtermMod = true;
-            g_staticParams.variableModParameters.bVarTermModSearch = true;
+            bool bPepN  = strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'n') != NULL;
+            bool bProtN = strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, '^') != NULL;
+            bool bPepC  = strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c') != NULL;
+            bool bProtC = strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, '$') != NULL;
 
-            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0)
-               g_staticParams.variableModParameters.bVarProteinNTermMod = true;
-         }
+            if (bPepN || bProtN)
+            {
+               g_staticParams.variableModParameters.varModList[i].bNtermMod = true;
+               g_staticParams.variableModParameters.varModList[i].bProteinNtermOnly = (bProtN && !bPepN);
+               g_staticParams.variableModParameters.bVarTermModSearch = true;
+               if (bProtN && !bPepN)
+                  g_staticParams.variableModParameters.bVarProteinNTermMod = true;
+            }
 
-         if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, 'c'))
-         {
-            g_staticParams.variableModParameters.varModList[i].bCtermMod = true;
-            g_staticParams.variableModParameters.bVarTermModSearch = true;
-
-            if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1)
-               g_staticParams.variableModParameters.bVarProteinCTermMod = true;
+            if (bPepC || bProtC)
+            {
+               g_staticParams.variableModParameters.varModList[i].bCtermMod = true;
+               g_staticParams.variableModParameters.varModList[i].bProteinCtermOnly = (bProtC && !bPepC);
+               g_staticParams.variableModParameters.bVarTermModSearch = true;
+               if (bProtC && !bPepC)
+                  g_staticParams.variableModParameters.bVarProteinCTermMod = true;
+            }
          }
 
          if (g_staticParams.variableModParameters.varModList[i].iBinaryMod)
@@ -3004,12 +3105,17 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             // always reported (max_duplicate_proteins = 0 -> exactly one protein), then the cap
             // applies across both lists -- same count/break semantics as the single loop this
             // replaced, which appended a name before testing the cap.
+            // protein-scoped terminal mod on this PSM -> only proteins where the peptide is at that terminus
+            const unsigned char ucTermMask = CometMassSpecUtils::ProteinTermContextMask(
+               pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide);
+
             auto resolveBucket = [&](comet_fileoffset_t lBucket, bool bDecoyList)
             {
                if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
                   return;
 
-               for (auto itProt = g_pvProteinsList.at(lBucket).begin(); itProt != g_pvProteinsList.at(lBucket).end(); ++itProt)
+               ProteinsListCSR::Row row = g_pvProteinsList.at(lBucket);
+               for (size_t j = 0; j < row.size(); ++j)
                {
                   if (iPrintDuplicateProteinCt > 0
                      && iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -3017,6 +3123,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                      break;
                   }
 
+                  if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))
+                     continue;
+
+                  const unsigned int* itProt = &row[j];
                   if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                      continue;
 
@@ -3560,8 +3670,18 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
       {
          AScoreProCpp::PeptideMod pepMod;
 
+         // AScorePro localizes residue-site mods only; Comet skips it for any PSM carrying a
+         // terminal variable mod (CometPostAnalysis.cpp). Register the residue letters only --
+         // the terminal codes n, c, ^, $ are not amino acids -- and skip a slot that has none.
+         std::string sResidues;
+         for (const char* pc = g_staticParams.variableModParameters.varModList[i].szVarModChar; *pc; ++pc)
+            if (*pc != 'n' && *pc != 'c' && *pc != '^' && *pc != '$')
+               sResidues += *pc;
+         if (sResidues.empty())
+            continue;
+
          pepMod.setSymbol(i + 1 + '0');
-         pepMod.setResidues(g_staticParams.variableModParameters.varModList[i].szVarModChar);
+         pepMod.setResidues(sResidues.c_str());
          pepMod.setMass(g_staticParams.variableModParameters.varModList[i].dVarModMass);
          pepMod.setIsNTerm(false);
          pepMod.setIsCTerm(false);

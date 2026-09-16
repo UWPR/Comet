@@ -51,8 +51,9 @@ vector<char> MOD_SEQS_POOL;            // unique modifiable sequences, concatena
 vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 offsets into MOD_SEQS_POOL; [0] == 0
 int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
-int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable amino acids; -2 if only terminal mods.
+int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable sequence.
 int MOD_NUM = 0;
+int g_iTermSlotBytes = 0;   // see core/Types.h ModEntryTermSlot(); set by PermuteIndexPeptideMods()
 size_t tTmp;
 
 
@@ -177,6 +178,35 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
    }
    cout << endl;
 
+   // Terminal-mod permutation inside the permuter (docs/20260915_permuter_terminal_mods.md).
+   // When any variable mod has a terminal code ('n', 'c', '^', '$' -- bVarTermModSearch) the
+   // permuter prefixes every modifiable sequence with two sentinel positions chosen from the
+   // peptide's protein context, and terminal mods become bitmask positions like residues:
+   // they combine with residue mods, count toward max_variable_mods_in_peptide, and a '^'/'$'
+   // mod is only ever placed on a peptide at that protein terminus. Bytes 0/1 of every pool
+   // entry then carry the terminal slots (core/Types.h ModEntryTermSlot()). Residue-only
+   // configurations keep the historical layout and stride.
+   const bool bIncludeTermini = g_staticParams.variableModParameters.bVarTermModSearch;
+   g_iTermSlotBytes = bIncludeTermini ? ModificationsPermuter::TERM_SLOT_BYTES : 0;
+
+   // FI_DB/PI_DB only see the first FRAGINDEX_VMODS variable-mod slots; a terminal mod
+   // declared beyond them has always been silently invisible to the index -- say so.
+   for (int i = FRAGINDEX_VMODS; i < VMODS; ++i)
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+      if (!isEqual(vm.dVarModMass, 0.0) && vm.szVarModChar[0] != '-' && (vm.bNtermMod || vm.bCtermMod))
+      {
+         char szMsg[256];
+         snprintf(szMsg, sizeof(szMsg), " Warning - variable_mod%02d (%s) is a terminal mod in a slot beyond the first %d;"
+            " fragment/peptide index searches only apply variable_mod01-%02d and will ignore it.\n",
+            i + 1, vm.szVarModChar, FRAGINDEX_VMODS, FRAGINDEX_VMODS);
+         logout(szMsg);
+      }
+   }
+
+   for (int i = 0; i < MOD_CNT; ++i)
+      ALL_MODS[i] = ModificationsPermuter::TranslateModCharsForPermuter(ALL_MODS[i].c_str());
+
    unsigned long long* ALL_COMBINATIONS;
    int ALL_COMBINATION_CNT = 0;
 
@@ -187,14 +217,15 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
 
    // Pre-compute the combinatorial bitmasks that specify the positions of a modified residue
    // iEnd is one larger than max peptide length
-   ModificationsPermuter::initCombinations(g_staticParams.options.peptideLengthRange.iEnd, iMaxNumVariableMods,
-         &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
+   ModificationsPermuter::initCombinations(
+         g_staticParams.options.peptideLengthRange.iEnd + (bIncludeTermini ? ModificationsPermuter::TERM_SLOT_BYTES : 0),
+         iMaxNumVariableMods, &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
    // Get the unique modifiable sequences from the peptides (fills the MOD_SEQS_POOL/
    // MOD_SEQS_OFFSET flat pool -- docs/20260827_PI_memory.md Phase 1)
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS);
+   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini);
 
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(vMaxNumVarModsPerMod, ALL_MODS,
@@ -369,7 +400,7 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
          {
             const FragmentPeptidesStruct& fp = pStaging[i];
-            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx,
                fp.cIsDecoy != 0, vModSlotForAllModsIdx, fp.dPepMass, nullptr, pLocalCounts, nullptr);
          }
       });
@@ -412,7 +443,7 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          for (size_t i = vFillRanges[t].first; i < vFillRanges[t].second; ++i)
          {
             const FragmentPeptidesStruct& fp = pStaging[i];
-            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx, fp.cNtermMod, fp.cCtermMod,
+            AddFragments(g_vRawPeptides, fp.iWhichPeptide, i, fp.modNumIdx,
                fp.cIsDecoy != 0, vModSlotForAllModsIdx, fp.dPepMass, nullptr, nullptr, pLocalCursor);
          }
       });
@@ -451,7 +482,7 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
       g_fragmentPeptides.vuiMassKey.reserve(tNumFragPeptides);
       g_fragmentPeptides.vuiWhichPeptide.reserve(tNumFragPeptides);
       g_fragmentPeptides.vuiModNumIdx.reserve(tNumFragPeptides);
-      g_fragmentPeptides.vucTermMods.reserve(tNumFragPeptides);
+      g_fragmentPeptides.vucFlags.reserve(tNumFragPeptides);
 
       const size_t tChunkEntries = 4 * 1024 * 1024;  // release granularity: ~96 MB of staging
       size_t tReleasedBytes = 0;
@@ -463,8 +494,7 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
          g_fragmentPeptides.vuiMassKey.push_back((unsigned int)llround(s.dPepMass * VariantArray::MASS_KEY_SCALE));
          g_fragmentPeptides.vuiWhichPeptide.push_back(s.iWhichPeptide);
          g_fragmentPeptides.vuiModNumIdx.push_back((s.modNumIdx < 0) ? 0xFFFFFFFFu : (unsigned int)s.modNumIdx);
-         g_fragmentPeptides.vucTermMods.push_back((unsigned char)(((s.cNtermMod + 1) << 4) | (s.cCtermMod + 1)
-            | (s.cIsDecoy ? VariantArray::DECOY_FLAG : 0)));
+         g_fragmentPeptides.vucFlags.push_back((unsigned char)(s.cIsDecoy ? VariantArray::DECOY_FLAG : 0));
          if (s.cIsDecoy)
             tNumDecoyVariants++;
 
@@ -521,8 +551,7 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
    // indices requiring translation through this compacted-to-real-slot map before use as a
    // varModList index or an siVarModProteinFilter bit position (both real-slot-indexed) --
    // see AddFragments()'s own copy of this note for the full explanation. Fetched once here,
-   // used below at the protein-mod-filter check (the one place in this function that still
-   // needs it -- ctNtermMod/ctCtermMod elsewhere in this function are already raw slots).
+   // used below at the protein-mod-filter check.
    const vector<int>& vModSlotForAllModsIdx = CometPeptideIndex::GetVModSlotForAllModsIdx();
 
    // Internal decoys (docs/20260914_FI_internal_decoys.md Section 4.3): every accepted
@@ -532,13 +561,13 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
    // is fed back in as dKnownPepMass: the decoy's precursor mass is identical, so it
    // skips the recompute and is never generated for a target the filters rejected.
    const bool bInternalDecoys = (g_staticParams.options.iDecoySearch != 0);
-   auto addVariant = [&](size_t iWhichPep, int iModNumIdx, char cNterm, char cCterm)
+   auto addVariant = [&](size_t iWhichPep, int iModNumIdx)
    {
-      double dMass = AddFragments(g_vRawPeptides, iWhichPep, iWhichFragmentPeptide, iModNumIdx, cNterm, cCterm,
+      double dMass = AddFragments(g_vRawPeptides, iWhichPep, iWhichFragmentPeptide, iModNumIdx,
          false, vModSlotForAllModsIdx, -1.0, &localFragPeptides, nullptr, nullptr);
       if (bInternalDecoys && dMass >= 0.0)
       {
-         AddFragments(g_vRawPeptides, iWhichPep, iWhichFragmentPeptide, iModNumIdx, cNterm, cCterm,
+         AddFragments(g_vRawPeptides, iWhichPep, iWhichFragmentPeptide, iModNumIdx,
             true, vModSlotForAllModsIdx, dMass, &localFragPeptides, nullptr, nullptr);
       }
    };
@@ -546,60 +575,25 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
    // P1: this thread owns [iPeptideStart, iPeptideEnd) exclusively -- every accepted
    // variant goes into this thread's own localFragPeptides (see AddFragments()'s doc
    // comment), so there's no shared state here to race on.
+   //
+   // Every variable-mod combination a peptide can carry -- residue mods, terminal mods and
+   // their combinations -- is one MOD_NUMBERS_POOL entry now that the permuter handles the
+   // termini (docs/20260915_permuter_terminal_mods.md); the three hand-rolled terminal-mod
+   // loops this function used to nest here are gone, as is the copy in
+   // CometPeptideIndex::EnumerateIndexPeptideMods(). Only the fully-unmodified variant is
+   // emitted outside the entry loop.
    for (size_t iWhichPeptide = iPeptideStart; iWhichPeptide < iPeptideEnd; ++iWhichPeptide)
    {
       // AddFragments for unmodified peptide; only if no variable mods are required
       if (!g_staticParams.variableModParameters.iRequireVarMod)
-         addVariant(iWhichPeptide, -1, -1, -1);
+         addVariant(iWhichPeptide, -1);
 
       // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
-      // Possibly analyze peptides with a terminal mod and no variable mod on any residue
-      if (g_staticParams.variableModParameters.bVarTermModSearch)
-      {
-         // Add any n-term variable mods
-         for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
-         {
-            if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
-               && (!g_staticParams.variableModParameters.bVarModProteinFilter
-                  || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
-            {
-               addVariant(iWhichPeptide, -1, ctNtermMod, -1);
-            }
-         }
-
-         // Add any c-term variable mods
-         for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
-         {
-            if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
-               && (!g_staticParams.variableModParameters.bVarModProteinFilter
-                  || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
-            {
-               addVariant(iWhichPeptide, -1, -1, ctCtermMod);
-            }
-         }
-
-         // Now consider combinations of n-term and c-term variable mods
-         for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
-         {
-            for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
-            {
-               if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
-                  && g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
-                  && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
-                     (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
-                        && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
-               {
-                  addVariant(iWhichPeptide, -1, ctNtermMod, ctCtermMod);
-               }
-            }
-         }
-      }
-
       if (modSeqIdx < 0)
       {
-         // peptide is not modified, skip following permuting code
+         // peptide has no modifiable sequence, skip following permuting code
          continue;
       }
 
@@ -614,63 +608,29 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
          if (modNumIdx >= 0)
          {
             bool bPass = true;
+            int iModSeqLen;
+            GetModSeq(modSeqIdx, iModSeqLen);
+            const char* pEntry = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
             // if protein variable mod filter is applied, check mods[] against the peptide's
-            // siVarModProteinFilter -- shared with CometPeptideIndex.cpp's EnumerateIndexPeptideMods(),
-            // which previously carried its own independent (and briefly inconsistent -- see
-            // CometPeptideIndex::PassesVarModProteinFilter()'s doc comment) copy of this exact check.
+            // siVarModProteinFilter -- shared with CometPeptideIndex.cpp's EnumerateIndexPeptideMods().
+            // The entry's terminal-slot bytes are checked by the same walk.
             if (g_staticParams.variableModParameters.bVarModProteinFilter)
             {
-               int iModSeqLen;
-               GetModSeq(modSeqIdx, iModSeqLen);
                bPass = CometPeptideIndex::PassesVarModProteinFilter(vModSlotForAllModsIdx,
-                  GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen), iModSeqLen,
-                  g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
+                  pEntry, iModSeqLen, g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
+            }
+
+            // protein-scoped terminal mods need an occurrence of this peptide at that terminus
+            // (both termini in ONE protein when both are set) -- see PassesProteinTerminusContext()
+            if (bPass && g_iTermSlotBytes)
+            {
+               bPass = CometPeptideIndex::PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry,
+                  g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
             }
 
             if (bPass)
-            {
-               addVariant(iWhichPeptide, modNumIdx, -1, -1);
-
-               if (g_staticParams.variableModParameters.bVarTermModSearch)
-               {
-                  // Add any n-term variable mods
-                  for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
-                  {
-                     if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
-                        && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)))
-                     {
-                        addVariant(iWhichPeptide, modNumIdx, ctNtermMod, -1);
-                     }
-                  }
-
-                  // Add any c-term variable mods
-                  for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
-                  {
-                     if (g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
-                        && (!g_staticParams.variableModParameters.bVarModProteinFilter || cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod)))
-                     {
-                        addVariant(iWhichPeptide, modNumIdx, -1, ctCtermMod);
-                     }
-                  }
-
-                  // Now consider combinations of n-term and c-term variable mods
-                  for (char ctNtermMod = 0; ctNtermMod < FRAGINDEX_VMODS; ++ctNtermMod)
-                  {
-                     for (char ctCtermMod = 0; ctCtermMod < FRAGINDEX_VMODS; ++ctCtermMod)
-                     {
-                        if (g_staticParams.variableModParameters.varModList[(int)ctNtermMod].bNtermMod
-                           && g_staticParams.variableModParameters.varModList[(int)ctCtermMod].bCtermMod
-                           && (!g_staticParams.variableModParameters.bVarModProteinFilter ||
-                              (cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctNtermMod)
-                                 && cometbitcheck(g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter, ctCtermMod))))
-                        {
-                           addVariant(iWhichPeptide, modNumIdx, ctNtermMod, ctCtermMod);
-                        }
-                     }
-                  }
-               }
-            }
+               addVariant(iWhichPeptide, modNumIdx);
          }
       }
    }
@@ -682,8 +642,6 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
 // variant's mass bit-identically (docs/20260827_PI_memory.md Section 7.1).
 double CometFragmentIndex::ComputeIndexedPepMass(size_t iWhichPeptide,
                                                  int modNumIdx,
-                                                 char cNtermMod,
-                                                 char cCtermMod,
                                                  const vector<int>& vModSlotForAllModsIdx,
                                                  double* pdResidueOnlyMass)
 {
@@ -694,14 +652,18 @@ double CometFragmentIndex::ComputeIndexedPepMass(size_t iWhichPeptide,
    const char* mods = NULL;
    const char* pModSeq = NULL;
    int iModSeqLen = 0;
+   int cNtermMod = -1;   // real varModList slot of the terminal variable mods, -1 = none
+   int cCtermMod = -1;
    if (modNumIdx >= 0)
    {
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
       pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
       mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
+      cNtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
+      cCtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
    }
 
-   int j = 0;
+   int j = ModEntryResidueOffset();
    double dCalcPepMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
    double dResidueOnlyMass = g_staticParams.precalcMasses.dOH2ProtonCtermNterm;
    for (int i = 0; i <= iEndPos; ++i)
@@ -723,9 +685,20 @@ double CometFragmentIndex::ComputeIndexedPepMass(size_t iWhichPeptide,
    }
 
    if (cNtermMod >= 0)  // if -1, unused
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[cNtermMod].dVarModMass;
    if (cCtermMod >= 0)  // if -1, unused
-      dCalcPepMass += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
+      dCalcPepMass += g_staticParams.variableModParameters.varModList[cCtermMod].dVarModMass;
+
+   // Static protein-terminal mods (add_Nterm_protein / add_Cterm_protein) apply to peptides at
+   // the protein termini, marked by the '-' flank. The digest folds them into the raw
+   // peptide's stored dPepMass and PI_DB's search path adds them to its ladders; the FI_DB
+   // path never applied them before docs/20260915_permuter_terminal_mods.md Phase 2 (D9).
+   // Summed after the variable terminal masses so AddFragments()'s ladder accumulators and
+   // this precursor stay bit-identical between build and search.
+   if (raw.cPrevAA == '-')
+      dCalcPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+   if (raw.cNextAA == '-')
+      dCalcPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (pdResidueOnlyMass != NULL)
       *pdResidueOnlyMass = dResidueOnlyMass;
@@ -738,8 +711,6 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
                                         size_t iWhichPeptide,
                                         size_t iWhichFragmentPeptide,
                                         int modNumIdx,
-                                        char cNtermMod,
-                                        char cCtermMod,
                                         bool bDecoy,
                                         const vector<int>& vModSlotForAllModsIdx,
                                         double dKnownPepMass,
@@ -758,9 +729,12 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
    // 10^8+ calls a whole-proteome build makes (twice per accepted variant: once in the
    // count pass, once in the fill pass). szPeptide is already a NUL-terminated char[] on
    // the raw-peptide entry, so read it directly instead of copying it into a std::string.
-   const char* pszPeptide = g_vRawPeptides.at(iWhichPeptide).szPeptide;
+   const RawPeptideView rawEntry = g_vRawPeptides.at(iWhichPeptide);
+   const char* pszPeptide = rawEntry.szPeptide;
 
    const char* mods = NULL;
+   int cNtermMod = -1;   // real varModList slot of the terminal variable mods, -1 = none
+   int cCtermMod = -1;
 
    // Same reasoning as pszPeptide above: the MOD_SEQS_POOL/MOD_NUMBERS_POOL flat pools are
    // read-only global tables for the duration of the fill/count passes, so reference their
@@ -781,6 +755,8 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
       pModSeq = GetModSeq(modSeqIdx, iModSeqLen);
       mods = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
+      cNtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
+      cCtermMod = CometPeptideIndex::TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
    }
 
    double dCalcPepMass;
@@ -788,7 +764,8 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
    double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
    int iPosReverse;  // points to residue in reverse order
 
-   int j = 0; // track count of each modifiable residue
+   int j;     // cursor into pModSeq / mods[]; every walk starts at ModEntryResidueOffset(),
+              // past the entry's terminal slot bytes (core/Types.h entry layout)
    int iEndPos = (int)strlen(pszPeptide) - 1;
 
    // Search-time peptide_length_range narrower than what's baked into g_vRawPeptides (see
@@ -801,7 +778,7 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
       return -1.0;
 
    // P2: the fill pass (bCountOnly == false) calls this with the exact same
-   // (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple the count pass already
+   // (iWhichPeptide, modNumIdx) tuple the count pass already
    // accepted, mass, range/precursor filters, and hardening-check included -- the caller
    // (GenerateFragmentIndex()) passes that already-computed mass back in as dKnownPepMass
    // (fp.dPepMass) instead of leaving this function to redo the full O(peptide length)
@@ -818,8 +795,7 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
       // inline), which FI_DB's search path also calls per candidate to recompute the mass a
       // variant was stored with, bit-identically (docs/20260827_PI_memory.md Section 7.1)
       double dResidueOnlyMass;
-      dCalcPepMass = ComputeIndexedPepMass(iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
-         vModSlotForAllModsIdx, &dResidueOnlyMass);
+      dCalcPepMass = ComputeIndexedPepMass(iWhichPeptide, modNumIdx, vModSlotForAllModsIdx, &dResidueOnlyMass);
 
       // Hardening check: for the plain, unmodified variant of a raw peptide, the mass
       // recomputed above from pszPeptide (the raw-peptide entry's stored sequence) must
@@ -833,16 +809,20 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
       // build doesn't abort over a single bad entry. Only reachable here (the fresh-compute
       // path) -- the fill pass's dKnownPepMass already went through this exact check once,
       // during the count pass, for this same peptide variant.
-      if (modNumIdx < 0 && cNtermMod < 0 && cCtermMod < 0)
+      if (modNumIdx < 0)
       {
          constexpr double MASS_CHECK_TOL = 10.0;  // Da; generous enough to absorb mono/avg or terminal-mod drift
          double dStoredMass = g_vRawPeptides.at(iWhichPeptide).dPepMass;
-         double dDelta = fabs(dResidueOnlyMass - dStoredMass);
+         // the stored mass carries the static protein-terminal masses for '-' flanks (D9)
+         double dExpectedMass = dResidueOnlyMass
+            + ((rawEntry.cPrevAA == '-') ? g_staticParams.staticModifications.dAddNterminusProtein : 0.0)
+            + ((rawEntry.cNextAA == '-') ? g_staticParams.staticModifications.dAddCterminusProtein : 0.0);
+         double dDelta = fabs(dExpectedMass - dStoredMass);
          if (dDelta > MASS_CHECK_TOL)
          {
             logerr(" Warning - AddFragments mass mismatch for peptide '" + string(pszPeptide)
                + "' (iWhichPeptide=" + std::to_string(iWhichPeptide)
-               + "): recomputed mass " + std::to_string(dResidueOnlyMass)
+               + "): recomputed mass " + std::to_string(dExpectedMass)
                + " vs stored " + std::to_string(dStoredMass)
                + ", delta " + std::to_string(dDelta)
                + ". Possible truncated/corrupted peptide string.\n");
@@ -853,9 +833,15 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
    // dBion/dYion's own terminal-mod contribution is needed for the fragment ladder built
    // below regardless of which branch above computed dCalcPepMass.
    if (cNtermMod >= 0)  // if -1, unused
-      dBion += g_staticParams.variableModParameters.varModList[(int)cNtermMod].dVarModMass;
+      dBion += g_staticParams.variableModParameters.varModList[cNtermMod].dVarModMass;
    if (cCtermMod >= 0)  // if -1, unused
-      dYion += g_staticParams.variableModParameters.varModList[(int)cCtermMod].dVarModMass;
+      dYion += g_staticParams.variableModParameters.varModList[cCtermMod].dVarModMass;
+
+   // Static protein-terminal mods on the ladders, same order as ComputeIndexedPepMass() (D9).
+   if (rawEntry.cPrevAA == '-')
+      dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+   if (rawEntry.cNextAA == '-')
+      dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
    if (dCalcPepMass > 99999.9)
    {
@@ -878,8 +864,6 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
       sTmp.iWhichPeptide = static_cast<unsigned int>(iWhichPeptide);
       sTmp.modNumIdx = modNumIdx;
       sTmp.dPepMass = dCalcPepMass;
-      sTmp.cNtermMod = cNtermMod;
-      sTmp.cCtermMod = cCtermMod;
       sTmp.cIsDecoy = bDecoy ? 1 : 0;
 
       // P1: pLocalFragPeptides is this calling thread's own vector (one per
@@ -894,7 +878,7 @@ if (!(iWhichPeptide%1000))
 {
    // print out the peptide
    printf("OK in AddFragments: ");
-   j=0;
+   j = ModEntryResidueOffset();
    for (int i = 0; i <= iEndPos; ++i)
    {
       printf("%c", (char)pszPeptide[i]);
@@ -923,7 +907,7 @@ if (!(iWhichPeptide%1000))
    // then that residue's mod mass, position by position), so target postings are
    // bit-identical to the pre-decoy build.
    int piSlot[MAX_PEPTIDE_LEN_P2];
-   j = 0;
+   j = ModEntryResidueOffset();
    for (int i = 0; i <= iEndPos; ++i)
    {
       piSlot[i] = -1;
@@ -936,8 +920,8 @@ if (!(iWhichPeptide%1000))
          j++;
       }
    }
-   piSlot[iEndPos + 1] = -1;   // peptide N-/C-term slots: terminal variable mods travel via
-   piSlot[iEndPos + 2] = -1;   // cNtermMod/cCtermMod, already folded into dBion/dYion above
+   piSlot[iEndPos + 1] = -1;   // peptide N-/C-term slots: terminal variable mods come from the
+   piSlot[iEndPos + 2] = -1;   // entry's bytes 0/1 and are already folded into dBion/dYion above
 
    const char* pszLadder = pszPeptide;
    const int* piLadderSlot = piSlot;
@@ -1100,6 +1084,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
    {
       vector<DBIndex>            dbIdx;
       vector<unsigned int>       prots_flat;  // all protein FASTA offsets concatenated (uint32-safe: FASTA size checked above)
+      vector<unsigned char>      prots_flags; // parallel to prots_flat: ProteinsListCSR::PROT_*_HERE per occurrence
       vector<uint32_t>           prots_cnt;   // number of proteins per peptide row
    };
 
@@ -1131,27 +1116,38 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             vector<PepGenTuple>().swap(v);
          }
 
-         sort(buf.begin(), buf.end(), [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) {
+         // Rows are keyed by (canonical sequence, PepRowSplitClass): occurrences at a protein
+         // terminus whose static mass is non-zero get their own row (different mass);
+         // otherwise all occurrences share one row (core/Types.h PepRowSplitClass()).
+         const double dAddNP = g_staticParams.staticModifications.dAddNterminusProtein;
+         const double dAddCP = g_staticParams.staticModifications.dAddCterminusProtein;
+         auto splitClass = [dAddNP, dAddCP](const PepGenTuple& t) {
+            return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
+         };
+
+         sort(buf.begin(), buf.end(), [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
             for (int k = 0; k < iLen; ++k)
             {
                char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
                char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
                if (ca != cb) return ca < cb;
             }
+            if (splitClass(a) != splitClass(b)) return splitClass(a) < splitClass(b);
             return a.lProteinFileOffset < b.lProteinFileOffset;
          });
 
-         auto bCanonEqual = [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) {
+         auto bCanonEqual = [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
             for (int k = 0; k < iLen; ++k)
             {
                char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
                char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
                if (ca != cb) return false;
             }
-            return true;
+            return splitClass(a) == splitClass(b);
          };
 
          vector<unsigned int> prot;
+         vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
          // OR'd (not just the representative's) across every occurrence in the dedup run:
          // with protein_modslist_file active, a peptide shared between a listed and an
          // unlisted protein must not silently lose the listed protein's allowed-mod bits just
@@ -1160,6 +1156,14 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          // merged peptide -- the per-protein occurrence list (prot/prots_flat above) already
          // records which specific proteins back this peptide.
          unsigned short siVarModFilterUnion = 0;
+         // Protein-terminus context is likewise OR\'d across the run: a peptide that sits at a
+         // protein terminus in ANY of its proteins is recorded with the \'-\' flank, so the
+         // permuter (which keys \'^\'/\'$\' eligibility on that flank) can place a protein-
+         // terminal variable mod on it, and add_Nterm/Cterm_protein statics apply. The
+         // merged row necessarily carries one flank pair for all its proteins; "terminal
+         // anywhere" is the inclusive choice (docs/20260915_permuter_terminal_mods.md).
+         bool bAnyProtNterm = false;
+         bool bAnyProtCterm = false;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
@@ -1167,19 +1171,49 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                           (i > 0 && !bCanonEqual(buf[i], buf[i - 1]));
             if (bFlush && i > 0)
             {
-               sort(prot.begin(), prot.end());
-               prot.erase(unique(prot.begin(), prot.end()), prot.end());
+               // Sort by protein; duplicate occurrences within one protein merge by OR'ing
+               // their terminus-context bits (a peptide repeated in one protein may be
+               // N-terminal in one copy and internal in another).
+               {
+                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  for (size_t k = 0; k < prot.size(); ++k)
+                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                  sort(vOcc.begin(), vOcc.end(),
+                     [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
+                  prot.clear();
+                  protFlags.clear();
+                  for (size_t k = 0; k < vOcc.size(); ++k)
+                  {
+                     if (!prot.empty() && prot.back() == vOcc[k].first)
+                        protFlags.back() |= vOcc[k].second;   // union of this protein's copies; PROT_BOTH_TERM_HERE only if ONE copy had both
+                     else
+                     {
+                        prot.push_back(vOcc[k].first);
+                        protFlags.push_back(vOcc[k].second);
+                     }
+                  }
+               }
                r.prots_cnt.push_back((uint32_t)prot.size());
                r.prots_flat.insert(r.prots_flat.end(), prot.begin(), prot.end());
+               r.prots_flags.insert(r.prots_flags.end(), protFlags.begin(), protFlags.end());
                prot.clear();
+               protFlags.clear();
 
                const PepGenTuple& rep = buf[iRunStart];
                DBIndex dbi;
                memcpy(dbi.sPeptide, rep.sPeptide, iLen);
                dbi.sPeptide[iLen] = '\0';
+               // The stored mass must describe the merged flanks. Since rows are split by
+               // PepRowSplitClass(), every occurrence in this run agrees on each terminus whose
+               // static mass is non-zero, so this adjustment is a no-op by construction and is
+               // kept only as a safety net; residue-only builds stay bit-identical.
                dbi.dPepMass                  = rep.dPepMass;
-               dbi.cPrevAA                   = rep.cPrevAA;
-               dbi.cNextAA                   = rep.cNextAA;
+               if (bAnyProtNterm && rep.cPrevAA != '-')
+                  dbi.dPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+               if (bAnyProtCterm && rep.cNextAA != '-')
+                  dbi.dPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+               dbi.cPrevAA                   = bAnyProtNterm ? '-' : rep.cPrevAA;
+               dbi.cNextAA                   = bAnyProtCterm ? '-' : rep.cNextAA;
                dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
@@ -1187,11 +1221,18 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 
                iRunStart = i;
                siVarModFilterUnion = 0;
+               bAnyProtNterm = false;
+               bAnyProtCterm = false;
             }
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
+               protFlags.push_back(PepOccurrenceContext(buf[i].cPrevAA, buf[i].cNextAA));   // incl. PROT_BOTH_TERM_HERE
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+               if (buf[i].cPrevAA == '-')
+                  bAnyProtNterm = true;
+               if (buf[i].cNextAA == '-')
+                  bAnyProtCterm = true;
             }
          }
 
@@ -1232,29 +1273,70 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             vector<PepGenTupleShort>().swap(v);
          }
 
-         sort(buf.begin(), buf.end(), [](const PepGenTupleShort& a, const PepGenTupleShort& b) {
+         // same row key as the long path: (sequence, PepRowSplitClass)
+         const double dAddNP = g_staticParams.staticModifications.dAddNterminusProtein;
+         const double dAddCP = g_staticParams.staticModifications.dAddCterminusProtein;
+         auto splitClass = [dAddNP, dAddCP](const PepGenTupleShort& t) {
+            return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
+         };
+
+         sort(buf.begin(), buf.end(), [splitClass](const PepGenTupleShort& a, const PepGenTupleShort& b) {
             if (a.uPackedPep != b.uPackedPep)
                return a.uPackedPep < b.uPackedPep;
+            if (splitClass(a) != splitClass(b))
+               return splitClass(a) < splitClass(b);
             return a.lProteinFileOffset < b.lProteinFileOffset;
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<unsigned int> prot;
+         vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
          // Same fix as the long-length path above: OR the mask across the whole dedup run
          // instead of taking only the representative occurrence's mask.
          unsigned short siVarModFilterUnion = 0;
+         // Protein-terminus context is likewise OR\'d across the run: a peptide that sits at a
+         // protein terminus in ANY of its proteins is recorded with the \'-\' flank, so the
+         // permuter (which keys \'^\'/\'$\' eligibility on that flank) can place a protein-
+         // terminal variable mod on it, and add_Nterm/Cterm_protein statics apply. The
+         // merged row necessarily carries one flank pair for all its proteins; "terminal
+         // anywhere" is the inclusive choice (docs/20260915_permuter_terminal_mods.md).
+         bool bAnyProtNterm = false;
+         bool bAnyProtCterm = false;
          size_t iRunStart = 0;
          for (size_t i = 0; i <= buf.size(); ++i)
          {
             bool bFlush = (i == buf.size()) ||
-                          (i > 0 && buf[i].uPackedPep != buf[i - 1].uPackedPep);
+                          (i > 0 && (buf[i].uPackedPep != buf[i - 1].uPackedPep
+                                     || splitClass(buf[i]) != splitClass(buf[i - 1])));
             if (bFlush && i > 0)
             {
-               sort(prot.begin(), prot.end());
-               prot.erase(unique(prot.begin(), prot.end()), prot.end());
+               // Sort by protein; duplicate occurrences within one protein merge by OR'ing
+               // their terminus-context bits (a peptide repeated in one protein may be
+               // N-terminal in one copy and internal in another).
+               {
+                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  for (size_t k = 0; k < prot.size(); ++k)
+                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                  sort(vOcc.begin(), vOcc.end(),
+                     [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
+                  prot.clear();
+                  protFlags.clear();
+                  for (size_t k = 0; k < vOcc.size(); ++k)
+                  {
+                     if (!prot.empty() && prot.back() == vOcc[k].first)
+                        protFlags.back() |= vOcc[k].second;   // union of this protein's copies; PROT_BOTH_TERM_HERE only if ONE copy had both
+                     else
+                     {
+                        prot.push_back(vOcc[k].first);
+                        protFlags.push_back(vOcc[k].second);
+                     }
+                  }
+               }
                r.prots_cnt.push_back((uint32_t)prot.size());
                r.prots_flat.insert(r.prots_flat.end(), prot.begin(), prot.end());
+               r.prots_flags.insert(r.prots_flags.end(), protFlags.begin(), protFlags.end());
                prot.clear();
+               protFlags.clear();
 
                const PepGenTupleShort& rep = buf[iRunStart];
                UnpackPeptide(rep.uPackedPep, iLen, szSeq);
@@ -1264,9 +1346,17 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 
                DBIndex dbi;
                strcpy(dbi.sPeptide, szSeq);
+               // The stored mass must describe the merged flanks. Since rows are split by
+               // PepRowSplitClass(), every occurrence in this run agrees on each terminus whose
+               // static mass is non-zero, so this adjustment is a no-op by construction and is
+               // kept only as a safety net; residue-only builds stay bit-identical.
                dbi.dPepMass                  = rep.dPepMass;
-               dbi.cPrevAA                   = rep.cPrevAA;
-               dbi.cNextAA                   = rep.cNextAA;
+               if (bAnyProtNterm && rep.cPrevAA != '-')
+                  dbi.dPepMass += g_staticParams.staticModifications.dAddNterminusProtein;
+               if (bAnyProtCterm && rep.cNextAA != '-')
+                  dbi.dPepMass += g_staticParams.staticModifications.dAddCterminusProtein;
+               dbi.cPrevAA                   = bAnyProtNterm ? '-' : rep.cPrevAA;
+               dbi.cNextAA                   = bAnyProtCterm ? '-' : rep.cNextAA;
                dbi.siVarModProteinFilter     = siVarModFilterUnion;
                dbi.lIndexProteinFilePosition = (comet_fileoffset_t)(r.prots_cnt.size() - 1);
                dbi.pcVarModSites.clear();
@@ -1274,11 +1364,18 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 
                iRunStart = i;
                siVarModFilterUnion = 0;
+               bAnyProtNterm = false;
+               bAnyProtCterm = false;
             }
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
+               protFlags.push_back(PepOccurrenceContext(buf[i].cPrevAA, buf[i].cNextAA));   // incl. PROT_BOTH_TERM_HERE
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
+               if (buf[i].cPrevAA == '-')
+                  bAnyProtNterm = true;
+               if (buf[i].cNextAA == '-')
+                  bAnyProtCterm = true;
             }
          }
 
@@ -1334,7 +1431,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          for (auto& dbi : r.dbIdx)
             dbi.lIndexProteinFilePosition += (comet_fileoffset_t)iProtBase;
          iProtBase += r.prots_cnt.size();
-         if (!g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt))
+         if (!g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt, r.prots_flags))
          {
             string strErrorMsg = " Error - protein list exceeds the uint32 CSR limit"
                " (>4.29e9 (peptide, protein) pairs); reduce the database/digest size.\n";

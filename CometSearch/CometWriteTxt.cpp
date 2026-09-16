@@ -495,7 +495,8 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
       fprintf(fpout, "1_V_%0.6f",
             g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].dVarModMass);
 
-      if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].iVarModTermDistance == 0)
+      // _N = protein-N-terminus-only mod ('^'), _n = any peptide N-terminus ('n')
+      if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide]-1].bProteinNtermOnly)
          fprintf(fpout, "_N");
       else
          fprintf(fpout, "_n");
@@ -572,7 +573,8 @@ void CometWriteTxt::PrintModifications(FILE *fpout,
             pOutput[iWhichResult].usiLenPeptide,
             g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].dVarModMass);
 
-      if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].iVarModTermDistance == 0)
+      // _C = protein-C-terminus-only mod ('$'), _c = any peptide C-terminus ('c')
+      if (g_staticParams.variableModParameters.varModList[pOutput[iWhichResult].piVarModSites[pOutput[iWhichResult].usiLenPeptide+1]-1].bProteinCtermOnly)
          fprintf(fpout, "_C");
       else
          fprintf(fpout, "_c");

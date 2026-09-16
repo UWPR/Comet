@@ -155,8 +155,8 @@ struct VarModParams
 {
    bool    bVarModSearch;            // set to true if variable mods are specified
    bool    bVarTermModSearch;        // set to true if any n-term/c-term variable mods are specified
-   bool    bVarProteinNTermMod;      // set to true if a protein n-term variable mod specified
-   bool    bVarProteinCTermMod;      // set to true if a protein c-term variable mod specified
+   bool    bVarProteinNTermMod;      // set to true if any variable mod is restricted to the protein N-terminus ('^')
+   bool    bVarProteinCTermMod;      // set to true if any variable mod is restricted to the protein C-terminus ('$')
    bool    bBinaryModSearch;         // set to true if any of the variable mods are of binary mod variety
    bool    bUseFragmentNeutralLoss;  // set to true if any custom NL is set; applied only to 1+ and 2+ fragments
    bool    bRareVarModPresent;       // set to true if any of iRequireThisMod == -1
@@ -303,8 +303,8 @@ struct StaticParams
          variableModParameters.varModList[i].iMinNumVarModAAPerMod = 0;
          variableModParameters.varModList[i].iBinaryMod = 0;
          variableModParameters.varModList[i].iRequireThisMod = 0;
-         variableModParameters.varModList[i].iVarModTermDistance = -1;   // distance from N or C-term distance
-         variableModParameters.varModList[i].iWhichTerm = 0;             // specify N (0) or C-term (1)
+         variableModParameters.varModList[i].iVarModTermDistance = -1;   // deprecated; see CometData.h VarMods
+         variableModParameters.varModList[i].iWhichTerm = 0;             // deprecated; see CometData.h VarMods
          variableModParameters.varModList[i].dVarModMass = 0.0;
          variableModParameters.varModList[i].dNeutralLoss = 0.0;
          variableModParameters.varModList[i].dNeutralLoss2 = 0.0;

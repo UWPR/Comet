@@ -28,6 +28,15 @@ jobs:
     - name: Test Comet
       run:  ./comet.exe -p
 
+    # tests/unit/MiniTest.h-based C++ unit tests, linked against libcometsearch.a
+    - name: Run C++ unit tests
+      run: make unittest
+
+    # Python test harness (tests/unit/run_tests.py): builds the small fixture indexes and
+    # searches them; ~4 minutes. --integration (human.small.fasta, big data) is not run in CI.
+    - name: Run test harness
+      run: python3 tests/unit/run_tests.py --comet "$GITHUB_WORKSPACE/comet.exe"
+
     - name: Prepare Comet release
       run: |
         mkdir release && \

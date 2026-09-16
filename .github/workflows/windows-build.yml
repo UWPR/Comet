@@ -35,6 +35,13 @@ jobs:
 
     - name: Setup msbuild
       uses: microsoft/setup-msbuild@v1.1
+      with:
+        # The self-hosted runner (WIN64-UWPR) also has Visual Studio 2026 installed. Its
+        # MSBuild evaluates CometWrapperCore with the VS 2026 .NET SDK, which insists on
+        # net8.0 targeting packs at a patch version that is not installed (NETSDK1145),
+        # even with the v143 override below. Stay on the VS 2022 instance until the
+        # projects move to VS 2026 (branch VS2026).
+        vs-version: '[17.0,18.0)'
 
     - name: Write commit hash to header file
       shell: cmd
@@ -54,6 +61,28 @@ jobs:
     - name: Test Comet
       shell: cmd
       run: "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe -p"
+
+    # tests/unit/MiniTest.h-based C++ unit tests (CometUnitTests project in Comet.sln)
+    - name: Run C++ unit tests
+      shell: cmd
+      run: "%GITHUB_WORKSPACE%\\x64\\Release\\CometUnitTests.exe"
+
+    # The runner service's PATH is not the machine PATH ("python" resolved to a pre-3.10
+    # interpreter, "py" was not found, and the machine's Python 3.14 is a per-user install with
+    # no HKLM registration), so the workflow provisions its own interpreter into the runner's
+    # tool cache instead of relying on whatever the service account can see.
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    # Python test harness (tests/unit/run_tests.py): builds the small fixture indexes and
+    # searches them; ~4 minutes. --integration (human.small.fasta, big data) is not run in CI.
+    - name: Run test harness
+      shell: cmd
+      run: |
+        python --version
+        python "%GITHUB_WORKSPACE%\tests\unit\run_tests.py" --comet "%GITHUB_WORKSPACE%\x64\Release\Comet.exe"
 
     - name: Prepare release directory (Windows native)
       shell: cmd

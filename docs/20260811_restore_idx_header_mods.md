@@ -2,6 +2,8 @@
 
 Date: 2026-08-11
 
+> **Superseded in part (2026-09-15):** `iVarModTermDistance`/`iWhichTerm` are now deprecated on every search path (fields 5/6 of `variable_modNN` are parsed and ignored); protein-terminus scope is expressed with the residue codes `^`/`$`, which travel in the header's existing `VariableMod:` strings. The header version is v5. See `docs/20260915_permuter_terminal_mods.md`.
+
 ### Background
 
 PR #121 (`819171b7`, "Reduce PI memory ~1.6x and unify PI/FI on one .idx format")

@@ -258,13 +258,18 @@ struct VarMods
    int    iBinaryMod;
    int    iMaxNumVarModAAPerMod;
    int    iMinNumVarModAAPerMod;
-   int    iVarModTermDistance;
-   int    iWhichTerm;
+   int    iVarModTermDistance;  // DEPRECATED (2026-09): parsed for backward compatibility, then normalized
+                                // to -1 in InitializeStaticParams() and never consulted by the search.
+                                // Terminus scope is expressed by szVarModChar: 'n'/'c' = any peptide
+                                // terminus, '^'/'$' = protein N-/C-terminus only.
+   int    iWhichTerm;           // DEPRECATED (2026-09): see iVarModTermDistance; normalized to 0.
    int    iRequireThisMod;  // 0=no; 1=required; negative number = different functionality allowing only one from a set of mods
    char   szVarModChar[MAX_VARMOD_AA];
-   bool   bNtermMod;  // set to true if n-term mod
-   bool   bCtermMod;  // set to true if c-term mod
-   bool   bUseMod;    // set to true if non-zero mod mass
+   bool   bNtermMod;          // set to true if n-term mod ('n' or '^' in szVarModChar)
+   bool   bCtermMod;          // set to true if c-term mod ('c' or '$' in szVarModChar)
+   bool   bProteinNtermOnly;  // set to true if the n-term mod is restricted to the protein N-terminus ('^' present, 'n' absent)
+   bool   bProteinCtermOnly;  // set to true if the c-term mod is restricted to the protein C-terminus ('$' present, 'c' absent)
+   bool   bUseMod;            // set to true if non-zero mod mass
 
    VarMods()
    {
@@ -280,6 +285,8 @@ struct VarMods
       szVarModChar[0] = '\0';
       bNtermMod = false;
       bCtermMod = false;
+      bProteinNtermOnly = false;
+      bProteinCtermOnly = false;
       bUseMod = false;
    }
 
@@ -297,6 +304,8 @@ struct VarMods
       strcpy(szVarModChar, a.szVarModChar);
       bNtermMod  = a.bNtermMod;
       bCtermMod  = a.bCtermMod;
+      bProteinNtermOnly = a.bProteinNtermOnly;
+      bProteinCtermOnly = a.bProteinCtermOnly;
       bUseMod  = a.bUseMod;
    }
 
@@ -314,6 +323,8 @@ struct VarMods
       dNeutralLoss2 = a.dNeutralLoss2;
       bNtermMod  = a.bNtermMod;
       bCtermMod  = a.bCtermMod;
+      bProteinNtermOnly = a.bProteinNtermOnly;
+      bProteinCtermOnly = a.bProteinCtermOnly;
       bUseMod  = a.bUseMod;
 
       return *this;

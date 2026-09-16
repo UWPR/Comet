@@ -79,6 +79,33 @@ void CometWriteMzIdentML::WriteMzIdentML(FILE *fpout,
 }
 
 
+
+// Resolve one protein reference written to the .mzid tmp file into its accession. For a
+// plain FASTA search the value is the byte offset of the '>' line in the FASTA; for an
+// FI_DB/PI_DB search it is the protein's ordinal in the .idx name section (what
+// g_pvProteinsList rows hold after a load), resolved through g_pvProteinNameCache exactly as
+// GetProteinNameString() does -- seeking the .idx by that small integer would land in the
+// header text and yield garbage accessions.
+static void ResolveTmpProteinName(FILE *fpdb,
+                                  long lOffset,
+                                  char *szProteinName)
+{
+   if (g_staticParams.iDbType != DbType::FASTA_DB)
+   {
+      szProteinName[0] = '\0';
+      if (lOffset >= 0 && (size_t)lOffset < g_pvProteinNameCache.size())
+      {
+         const string& sName = g_pvProteinNameCache[(size_t)lOffset];
+         size_t tPos = sName.find_first_of(" \t\n\v\f\r");   // accession = first token, as fscanf("%s") would read
+         string sAcc = (tPos == string::npos) ? sName : sName.substr(0, tPos);
+         strncpy(szProteinName, sAcc.c_str(), WIDTH_REFERENCE - 1);
+         szProteinName[WIDTH_REFERENCE - 1] = '\0';
+      }
+      return;
+   }
+   CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+}
+
 bool CometWriteMzIdentML::WriteMzIdentMLHeader(FILE *fpout)
 {
    time_t tTime;
@@ -324,7 +351,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    {
       if (*it >= 0)
       {
-         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         ResolveTmpProteinName(fpdb, *it, szProteinName);
          strProteinName = szProteinName;
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s\" accession=\"%s\" searchDatabase_ref=\"DB\"", strProteinName.c_str(), strProteinName.c_str());
@@ -351,7 +378,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
    {
       if (*it >= 0)
       {
-         CometMassSpecUtils::GetProteinName(fpdb, *it, szProteinName);
+         ResolveTmpProteinName(fpdb, *it, szProteinName);
          strProteinName = szProteinName;
          CometMassSpecUtils::EscapeString(strProteinName);
          fprintf(fpout, "  <DBSequence id=\"%s%s\" accession=\"%s%s\" searchDatabase_ref=\"DB\" />\n",
@@ -467,7 +494,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                         iStartResidue = stoi(strOffset2);
                         iEndResidue = iStartResidue + (int)strPeptide.length() - 1;
 
-                        CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                         strProteinName = szProteinName;
                         CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -513,7 +540,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                         iStartResidue = stoi(strOffset2);
                         iEndResidue = iStartResidue + (int)strPeptide.length() - 1;
 
-                        CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+                        ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                         strProteinName = szProteinName;
                         CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -912,86 +939,62 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
          string strModRef;
          string strModName;
 
-         GetModificationID(varModsParam.szVarModChar[i], varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
+         char c = varModsParam.szVarModChar[i];
 
-         if (varModsParam.szVarModChar[i]=='n' && bWriteTerminalMods)
+         // A slot holding both codes for one terminus ("n^", "c$") is peptide-scoped in the
+         // search (bProteinNtermOnly/bProteinCtermOnly are false), so declare it once, as 'n'/'c'.
+         if ((c == '^' && strchr(varModsParam.szVarModChar, 'n') != NULL)
+               || (c == '$' && strchr(varModsParam.szVarModChar, 'c') != NULL))
+            continue;
+
+         // The UNIMOD lookup knows terminal mods by 'n'/'c'; a protein-terminal code is the
+         // same chemistry at the same terminus, so look it up under that identity.
+         const char cLookup = (c == '^') ? 'n' : (c == '$') ? 'c' : c;
+         GetModificationID(cLookup, varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
+
+         // Terminal codes: 'n'/'c' = any peptide terminus; '^'/'$' = protein N-/C-terminus only.
+         if (c == 'n' || c == 'c' || c == '^' || c == '$')
          {
-            if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 1 || varModsParam.iWhichTerm == 3))
+            if (!bWriteTerminalMods)
+               continue;
+
+            const char* szAccession;
+            const char* szName;
+            // massDelta is this variable modification's own mass: a static add_Nterm_protein /
+            // add_Cterm_protein is declared separately as its own fixedMod="true" block and
+            // the per-PSM <Modification> records carry dVarModMass, so folding the static in
+            // here (as the pre-2026.09 writer did) made the protocol disagree with both.
+            const double dMassDelta = varModsParam.dVarModMass;
+
+            if (c == '^')
             {
-               // ignore if N-term mod on C-term
+               szAccession = "MS:1002057"; szName = "modification specificity protein N-term";
+            }
+            else if (c == 'n')
+            {
+               szAccession = "MS:1001189"; szName = "modification specificity peptide N-term";
+            }
+            else if (c == '$')
+            {
+               szAccession = "MS:1002058"; szName = "modification specificity protein C-term";
             }
             else
             {
-               // print this if N-term protein variable mod or a generic N-term mod there's also N-term protein static mod
-               if (varModsParam.iWhichTerm == 0 && varModsParam.iVarModTermDistance == 0)
-               {
-                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
-                     varModsParam.dVarModMass + g_staticParams.staticModifications.dAddNterminusProtein);
-
-                  fprintf(fpout, "     <SpecificityRules>\n");
-                  fprintf(fpout, "       <cvParam accession=\"MS:1002057\" cvRef=\"PSI-MS\" name=\"modification specificity protein N-term\" />\n");
-                  fprintf(fpout, "     </SpecificityRules>\n");
-
-                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                  fprintf(fpout, "    </SearchModification>\n");
-               }
-               // print this if non-protein N-term variable mod
-               else
-               {
-                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
-
-                  fprintf(fpout, "     <SpecificityRules>\n");
-                  fprintf(fpout, "       <cvParam accession=\"MS:1001189\" cvRef=\"PSI-MS\" name=\"modification specificity peptide N-term\" />\n");
-                  fprintf(fpout, "     </SpecificityRules>\n");
-
-                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                  fprintf(fpout, "    </SearchModification>\n");
-               }
+               szAccession = "MS:1001190"; szName = "modification specificity peptide C-term";
             }
+
+            fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", dMassDelta);
+            fprintf(fpout, "     <SpecificityRules>\n");
+            fprintf(fpout, "       <cvParam accession=\"%s\" cvRef=\"PSI-MS\" name=\"%s\" />\n", szAccession, szName);
+            fprintf(fpout, "     </SpecificityRules>\n");
+            fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
+                  strModRef.c_str(), strModID.c_str(), strModName.c_str());
+            fprintf(fpout, "    </SearchModification>\n");
          }
-         else if (varModsParam.szVarModChar[i]=='c' && bWriteTerminalMods)
-         {
-            if (varModsParam.iVarModTermDistance == 0 && (varModsParam.iWhichTerm == 0 || varModsParam.iWhichTerm == 2))
-            {
-               // ignore if C-term mod on N-term
-            }
-            else
-            {
-               // print this if C-term protein variable mod or a generic C-term mod there's also C-term protein static mod
-               if (varModsParam.iWhichTerm == 1 && varModsParam.iVarModTermDistance == 0)
-               {
-                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
-                     varModsParam.dVarModMass + g_staticParams.staticModifications.dAddCterminusProtein);
-
-                  fprintf(fpout, "     <SpecificityRules>\n");
-                  fprintf(fpout, "       <cvParam accession=\"MS:1002058\" cvRef=\"PSI-MS\" name=\"modification specificity protein C-term\" />\n");
-                  fprintf(fpout, "     </SpecificityRules>\n");
-
-                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                  fprintf(fpout, "    </SearchModification>\n");
-               }
-               // print this if non-protein C-term variable mod
-               else
-               {
-                  fprintf(fpout, "    <SearchModification residues=\".\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n", varModsParam.dVarModMass);
-
-                  fprintf(fpout, "     <SpecificityRules>\n");
-                  fprintf(fpout, "       <cvParam accession=\"MS:1001190\" cvRef=\"PSI-MS\" name=\"modification specificity peptide C-term\" />\n");
-                  fprintf(fpout, "     </SpecificityRules>\n");
-
-                  fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
-                        strModRef.c_str(), strModID.c_str(), strModName.c_str());
-                  fprintf(fpout, "    </SearchModification>\n");
-               }
-            }
-         }
-         else if (!bWriteTerminalMods && varModsParam.szVarModChar[i]!='c' && varModsParam.szVarModChar[i]!='n')
+         else if (!bWriteTerminalMods)
          {
             fprintf(fpout, "    <SearchModification residues=\"%c\" massDelta=\"%0.6f\" fixedMod= \"false\" >\n",
-                  varModsParam.szVarModChar[i], varModsParam.dVarModMass);
+                  c, varModsParam.dVarModMass);
 
             fprintf(fpout, "     <cvParam cvRef=\"%s\" accession=\"%s\" name=\"%s\" />\n",
                   strModRef.c_str(), strModID.c_str(), strModName.c_str());
@@ -1326,7 +1329,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
             if (lOffset >= 0)
             {
-               CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+               ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                strProteinName = szProteinName;
                CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -1350,7 +1353,7 @@ void CometWriteMzIdentML::WriteSpectrumIdentificationList(FILE* fpout,
 
             if (lOffset >= 0)
             {
-               CometMassSpecUtils::GetProteinName(fpdb, lOffset, szProteinName);
+               ResolveTmpProteinName(fpdb, lOffset, szProteinName);
                strProteinName = szProteinName;
                CometMassSpecUtils::EscapeString(strProteinName);
 
@@ -1490,23 +1493,41 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
          }
          fprintf(fpout, "\t");
 
-         // semicolon separated list of fpdb pointers for target proteins
+         // semicolon separated list of protein references ("ref:startResidue;") for target
+         // proteins, then for decoy proteins. Plain FASTA: ref = FASTA byte offset. FI_DB/PI_DB:
+         // ref = protein ordinal (start residue unknown, written as 0); every protein bucket
+         // in pWhichProtein / pWhichDecoyProtein is a g_pvProteinsList row and is expanded to
+         // its occurrences, filtered by the PSM's protein-scoped terminal-mod context -- the
+         // same walk as GetProteinNameString(), including its FI_DB fallback to
+         // lProteinFilePosition when neither bucket list is populated.
          std::vector<ProteinEntryStruct>::iterator it;
+         const bool bIndexed = (g_staticParams.iDbType != DbType::FASTA_DB);
+         const unsigned char ucTermMask = bIndexed
+            ? CometMassSpecUtils::ProteinTermContextMask(pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide)
+            : 0;
+         auto printIndexedRow = [&](comet_fileoffset_t lBucket)
+         {
+            if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
+               return;
+            ProteinsListCSR::Row row = g_pvProteinsList.at(lBucket);
+            for (size_t j = 0; j < row.size(); ++j)
+            {
+               if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
+                  continue;
+#ifdef _WIN32
+               fprintf(fpout, "%I64d:%d;", (long long)row[j], 0);
+#else
+               fprintf(fpout, "%ld:%d;", (long)row[j], 0);
+#endif
+            }
+         };
+
          if (pOutput[iWhichResult].pWhichProtein.size() > 0)
          {
-            if (g_staticParams.iDbType != DbType::FASTA_DB)
+            if (bIndexed)
             {
-               comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
-
-               for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
-               {
-#ifdef _WIN32
-                  fprintf(fpout, "%I64d:%d;", *it, 0);
-#else
-                  fprintf(fpout, "%ld:%d;", *it, 0);
-#endif
-               }
-
+               for (it = pOutput[iWhichResult].pWhichProtein.begin(); it != pOutput[iWhichResult].pWhichProtein.end(); ++it)
+                  printIndexedRow((*it).lWhichProtein);
             }
             else
             {
@@ -1521,21 +1542,35 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             }
             fprintf(fpout, "\t");
          }
+         else if (g_staticParams.iDbType == DbType::FI_DB && pOutput[iWhichResult].pWhichDecoyProtein.empty())
+         {
+            // legacy FI_DB row with neither list populated; never for an internal decoy
+            // (pWhichDecoyProtein set) -- see GetProteinNameString()
+            printIndexedRow(pOutput[iWhichResult].lProteinFilePosition);
+            fprintf(fpout, "\t");
+         }
          else
          {
             fprintf(fpout, "-1;\t");
          }
 
-         // semicolon separated list of fpdb pointers for decoy proteins
          if (pOutput[iWhichResult].pWhichDecoyProtein.size() > 0)
          {
-            for (it=pOutput[iWhichResult].pWhichDecoyProtein.begin(); it!=pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+            if (bIndexed)
             {
+               for (it = pOutput[iWhichResult].pWhichDecoyProtein.begin(); it != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+                  printIndexedRow((*it).lWhichProtein);
+            }
+            else
+            {
+               for (it = pOutput[iWhichResult].pWhichDecoyProtein.begin(); it != pOutput[iWhichResult].pWhichDecoyProtein.end(); ++it)
+               {
 #ifdef _WIN32
-               fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%I64d:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #else
-               fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
+                  fprintf(fpout, "%ld:%d;", (*it).lWhichProtein, (*it).iStartResidue);
 #endif
+               }
             }
             fprintf(fpout, "\t");
          }

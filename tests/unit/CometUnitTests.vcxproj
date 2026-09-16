@@ -89,6 +89,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="TestCometSearchAndPreprocess.cpp" />
+    <ClCompile Include="TestModificationsPermuter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MiniTest.h" />

@@ -1,0 +1,6 @@
+>T50_A protein whose 8-mers include ACDEFGHI at the N-terminus
+ACDEFGHIKLMNPQ
+>T50_B AAAKAAAK occurs twice: at the N-terminus and at the C-terminus
+AAAKAAAKAAAK
+>T50_C ACDEFGHI internal here (N-terminal in T50_A); HIKLMNPQ internal (C-terminal in T50_A)
+KKACDEFGHIKLMNPQRR

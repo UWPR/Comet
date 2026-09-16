@@ -54,6 +54,11 @@ public:
                                   comet_fileoffset_t lFilePosition,
                                   string &strSeq);
 
+   // Protein-terminus context a reported PSM requires of a protein occurrence
+   // (ProteinsListCSR::PROT_*_HERE bits): set when its N-/C-terminal variable mod is
+   // protein-scoped ('^' / '$'). Indexed databases only; 0 = no restriction.
+   static unsigned char ProteinTermContextMask(const int* piVarModSites, int iLenPeptide);
+
    static void GetProteinNameString(FILE *fpdb,
                                     int iWhichQuery,  // which search
                                     int iWhichResult, // which peptide within the search

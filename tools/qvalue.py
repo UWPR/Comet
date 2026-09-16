@@ -31,6 +31,8 @@ Column indices in Comet tab-delimited output (0-based, after 2 header lines):
     12 modified_peptide
     15 protein
 """
+from __future__ import annotations   # PEP 604 "X | None" annotations on Python 3.9
+
 
 import argparse
 import math
