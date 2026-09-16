@@ -53,8 +53,9 @@ public:
    // g_vRawPeptides x valid mod combinations (mirroring
    // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure) and, per valid
    // combination, either counts it (pStaging == NULL) or writes a compact
-   // FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod,
-   // dPepMass} at pStaging[*ptCursor++], using the combinatorics tables built by a prior
+   // FragmentPeptidesStruct reference {iWhichPeptide, modNumIdx, dPepMass} at
+   // pStaging[*ptCursor++] (terminal variable mods are part of the MOD_NUMBERS_POOL entry
+   // that modNumIdx names, bytes 0/1), using the combinatorics tables built by a prior
    // call to CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). Does not include
    // the fully-unmodified variant for each raw peptide -- see GenerateVariantArray() for
    // that, and for the count/fill two-pass shape both modes serve.
@@ -65,16 +66,16 @@ public:
    // factored out so it can be called per-candidate at search time (see
    // docs/20260730_PI_reduction.md Phase 3), not just once-per-peptide at build
    // time. Reconstructs a full DBIndex (sequence, explicit pcVarModSites, mass,
-   // flank AAs, protein reference) from a compact (iWhichPeptide, modNumIdx,
-   // cNtermMod, cCtermMod) reference into g_vRawPeptides, using the
+   // flank AAs, protein reference) from a compact (iWhichPeptide, modNumIdx)
+   // reference into g_vRawPeptides, using the
    // MOD_NUMBERS_POOL/MOD_SEQS_POOL/PEPTIDE_MOD_SEQ_IDXS tables built by a prior call to
    // CometFragmentIndex::PermuteIndexPeptideMods(g_vRawPeptides). modNumIdx == -1
-   // means "no body modification" (only possibly cNtermMod/cCtermMod);
-   // cNtermMod/cCtermMod == -1 means "no terminal modification". Returns false
-   // only if a mod-site encoding would exceed VarModSites::MAX_SITES -- should
-   // not happen in practice since Phase 1's build-time enumeration already
-   // validated every (iWhichPeptide, modNumIdx, cNtermMod, cCtermMod) tuple it
-   // wrote to the compact array.
+   // means "unmodified"; otherwise the entry's terminal slot bytes (ModEntryTermSlot())
+   // and residue bytes (from ModEntryResidueOffset()) supply every variable mod, terminal
+   // ones included. Returns false only if a mod-site encoding would exceed
+   // VarModSites::MAX_SITES -- should not happen in practice since Phase 1's build-time
+   // enumeration already validated every (iWhichPeptide, modNumIdx) pair it wrote to the
+   // compact array.
    static bool MaterializeOneEntry(size_t iWhichPeptide, int modNumIdx, DBIndex& out);
 
    // docs/20260827_PI_memory.md Phase 0: one-shot, structure-by-structure index memory

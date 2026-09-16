@@ -764,7 +764,8 @@ double CometFragmentIndex::AddFragments(const RawPeptideTable& g_vRawPeptides,
    double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
    int iPosReverse;  // points to residue in reverse order
 
-   int j = 0; // track count of each modifiable residue
+   int j;     // cursor into pModSeq / mods[]; every walk starts at ModEntryResidueOffset(),
+              // past the entry's terminal slot bytes (core/Types.h entry layout)
    int iEndPos = (int)strlen(pszPeptide) - 1;
 
    // Search-time peptide_length_range narrower than what's baked into g_vRawPeptides (see
@@ -877,7 +878,7 @@ if (!(iWhichPeptide%1000))
 {
    // print out the peptide
    printf("OK in AddFragments: ");
-   j=0;
+   j = ModEntryResidueOffset();
    for (int i = 0; i <= iEndPos; ++i)
    {
       printf("%c", (char)pszPeptide[i]);

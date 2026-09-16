@@ -1004,9 +1004,10 @@ extern vector<unsigned int> MOD_SEQS_OFFSET;  // GetNumModSeqs()+1 entries; [0] 
 extern int* MOD_SEQ_MOD_NUM_START; // Start mod-combination entry index for a modifiable sequence; -1 if no modification numbers were generated
 extern int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequence.
 
-// Index into the modifiable-sequence tables above
-// -1 for peptides that have no modifiable amino acids
-// -2 for peptides with no modifiable amino acids but contain n/c-term mods
+// Index into the modifiable-sequence tables above; -1 for peptides that have no modifiable
+// position. With terminal variable-mod search on (g_iTermSlotBytes == 2) every peptide's
+// modifiable sequence starts with the two terminal sentinel positions, so -1 then never
+// occurs; the former -2 "terminal mods only" state is gone (docs/20260915_permuter_terminal_mods.md).
 extern int* PEPTIDE_MOD_SEQ_IDXS;
 
 extern int MOD_NUM;

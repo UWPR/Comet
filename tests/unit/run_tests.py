@@ -4482,6 +4482,15 @@ def test_t51_ascorepro_with_protein_term_mods(comet_exe):
                   f"got {r_on.get('modifications')!r} / {sorted(_t37_proteins(r_on))}", failures)
             check("ascorepro" in r_on and is_number(r_on.get("ascorepro")),
                   f"{label}: ascorepro column present and numeric on the '^' PSM, got {r_on.get('ascorepro')!r}", failures)
+            # The '^' PSM also carries a residue mod (oxidized M), so the index paths only score
+            # it identically to plain FASTA if their build-time fragment ladders applied the
+            # residue mod past the entry's terminal slot bytes (AddFragments() cursor offset).
+            r_plain = _t37_find(on.get("plain", []), "FDSFGDLSSASAIMGNPK", mod_substr="_V_163.063329_N")
+            if label != "plain" and r_plain is not None:
+                check("15.994900" in r_on.get("modifications", "")
+                      and r_on.get("xcorr") == r_plain.get("xcorr"),
+                      f"{label}: mixed terminal + residue-mod PSM scores the same xcorr as plain FASTA "
+                      f"({r_on.get('xcorr')} vs {r_plain.get('xcorr')})", failures)
         check("ascorepro" not in (off[label][0] if off[label] else {}),
               f"{label}: no ascorepro column with print_ascorepro_score = 0", failures)
         top = on[label][0]
