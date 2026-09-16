@@ -3943,6 +3943,65 @@ def test_t22_rts_pi_protterm(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T44 -- terminal-mod parity on real data (docs/20260915_permuter_terminal_mods.md Phase 4):
+# plain FASTA vs FI_DB vs PI_DB must identify a similar peptide population at 1% FDR with a
+# peptide-N-term acetyl ('n') and with a protein-N-term acetyl ('^'). Before Phase 2 the '^'
+# config diverged (FI_DB/PI_DB ignored protein scope and over-identified) and terminal mods
+# did not count toward max_variable_mods_in_peptide on the index path. --integration + --bigdata.
+# ---------------------------------------------------------------------------
+
+@register("t44_termmod_parity_bigdata")
+def test_t44_termmod_parity_bigdata(comet_exe):
+    """T44 [integration, bigdata]: plain vs FI_DB vs PI_DB 1% FDR parity with 'n' and '^' acetyl."""
+    if not _RUN_INTEGRATION:
+        print("  SKIP: pass --integration to run this test")
+        return []
+    failures = []
+    d3 = Path(_BIGDATA_DIR) / "comet-debug3"
+    mzxml = d3 / "20170103_HelaQC_01.mzXML"
+    human_td_fasta = d3 / "human.target-decoy.fasta"
+    base_params_file = d3 / "comet.params"
+    if not (mzxml.exists() and human_td_fasta.exists() and base_params_file.exists()):
+        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR")
+        return []
+
+    base = base_params_file.read_text()
+    base = _set_param_line(base, "database_name", human_td_fasta)
+    base = _set_param_line(base, "decoy_search", "0")
+    base = _set_param_line(base, "max_variable_mods_in_peptide", "3")
+    idx_path = human_td_fasta.with_suffix(".fasta.idx")
+
+    for code, label in (("n", "peptide-N-term acetyl"), ("^", "protein-N-term acetyl")):
+        params = _set_param_line(base, "variable_mod02", f"42.010565 {code} 0 1 -1 0 0 0.0")
+        print(f"  --- {label} ('{code}') ---")
+        rc0, txt0, out0, t0 = _run_bigdata_search(comet_exe, params, mzxml)
+        if not check(rc0 == 0, f"{label}: plain-FASTA search exits 0 (rc={rc0})", failures):
+            print(out0[-2000:])
+            continue
+        _, cx_plain, _ = _q1pct_counts(txt0)
+        txt0.unlink(missing_ok=True)
+        print(f"    plain-FASTA: {cx_plain:,} PSMs at 1% FDR (xcorr), search {t0:.1f}s")
+
+        counts = {"plain": cx_plain}
+        for flag, mode in (("-i", "FI_DB"), ("-j", "PI_DB")):
+            res = _index_build_and_search(comet_exe, flag, mode, params, idx_path, mzxml, failures, tag=label)
+            if res is None:
+                continue
+            cx, tb, ts = res
+            counts[mode] = cx
+            print(f"    {mode}: {cx:,} PSMs at 1% FDR (xcorr); build {tb:.1f}s, search {ts:.1f}s")
+        idx_path.unlink(missing_ok=True)
+
+        if len(counts) == 3:
+            for mode in ("FI_DB", "PI_DB"):
+                ratio = counts[mode] / counts["plain"] if counts["plain"] else float("inf")
+                check(0.95 <= ratio <= 1.05,
+                      f"{label}: {mode} ({counts[mode]:,}) agrees with plain FASTA ({counts['plain']:,}) "
+                      f"within 5% at 1% FDR xcorr (ratio {ratio:.3f})", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 

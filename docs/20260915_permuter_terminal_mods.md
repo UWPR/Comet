@@ -642,4 +642,50 @@ things left open by, sections 1-9.
   the memory doc; identical between the Phase 0 and Phase 1 binaries.
 - Run counts: `CometUnitTests` 71 (59 + 12); `run_tests.py` 65 on both Linux and Windows.
 
-**Phase 4** (validation at scale) follows in the next commit; its numbers go here.
+**Phase 4 -- validation at scale (2026-09-15, Linux build, 8 threads, this machine)**
+
+Full `--integration --bigdata` run: **73 passed, 0 failed** (58 unit + T17, T18, T22 x4,
+T23, T24, T24b, T44, and the Phase 0-2 additions). Against the `v2026.02.2` Linux release:
+
+| Check | Result |
+|---|---|
+| T23 internal-decoy / target-decoy PSMs at 1% FDR | 17,660 / 17,660; baseline 17,701 / 17,660 |
+| T23 search time ratio (current / baseline) | 1.006 / 0.987 |
+| T24 plain / FI_DB / PI_DB PSMs at 1% FDR | 17,660 / 17,736 / 17,660; baseline identical |
+| T24 time ratios: plain search, FI build, FI search, PI build, PI search | 0.987, 1.001, 0.560, 0.985, 0.547 |
+| T24b internal decoys plain / FI_DB / PI_DB | 17,701 / 17,717 / 17,701 |
+| T44 `n` acetyl (cap 3) plain / FI_DB / PI_DB | 17,654 / 17,734 / 17,654 (ratios 1.005 / 1.000) |
+| T44 `^` acetyl (cap 3) plain / FI_DB / PI_DB | 17,770 / 17,831 / 17,770 (ratios 1.003 / 1.000) |
+| T22 RTS 1-vs-8 threads, FI_DB and PI_DB, with and without decoys | byte-identical, 197 spectra |
+| T22b RTS with `^` acetyl, FI_DB / PI_DB | byte-identical; 1 / 2 of 197 results carry the acetyl |
+| T18 two builds of human.small.fasta | byte-identical |
+
+The `^` acetyl config is the one that would have failed before Phase 2 (FI_DB/PI_DB ignored
+protein scope); it now agrees with plain FASTA to 0.3%.
+
+`COMET_MEMREPORT` on the phospho reference (`human.canonical.target-decoy.fasta`, M x3 +
+STY x3, cap 5, `scan_range 1 300` so only the index load and a short search are timed),
+Phase 0 binary (v4 `.idx`) vs. Phase 2 binary (v5 `.idx`):
+
+| Config | Binary | Modifiable seqs | Pool entries | `MOD_NUMBERS_POOL` | FI variants | Peak RSS |
+|---|---|---|---|---|---|---|
+| residue-only | Phase 0 | 194,673 | 72,881,595 | 866.8 MB | 1.675e8 | 24.1 GB |
+| residue-only | Phase 2 | 194,673 | 72,881,595 | 866.8 MB | 1.675e8 | 24.1 GB |
+| + `n` acetyl | Phase 0 | 194,673 | 72,881,595 | 866.8 MB | 3.317e8 | 45.9 GB |
+| + `n` acetyl | Phase 2 | 210,462 | 137,630,817 | 1,858.1 MB | 3.198e8 | 45.2 GB |
+
+- Residue-only: identical ledger and variant count, as required.
+- `n` acetyl: pool 2.14x the residue-only pool (projection was <= 2.5x); the sentinel
+  contexts add 8% unique modifiable sequences; the variant count drops 3.6% because
+  combinations at the residue cap plus the acetyl now exceed `max_variable_mods_in_peptide`
+  (D2), and peak RSS is 0.7 GB lower. Every peptide now has a modifiable sequence
+  (5.007e6 vs 4.457e6 "modifiable peptides").
+- Headroom on the largest config here: `MOD_NUM` 137.6M of `INT_MAX` (6.4%);
+  FI variants 3.2e8 of `UINT32_MAX` (7.4%). Both well under the 50% threshold.
+
+Windows (VS 2026 build) cross-check: T44 gives the identical PSM counts -- `n` acetyl
+17,654 / 17,734 / 17,654 and `^` acetyl 17,770 / 17,831 / 17,770 for plain / FI_DB / PI_DB --
+and T23 / T24 / T24b pass with the same counts as on Linux (index builds ~11 s, searches
+6-9 s on this machine).
+
+**Acceptance criteria (section 9): all seven met.**
