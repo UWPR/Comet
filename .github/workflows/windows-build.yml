@@ -82,7 +82,7 @@ jobs:
       shell: cmd
       run: |
         python --version
-        python "%GITHUB_WORKSPACE%\\tests\\unit\\run_tests.py" --comet "%GITHUB_WORKSPACE%\\x64\\Release\\Comet.exe"
+        python "%GITHUB_WORKSPACE%\tests\unit\run_tests.py" --comet "%GITHUB_WORKSPACE%\x64\Release\Comet.exe"
 
     - name: Prepare release directory (Windows native)
       shell: cmd
