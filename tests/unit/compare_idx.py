@@ -135,7 +135,7 @@ def _read_prot_counts(f, prot_pos, prot_section_size, num_lists):
     p = 0
     for _ in range(num_lists):
         (cnt,) = struct.unpack_from("<Q", buf, p)
-        p += 8 + cnt * 8
+        p += 8 + cnt * 8 + cnt        # offsets, then one v5 context byte per occurrence
         counts.append(cnt & 0xFFFFFFFF)
     return counts                              # buf freed after return
 

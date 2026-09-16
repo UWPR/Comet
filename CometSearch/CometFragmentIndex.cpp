@@ -608,17 +608,25 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
          if (modNumIdx >= 0)
          {
             bool bPass = true;
+            int iModSeqLen;
+            GetModSeq(modSeqIdx, iModSeqLen);
+            const char* pEntry = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
             // if protein variable mod filter is applied, check mods[] against the peptide's
             // siVarModProteinFilter -- shared with CometPeptideIndex.cpp's EnumerateIndexPeptideMods().
             // The entry's terminal-slot bytes are checked by the same walk.
             if (g_staticParams.variableModParameters.bVarModProteinFilter)
             {
-               int iModSeqLen;
-               GetModSeq(modSeqIdx, iModSeqLen);
                bPass = CometPeptideIndex::PassesVarModProteinFilter(vModSlotForAllModsIdx,
-                  GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen), iModSeqLen,
-                  g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
+                  pEntry, iModSeqLen, g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
+            }
+
+            // protein-scoped terminal mods need an occurrence of this peptide at that terminus
+            // (both termini in ONE protein when both are set) -- see PassesProteinTerminusContext()
+            if (bPass && g_iTermSlotBytes)
+            {
+               bPass = CometPeptideIndex::PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry,
+                  g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
             }
 
             if (bPass)
@@ -1075,6 +1083,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
    {
       vector<DBIndex>            dbIdx;
       vector<unsigned int>       prots_flat;  // all protein FASTA offsets concatenated (uint32-safe: FASTA size checked above)
+      vector<unsigned char>      prots_flags; // parallel to prots_flat: ProteinsListCSR::PROT_*_HERE per occurrence
       vector<uint32_t>           prots_cnt;   // number of proteins per peptide row
    };
 
@@ -1127,6 +1136,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          };
 
          vector<unsigned int> prot;
+         vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
          // OR'd (not just the representative's) across every occurrence in the dedup run:
          // with protein_modslist_file active, a peptide shared between a listed and an
          // unlisted protein must not silently lose the listed protein's allowed-mod bits just
@@ -1150,11 +1160,33 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                           (i > 0 && !bCanonEqual(buf[i], buf[i - 1]));
             if (bFlush && i > 0)
             {
-               sort(prot.begin(), prot.end());
-               prot.erase(unique(prot.begin(), prot.end()), prot.end());
+               // Sort by protein; duplicate occurrences within one protein merge by OR'ing
+               // their terminus-context bits (a peptide repeated in one protein may be
+               // N-terminal in one copy and internal in another).
+               {
+                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  for (size_t k = 0; k < prot.size(); ++k)
+                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                  sort(vOcc.begin(), vOcc.end(),
+                     [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
+                  prot.clear();
+                  protFlags.clear();
+                  for (size_t k = 0; k < vOcc.size(); ++k)
+                  {
+                     if (!prot.empty() && prot.back() == vOcc[k].first)
+                        protFlags.back() |= vOcc[k].second;
+                     else
+                     {
+                        prot.push_back(vOcc[k].first);
+                        protFlags.push_back(vOcc[k].second);
+                     }
+                  }
+               }
                r.prots_cnt.push_back((uint32_t)prot.size());
                r.prots_flat.insert(r.prots_flat.end(), prot.begin(), prot.end());
+               r.prots_flags.insert(r.prots_flags.end(), protFlags.begin(), protFlags.end());
                prot.clear();
+               protFlags.clear();
 
                const PepGenTuple& rep = buf[iRunStart];
                DBIndex dbi;
@@ -1184,6 +1216,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
+               protFlags.push_back((unsigned char)(((buf[i].cPrevAA == '-') ? ProteinsListCSR::PROT_NTERM_HERE : 0)
+                  | ((buf[i].cNextAA == '-') ? ProteinsListCSR::PROT_CTERM_HERE : 0)));
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
                if (buf[i].cPrevAA == '-')
                   bAnyProtNterm = true;
@@ -1237,6 +1271,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<unsigned int> prot;
+         vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
          // Same fix as the long-length path above: OR the mask across the whole dedup run
          // instead of taking only the representative occurrence's mask.
          unsigned short siVarModFilterUnion = 0;
@@ -1255,11 +1290,33 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                           (i > 0 && buf[i].uPackedPep != buf[i - 1].uPackedPep);
             if (bFlush && i > 0)
             {
-               sort(prot.begin(), prot.end());
-               prot.erase(unique(prot.begin(), prot.end()), prot.end());
+               // Sort by protein; duplicate occurrences within one protein merge by OR'ing
+               // their terminus-context bits (a peptide repeated in one protein may be
+               // N-terminal in one copy and internal in another).
+               {
+                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  for (size_t k = 0; k < prot.size(); ++k)
+                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                  sort(vOcc.begin(), vOcc.end(),
+                     [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
+                  prot.clear();
+                  protFlags.clear();
+                  for (size_t k = 0; k < vOcc.size(); ++k)
+                  {
+                     if (!prot.empty() && prot.back() == vOcc[k].first)
+                        protFlags.back() |= vOcc[k].second;
+                     else
+                     {
+                        prot.push_back(vOcc[k].first);
+                        protFlags.push_back(vOcc[k].second);
+                     }
+                  }
+               }
                r.prots_cnt.push_back((uint32_t)prot.size());
                r.prots_flat.insert(r.prots_flat.end(), prot.begin(), prot.end());
+               r.prots_flags.insert(r.prots_flags.end(), protFlags.begin(), protFlags.end());
                prot.clear();
+               protFlags.clear();
 
                const PepGenTupleShort& rep = buf[iRunStart];
                UnpackPeptide(rep.uPackedPep, iLen, szSeq);
@@ -1293,6 +1350,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
+               protFlags.push_back((unsigned char)(((buf[i].cPrevAA == '-') ? ProteinsListCSR::PROT_NTERM_HERE : 0)
+                  | ((buf[i].cNextAA == '-') ? ProteinsListCSR::PROT_CTERM_HERE : 0)));
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
                if (buf[i].cPrevAA == '-')
                   bAnyProtNterm = true;
@@ -1353,7 +1412,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          for (auto& dbi : r.dbIdx)
             dbi.lIndexProteinFilePosition += (comet_fileoffset_t)iProtBase;
          iProtBase += r.prots_cnt.size();
-         if (!g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt))
+         if (!g_pvProteinsList.append_flat(r.prots_flat, r.prots_cnt, r.prots_flags))
          {
             string strErrorMsg = " Error - protein list exceeds the uint32 CSR limit"
                " (>4.29e9 (peptide, protein) pairs); reduce the database/digest size.\n";

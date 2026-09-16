@@ -254,6 +254,9 @@ def parse_idx(path):
         for _ in range(num_lists):
             (cnt,) = struct.unpack_from("<Q", prot_buf, pp);    pp += 8
             offsets = list(struct.unpack_from(f"<{cnt}q", prot_buf, pp));  pp += cnt*8
+            # v5: one protein-terminus context byte per occurrence follows the offsets
+            # (ProteinsListCSR::PROT_NTERM_HERE=1 / PROT_CTERM_HERE=2); not surfaced here.
+            pp += cnt
             prot_lists.append(offsets)
 
         result = {}
@@ -4076,12 +4079,13 @@ def test_t45_mixed_terminal_codes(comet_exe):
 @register("t46_shared_peptide_attribution")
 def test_t46_shared_peptide_attribution(comet_exe):
     """T46: protein-terminus attribution for a peptide shared by proteins with different
-    terminal context -- the plain-FASTA path is exact (each protein evaluated on its own);
-    the index path stores one raw-peptide row per sequence with the flank context OR'd
-    across proteins, so it attributes the protein-terminal variant to every protein
-    containing the peptide and can combine '^' and '$' on a peptide that is N-terminal in
-    one protein and C-terminal in another. This test pins that accepted difference
-    (docs/20260915_permuter_terminal_mods.md section 11)."""
+    terminal context must be exact on every path. The index stores one raw-peptide row per
+    sequence, but each protein occurrence in the row carries PROT_NTERM_HERE / PROT_CTERM_HERE
+    context bits (ProteinsListCSR, docs/20260915_permuter_terminal_mods.md section 11,
+    option C): a '^' variant is emitted only if some occurrence is protein-N-terminal, a
+    variant needing both termini only if ONE occurrence has both, and the reported protein
+    list is filtered to the occurrences that support the PSM's protein-scoped terminal mods.
+    So FI_DB and PI_DB must match the plain-FASTA attribution exactly."""
     failures = []
     if not (_T37_FASTA.exists() and _T37_MS2.exists()):
         failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
@@ -4105,14 +4109,17 @@ def test_t46_shared_peptide_attribution(comet_exe):
             print(log[-1500:])
             continue
         r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_N")
-        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_noY"},
-              f"{label}: '^' variant attributed to both proteins sharing the row (policy), got {sorted(_t37_proteins(r))}", failures)
+        check(r is not None and _t37_proteins(r) == {"t37_noY"},
+              f"{label}: '^' variant attributed to t37_noY only (exact, like plain FASTA), got {sorted(_t37_proteins(r))}", failures)
         r = _t37_find(rows, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_C")
-        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_toP"},
-              f"{label}: '$' variant attributed to both proteins sharing the row (policy), got {sorted(_t37_proteins(r))}", failures)
-        r = _t37_find(rows, "FDSFGDLSSASAIMGNP", mod_substr="_N")
-        check(r is not None and "_C" in r.get("modifications", ""),
-              f"{label}: shared peptide N-terminal in t37_noY and C-terminal in t37_toP carries '^' and '$' together (policy)", failures)
+        check(r is not None and _t37_proteins(r) == {"t37_toP"},
+              f"{label}: '$' variant attributed to t37_toP only (exact, like plain FASTA), got {sorted(_t37_proteins(r))}", failures)
+        check(_t37_find(rows, "FDSFGDLSSASAIMGNP", mod_substr="_N") is None,
+              f"{label}: no peptide carries '^' and '$' together (no single protein has it at both termini)", failures)
+        # the unmodified / residue-only variants of the shared peptides keep their full protein lists
+        r = _t37_find(rows, "YFDSFGDLSSASAIMGNPK", no_term_mod=True)
+        check(r is not None and "t37_full" in _t37_proteins(r),
+              f"{label}: unrestricted variant keeps its protein list, got {sorted(_t37_proteins(r))}", failures)
     return failures
 
 

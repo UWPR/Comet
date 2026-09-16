@@ -828,9 +828,20 @@ class ProteinsListCSR
 {
 public:
    // Read-only proxy for a single row (one peptide's protein references).
+   // Per-occurrence protein-terminus context (docs/20260915_permuter_terminal_mods.md,
+   // section 11 "option C"): one row holds one peptide's protein references, but the
+   // peptide may sit at the protein N-terminus in one of those proteins and be internal in
+   // another. These bits record, per occurrence, whether the peptide is protein-N-terminal
+   // (PROT_NTERM_HERE) / protein-C-terminal (PROT_CTERM_HERE) in THAT protein, so a
+   // protein-scoped terminal variable mod ('^' / '$') is attributed exactly at output time
+   // and a variant needing both termini is emitted only if one occurrence has both.
+   static constexpr unsigned char PROT_NTERM_HERE = 0x01;
+   static constexpr unsigned char PROT_CTERM_HERE = 0x02;
+
    struct Row
    {
-      const unsigned int* ptr;
+      const unsigned int*  ptr;
+      const unsigned char* pflags;   // parallel to ptr: PROT_*_HERE bits per occurrence
       size_t              n;
 
       size_t size()  const { return n; }
@@ -838,6 +849,18 @@ public:
 
       const unsigned int& operator[](size_t j) const { return ptr[j]; }
       unsigned int        at(size_t j)          const { return ptr[j]; }
+      unsigned char       flags(size_t j)       const { return pflags[j]; }
+
+      // True if some occurrence in this row carries every bit of ucMask (ucMask == 0: always).
+      bool hasContext(unsigned char ucMask) const
+      {
+         if (ucMask == 0)
+            return true;
+         for (size_t j = 0; j < n; ++j)
+            if ((pflags[j] & ucMask) == ucMask)
+               return true;
+         return false;
+      }
 
       const unsigned int* begin() const { return ptr; }
       const unsigned int* end()   const { return ptr + n; }
@@ -851,6 +874,7 @@ public:
    void clear()
    {
       vector<unsigned int>().swap(m_flat);
+      vector<unsigned char>().swap(m_flags);
       vector<unsigned int>().swap(m_off);
    }
 
@@ -862,7 +886,8 @@ public:
    size_t total_offsets() const { return m_flat.size(); }
    size_t heap_bytes() const
    {
-      return m_flat.capacity() * sizeof(unsigned int) + m_off.capacity() * sizeof(unsigned int);
+      return m_flat.capacity() * sizeof(unsigned int) + m_flags.capacity() * sizeof(unsigned char)
+         + m_off.capacity() * sizeof(unsigned int);
    }
 
    // Batch-append from pre-built flat storage.
@@ -874,19 +899,27 @@ public:
    // nothing -- if the total entry count would exceed what the uint32 CSR
    // offsets can address (>4.29e9 (peptide, protein) pairs; callers fail the
    // build/load loudly).
-   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt)
+   // flags: one PROT_*_HERE byte per entry of `flat` (same order); an empty vector stores zeros.
+   bool append_flat(vector<unsigned int>& flat, vector<uint32_t>& cnt, vector<unsigned char>& flags)
    {
       if (flat.empty())
          return true;
       if ((uint64_t)m_flat.size() + (uint64_t)flat.size() > 0xFFFFFFFFull)
          return false;
+      if (!flags.empty() && flags.size() != flat.size())
+         return false;
       if (m_off.empty())
          m_off.push_back(0);
       m_flat.insert(m_flat.end(), flat.begin(), flat.end());
+      if (flags.empty())
+         m_flags.insert(m_flags.end(), flat.size(), (unsigned char)0);
+      else
+         m_flags.insert(m_flags.end(), flags.begin(), flags.end());
       for (uint32_t n : cnt)
          m_off.push_back(m_off.back() + n);
       vector<unsigned int>().swap(flat);
       vector<uint32_t>().swap(cnt);
+      vector<unsigned char>().swap(flags);
       return true;
    }
 
@@ -894,6 +927,7 @@ public:
    Row operator[](size_t i) const
    {
       return {m_flat.data() + m_off[i],
+              m_flags.data() + m_off[i],
               static_cast<size_t>(m_off[i + 1] - m_off[i])};
    }
 
@@ -914,8 +948,9 @@ public:
    Iterator end()   const { return {this, size()}; }
 
 private:
-   vector<unsigned int> m_flat;   // all protein references concatenated (see class comment)
-   vector<unsigned int> m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
+   vector<unsigned int>  m_flat;   // all protein references concatenated (see class comment)
+   vector<unsigned char> m_flags;  // parallel to m_flat: PROT_NTERM_HERE / PROT_CTERM_HERE per occurrence
+   vector<unsigned int>  m_off;    // [N+1] CSR offsets; row i spans [m_off[i], m_off[i+1])
 };
 
 extern ProteinsListCSR g_pvProteinsList;

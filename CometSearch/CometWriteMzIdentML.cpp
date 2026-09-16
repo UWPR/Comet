@@ -1462,13 +1462,18 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
             if (g_staticParams.iDbType != DbType::FASTA_DB)
             {
                comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+               const unsigned char ucTermMask = CometMassSpecUtils::ProteinTermContextMask(
+                  pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide);
+               ProteinsListCSR::Row row = g_pvProteinsList.at(lEntry);
 
-               for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+               for (size_t j = 0; j < row.size(); ++j)
                {
+                  if ((row.flags(j) & ucTermMask) != ucTermMask)   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
+                     continue;
 #ifdef _WIN32
-                  fprintf(fpout, "%I64d:%d;", *it, 0);
+                  fprintf(fpout, "%I64d:%d;", (long long)row[j], 0);
 #else
-                  fprintf(fpout, "%ld:%d;", *it, 0);
+                  fprintf(fpout, "%ld:%d;", (long)row[j], 0);
 #endif
                }
 

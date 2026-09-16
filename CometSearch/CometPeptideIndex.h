@@ -143,6 +143,15 @@ public:
    // siVarModProteinFilter's bitmask -- the protein-level variable-mod restriction feature.
    // Shared by PI_DB's EnumerateIndexPeptideMods() and FI_DB's AddFragmentsThreadProc(), which
    // previously carried two independently-maintained copies of this exact check.
+   // Required protein-terminus context of a MOD_NUMBERS_POOL entry's terminal slots: a
+   // '^' mod on the N-term slot needs an occurrence at the protein N-terminus, '$' one at
+   // the protein C-terminus, both need one occurrence carrying both -- checked against the
+   // raw peptide's ProteinsListCSR row flags (docs/20260915_permuter_terminal_mods.md
+   // section 11, option C). Returns true when no protein-scoped terminal slot is set.
+   static unsigned char ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx, const char* mods);
+   static bool PassesProteinTerminusContext(const vector<int>& vModSlotForAllModsIdx, const char* mods,
+      comet_fileoffset_t lProteinRow);
+
    static bool PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
       const char* mods, int modStringLen, unsigned short siVarModProteinFilter);
 

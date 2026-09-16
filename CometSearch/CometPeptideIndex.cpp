@@ -337,8 +337,10 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // min/max bound on raw offsets.
    {
       vector<unsigned int> vFlatProteinOrdinals;
+      vector<unsigned char> vFlatProteinFlags;
       vector<uint32_t> vProteinCounts;
       vector<comet_fileoffset_t> vRowBuf;
+      vector<unsigned char> vFlagBuf;
       vProteinCounts.reserve(tNumProteinEntries);
 
       for (size_t i = 0; i < tNumProteinEntries; ++i)
@@ -380,12 +382,22 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
             vFlatProteinOrdinals.push_back((unsigned int)((lOffset - clNamesBase) / WIDTH_REFERENCE));
          }
 
+         // v5: per-occurrence protein-terminus context bytes follow the row's offsets
+         vFlagBuf.resize(tNumProteins);
+         if (tNumProteins > 0 && fread(vFlagBuf.data(), sizeof(unsigned char), tNumProteins, fp) != tNumProteins)
+         {
+            fclose(fp);
+            logout(" Error - failed to read protein-terminus flags from .idx file at entry " + to_string(i) + "; file may be truncated or corrupt.\n");
+            return false;
+         }
+         vFlatProteinFlags.insert(vFlatProteinFlags.end(), vFlagBuf.begin(), vFlagBuf.end());
+
          vProteinCounts.push_back((uint32_t)tNumProteins);
       }
 
       g_pvProteinsList.clear();
       g_pvProteinsList.reserve(tNumProteinEntries);
-      if (!g_pvProteinsList.append_flat(vFlatProteinOrdinals, vProteinCounts))
+      if (!g_pvProteinsList.append_flat(vFlatProteinOrdinals, vProteinCounts, vFlatProteinFlags))
       {
          fclose(fp);
          logout(" Error - protein list exceeds the uint32 CSR limit (see ProteinsListCSR::append_flat); file may be corrupt.\n");
@@ -613,6 +625,38 @@ int CometPeptideIndex::TranslateVarModSlot(const vector<int>& vModSlotForAllMods
 }
 
 
+unsigned char CometPeptideIndex::ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx,
+                                                            const char* mods)
+{
+   unsigned char ucMask = 0;
+   if (mods == NULL || g_iTermSlotBytes == 0)
+      return 0;
+
+   int iSlotN = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
+   if (iSlotN >= 0 && g_staticParams.variableModParameters.varModList[iSlotN].bProteinNtermOnly)
+      ucMask |= ProteinsListCSR::PROT_NTERM_HERE;
+
+   int iSlotC = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
+   if (iSlotC >= 0 && g_staticParams.variableModParameters.varModList[iSlotC].bProteinCtermOnly)
+      ucMask |= ProteinsListCSR::PROT_CTERM_HERE;
+
+   return ucMask;
+}
+
+
+bool CometPeptideIndex::PassesProteinTerminusContext(const vector<int>& vModSlotForAllModsIdx,
+                                                     const char* mods,
+                                                     comet_fileoffset_t lProteinRow)
+{
+   unsigned char ucMask = ProteinTerminusContextMask(vModSlotForAllModsIdx, mods);
+   if (ucMask == 0)
+      return true;
+   if (lProteinRow < 0 || (size_t)lProteinRow >= g_pvProteinsList.size())
+      return false;
+   return g_pvProteinsList[(size_t)lProteinRow].hasContext(ucMask);
+}
+
+
 bool CometPeptideIndex::PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
    const char* mods, int modStringLen, unsigned short siVarModProteinFilter)
 {
@@ -742,15 +786,16 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
       for (int modNumIdx = startIdx; modNumIdx < startIdx + modNumCount; ++modNumIdx)
       {
          bool bPass = true;
+         int iModSeqLen;
+         GetModSeq(modSeqIdx, iModSeqLen);
+         const char* pEntry = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
          if (g_staticParams.variableModParameters.bVarModProteinFilter)
-         {
-            int iModSeqLen;
-            GetModSeq(modSeqIdx, iModSeqLen);
-            bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx,
-               GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen), iModSeqLen,
-               raw.siVarModProteinFilter);
-         }
+            bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.siVarModProteinFilter);
+
+         // protein-scoped terminal mods need an occurrence of this peptide at that terminus
+         if (bPass && g_iTermSlotBytes)
+            bPass = PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry, raw.lIndexProteinFilePosition);
 
          if (!bPass)
             continue;
@@ -1410,6 +1455,14 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
          }
 
          fwrite(&lProteinIndex[iWhichProtein], clSizeCometFileOffset, 1, fptr);
+      }
+
+      // v5: one protein-terminus context byte per occurrence (ProteinsListCSR::PROT_*_HERE),
+      // in the same order as the offsets just written.
+      for (size_t it2 = 0; it2 < tTmp; ++it2)
+      {
+         unsigned char ucFlags = row.flags(it2);
+         fwrite(&ucFlags, sizeof(unsigned char), 1, fptr);
       }
    }
 

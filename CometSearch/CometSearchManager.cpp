@@ -3102,12 +3102,17 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
             // always reported (max_duplicate_proteins = 0 -> exactly one protein), then the cap
             // applies across both lists -- same count/break semantics as the single loop this
             // replaced, which appended a name before testing the cap.
+            // protein-scoped terminal mod on this PSM -> only proteins where the peptide is at that terminus
+            const unsigned char ucTermMask = CometMassSpecUtils::ProteinTermContextMask(
+               pOutput[iWhichResult].piVarModSites, pOutput[iWhichResult].usiLenPeptide);
+
             auto resolveBucket = [&](comet_fileoffset_t lBucket, bool bDecoyList)
             {
                if (lBucket < 0 || (size_t)lBucket >= g_pvProteinsList.size())
                   return;
 
-               for (auto itProt = g_pvProteinsList.at(lBucket).begin(); itProt != g_pvProteinsList.at(lBucket).end(); ++itProt)
+               ProteinsListCSR::Row row = g_pvProteinsList.at(lBucket);
+               for (size_t j = 0; j < row.size(); ++j)
                {
                   if (iPrintDuplicateProteinCt > 0
                      && iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -3115,6 +3120,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                      break;
                   }
 
+                  if ((row.flags(j) & ucTermMask) != ucTermMask)
+                     continue;
+
+                  const unsigned int* itProt = &row[j];
                   if (*itProt >= g_pvProteinNameCache.size())   // rows hold name-section ordinals (Phase 4)
                      continue;
 

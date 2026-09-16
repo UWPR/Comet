@@ -184,6 +184,20 @@ void CometMassSpecUtils::GetProteinSequence(FILE *fpfasta,
 
 
 // return all matched protein names in a vector of strings
+unsigned char CometMassSpecUtils::ProteinTermContextMask(const int* piVarModSites,
+                                                         int iLenPeptide)
+{
+   unsigned char ucMask = 0;
+   int iCodeN = piVarModSites[iLenPeptide];
+   int iCodeC = piVarModSites[iLenPeptide + 1];
+   if (iCodeN > 0 && iCodeN <= VMODS && g_staticParams.variableModParameters.varModList[iCodeN - 1].bProteinNtermOnly)
+      ucMask |= ProteinsListCSR::PROT_NTERM_HERE;
+   if (iCodeC > 0 && iCodeC <= VMODS && g_staticParams.variableModParameters.varModList[iCodeC - 1].bProteinCtermOnly)
+      ucMask |= ProteinsListCSR::PROT_CTERM_HERE;
+   return ucMask;
+}
+
+
 void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
                                               int iWhichQuery,  // which search
                                               int iWhichResult, // which peptide within the search
@@ -241,6 +255,12 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
       int iPrintDuplicateProteinCt = 0; // track # proteins, exit when at iMaxDuplicateProteins
 
+      // A protein-scoped terminal variable mod ('^' / '$') on this PSM restricts the reported
+      // proteins to those where the peptide really sits at that terminus
+      // (docs/20260915_permuter_terminal_mods.md section 11, option C).
+      const unsigned char ucTermMask = ProteinTermContextMask(pOutput[iWhichResult].piVarModSites,
+         pOutput[iWhichResult].usiLenPeptide);
+
       // get target proteins -- walk every protein bucket this peptide was matched
       // against (CheckDuplicateI() may have attached more than one bucket to this
       // entry when multiple candidates reduced to the same peptide+mod-state), not
@@ -252,12 +272,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          for (const auto& protEntry : pOutput[iWhichResult].pWhichProtein)
          {
             comet_fileoffset_t lEntry = protEntry.lWhichProtein;
+            ProteinsListCSR::Row row = g_pvProteinsList.at(lEntry);
 
-            *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
-
-            for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+            for (size_t j = 0; j < row.size(); ++j)
             {
-               vProteinTargets.push_back(resolveIndexedProteinName(*it));
+               if ((row.flags(j) & ucTermMask) != ucTermMask)   // peptide not at the required protein terminus in this protein
+                  continue;
+               *uiNumTotProteins += 1;
+               vProteinTargets.push_back(resolveIndexedProteinName(row[j]));
 
                iPrintDuplicateProteinCt++;
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -277,12 +299,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          // the row's protein column began with a target accession and every FDR tool
          // counted the decoy as a target.
          comet_fileoffset_t lEntry = pOutput[iWhichResult].lProteinFilePosition;
+         ProteinsListCSR::Row row = g_pvProteinsList.at(lEntry);
 
-         *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
-
-         for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+         for (size_t j = 0; j < row.size(); ++j)
          {
-            vProteinTargets.push_back(resolveIndexedProteinName(*it));
+            if ((row.flags(j) & ucTermMask) != ucTermMask)
+               continue;
+            *uiNumTotProteins += 1;
+            vProteinTargets.push_back(resolveIndexedProteinName(row[j]));
 
             iPrintDuplicateProteinCt++;
             if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)
@@ -297,12 +321,14 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
          for (const auto& protEntry : pOutput[iWhichResult].pWhichDecoyProtein)
          {
             comet_fileoffset_t lEntry = protEntry.lWhichProtein;
+            ProteinsListCSR::Row row = g_pvProteinsList.at(lEntry);
 
-            *uiNumTotProteins += (unsigned int)g_pvProteinsList.at(lEntry).size();
-
-            for (auto it = g_pvProteinsList.at(lEntry).begin(); it != g_pvProteinsList.at(lEntry).end(); ++it)
+            for (size_t j = 0; j < row.size(); ++j)
             {
-               vProteinDecoys.push_back(resolveIndexedProteinName(*it));
+               if ((row.flags(j) & ucTermMask) != ucTermMask)   // peptide not at the required protein terminus in this protein
+                  continue;
+               *uiNumTotProteins += 1;
+               vProteinDecoys.push_back(resolveIndexedProteinName(row[j]));
 
                iPrintDuplicateProteinCt++;
                if (iPrintDuplicateProteinCt >= g_staticParams.options.iMaxDuplicateProteins)

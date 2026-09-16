@@ -602,15 +602,25 @@ things left open by, sections 1-9.
 - **Phase 1 bisectability** (4): landed with `bIncludeTermini = false` in the index driver,
   as planned; index identity was proven against the Phase 0 binary (81/81 `.idx` files
   across three mod configs, identical phospho-reference permutation ledger).
-- **Shared raw-peptide rows** (new, 3.4 / D5): the raw-peptide table holds one row per unique
-  sequence, so a peptide that is protein-terminal in one protein and internal in another
-  carries a single flank pair. The dedup merge in `GeneratePlainPeptideIndex()` now OR's the
-  protein-terminus context across the run ("terminal in ANY protein"), adjusting the stored
-  mass when the union adds a static-carrying terminus the representative lacked. Index-path
-  consequences (tests assert only what both paths agree on): a `^` variant of a shared peptide
-  is attributed to every protein containing it, and a peptide N-terminal in one protein and
-  C-terminal in another may carry `^` and `$` together. The plain-FASTA path evaluates each
-  protein separately. Real proteomes hit this rarely; it is the price of one row per sequence.
+- **Shared raw-peptide rows -- option C (2026-09-15).** The raw-peptide table holds one row
+  per unique sequence, so a peptide that is protein-terminal in one protein and internal in
+  another carries a single flank pair. The row's flank is the OR over its occurrences
+  ("terminal in ANY protein") and stays the permuter's eligibility key, with the stored mass
+  adjusted when the union adds a static-carrying terminus the representative lacked. To keep
+  attribution exact anyway, every protein occurrence in `ProteinsListCSR` carries two context
+  bits (`PROT_NTERM_HERE`, `PROT_CTERM_HERE`; one byte per occurrence, persisted in the v5
+  protein-list section) set at the dedup merge. They are used twice: at build time an entry
+  whose terminal slots are protein-scoped is emitted only if some occurrence has the matching
+  bits -- both bits in ONE occurrence when `^` and `$` are both set -- and at output time
+  (`GetProteinNameString()`, the mzIdentML per-PSM list, the RTS result path) a PSM's protein
+  list is filtered to the occurrences that support its protein-scoped terminal mods. Result:
+  FI_DB/PI_DB attribute `^`/`$` PSMs exactly as the plain-FASTA path does (T46), and a
+  peptide N-terminal in one protein and C-terminal in another no longer carries both. An
+  earlier interim state (Phase 2 as first committed) attributed to every protein in the row;
+  T46 pinned that and now pins the exact behavior. Cost: one byte per protein occurrence
+  (~5 MB on the phospho reference), plus one `hasContext()` scan per protein-scoped entry at
+  build time. Consumers doing protein inference on N-terminal acetylation are the reason this
+  was worth doing now, while v5 was still unreleased.
 - **Plain-FASTA bug found by T42**: `MergeVarMods()` rebuilt the precursor mass from scratch
   adding only `dAddCterminusProtein`; variable-mod peptides at the protein N-terminus with
   `add_Nterm_protein != 0` were reported (and mass-checked) short by that amount. Fixed in
