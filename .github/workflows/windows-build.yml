@@ -16,7 +16,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
 
     - name: Mark git working directory as safe
       shell: cmd
@@ -34,7 +34,7 @@ jobs:
         FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
 
     - name: Setup msbuild
-      uses: microsoft/setup-msbuild@v1.1
+      uses: microsoft/setup-msbuild@v3
       with:
         # The self-hosted runner (WIN64-UWPR) also has Visual Studio 2026 installed. Its
         # MSBuild evaluates CometWrapperCore with the VS 2026 .NET SDK, which insists on
@@ -72,7 +72,7 @@ jobs:
     # no HKLM registration), so the workflow provisions its own interpreter into the runner's
     # tool cache instead of relying on whatever the service account can see.
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
@@ -95,7 +95,7 @@ jobs:
         copy README.md release\README.md
 
     - name: Upload build artificats
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: comet-windows
         path: release/*
