@@ -4002,6 +4002,186 @@ def test_t44_termmod_parity_bigdata(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T45-T47 -- review follow-ups on the terminal-mod work (docs/20260915_permuter_terminal_mods.md):
+# mixed residue+terminus slots and post-bridge slot merging (T45), the shared-peptide
+# protein-terminus attribution policy pinned explicitly on both paths (T46), and the
+# pepXML / mzIdentML search-level terminal-mod annotations (T47).
+# ---------------------------------------------------------------------------
+
+def _t45_all_paths(comet_exe, mods, failures, tag):
+    """Run plain FASTA, FI_DB and PI_DB on the T37 fixture with `mods`; returns {label: rows}."""
+    out = {}
+    rc, rows, log = _t37_search(comet_exe, mods, num_output_lines=12)
+    if check(rc == 0 and rows, f"{tag}: plain-FASTA search ran (rc={rc})", failures):
+        out["plain"] = rows
+    else:
+        print(log[-1500:])
+    for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+        rc, rows, log, _, _ = _t38_index_search(comet_exe, flag, mods)
+        if check(rc == 0 and rows, f"{tag}: {label} build + search ran (rc={rc})", failures):
+            out[label] = rows
+        else:
+            print(log[-1500:])
+    return out
+
+
+@register("t45_mixed_terminal_codes")
+def test_t45_mixed_terminal_codes(comet_exe):
+    """T45: one slot carrying residue letters together with terminal codes ('n^K', 'c$K'), and
+    two same-mass slots that merge after the deprecation bridge ('n 0 3 0 0' + 'K') -- on
+    plain FASTA, FI_DB and PI_DB."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    # 'n^K': the terminus is peptide-scoped ('n' present -> '^' redundant) and K is a residue
+    # target of the same mod. The N-term variant must behave exactly like plain 'n'.
+    res = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 n^K 0 3 -1 0 0 0.0"), failures, "n^K")
+    for label, rows in res.items():
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_n")
+        check(r is not None, f"n^K {label}: FDSFGDLSSASAIMGNPK carries the peptide-scoped N-term mod (_n)", failures)
+        if label == "plain":
+            check(_t37_proteins(r) == {"t37_full", "t37_noY"},
+                  f"n^K plain: attributed to both proteins like 'n', got {sorted(_t37_proteins(r))}", failures)
+        check(not any("_N" in x.get("modifications", "") for x in rows),
+              f"n^K {label}: no protein-scoped _N code (the slot also has 'n')", failures)
+
+    # 'c$K' likewise for the C-terminus.
+    res = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 c$K 0 3 -1 0 0 0.0"), failures, "c$K")
+    for label, rows in res.items():
+        r = _t37_find(rows, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_c")
+        check(r is not None, f"c$K {label}: YFDSFGDLSSASAIMGNP carries the peptide-scoped C-term mod (_c)", failures)
+        if label == "plain":
+            check(_t37_proteins(r) == {"t37_full", "t37_toP"},
+                  f"c$K plain: attributed to both proteins like 'c', got {sorted(_t37_proteins(r))}", failures)
+        check(not any("_C" in x.get("modifications", "") for x in rows),
+              f"c$K {label}: no protein-scoped _C code (the slot also has 'c')", failures)
+
+    # Bridge + merge: slot 2 'n 0 3 0 0' is translated to '^', then merged with slot 3 'K'
+    # (same mass, NL, binary, max, required) into one '^K' slot. Results must equal a single
+    # explicit '^K' declaration.
+    ref = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 ^K 0 3 -1 0 0 0.0"), failures, "^K")
+    got = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 n 0 3 0 0 0 0.0", "163.063328575 K 0 3 -1 0 0 0.0"),
+                         failures, "bridged n+K")
+    for label in ref:
+        if label in got:
+            check(_t37_signature(got[label]) == _t37_signature(ref[label]),
+                  f"{label}: bridged 'n 0 3 0 0' + 'K' equals explicit '^K'", failures)
+            r = _t37_find(got[label], "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_N")
+            check(r is not None, f"{label}: merged slot keeps protein scope (_N present)", failures)
+    return failures
+
+
+@register("t46_shared_peptide_attribution")
+def test_t46_shared_peptide_attribution(comet_exe):
+    """T46: protein-terminus attribution for a peptide shared by proteins with different
+    terminal context -- the plain-FASTA path is exact (each protein evaluated on its own);
+    the index path stores one raw-peptide row per sequence with the flank context OR'd
+    across proteins, so it attributes the protein-terminal variant to every protein
+    containing the peptide and can combine '^' and '$' on a peptide that is N-terminal in
+    one protein and C-terminal in another. This test pins that accepted difference
+    (docs/20260915_permuter_terminal_mods.md section 11)."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    rc, plain, log = _t37_search(comet_exe, _T38_PROT_MODS, num_output_lines=12)
+    if not check(rc == 0 and plain, f"plain-FASTA '^'/'$' search ran (rc={rc})", failures):
+        return failures
+    r = _t37_find(plain, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_N")
+    check(r is not None and _t37_proteins(r) == {"t37_noY"},
+          f"plain: '^' variant attributed to t37_noY only, got {sorted(_t37_proteins(r))}", failures)
+    r = _t37_find(plain, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_C")
+    check(r is not None and _t37_proteins(r) == {"t37_toP"},
+          f"plain: '$' variant attributed to t37_toP only, got {sorted(_t37_proteins(r))}", failures)
+    check(_t37_find(plain, "FDSFGDLSSASAIMGNP", mod_substr="_N") is None,
+          "plain: no peptide carries '^' and '$' together (no single protein has it at both termini)", failures)
+
+    for flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
+        rc, rows, log, _, _ = _t38_index_search(comet_exe, flag, _T38_PROT_MODS)
+        if not check(rc == 0 and rows, f"{label}: '^'/'$' build + search ran (rc={rc})", failures):
+            print(log[-1500:])
+            continue
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNPK", mod_substr="163.063329_N")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_noY"},
+              f"{label}: '^' variant attributed to both proteins sharing the row (policy), got {sorted(_t37_proteins(r))}", failures)
+        r = _t37_find(rows, "YFDSFGDLSSASAIMGNP", mod_substr="128.094963_C")
+        check(r is not None and _t37_proteins(r) == {"t37_full", "t37_toP"},
+              f"{label}: '$' variant attributed to both proteins sharing the row (policy), got {sorted(_t37_proteins(r))}", failures)
+        r = _t37_find(rows, "FDSFGDLSSASAIMGNP", mod_substr="_N")
+        check(r is not None and "_C" in r.get("modifications", ""),
+              f"{label}: shared peptide N-terminal in t37_noY and C-terminal in t37_toP carries '^' and '$' together (policy)", failures)
+    return failures
+
+
+@register("t47_terminal_mod_xml_annotations")
+def test_t47_terminal_mod_xml_annotations(comet_exe):
+    """T47: pepXML <terminal_modification protein_terminus> and mzIdentML <SearchModification>
+    specificity CV terms for the four terminal codes n, ^, c, $."""
+    failures = []
+    if not (_T37_FASTA.exists() and _T37_MS2.exists()):
+        failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
+        return failures
+
+    # distinct masses so each slot is identifiable in the output
+    MODS = ("42.010565 n 0 1 -1 0 0 0.0", "43.5 ^ 0 1 -1 0 0 0.0",
+            "0.984016 c 0 1 -1 0 0 0.0", "1.5 $ 0 1 -1 0 0 0.0")
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    outs = {ext: _T37_MS2.with_suffix(ext) for ext in (".txt", ".pep.xml", ".mzid")}
+    for f in outs.values():
+        f.unlink(missing_ok=True)
+    params = legacy_cases.build_params(database=fmt(_T37_FASTA), enzyme1=0, mods=MODS, num_output_lines=3)
+    params = _set_param_line(params, "output_pepxmlfile", "1")
+    params = _set_param_line(params, "output_mzidentmlfile", "1")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(params); pfile = Path(pf.name)
+    try:
+        rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pfile)}", fmt(_T37_MS2)])
+        if not check(rc == 0 and outs[".pep.xml"].exists() and outs[".mzid"].exists(),
+                     f"search wrote .pep.xml and .mzid (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+        pepxml = outs[".pep.xml"].read_text(errors="replace")
+        mzid = outs[".mzid"].read_text(errors="replace")
+    finally:
+        pfile.unlink(missing_ok=True)
+        for f in outs.values():
+            f.unlink(missing_ok=True)
+
+    # --- pepXML search summary
+    term_lines = [l.strip() for l in pepxml.splitlines() if "<terminal_modification" in l]
+    def pep_has(terminus, massdiff, prot):
+        return any(f'terminus="{terminus}"' in l and f'massdiff="{massdiff}"' in l
+                   and 'variable="Y"' in l and f'protein_terminus="{prot}"' in l for l in term_lines)
+    check(pep_has("N", "42.010565", "N"), "pepXML: 'n' -> terminus N, protein_terminus=N", failures)
+    check(pep_has("N", "43.500000", "Y"), "pepXML: '^' -> terminus N, protein_terminus=Y", failures)
+    check(pep_has("C", "0.984016", "N"),  "pepXML: 'c' -> terminus C, protein_terminus=N", failures)
+    check(pep_has("C", "1.500000", "Y"),  "pepXML: '$' -> terminus C, protein_terminus=Y", failures)
+    check(sum(1 for l in term_lines if 'variable="Y"' in l) == 4,
+          f"pepXML: exactly four variable terminal_modification lines, got {len(term_lines)}", failures)
+    check(not any('aminoacid="^"' in l or 'aminoacid="$"' in l or 'aminoacid="n"' in l or 'aminoacid="c"' in l
+                  for l in pepxml.splitlines()),
+          "pepXML: no terminal code leaks out as an <aminoacid_modification>", failures)
+
+    # --- mzIdentML analysis protocol: massDelta + specificity accession per SearchModification block
+    blocks = re.findall(r"<SearchModification[^>]*massDelta=\"([0-9.]+)\"[^>]*fixedMod= \"false\"[^>]*>(.*?)</SearchModification>",
+                        mzid, flags=re.S)
+    def mzid_has(mass, accession):
+        return any(abs(float(m) - mass) < 1e-6 and accession in body for m, body in blocks)
+    check(mzid_has(42.010565, "MS:1001189"), "mzIdentML: 'n' -> peptide N-term specificity (MS:1001189)", failures)
+    check(mzid_has(43.5,      "MS:1002057"), "mzIdentML: '^' -> protein N-term specificity (MS:1002057)", failures)
+    check(mzid_has(0.984016,  "MS:1001190"), "mzIdentML: 'c' -> peptide C-term specificity (MS:1001190)", failures)
+    check(mzid_has(1.5,       "MS:1002058"), "mzIdentML: '$' -> protein C-term specificity (MS:1002058)", failures)
+    check(not any('residues="^"' in l or 'residues="$"' in l or 'residues="n"' in l or 'residues="c"' in l
+                  for l in mzid.splitlines()),
+          "mzIdentML: no terminal code leaks out as a residue SearchModification", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
