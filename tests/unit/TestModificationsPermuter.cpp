@@ -14,7 +14,7 @@
 
 // Unit tests for ModificationsPermuter (CometSearch/CometModificationsPermuter.cpp):
 // the first direct coverage of the permuter, added with the terminal-mod work in
-// docs/20260915_permuter_terminal_mods.md (Phase 1, tests P1-P12).
+// docs/20260915_permuter_terminal_mods.md (Phase 1, tests P1-P13).
 //
 // Framework: MiniTest.h (see TestCometSearchAndPreprocess.cpp, which also holds
 // MINITEST_MAIN()). Compiled into the same CometUnitTests binary.
@@ -304,6 +304,42 @@ TEST_F(PermuterTest, P8_PerModCapCoversTerminus)
 // P9: guards -- a mod with per-mod max 0 contributes nothing (and does not crash), and a
 // sequence whose combination count exceeds FRAGINDEX_MAX_COMBINATIONS is skipped and
 // counted in IGNORED_SEQ_CNT.
+// P13: the per-occurrence context rule shared by the build-time check and the output filters
+// (ProteinsListCSR::flagsSatisfy()/hasContext()). A protein holding a peptide once at each
+// terminus ORs to N|C but must NOT satisfy a '^'+'$' variant; only a whole-protein occurrence
+// (PROT_BOTH_TERM_HERE) does.
+TEST_F(PermuterTest, P13_ContextFlags_BothTerminiNeedOneOccurrence)
+{
+   const unsigned char N = ProteinsListCSR::PROT_NTERM_HERE;
+   const unsigned char C = ProteinsListCSR::PROT_CTERM_HERE;
+   const unsigned char B = ProteinsListCSR::PROT_BOTH_TERM_HERE;
+
+   EXPECT_EQ((unsigned char)(N | C | B), PepOccurrenceContext('-', '-'));
+   EXPECT_EQ(N, PepOccurrenceContext('-', 'K'));
+   EXPECT_EQ(C, PepOccurrenceContext('R', '-'));
+   EXPECT_EQ((unsigned char)0, PepOccurrenceContext('R', 'K'));
+
+   EXPECT_TRUE(ProteinsListCSR::flagsSatisfy(N, N));
+   EXPECT_TRUE(ProteinsListCSR::flagsSatisfy((unsigned char)(N | C), N));
+   EXPECT_TRUE(ProteinsListCSR::flagsSatisfy((unsigned char)(N | C), C));
+   EXPECT_FALSE(ProteinsListCSR::flagsSatisfy((unsigned char)(N | C), (unsigned char)(N | C)));   // two copies, one per terminus
+   EXPECT_TRUE(ProteinsListCSR::flagsSatisfy((unsigned char)(N | C | B), (unsigned char)(N | C)));  // whole-protein occurrence
+   EXPECT_FALSE(ProteinsListCSR::flagsSatisfy(C, N));
+   EXPECT_TRUE(ProteinsListCSR::flagsSatisfy((unsigned char)0, (unsigned char)0));
+
+   // Row-level: [protein A: N|C via two copies][protein B: N only] -> no '^'+'$' support;
+   // add a whole-protein occurrence and it passes.
+   ProteinsListCSR list;
+   std::vector<unsigned int>  flat  = { 10u, 20u, 30u };
+   std::vector<uint32_t>      cnt   = { 2u, 1u };
+   std::vector<unsigned char> flags = { (unsigned char)(N | C), N, (unsigned char)(N | C | B) };
+   EXPECT_TRUE(list.append_flat(flat, cnt, flags));
+   EXPECT_TRUE(list.at(0).hasContext(N));
+   EXPECT_TRUE(list.at(0).hasContext(C));
+   EXPECT_FALSE(list.at(0).hasContext((unsigned char)(N | C)));
+   EXPECT_TRUE(list.at(1).hasContext((unsigned char)(N | C)));
+}
+
 TEST_F(PermuterTest, P9_ZeroCombinationAndOverflowGuards)
 {
    RunPermuter({ {"MK",'R','S'} }, {"M", "K"}, {0, 1}, 3, false, 8);

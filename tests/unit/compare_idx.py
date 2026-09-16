@@ -124,23 +124,38 @@ class _PepReader:
 
 def _read_prot_counts(f, prot_pos, prot_section_size, num_lists):
     """
-    Read protein-list section and return an array.array('I') of per-list
-    protein counts.  Reads the section in one I/O call (bytes object, freed
-    immediately after walk) then stores 4 bytes per list entry.
-    Peak extra memory: prot_section_size (bytes) + num_lists * 4 (array).
+    Read protein-list section and return (counts, flags): an array.array('I') of per-list
+    protein counts and an array.array('B') of every occurrence's v5 protein-terminus context
+    byte, flat in list order (list i's bytes start at sum(counts[:i])).  Reads the section in
+    one I/O call (bytes object, freed immediately after walk).
+    Peak extra memory: prot_section_size (bytes) + num_lists * 4 + total occurrences (arrays).
     """
     f.seek(prot_pos + 8)                       # skip int64 num_lists
     buf = f.read(prot_section_size - 8)        # bytes object (~3.1 GB)
     counts = array.array('I')                  # uint32, 4 bytes each
+    flags = array.array('B')
     p = 0
     for _ in range(num_lists):
         (cnt,) = struct.unpack_from("<Q", buf, p)
-        p += 8 + cnt * 8 + cnt        # offsets, then one v5 context byte per occurrence
+        p += 8 + cnt * 8                       # count, then the offsets
+        flags.frombytes(buf[p:p + cnt])        # then one v5 context byte per occurrence
+        p += cnt
         counts.append(cnt & 0xFFFFFFFF)
     if p != len(buf):
         raise ValueError(f"protein-list section does not end at the footer ({p} != {len(buf)}); "
                          "malformed or pre-context-byte v5 layout")
-    return counts                              # buf freed after return
+    return counts, flags                       # buf freed after return
+
+
+def _list_starts(counts):
+    """Flat-flags start index of every list (prefix sums of counts)."""
+    starts = array.array('Q', [0]) * (len(counts) + 1)
+    acc = 0
+    for i, c in enumerate(counts):
+        starts[i] = acc
+        acc += c
+    starts[len(counts)] = acc
+    return starts
 
 
 def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
@@ -155,21 +170,24 @@ def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
 
     if verbose:
         print("  Reading protein-list counts (old) ...")
-    counts_o = _read_prot_counts(fo, prot_pos_o, prot_sec_o, num_lists_o)
+    counts_o, flags_o = _read_prot_counts(fo, prot_pos_o, prot_sec_o, num_lists_o)
 
     if verbose:
         print("  Reading protein-list counts (new) ...")
-    counts_n = _read_prot_counts(fn, prot_pos_n, prot_sec_n, num_lists_n)
+    counts_n, flags_n = _read_prot_counts(fn, prot_pos_n, prot_sec_n, num_lists_n)
+    starts_o = _list_starts(counts_o)
+    starts_n = _list_starts(counts_n)
 
     if verbose:
         print("  Streaming peptide comparison ...")
 
-    seq_fail = mass_fail = sivar_fail = prot_fail = flank_warn = 0
+    seq_fail = mass_fail = sivar_fail = prot_fail = flank_warn = ctx_warn = 0
     seq_ex = []
     mass_ex = []
     sivar_ex = []
     prot_ex = []
     flank_ex = []
+    ctx_ex = []
 
     n = min(num_pep,
             # num_pep for both files may differ if counts differ
@@ -203,6 +221,14 @@ def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
             prot_fail += 1
             if len(prot_ex) < MAX_PRINT:
                 prot_ex.append((so, pc_o, pc_n))
+        elif pc_o > 0:
+            # same protein count: compare the per-occurrence protein-terminus context bytes
+            fo_ = flags_o[starts_o[pidx_o]:starts_o[pidx_o] + pc_o]
+            fn_ = flags_n[starts_n[pidx_n]:starts_n[pidx_n] + pc_n]
+            if fo_ != fn_:
+                ctx_warn += 1
+                if len(ctx_ex) < MAX_PRINT:
+                    ctx_ex.append((so, list(fo_), list(fn_)))
 
         if prev_o != prev_n or next_o != next_n:
             flank_warn += 1
@@ -233,10 +259,16 @@ def _semantic_compare(fo, fn, num_pep, num_lists_o, num_lists_n,
             print(f"      {seq}: old_count={po} new_count={pn}")
         failures += 1
     if flank_warn:
-        warnings = flank_warn
+        warnings += flank_warn
         print(f"WARN: {flank_warn:,} flanking-AA difference(s) (cPrevAA/cNextAA) -- acceptable per design")
         for seq, po, no_, pn, nn in flank_ex:
             print(f"      {seq}: old={po}.{no_}  new={pn}.{nn}")
+    if ctx_warn:
+        warnings += ctx_warn
+        print(f"WARN: {ctx_warn:,} protein-terminus context byte difference(s) "
+              "(PROT_NTERM_HERE 1 | PROT_CTERM_HERE 2 | PROT_BOTH_TERM_HERE 4, per occurrence)")
+        for seq, fo_, fn_ in ctx_ex:
+            print(f"      {seq}: old={fo_} new={fn_}")
 
     return failures, warnings
 
@@ -300,7 +332,7 @@ def compare(old_path, new_path, verbose=True):
 
     if failures == 0:
         print(f"PASS: {num_pep_o:,} peptides semantically equivalent, "
-              f"{warnings:,} flanking-AA warning(s)")
+              f"{warnings:,} flanking-AA / context-byte warning(s)")
     else:
         print(f"FAIL: {failures} failure category(s), {warnings:,} warning(s)")
     return failures

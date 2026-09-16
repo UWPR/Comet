@@ -276,7 +276,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             for (size_t j = 0; j < row.size(); ++j)
             {
-               if ((row.flags(j) & ucTermMask) != ucTermMask)   // peptide not at the required protein terminus in this protein
+               if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // peptide not at the required protein terminus in this protein
                   continue;
                *uiNumTotProteins += 1;
                vProteinTargets.push_back(resolveIndexedProteinName(row[j]));
@@ -303,7 +303,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
          for (size_t j = 0; j < row.size(); ++j)
          {
-            if ((row.flags(j) & ucTermMask) != ucTermMask)
+            if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))
                continue;
             *uiNumTotProteins += 1;
             vProteinTargets.push_back(resolveIndexedProteinName(row[j]));
@@ -325,7 +325,7 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
 
             for (size_t j = 0; j < row.size(); ++j)
             {
-               if ((row.flags(j) & ucTermMask) != ucTermMask)   // peptide not at the required protein terminus in this protein
+               if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // peptide not at the required protein terminus in this protein
                   continue;
                *uiNumTotProteins += 1;
                vProteinDecoys.push_back(resolveIndexedProteinName(row[j]));

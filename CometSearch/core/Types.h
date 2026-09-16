@@ -478,9 +478,15 @@ inline uint64_t PackPeptide(const char* seq, int iLen, bool bTreatSameIL)
 }
 
 // Protein-terminus context of one peptide occurrence (ProteinsListCSR::PROT_*_HERE bits).
+// 0x01 protein-N-terminal here, 0x02 protein-C-terminal here, 0x04 both in THIS occurrence
+// (the peptide is the whole protein) -- see ProteinsListCSR::PROT_BOTH_TERM_HERE for why the
+// third bit exists.
 inline unsigned char PepOccurrenceContext(char cPrevAA, char cNextAA)
 {
-   return (unsigned char)(((cPrevAA == '-') ? 0x01 : 0) | ((cNextAA == '-') ? 0x02 : 0));
+   unsigned char uc = (unsigned char)(((cPrevAA == '-') ? 0x01 : 0) | ((cNextAA == '-') ? 0x02 : 0));
+   if (uc == 0x03)
+      uc |= 0x04;
+   return uc;
 }
 
 // Raw-peptide ROW split class (docs/20260915_permuter_terminal_mods.md section 11). One
@@ -858,8 +864,29 @@ public:
    // (PROT_NTERM_HERE) / protein-C-terminal (PROT_CTERM_HERE) in THAT protein, so a
    // protein-scoped terminal variable mod ('^' / '$') is attributed exactly at output time
    // and a variant needing both termini is emitted only if one occurrence has both.
-   static constexpr unsigned char PROT_NTERM_HERE = 0x01;
-   static constexpr unsigned char PROT_CTERM_HERE = 0x02;
+   //
+   // A protein that contains the peptide more than once keeps one reference whose byte is
+   // the OR of its copies' bits, so 0x01|0x02 alone cannot tell "one copy at each terminus"
+   // from "one copy that is the whole protein". PROT_BOTH_TERM_HERE records the latter
+   // explicitly (set only by PepOccurrenceContext() for a single occurrence with both '-'
+   // flanks, never fabricated by the OR); flagsSatisfy() demands it whenever a mask asks
+   // for both termini. All three bits are persisted in the v5 .idx protein-list section.
+   static constexpr unsigned char PROT_NTERM_HERE     = 0x01;
+   static constexpr unsigned char PROT_CTERM_HERE     = 0x02;
+   static constexpr unsigned char PROT_BOTH_TERM_HERE = 0x04;
+
+   // Does one occurrence's context byte support a PSM/variant whose protein-scoped terminal
+   // mods need ucMask (PROT_NTERM_HERE and/or PROT_CTERM_HERE)? Both bits -> that single
+   // occurrence must be the whole protein (PROT_BOTH_TERM_HERE). The one rule shared by the
+   // build-time check (CometPeptideIndex::PassesProteinTerminusContext()) and every output
+   // filter (GetProteinNameString(), mzIdentML per-PSM list, RTS result path).
+   static bool flagsSatisfy(unsigned char ucFlags, unsigned char ucMask)
+   {
+      unsigned char ucNeed = ucMask;
+      if ((ucMask & (PROT_NTERM_HERE | PROT_CTERM_HERE)) == (PROT_NTERM_HERE | PROT_CTERM_HERE))
+         ucNeed |= PROT_BOTH_TERM_HERE;
+      return (ucFlags & ucNeed) == ucNeed;
+   }
 
    struct Row
    {
@@ -880,7 +907,7 @@ public:
          if (ucMask == 0)
             return true;
          for (size_t j = 0; j < n; ++j)
-            if ((pflags[j] & ucMask) == ucMask)
+            if (flagsSatisfy(pflags[j], ucMask))
                return true;
          return false;
       }

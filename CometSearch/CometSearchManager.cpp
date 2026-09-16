@@ -3120,7 +3120,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                      break;
                   }
 
-                  if ((row.flags(j) & ucTermMask) != ucTermMask)
+                  if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))
                      continue;
 
                   const unsigned int* itProt = &row[j];

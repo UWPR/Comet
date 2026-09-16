@@ -615,13 +615,16 @@ things left open by, sections 1-9.
     0 and the table is one row per sequence as before. The union-with-mass-adjustment step
     from the first option C commit remains as a safety net; with the split in place it never
     changes a stored mass.
-  - *Attribution.* Every protein occurrence in `ProteinsListCSR` carries two context bits
-    (`PROT_NTERM_HERE`, `PROT_CTERM_HERE`; `PepOccurrenceContext()`; one byte per occurrence,
-    persisted in the v5 protein-list section). Within-protein dedup keys include the full
-    context, so a sequence repeated at both termini of one protein records both bits. The bits
-    are used twice: at build time an entry whose terminal slots are protein-scoped is emitted
-    only if some occurrence has the matching bits -- both bits in ONE occurrence when `^` and
-    `$` are both set -- and at output time (`GetProteinNameString()`, the mzIdentML per-PSM
+  - *Attribution.* Every protein occurrence in `ProteinsListCSR` carries three context bits
+    (`PROT_NTERM_HERE` 0x01, `PROT_CTERM_HERE` 0x02, `PROT_BOTH_TERM_HERE` 0x04 = this one
+    occurrence is the whole protein; `PepOccurrenceContext()`; one byte per occurrence,
+    persisted in the v5 protein-list section). A protein that holds the peptide more than once
+    keeps one reference whose byte is the OR of its copies, so within-protein dedup keys
+    include the full context and a sequence repeated at both termini of one protein records
+    N|C -- but not 0x04, which the OR never fabricates. The bits are used twice through one
+    rule (`ProteinsListCSR::flagsSatisfy()`): at build time an entry whose terminal slots are
+    protein-scoped is emitted only if some occurrence has the matching bits -- when `^` and
+    `$` are both set, an occurrence carrying 0x04 -- and at output time (`GetProteinNameString()`, the mzIdentML per-PSM
     list, the RTS result path) a PSM's protein list is filtered to the occurrences that
     support its protein-scoped terminal mods.
 
@@ -657,7 +660,7 @@ things left open by, sections 1-9.
 
 **Tests as built**
 
-- P1-P12 in `tests/unit/TestModificationsPermuter.cpp` (P10 is a run-twice pool identity
+- P1-P13 in `tests/unit/TestModificationsPermuter.cpp` (P10 is a run-twice pool identity
   check rather than a golden file; P11 pins exact order). `std::max`/`std::min` must be
   parenthesized there because `windows.h` defines `max`/`min`.
 - T37, T41 (Phase 0); T38, T39, T40, T42, T43 (Phase 2); `t22_rts_{fi,pi}_protterm`

@@ -332,6 +332,12 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
          char c = varModsParam.szVarModChar[i];
 
          // Terminal codes: 'n'/'c' = any peptide terminus; '^'/'$' = protein N-/C-terminus only.
+         // A slot holding both codes for one terminus ("n^", "c$") is peptide-scoped in the
+         // search (bProteinNtermOnly/bProteinCtermOnly are false), so declare it once, as 'n'/'c'.
+         if ((c == '^' && strchr(varModsParam.szVarModChar, 'n') != NULL)
+               || (c == '$' && strchr(varModsParam.szVarModChar, 'c') != NULL))
+            continue;
+
          if (c == 'n' || c == 'c' || c == '^' || c == '$')
          {
             if (!bWriteTerminalMods)
@@ -382,7 +388,7 @@ void CometWritePepXML::WriteVariableMod(FILE *fpout,
                }
             }
          }
-         else
+         else if (!bWriteTerminalMods)   // residue declarations belong to the first pass only
          {
             fprintf(fpout, "  <aminoacid_modification aminoacid=\"%c\" massdiff=\"%0.6f\" mass=\"%0.6f\" variable=\"Y\"%s/>\n",
                   c,

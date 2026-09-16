@@ -1185,7 +1185,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                   for (size_t k = 0; k < vOcc.size(); ++k)
                   {
                      if (!prot.empty() && prot.back() == vOcc[k].first)
-                        protFlags.back() |= vOcc[k].second;
+                        protFlags.back() |= vOcc[k].second;   // union of this protein's copies; PROT_BOTH_TERM_HERE only if ONE copy had both
                      else
                      {
                         prot.push_back(vOcc[k].first);
@@ -1227,8 +1227,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
-               protFlags.push_back((unsigned char)(((buf[i].cPrevAA == '-') ? ProteinsListCSR::PROT_NTERM_HERE : 0)
-                  | ((buf[i].cNextAA == '-') ? ProteinsListCSR::PROT_CTERM_HERE : 0)));
+               protFlags.push_back(PepOccurrenceContext(buf[i].cPrevAA, buf[i].cNextAA));   // incl. PROT_BOTH_TERM_HERE
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
                if (buf[i].cPrevAA == '-')
                   bAnyProtNterm = true;
@@ -1325,7 +1324,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                   for (size_t k = 0; k < vOcc.size(); ++k)
                   {
                      if (!prot.empty() && prot.back() == vOcc[k].first)
-                        protFlags.back() |= vOcc[k].second;
+                        protFlags.back() |= vOcc[k].second;   // union of this protein's copies; PROT_BOTH_TERM_HERE only if ONE copy had both
                      else
                      {
                         prot.push_back(vOcc[k].first);
@@ -1371,8 +1370,7 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             if (i < buf.size())
             {
                prot.push_back((unsigned int)buf[i].lProteinFileOffset);   // fits: FASTA < 4 GB checked at function entry
-               protFlags.push_back((unsigned char)(((buf[i].cPrevAA == '-') ? ProteinsListCSR::PROT_NTERM_HERE : 0)
-                  | ((buf[i].cNextAA == '-') ? ProteinsListCSR::PROT_CTERM_HERE : 0)));
+               protFlags.push_back(PepOccurrenceContext(buf[i].cPrevAA, buf[i].cNextAA));   // incl. PROT_BOTH_TERM_HERE
                siVarModFilterUnion |= buf[i].siVarModProteinFilter;
                if (buf[i].cPrevAA == '-')
                   bAnyProtNterm = true;

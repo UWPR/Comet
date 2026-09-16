@@ -318,13 +318,17 @@ See docs/20260915_permuter_terminal_mods.md.
 CSR (Compressed Sparse Row)-style storage for the per-peptide protein list. Replaces `vector<vector<comet_fileoffset_t>>` to eliminate the ~190 M individual heap allocations (one per inner vector) that caused a multi-minute free-time tail when building large MHC `.idx` files.
 
 Each protein occurrence also carries one context byte, parallel to the reference (`Row::flags(j)`):
-`PROT_NTERM_HERE` (0x01) if the peptide sits at that protein's N-terminus and `PROT_CTERM_HERE`
-(0x02) if at its C-terminus, set during `GeneratePlainPeptideIndex()`'s dedup merge (duplicate
-occurrences within one protein OR their bits) and persisted in the v5 `.idx` protein-list section
+`PROT_NTERM_HERE` (0x01) if the peptide sits at that protein's N-terminus, `PROT_CTERM_HERE`
+(0x02) if at its C-terminus, and `PROT_BOTH_TERM_HERE` (0x04) if one occurrence is both, i.e. the
+peptide is the whole protein. Set from each occurrence's flanks (`PepOccurrenceContext()`) during
+`GeneratePlainPeptideIndex()`'s dedup merge -- duplicate occurrences within one protein OR their
+bits, which is why 0x04 exists: N|C alone would not distinguish "one copy at each terminus" from
+"one copy that is the whole protein" -- and persisted in the v5 `.idx` protein-list section
 after each row's references. Because a raw-peptide row holds one flank pair for all its proteins,
 these bits are what make protein-scoped terminal variable mods (`^` / `$`) exact: the index build
 emits a variant with a protein-scoped terminal slot only if some occurrence has the matching bit
-(both bits in one occurrence when both termini are set -- `CometPeptideIndex::PassesProteinTerminusContext()`),
+(`ProteinsListCSR::flagsSatisfy()`: with both termini set, the occurrence must carry
+`PROT_BOTH_TERM_HERE` -- `CometPeptideIndex::PassesProteinTerminusContext()`),
 and the output writers filter a PSM's protein list to the occurrences that support its
 protein-scoped terminal mods (`CometMassSpecUtils::ProteinTermContextMask()`), so FI_DB/PI_DB
 attribute such PSMs exactly as the plain-FASTA path does

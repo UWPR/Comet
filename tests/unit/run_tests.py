@@ -65,8 +65,9 @@ _BASELINE_EXE    = str(DEFAULT_BASELINE_EXE)
 
 # Tests gated behind --integration: they need large/manually-supplied data
 # and/or take much longer than the T1-T16/T19-T21 unit tests.
-INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t23_decoy_modes", "t24_index_parity",
-                     "t24_internal_decoy_parity")
+INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t22_rts_fi_protterm", "t22_rts_pi_protterm",
+                     "t23_decoy_modes", "t24_index_parity", "t24_internal_decoy_parity",
+                     "t44_termmod_parity_bigdata")
 
 # Set by main() for T23/T24 (--bigdata)
 _BIGDATA_DIR = str(REPO_ROOT.parent / "20130226-comet-tests")
@@ -4135,10 +4136,39 @@ def test_t46_shared_peptide_attribution(comet_exe):
     return failures
 
 
+def _t47_run(comet_exe, mods, failures, tag):
+    """Plain-FASTA search of the T37 fixture with pepXML + mzIdentML output; returns the two
+    files' text, or (None, None) after recording the failure."""
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    outs = {ext: _T37_MS2.with_suffix(ext) for ext in (".txt", ".pep.xml", ".mzid")}
+    for f in outs.values():
+        f.unlink(missing_ok=True)
+    params = legacy_cases.build_params(database=fmt(_T37_FASTA), enzyme1=0, mods=mods, num_output_lines=3)
+    params = _set_param_line(params, "output_pepxmlfile", "1")
+    params = _set_param_line(params, "output_mzidentmlfile", "1")
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
+        pf.write(params); pfile = Path(pf.name)
+    try:
+        rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pfile)}", fmt(_T37_MS2)])
+        if not check(rc == 0 and outs[".pep.xml"].exists() and outs[".mzid"].exists(),
+                     f"{tag}: search wrote .pep.xml and .mzid (rc={rc})", failures):
+            print(log[-1500:])
+            return None, None
+        return outs[".pep.xml"].read_text(errors="replace"), outs[".mzid"].read_text(errors="replace")
+    finally:
+        pfile.unlink(missing_ok=True)
+        for f in outs.values():
+            f.unlink(missing_ok=True)
+
+
 @register("t47_terminal_mod_xml_annotations")
 def test_t47_terminal_mod_xml_annotations(comet_exe):
     """T47: pepXML <terminal_modification protein_terminus> and mzIdentML <SearchModification>
-    specificity CV terms for the four terminal codes n, ^, c, $."""
+    specificity CV terms for the four terminal codes n, ^, c, $. Part 2: a residue mod, a mixed
+    "n^K" slot and a "c$" slot -- residue declarations appear once (not once per writer pass),
+    a slot holding both codes for one terminus is declared once as peptide-scoped, and a
+    protein-terminal '^' mod resolves to its UNIMOD entry like 'n' does."""
     failures = []
     if not (_T37_FASTA.exists() and _T37_MS2.exists()):
         failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
@@ -4147,28 +4177,9 @@ def test_t47_terminal_mod_xml_annotations(comet_exe):
     # distinct masses so each slot is identifiable in the output
     MODS = ("42.010565 n 0 1 -1 0 0 0.0", "43.5 ^ 0 1 -1 0 0 0.0",
             "0.984016 c 0 1 -1 0 0 0.0", "1.5 $ 0 1 -1 0 0 0.0")
-    use_win = _binary_uses_win_paths(comet_exe)
-    fmt = _to_win if use_win else str
-    outs = {ext: _T37_MS2.with_suffix(ext) for ext in (".txt", ".pep.xml", ".mzid")}
-    for f in outs.values():
-        f.unlink(missing_ok=True)
-    params = legacy_cases.build_params(database=fmt(_T37_FASTA), enzyme1=0, mods=MODS, num_output_lines=3)
-    params = _set_param_line(params, "output_pepxmlfile", "1")
-    params = _set_param_line(params, "output_mzidentmlfile", "1")
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".params", dir=str(DATA_DIR), delete=False) as pf:
-        pf.write(params); pfile = Path(pf.name)
-    try:
-        rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pfile)}", fmt(_T37_MS2)])
-        if not check(rc == 0 and outs[".pep.xml"].exists() and outs[".mzid"].exists(),
-                     f"search wrote .pep.xml and .mzid (rc={rc})", failures):
-            print(log[-1500:])
-            return failures
-        pepxml = outs[".pep.xml"].read_text(errors="replace")
-        mzid = outs[".mzid"].read_text(errors="replace")
-    finally:
-        pfile.unlink(missing_ok=True)
-        for f in outs.values():
-            f.unlink(missing_ok=True)
+    pepxml, mzid = _t47_run(comet_exe, MODS, failures, "part 1")
+    if pepxml is None:
+        return failures
 
     # --- pepXML search summary
     term_lines = [l.strip() for l in pepxml.splitlines() if "<terminal_modification" in l]
@@ -4197,6 +4208,44 @@ def test_t47_terminal_mod_xml_annotations(comet_exe):
     check(not any('residues="^"' in l or 'residues="$"' in l or 'residues="n"' in l or 'residues="c"' in l
                   for l in mzid.splitlines()),
           "mzIdentML: no terminal code leaks out as a residue SearchModification", failures)
+
+    # --- part 2: residue mod, mixed "n^K" slot (== "nK": peptide-scoped N-term + K), "c$" slot
+    # (== "c"), and a pure '^' carbamidomethyl in its own slot. (Its mass must differ from the
+    # n^K slot's: Comet merges same-mass variable_mod slots into one residue string at setup.)
+    MODS2 = ("15.9949 M 0 3 -1 0 0 0.0", "42.010565 n^K 0 3 -1 0 0 0.0",
+             "0.984016 c$ 0 3 -1 0 0 0.0", "57.021464 ^ 0 3 -1 0 0 0.0")
+    pepxml, mzid = _t47_run(comet_exe, MODS2, failures, "part 2")
+    if pepxml is None:
+        return failures
+    aa_lines = [l.strip() for l in pepxml.splitlines() if "<aminoacid_modification" in l and 'variable="Y"' in l]
+    def aa_count(aa, massdiff):
+        return sum(1 for l in aa_lines if f'aminoacid="{aa}"' in l and f'massdiff="{massdiff}"' in l)
+    check(aa_count("M", "15.994900") == 1, f"pepXML: variable M declared exactly once, got {aa_count('M', '15.994900')}", failures)
+    check(aa_count("K", "42.010565") == 1, f"pepXML: variable K (from n^K) declared exactly once, got {aa_count('K', '42.010565')}", failures)
+    term_lines = [l.strip() for l in pepxml.splitlines() if "<terminal_modification" in l and 'variable="Y"' in l]
+    def term_count(terminus, massdiff, prot):
+        return sum(1 for l in term_lines if f'terminus="{terminus}"' in l and f'massdiff="{massdiff}"' in l
+                   and f'protein_terminus="{prot}"' in l)
+    check(term_count("N", "42.010565", "N") == 1, "pepXML: n^K slot -> one peptide-scoped N-term declaration", failures)
+    check(term_count("N", "57.021464", "Y") == 1, "pepXML: pure '^' slot -> one protein-scoped N-term declaration", failures)
+    check(term_count("C", "0.984016", "N") == 1 and term_count("C", "0.984016", "Y") == 0,
+          "pepXML: c$ slot -> one peptide-scoped C-term declaration and no protein-scoped one", failures)
+    check(len(term_lines) == 3, f"pepXML: exactly three variable terminal_modification lines, got {len(term_lines)}", failures)
+
+    blocks = re.findall(r"<SearchModification[^>]*residues=\"([^\"]*)\"[^>]*massDelta=\"([0-9.]+)\"[^>]*fixedMod= \"false\"[^>]*>(.*?)</SearchModification>",
+                        mzid, flags=re.S)
+    def nblocks(residue, mass, accession=None):
+        return sum(1 for r, m, body in blocks if r == residue and abs(float(m) - mass) < 1e-6
+                   and (accession is None or accession in body))
+    check(nblocks("M", 15.9949) == 1, f"mzIdentML: one residue block for M, got {nblocks('M', 15.9949)}", failures)
+    check(nblocks("K", 42.010565) == 1, f"mzIdentML: one residue block for K, got {nblocks('K', 42.010565)}", failures)
+    check(nblocks(".", 42.010565, "MS:1001189") == 1, "mzIdentML: n^K slot -> one peptide N-term block", failures)
+    check(nblocks(".", 57.021464, "MS:1002057") == 1, "mzIdentML: pure '^' slot -> one protein N-term block", failures)
+    check(nblocks(".", 57.021464, "MS:1002057") == 1
+          and all("UNIMOD:4\"" in body for r, m, body in blocks if r == "." and abs(float(m) - 57.021464) < 1e-6 and "MS:1002057" in body),
+          "mzIdentML: protein N-term carbamidomethyl ('^') resolves to UNIMOD:4 like 'n' does, not 'unknown modification'", failures)
+    check(nblocks(".", 0.984016, "MS:1001190") == 1 and nblocks(".", 0.984016, "MS:1002058") == 0,
+          "mzIdentML: c$ slot -> one peptide C-term block and no protein C-term block", failures)
     return failures
 
 
@@ -4313,7 +4362,8 @@ def test_t49_bridge_edge_cases(comet_exe):
 
 
 def _t50_expected_flags(fasta_path, seq):
-    """{protein accession: OR'd context bits} for every protein containing seq, from the FASTA."""
+    """{protein accession: OR'd context bits} for every protein containing seq, from the FASTA:
+    1 = N-terminal copy, 2 = C-terminal copy, 4 = one copy is the whole protein (PROT_BOTH_TERM_HERE)."""
     exp = {}
     name = None
     prot = {}
@@ -4332,6 +4382,8 @@ def _t50_expected_flags(fasta_path, seq):
                 bits |= 1
             if start + len(seq) == len(s):
                 bits |= 2
+            if start == 0 and len(seq) == len(s):
+                bits |= 4
             start = s.find(seq, start + 1)
         if s.find(seq) >= 0:
             exp[name] = bits
@@ -4376,7 +4428,8 @@ def test_t50_idx_protein_context_bytes(comet_exe):
         # the three cases this fixture exists for
         r = data.get("AAAKAAAK")
         check(r is not None and r["protein_flags"] == [3],
-              f"AAAKAAAK repeated in T50_B at both termini -> one occurrence with bits N|C (3), got {r and r['protein_flags']}", failures)
+              f"AAAKAAAK repeated in T50_B at both termini -> one reference with bits N|C (3) and NOT the "
+              f"whole-protein bit (4): two copies, neither is both termini, got {r and r['protein_flags']}", failures)
         r = data.get("ACDEFGHI")
         check(r is not None and dict(zip([n.split()[0] for n in r["proteins"]], r["protein_flags"])) == {"T50_A": 1, "T50_C": 0},
               f"ACDEFGHI: N-terminal in T50_A (1), internal in T50_C (0), got {r and list(zip([n.split()[0] for n in r['proteins']], r['protein_flags']))}", failures)

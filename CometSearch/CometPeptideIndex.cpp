@@ -571,7 +571,8 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
 // CometFragmentIndex::AddFragmentsThreadProc()'s enumeration structure (which
 // mod/n-term/c-term combinations to try per peptide) and AddFragments()'s mass
 // computation, but pushes a compact FragmentPeptidesStruct reference
-// {iWhichPeptide, modNumIdx, cNtermMod, cCtermMod, dPepMass} per valid combination
+// {iWhichPeptide, modNumIdx, dPepMass} per valid combination (terminal variable mods are
+// bytes 0/1 of the MOD_NUMBERS_POOL entry that modNumIdx names, see ModEntryTermSlot())
 // instead of materializing a full DBIndex (sequence + explicit pcVarModSites) --
 // that reconstruction now happens lazily, per scored candidate, via
 // MaterializeOneEntry() below (called from CometSearch::SearchPeptideIndex()).
@@ -1572,7 +1573,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 // not part of the header.
 //
 // Also validates the magic string/version (rejecting anything other than the current
-// "Comet index database v4" with a clear rebuild message) and parses IndexSearchType:
+// "Comet index database v5" with a clear rebuild message -- v4 and older are intentionally
+// unreadable since the protein-list row layout changed) and parses IndexSearchType:
 // into g_staticParams.iDbType (PI_DB vs FI_DB), so this same helper is what makes an
 // existing .idx file self-describing -- see WritePeptideIndex()'s header-writing
 // comment for the full rationale.

@@ -914,7 +914,16 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
 
          char c = varModsParam.szVarModChar[i];
 
-         GetModificationID(c, varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
+         // A slot holding both codes for one terminus ("n^", "c$") is peptide-scoped in the
+         // search (bProteinNtermOnly/bProteinCtermOnly are false), so declare it once, as 'n'/'c'.
+         if ((c == '^' && strchr(varModsParam.szVarModChar, 'n') != NULL)
+               || (c == '$' && strchr(varModsParam.szVarModChar, 'c') != NULL))
+            continue;
+
+         // The UNIMOD lookup knows terminal mods by 'n'/'c'; a protein-terminal code is the
+         // same chemistry at the same terminus, so look it up under that identity.
+         const char cLookup = (c == '^') ? 'n' : (c == '$') ? 'c' : c;
+         GetModificationID(cLookup, varModsParam.dVarModMass, &strModID, &strModRef, &strModName);
 
          // Terminal codes: 'n'/'c' = any peptide terminus; '^'/'$' = protein N-/C-terminus only.
          if (c == 'n' || c == 'c' || c == '^' || c == '$')
@@ -1468,7 +1477,7 @@ void CometWriteMzIdentML::PrintTmpPSM(int iWhichQuery,
 
                for (size_t j = 0; j < row.size(); ++j)
                {
-                  if ((row.flags(j) & ucTermMask) != ucTermMask)   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
+                  if (!ProteinsListCSR::flagsSatisfy(row.flags(j), ucTermMask))   // protein-scoped terminal mod: this protein lacks the peptide at that terminus
                      continue;
 #ifdef _WIN32
                   fprintf(fpout, "%I64d:%d;", (long long)row[j], 0);
