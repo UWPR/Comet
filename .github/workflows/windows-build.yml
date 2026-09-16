@@ -34,7 +34,14 @@ jobs:
         FOR %%G IN (dlls\*.dll) DO regsvr32 /S %%G
 
     - name: Setup msbuild
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v1.1
+      with:
+        # The self-hosted runner (WIN64-UWPR) also has Visual Studio 2026 installed. Its
+        # MSBuild evaluates CometWrapperCore with the VS 2026 .NET SDK, which insists on
+        # net8.0 targeting packs at a patch version that is not installed (NETSDK1145),
+        # even with the v143 override below. Stay on the VS 2022 instance until the
+        # projects move to VS 2026 (branch VS2026).
+        vs-version: '[17.0,18.0)'
 
     - name: Write commit hash to header file
       shell: cmd
@@ -43,16 +50,13 @@ jobs:
         dir CometSearch
         type CometSearch\\githubsha.h
 
-    # Every .vcxproj targets the v145 toolset (Visual Studio 2026) as of
-    # 2026-09-15, so no -p:PlatformToolset override: the self-hosted runner
-    # (WIN64-UWPR) has VS 2026 with the v145 C++ build tools installed.
     - name: Restore NuGet packages
       run: |
         msbuild Comet.sln -t:Restore -p:Configuration=Release -p:Platform=x64 -p:RestoreConfigFile=nuget.config
 
     - name: Build Comet
       run: |
-        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -tv:Current
+        msbuild Comet.sln -p:Configuration=Release -p:Platform=x64 -p:PlatformToolset=v143 -tv:Current
 
     - name: Test Comet
       shell: cmd

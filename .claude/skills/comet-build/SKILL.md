@@ -5,46 +5,6 @@ description: Build the Comet mass spectrometry search engine from source. Use wh
 
 # Comet Build
 
-## Visual Studio 2026 (v145) is the current toolset
-
-As of 2026-09-15 (branch `ModificationsPermuter`) every `.vcxproj` is retargeted to
-`<PlatformToolset>v145</PlatformToolset>`, i.e. Visual Studio 2026 (installed under
-`Microsoft Visual Studio\18\`, MSVC 14.51).  Use its MSBuild, not the 2022 one -- the 2022
-MSBuild has no v145 toolset and fails every project with MSB8020:
-
-```bash
-"/mnt/c/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" \
-  "C:\Work\Comet-Ascore\Comet.sln" /p:Configuration=Release /p:Platform=x64 /nologo /v:minimal
-```
-
-The `2022\Community` paths in the sections below are the pre-upgrade invocations; swap the
-directory to `18\Community` and everything else (argument path format, Clean-then-Build
-zconf.h workflow, `/m` race caveat) is unchanged.  Confirmed 2026-09-15: full clean build of
-all 11 projects, Release and Debug x64, zero errors; `CometUnitTests.exe` 59/59 and
-`tests/unit/run_tests.py` 56/56 against the resulting `Comet.exe`.
-
-Two things had to change for v145; both are in the tree, so this is history, not a to-do:
-
-- **`error C2483` in `BS_thread_pool.hpp` from `CometWrapper` / `CometWrapperCore`.**
-  v145 rejects the thread pool's `inline static thread_local std::optional<...>` members in
-  any `/clr` translation unit (v143 let it through).  `#pragma managed(push, off)` does
-  *not* help.  Fix: `CometSearch/ThreadPool.h` only forward-declares `class ThreadPool`
-  when `_MANAGED` is defined -- the wrappers never touch it except through pointers.
-- **`error NETSDK1145` (AppHost / Targeting pack not installed) in `CometWrapperCore`.**
-  The .NET SDK that VS 2026 uses (10.0.300 here) expects net8.0 packs at 8.0.27 while VS
-  installed 8.0.29.  `UseAppHost=false` is the wrong knob (C++/CLI needs the pack for
-  `Ijwhost.dll`), and `RuntimeFrameworkVersion` would pin the DLL's runtimeconfig.  Fix: the
-  `CometUseInstalledNetPacks` target at the bottom of `CometWrapperCore.vcxproj` falls back
-  to the newest installed 8.0.x packs, and is a no-op when the SDK's expected version exists.
-  It prints one `CometWrapperCore: .NET SDK ... using installed 8.0.29 instead.` line when it
-  engages.  `CometWrapperCore` stays on **net8.0** on purpose: its downstream consumers are
-  .NET 8 apps and a .NET 8 process cannot load a net10.0 assembly.  .NET 8 leaves support
-  2026-11-10; when the consumers move to .NET 10, flip
-  `<TargetFramework>` to net10.0 -- that build was verified 2026-09-15 (Release + Debug, and
-  `Assembly.LoadFrom` + `new CometWrapper.CometSearchManagerWrapper()` from a net10.0 console
-  app under .NET 10.0.12), and the pack fallback stays idle for it because VS 2026 keeps its
-  own .NET 10 packs in step with its SDK.
-
 ## Full solution build (Release x64)
 
 ```powershell

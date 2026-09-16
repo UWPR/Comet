@@ -16,19 +16,6 @@
 #ifndef _THREAD_POOL_H_
 #define _THREAD_POOL_H_
 
-#ifdef _MANAGED
-// C++/CLI translation units (CometWrapper, CometWrapperCore -- anything compiled
-// with /clr) only ever name ThreadPool through pointers and references in the
-// CometSearch headers they include, so a forward declaration is all they need.
-// They must not see BS_thread_pool.hpp: its BS::this_thread class declares
-// "inline static thread_local std::optional<...>" members, and MSVC rejects
-// thread_local objects of non-aggregate type in managed code (error C2483).
-// The v143 (VS 2022) compiler let this slide; v145 (VS 2026) does not, and a
-// #pragma managed(push, off) region around the include does not help either --
-// the restriction applies to the whole /clr compilation, not just managed code.
-class ThreadPool;
-#else
-
 #include "BS_thread_pool.hpp"
 #include <functional>
 #include <stdexcept>
@@ -286,7 +273,5 @@ private:
    size_t thread_count_;  // Changed from int to size_t for consistency
    ErrorHandler errorHandler_;  // Optional callback for propagating task errors
 };
-
-#endif // _MANAGED
 
 #endif // _THREAD_POOL_H_

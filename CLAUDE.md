@@ -34,7 +34,7 @@ session."** The skill has the exact invocation, the post-build wrapper-DLL copy 
 and the `zconf.h` / `error C1083: unistd.h` cross-platform gotcha (Clean Solution +
 Build Solution on Windows, or `make clean` -- not `cclean` -- on Linux).
 
-In Visual Studio itself (2026, build tools v145 -- projects were retargeted from VS 2022/v143 on 2026-09-15; the VS 2026 MSBuild lives under `Microsoft Visual Studio\18\`): load `Comet.sln`, set configuration to
+In Visual Studio itself (2022, build tools v143): load `Comet.sln`, set configuration to
 **Release / x64**, right-click the **Comet** project -> **Build**. Output:
 `x64/Release/Comet.exe`.
 

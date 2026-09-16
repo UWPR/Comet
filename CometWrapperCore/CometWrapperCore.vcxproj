@@ -23,14 +23,14 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CLRSupport>NetCore</CLRSupport>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -146,55 +146,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <!--
-    .NET pack-version fallback (added for the VS 2022 -> VS 2026 move).
-
-    This is a C++/CLI project targeting net8.0 (kept there deliberately for
-    its downstream .NET 8 consumers; a .NET 8 process cannot load a net10.0
-    assembly), so the .NET SDK needs two
-    reference-only packs at build time: Microsoft.NETCore.App.Ref (targeting
-    pack) and Microsoft.NETCore.App.Host.<rid> (which supplies Ijwhost.dll for
-    C++/CLI).  Because a .vcxproj cannot NuGet-restore them, the SDK insists
-    they already be installed under $(NetCoreTargetingPackRoot) at the *exact*
-    patch version its own BundledVersions.props names (error NETSDK1145).
-
-    The SDK bundled with VS 2026 (10.0.300, later 10.0.401) expects the net8.0
-    packs at 8.0.27 / 8.0.31, while the only .NET 8 packs on the build machine
-    (installed by VS 2022) are 8.0.29, so the stock build fails even though a
-    perfectly good .NET 8 targeting pack is present.  VS 2026 only keeps its
-    own .NET 10 packs in step with its SDK, so this drift recurs on every VS
-    update until .NET 8 leaves support (2026-11-10) and its versions freeze.
-    Once the consumers move to .NET 10 this project should follow (a net10.0
-    build was verified on 2026-09-15: builds, loads and instantiates under 10.0.12).
-
-    When the SDK's expected version is present this target does nothing.  When
-    it is missing, it picks the newest installed $(_TargetFrameworkVersionWithoutV).x
-    version for which BOTH packs exist and rewrites the two Known* items the
-    SDK reads.  Only the pack lookup changes; RuntimeFrameworkVersion is left
-    alone, so the emitted runtimeconfig.json still asks for 8.0.0 + roll-forward
-    rather than pinning consumers to a specific patch.
-  -->
-  <Target Name="CometUseInstalledNetPacks" BeforeTargets="ProcessFrameworkReferences" Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' And '$(NetCoreTargetingPackRoot)' != ''">
-    <PropertyGroup>
-      <_CometRefPackDir>$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Ref</_CometRefPackDir>
-      <_CometHostPackDir>$(NetCoreTargetingPackRoot)\Microsoft.NETCore.App.Host.$(NETCoreSdkRuntimeIdentifier)</_CometHostPackDir>
-    </PropertyGroup>
-    <ItemGroup>
-      <_CometKnownFx Include="@(KnownFrameworkReference)" Condition="'%(Identity)' == 'Microsoft.NETCore.App' And '%(KnownFrameworkReference.TargetFramework)' == '$(TargetFramework)'" />
-    </ItemGroup>
-    <PropertyGroup>
-      <_CometBundledRefVersion>@(_CometKnownFx->'%(TargetingPackVersion)')</_CometBundledRefVersion>
-    </PropertyGroup>
-    <ItemGroup Condition="'$(_CometBundledRefVersion)' != '' And !Exists('$(_CometRefPackDir)\$(_CometBundledRefVersion)') And Exists('$(_CometRefPackDir)')">
-      <_CometInstalledRefDir Include="$([System.IO.Directory]::GetDirectories('$(_CometRefPackDir)', '$(_TargetFrameworkVersionWithoutV).*'))" />
-    </ItemGroup>
-    <PropertyGroup>
-      <_CometPickedVersion Condition="Exists('$(_CometHostPackDir)\%(_CometInstalledRefDir.Filename)%(_CometInstalledRefDir.Extension)') And ('$(_CometPickedVersion)' == '' Or $([MSBuild]::VersionGreaterThan('%(_CometInstalledRefDir.Filename)%(_CometInstalledRefDir.Extension)', '$(_CometPickedVersion)')))">%(_CometInstalledRefDir.Filename)%(_CometInstalledRefDir.Extension)</_CometPickedVersion>
-    </PropertyGroup>
-    <ItemGroup Condition="'$(_CometPickedVersion)' != ''">
-      <KnownFrameworkReference Update="Microsoft.NETCore.App" Condition="'%(KnownFrameworkReference.TargetFramework)' == '$(TargetFramework)'" TargetingPackVersion="$(_CometPickedVersion)" />
-      <KnownAppHostPack Update="Microsoft.NETCore.App" Condition="'%(KnownAppHostPack.TargetFramework)' == '$(TargetFramework)'" AppHostPackVersion="$(_CometPickedVersion)" />
-    </ItemGroup>
-    <Message Importance="high" Condition="'$(_CometPickedVersion)' != ''" Text="CometWrapperCore: .NET SDK $(NETCoreSdkVersion) expects $(TargetFramework) packs at $(_CometBundledRefVersion), which are not installed; using installed $(_CometPickedVersion) instead." />
-  </Target>
 </Project>

@@ -238,7 +238,7 @@ D9: `AddFragments()` / `ComputeIndexedPepMass()` add `dAddNterminusProtein` when
 ## 4. Phases
 
 Five phases, each a separate commit on `ModificationsPermuter`. Every phase's exit criteria
-include the standing gate: Linux `make` and VS 2026 Release x64 both build with zero errors,
+include the standing gate: Linux `make` and the Windows Release x64 solution build both finish with zero errors,
 `tests/unit/run_tests.py` passes against both binaries, and `CometUnitTests` passes. Test IDs
 refer to section 6. Phase order is fixed by dependencies: 0 is independent of the permuter;
 1 changes the permuter without changing any index; 2 wires the index to it; 3 and 4 follow.

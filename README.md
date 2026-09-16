@@ -12,7 +12,7 @@ To compile on linux and macOS:
 
 To compile with Microsoft Visual Studio:
 
-- We currently use build tools v145 with Microsoft Visual Studio 2026.
+- We current use build tools v143 with Microsoft Visual Studio 2022.
 
 - Load "Comet.sln" in Visual Studio.
 
