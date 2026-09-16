@@ -1463,9 +1463,12 @@ bool CometSearchManager::InitializeStaticParams()
 
          if (vm.iVarModTermDistance == 0 && strResidues.length() > 0)
          {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance 0 restricted residues \"%s\" to the protein terminus; that restriction\n"
-                   "           is deprecated and dropped -- the residue modification now applies anywhere.\n",
-                     szSlot, strResidues.c_str());
+            // legacy which_term: 0 protein N-term, 1 protein C-term, 2 peptide N-term, 3 peptide C-term
+            static const char* szLegacyTerm[4] = { "protein N-terminus", "protein C-terminus", "peptide N-terminus", "peptide C-terminus" };
+            const char* szTerm = (vm.iWhichTerm >= 0 && vm.iWhichTerm <= 3) ? szLegacyTerm[vm.iWhichTerm] : "a terminus";
+            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance 0 / which_term %d restricted residues \"%s\" to the %s; that\n"
+                   "           restriction is deprecated and dropped -- the residue modification now applies anywhere.\n",
+                     szSlot, vm.iWhichTerm, strResidues.c_str(), szTerm);
             logout(szMsg);
          }
          else if (vm.iVarModTermDistance > 0)

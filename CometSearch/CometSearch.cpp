@@ -1899,6 +1899,17 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             iFoundVariableMod = 1;
          }
 
+         // Static protein-terminal masses for a peptide at a protein terminus ('-' flank), the
+         // same additions AddFragments() made when it built this variant's postings (D9) and
+         // ComputeIndexedPepMass() made for dCalcPepMass above, and what SearchPeptideIndex()
+         // does for PI_DB. Without them the b (N-term) or y (C-term) ladder scored here is
+         // shifted from the bins the candidate was retrieved from. The flanks come from the
+         // raw-peptide row and so apply to an internal decoy of this variant as well.
+         if (rawView.cPrevAA == '-')
+            dBion += g_staticParams.staticModifications.dAddNterminusProtein;
+         if (rawView.cNextAA == '-')
+            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
+
          //FIX: set fragment neutral loss correctly
          if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
          {

@@ -960,12 +960,15 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
 
             const char* szAccession;
             const char* szName;
-            double dMassDelta = varModsParam.dVarModMass;
+            // massDelta is this variable modification's own mass: a static add_Nterm_protein /
+            // add_Cterm_protein is declared separately as its own fixedMod="true" block and
+            // the per-PSM <Modification> records carry dVarModMass, so folding the static in
+            // here (as the pre-2026.09 writer did) made the protocol disagree with both.
+            const double dMassDelta = varModsParam.dVarModMass;
 
             if (c == '^')
             {
                szAccession = "MS:1002057"; szName = "modification specificity protein N-term";
-               dMassDelta += g_staticParams.staticModifications.dAddNterminusProtein;
             }
             else if (c == 'n')
             {
@@ -974,7 +977,6 @@ void CometWriteMzIdentML::WriteVariableMod(FILE *fpout,
             else if (c == '$')
             {
                szAccession = "MS:1002058"; szName = "modification specificity protein C-term";
-               dMassDelta += g_staticParams.staticModifications.dAddCterminusProtein;
             }
             else
             {

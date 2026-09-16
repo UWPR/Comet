@@ -3864,6 +3864,7 @@ def test_t42_static_protein_nterm_fidb(comet_exe):
             pfile.unlink(missing_ok=True); txt.unlink(missing_ok=True)
 
         masses = {}
+        xcorrs = {}
         if check(rc == 0 and rows_plain, f"{tag}: plain FASTA search ran (rc={rc})", failures):
             # the static protein-terminal mass is annotated as "<pos>_S_<mass>_N|_C" (S = static)
             r = _t37_find(rows_plain, pep, mod_substr=mod_sub)
@@ -3872,6 +3873,7 @@ def test_t42_static_protein_nterm_fidb(comet_exe):
                   f"(internal in {prot_internal} has a different mass), got {sorted(_t37_proteins(r)) if r else None}", failures)
             if r is not None:
                 masses["plain"] = r.get("calc_neutral_mass")
+                xcorrs["plain"] = r.get("xcorr")
 
         for index_flag, label in (("-i", "FI_DB"), ("-j", "PI_DB")):
             rc, rows, out, _, _ = _t38_index_search(comet_exe, index_flag, (_T37_MOX,), extra_params=STATIC)
@@ -3890,10 +3892,14 @@ def test_t42_static_protein_nterm_fidb(comet_exe):
                   f"{tag}: {label}: no PSM carries the static protein-{tag} mass while attributed to {prot_internal}", failures)
             if r is not None:
                 masses[label] = r.get("calc_neutral_mass")
+                xcorrs[label] = r.get("xcorr")
 
         if len(masses) == 3:
             vals = {float(v) for v in masses.values()}
             check(max(vals) - min(vals) < 1e-4, f"{tag}: all three paths agree on calc_neutral_mass: {masses}", failures)
+            # The static must also be in every path's fragment ladder, not only the precursor:
+            # a ladder without it scores against shifted b (N-term) or y (C-term) bins.
+            check(len(set(xcorrs.values())) == 1, f"{tag}: all three paths agree on xcorr: {xcorrs}", failures)
     return failures
 
 

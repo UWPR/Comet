@@ -655,6 +655,20 @@ things left open by, sections 1-9.
   `GetProteinNameString()`), and `ResolveTmpProteinName()` resolves an indexed reference
   through `g_pvProteinNameCache`. T47 part 3 checks FI_DB/PI_DB internal-decoy `.mzid` output
   end to end (resolvable evidence, real accessions, exact `^` attribution).
+- **FI_DB search-time ladder (D9 completed, 2026-09-16).** D9 put the static protein-terminal
+  masses into the FI_DB build's fragment ladders and into `ComputeIndexedPepMass()`, but
+  `SearchFragmentIndex()`'s own b/y ladder -- the one XCorr scores -- still started from the
+  peptide-terminal constants plus the variable terminal mods only. A candidate with a `-` flank
+  and a non-zero `add_Nterm_protein`/`add_Cterm_protein` was therefore retrieved from the right
+  bins but scored against a shifted ladder (T42's PSM: xcorr 3.46 on FI_DB vs 5.36 on plain FASTA
+  and PI_DB). The flank statics are now added there too, from the raw-peptide row's flanks, so
+  they apply to internal decoys of the variant as well. T42 asserts xcorr equality across the
+  three paths for both termini.
+- **mzIdentML `SearchModification` for `^`/`$`** declares the variable mass only. The pre-branch
+  writer folded `add_Nterm_protein`/`add_Cterm_protein` into that `massDelta`; since the static is
+  its own `fixedMod="true"` block and the per-PSM `<Modification>` carries the variable mass,
+  that double-counted. pepXML's `<terminal_modification mass=...>` keeps the total terminal mass
+  (its `massdiff` is the variable mass), which is that format's convention.
 - **Plain-FASTA bug found by T42**: `MergeVarMods()` rebuilt the precursor mass from scratch
   adding only `dAddCterminusProtein`; variable-mod peptides at the protein N-terminus with
   `add_Nterm_protein != 0` were reported (and mass-checked) short by that amount. Fixed in
