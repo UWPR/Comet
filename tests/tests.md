@@ -1,13 +1,18 @@
 # Comet Test Suite Summary
 
 Three independent test suites live under `tests/`, each with its own runner and
-purpose:
+purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, regression tests for specific fixed bugs | `run_tests.py`, `test_il_sequence.py` |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (80 Python test IDs), and 72 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
+| `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
+
+Test counts as of `v2026.02.3` (2026-09-17): `run_tests.py` registers 59 named
+tests plus 21 generated `t21_*` legacy cases (80 IDs, 10 of them integration-only);
+`CometUnitTests.exe` has 72 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
 what each individual test actually checks.
@@ -22,15 +27,24 @@ python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe t13
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe --integration
 ```
 
-All tests build a plain-peptide `.idx` via `Comet.exe -i` against a small
+T1-T18 build a plain-peptide `.idx` via `Comet.exe -i` against a small
 crafted FASTA in `tests/unit/data/`, then parse the resulting `.idx` directly
 (`parse_idx()`) and check specific peptides, masses, flanking residues, or
 protein-list contents -- except T13 (pure Python, no Comet invocation) and
-T17/T18 (integration, require `data/human.small.fasta`). Always pass `--comet`
-as a full path; the default `../../comet.exe` only resolves correctly when
-invoked from inside `tests/unit/`.
+T17/T18 (integration, require `data/human.small.fasta`). T19 onward are
+end-to-end search regressions: each builds an FI_DB (`-i`) and/or PI_DB (`-j`)
+index, or searches the plain FASTA, against a small `.ms2`/`.mzXML` fixture and
+asserts on the `.txt` (and, where relevant, pepXML/mzIdentML) output. Always
+pass `--comet` as a full path; the default `../../comet.exe` only resolves
+correctly when invoked from inside `tests/unit/`.
 
-### `run_tests.py` -- T1-T33
+Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
+`t22_rts_fi`, `t22_rts_pi`, `t22_rts_fi_protterm`, `t22_rts_pi_protterm`,
+`t23_decoy_modes`, `t24_index_parity`, `t24_internal_decoy_parity`,
+`t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
+not exist.
+
+### `run_tests.py` -- T1-T51
 
 | ID | Summary |
 |---|---|
@@ -57,8 +71,10 @@ invoked from inside `tests/unit/`.
 | **T20** | Regression test for the PI_DB batch-search crash (`_pQueries` never assigned in `CometSearch::SearchPeptideIndex(ThreadPool*, vector<Query*>&)`, which segfaulted inside `BinarySearchMass()` on the first scored candidate). Reuses T19's phospho fixture but builds a PI_DB (`-j`, peptide index) instead of an FI_DB (`-i`, fragment index), then asserts the search exits cleanly (`rc=0`) and produces the correct PSM, rather than crashing silently after the "`- searching ...`" progress message. |
 | **T21** (`t21_*`, one per case) | Migrates the ~21 hand-run functional-correctness cases from `/mnt/c/Work/20130226-comet-tests/runall.sh` (originally judged by eye against each case's README). Fixtures live in `tests/unit/data/legacy/`; params are generated at runtime from `legacy_cases.py`'s template. No assertion checks an absolute xcorr/e-value/deltaCn/ion-count (those legitimately drift across versions) -- checks are limited to peptide identity, protein identity, modification presence, hit counts, and relative score comparisons. See `legacy_cases.py`'s module docstring for the full case table. |
 | **T22** *(integration)* (`t22_rts_fi`, `t22_rts_pi`) | Exercises the real-time search (RTS) single-spectrum path via `tests/rts_repro/` against an FI_DB and a PI_DB built from a small unambiguous fixture -- no C++/CLI or Thermo dependency, so it runs on Linux. Checks RTS finds the correct peptide, and that 1-thread and 8-thread runs over 197 real spectra are byte-identical (the determinism guarantee from `tests/rts_repro/README.md`). |
+| **T22b** *(integration)* (`t22_rts_fi_protterm`, `t22_rts_pi_protterm`) | Same RTS 1-vs-8-thread determinism check with a `^` (protein-N-terminal) acetyl variable mod in the index, on FI_DB and PI_DB. |
 | **T23** *(integration, `--bigdata`)* (`t23_decoy_modes`) | Migrates `comet-debug3`'s full-scale search (~177 MB mzXML + FASTAs). Checks internal-decoy and target-decoy searches agree on PSM counts at 1% FDR within 5%, plus a cross-version comparison (PSM count within 10%, wall-clock within 25%) against the pinned `BASELINE_TAG` release binary, auto-downloaded via `setup_baselines.py`. Skips cleanly if `--bigdata DIR` isn't present or the baseline can't be fetched. |
 | **T24** *(integration, `--bigdata`)* (`t24_index_parity`) | Migrates `comet-debug4`'s full-scale search. Checks plain-FASTA, FI_DB, and PI_DB searches agree on PSM counts at 1% FDR (within a few percent of each other), plus the same `BASELINE_TAG` cross-version comparison as T23 for all three modes (each rebuilt fresh with the baseline binary, since `.idx` formats aren't guaranteed compatible across versions). Same skip behavior as T23. |
+| **T24b** *(integration, `--bigdata`)* (`t24_internal_decoy_parity`) | Same full-scale 1% FDR parity check as T24 but with Comet's internal decoys (`decoy_search=1`) on all three paths -- plain FASTA, FI_DB and PI_DB -- now that FI_DB supports internal decoys (`docs/20260914_FI_internal_decoys.md`). |
 | **T25** (`t25_fi_mod_slot_gap`, `t25_fi_mod_slot_ambig`) | FI_DB variable-mod-slot regression: a mod configured in `variable_mod02` (slot 1) with `variable_mod01` (slot 0) left unused must resolve to the correct slot, not silently misread as slot 0. The `_ambig` variant forces a genuinely ambiguous second modifiable site (2 candidate S residues, `max_variable_mods_in_peptide=1`) to additionally exercise `AddFragments()`'s combination-enumeration path. |
 | **T26** (`t26_b1_fasta_decoy`, `t26_b2_fi_nl_order`) | B1/B2 regressions: FASTA-path decoy fragment ladder must not abort early on a phospho+NL residue, and FI_DB's neutral-loss running-count carry-forward must use the loop's own index rather than a stale outer-scope variable. |
 | **T27** (`t27_modcap_fasta`, `t27_modcap_fi`) | B3/B4 regressions: a 3-mod-type combination on variable-mod slots 10-15 that exceeds `max_variable_mods_in_peptide` must be rejected, on both the FASTA and FI_DB paths. |
@@ -68,6 +84,104 @@ invoked from inside `tests/unit/`.
 | **T31** (`t31_speclib_sizing`) | C5 regression: a minimal `.msp` spectral-library MS2 run must complete without the `std::out_of_range` crash from the precursor-index sizing bug. |
 | **T32** (`t32_bad_enzyme_number`) | B11 regression: `search_enzyme_number = 99` (undefined) must produce a params-file error, not silently proceed. |
 | **T33** (`t33_param_robustness`) | C10 regression: a params file with a 600-char value (`szParamVal` is 512 bytes) and a malformed `mass_offsets` entry must error or otherwise handle gracefully, not stack-smash or hang. |
+| **T34** (`t34_internal_decoys_fi`, `t34_internal_decoys_pi`) | Comet internal decoys (`decoy_search=1`/`2`) on FI_DB and PI_DB: pseudo-reversal of the sequence, mod-site mirroring onto the reversed sequence, palindromic peptides merging into a single entry, and separate-list (`decoy_search=2`) output. Same fixture and assertions for both index types. |
+| **T35** (`t35_ascore_crossmode`) | AScorePro scores must be identical across the plain-FASTA, PI_DB and FI_DB paths -- guards the double-applied static mod (a score regression) and exercises the >150-peak normalized peak-list branch. |
+| **T36** (`t36_decoy_norelocalize`) | AScorePro reports a site score for an internal-decoy PSM but never relocalizes the decoy's mod site (plain FASTA and PI_DB, real scan 42900). |
+| **T37** (`t37_protein_term_plain`) | `^`/`$` protein-terminal variable mods (`docs/20260915_permuter_terminal_mods.md`) on the plain-FASTA path: applied only where the peptide is actually protein-N-/C-terminal. |
+| **T38** (`t38_protein_term_index`) | `^`/`$` protein-terminal variable mods on FI_DB and PI_DB; asserts the `.idx` header is format v5. |
+| **T39** (`t39_termmod_cap_index`) | Terminal mods count toward `max_variable_mods_in_peptide` on FI_DB/PI_DB exactly as on the plain-FASTA path: a 3-mod permutation (n-term + c-term + M oxidation) must vanish at cap 2 and return at cap 3. |
+| **T40** (`t40_internal_decoys_protterm`) | FI_DB internal decoys combined with a `^` mod: decoy PSMs keep the terminal mod on the N-terminus of the reversed sequence, and target rows match the `decoy_search=0` run. |
+| **T41** (`t41_termmod_deprecation`) | `variable_mod` fields 5/6 (term_distance, n/c-term) are deprecated: the legacy protein-terminus idiom is bridged to `^`/`$` with a warning; other non-default values warn and are ignored. |
+| **T42** (`t42_static_protein_nterm_fidb`) | Static `add_Nterm_protein`/`add_Cterm_protein` masses are applied on FI_DB exactly as on PI_DB and plain FASTA, and a peptide that is protein-terminal in one protein and internal in another is attributed only to the protein where the static applies. |
+| **T43** (`t43_v4_index_rejected`) | A v4 `.idx` (frozen pre-Phase-2 fixture) is refused with the "rebuild the index" message instead of being misread. |
+| **T44** *(integration, `--bigdata`)* (`t44_termmod_parity_bigdata`) | Full-scale 1% FDR parity, plain FASTA vs FI_DB vs PI_DB, with `n` and `^` acetyl and `$` amidation variable mods configured. |
+| **T45** (`t45_mixed_terminal_codes`) | One slot mixing residue letters with terminal codes (`n^K`, `c$K`), and two same-mass slots that merge after the deprecation bridge -- on plain FASTA, FI_DB and PI_DB. |
+| **T46** (`t46_shared_peptide_attribution`) | Protein-terminus attribution for a peptide shared by proteins with different terminal context: the index keeps one raw-peptide row per sequence but each protein occurrence carries `PROT_NTERM_HERE`/`PROT_CTERM_HERE` context bits, so a `^` variant is emitted only if some occurrence is protein-N-terminal and the reported protein list is filtered to the supporting occurrences. FI_DB and PI_DB must match the plain-FASTA attribution exactly. |
+| **T47** (`t47_terminal_mod_xml_annotations`) | pepXML `<terminal_modification protein_terminus>` and mzIdentML `<SearchModification>` specificity CV terms for the four terminal codes `n`, `^`, `c`, `$`; residue declarations appear once, a slot holding both codes for one terminus is declared once as peptide-scoped, `^` resolves to its UNIMOD entry; FI_DB/PI_DB internal-decoy searches produce resolvable `PeptideEvidence`. |
+| **T48** (`t48_v5_missing_context_bytes_rejected`) | A v5 `.idx` whose protein list lacks the per-occurrence context bytes fails cleanly at load. |
+| **T49** (`t49_bridge_edge_cases`) | Legacy `nK 0 3 0 0` / `cM 0 3 0 1` equal explicit `^K` / `$M` (with a warning) on plain FASTA, FI_DB and PI_DB; `n` and `^` in different slots coexist without cross-talk. |
+| **T50** (`t50_idx_protein_context_bytes`) | The v5 protein-list context bytes on disk equal the FASTA-derived per-protein context for every peptide (repeated-in-one-protein, shared-with-different-context, plain internal), checked on a fresh build of `t50_context.fasta` and on the committed t2/t3/t6 fixtures. |
+| **T51** (`t51_ascorepro_with_protein_term_mods`) | `print_ascorepro_score=1` with `^`/`$` protein-terminal variable mods configured: a pure `^`/`$` mod (no residues) is not registered with AScorePro, every path runs with AScorePro on and off with the same (peptide, protein) result set, and the `.txt` carries a numeric `ascorepro` value on the terminally-modified hit. |
+
+#### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
+
+Moved here from `CLAUDE.md` (2026-09-17) so that file only carries the invocation rules.
+
+- **T17 uses count-stability, not cross-version byte comparison.** The v2026.01.1
+  baseline has a known I/L long-path dedup bug (byte-exact `memcmp` instead of canonical
+  L==I comparison), producing ~8,102 extra entries when `equal_IL=1`. Even with
+  `equal_IL=0` there is an 8-peptide algorithmic difference from the flat-sort vs
+  per-length sort change. Cross-version byte-exact or count-exact comparison is therefore
+  unreliable; T17 verifies that the peptide count falls in [8,800,000, 9,100,000] for a
+  no-enzyme len 8-13 build on `human.small.fasta`. **T18** covers determinism instead:
+  two independent builds of the same FASTA must be byte-identical.
+- **`no-enzyme + len_max > 13` will time out.** No-enzyme with `len_max=25` generates a
+  ~1.1 GB index and takes >300 s. Use `len_max=13` for integration tests; it covers both
+  the short path (len <= 12, 5-bit packed) and the long path (len > 12, plain string)
+  while building in ~110 s.
+- **T21** (`t21_*`, one per case, always run) migrates the ~21 hand-run cases from
+  `/mnt/c/Work/20130226-comet-tests/runall.sh`, originally judged by eye against each
+  case's README. Fixtures live in `tests/unit/data/legacy/`; params are generated at
+  runtime from `legacy_cases.py`'s template rather than maintaining ~15 historical
+  `comet.params.YYYYNNN` copies per case. See that module's docstring for the case table.
+- **Big data.** T23/T24 (`--integration` + `--bigdata`) migrate `comet-debug3` /
+  `comet-debug4`'s full-scale searches (~350 MB of real data: a 177 MB mzXML, 57 MB and
+  116 MB FASTAs). `--bigdata DIR` (default: the sibling `20130226-comet-tests/` directory)
+  points at this data in place; it is never copied into the repo, and every big-data test
+  skips cleanly if the directory isn't present. T23 checks that internal-decoy and
+  target-decoy searches agree on PSM counts at 1% FDR (via `tools/qvalue.py`) within 5%;
+  T24 checks the same for plain-FASTA vs. FI_DB vs. PI_DB. All three currently pass and
+  agree within a few percent (17,660 / 17,033 / 17,660 PSMs at 1% FDR respectively).
+  T24b repeats T24 with internal decoys and T44 with terminal variable mods.
+- **Cross-version comparison against a previous Comet release.** T23 and T24 also run
+  every one of their configs (T23: both decoy modes; T24: plain-FASTA, FI_DB, PI_DB, each
+  index built fresh with the baseline binary since `.idx` formats aren't guaranteed
+  compatible across versions) against a pinned previous release, `BASELINE_TAG` in
+  `run_tests.py` (currently `v2026.02.2`), fetched automatically on first use via
+  `tests/regression/setup_baselines.py`'s download logic into
+  `tests/regression/baselines/<tag>/comet` (gitignored, like all fetched baselines;
+  override with `--baseline PATH`). Cross-version checks skip cleanly, without failing the
+  test, if no baseline is available. Same-version comparisons (internal-vs-target-decoy,
+  FI/PI-vs-plain-FASTA) use a 5% tolerance; current-vs-baseline comparisons use 10%,
+  since a different Comet version legitimately identifies a somewhat different peptide
+  population.
+- **Runtime regression check.** Each search and index build is timed, and every
+  current-vs-baseline pairing asserts current isn't more than `TIMING_NOISE_TOLERANCE`
+  (currently 25%) slower than the baseline's wall-clock time for the same operation, via
+  `_check_timing()`. The threshold is deliberately generous: these are multi-minute,
+  single-sample wall-clock measurements on real (possibly shared) hardware, and run-to-run
+  variance from machine noise alone can plausibly reach 10-20% with no code change. Treat
+  one `_check_timing` failure as "worth re-running to confirm", not proof of a regression;
+  a *repeated* failure across runs is the real signal.
+- **`std::length_error` on a full-scale FI_DB.** While developing T24, one manual
+  (non-harness) attempt to search a full-scale target-decoy FI_DB crashed with
+  `std::length_error: cannot create std::vector larger than max_size()`. That manual build
+  had been interrupted by a shell timeout mid-write, almost certainly leaving a truncated
+  `.idx` on disk; under T24's own clean build-then-search sequence FI_DB has run correctly
+  every time. See the comment above `test_t24_index_parity` in `run_tests.py` if this ever
+  resurfaces.
+
+`legacy_cases.py` holds the T21 case table; `MiniTest.h` is the C++ harness
+used by `CometUnitTests` below.
+
+### `CometUnitTests` (C++, `CometUnitTests.vcxproj`)
+
+```bat
+x64\Release\CometUnitTests.exe
+```
+
+Built as part of `Comet.sln` (Release/x64) and run by the Windows CI workflow
+(`.github/workflows/windows-build.yml`). Uses `MiniTest.h`, a dependency-free
+in-repo harness (no gtest, no CMake/NuGet fetch), and links against
+`CometSearch.lib` directly to test methods that the Python harness can only
+reach through a full search:
+
+| Source | Suite | Cases | What it covers |
+|---|---|---:|---|
+| `TestCometSearchAndPreprocess.cpp` | `CometSearchTest` | 28 | `CometSearch` static helpers with a minimal `g_staticParams` setup: `CheckEnzymeTermini`/`CheckEnzymeStartTermini`/`CheckEnzymeEndTermini` (tryptic rules, K-before-P, protein termini, `num_enzyme_termini=1`), `CheckMassMatchStatic` with `isotope_error` 0/1 (C13 window), `GetAA` codon translation on forward/reverse strands (stop codon, unknown codon), and `AllocateMemory`/`DeallocateMemory` idempotence. |
+| `TestCometSearchAndPreprocess.cpp` | `CometPreprocessTest` | 26 | `CometPreprocess` driver helpers: `CheckExit` under every scan-selection mode (entire file, scan range, specific scan, batch size, error status), `GetMassCushion` for amu/mmu/ppm and precursor-m/z tolerances, `IsValidInputType` per file type (`.raw`/`.mzXML` true; `.ms2`/`.mgf`/`.mzML` false), `Reset`/`DoneProcessingAllSpectra`, and allocate/deallocate idempotence. |
+| `TestCometSearchAndPreprocess.cpp` | `BinarySearchMassFixture` | 5 | `CheckMassMatchStatic` at and beyond the lower/upper tolerance bounds, driving the mass-window binary search used by the index paths. |
+| `TestModificationsPermuter.cpp` | `PermuterTest` | 13 | `ModificationsPermuter` (P1-P13): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits. |
 
 ### `test_il_sequence.py` (standalone, not part of `run_tests.py`)
 
@@ -141,10 +255,13 @@ backed by its own params file with `decoy_search` baked in:
 | `internaldecoy1` | 1 (internal decoy, concatenated) | `data/comet_phospho_internaldecoy1.params` | fasta, pi |
 | `internaldecoy2` | 2 (internal decoy, separate) | `data/comet_phospho_internaldecoy2.params` | fasta, pi |
 
-`internaldecoy1`/`internaldecoy2` are automatically skipped for `fi` -- FI
-does not support Comet's internal (on-the-fly) decoy generation -- and the
+`internaldecoy1`/`internaldecoy2` are automatically skipped for `fi` and the
 report shows an explicit `SKIPPED` line for that combination rather than
-silently omitting it.
+silently omitting it. That skip predates `v2026.02.3`, whose FI_DB does
+support internal decoys (`docs/20260914_FI_internal_decoys.md`, covered by
+T34/T40/T24b in `run_tests.py`); `run_regression.py`'s mode table has not been
+widened yet, so FI internal-decoy regressions are only exercised by the unit
+harness.
 
 For each mode/variant it records: index build time (fi/pi only), search
 wall-clock time, PSM count above `xcorr >= 2.5`, and the fraction of common
@@ -185,6 +302,28 @@ present). Output files are moved out from next to each input file into
 `results/<timestamp>_raw_vs_mzxml/{mzxml,raw}.<ext>` immediately after each
 search, both to allow comparison and to avoid leaving Comet's side-effect
 output files sitting in `data/`.
+
+---
+
+## `tests/rts_repro/`
+
+```bash
+# build: single g++ line in rts_repro/README.md (no Makefile); T22 builds it itself
+./rts_repro <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]
+python3 tests/rts_repro/ms2_to_fixture.py in.ms2 > fixture.txt
+```
+
+Not a test suite itself but the driver T22/T22b run (T22 compiles it with
+`g++` against `libcometsearch.a` and skips if that fails). `rts_repro.cpp` calls the
+same `ICometSearchManager` API that `RealtimeSearch/SearchMS1MS2.cs` reaches
+through `CometWrapper.dll` (`InitializeSingleSpectrumSearch()` +
+`DoSingleSpectrumSearchMultiResults()`) from N worker threads pulling off a
+shared queue -- the C# harness's concurrency pattern -- against 197 real
+spectra in `fixture_spectra.txt` (extracted once from
+`20250520_Hela_60min_06.raw`). It needs no Thermo library or C++/CLI, so the
+RTS path is testable on Linux. Written for the E-value jitter investigation
+(`docs/20260714_EvalueJitter.md`); see its `README.md` for the fixture format
+and regeneration steps.
 
 ---
 

@@ -109,118 +109,49 @@ diagrams, use the `comet-codebase` skill.
 
 ### Unit and Integration Tests
 
-Tests live in `tests/unit/`. The runner is `run_tests.py`.
+Tests live in `tests/unit/`; the runner is `run_tests.py`. **Per-test summaries, the T21
+legacy case table, the T23/T24 big-data methodology, the C++ `CometUnitTests`, and the
+`tests/regression/`, `tests/perf/` and `tests/rts_repro/` suites are all documented in
+`tests/tests.md` -- keep that file, not this one, current when adding or changing tests.**
 
 ```bash
-# Run all unit tests (T1-T7, T11-T16, T19-T21, T25-T33) -- fast, no large data required
+# All unit tests -- fast, no large data required
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe
 
-# Run a specific test by ID
+# One test by ID
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe t13
 
-# Run against both a Linux and a Windows build in one invocation (--comet is repeatable)
+# Linux and Windows builds in one invocation (--comet is repeatable)
 python tests/unit/run_tests.py \
   --comet /mnt/c/Work/Comet-master/comet.exe \
   --comet /mnt/c/Work/Comet-master/x64/Release/Comet.exe
 
-# Run unit + integration tests (T17, T18, T22-T24) -- requires data/human.small.fasta
-# and/or --bigdata (see below)
+# Unit + integration tests (the INTEGRATION_TESTS tuple in run_tests.py)
 python tests/unit/run_tests.py --comet /mnt/c/Work/Comet-master/comet.exe --integration
 ```
 
-Always pass `--comet` as a full path; the default `../../comet.exe` only works when
-invoked from inside `tests/unit/`.
+Rules and gotchas:
 
-### Test Data
-
-Small crafted FASTA files for T1-T16 live in `tests/unit/data/`. Pre-built `.idx`
-reference files are committed alongside them for byte-exact comparison tests.
-
-Integration tests T17/T18 require `data/human.small.fasta` (not in repo -- must be
-present manually before running `--integration`).
-
-### Legacy functional-correctness cases (T21) and RTS/big-data regressions (T22-T24)
-
-T21 (`t21_*`, one per case, always run) migrates the ~21 hand-run cases from
-`/mnt/c/Work/20130226-comet-tests/runall.sh` -- fixtures live in `tests/unit/data/legacy/`,
-params are generated at runtime from `tests/unit/legacy_cases.py`'s template rather than
-maintaining ~15 historical `comet.params.YYYYNNN` copies per case. See that module's
-docstring for the full case table and what each one asserts.
-
-T22 (`t22_rts_fi`, `t22_rts_pi`, `--integration`) exercises the real-time search (RTS)
-single-spectrum path via `tests/rts_repro/` -- no C++/CLI or Thermo dependency, so it
-runs on Linux. It checks (1) RTS finds the correct peptide against both an FI_DB and a
-PI_DB built from a small unambiguous fixture, and (2) 1-thread and 8-thread runs over
-197 real spectra are byte-identical (the determinism guarantee from
-`tests/rts_repro/README.md`). `tests/rts_repro/ms2_to_fixture.py` converts any `.ms2`
-into the driver's fixture format.
-
-T23/T24 (`t23_decoy_modes`, `t24_index_parity`, `--integration` + `--bigdata`) migrate
-`comet-debug3`/`comet-debug4`'s full-scale searches (~350MB of real data: a 177MB mzXML,
-57MB/116MB FASTAs). `--bigdata DIR` (default: the sibling `20130226-comet-tests/`
-directory) points at this data in place -- it is never copied into the repo. Both tests
-skip cleanly if the directory isn't present. T23 checks that internal-decoy and
-target-decoy searches agree on PSM counts at 1% FDR (via `tools/qvalue.py`) within 5%;
-T24 checks the same for plain-FASTA vs. FI_DB vs. PI_DB searches -- all three currently
-pass and agree within a few percent (17,660 / 17,033 / 17,660 PSMs at 1% FDR respectively).
-
-Note: while developing T24, one manual (non-harness) attempt to search a full-scale
-target-decoy FI_DB crashed with `std::length_error: cannot create std::vector larger
-than max_size()`. That manual build was interrupted by a shell timeout mid-write, almost
-certainly leaving a truncated/corrupt `.idx` on disk -- under T24's own clean
-build-then-search sequence, FI_DB has run correctly every time. See the comment above
-`test_t24_index_parity` in `run_tests.py` if this ever resurfaces.
-
-**Cross-version comparison against a previous Comet release.** Both T23 and T24 also run
-every one of their configs (T23: both decoy modes; T24: plain-FASTA, FI_DB, PI_DB --
-each built fresh with the baseline binary, since `.idx` formats aren't guaranteed
-compatible across versions) against a pinned previous release, `v2026.02.2`
-(`BASELINE_TAG` in `run_tests.py`), fetched automatically on first use via
-`tests/regression/setup_baselines.py`'s download logic into
-`tests/regression/baselines/v2026.02.2/comet` (gitignored, like all fetched baselines --
-override with `--baseline PATH` to point at something else; cross-version checks skip
-cleanly, without failing the test, if no baseline is available). Same-version comparisons
-(internal-vs-target-decoy, FI/PI-vs-plain-FASTA) use a 5% tolerance; current-vs-baseline
-comparisons use 10%, since a different Comet version legitimately identifies a somewhat
-different peptide population.
-
-**Runtime regression check.** Each search and index build is timed, and every
-current-vs-baseline pairing also asserts current isn't more than `TIMING_NOISE_TOLERANCE`
-(currently 25%) slower than `v2026.02.2`'s wall-clock time for the same operation, via
-`_check_timing()`. That threshold is deliberately generous: these are multi-minute,
-single-sample wall-clock measurements on real (possibly shared) hardware, and run-to-run
-variance from machine noise alone can plausibly reach 10-20% with no code change at all.
-Treat one `_check_timing` failure as "worth re-running to confirm," not proof of a
-regression on its own -- a *repeated* failure across multiple runs is the real signal.
-
-### Key Design Decisions in the Test Suite
-
-- **`no-enzyme + len_max > 13` will time out.** No-enzyme with `len_max=25` generates
-  a ~1.1 GB index and takes >300 s. Use `len_max=13` for integration tests; it covers
-  both the short path (len <= 12, 5-bit packed) and the long path (len > 12, plain
-  string) while building in ~110 s.
-
-- **T17 uses count-stability, not cross-version byte comparison.** The v2026.01.1
-  baseline has a known I/L long-path dedup bug (uses byte-exact `memcmp` instead of
-  canonical L==I comparison), producing ~8,102 extra entries when `equal_IL=1`. Even
-  with `equal_IL=0` there is an 8-peptide algorithmic difference from the flat-sort
-  vs per-length sort change. Cross-version byte-exact or count-exact comparison is
-  therefore unreliable; T17 verifies that the peptide count falls in [8,800,000,
-  9,100,000] for a no-enzyme len 8-13 build on human.small.fasta.
-
-- **T18** verifies determinism: two independent builds of the same FASTA produce
-  byte-identical `.idx` files.
-
-### compare_idx.py
-
-`tests/unit/compare_idx.py` structurally compares two plain-peptide `.idx` files.
-It checks header fields (peptide count, protein-list count, mass range) and then
-streams both files in parallel to compare every peptide entry. Aborts early if
-peptide counts differ. Useful for debugging index changes.
-
-```bash
-python tests/unit/compare_idx.py old.idx new.idx
-```
+- Always pass `--comet` as a full path; the default `../../comet.exe` only works when
+  invoked from inside `tests/unit/`.
+- `--integration` tests need `tests/unit/data/human.small.fasta` (not in the repo) and/or
+  `--bigdata DIR` (default: the sibling `20130226-comet-tests/` directory; that data is
+  never copied into the repo). They skip cleanly, without failing, when the data or the
+  baseline binary is absent.
+- T23/T24 also compare against a pinned previous release (`BASELINE_TAG` in
+  `run_tests.py`, currently `v2026.02.2`), auto-downloaded on first use into
+  `tests/regression/baselines/<tag>/` (gitignored; override with `--baseline PATH`).
+- A single `_check_timing` failure (current build more than `TIMING_NOISE_TOLERANCE`, 25%,
+  slower than the baseline) means "re-run to confirm", not a regression: these are
+  single-sample, multi-minute wall-clock measurements and machine noise alone can reach
+  10-20%. A *repeated* failure is the real signal.
+- `no-enzyme + len_max > 13` will time out (a ~1.1 GB index, >300 s). Use `len_max=13`
+  for integration tests; it still covers both the short (<= 12, 5-bit packed) and long
+  (> 12, plain string) index paths and builds in ~110 s.
+- Fixtures live in `tests/unit/data/`: crafted FASTAs, `.ms2`/`.mzXML`/`.msp` spectra,
+  committed reference `.idx` files for byte-exact comparisons, and `legacy/` for T21.
+  `tests/unit/compare_idx.py` structurally diffs two `.idx` files when an index change
+  needs debugging.
 
 ### Reading `.raw` files on Linux (for test/data-extraction purposes)
 

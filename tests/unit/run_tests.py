@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """
-Comet plain-peptide index unit tests (T1-T7, T11-T16, T19-T21, T25-T33) and
-integration tests (T17, T18, T22-T24).
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T51; T8-T10 do not exist) and
+integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
-Runs Comet.exe -i on each crafted FASTA and verifies expected properties.
+T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
+build FI_DB/PI_DB indexes or search the plain FASTA against small spectrum fixtures and
+verify the search output. See tests/tests.md for a per-test summary.
 
 Usage:
     python run_tests.py [--comet PATH] [--integration] [--baseline PATH] [test_id ...]
 
     --comet       path to Comet binary (default: ../../comet.exe); repeatable
-    --integration also run T17, T18, T22-T24 (require human.small.fasta and/or --bigdata)
+    --integration also run T17, T18, T22/T22b, T23, T24/T24b, T44 (require human.small.fasta
+                  and/or --bigdata)
     --baseline    path to a previous-Comet-version binary for T23/T24's cross-version
                   checks (default: tests/regression/baselines/v2026.02.2/comet,
                   auto-downloaded from GitHub Releases on first use if missing)
@@ -64,7 +67,7 @@ _RUN_INTEGRATION = False
 _BASELINE_EXE    = str(DEFAULT_BASELINE_EXE)
 
 # Tests gated behind --integration: they need large/manually-supplied data
-# and/or take much longer than the T1-T16/T19-T21 unit tests.
+# and/or take much longer than the other unit tests.
 INTEGRATION_TESTS = ("t17", "t18", "t22_rts_fi", "t22_rts_pi", "t22_rts_fi_protterm", "t22_rts_pi_protterm",
                      "t23_decoy_modes", "t24_index_parity", "t24_internal_decoy_parity",
                      "t44_termmod_parity_bigdata")
