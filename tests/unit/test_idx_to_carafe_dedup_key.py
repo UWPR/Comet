@@ -16,6 +16,13 @@ oxMet charge2+3+decoys conversion, diffed byte-for-byte against the known-good p
 (docs/20260805_carafe.md's memory-fix section documents that result). This test only proves
 dedup_key()'s hashing behavior is sound in isolation -- correct field separation, determinism,
 and content-based (not identity-based) equality.
+
+Also (2026-09-22) pins CarafeModTable's terminal-site spellings to AlphaBase's MOD_DF
+convention ("@Any N-term", "@Protein N-term", ...). The script used to emit "@N-term" /
+"@Protein_N-term", which AlphaBase does not know: ai_pred.py maps an unknown mod name to the
+all-zero "no modification" feature, so every TMT-labelled peptide was predicted as unlabelled
+before the fragment-m/z step finally raised KeyError. No test pinned the strings, which is how
+it survived until the first terminal-mod (TMT) configuration.
 """
 
 import os
@@ -107,6 +114,47 @@ def test_empty_strings_handled(failures):
     check(k_empty != k_nonempty, "empty-mod and modified variants must not collide", failures)
 
 
+def test_terminal_site_names_match_alphabase(failures):
+    """Regression for the 2026-09-22 terminal-site fix. AlphaBase's modification table spells
+    terminal sites "Any N-term"/"Any C-term"/"Protein N-term"/"Protein C-term" (space, no
+    underscore, 'Any' for the peptide-terminal form). Anything else is silently treated by
+    ai_pred.py as 'no modification' (see module docstring), so pin the exact strings the
+    bundled Carafe mod table resolves to."""
+    table = itc.CarafeModTable(None, 0.001)   # bundled top_modifications.tsv copy
+
+    # peptide N-term static/variable mods -> "@Any N-term"
+    check(table.resolve(229.162932, "nterm") == "TMT6plex@Any N-term",
+          "TMT 229.162932 at peptide N-term must resolve to 'TMT6plex@Any N-term'", failures)
+    check(table.resolve(304.207146, "nterm") == "TMTpro@Any N-term",
+          "TMTpro 304.207146 at peptide N-term must resolve to 'TMTpro@Any N-term'", failures)
+    check(table.resolve(229.162932, "residue", residue="K") == "TMT6plex@K",
+          "TMT on K must resolve to 'TMT6plex@K'", failures)
+
+    # protein-terminal-only mods -> "@Protein N-term", and only when actually protein-terminal
+    check(table.resolve(42.010565, "nterm", is_protein_terminal=True) == "Acetyl@Protein N-term",
+          "Acetyl at a protein N-terminus must resolve to 'Acetyl@Protein N-term'", failures)
+    check(table.resolve(42.010565, "nterm", is_protein_terminal=False) is None,
+          "Acetyl at a non-protein-terminal peptide N-term has no generic entry -> None", failures)
+
+    # every terminal name the table can ever emit uses an AlphaBase spelling
+    bad = sorted({name for _m, kind, _r, name, _acc in table.entries
+                  if kind in ("nterm", "cterm")
+                  and not (name.endswith("@Any N-term") or name.endswith("@Any C-term")
+                           or name.endswith("@Protein N-term") or name.endswith("@Protein C-term"))})
+    check(not bad, f"non-AlphaBase terminal site spelling(s) in mod table: {bad}", failures)
+
+    # if the Carafe venv's AlphaBase is present, every terminal name must exist in its MOD_DF
+    import glob
+    cands = glob.glob(os.path.expanduser(
+        "~/.carafe/.venv/lib/python3*/site-packages/alphabase/constants/const_files/modification.tsv"))
+    if cands:
+        with open(cands[0], encoding="utf-8") as f:
+            known = {line.split("\t", 1)[0] for line in f}
+        missing = sorted({name for _m, kind, _r, name, _acc in table.entries
+                          if kind in ("nterm", "cterm") and name not in known})
+        check(not missing, f"terminal mod name(s) unknown to AlphaBase's MOD_DF: {missing}", failures)
+
+
 TESTS = [
     test_deterministic_across_calls,
     test_returns_plain_int_in_128_bit_range,
@@ -114,6 +162,7 @@ TESTS = [
     test_different_inputs_produce_different_keys,
     test_field_boundary_not_ambiguous,
     test_empty_strings_handled,
+    test_terminal_site_names_match_alphabase,
 ]
 
 
