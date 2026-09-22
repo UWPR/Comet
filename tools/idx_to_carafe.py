@@ -82,10 +82,14 @@ separate implementations stay in lockstep.
 Known limitation: Comet's variable-mod terminal flag (protein-N-term vs. plain peptide-N-term,
 etc.) is NOT persisted in the .idx header -- only whether a mod is N-term/C-term at all, and
 that information doesn't survive into the -x export either. Every N-term/C-term variable mod
-is therefore exported using the generic "@N-term"/"@C-term" site (matching what
-AIGear.load_mod_map() itself produces for non-protein-term unimod entries); a mod that was
+is therefore exported using the generic "@Any N-term"/"@Any C-term" site; a mod that was
 configured in comet.params as specifically protein-terminal will still be tagged
-"@N-term"/"@C-term" here rather than "@Protein_N-term"/"@Protein_C-term". Peptides that happen
+"@Any N-term"/"@Any C-term" here rather than "@Protein N-term"/"@Protein C-term". Site
+spellings follow AlphaBase's modification table exactly ("Any N-term", "Protein N-term",
+with a space) -- ai_pred.py resolves mod names against alphabase's MOD_DF, where an unknown
+name is silently mapped to the all-zero "no modification" feature before the fragment-m/z
+step raises KeyError (found 2026-09-22 with TMT: the "@N-term"/"@Protein_N-term" spellings
+this script used to emit predicted every TMT peptide as unlabelled). Peptides that happen
 to sit at a protein terminus (cPrevAA/cNextAA == '-') are still detected correctly for applying
 *static* protein-terminal mods (add_Nterm_protein/add_Cterm_protein).
 
@@ -209,13 +213,13 @@ class CarafeModTable:
 
             site_text = mod_name.split(" of ", 1)[1] if " of " in mod_name else ""
             if site_text == "protein N-term":
-                self.entries.append((mass, "nterm", None, title + "@Protein_N-term", accession))
+                self.entries.append((mass, "nterm", None, title + "@Protein N-term", accession))
             elif site_text == "protein C-term":
-                self.entries.append((mass, "cterm", None, title + "@Protein_C-term", accession))
+                self.entries.append((mass, "cterm", None, title + "@Protein C-term", accession))
             elif site_text == "peptide N-term" or site_text == "N-term":
-                self.entries.append((mass, "nterm", None, title + "@N-term", accession))
+                self.entries.append((mass, "nterm", None, title + "@Any N-term", accession))
             elif site_text == "peptide C-term" or site_text == "C-term":
-                self.entries.append((mass, "cterm", None, title + "@C-term", accession))
+                self.entries.append((mass, "cterm", None, title + "@Any C-term", accession))
             elif len(site_text) == 1 and site_text.isalpha():
                 self.entries.append((mass, "residue", site_text, title + "@" + site_text, accession))
             # else: unrecognized site format (e.g. the pyro-Glu "Peptide N-term - Particular
@@ -225,7 +229,7 @@ class CarafeModTable:
     def resolve(self, mass, site_kind, residue=None, is_protein_terminal=False):
         """site_kind: 'residue' (with residue=letter), 'nterm', or 'cterm'.
 
-        A "Protein_N-term"/"Protein_C-term" table entry is only ever returned when
+        A "Protein N-term"/"Protein C-term" table entry is only ever returned when
         is_protein_terminal is True (i.e. the peptide's flanking residue is '-' at that
         end) -- Carafe's top_modifications.tsv has no generic, non-protein-specific
         N-term entry for some mods (e.g. Acetyl), and applying that name to a peptide
@@ -241,7 +245,7 @@ class CarafeModTable:
                 continue
             if abs(entry_mass - mass) > self.mass_tol:
                 continue
-            if "Protein_" in name:
+            if "@Protein " in name:
                 protein_variant = name
             else:
                 generic = name
@@ -510,7 +514,7 @@ def build_mods_mod_sites(raw, static_sites, var_sites, mod_table, mass_tol, unre
     # (EnumerateIndexPeptideMods() has no protein-terminal check -- see module docstring), so
     # a variant carrying one of these doesn't by itself mean the peptide IS protein-terminal.
     # Gate the name resolution on the peptide's *actual* flanking residue instead, exactly as
-    # for static sites above -- CarafeModTable.resolve() then only hands back a "Protein_"
+    # for static sites above -- CarafeModTable.resolve() then only hands back a "Protein "
     # name when that's actually true, and reports unresolved (rather than a wrong name)
     # otherwise for mods (like Acetyl) with no generic non-protein-specific table entry.
     for pos, mass in var_sites:
