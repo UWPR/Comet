@@ -5,13 +5,13 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (80 Python test IDs), and 72 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (81 Python test IDs), and 72 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
-Test counts as of `v2026.02.3` (2026-09-17): `run_tests.py` registers 59 named
-tests plus 21 generated `t21_*` legacy cases (80 IDs, 10 of them integration-only);
+Test counts as of 2026-09-28 (`v2026.02.3` plus T52): `run_tests.py` registers 60 named
+tests plus 21 generated `t21_*` legacy cases (81 IDs, 10 of them integration-only);
 `CometUnitTests.exe` has 72 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T51
+### `run_tests.py` -- T1-T52
 
 | ID | Summary |
 |---|---|
@@ -102,6 +102,7 @@ not exist.
 | **T49** (`t49_bridge_edge_cases`) | Legacy `nK 0 3 0 0` / `cM 0 3 0 1` equal explicit `^K` / `$M` (with a warning) on plain FASTA, FI_DB and PI_DB; `n` and `^` in different slots coexist without cross-talk. |
 | **T50** (`t50_idx_protein_context_bytes`) | The v5 protein-list context bytes on disk equal the FASTA-derived per-protein context for every peptide (repeated-in-one-protein, shared-with-different-context, plain internal), checked on a fresh build of `t50_context.fasta` and on the committed t2/t3/t6 fixtures. |
 | **T51** (`t51_ascorepro_with_protein_term_mods`) | `print_ascorepro_score=1` with `^`/`$` protein-terminal variable mods configured: a pure `^`/`$` mod (no residues) is not registered with AScorePro, every path runs with AScorePro on and off with the same (peptide, protein) result set, and the `.txt` carries a numeric `ascorepro` value on the terminally-modified hit. |
+| **T52** (`t52_peff_annotation_ids`) | PEFF annotation identifiers (`# HasAnnotationIdentifiers=true`, PEFF 1.0 section 3.4.2; issue #132): the same three entries written with and without `<label>:` prefixes (`\ModResPsi=(1:8|MOD:00046|...)`, UniPEFF-style half-cystine + `\DisulfideBond` annotations, a labeled `?` position, `\VariantSimple=(1:7|W)`, `\VariantComplex=(1:9|10|WW)`) must give identical rank-1 PSMs -- the phospho on S8 (formerly placed on residue `<label>`) and both variant peptides (formerly dropped). PEFFs, a two-term OBO and theoretical spectra are generated into a temp dir. |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 

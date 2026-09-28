@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T51; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T52; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -1787,7 +1787,9 @@ def _set_param_line(params_text, key, value):
     silently ignores a `key = value` line placed after it (confirmed directly while
     investigating a T24 dispatch bug: an appended-at-EOF index_search_type line never
     took effect). Falls back to appending at the end if there's no enzyme section."""
-    new_text, n = re.subn(rf"(?m)^{re.escape(key)} = .*$", f"{key} = {value}", params_text, count=1)
+    # Callable replacement: a string one is a template, so a Windows path value
+    # ("C:\Work\...") dies with "bad escape \W".
+    new_text, n = re.subn(rf"(?m)^{re.escape(key)} = .*$", lambda m: f"{key} = {value}", params_text, count=1)
     if n > 0:
         return new_text
     line = f"{key} = {value}\n"
@@ -4641,6 +4643,143 @@ def test_t51_ascorepro_with_protein_term_mods(comet_exe):
               f"'^'-only mod, AScorePro on: PI_DB '^' PSM found, attributed to t37_noY, got {sorted(_t37_proteins(r)) if r else None}", failures)
     else:
         print(log[-1500:])
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T52 -- PEFF annotation identifiers (issue #132)
+# ---------------------------------------------------------------------------
+#
+# PEFF 1.0 section 3.4.2: with "# HasAnnotationIdentifiers=true" an entry's first field
+# may carry an integer label ahead of the position, e.g. UniPEFF's disulfide encoding
+#   \ModResPsi=(1:25|MOD:00798|half cystine)(2:139|MOD:00798|half cystine)
+#   \DisulfideBond=(3:1,2)
+# Comet used to read the label as the position: a labeled \ModResPsi mod silently landed
+# on residue <label> and labeled \VariantSimple / \VariantComplex entries were dropped.
+# Everything (PEFFs, a two-term OBO, theoretical spectra) is generated into a temp dir.
+
+_T52_OBO = """format-version: 1.2
+
+[Term]
+id: MOD:00046
+name: O-phospho-L-serine
+xref: DiffAvg: "79.98"
+xref: DiffMono: "79.966331"
+
+[Term]
+id: MOD:00798
+name: half cystine
+xref: DiffAvg: "-1.01"
+xref: DiffMono: "-1.007825"
+
+[Term]
+id: MOD:99999
+name: end sentinel (ReadOBO stores a term only when the next [Term] starts)
+xref: DiffMono: "1.0"
+"""
+
+# (protein, sequence, labeled attributes, unlabeled attributes)
+#   t52_mod: phospho on S8 -> DLTS[79.966]AGNPEK; the same entry carries the issue's
+#            half-cystine/disulfide annotations and a labeled '?' position (ignored).
+#   t52_vs:  VariantSimple S7->W -> EVWPAGLLDK
+#   t52_vc:  VariantComplex EF(9-10)->WW -> YLNGWWPQK
+_T52_ENTRIES = (
+    ("t52_mod", "MAAKDLTSAGNPEKGGGRLCAGNPEKCR",
+     r"\ModResPsi=(1:8|MOD:00046|Phosphoserine)(2:20|MOD:00798|half cystine)(3:27|MOD:00798|half cystine)"
+     r"(5:?|MOD:00046|Phosphoserine) \DisulfideBond=(4:2,3)",
+     r"\ModResPsi=(8|MOD:00046|Phosphoserine)(20|MOD:00798|half cystine)(27|MOD:00798|half cystine)"
+     r"(?|MOD:00046|Phosphoserine)"),
+    ("t52_vs", "MGGKEVSPAGLLDKGGR", r"\VariantSimple=(1:7|W)", r"\VariantSimple=(7|W)"),
+    ("t52_vc", "MGGRYLNGEFPQKGGR", r"\VariantComplex=(1:9|10|WW)", r"\VariantComplex=(9|10|WW)"),
+)
+
+# scan -> (expected plain_peptide, {0-based residue: delta}, expected protein)
+_T52_SPECTRA = {
+    1: ("DLTSAGNPEK", {3: 79.966331}, "t52_mod"),
+    2: ("EVWPAGLLDK", {}, "t52_vs"),
+    3: ("YLNGWWPQK", {}, "t52_vc"),
+}
+
+
+def _t52_write_peff(path, labeled):
+    lines = ["# PEFF 1.0", "# //", "# DbName=t52", "# Prefix=tr",
+             f"# NumberOfEntries={len(_T52_ENTRIES)}", "# SequenceType=AA"]
+    if labeled:
+        lines.append("# HasAnnotationIdentifiers=true")
+    lines.append("# //")
+    for prot, seq, attr_labeled, attr_plain in _T52_ENTRIES:
+        lines.append(f">tr:{prot} \\PName={prot} {attr_labeled if labeled else attr_plain}")
+        lines.append(seq)
+    path.write_text("\n".join(lines) + "\n")
+
+
+def _t52_write_ms2(path):
+    lines = []
+    for scan, (pep, mods, _) in _T52_SPECTRA.items():
+        res = [_MONO_RESIDUE_MASS[aa] + mods.get(i, 0.0) for i, aa in enumerate(pep)]
+        n = len(res)
+        peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
+                       + [sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS for k in range(1, n)])
+        mh = sum(res) + _H2O_MASS + _PROTON_MASS
+        lines += [f"S\t{scan}\t{scan}\t{(mh + _PROTON_MASS) / 2:.6f}", f"Z\t2\t{mh:.6f}"]
+        lines += [f"{m:.6f}\t100.0" for m in peaks]
+    path.write_text("\n".join(lines) + "\n")
+
+
+@register("t52_peff_annotation_ids")
+def test_t52_peff_annotation_ids(comet_exe):
+    """T52: PEFF annotation identifiers (HasAnnotationIdentifiers=true, issue #132). The same
+    three entries written with and without "<label>:" prefixes must give identical rank-1
+    PSMs: a labeled \\ModResPsi phospho on its real residue (not residue <label>), with the
+    issue's half-cystine/\\DisulfideBond annotations and a labeled '?' position alongside,
+    and labeled \\VariantSimple / \\VariantComplex entries applied rather than dropped."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        obo = tmp / "t52.obo"
+        obo.write_text(_T52_OBO)
+        ms2 = tmp / "t52.ms2"
+        _t52_write_ms2(ms2)
+
+        results = {}
+        for labeled in (False, True):
+            label = "labeled" if labeled else "unlabeled"
+            peff = tmp / f"t52_{label}.peff"
+            _t52_write_peff(peff, labeled)
+            params = legacy_cases.build_params(database=fmt(peff), enzyme1=1, static_C=0.0)
+            params = _set_param_line(params, "peff_format", "1")
+            params = _set_param_line(params, "peff_obo", fmt(obo))
+            params_file = tmp / f"t52_{label}.params"
+            params_file.write_text(params)
+            txt = ms2.with_suffix(".txt")
+            txt.unlink(missing_ok=True)
+
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: PEFF search exits 0 and writes .txt (rc={rc})", failures):
+                print(out[-1500:])
+                continue
+            rows = legacy_cases.parse_txt(txt)
+            rank1 = {int(r["scan"]): r for r in rows if r.get("num") == "1"}
+            results[label] = rank1
+
+            for scan, (pep, mods, prot) in _T52_SPECTRA.items():
+                r = rank1.get(scan)
+                got = r and (r.get("plain_peptide"), r.get("protein"), r.get("modified_peptide"))
+                check(r is not None and r.get("plain_peptide") == pep and r.get("protein") == f"tr:{prot}",
+                      f"{label}: scan {scan} rank-1 is {pep} / tr:{prot}, got {got!r}", failures)
+                if scan == 1:
+                    check(r is not None and "DLTS[79.9663]AGNPEK" in r.get("modified_peptide", ""),
+                          f"{label}: scan 1 carries the PEFF phospho on S8, got {got!r}", failures)
+
+        if len(results) == 2:
+            sig = {k: {s: (r.get("modified_peptide"), r.get("protein"), r.get("xcorr")) for s, r in v.items()}
+                   for k, v in results.items()}
+            check(sig["labeled"] == sig["unlabeled"],
+                  f"labeled and unlabeled PEFFs give identical rank-1 PSMs "
+                  f"(labeled={sig['labeled']!r}, unlabeled={sig['unlabeled']!r})", failures)
+
     return failures
 
 

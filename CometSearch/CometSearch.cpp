@@ -71,6 +71,26 @@ static inline bool VarModCtermAllowed(int iWhichMod,
    return vm.bCtermMod && (!vm.bProteinCtermOnly || iEndPos == iLenProteinMinus1);
 }
 
+// PEFF 1.0 section 3.4.2 annotation identifiers (header "HasAnnotationIdentifiers=true"):
+// an entry's first field may carry an integer label and a colon ahead of the position,
+// e.g. "(1:25|MOD:00798|half cystine)" is residue 25 labeled 1, so a \DisulfideBond=(3:1,2)
+// entry can reference it.  strEntry is one entry as split on ')', i.e. "(1:25|MOD:00798|...".
+// Strip the "1:" so the position parses as 25; without this the label was read as the
+// position (issue #132).  Positions never contain ':' and the accession's colon sits after
+// the first '|', so the prefix is unambiguous whether or not the header flag is set.
+static void StripPeffAnnotationId(string& strEntry)
+{
+   if (strEntry.length() < 3 || strEntry[0] != '(' || !isdigit((unsigned char)strEntry[1]))
+      return;
+
+   size_t iPos = 1;
+   while (iPos < strEntry.length() && isdigit((unsigned char)strEntry[iPos]))
+      iPos++;
+
+   if (iPos < strEntry.length() && strEntry[iPos] == ':')
+      strEntry.erase(1, iPos);
+}
+
 extern comet_fileoffset_t clSizeCometFileOffset;
 
 
@@ -669,6 +689,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                         {
                            string strModEntry;
                            getline(ssMods, strModEntry, ')');
+                           StripPeffAnnotationId(strModEntry);
 
                            iPos = 0;
 
@@ -809,6 +830,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                         {
                            string strVariantEntry;
                            getline(ssVariants, strVariantEntry, ')');
+                           StripPeffAnnotationId(strVariantEntry);
 
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
@@ -928,6 +950,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                         {
                            string strVariantEntry;
                            getline(ssVariants, strVariantEntry, ')');
+                           StripPeffAnnotationId(strVariantEntry);
  
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
