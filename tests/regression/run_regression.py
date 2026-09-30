@@ -35,7 +35,7 @@ Usage:
     # 3. Restrict modes, decoy variants, or tags:
     python run_regression.py --modes fasta fi
     python run_regression.py --decoy-variants nodecoy internaldecoy2
-    python run_regression.py --tags v2026.01.1
+    python run_regression.py --tags v2026.02.2
 
     # 4. Point at non-default binaries or data:
     python run_regression.py --current  ../../x64/Release/Comet.exe
@@ -79,7 +79,7 @@ FASTA_FILE   = DATA_DIR / "human.small.fasta"
 MZXML_FILE   = DATA_DIR / "20250520_Hela_60min_06.mzXML"
 PARAMS_FILE  = DATA_DIR / "comet_phospho.params"
 
-DEFAULT_TAGS = ["v2026.01.1"]
+DEFAULT_TAGS = ["v2026.02.2"]
 MODES        = ["fasta", "fi", "pi"]
 
 # Decoy variants: filename (relative to the effective data dir) for each variant's

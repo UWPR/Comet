@@ -5,14 +5,14 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (82 Python test IDs), and 72 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (84 Python test IDs), and 76 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
-Test counts as of 2026-09-30 (`v2026.02.3` plus T52, T53): `run_tests.py` registers 61 named
-tests plus 21 generated `t21_*` legacy cases (82 IDs, 10 of them integration-only);
-`CometUnitTests.exe` has 72 `TEST_F` cases.
+Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T55): `run_tests.py` registers 63 named
+tests plus 21 generated `t21_*` legacy cases (84 IDs, 10 of them integration-only);
+`CometUnitTests.exe` has 76 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
 what each individual test actually checks.
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T53
+### `run_tests.py` -- T1-T55
 
 | ID | Summary |
 |---|---|
@@ -91,7 +91,7 @@ not exist.
 | **T38** (`t38_protein_term_index`) | `^`/`$` protein-terminal variable mods on FI_DB and PI_DB; asserts the `.idx` header is format v5. |
 | **T39** (`t39_termmod_cap_index`) | Terminal mods count toward `max_variable_mods_in_peptide` on FI_DB/PI_DB exactly as on the plain-FASTA path: a 3-mod permutation (n-term + c-term + M oxidation) must vanish at cap 2 and return at cap 3. |
 | **T40** (`t40_internal_decoys_protterm`) | FI_DB internal decoys combined with a `^` mod: decoy PSMs keep the terminal mod on the N-terminus of the reversed sequence, and target rows match the `decoy_search=0` run. |
-| **T41** (`t41_termmod_deprecation`) | `variable_mod` fields 5/6 (term_distance, n/c-term) are deprecated: the legacy protein-terminus idiom is bridged to `^`/`$` with a warning; other non-default values warn and are ignored. |
+| **T41** (`t41_termmod_fields`) | `variable_mod` fields 5/6 (term_distance, which_term) restrict mod positions on the plain-FASTA path as in v2026.02.2: the legacy protein-terminus idiom (`n 0 3 0 0` / `c 0 3 0 1`) still equals `^`/`$` and is rewritten silently; `M 0 3 0 0` / `M 0 3 2 0` (protein N-terminus) admit no internal M, `M 0 3 3 2` only M within 3 of the peptide N-terminus, `M 0 3 -2 0` no M on the peptide C-terminal residue. |
 | **T42** (`t42_static_protein_nterm_fidb`) | Static `add_Nterm_protein`/`add_Cterm_protein` masses are applied on FI_DB exactly as on PI_DB and plain FASTA, and a peptide that is protein-terminal in one protein and internal in another is attributed only to the protein where the static applies. |
 | **T43** (`t43_v4_index_rejected`) | A v4 `.idx` (frozen pre-Phase-2 fixture) is refused with the "rebuild the index" message instead of being misread. |
 | **T44** *(integration, `--bigdata`)* (`t44_termmod_parity_bigdata`) | Full-scale 1% FDR parity, plain FASTA vs FI_DB vs PI_DB, with `n` and `^` acetyl and `$` amidation variable mods configured. |
@@ -99,11 +99,13 @@ not exist.
 | **T46** (`t46_shared_peptide_attribution`) | Protein-terminus attribution for a peptide shared by proteins with different terminal context: the index keeps one raw-peptide row per sequence but each protein occurrence carries `PROT_NTERM_HERE`/`PROT_CTERM_HERE` context bits, so a `^` variant is emitted only if some occurrence is protein-N-terminal and the reported protein list is filtered to the supporting occurrences. FI_DB and PI_DB must match the plain-FASTA attribution exactly. |
 | **T47** (`t47_terminal_mod_xml_annotations`) | pepXML `<terminal_modification protein_terminus>` and mzIdentML `<SearchModification>` specificity CV terms for the four terminal codes `n`, `^`, `c`, `$`; residue declarations appear once, a slot holding both codes for one terminus is declared once as peptide-scoped, `^` resolves to its UNIMOD entry; FI_DB/PI_DB internal-decoy searches produce resolvable `PeptideEvidence`. |
 | **T48** (`t48_v5_missing_context_bytes_rejected`) | A v5 `.idx` whose protein list lacks the per-occurrence context bytes fails cleanly at load. |
-| **T49** (`t49_bridge_edge_cases`) | Legacy `nK 0 3 0 0` / `cM 0 3 0 1` equal explicit `^K` / `$M` (with a warning) on plain FASTA, FI_DB and PI_DB; `n` and `^` in different slots coexist without cross-talk. |
+| **T49** (`t49_bridge_edge_cases`) | Legacy mixed slots keep v2026.02.2's meaning on plain FASTA, FI_DB and PI_DB alike: `nK 0 3 0 0` is `^` plus K restricted to protein position 0 (no fixture protein starts with K, so it equals `^` and differs from unrestricted `^K`), `cM 0 3 0 1` likewise equals `$`; `n` and `^` in different slots coexist without cross-talk. |
 | **T50** (`t50_idx_protein_context_bytes`) | The v5 protein-list context bytes on disk equal the FASTA-derived per-protein context for every peptide (repeated-in-one-protein, shared-with-different-context, plain internal), checked on a fresh build of `t50_context.fasta` and on the committed t2/t3/t6 fixtures. |
 | **T51** (`t51_ascorepro_with_protein_term_mods`) | `print_ascorepro_score=1` with `^`/`$` protein-terminal variable mods configured: a pure `^`/`$` mod (no residues) is not registered with AScorePro, every path runs with AScorePro on and off with the same (peptide, protein) result set, and the `.txt` carries a numeric `ascorepro` value on the terminally-modified hit. |
 | **T52** (`t52_peff_annotation_ids`) | PEFF annotation identifiers (`# HasAnnotationIdentifiers=true`, PEFF 1.0 section 3.4.2; issue #132): the same three entries written with and without `<label>:` prefixes (`\ModResPsi=(1:8|MOD:00046|...)`, UniPEFF-style half-cystine + `\DisulfideBond` annotations, a labeled `?` position, `\VariantSimple=(1:7|W)`, `\VariantComplex=(1:9|10|WW)`) must give identical rank-1 PSMs -- the phospho on S8 (formerly placed on residue `<label>`) and both variant peptides (formerly dropped). PEFFs, a two-term OBO and theoretical spectra are generated into a temp dir. |
 | **T53** (`t53_peff_nested_parens`) | PEFF entries whose names contain parentheses (UniPEFF PSI-MOD names such as `N6-(4-amino-2-hydroxybutyl)-L-lysine`): attribute values are split on top-level parentheses only. `\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))` must apply both mods -- formerly a name ending in `)` stopped parsing and silently dropped that mod and every later entry on the protein -- and the ignored `(?|...)` mod, two-residue `\VariantSimple=(3|WW)` and empty-residue `\VariantSimple=(6|)` entries must each give exactly one clean `peff_verbose_output` warning quoting the entry as written, with no name-fragment warnings. `(6|)` follows a valid `(9|W)` and must not inherit its `W` (a failed `>> strVariant` leaves the string unchanged; the formerly shared variable turned it into a bogus L6W variant, matched by scan 3). A second entry has a stray `(` in a name (`\ModResPsi=(2|MOD:00046|bad (name)(6|MOD:00798|half cystine)`): unbalanced text falls back to splitting on every `)`, so the half cystine after it must still be applied (scan 4). Labeled entries with no usable position (`(1:|MOD:00046|x)`, `\VariantSimple=(2:?|W)`) must be ignored with warnings that quote the `<label>:` as written. Generated into a temp dir, reusing T52's OBO and spectrum writer. |
+| **T54** (`t54_pyroglu_all_paths`) | Peptide-N-terminal pyroglutamate (`-17.026549 Q 0 1 0 2`, `-18.010565 E 0 1 0 2`) on plain FASTA, FI_DB and PI_DB: `Q[-17]TAGSPELK` and `E[-18]GTWLDNAPK` are found, the internal Q of `AGQEAPLSVR` is never modified (an unrestricted `Q` control does modify it on every path), the `.idx` `VariableMod:` slots persist the `:0:2` restriction, and a protein-terminus distance > 0 (`M 0 3 2 0`) warns on the index paths only. FASTA, spectra and params are generated into a temp dir. |
+| **T55** (`t55_ascorepro_position_filter`) | AScorePro respects position restrictions: the spectrum carries pyroglutamate on the internal Q5 of `QTAGQPELK`, which `Q 0 1 0 2` forbids, so the search reports `Q[-17]TAGQPELK`; with `print_ascorepro_score = 1` on all three paths the peptide is not relocalized to Q5 and the site scores never name position 5 (Comet passes AScorePro a peptidoform filter; without it AScorePro relocalizes to `QTAGQ[-17]PELK`). |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 
@@ -183,7 +185,7 @@ reach through a full search:
 | `TestCometSearchAndPreprocess.cpp` | `CometSearchTest` | 28 | `CometSearch` static helpers with a minimal `g_staticParams` setup: `CheckEnzymeTermini`/`CheckEnzymeStartTermini`/`CheckEnzymeEndTermini` (tryptic rules, K-before-P, protein termini, `num_enzyme_termini=1`), `CheckMassMatchStatic` with `isotope_error` 0/1 (C13 window), `GetAA` codon translation on forward/reverse strands (stop codon, unknown codon), and `AllocateMemory`/`DeallocateMemory` idempotence. |
 | `TestCometSearchAndPreprocess.cpp` | `CometPreprocessTest` | 26 | `CometPreprocess` driver helpers: `CheckExit` under every scan-selection mode (entire file, scan range, specific scan, batch size, error status), `GetMassCushion` for amu/mmu/ppm and precursor-m/z tolerances, `IsValidInputType` per file type (`.raw`/`.mzXML` true; `.ms2`/`.mgf`/`.mzML` false), `Reset`/`DoneProcessingAllSpectra`, and allocate/deallocate idempotence. |
 | `TestCometSearchAndPreprocess.cpp` | `BinarySearchMassFixture` | 5 | `CheckMassMatchStatic` at and beyond the lower/upper tolerance bounds, driving the mass-window binary search used by the index paths. |
-| `TestModificationsPermuter.cpp` | `PermuterTest` | 13 | `ModificationsPermuter` (P1-P13): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits. |
+| `TestModificationsPermuter.cpp` | `PermuterTest` | 17 | `ModificationsPermuter` (P1-P17): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits; P14-P17: variable_mod fifth/sixth-field position rules (peptide-N, `-2`, peptide-C and protein-N rules; position classes in the dedup key; `getPositionClass()` terminal-site rules). |
 
 ### `test_il_sequence.py` (standalone, not part of `run_tests.py`)
 
