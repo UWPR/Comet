@@ -4713,9 +4713,9 @@ def _t52_write_peff(path, labeled):
     path.write_text("\n".join(lines) + "\n")
 
 
-def _t52_write_ms2(path):
+def _t52_write_ms2(path, spectra=_T52_SPECTRA):
     lines = []
-    for scan, (pep, mods, _) in _T52_SPECTRA.items():
+    for scan, (pep, mods, _) in spectra.items():
         res = [_MONO_RESIDUE_MASS[aa] + mods.get(i, 0.0) for i, aa in enumerate(pep)]
         n = len(res)
         peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
@@ -4779,6 +4779,90 @@ def test_t52_peff_annotation_ids(comet_exe):
             check(sig["labeled"] == sig["unlabeled"],
                   f"labeled and unlabeled PEFFs give identical rank-1 PSMs "
                   f"(labeled={sig['labeled']!r}, unlabeled={sig['unlabeled']!r})", failures)
+
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T53 -- PEFF entries whose names contain parentheses
+# ---------------------------------------------------------------------------
+#
+# PSI-MOD names can carry their own parentheses, e.g. UniPEFF's
+#   \ModResPsi=(51|MOD:00125|N6-(4-amino-2-hydroxybutyl)-L-lysine)
+# Comet used to split attribute values on every ')', so such an entry was cut in two and
+# the name fragment ("-L-lysine") logged as a bogus ignored entry.  Entries are now split
+# on top-level parentheses only, and ignored-entry warnings quote the entry as written.
+
+# t53_mod: phospho on S8 (DLTSAGNPEK) and half cystine on C20 (LCAGNPEK), both with
+# parenthesized names; plus a '?' position, a two-residue VariantSimple and an empty-residue
+# VariantSimple, which must be ignored with one clean warning apiece.  The empty "(6|)"
+# follows the valid "(9|W)": it used to inherit that 'W' and search DWTSAGNPEK (L6W).
+# Scan 3 is that bogus L6W peptide; it must not be matched.
+_T53_ENTRY = ("t53_mod", "MAAKDLTSAGNPEKGGGRLCAGNPEKCR",
+              r"\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))"
+              r"(?|MOD:00046|x(y)z) \VariantSimple=(3|WW)(9|W)(6|)")
+
+_T53_SPECTRA = {
+    1: ("DLTSAGNPEK", {3: 79.966331}, "t53_mod"),
+    2: ("LCAGNPEK", {1: -1.007825}, "t53_mod"),
+    3: ("DWTSAGNPEK", {}, "t53_mod"),
+}
+
+_T53_WARNINGS = (
+    r'Warning: tr:t53_mod \ModResPsi entry "(?|MOD:00046|x(y)z)" ignored: invalid position',
+    r'Warning: tr:t53_mod \VariantSimple entry "(3|WW)" ignored: invalid position or residue',
+    r'Warning: tr:t53_mod \VariantSimple entry "(6|)" ignored: invalid position or residue',
+)
+
+
+@register("t53_peff_nested_parens")
+def test_t53_peff_nested_parens(comet_exe):
+    """T53: PEFF \\ModResPsi entries whose names contain parentheses parse as one entry each
+    (both mods applied), and ignored entries give exactly one clean verbose warning each
+    instead of name-fragment warnings."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        obo = tmp / "t53.obo"
+        obo.write_text(_T52_OBO)
+        ms2 = tmp / "t53.ms2"
+        _t52_write_ms2(ms2, _T53_SPECTRA)
+
+        prot, seq, attrs = _T53_ENTRY
+        peff = tmp / "t53.peff"
+        peff.write_text("\n".join(["# PEFF 1.0", "# //", "# DbName=t53", "# Prefix=tr",
+                                   "# NumberOfEntries=1", "# SequenceType=AA", "# //",
+                                   f">tr:{prot} \\PName={prot} {attrs}", seq]) + "\n")
+
+        params = legacy_cases.build_params(database=fmt(peff), enzyme1=1, static_C=0.0)
+        params = _set_param_line(params, "peff_format", "1")
+        params = _set_param_line(params, "peff_obo", fmt(obo))
+        params = _set_param_line(params, "peff_verbose_output", "1")
+        params_file = tmp / "t53.params"
+        params_file.write_text(params)
+        txt = ms2.with_suffix(".txt")
+
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        if not check(rc == 0 and txt.exists(), f"PEFF search exits 0 and writes .txt (rc={rc})", failures):
+            print(out[-1500:])
+            return failures
+
+        rank1 = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"}
+        for scan, want in ((1, "DLTS[79.9663]AGNPEK"), (2, "LC[-1.0078]AGNPEK")):
+            got = rank1.get(scan, {}).get("modified_peptide", "")
+            check(want in got, f"scan {scan} rank-1 carries its parenthesized-name PEFF mod: want {want}, got {got!r}",
+                  failures)
+
+        got = rank1.get(3, {}).get("plain_peptide")
+        check(got != "DWTSAGNPEK",
+              f"scan 3: empty-residue \\VariantSimple \"(6|)\" does not inherit 'W' from \"(9|W)\" "
+              f"(no DWTSAGNPEK match), got {got!r}", failures)
+
+        warnings = [ln[ln.index("Warning:"):].strip() for ln in out.splitlines() if "Warning:" in ln]
+        check(warnings == list(_T53_WARNINGS),
+              f"exactly the expected PEFF warnings, got {warnings!r}", failures)
 
     return failures
 

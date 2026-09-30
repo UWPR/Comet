@@ -74,7 +74,7 @@ static inline bool VarModCtermAllowed(int iWhichMod,
 // PEFF 1.0 section 3.4.2 annotation identifiers (header "HasAnnotationIdentifiers=true"):
 // an entry's first field may carry an integer label and a colon ahead of the position,
 // e.g. "(1:25|MOD:00798|half cystine)" is residue 25 labeled 1, so a \DisulfideBond=(3:1,2)
-// entry can reference it.  strEntry is one entry as split on ')', i.e. "(1:25|MOD:00798|...".
+// entry can reference it.  strEntry is one entry from SplitPeffEntries(), i.e. "(1:25|MOD:00798|...".
 // Strip the "1:" so the position parses as 25; without this the label was read as the
 // position (issue #132).  Positions never contain ':' and the accession's colon sits after
 // the first '|', so the prefix is unambiguous whether or not the header flag is set.
@@ -89,6 +89,44 @@ static void StripPeffAnnotationId(string& strEntry)
 
    if (iPos < strEntry.length() && strEntry[iPos] == ':')
       strEntry.erase(1, iPos);
+}
+
+// Split a PEFF attribute value "(a|b|c)(d|e|f(g)h)..." into its top-level "(...)" entries,
+// each returned without its closing ')' (e.g. "(51|MOD:00125|N6-(4-amino-2-hydroxybutyl)-L-lysine").
+// Parentheses nested inside an entry, as in PSI-MOD names, stay part of that entry; splitting
+// on every ')' instead cut such an entry in two and logged the name fragment as a bad entry.
+// An entry left unclosed at the end of the string is still returned.
+static void SplitPeffEntries(const char* szValue,
+                             vector<string>& vEntries)
+{
+   vEntries.clear();
+
+   int iDepth = 0;
+   const char* pStart = NULL;
+
+   for (const char* p = szValue; *p != '\0'; ++p)
+   {
+      if (*p == '(')
+      {
+         if (iDepth++ == 0)
+            pStart = p;
+      }
+      else if (*p == ')' && iDepth > 0)
+      {
+         if (--iDepth == 0)
+            vEntries.push_back(string(pStart, p - pStart));
+      }
+   }
+
+   if (iDepth > 0)
+      vEntries.push_back(string(pStart));
+}
+
+// Protein accession for PEFF warning messages: dbe.strName up to the first whitespace, which
+// drops the description and the '\' that starts the PEFF attributes.
+static string PeffAccession(const string& strName)
+{
+   return strName.substr(0, strName.find_first_of(" \t\\"));
 }
 
 extern comet_fileoffset_t clSizeCometFileOffset;
@@ -680,23 +718,22 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
 
                         int iPos;
-                        string strModID;
 
-                        // now tokenize/split szMods on ')' character
-                        string strModRes(szMods);
-                        istringstream ssMods(strModRes);
-                        while (!ssMods.eof())
+                        // attribute name for warnings, e.g. \ModResPsi (szPeffAttributeMod ends in '=')
+                        string strAttribute(szPeffAttributeMod, iLenAttributeMod - 1);
+
+                        // split szMods into its "(pos|ID|name" entries
+                        vector<string> vModEntries;
+                        SplitPeffEntries(szMods, vModEntries);
+
+                        for (string& strModEntry : vModEntries)
                         {
-                           string strModEntry;
-                           getline(ssMods, strModEntry, ')');
                            StripPeffAnnotationId(strModEntry);
 
-                           iPos = 0;
+                           // entry as it appears in the header, for warnings
+                           string strWarnEntry = strModEntry + ")";
 
-                           if (strModEntry.length() < 8)   // strModEntry should look like "(1|XXX:1|name"
-                              break;
-
-                           // at this point, strModEntry should look like (118,121|MOD:00000 
+                           // at this point, strModEntry should look like (118,121|MOD:00000|name
                            if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
                            {
                               // turn '|' to space
@@ -724,8 +761,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                                  {
                                     if (g_staticParams.options.bVerboseOutput)
                                     {
-                                       string strErrorMsg = " Warning: " + dbe.strName + ", " + std::string(szPeffAttributeMod)
-                                          + "=(" + std::to_string(iPos) + "|" + strModID + ") ignored; modentry: " + strModEntry + "\n";
+                                       string strErrorMsg = " Warning: " + PeffAccession(dbe.strName) + " " + strAttribute
+                                          + " entry \"" + strWarnEntry + "\" ignored: invalid position \"" + x + "\"\n";
                                        logout(strErrorMsg);
                                     }
                                  }
@@ -748,8 +785,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                            {
                               if (g_staticParams.options.bVerboseOutput)
                               {
-                                 string strErrorMsg = " Warning: " + dbe.strName + ", " + std::string(szPeffAttributeMod)
-                                    + "=(" + std::to_string(iPos) + "|" + strModID + ") ignored; modentry: " + strModEntry + "\n";
+                                 string strErrorMsg = " Warning: " + PeffAccession(dbe.strName) + " " + strAttribute
+                                    + " entry \"" + strWarnEntry + "\" ignored: invalid position\n";
                                  logout(strErrorMsg);
                               }
                            }
@@ -820,17 +857,20 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
 
                         // parse VariantSimple entries
-                        string strMods(szMods);
-                        istringstream ssVariants(strMods);
-                        string strVariant;
+                        vector<string> vVariantEntries;
+                        SplitPeffEntries(szMods, vVariantEntries);
                         char cVariant;
                         int iPos;
 
-                        while (!ssVariants.eof())
+                        for (string& strVariantEntry : vVariantEntries)
                         {
-                           string strVariantEntry;
-                           getline(ssVariants, strVariantEntry, ')');
+                           // per entry: a failed ">> strVariant" (empty residue field, e.g. "(9|)")
+                           // leaves the string unchanged, so a shared one inherited the previous
+                           // entry's residue and turned a malformed entry into a bogus variant
+                           string strVariant;
+
                            StripPeffAnnotationId(strVariantEntry);
+                           string strWarnEntry = strVariantEntry + ")";   // entry as in the header, for warnings
 
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
@@ -858,8 +898,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                               {
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
-                                    string strErrorMsg = " Warning:  " + dbe.strName + ", VariantSimple=("
-                                       + std::to_string(iPos) + "|" + std::to_string(cVariant) + ") ignored.\n" ;
+                                    string strErrorMsg = " Warning: " + PeffAccession(dbe.strName)
+                                       + " \\VariantSimple entry \"" + strWarnEntry + "\" ignored: invalid position or residue\n";
                                     logout(strErrorMsg);
                                  }
                               }
@@ -939,18 +979,17 @@ bool CometSearch::RunSearch(int iPercentStart,
                         }
  
                         // parse VariantComplex entries
-                        string strMods(szMods);
-                        istringstream ssVariants(strMods);
+                        vector<string> vVariantEntries;
+                        SplitPeffEntries(szMods, vVariantEntries);
                         string strVariant;
                         string strTag;
                         int iPosA;
                         int iPosB;
  
-                        while (!ssVariants.eof())
+                        for (string& strVariantEntry : vVariantEntries)
                         {
-                           string strVariantEntry;
-                           getline(ssVariants, strVariantEntry, ')');
                            StripPeffAnnotationId(strVariantEntry);
+                           string strWarnEntry = strVariantEntry + ")";   // entry as in the header, for warnings
  
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
@@ -983,8 +1022,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                               {
                                  if (g_staticParams.options.bVerboseOutput)
                                  {
-                                    string strErrorMsg = " Warning:  " + dbe.strName + ", VariantComplex=("
-                                       + std::to_string(iPosA) + "|" + std::to_string(iPosB) + "|" + strVariant + ") ignored.\n" ;
+                                    string strErrorMsg = " Warning: " + PeffAccession(dbe.strName)
+                                       + " \\VariantComplex entry \"" + strWarnEntry + "\" ignored: invalid positions\n";
                                     logout(strErrorMsg);
                                  }
                               }
