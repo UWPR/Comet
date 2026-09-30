@@ -256,16 +256,15 @@ backed by its own params file with `decoy_search` baked in:
 | Variant | `decoy_search` | Params file | Modes |
 |---|---|---|---|
 | `nodecoy` | 0 | `data/comet_phospho.params` | fasta, fi, pi |
-| `internaldecoy1` | 1 (internal decoy, concatenated) | `data/comet_phospho_internaldecoy1.params` | fasta, pi |
-| `internaldecoy2` | 2 (internal decoy, separate) | `data/comet_phospho_internaldecoy2.params` | fasta, pi |
+| `internaldecoy1` | 1 (internal decoy, concatenated) | `data/comet_phospho_internaldecoy1.params` | fasta, fi, pi |
+| `internaldecoy2` | 2 (internal decoy, separate) | `data/comet_phospho_internaldecoy2.params` | fasta, fi, pi |
 
-`internaldecoy1`/`internaldecoy2` are automatically skipped for `fi` and the
-report shows an explicit `SKIPPED` line for that combination rather than
-silently omitting it. That skip predates `v2026.02.3`, whose FI_DB does
-support internal decoys (`docs/20260914_FI_internal_decoys.md`, covered by
-T34/T40/T24b in `run_tests.py`); `run_regression.py`'s mode table has not been
-widened yet, so FI internal-decoy regressions are only exercised by the unit
-harness.
+Every variant runs in every mode. FI_DB internal decoys (`docs/20260914_FI_internal_decoys.md`,
+also covered by T34/T40/T24b in `run_tests.py`) exist since 2026.03.0, so against an older
+baseline the `fi` + internal-decoy combinations compare a current build that searches decoys
+with a baseline that searches its FI index without them: target-side PSM counts and top-peptide
+agreement are meaningful, the decoy-side numbers (and the `decoy_search=2` `.decoy.txt`
+comparison) are not until the baseline is 2026.03.0 or later.
 
 For each mode/variant it records: index build time (fi/pi only), search
 wall-clock time, PSM count above `xcorr >= 2.5`, and the fraction of common
