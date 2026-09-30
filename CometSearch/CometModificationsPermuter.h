@@ -20,6 +20,17 @@
 // combinations (or exceed MAX_BITCOUNT). Defined in CometModificationsPermuter.cpp.
 extern int IGNORED_SEQ_CNT;
 
+// Position restriction of one permuted (compacted ALL_MODS-index) modification: the
+// variable_modNN fifth/sixth fields (CometData.h VarMods iVarModTermDistance/iWhichTerm).
+// iTermDistance == -1 means unrestricted.
+struct ModPositionRule
+{
+   int iTermDistance;
+   int iWhichTerm;
+
+   bool IsRestricted() const { return iTermDistance != -1; }
+};
+
 class ModificationsPermuter
 {
 public:
@@ -67,10 +78,25 @@ public:
    // sequence is prefixed with the two terminal sentinels (see above) and is therefore
    // never empty; without it the behavior is the historical residue-only one and
    // PEPTIDE_MOD_SEQ_IDXS is -1 for peptides with no modifiable residue.
+   //
+   // With any restricted entry in vRules (parallel to ALL_MODS), each modifiable sequence
+   // also gets one position-class byte per position -- bit m set when position is eligible
+   // for mod m under vRules[m] -- stored in a parallel pool and made part of the dedup key,
+   // so peptides that share modifiable residues but differ in which of them a restricted
+   // mod may take get distinct permutation sets.  The pool residue letters are unchanged.
    static void getModifiableSequences(const RawPeptideTable& vRawPeptides,
                                       int* PEPTIDE_MOD_SEQ_IDXS,
                                       vector<string>& ALL_MODS,
-                                      bool bIncludeTermini);
+                                      bool bIncludeTermini,
+                                      const vector<ModPositionRule>& vRules);
+   // Position-class byte of one modifiable-sequence position for every mod in vRules (see
+   // getModifiableSequences()).  iPos is the residue's 0-based peptide position; iPos ==
+   // -1 is the N-terminal sentinel and iPos == iPepLen the C-terminal one.
+   static unsigned char getPositionClass(int iPos,
+                                         int iPepLen,
+                                         bool bProteinNterm,
+                                         bool bProteinCterm,
+                                         const vector<ModPositionRule>& vRules);
    static unsigned long long getModBitmask(const char* modSeq,
                                            int iLen,
                                            const string& sModChars);
@@ -83,6 +109,7 @@ public:
                        int modStringLen);
    static void generateModifications(const char* sequence,
                                      int iSeqLen,
+                                     const unsigned char* pClasses,   // NULL: no restricted mod
                                      vector<int>& vMaxNumVarModsPerMod,
                                      int* ret_modNumStart,
                                      int* ret_modNumCount,

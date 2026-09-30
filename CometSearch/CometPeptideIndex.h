@@ -104,8 +104,8 @@ public:
    // FI_DB) from IndexSearchType -- the .idx file is fully self-describing
    // (docs/20260811_restore_idx_header_mods.md), no index_search_type/variable_modNN/
    // require_variable_mod/protein_modslist_file/max_variable_mods_in_peptide params needed
-   // to search an existing index. iVarModTermDistance/iWhichTerm remain unsupported for
-   // FI_DB/PI_DB and are not part of the header. Called by both EnsurePeptideIndexLoaded()
+   // to search an existing index (each VariableMod: slot includes its iVarModTermDistance/
+   // iWhichTerm position restriction). Called by both EnsurePeptideIndexLoaded()
    // (via ReadPeptideIndex()) and InitializeMassesFromPeptideIndex() to avoid duplication,
    // and by CometSearchManager.cpp wherever it needs to peek a file's mode before deciding
    // which of ReadPeptideIndex()/CreateFragmentIndex() to call.

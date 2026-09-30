@@ -71,7 +71,8 @@ namespace
                     const std::vector<int>& vMaxPerMod,
                     int iMaxVarModPerPeptide,
                     bool bIncludeTermini,
-                    int iMaxSeqLen)
+                    int iMaxSeqLen,
+                    const std::vector<ModPositionRule>& vRules = std::vector<ModPositionRule>())
    {
       ResetPermuterGlobals();
 
@@ -100,7 +101,7 @@ namespace
       ModificationsPermuter::initCombinations(iMaxSeqLen, iMaxMods, &ALL_COMBINATIONS, &ALL_COMBINATION_CNT);
 
       PEPTIDE_MOD_SEQ_IDXS = new int[table.size()];
-      ModificationsPermuter::getModifiableSequences(table, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini);
+      ModificationsPermuter::getModifiableSequences(table, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini, vRules);
       ModificationsPermuter::getModificationCombinations(vMax, ALL_MODS, (int)ALL_MODS.size(),
          ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
@@ -449,4 +450,79 @@ TEST_F(PermuterTest, P12_UpstreamCombineCases)
    // overlapping bit (22 = 10110 shares bit 4 with 20 and bit 1 with... itself) -> rejected
    r = run("MSMMK", {1, 3, 2}, {20, 22, 1});
    EXPECT_FALSE(r.first);
+}
+
+
+// P14: a peptide-N-terminus position rule (variable_modNN "0 2", e.g. pyroglutamate) admits a
+// Q only at peptide position 0. Two peptides with the same modifiable residues ("QQ") but a
+// different eligible set get distinct modifiable sequences; without the rule they share one.
+TEST_F(PermuterTest, P14_PositionRule_PeptideNterm_AndDedup)
+{
+   std::vector<TestPeptide> peps = { {"QAQK",'K','S'}, {"AQQK",'K','S'} };
+   RunPermuter(peps, {"Q"}, {1}, 3, false, 8, { {0, 2} });
+
+   EXPECT_EQ(2, GetNumModSeqs());
+   EXPECT_EQ(std::string("QQ"), ModSeqOf(0));
+   EXPECT_EQ(std::string("QQ"), ModSeqOf(1));
+   {
+      std::set<Entry> got = AsSet(EntriesOf(0));
+      std::set<Entry> want = { Entry({0,-1}) };
+      EXPECT_TRUE(got == want);
+   }
+   {
+      EXPECT_TRUE(EntriesOf(1).empty());   // both Qs internal: no modified form
+   }
+
+   RunPermuter(peps, {"Q"}, {1}, 3, false, 8);     // unrestricted
+   EXPECT_EQ(1, GetNumModSeqs());
+}
+
+// P15: "-2" (never the peptide's C-terminal residue) and a peptide-C-terminus distance rule.
+TEST_F(PermuterTest, P15_PositionRule_Minus2_And_PeptideCterm)
+{
+   RunPermuter({ {"AMAM",'K','S'} }, {"M"}, {1}, 3, false, 8, { {-2, 0} });
+   {
+      std::set<Entry> got = AsSet(EntriesOf(0));
+      std::set<Entry> want = { Entry({0,-1}) };
+      EXPECT_TRUE(got == want);
+   }
+
+   RunPermuter({ {"AMAM",'K','S'} }, {"M"}, {1}, 3, false, 8, { {1, 3} });
+   {
+      std::set<Entry> got = AsSet(EntriesOf(0));
+      std::set<Entry> want = { Entry({-1,0}) };
+      EXPECT_TRUE(got == want);
+   }
+}
+
+// P16: a protein-N-terminus distance-0 rule admits the residue only when the peptide sits at
+// the protein N-terminus ('-' flank) and the residue is its first. (The pool stores modified
+// entries only; the unmodified form is implicit.)
+TEST_F(PermuterTest, P16_PositionRule_ProteinNterm)
+{
+   RunPermuter({ {"MAKM",'-','S'}, {"MAKM",'K','S'} }, {"M"}, {1}, 3, false, 8, { {0, 0} });
+   {
+      std::set<Entry> got = AsSet(EntriesOf(0));
+      std::set<Entry> want = { Entry({0,-1}) };
+      EXPECT_TRUE(got == want);
+   }
+   {
+      EXPECT_TRUE(EntriesOf(1).empty());   // not at the protein N-terminus: no modified form
+   }
+}
+
+// P17: getPositionClass() terminal-site rules mirror the plain-FASTA path (v2026.02.2):
+// n-term with which_term 3 never; c-term with which_term 2 only if the peptide is short enough.
+TEST_F(PermuterTest, P17_PositionClass_TerminalSites)
+{
+   const std::vector<ModPositionRule> vPepC3 = { {3, 3} };
+   const std::vector<ModPositionRule> vPepN2 = { {2, 2} };
+   EXPECT_EQ(0, (int)ModificationsPermuter::getPositionClass(-1, 4, false, false, vPepC3));
+   EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(4, 4, false, false, vPepC3));
+   EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(-1, 4, false, false, vPepN2));
+   EXPECT_EQ(0, (int)ModificationsPermuter::getPositionClass(4, 4, false, false, vPepN2));   // L-1 = 3 > 2
+   EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(3, 3, false, false, vPepN2));   // L-1 = 2 <= 2
+
+   const std::vector<ModPositionRule> vUnres = { {-1, 0} };
+   EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(2, 4, false, false, vUnres));
 }

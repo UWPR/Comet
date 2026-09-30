@@ -143,6 +143,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
+   vector<ModPositionRule> vModRules; // parallel to ALL_MODS: variable_modNN fifth/sixth fields
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
    // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
@@ -160,6 +161,22 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
       {
          ALL_MODS.push_back(g_staticParams.variableModParameters.varModList[i].szVarModChar);
          vMaxNumVarModsPerMod.push_back(g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
+         vModRules.push_back({ g_staticParams.variableModParameters.varModList[i].iVarModTermDistance,
+                               g_staticParams.variableModParameters.varModList[i].iWhichTerm });
+
+         // A protein-terminus distance rule needs the peptide's offset in its protein, which
+         // the index does not keep: only peptides at that protein terminus are admitted
+         // (ModificationsPermuter::getPositionClass()), a subset of what a FASTA search allows.
+         const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+         if (vm.iVarModTermDistance > 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
+         {
+            char szMsg[512];
+            snprintf(szMsg, sizeof(szMsg), " Warning - variable_mod%02d (%s): a protein %s-terminus distance of %d is applied"
+               " by fragment/peptide index searches only to peptides at that protein terminus"
+               " (a FASTA search also admits peptides that start within %d residues of it).\n",
+               i + 1, vm.szVarModChar, vm.iWhichTerm == 0 ? "N" : "C", vm.iVarModTermDistance, vm.iVarModTermDistance);
+            logout(szMsg);
+         }
 
          if (iMaxNumVariableMods < g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod)
             iMaxNumVariableMods = g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod;
@@ -225,7 +242,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
    // MOD_SEQS_OFFSET flat pool -- docs/20260827_PI_memory.md Phase 1)
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini);
+   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini, vModRules);
 
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(vMaxNumVarModsPerMod, ALL_MODS,

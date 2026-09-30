@@ -258,11 +258,14 @@ struct VarMods
    int    iBinaryMod;
    int    iMaxNumVarModAAPerMod;
    int    iMinNumVarModAAPerMod;
-   int    iVarModTermDistance;  // DEPRECATED (2026-09): parsed for backward compatibility, then normalized
-                                // to -1 in InitializeStaticParams() and never consulted by the search.
-                                // Terminus scope is expressed by szVarModChar: 'n'/'c' = any peptide
-                                // terminus, '^'/'$' = protein N-/C-terminus only.
-   int    iWhichTerm;           // DEPRECATED (2026-09): see iVarModTermDistance; normalized to 0.
+   int    iVarModTermDistance;  // fifth variable_modNN field: -1 = no position restriction, -2 = not on the
+                                // peptide's C-terminal residue, d >= 0 = residue (or 'n'/'c' terminus)
+                                // must be within d residues of the terminus named by iWhichTerm.
+                                // Terminus scope of terminal mods is also expressed by szVarModChar:
+                                // 'n'/'c' = any peptide terminus, '^'/'$' = protein N-/C-terminus only.
+   int    iWhichTerm;           // sixth field: 0 = protein N, 1 = protein C, 2 = peptide N, 3 = peptide C.
+                                // FI/PI index searches apply peptide-terminus (2/3) rules exactly and
+                                // protein-terminus (0/1) rules only to peptides at that protein terminus.
    int    iRequireThisMod;  // 0=no; 1=required; negative number = different functionality allowing only one from a set of mods
    char   szVarModChar[MAX_VARMOD_AA];
    bool   bNtermMod;          // set to true if n-term mod ('n' or '^' in szVarModChar)

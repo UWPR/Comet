@@ -1401,17 +1401,14 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   // Deprecated variable_mod fields 5 (term_distance) and 6 (n/c-term), 2026-09.
-   //
-   // Terminus scope now lives in the residue string: 'n'/'c' = any peptide terminus,
-   // '^'/'$' = protein N-/C-terminus only.  The two integer fields are still parsed so
-   // existing params files load, but they are ignored.  The one legacy idiom that has an
-   // exact replacement -- 'n' with distance 0 + which_term 0 (protein N-term only), or 'c'
-   // with distance 0 + which_term 1 (protein C-term only) -- is translated to '^'/'$' here
-   // for one release so those searches keep their meaning; everything else non-default
-   // gets a warning saying what was dropped.  Afterwards both fields are normalized to their
-   // defaults so no downstream code can observe them.  See docs/20260915_permuter_terminal_mods.md
-   // sections 3.1 and 5.
+   // variable_modNN fields 5 (term_distance) and 6 (which_term) restrict where a mod may go
+   // (CometData.h VarMods).  The one idiom with an exact terminal-code equivalent -- 'n' with
+   // distance 0 from the protein N-terminus, or 'c' with distance 0 from the protein
+   // C-terminus -- is rewritten to '^' / '$' here: identical on the plain-FASTA path, and on
+   // the FI/PI path the terminal-code form is what the permuter places exactly.  A slot that
+   // is only that terminal code then has nothing left to restrict and gets the default
+   // fields back; a slot that also lists residues keeps them, since they restrict the
+   // residues too.  Other restrictions are left in place for the search paths to apply.
    for (int i=0; i<VMODS; ++i)
    {
       VarMods& vm = g_staticParams.variableModParameters.varModList[i];
@@ -1423,78 +1420,28 @@ bool CometSearchManager::InitializeStaticParams()
          continue;
       }
 
-      if (vm.iVarModTermDistance != -1 || vm.iWhichTerm != 0)
+      if (vm.iVarModTermDistance == 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
       {
-         char szSlot[32];
-         char szMsg[512];
-         snprintf(szSlot, sizeof(szSlot), "variable_mod%02d", i + 1);
+         const char cFrom = (vm.iWhichTerm == 0) ? 'n' : 'c';
+         const char cTo   = (vm.iWhichTerm == 0) ? '^' : '$';
+         bool bOtherChars = false;   // residues, or the other terminus' code, still use the fields
 
-         string strResidues;   // residue letters in this slot, excluding terminal codes
-         for (const char* p = vm.szVarModChar; *p; ++p)
+         for (char* p = vm.szVarModChar; *p; ++p)
          {
-            if (*p != 'n' && *p != 'c' && *p != '^' && *p != '$')
-               strResidues += *p;
-         }
-
-         bool bBridged = false;
-
-         if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 0 && strchr(vm.szVarModChar, 'n'))
-         {
-            for (char* p = vm.szVarModChar; *p; ++p)
-               if (*p == 'n')
-                  *p = '^';
-            bBridged = true;
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'n' with distance 0 to '^'\n"
-                   "           (protein N-terminus only). Update the params file to use '^' directly.\n",
-                     szSlot);
-            logout(szMsg);
-         }
-         else if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 1 && strchr(vm.szVarModChar, 'c'))
-         {
-            for (char* p = vm.szVarModChar; *p; ++p)
-               if (*p == 'c')
-                  *p = '$';
-            bBridged = true;
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'c' with distance 0 to '$'\n"
-                   "           (protein C-terminus only). Update the params file to use '$' directly.\n",
-                     szSlot);
-            logout(szMsg);
+            if (*p == cFrom)
+               *p = cTo;
+            else if (*p != cTo)
+               bOtherChars = true;
          }
 
-         if (vm.iVarModTermDistance == 0 && strResidues.length() > 0)
+         if (!bOtherChars)
          {
-            // legacy which_term: 0 protein N-term, 1 protein C-term, 2 peptide N-term, 3 peptide C-term
-            static const char* szLegacyTerm[4] = { "protein N-terminus", "protein C-terminus", "peptide N-terminus", "peptide C-terminus" };
-            const char* szTerm = (vm.iWhichTerm >= 0 && vm.iWhichTerm <= 3) ? szLegacyTerm[vm.iWhichTerm] : "a terminus";
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance 0 / which_term %d restricted residues \"%s\" to the %s; that\n"
-                   "           restriction is deprecated and dropped -- the residue modification now applies anywhere.\n",
-                     szSlot, vm.iWhichTerm, strResidues.c_str(), szTerm);
-            logout(szMsg);
+            vm.iVarModTermDistance = -1;
+            vm.iWhichTerm = 0;
          }
-         else if (vm.iVarModTermDistance > 0)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored (no distance constraint is applied).\n",
-                     szSlot, vm.iVarModTermDistance);
-            logout(szMsg);
-         }
-         else if (vm.iVarModTermDistance < -1)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored.\n",
-                     szSlot, vm.iVarModTermDistance);
-            logout(szMsg);
-         }
-         else if (!bBridged)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term (%d %d) are deprecated and ignored; 'n'/'c' mean any\n"
-                   "           peptide terminus, use '^'/'$' for protein N-/C-terminus only.\n",
-                     szSlot, vm.iVarModTermDistance, vm.iWhichTerm);
-            logout(szMsg);
-         }
-
-         vm.iVarModTermDistance = -1;
-         vm.iWhichTerm = 0;
       }
    }
+
 
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
@@ -1523,6 +1470,8 @@ bool CometSearchManager::InitializeStaticParams()
                      && (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMaxNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMinNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iRequireThisMod == g_staticParams.variableModParameters.varModList[ii].iRequireThisMod)
+                     && (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == g_staticParams.variableModParameters.varModList[ii].iVarModTermDistance)
+                     && (g_staticParams.variableModParameters.varModList[i].iWhichTerm == g_staticParams.variableModParameters.varModList[ii].iWhichTerm)
                      &&  g_staticParams.variableModParameters.varModList[i].iRequireThisMod != -1)
                {
                   // everything the same merge the modifications
