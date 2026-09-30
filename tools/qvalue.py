@@ -22,14 +22,11 @@ Usage
     python tools/qvalue.py --diff results_a.txt results_b.txt
     python tools/qvalue.py --threshold 0.01 --threshold 0.05 results.txt
 
-Column indices in Comet tab-delimited output (0-based, after 2 header lines):
-    0  scan
-    1  num       (hit rank; 1 = top hit)
-    2  charge
-    5  e-value
-    6  xcorr
-    12 modified_peptide
-    15 protein
+Columns are located by name from the column-header line (line 2) of the Comet
+tab-delimited output, so extra columns (e.g. peff_modified_peptide in a PEFF
+search) don't shift anything:
+    scan, num (hit rank; 1 = top hit), charge, e-value, xcorr,
+    modified_peptide, protein
 """
 from __future__ import annotations   # PEP 604 "X | None" annotations on Python 3.9
 
@@ -41,18 +38,17 @@ from pathlib import Path
 
 DECOY_PREFIXES = ("decoy_", "rev_")
 
-# 0-based column indices in Comet txt body rows (after 2 header lines)
-COL_SCAN   = 0
-COL_NUM    = 1
-COL_CHARGE = 2
-COL_EVALUE = 5
-COL_XCORR  = 6
-COL_MODPEP = 12
-COL_PROT   = 15
+# Column names looked up in the Comet txt column-header line (line 2)
+COL_SCAN   = "scan"
+COL_NUM    = "num"
+COL_CHARGE = "charge"
+COL_EVALUE = "e-value"
+COL_XCORR  = "xcorr"
+COL_MODPEP = "modified_peptide"
+COL_PROT   = "protein"
 
-# Minimum column count needed to parse a row
-_REQUIRED_COL = max(COL_SCAN, COL_NUM, COL_CHARGE, COL_EVALUE, COL_XCORR,
-                    COL_MODPEP, COL_PROT)
+_REQUIRED_COLS = (COL_SCAN, COL_NUM, COL_CHARGE, COL_EVALUE, COL_XCORR,
+                  COL_MODPEP, COL_PROT)
 
 # Field indices within each PSM tuple: (xcorr, evalue, is_decoy, scan, charge, pep, prot)
 _F_XCORR  = 0
@@ -75,20 +71,26 @@ def load_rank1(path: str) -> list[tuple[float, float, bool, int, int, str, str]]
     """
     psms = []
     with open(path) as fh:
-        for lineno, line in enumerate(fh):
-            if lineno < 2:          # skip two header lines
-                continue
+        fh.readline()               # line 1: version / file / date / database
+        header = [h.strip() for h in fh.readline().rstrip("\n").split("\t")]
+        missing = [c for c in _REQUIRED_COLS if c not in header]
+        if missing:
+            raise ValueError(f"{path}: column header line is missing {', '.join(missing)}")
+        idx = {c: header.index(c) for c in _REQUIRED_COLS}
+        max_idx = max(idx.values())
+
+        for line in fh:
             cols = line.rstrip("\n").split("\t")
-            if len(cols) <= _REQUIRED_COL:
+            if len(cols) <= max_idx:
                 continue
             try:
-                num    = int(cols[COL_NUM])
-                xcorr  = float(cols[COL_XCORR])
-                evalue = float(cols[COL_EVALUE])
-                scan   = int(cols[COL_SCAN])
-                charge = int(cols[COL_CHARGE])
-                pep    = cols[COL_MODPEP]
-                prot   = cols[COL_PROT]
+                num    = int(cols[idx[COL_NUM]])
+                xcorr  = float(cols[idx[COL_XCORR]])
+                evalue = float(cols[idx[COL_EVALUE]])
+                scan   = int(cols[idx[COL_SCAN]])
+                charge = int(cols[idx[COL_CHARGE]])
+                pep    = cols[idx[COL_MODPEP]]
+                prot   = cols[idx[COL_PROT]]
             except ValueError:
                 continue
             if num != 1:
