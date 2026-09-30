@@ -1142,37 +1142,44 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
          };
 
-         sort(buf.begin(), buf.end(), [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+         // Canonical (L -> I when bIL) sequence comparison: a plain memcmp unless I/L are merged.
+         // Residues are uppercase ASCII, so memcmp's unsigned order equals the char order.
+         auto canonCompare = [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) -> int {
+            if (!bIL)
+               return memcmp(a.sPeptide, b.sPeptide, iLen);
             for (int k = 0; k < iLen; ++k)
             {
-               char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
-               char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
-               if (ca != cb) return ca < cb;
+               char ca = (a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
+               char cb = (b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
+               if (ca != cb) return ca < cb ? -1 : 1;
             }
-            if (splitClass(a) != splitClass(b)) return splitClass(a) < splitClass(b);
+            return 0;
+         };
+
+         sort(buf.begin(), buf.end(), [canonCompare, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+            const int iCmp = canonCompare(a, b);
+            if (iCmp != 0) return iCmp < 0;
+            const unsigned char ucA = splitClass(a);
+            const unsigned char ucB = splitClass(b);
+            if (ucA != ucB) return ucA < ucB;
             if (a.lProteinFileOffset != b.lProteinFileOffset) return a.lProteinFileOffset < b.lProteinFileOffset;
-            // Total order on every field the run's representative (buf[iRunStart]) contributes,
-            // so the build is deterministic: copies of a peptide repeated within one protein tie
-            // on all keys above, arrive in thread-scheduling order, and can differ in flanks,
-            // original I/L letters and the last bits of dPepMass (T18).
+            // Copies of one sequence from one protein reach here only with different protein-
+            // terminus context (the within-protein dedup key in SearchForPeptides() is sequence +
+            // context), and different context always means a different cPrevAA or cNextAA, so the
+            // flanks complete a total order. Without them such copies (e.g. UBC's ubiquitin
+            // repeats) tie, arrive in thread-scheduling order, and the representative -- whose
+            // flanks and dPepMass are stored -- varies from build to build (T18).
             if (a.cPrevAA != b.cPrevAA) return a.cPrevAA < b.cPrevAA;
-            if (a.cNextAA != b.cNextAA) return a.cNextAA < b.cNextAA;
-            if (a.dPepMass != b.dPepMass) return a.dPepMass < b.dPepMass;
-            return memcmp(a.sPeptide, b.sPeptide, iLen) < 0;
+            return a.cNextAA < b.cNextAA;
          });
 
-         auto bCanonEqual = [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
-            for (int k = 0; k < iLen; ++k)
-            {
-               char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
-               char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
-               if (ca != cb) return false;
-            }
-            return splitClass(a) == splitClass(b);
+         auto bCanonEqual = [canonCompare, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+            return canonCompare(a, b) == 0 && splitClass(a) == splitClass(b);
          };
 
          vector<unsigned int> prot;
          vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
+         vector<pair<unsigned int, unsigned char>> vOcc;   // per-run scratch, reused across runs
          // OR'd (not just the representative's) across every occurrence in the dedup run:
          // with protein_modslist_file active, a peptide shared between a listed and an
          // unlisted protein must not silently lose the listed protein's allowed-mod bits just
@@ -1200,9 +1207,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                // their terminus-context bits (a peptide repeated in one protein may be
                // N-terminal in one copy and internal in another).
                {
-                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  vOcc.clear();
                   for (size_t k = 0; k < prot.size(); ++k)
-                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                     vOcc.emplace_back(prot[k], protFlags[k]);
                   sort(vOcc.begin(), vOcc.end(),
                      [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
                   prot.clear();
@@ -1308,23 +1315,22 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          sort(buf.begin(), buf.end(), [splitClass](const PepGenTupleShort& a, const PepGenTupleShort& b) {
             if (a.uPackedPep != b.uPackedPep)
                return a.uPackedPep < b.uPackedPep;
-            if (splitClass(a) != splitClass(b))
-               return splitClass(a) < splitClass(b);
+            const unsigned char ucA = splitClass(a);
+            const unsigned char ucB = splitClass(b);
+            if (ucA != ucB)
+               return ucA < ucB;
             if (a.lProteinFileOffset != b.lProteinFileOffset)
                return a.lProteinFileOffset < b.lProteinFileOffset;
-            // total order on the representative's fields, as in the long-length path (T18)
+            // flanks complete the total order, as in the long-length path (T18)
             if (a.cPrevAA != b.cPrevAA)
                return a.cPrevAA < b.cPrevAA;
-            if (a.cNextAA != b.cNextAA)
-               return a.cNextAA < b.cNextAA;
-            if (a.dPepMass != b.dPepMass)
-               return a.dPepMass < b.dPepMass;
-            return a.uILMask < b.uILMask;
+            return a.cNextAA < b.cNextAA;
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<unsigned int> prot;
          vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
+         vector<pair<unsigned int, unsigned char>> vOcc;   // per-run scratch, reused across runs
          // Same fix as the long-length path above: OR the mask across the whole dedup run
          // instead of taking only the representative occurrence's mask.
          unsigned short siVarModFilterUnion = 0;
@@ -1348,9 +1354,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                // their terminus-context bits (a peptide repeated in one protein may be
                // N-terminal in one copy and internal in another).
                {
-                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  vOcc.clear();
                   for (size_t k = 0; k < prot.size(); ++k)
-                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                     vOcc.emplace_back(prot[k], protFlags[k]);
                   sort(vOcc.begin(), vOcc.end(),
                      [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
                   prot.clear();

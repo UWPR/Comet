@@ -551,17 +551,20 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
 
 
 // sort by mass, then peptide, then modification state, then protein fp location
+//
+// Masses are compared as integer keys quantized to FLOAT_ZERO (1e-6 Da), so peptides whose
+// masses differ only in rounding still order by sequence. The key must be a quantization,
+// not "equal if within FLOAT_ZERO": that tolerance test is not transitive (a~b and b~c
+// while a<c), so std::sort would get a comparator that is not a strict weak ordering --
+// undefined behavior, and an index order that could depend on input layout.
 bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
                                           const DBIndex& rhs)
 {
-   if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
-   {
-      // masses are different
-      if (lhs.dPepMass < rhs.dPepMass)
-         return true;
-      else
-         return false;
-   }
+   const long long llMassL = llround(lhs.dPepMass / FLOAT_ZERO);
+   const long long llMassR = llround(rhs.dPepMass / FLOAT_ZERO);
+
+   if (llMassL != llMassR)
+      return llMassL < llMassR;   // masses are different
 
    // at this point, peptides are same mass so next need to compare sequences
 
