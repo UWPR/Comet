@@ -1133,7 +1133,15 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                if (ca != cb) return ca < cb;
             }
             if (splitClass(a) != splitClass(b)) return splitClass(a) < splitClass(b);
-            return a.lProteinFileOffset < b.lProteinFileOffset;
+            if (a.lProteinFileOffset != b.lProteinFileOffset) return a.lProteinFileOffset < b.lProteinFileOffset;
+            // Total order on every field the run's representative (buf[iRunStart]) contributes,
+            // so the build is deterministic: copies of a peptide repeated within one protein tie
+            // on all keys above, arrive in thread-scheduling order, and can differ in flanks,
+            // original I/L letters and the last bits of dPepMass (T18).
+            if (a.cPrevAA != b.cPrevAA) return a.cPrevAA < b.cPrevAA;
+            if (a.cNextAA != b.cNextAA) return a.cNextAA < b.cNextAA;
+            if (a.dPepMass != b.dPepMass) return a.dPepMass < b.dPepMass;
+            return memcmp(a.sPeptide, b.sPeptide, iLen) < 0;
          });
 
          auto bCanonEqual = [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
@@ -1285,7 +1293,16 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                return a.uPackedPep < b.uPackedPep;
             if (splitClass(a) != splitClass(b))
                return splitClass(a) < splitClass(b);
-            return a.lProteinFileOffset < b.lProteinFileOffset;
+            if (a.lProteinFileOffset != b.lProteinFileOffset)
+               return a.lProteinFileOffset < b.lProteinFileOffset;
+            // total order on the representative's fields, as in the long-length path (T18)
+            if (a.cPrevAA != b.cPrevAA)
+               return a.cPrevAA < b.cPrevAA;
+            if (a.cNextAA != b.cNextAA)
+               return a.cNextAA < b.cNextAA;
+            if (a.dPepMass != b.dPepMass)
+               return a.dPepMass < b.dPepMass;
+            return a.uILMask < b.uILMask;
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
