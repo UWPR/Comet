@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 #include <unordered_map>
 #include "AScoreAminoAcidMasses.h"
 #include "AScoreAPI.h"
@@ -16,6 +17,7 @@
 
 namespace AScoreProCpp
 {
+   class Peptide;
 
    /**
     * Options for the AScore algorithm.
@@ -81,6 +83,12 @@ public:
 
       bool getNoCterm() const;
       void setNoCterm(bool noCterm);
+
+      // Optional candidate filter (Comet addition): when set, a generated peptidoform for
+      // which it returns false is never scored, so it can neither be the top peptide nor an
+      // alternative in site scoring. Used for position-restricted modifications.
+      const std::function<bool(const Peptide&)>& getPeptideFilter() const;
+      void setPeptideFilter(const std::function<bool(const Peptide&)>& filter);
 
       bool getUseMobScore() const;
       void setUseMobScore(bool useMobScore);
@@ -164,6 +172,9 @@ private:
 
       // When enabled, modifications on the c-terminus of the peptide are not considered
       bool noCterm_;
+
+      // Optional candidate filter; empty = score every generated peptidoform
+      std::function<bool(const Peptide&)> peptideFilter_;
 
       // Enable to use MOB Scoring algorithm instead of Original AScore algorithm
       bool useMobScore_;

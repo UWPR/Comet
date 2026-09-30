@@ -133,10 +133,18 @@ namespace AScoreProCpp
       std::vector<Peptide> peptides;
       MOBScore scoring = MOBScore(options_);
 
+      const auto& peptideFilter = options_.getPeptideFilter();
+
       for (; !peptideGenerator->atEnd() && peptides.size() < static_cast<size_t>(options_.getMaxPeptides()); peptideGenerator->next())
       {
-         const auto& ions = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
          Peptide p = peptideGenerator->getPeptide();
+
+         // Comet addition: skip peptidoforms the caller rules out (position-restricted mods)
+         // before scoring, so they are neither ranked nor used as site-scoring alternatives.
+         if (peptideFilter && !peptideFilter(p))
+            continue;
+
+         const auto& ions = peptideGenerator->getMassList(options_.getIonSeries(), fragmentChargeMax, minMz, maxMz);
          p.setScore(scoring.score(p, ions, scan, output));
          peptides.push_back(p);
       }

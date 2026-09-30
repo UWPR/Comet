@@ -28,6 +28,7 @@
 #include "AScoreMass.h"
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
+#include "CometModificationsPermuter.h"   // ModPositionRule, getPositionClass()
 
 #include <mutex>    // std::once_flag, std::call_once
 #include <cassert>
@@ -948,9 +949,62 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    }
    sequence += std::string(".") + pQuery->_pResults[0].cNextAA;
 
-   // Calculate AScore using the DLL interface
-   AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
-      pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+   // Position-restricted mods (variable_modNN fifth/sixth fields, e.g. N-terminal pyroglutamate
+   // "Q 0 1 0 2"): AScorePro knows a mod only as residues + mass, so without help it would score
+   // and could relocalize such a mod onto a residue its rule forbids. Give it a filter that drops
+   // those peptidoforms before scoring -- so the reported MOB/site scores and any relocalization
+   // are all among allowed peptidoforms -- using the rule the FI/PI permuter applies. A mod at the
+   // position Comet already placed it is always allowed: the search admitted it, and on the FASTA
+   // path a protein-terminus distance rule can admit positions a PSM alone cannot re-derive.
+   // A per-call copy, since g_AScoreOptions is shared by concurrent RTS threads.
+   bool bRestricted = false;
+   for (int i = 0; i < 9; ++i)   // AScorePro sees variable_mod01-09 (symbols '1'-'9')
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+      if (vm.iVarModTermDistance != -1 && !isEqual(vm.dVarModMass, 0.0) && vm.szVarModChar[0] != '-')
+         bRestricted = true;
+   }
+
+   AScoreOutput result;
+   if (!bRestricted)
+   {
+      // Calculate AScore using the DLL interface
+      result = ascoreInterface->CalculateScoreWithOptions(sequence,
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+   }
+   else
+   {
+      const int iLenPeptide = pQuery->_pResults[0].usiLenPeptide;
+      const bool bProtN = (pQuery->_pResults[0].cPrevAA == '-');
+      const bool bProtC = (pQuery->_pResults[0].cNextAA == '-');
+      std::vector<int> vOrigSlot(iLenPeptide, 0);   // Comet's placement: slot number (1-based) per residue
+      for (int i = 0; i < iLenPeptide; ++i)
+         vOrigSlot[i] = pQuery->_pResults[0].piVarModSites[i];
+
+      AScoreOptions opts = g_AScoreOptions;
+      opts.setPeptideFilter([iLenPeptide, bProtN, bProtC, vOrigSlot](const Peptide& p)
+      {
+         for (const auto& mod : p.getMods())
+         {
+            const int iSlot = mod.getSymbol() - '1';
+            const int iPos = mod.getPosition();
+            if (iSlot < 0 || iSlot >= 9 || iPos < 0 || iPos >= iLenPeptide)
+               continue;
+
+            const VarMods& vm = g_staticParams.variableModParameters.varModList[iSlot];
+            if (vm.iVarModTermDistance == -1 || vOrigSlot[iPos] == iSlot + 1)
+               continue;
+
+            const std::vector<ModPositionRule> vRule = { { vm.iVarModTermDistance, vm.iWhichTerm } };
+            if (!(ModificationsPermuter::getPositionClass(iPos, iLenPeptide, bProtN, bProtC, vRule) & 1))
+               return false;
+         }
+         return true;
+      });
+
+      result = ascoreInterface->CalculateScoreWithOptions(sequence,
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, opts);
+   }
 
    if (!result.peptides.empty())
    {

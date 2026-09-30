@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T54; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T55; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -4920,23 +4920,26 @@ _T54_SPECTRA = {
 }
 
 
-def _t54_three_paths(comet_exe, tmp, mods, failures, tag):
+def _t54_three_paths(comet_exe, tmp, mods, failures, tag, protein=None, spectra=None, extra=None):
     """Search the T54 spectra with `mods` via plain FASTA, FI_DB and PI_DB (tryptic).
-    Returns {label: (rank-1 rows by scan, log, VariableMod: header line)}."""
+    Returns {label: (rank-1 rows by scan, log, VariableMod: header line)}. `protein`/`spectra`
+    replace the T54 fixture (written on first use per tmp dir); `extra` adds params lines."""
     fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    protein = protein or _T54_PROTEIN
+    spectra = spectra or _T54_SPECTRA
     fasta = tmp / "t54.fasta"
     ms2 = tmp / "t54.ms2"
     if not fasta.exists():
-        fasta.write_text(f">{_T54_PROTEIN[0]}\n{_T54_PROTEIN[1]}\n")
-        _t52_write_ms2(ms2, _T54_SPECTRA)
+        fasta.write_text(f">{protein[0]}\n{protein[1]}\n")
+        _t52_write_ms2(ms2, spectra)
     txt = ms2.with_suffix(".txt")
     idx = fasta.with_suffix(".fasta.idx")
     out = {}
 
-    def params(db, extra=None):
+    def params(db, more=None):
         pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=mods, static_C=0.0,
                                        num_output_lines=5)
-        for k, v in (extra or {}).items():
+        for k, v in {**(extra or {}), **(more or {})}.items():
             pr = _set_param_line(pr, k, v)
         pf = tmp / "t54.params"
         pf.write_text(pr)
@@ -5016,6 +5019,40 @@ def test_t54_pyroglu_all_paths(comet_exe):
                   f"{label}: partial protein-distance warning {'present' if label != 'plain' else 'absent'}", failures)
     return failures
 
+
+# ---------------------------------------------------------------------------
+# T55 -- AScorePro respects position restrictions: the spectrum carries pyroglutamate on the
+# internal Q5 of QTAGQPELK, which 'Q 0 1 0 2' forbids, so the search reports Q[-17]TAGQPELK.
+# AScorePro alone would score the forbidden QTAGQ[-17]PELK placement higher and Comet would
+# relocalize to it; Comet's peptidoform filter keeps AScorePro to allowed placements, so the
+# reported peptide and its MOB/site scores stay those of the allowed Q1 placement.
+# ---------------------------------------------------------------------------
+
+_T55_PROTEIN = ("t55_a", "MSKQTAGQPELKGGR")
+_T55_SPECTRA = {1: ("QTAGQPELK", {4: -17.026549}, "t55_a")}
+
+
+@register("t55_ascorepro_position_filter")
+def test_t55_ascorepro_position_filter(comet_exe):
+    """T55: with print_ascorepro_score on, a position-restricted mod is never relocalized by
+    AScorePro onto a forbidden residue (plain FASTA, FI_DB, PI_DB)."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, (_T54_PYRO_Q,), failures, "AScorePro + pyro-glu 0 2",
+                               protein=_T55_PROTEIN, spectra=_T55_SPECTRA,
+                               extra={"print_ascorepro_score": "1"})
+        for label, (r1, log, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "QTAGQPELK",
+                  f"{label}: scan 1 top hit is QTAGQPELK, got {r.get('plain_peptide')!r}", failures)
+            check(_t54_has_mod(r, 1, "-17.02") and not _t54_has_mod(r, 5, "-17.02"),
+                  f"{label}: pyro-glu stays on Q1 (not relocalized to the forbidden Q5), "
+                  f"got {r.get('modified_peptide')!r}", failures)
+            site = r.get("ascore_sitescores") or ""
+            check("5:" not in site,
+                  f"{label}: AScorePro site scores never name the forbidden Q5, got {site!r}", failures)
+    return failures
 
 # ---------------------------------------------------------------------------
 # main
