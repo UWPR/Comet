@@ -131,11 +131,21 @@ static void SplitPeffEntries(const char* szValue,
    }
 }
 
-// Protein accession for PEFF warning messages: dbe.strName up to the first whitespace, which
-// drops the description and the '\' that starts the PEFF attributes.
-static string PeffAccession(const string& strName)
+// peff_verbose_output warning for a PEFF attribute entry that is skipped, e.g.
+//    Warning: sp:P19211 \ModResPsi entry "(?|MOD:00046|...)" ignored: invalid position
+// strName is dbe.strName, trimmed at the first whitespace or '\' to just the accession;
+// strEntry is the entry as written in the header, annotation-identifier label included.
+static void LogPeffIgnoredEntry(const string& strName,
+                                const string& strAttribute,
+                                const string& strEntry,
+                                const string& strReason)
 {
-   return strName.substr(0, strName.find_first_of(" \t\\"));
+   if (!g_staticParams.options.bVerboseOutput)
+      return;
+
+   string strMsg = " Warning: " + strName.substr(0, strName.find_first_of(" \t\\")) + " " + strAttribute
+      + " entry \"" + strEntry + "\" ignored: " + strReason + "\n";
+   logout(strMsg);
 }
 
 extern comet_fileoffset_t clSizeCometFileOffset;
@@ -737,10 +747,10 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                         for (string& strModEntry : vModEntries)
                         {
-                           StripPeffAnnotationId(strModEntry);
-
                            // entry as it appears in the header, for warnings
                            string strWarnEntry = strModEntry + ")";
+
+                           StripPeffAnnotationId(strModEntry);
 
                            // at this point, strModEntry should look like (118,121|MOD:00000|name
                            if (strModEntry[0]=='(' && isdigit(strModEntry[1]))  //handle possible '?' in the position field ; need to check that strModEntry looks like "(number"
@@ -767,14 +777,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                                  getline( ss, x, ',' );  // try to read the next field into it
                                  iPos = atoi(x.c_str());
                                  if (iPos <= 0)
-                                 {
-                                    if (g_staticParams.options.bVerboseOutput)
-                                    {
-                                       string strErrorMsg = " Warning: " + PeffAccession(dbe.strName) + " " + strAttribute
-                                          + " entry \"" + strWarnEntry + "\" ignored: invalid position \"" + x + "\"\n";
-                                       logout(strErrorMsg);
-                                    }
-                                 }
+                                    LogPeffIgnoredEntry(dbe.strName, strAttribute, strWarnEntry, "invalid position \"" + x + "\"");
                                  else
                                  {
                                     struct PeffModStruct pData;
@@ -791,14 +794,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                               }
                            }
                            else
-                           {
-                              if (g_staticParams.options.bVerboseOutput)
-                              {
-                                 string strErrorMsg = " Warning: " + PeffAccession(dbe.strName) + " " + strAttribute
-                                    + " entry \"" + strWarnEntry + "\" ignored: invalid position\n";
-                                 logout(strErrorMsg);
-                              }
-                           }
+                              LogPeffIgnoredEntry(dbe.strName, strAttribute, strWarnEntry, "invalid position");
                         }
                      }
 
@@ -878,8 +874,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                            // entry's residue and turned a malformed entry into a bogus variant
                            string strVariant;
 
-                           StripPeffAnnotationId(strVariantEntry);
                            string strWarnEntry = strVariantEntry + ")";   // entry as in the header, for warnings
+                           StripPeffAnnotationId(strVariantEntry);
 
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
@@ -904,14 +900,7 @@ bool CometSearch::RunSearch(int iPercentStart,
 
                               // sanity check: make sure position is positive and residue is A-Z or *
                               if (iPos<0 || ((cVariant<65 || cVariant>90) && cVariant!=42))  // char can be AA or *
-                              {
-                                 if (g_staticParams.options.bVerboseOutput)
-                                 {
-                                    string strErrorMsg = " Warning: " + PeffAccession(dbe.strName)
-                                       + " \\VariantSimple entry \"" + strWarnEntry + "\" ignored: invalid position or residue\n";
-                                    logout(strErrorMsg);
-                                 }
-                              }
+                                 LogPeffIgnoredEntry(dbe.strName, "\\VariantSimple", strWarnEntry, "invalid position or residue");
                               else
                               {
                                  struct PeffVariantSimpleStruct pData;
@@ -921,6 +910,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                                  dbe.vectorPeffVariantSimple.push_back(pData);
                               }
                            }
+                           else
+                              LogPeffIgnoredEntry(dbe.strName, "\\VariantSimple", strWarnEntry, "invalid position or residue");
                         }
                      }
 
@@ -997,8 +988,8 @@ bool CometSearch::RunSearch(int iPercentStart,
  
                         for (string& strVariantEntry : vVariantEntries)
                         {
-                           StripPeffAnnotationId(strVariantEntry);
                            string strWarnEntry = strVariantEntry + ")";   // entry as in the header, for warnings
+                           StripPeffAnnotationId(strVariantEntry);
  
                            //handle possible '?' in the position field; need to check that strVariantEntry looks like "(number"
                            if (strVariantEntry[0]=='(' && isdigit(strVariantEntry[1]))
@@ -1028,14 +1019,7 @@ bool CometSearch::RunSearch(int iPercentStart,
                               // sanity check: make sure position is correct.
                               // TODO: add sanity check to make sure replacement AAs are A-Z or *
                               if (iPosA < 0 || iPosB < 0 || iPosB < iPosA)
-                              {
-                                 if (g_staticParams.options.bVerboseOutput)
-                                 {
-                                    string strErrorMsg = " Warning: " + PeffAccession(dbe.strName)
-                                       + " \\VariantComplex entry \"" + strWarnEntry + "\" ignored: invalid positions\n";
-                                    logout(strErrorMsg);
-                                 }
-                              }
+                                 LogPeffIgnoredEntry(dbe.strName, "\\VariantComplex", strWarnEntry, "invalid positions");
                               else
                               {
                                  struct PeffVariantComplexStruct pData;
@@ -1046,6 +1030,8 @@ bool CometSearch::RunSearch(int iPercentStart,
                                  dbe.vectorPeffVariantComplex.push_back(pData);
                               }
                            }
+                           else
+                              LogPeffIgnoredEntry(dbe.strName, "\\VariantComplex", strWarnEntry, "invalid positions");
                         }
                      }
 

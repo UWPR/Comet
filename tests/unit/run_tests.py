@@ -4797,13 +4797,15 @@ def test_t52_peff_annotation_ids(comet_exe):
 # parenthesized names; plus a '?' position, a two-residue VariantSimple and an empty-residue
 # VariantSimple, which must be ignored with one clean warning apiece.  The empty "(6|)"
 # follows the valid "(9|W)": it used to inherit that 'W' and search DWTSAGNPEK (L6W).
-# Scan 3 is that bogus L6W peptide; it must not be matched.
+# Scan 3 is that bogus L6W peptide; it must not be matched.  The labeled "(1:|MOD:...)" and
+# "(2:?|W)" have an annotation-identifier label but no usable position: they must be ignored,
+# with warnings quoting the label as written.
 # t53_unbal: a stray '(' in the first name leaves the parentheses unbalanced; the half
 # cystine on C6 (LCAGWPEK) after it must still be applied, not swallowed into that entry.
 _T53_ENTRIES = (
     ("t53_mod", "MAAKDLTSAGNPEKGGGRLCAGNPEKCR",
      r"\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))"
-     r"(?|MOD:00046|x(y)z) \VariantSimple=(3|WW)(9|W)(6|)"),
+     r"(?|MOD:00046|x(y)z)(1:|MOD:00046|x) \VariantSimple=(3|WW)(9|W)(6|)(2:?|W)"),
     ("t53_unbal", "MGGKLCAGWPEKGGR",
      r"\ModResPsi=(2|MOD:00046|bad (name)(6|MOD:00798|half cystine)"),
 )
@@ -4817,8 +4819,10 @@ _T53_SPECTRA = {
 
 _T53_WARNINGS = (
     r'Warning: tr:t53_mod \ModResPsi entry "(?|MOD:00046|x(y)z)" ignored: invalid position',
+    r'Warning: tr:t53_mod \ModResPsi entry "(1:|MOD:00046|x)" ignored: invalid position',
     r'Warning: tr:t53_mod \VariantSimple entry "(3|WW)" ignored: invalid position or residue',
     r'Warning: tr:t53_mod \VariantSimple entry "(6|)" ignored: invalid position or residue',
+    r'Warning: tr:t53_mod \VariantSimple entry "(2:?|W)" ignored: invalid position or residue',
 )
 
 
