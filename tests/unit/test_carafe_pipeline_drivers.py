@@ -39,6 +39,7 @@ sys.path.insert(0, str(TOOLS_DIR))
 import carafe  # noqa: E402
 import carafe_chunk_common as common  # noqa: E402
 import carafe_prerun  # noqa: E402
+import run_carafe_chunked  # noqa: E402
 
 
 def check(cond, msg, failures):
@@ -356,6 +357,43 @@ def test_apply_params_shorthand(failures):
 
 
 # ---------------------------------------------------------------------------
+# tools/run_carafe_chunked.py: optional ai_pred.py model/acquisition flags
+# ---------------------------------------------------------------------------
+
+def _chunked_args(**kw):
+    a = argparse.Namespace(ms2_model="", instrument="", nce="", threads=0)
+    vars(a).update(kw)
+    return a
+
+
+def test_ai_pred_model_args(failures):
+    # Nothing set -> nothing forwarded: the pre-TMT ai_pred.py argv is unchanged, so
+    # the label-free runs keep ai_pred.py's own Eclipse / 27 defaults.
+    check(run_carafe_chunked.ai_pred_model_args(_chunked_args()) == [],
+          "no model/instrument/nce set must forward nothing", failures)
+    # Each flag maps to ai_pred.py's own spelling (underscore, not dash) and only when set.
+    got = run_carafe_chunked.ai_pred_model_args(
+        _chunked_args(ms2_model="C:\\m\\ms2tmt.pt", nce="34"))
+    check(got == ["--ms2_model", "C:\\m\\ms2tmt.pt", "--nce", "34"],
+          f"ms2_model+nce must forward as --ms2_model/--nce only: {got}", failures)
+    got = run_carafe_chunked.ai_pred_model_args(_chunked_args(instrument="Lumos"))
+    check(got == ["--instrument", "Lumos"],
+          f"instrument alone must forward as --instrument: {got}", failures)
+    got = run_carafe_chunked.ai_pred_model_args(_chunked_args(threads=16))
+    check(got == ["--threads", "16"],
+          f"threads must forward as --threads <int>: {got}", failures)
+    # carafe_prerun.py exposes the same three and hands them down (dash spelling) --
+    # pin the parser so a renamed flag on either side is caught here, not at scale.
+    import inspect
+    src = inspect.getsource(carafe_prerun)
+    for flag in ('"--ms2-model"', '"--instrument"', '"--nce"', '"--threads"'):
+        check(src.count(flag) >= 2,
+              f"carafe_prerun.py must both accept and forward {flag}", failures)
+    check('"--jobs", str(a.jobs)' in src and 'add_argument("--jobs"' in src,
+          "carafe_prerun.py must expose --jobs and forward it (was hardcoded to 1)", failures)
+
+
+# ---------------------------------------------------------------------------
 # tools/carafe.py umbrella CLI
 # ---------------------------------------------------------------------------
 
@@ -394,6 +432,7 @@ TESTS = [
     test_params_with,
     test_get_param,
     test_apply_params_shorthand,
+    test_ai_pred_model_args,
     test_carafe_dispatch_table,
 ]
 

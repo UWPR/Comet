@@ -89,6 +89,10 @@ namespace RealTimeSearch
          Console.WriteLine("      --index-search-type <0|1>  0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default: 1)");
          Console.WriteLine("      --mask <path>              Carafe predicted-fragment mask file");
          Console.WriteLine("                                 (fragment_index_predicted_mask_file); FI_DB only, omit/empty = disabled");
+         Console.WriteLine("      --isotope-error <0-5>      comet.params isotope_error: 0=off (default), 1=0/1, 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1");
+         Console.WriteLine("      --fragment-bin-tol <x>     comet.params fragment_bin_tol (default 0.02; ion trap: 1.0005)");
+         Console.WriteLine("      --fragment-bin-offset <x>  comet.params fragment_bin_offset (default 0.0; ion trap: 0.4)");
+         Console.WriteLine("      --theoretical-fragment-ions <0|1>  comet.params theoretical_fragment_ions: 0=flanking peaks (default, high-res), 1=M peak only (ion trap)");
          Console.WriteLine("      -h, --help                 show this message");
       }
 
@@ -104,6 +108,10 @@ namespace RealTimeSearch
          bool bEnableAScorePro = true;         // 0=off, 1=localize all variable mods (maps to print_ascorepro_score=-1 internally)
          int iIndexSearchType = 1;             // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default)
          string sPredictedMaskFile = "";       // fragment_index_predicted_mask_file; FI_DB only, empty = disabled
+         int iIsotopeError = 0;                // comet.params isotope_error; 0 keeps the harness's historical behavior
+         double dFragmentBinTol = 0.02;        // comet.params fragment_bin_tol; the historical hardcoded high-res value
+         double dFragmentBinOffset = 0.0;      // comet.params fragment_bin_offset
+         int iTheoreticalFragmentIons = 0;     // comet.params theoretical_fragment_ions; 0=flanking peaks (historical)
 
          for (int i = 0; i < args.Length; ++i)
          {
@@ -168,6 +176,52 @@ namespace RealTimeSearch
                   sPredictedMaskFile = NextArg(args, ref i, arg);
                   break;
 
+               case "--fragment-bin-tol":
+                  {
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!double.TryParse(sVal, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out dFragmentBinTol) || dFragmentBinTol < 0.01)
+                     {
+                        Console.WriteLine(" Warning: Invalid --fragment-bin-tol '{0}', using default (0.02)", sVal);
+                        dFragmentBinTol = 0.02;
+                     }
+                  }
+                  break;
+
+               case "--fragment-bin-offset":
+                  {
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!double.TryParse(sVal, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out dFragmentBinOffset) || dFragmentBinOffset < 0.0 || dFragmentBinOffset > 1.0)
+                     {
+                        Console.WriteLine(" Warning: Invalid --fragment-bin-offset '{0}', using default (0.0)", sVal);
+                        dFragmentBinOffset = 0.0;
+                     }
+                  }
+                  break;
+
+               case "--theoretical-fragment-ions":
+                  {
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!int.TryParse(sVal, out iTheoreticalFragmentIons) || (iTheoreticalFragmentIons != 0 && iTheoreticalFragmentIons != 1))
+                     {
+                        Console.WriteLine(" Warning: Invalid --theoretical-fragment-ions '{0}', using default (0, flanking peaks)", sVal);
+                        iTheoreticalFragmentIons = 0;
+                     }
+                  }
+                  break;
+
+               case "--isotope-error":
+                  {
+                     // Runtime scoring settings are otherwise fixed constants in ConfigureInputSettings();
+                     // this one is exposed so a search can match a comet.params that sets isotope_error != 0.
+                     string sVal = NextArg(args, ref i, arg);
+                     if (!int.TryParse(sVal, out iIsotopeError) || iIsotopeError < 0 || iIsotopeError > 5)
+                     {
+                        Console.WriteLine(" Warning: Invalid --isotope-error '{0}', using default (0, off)", sVal);
+                        iIsotopeError = 0;
+                     }
+                  }
+                  break;
+
                default:
                   Console.WriteLine(" Error: unrecognized argument '{0}'\n", arg);
                   PrintUsage();
@@ -202,7 +256,11 @@ namespace RealTimeSearch
             bDatabaseSearch,
             bEnableAScorePro,
             iIndexSearchType,
-            sPredictedMaskFile);
+            sPredictedMaskFile,
+            iIsotopeError,
+            dFragmentBinTol,
+            dFragmentBinOffset,
+            iTheoreticalFragmentIons);
 
          if (File.Exists(rawFileName) && File.Exists(sRawFileReference))
          {
@@ -691,7 +749,11 @@ namespace RealTimeSearch
             bool bDatabaseSearch,
             bool bEnableAScorePro,
             int iIndexSearchType,
-            string sPredictedMaskFile)
+            string sPredictedMaskFile,
+            int iIsotopeError = 0,
+            double dFragmentBinTol = 0.02,
+            double dFragmentBinOffset = 0.0,
+            int iTheoreticalFragmentIons = 0)
          {
             String sTmp;
             int iTmp;
@@ -724,15 +786,15 @@ namespace RealTimeSearch
 
             SearchMgr.SetParam("num_threads", numThreads.ToString(), numThreads);
 
-            dTmp = 0.02; // fragment bin width
-            sTmp = dTmp.ToString();
+            dTmp = dFragmentBinTol; // --fragment-bin-tol (default 0.02, the historical hardcoded value)
+            sTmp = dTmp.ToString(System.Globalization.CultureInfo.InvariantCulture);
             SearchMgr.SetParam("fragment_bin_tol", sTmp, dTmp);
 
-            dTmp = 0.0;  // fragment bin offset
-            sTmp = dTmp.ToString();
+            dTmp = dFragmentBinOffset; // --fragment-bin-offset (default 0.0)
+            sTmp = dTmp.ToString(System.Globalization.CultureInfo.InvariantCulture);
             SearchMgr.SetParam("fragment_bin_offset", sTmp, dTmp);
 
-            iTmp = 0; // 0=use flanking peaks, 1=M peak only
+            iTmp = iTheoreticalFragmentIons; // --theoretical-fragment-ions (default 0 = flanking peaks)
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("theoretical_fragment_ions", sTmp, iTmp);
 
@@ -752,7 +814,7 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
+            iTmp = iIsotopeError; // --isotope-error; 0=off (default), 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 

@@ -126,6 +126,25 @@ def find_default_ai_pred_py():
     return candidates[1]  # keep the historical default in the error message
 
 
+def ai_pred_model_args(args):
+    """Optional ai_pred.py flags forwarded verbatim when set: --ms2_model (a pretrained MS2
+    base model such as Carafe's TMT model, an ai_pred.py flag introduced on Carafe's tmt
+    branch), --instrument and --nce (acquisition settings the MS2 model conditions on;
+    ai_pred.py's own defaults are Eclipse / 27 when omitted), and --threads (torch CPU
+    thread count; ai_pred.py's own default applies when 0). Kept as one function so the
+    driver's argv and the tests that pin it stay in step."""
+    out = []
+    if args.ms2_model:
+        out += ["--ms2_model", args.ms2_model]
+    if args.instrument:
+        out += ["--instrument", args.instrument]
+    if args.nce:
+        out += ["--nce", args.nce]
+    if args.threads:
+        out += ["--threads", str(args.threads)]
+    return out
+
+
 def write_text(path, text):
     with open(path, "w", newline="\n") as f:
         f.write(text + "\n")
@@ -142,7 +161,10 @@ def run_chunk(chunk, args, pred_dir):
 
     nrows = common.count_data_rows(chunk)
     print(f"[{base}] starting: {nrows} rows, mode={args.mode} device={args.device} "
-          f"tf_type={args.tf_type} parquet={int(args.parquet)}, {common.utc_stamp()}")
+          f"tf_type={args.tf_type} parquet={int(args.parquet)}"
+          f"{' ms2_model=' + args.ms2_model if args.ms2_model else ''}"
+          f"{' instrument=' + args.instrument if args.instrument else ''}"
+          f"{' nce=' + args.nce if args.nce else ''}, {common.utc_stamp()}")
     write_text(os.path.join(chunk_out, ".start_time"), common.utc_stamp())
     start_ts = time.monotonic()
 
@@ -161,6 +183,7 @@ def run_chunk(chunk, args, pred_dir):
                 return False
         in_file = pq_in
         extra_args = ["--fast"]
+    extra_args += ai_pred_model_args(args)
 
     with open(os.path.join(chunk_out, "ai_pred.log"), "wb") as log:
         proc = subprocess.Popen(
@@ -228,7 +251,18 @@ def main(argv=None):
     ap.add_argument("--jobs", type=int, default=1)
     ap.add_argument("--venv-python", default=common.default_venv_python())
     ap.add_argument("--ai-pred-py", default=find_default_ai_pred_py())
+    ap.add_argument("--ms2-model", default="",
+                    help="pretrained MS2 base model (.pt) forwarded as ai_pred.py --ms2_model "
+                         "(e.g. Carafe's TMT model; needs the tmt-branch ai_pred.py)")
+    ap.add_argument("--instrument", default="",
+                    help="forwarded as ai_pred.py --instrument (default: ai_pred.py's own, Eclipse)")
+    ap.add_argument("--nce", default="",
+                    help="forwarded as ai_pred.py --nce (default: ai_pred.py's own, 27)")
+    ap.add_argument("--threads", type=int, default=0,
+                    help="forwarded as ai_pred.py --threads (torch CPU threads; 0 = ai_pred.py's own default)")
     args = ap.parse_args(argv)
+    if args.ms2_model and not os.path.isfile(args.ms2_model):
+        sys.exit(f"--ms2-model not found: {args.ms2_model}")
 
     if not os.path.isfile(args.in_tsv):
         sys.exit(f"Input file not found: {args.in_tsv}")

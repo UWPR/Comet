@@ -66,6 +66,11 @@ Options:
   --min-relative-intensity F / --min-kept-peaks N   mask thresholds (defaults 0.10 / 6)
   --workers N             parallelism for translation + mask builds (default: cpus-2)
   --venv-python PATH / --ai-pred-py PATH   forwarded to run_carafe_chunked.py
+  --jobs N                concurrent ai_pred.py chunk processes (default 1; 3x8-thread jobs measured
+                          1.6x the aggregate rows/s of one on the 20-core dev machine, 2026-09-22)
+  --ms2-model FILE / --instrument NAME / --nce N / --threads N   forwarded through run_carafe_chunked.py
+                          to ai_pred.py (--ms2_model needs Carafe's tmt-branch ai_pred.py;
+                          e.g. --ms2-model ms2tmt.pt --nce 34 for a TMT build)
   --stop-after STAGE      stop after: idx, export, convert, predict, cps, mask
   --delete-raw            after the store verifies (s5), delete the raw per-chunk Carafe
                           prediction output (the ~hundreds-of-GB transient). Default OFF.
@@ -250,13 +255,21 @@ class PrerunDriver:
                        "--out", os.path.join(a.out_dir, "prediction"),
                        "--chunk-size", str(a.chunk_size), "--mode", a.carafe_mode,
                        "--device", "cpu", "--tf-type", "ms2",
-                       "--limit-chunks", "0", "--jobs", "1"]
+                       "--limit-chunks", "0", "--jobs", str(a.jobs)]
         if a.venv_python:
             predict_cmd += ["--venv-python", a.venv_python]
         if a.ai_pred_py:
             predict_cmd += ["--ai-pred-py", a.ai_pred_py]
         if a.parquet:
             predict_cmd += ["--parquet"]
+        if a.ms2_model:
+            predict_cmd += ["--ms2-model", a.ms2_model]
+        if a.instrument:
+            predict_cmd += ["--instrument", a.instrument]
+        if a.nce:
+            predict_cmd += ["--nce", a.nce]
+        if a.threads:
+            predict_cmd += ["--threads", str(a.threads)]
         self.run_stage("s4_predict",
                        "Carafe prediction (run_carafe_chunked.py -- the expensive step)",
                        predict_cmd)
@@ -407,6 +420,16 @@ def main(argv=None):
     ap.add_argument("--workers", type=int, default=common.default_workers())
     ap.add_argument("--venv-python", default="")
     ap.add_argument("--ai-pred-py", default="")
+    ap.add_argument("--ms2-model", default="",
+                    help="pretrained MS2 base model (.pt), forwarded to run_carafe_chunked.py "
+                         "--ms2-model -> ai_pred.py --ms2_model (Carafe tmt branch)")
+    ap.add_argument("--instrument", default="", help="forwarded to ai_pred.py --instrument")
+    ap.add_argument("--nce", default="", help="forwarded to ai_pred.py --nce")
+    ap.add_argument("--threads", type=int, default=0,
+                    help="forwarded to ai_pred.py --threads (torch CPU threads; 0 = its default)")
+    ap.add_argument("--jobs", type=int, default=1,
+                    help="concurrent ai_pred.py chunk processes (run_carafe_chunked.py --jobs; "
+                         "default 1 -- calibrate on the target machine first)")
     ap.add_argument("--stop-after", default="",
                     choices=("", "idx", "export", "convert", "predict", "cps", "mask"))
     ap.add_argument("--delete-raw", action="store_true")
