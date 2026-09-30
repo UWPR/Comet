@@ -5,13 +5,13 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (84 Python test IDs), and 76 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (85 Python test IDs), and 76 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
-Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T55): `run_tests.py` registers 63 named
-tests plus 21 generated `t21_*` legacy cases (84 IDs, 10 of them integration-only);
+Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T56): `run_tests.py` registers 64 named
+tests plus 21 generated `t21_*` legacy cases (85 IDs, 10 of them integration-only);
 `CometUnitTests.exe` has 76 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T55
+### `run_tests.py` -- T1-T56
 
 | ID | Summary |
 |---|---|
@@ -106,6 +106,7 @@ not exist.
 | **T53** (`t53_peff_nested_parens`) | PEFF entries whose names contain parentheses (UniPEFF PSI-MOD names such as `N6-(4-amino-2-hydroxybutyl)-L-lysine`): attribute values are split on top-level parentheses only. `\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))` must apply both mods -- formerly a name ending in `)` stopped parsing and silently dropped that mod and every later entry on the protein -- and the ignored `(?|...)` mod, two-residue `\VariantSimple=(3|WW)` and empty-residue `\VariantSimple=(6|)` entries must each give exactly one clean `peff_verbose_output` warning quoting the entry as written, with no name-fragment warnings. `(6|)` follows a valid `(9|W)` and must not inherit its `W` (a failed `>> strVariant` leaves the string unchanged; the formerly shared variable turned it into a bogus L6W variant, matched by scan 3). A second entry has a stray `(` in a name (`\ModResPsi=(2|MOD:00046|bad (name)(6|MOD:00798|half cystine)`): unbalanced text falls back to splitting on every `)`, so the half cystine after it must still be applied (scan 4). Labeled entries with no usable position (`(1:|MOD:00046|x)`, `\VariantSimple=(2:?|W)`) must be ignored with warnings that quote the `<label>:` as written. Generated into a temp dir, reusing T52's OBO and spectrum writer. |
 | **T54** (`t54_pyroglu_all_paths`) | Peptide-N-terminal pyroglutamate (`-17.026549 Q 0 1 0 2`, `-18.010565 E 0 1 0 2`) on plain FASTA, FI_DB and PI_DB: `Q[-17]TAGSPELK` and `E[-18]GTWLDNAPK` are found, the internal Q of `AGQEAPLSVR` is never modified (an unrestricted `Q` control does modify it on every path), the `.idx` `VariableMod:` slots persist the `:0:2` restriction, and a protein-terminus distance > 0 (`M 0 3 2 0`) warns on the index paths only. FASTA, spectra and params are generated into a temp dir. |
 | **T55** (`t55_ascorepro_position_filter`) | AScorePro respects position restrictions: the spectrum carries pyroglutamate on the internal Q5 of `QTAGQPELK`, which `Q 0 1 0 2` forbids, so the search reports `Q[-17]TAGQPELK`; with `print_ascorepro_score = 1` on all three paths the peptide is not relocalized to Q5 and the site scores never name position 5 (Comet passes AScorePro a peptidoform filter; without it AScorePro relocalizes to `QTAGQ[-17]PELK`). |
+| **T56** (`t56_idx_build_determinism`) | Default-suite counterpart of T18: a generated 400-protein FASTA where every protein repeats a 10-mer (short path) and a 14-mer (long path) at its N-terminus and internally with a different next residue each time, so one protein feeds the dedup merge several tuples of the same sequence. No-enzyme builds (length 8-15) with `num_threads = 1` and `16` must be byte-identical, with `equal_I_and_L` 0 and 1. Fails on the pre-fix build (the dedup sort tied such copies and the stored representative followed thread scheduling). |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T55; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T56; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -24,6 +24,7 @@ Exit code 0 = all tests passed; non-zero = failures.
 import argparse
 import filecmp
 import os
+import random
 import re
 import shutil
 import struct
@@ -5052,6 +5053,61 @@ def test_t55_ascorepro_position_filter(comet_exe):
             site = r.get("ascore_sitescores") or ""
             check("5:" not in site,
                   f"{label}: AScorePro site scores never name the forbidden Q5, got {site!r}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T56 -- .idx build determinism in the default suite. T18 checks it at scale but needs
+# human.small.fasta (integration-only). A peptide repeated within one protein with different
+# protein-terminus context (N-terminal copy + internal copies, different next residue each)
+# reaches the dedup merge as several tuples of one protein; before the tie-break fix their
+# order -- and so the stored representative -- depended on thread scheduling. The generated
+# FASTA puts a 10-mer (short-peptide path) and a 14-mer (long path) in every protein; a
+# no-enzyme build with 1 and with 16 threads must be byte-identical, with and without
+# equal_I_and_L. Reproduces the pre-fix nondeterminism (both builds differed).
+# ---------------------------------------------------------------------------
+
+def _t56_write_fasta(path, n=400, seed=56):
+    rnd = random.Random(seed)
+    aas = "ACDEFGHIKLMNPQRSTVWY"
+    lines = []
+    for p in range(n):
+        rand = lambda k: "".join(rnd.choice(aas) for _ in range(k))
+        short, long_ = rand(10), rand(14)
+        lines += [f">t56_{p:04d}", short + rand(25) + short + rand(25) + long_ + rand(25) + long_ + rand(20)]
+    path.write_text("\n".join(lines) + "\n")
+
+
+@register("t56_idx_build_determinism")
+def test_t56_idx_build_determinism(comet_exe):
+    """T56: no-enzyme .idx builds with 1 and 16 threads are byte-identical when peptides repeat
+    within a protein with different terminus context (short and long paths, I/L on and off)."""
+    global PARAMS_TEMPLATE
+    failures = []
+    base_template = PARAMS_TEMPLATE
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t56.fasta"
+        _t56_write_fasta(fasta)
+        try:
+            for il in (0, 1):
+                kw = {"enzyme": 0, "missed_cleavage": 2, "len_min": 8, "len_max": 15,
+                      "mass_low": 200.0, "equal_IL": il, "static_C": 0.0}
+                built = []
+                for n in (1, 16):
+                    PARAMS_TEMPLATE = base_template.replace("num_threads = 4", f"num_threads = {n}")
+                    idx = run_comet_index(comet_exe, fasta, kw)
+                    if not check(idx is not None and Path(idx).exists(),
+                                 f"equal_IL={il}: {n}-thread build produced an .idx", failures):
+                        break
+                    dst = tmp / f"il{il}_t{n}.idx"
+                    shutil.copy2(idx, dst)
+                    built.append(dst)
+                if len(built) == 2:
+                    check(filecmp.cmp(str(built[0]), str(built[1]), shallow=False),
+                          f"equal_IL={il}: 1-thread and 16-thread .idx builds are byte-identical", failures)
+        finally:
+            PARAMS_TEMPLATE = base_template
     return failures
 
 # ---------------------------------------------------------------------------
