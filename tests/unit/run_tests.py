@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T52; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T53; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -4798,14 +4798,21 @@ def test_t52_peff_annotation_ids(comet_exe):
 # VariantSimple, which must be ignored with one clean warning apiece.  The empty "(6|)"
 # follows the valid "(9|W)": it used to inherit that 'W' and search DWTSAGNPEK (L6W).
 # Scan 3 is that bogus L6W peptide; it must not be matched.
-_T53_ENTRY = ("t53_mod", "MAAKDLTSAGNPEKGGGRLCAGNPEKCR",
-              r"\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))"
-              r"(?|MOD:00046|x(y)z) \VariantSimple=(3|WW)(9|W)(6|)")
+# t53_unbal: a stray '(' in the first name leaves the parentheses unbalanced; the half
+# cystine on C6 (LCAGWPEK) after it must still be applied, not swallowed into that entry.
+_T53_ENTRIES = (
+    ("t53_mod", "MAAKDLTSAGNPEKGGGRLCAGNPEKCR",
+     r"\ModResPsi=(8|MOD:00046|O-phospho-(L)-serine)(20|MOD:00798|half (cystine))"
+     r"(?|MOD:00046|x(y)z) \VariantSimple=(3|WW)(9|W)(6|)"),
+    ("t53_unbal", "MGGKLCAGWPEKGGR",
+     r"\ModResPsi=(2|MOD:00046|bad (name)(6|MOD:00798|half cystine)"),
+)
 
 _T53_SPECTRA = {
     1: ("DLTSAGNPEK", {3: 79.966331}, "t53_mod"),
     2: ("LCAGNPEK", {1: -1.007825}, "t53_mod"),
     3: ("DWTSAGNPEK", {}, "t53_mod"),
+    4: ("LCAGWPEK", {1: -1.007825}, "t53_unbal"),
 }
 
 _T53_WARNINGS = (
@@ -4830,11 +4837,12 @@ def test_t53_peff_nested_parens(comet_exe):
         ms2 = tmp / "t53.ms2"
         _t52_write_ms2(ms2, _T53_SPECTRA)
 
-        prot, seq, attrs = _T53_ENTRY
+        lines = ["# PEFF 1.0", "# //", "# DbName=t53", "# Prefix=tr",
+                 f"# NumberOfEntries={len(_T53_ENTRIES)}", "# SequenceType=AA", "# //"]
+        for prot, seq, attrs in _T53_ENTRIES:
+            lines += [f">tr:{prot} \\PName={prot} {attrs}", seq]
         peff = tmp / "t53.peff"
-        peff.write_text("\n".join(["# PEFF 1.0", "# //", "# DbName=t53", "# Prefix=tr",
-                                   "# NumberOfEntries=1", "# SequenceType=AA", "# //",
-                                   f">tr:{prot} \\PName={prot} {attrs}", seq]) + "\n")
+        peff.write_text("\n".join(lines) + "\n")
 
         params = legacy_cases.build_params(database=fmt(peff), enzyme1=1, static_C=0.0)
         params = _set_param_line(params, "peff_format", "1")
@@ -4850,7 +4858,7 @@ def test_t53_peff_nested_parens(comet_exe):
             return failures
 
         rank1 = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"}
-        for scan, want in ((1, "DLTS[79.9663]AGNPEK"), (2, "LC[-1.0078]AGNPEK")):
+        for scan, want in ((1, "DLTS[79.9663]AGNPEK"), (2, "LC[-1.0078]AGNPEK"), (4, "LC[-1.0078]AGWPEK")):
             got = rank1.get(scan, {}).get("modified_peptide", "")
             check(want in got, f"scan {scan} rank-1 carries its parenthesized-name PEFF mod: want {want}, got {got!r}",
                   failures)

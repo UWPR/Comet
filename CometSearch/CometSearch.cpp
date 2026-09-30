@@ -95,7 +95,8 @@ static void StripPeffAnnotationId(string& strEntry)
 // each returned without its closing ')' (e.g. "(51|MOD:00125|N6-(4-amino-2-hydroxybutyl)-L-lysine").
 // Parentheses nested inside an entry, as in PSI-MOD names, stay part of that entry; splitting
 // on every ')' instead cut such an entry in two and logged the name fragment as a bad entry.
-// An entry left unclosed at the end of the string is still returned.
+// If the parentheses never balance (a stray '(' in a name), the text from the unclosed entry
+// on is split on every ')' as before, so one malformed name can't swallow the entries after it.
 static void SplitPeffEntries(const char* szValue,
                              vector<string>& vEntries)
 {
@@ -119,7 +120,15 @@ static void SplitPeffEntries(const char* szValue,
    }
 
    if (iDepth > 0)
-      vEntries.push_back(string(pStart));
+   {
+      istringstream ssRest(pStart);
+      string strEntry;
+      while (getline(ssRest, strEntry, ')'))
+      {
+         if (!strEntry.empty())
+            vEntries.push_back(strEntry);
+      }
+   }
 }
 
 // Protein accession for PEFF warning messages: dbe.strName up to the first whitespace, which
