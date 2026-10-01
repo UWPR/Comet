@@ -5324,24 +5324,37 @@ def test_t60_index_search_type_scope(comet_exe):
             head = idx.read_bytes()[:4096].decode("latin-1").splitlines()
             return next((l for l in head if l.startswith("IndexSearchType:")), "")
 
-        # (a) FASTA database: an explicit 0 is ignored and warned; the template default 1 is quiet;
-        #     results identical with and without the parameter
+        # comet -p writes no active index_search_type line; comet -q writes "index_search_type = -1"
+        # (-1 = not set), so a 0/1 in a params file always expresses intent
+        for flag, want in (("-p", None), ("-q", "-1")):
+            (tmp / "comet.params.new").unlink(missing_ok=True)
+            rc = subprocess.run([str(comet_exe), flag], capture_output=True, text=True, cwd=str(tmp)).returncode
+            tmpl = (tmp / "comet.params.new").read_text() if (tmp / "comet.params.new").exists() else ""
+            m = re.search(r"^index_search_type\s*=\s*(-?\d+)", tmpl, re.M)
+            check(rc == 0 and tmpl and (m.group(1) if m else None) == want,
+                  f"comet {flag} template: active index_search_type line is {want!r}, got {m.group(0) if m else None!r}", failures)
+
+        # (a) FASTA database: any explicit value is ignored and warned; results identical with and
+        #     without the parameter
         rc0, ref, log0 = search(fasta)
         rc1, got, log1 = search(fasta, 0)
         rc2, got2, log2 = search(fasta, 1)
         check(rc0 == 0 and rc1 == 0 and rc2 == 0 and ref.get(1, {}).get("plain_peptide") == "QTAGSPELK", "FASTA searches ran", failures)
         check("index_search_type = 0 is ignored" in log1 and "not an .idx file" in log1,
               "FASTA database + index_search_type = 0: 'ignored: not an .idx file' warning printed", failures)
+        check("index_search_type = 1 is ignored" in log2 and "not an .idx file" in log2,
+              "FASTA database + index_search_type = 1: 'ignored: not an .idx file' warning printed", failures)
         check("index_search_type" not in log0, "no warning when the parameter is absent", failures)
-        check("index_search_type" not in log2, "FASTA database + index_search_type = 1 (comet -p default): no warning", failures)
-        check(ref.get(1) == got.get(1) == got2.get(1), "FASTA database: results identical with and without index_search_type", failures)
+        rc3, got3, log3 = search(fasta, -1)
+        check(rc3 == 0 and "index_search_type" not in log3, "FASTA database + index_search_type = -1 (comet -q default): no warning", failures)
+        check(ref.get(1) == got.get(1) == got2.get(1) == got3.get(1), "FASTA database: results identical with and without index_search_type", failures)
 
         # (b) invalid value: warned, treated as 1
         rc, _, log = search(fasta, 5)
-        check(rc == 0 and "index_search_type = 5 is not 0 or 1; using 1" in log, "invalid value warns and uses 1", failures)
+        check(rc == 0 and "index_search_type = 5 is not -1, 0 or 1; using the default" in log, "invalid value warns and uses the default", failures)
 
         # (c) missing .idx + index_search_type = 0: a peptide index is auto-built; = 1 / absent: fragment ion index
-        for ist, want in ((0, "peptide index"), (1, "fragment ion index"), (None, "fragment ion index")):
+        for ist, want in ((0, "peptide index"), (1, "fragment ion index"), (-1, "fragment ion index"), (None, "fragment ion index")):
             idx.unlink(missing_ok=True)
             rc, r1, log = search(idx, ist)
             check(rc == 0 and idx.exists() and want in idx_type(),
@@ -5365,8 +5378,15 @@ def test_t60_index_search_type_scope(comet_exe):
         check(rc == 0 and idx.exists() and "peptide index" in idx_type() and "is ignored" not in log,
               f"-j build with index_search_type = 1 builds a peptide index without a warning (rc={rc})", failures)
         rc, r1, log = search(idx, 1)
-        check(rc == 0 and "is ignored" not in log and r1.get(1, {}).get("plain_peptide") == "QTAGSPELK",
-              "existing PI .idx + index_search_type = 1 (default): searched as PI, no warning", failures)
+        check(rc == 0 and "index_search_type = 1 is ignored" in log and "is a peptide index" in log and "rebuild it with -i" in log
+              and r1.get(1, {}).get("plain_peptide") == "QTAGSPELK",
+              "existing PI .idx + index_search_type = 1: searched as PI, warning names the file's type and -i", failures)
+        rc, _, log = search(idx, 0)
+        check(rc == 0 and "is ignored" not in log, "existing PI .idx + index_search_type = 0: no warning", failures)
+        rc, _, log = search(idx)
+        check(rc == 0 and "index_search_type" not in log, "existing PI .idx, parameter absent: no warning", failures)
+        rc, _, log = search(idx, -1)
+        check(rc == 0 and "index_search_type" not in log, "existing PI .idx + index_search_type = -1: no warning", failures)
     return failures
 
 # ---------------------------------------------------------------------------
