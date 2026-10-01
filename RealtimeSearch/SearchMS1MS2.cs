@@ -124,8 +124,8 @@ namespace RealTimeSearch
          {
             if (!int.TryParse(args[5], out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
             {
-               Console.WriteLine(" Warning: Invalid index_search_type '{0}', using default (1, FI_DB)", args[5]);
-               iIndexSearchType = 1;
+               Console.WriteLine(" Warning: Invalid index_search_type '{0}', ignoring it (not sent; an auto-build then makes a fragment ion index)", args[5]);
+               iIndexSearchType = -1;
             }
          }
 

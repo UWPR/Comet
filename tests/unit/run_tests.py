@@ -5193,7 +5193,8 @@ def test_t57_position_rule_edge_cases(comet_exe):
         # dimethyl mate in the same group; the one n-term site must be counted once, so the
         # acetylated QTAGSPELK (length 9) is generated and the 10-mer is not
         rc, rows, log = _t57_plain(comet_exe, tmp, ("42.010565 n 1 3 8 3 0 0.0", "28.031300 n 1 3 -1 0 0 0.0"),
-                                   {1: ("QTAGSPELK", {0: 42.010565}, "t57_a"), 2: ("AGPEMNVSSR", {0: 42.010565}, "t57_a")},
+                                   {1: ("QTAGSPELK", {0: 42.010565}, "t57_a"), 2: ("AGPEMNVSSR", {0: 42.010565}, "t57_a"),
+                                    3: ("AGPEMNVSSR", {0: 28.031300}, "t57_a")},
                                    "bin_nterm_pepc")
         r = rows.get(1, {})
         check(rc == 0 and r.get("plain_peptide") == "QTAGSPELK" and "42.010565_n" in (r.get("modifications") or ""),
@@ -5202,6 +5203,9 @@ def test_t57_position_rule_edge_cases(comet_exe):
         r = rows.get(2, {})
         check(not (r.get("plain_peptide") == "AGPEMNVSSR" and "42.010565_n" in (r.get("modifications") or "")),
               f"binary group: no acetyl on the 10-mer AGPEMNVSSR, got {r.get('modified_peptide')!r}", failures)
+        r = rows.get(3, {})   # positive control: the 10-mer is searched and takes the unrestricted mate
+        check(r.get("plain_peptide") == "AGPEMNVSSR" and "28.031300_n" in (r.get("modifications") or ""),
+              f"binary group: dimethyl (unrestricted mate) placed on the 10-mer AGPEMNVSSR, got {r.get('modified_peptide')!r}", failures)
 
         # c-term mod within 11 of the protein N-terminus: QTAGSPELK ends at position 11; its
         # missed-cleavage extensions end past 11 (the peptide's own c-term mod must still apply)
@@ -5367,8 +5371,9 @@ def test_t60_index_search_type_scope(comet_exe):
         # (d) existing .idx of the other type: ignored, warned naming the file's type; explicit -i/-j builds stay quiet
         idx.unlink(missing_ok=True)
         rc, _, log = search(fasta, 0, flag="-i")
-        check(rc == 0 and idx.exists() and "fragment ion index" in idx_type() and "is ignored" not in log,
-              f"-i build with index_search_type = 0 builds a fragment ion index without a warning (rc={rc})", failures)
+        check(rc == 0 and idx.exists() and "fragment ion index" in idx_type() and "is ignored" not in log
+              and "index_search_type = 0 is overridden by -i" in log,
+              f"-i build with index_search_type = 0 builds a fragment ion index and warns that -i overrides it (rc={rc})", failures)
         rc, r1, log = search(idx, 0)
         check(rc == 0 and "index_search_type = 0 is ignored" in log and "is a fragment ion index" in log and "rebuild it with -j" in log,
               "existing FI .idx + index_search_type = 0: warning names the file's type and -j", failures)
@@ -5377,8 +5382,9 @@ def test_t60_index_search_type_scope(comet_exe):
         check(rc == 0 and "is ignored" not in log, "existing FI .idx + index_search_type = 1: no warning", failures)
         idx.unlink(missing_ok=True)
         rc, _, log = search(fasta, 1, flag="-j")
-        check(rc == 0 and idx.exists() and "peptide index" in idx_type() and "is ignored" not in log,
-              f"-j build with index_search_type = 1 builds a peptide index without a warning (rc={rc})", failures)
+        check(rc == 0 and idx.exists() and "peptide index" in idx_type() and "is ignored" not in log
+              and "index_search_type = 1 is overridden by -j" in log,
+              f"-j build with index_search_type = 1 builds a peptide index and warns that -j overrides it (rc={rc})", failures)
         rc, r1, log = search(idx, 1)
         check(rc == 0 and "index_search_type = 1 is ignored" in log and "is a peptide index" in log and "rebuild it with -i" in log
               and r1.get(1, {}).get("plain_peptide") == "QTAGSPELK",
@@ -5389,6 +5395,9 @@ def test_t60_index_search_type_scope(comet_exe):
         check(rc == 0 and "index_search_type" not in log, "existing PI .idx, parameter absent: no warning", failures)
         rc, _, log = search(idx, -1)
         check(rc == 0 and "index_search_type" not in log, "existing PI .idx + index_search_type = -1: no warning", failures)
+        idx.unlink(missing_ok=True)
+        rc, _, log = search(fasta, 1, flag="-i")
+        check(rc == 0 and idx.exists() and "index_search_type" not in log, "-i build with index_search_type = 1: quiet (agrees)", failures)
     return failures
 
 # ---------------------------------------------------------------------------

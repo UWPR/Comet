@@ -1765,12 +1765,23 @@ bool CometSearchManager::InitializeStaticParams()
          && !g_staticParams.options.bCreateFragmentIndex && !g_staticParams.options.bCreatePeptideIndex)
    {
       // Plain FASTA (or PEFF) search: the parameter has no effect here (it is never set by the
-      // comet -p template, so its presence expresses intent). An explicit -i/-j build stays
-      // quiet -- the flag, not the parameter, chose the type.
+      // comet -p template, so its presence expresses intent). A -i/-j build that agrees with
+      // the value stays quiet; one that disagrees warns in the branch below.
       char szMsg[SIZE_FILE + 256];
       snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is not an .idx file (plain FASTA"
             " search). It only selects the index type to auto-build when database_name names an .idx file that does not exist yet.\n",
             g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase);
+      logout(szMsg);
+   }
+   else if ((g_staticParams.options.bCreateFragmentIndex && g_staticParams.options.iIndexSearchType == 0)
+         || (g_staticParams.options.bCreatePeptideIndex && g_staticParams.options.iIndexSearchType == 1))
+   {
+      // Explicit -i/-j disagreeing with the parameter: the flag wins; say so now rather than at
+      // the first search of the resulting .idx.
+      const bool bFI = g_staticParams.options.bCreateFragmentIndex;
+      char szMsg[256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is overridden by %s: building a %s.\n",
+            g_staticParams.options.iIndexSearchType, bFI ? "-i" : "-j", bFI ? "fragment ion index" : "peptide index");
       logout(szMsg);
    }
 

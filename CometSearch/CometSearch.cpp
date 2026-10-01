@@ -6305,6 +6305,10 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
       if (vm.bUseMod && vm.iWhichTerm == 3 && vm.iVarModTermDistance >= 0)
          bAnyPepCtermRule = true;
    }
+   // Per start position: binary-group slots whose n-term site the start-residue pass counted
+   // through a group mate (no distance test); the per-end which_term 3 pass must not count
+   // that one physical site again.
+   bool pbNtermViaMate[VMODS];
 
    // do not apply PEFF mods to a PEFF variant peptide
    if (_proteinInfo.iPeffOrigResiduePosition < 0 && iSize > 0)
@@ -6622,6 +6626,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
                                                       // The start of the peptide is established; need to evaluate
                                                       // where the end of the peptide is.
+                                                      memset(pbNtermViaMate, 0, sizeof(pbNtermViaMate));
                                                       for (iTmpEnd = iStartPos; iTmpEnd <= iEndPos; ++iTmpEnd)
                                                       {
                                                          if (iTmpEnd - iStartPos + 1 <= g_staticParams.options.peptideLengthRange.iEnd)
@@ -6790,6 +6795,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                                  && VarModNtermAllowed(ii, iStartPos))
                                                                               {
                                                                                  _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                                 pbNtermViaMate[i] = true;
                                                                                  bMatched = true;
                                                                               }
 
@@ -6849,18 +6855,10 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                                         if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
                                                                         {
-                                                                           // The start-residue binary pass could not count this slot's own n-term site (end
-                                                                           // unknown) and then fell back to a group mate with an n-term code, which it counts
-                                                                           // without a distance test; counting the one physical site again here would fail the
-                                                                           // group-sum check. Mirror that fallback's condition and skip when it applied.
-                                                                           bool bCountedViaMate = false;
-                                                                           for (int ii = i + 1; ii < VMODS && !bCountedViaMate; ++ii)
-                                                                           {
-                                                                              const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
-                                                                              if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && VarModNtermAllowed(ii, iStartPos))
-                                                                                 bCountedViaMate = true;
-                                                                           }
-                                                                           if (!bCountedViaMate)
+                                                                           // The start-residue pass could not count this slot's own n-term site (end unknown)
+                                                                           // and may have counted it through a group mate (pbNtermViaMate); count the one
+                                                                           // physical site only if it did not.
+                                                                           if (!pbNtermViaMate[i])
                                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                                         }
                                                                      }
