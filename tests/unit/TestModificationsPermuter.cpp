@@ -511,13 +511,15 @@ TEST_F(PermuterTest, P16_PositionRule_ProteinNterm)
    }
 }
 
-// P17: getPositionClass() terminal-site rules mirror the plain-FASTA path (v2026.02.2):
-// n-term with which_term 3 never; c-term with which_term 2 only if the peptide is short enough.
+// P17: getPositionClass() terminal-site rules mirror the plain-FASTA path: a terminal site
+// under the opposite peptide-terminus rule (n-term / which_term 3, c-term / which_term 2) is
+// admitted only if the peptide is short enough (L-1 <= d).
 TEST_F(PermuterTest, P17_PositionClass_TerminalSites)
 {
    const std::vector<ModPositionRule> vPepC3 = { {3, 3} };
    const std::vector<ModPositionRule> vPepN2 = { {2, 2} };
-   EXPECT_EQ(0, (int)ModificationsPermuter::getPositionClass(-1, 4, false, false, vPepC3));
+   EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(-1, 4, false, false, vPepC3));   // L-1 = 3 <= 3
+   EXPECT_EQ(0, (int)ModificationsPermuter::getPositionClass(-1, 6, false, false, vPepC3));   // L-1 = 5 > 3
    EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(4, 4, false, false, vPepC3));
    EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(-1, 4, false, false, vPepN2));
    EXPECT_EQ(0, (int)ModificationsPermuter::getPositionClass(4, 4, false, false, vPepN2));   // L-1 = 3 > 2

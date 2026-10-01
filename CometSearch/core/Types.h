@@ -136,6 +136,8 @@ struct ProteinEntryStruct
 {
    comet_fileoffset_t   lWhichProtein;     // file pointer to protein
    int    iStartResidue;      // start residue position in protein (1-based)
+   int    iProteinLength;     // length of the (possibly Met-clipped) sequence the peptide was digested
+                              // from, same frame as iStartResidue; 0 on the index paths (unknown)
    char   cPrevAA;
    char   cNextAA;
 

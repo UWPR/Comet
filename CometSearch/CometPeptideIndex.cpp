@@ -1810,6 +1810,23 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
                return false;
             }
 
+            // Same range check InitializeStaticParams() applies to comet.params: these values
+            // bypass it (the header overwrites the slots), and an out-of-range rule means
+            // different things to the FASTA counters, the permuter and AScorePro.
+            {
+               const VarMods& vm = g_staticParams.variableModParameters.varModList[iNumMods];
+               if (vm.iVarModTermDistance < -2 || (vm.iVarModTermDistance >= 0 && (vm.iWhichTerm < 0 || vm.iWhichTerm > 3)))
+               {
+                  string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+                     + "\" VariableMod: slot " + to_string(iNumMods) + " has an invalid term_distance/which_term \""
+                     + to_string(vm.iVarModTermDistance) + " " + to_string(vm.iWhichTerm)
+                     + "\" (term_distance must be -2, -1 or >= 0, which_term 0-3).\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
+            }
+
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass, 0.0))
                g_staticParams.variableModParameters.bVarModSearch = true;
 

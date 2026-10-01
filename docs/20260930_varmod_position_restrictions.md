@@ -42,6 +42,14 @@ every later site assignment of that slot. Both now use the same `VarModNtermCoun
 which_term 3 distance never admits an n-term mod and a which_term 0 distance tests a c-term
 mod against the peptide start).
 
+An n-term mod under a peptide-C-terminus rule (which_term 3), which 2.2 never placed, is
+admitted when the peptide's C-terminus is within d of the N-terminus (`n 0 1 8 3`: acetyl
+only on peptides of length <= 9), mirroring the c-term / which_term 2 case; the site is
+counted by the per-end pass once the end is known (T54, P17). `HasVariableMod()` and the
+pre-count bound the c-term / which_term 2, c-term / which_term 0 and n-term / which_term 3
+cases by the shortest storable end (peptide_length_range min), so a slot that can never
+place its mod does not drive the full enumeration.
+
 Fixed after the code review (T57): binary mods with a protein-C-terminus rule counted their
 sites against the peptide start instead of the residue, and binary mods with a
 peptide-C-terminus rule were never counted (the deferred per-end pass only updated
@@ -91,7 +99,9 @@ evaluates each protein separately, reports (T58).
 
 Each `VariableMod:` slot is now `chars:mass:NL1:NL2:max:term_distance:which_term`. The
 reader also accepts the 5-field form of indexes built before this change and treats those
-slots as unrestricted -- exactly how they were built. v5 had no lasting public release (the
+slots as unrestricted -- exactly how they were built. Header values get the same range check
+as comet.params (term_distance >= -2; which_term 0-3 for a distance rule); an out-of-range
+slot fails the load. v5 had no lasting public release (the
 v2026.02.3 release that introduced it was withdrawn the same day), so the version stays; an older v5 binary reading a new file would take
 the first five fields and silently search without restrictions.
 
@@ -109,6 +119,12 @@ copy of the shared `g_AScoreOptions` refreshed only when the options change
 covers FASTA protein-distance rules a PSM cannot re-derive. The reported MOB and site scores
 are therefore computed among allowed peptidoforms; when the original is the only one, it
 keeps its own MOB score and a 5000.0 site score.
+
+On the plain-FASTA path a protein-terminus rule (which_term 0/1) is evaluated on the true
+protein offset: each matched protein's `ProteinEntryStruct` now carries `iProteinLength`
+next to `iStartResidue`, and a placement is legal if any matched protein admits it (the
+FASTA search evaluates each protein separately). The index paths keep the flank test (exact
+for d = 0, partial for d > 0), which is how the index admitted the mod (T59).
 
 Build note: neither the AScorePro nor the CometSearch Makefile tracks header dependencies.
 Changing `AScoreOptions.h` needs `cd AScorePro && make clean` plus `make cclean` (and
@@ -132,6 +148,8 @@ T55 (AScorePro filter) added; `PermuterTest` P14-P17 cover the position classes.
 ## 8. Known limitations
 
 - Internal decoys reverse the peptide and move each mod with its residue, so a decoy's
-  pyroglutamate lands on an internal residue. Target and decoy stay mass-matched; v2026.02.2's
-  FASTA path behaved the same way.
+  pyroglutamate lands on an internal residue. This is the same on FASTA, FI and PI (Hela,
+  2026-09-30: decoy pyroglutamate at residue 1 = 0 on all three paths) and in v2026.02.2;
+  target and decoy stay mass-matched. Re-applying position rules to decoys would be a
+  cross-path FDR-calibration change and is not part of this work.
 - Protein-terminus distance rules with d > 0 are partial on FI/PI (section 3).

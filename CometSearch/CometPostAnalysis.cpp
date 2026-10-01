@@ -966,6 +966,11 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
       bool bProtN = false;
       bool bProtC = false;
       std::vector<int> vOrigSlot;   // Comet's placement: slot number (1-based) per residue
+      // FASTA_DB only: (0-based start in protein, protein length - 1) per matched protein, so a
+      // protein-terminus rule (which_term 0/1) is tested on the true protein offset, as the
+      // search did -- legal in ANY matched protein, since the FASTA path evaluates each
+      // separately. Empty on the index paths, whose rows carry only the flanks (bProtN/bProtC).
+      std::vector<std::pair<int, int>> vProtein;
    };
    thread_local AScoreFilterContext tl_ctx;
    thread_local AScoreOptions tl_opts;
@@ -998,6 +1003,24 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
                if (vm.iVarModTermDistance == -1 || ctx.vOrigSlot[iPos] == iSlot + 1)
                   continue;
 
+               if (!ctx.vProtein.empty() && vm.iVarModTermDistance >= 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
+               {
+                  bool bAdmitted = false;
+                  for (const auto& prot : ctx.vProtein)
+                  {
+                     const int iProteinPos = prot.first + iPos;
+                     if (vm.iWhichTerm == 0 ? (iProteinPos <= vm.iVarModTermDistance)
+                                            : (prot.second - iProteinPos <= vm.iVarModTermDistance))
+                     {
+                        bAdmitted = true;
+                        break;
+                     }
+                  }
+                  if (!bAdmitted)
+                     return false;
+                  continue;
+               }
+
                const std::vector<ModPositionRule> vRule = { { vm.iVarModTermDistance, vm.iWhichTerm } };
                if (!(ModificationsPermuter::getPositionClass(iPos, ctx.iLenPeptide, ctx.bProtN, ctx.bProtC, vRule) & 1))
                   return false;
@@ -1011,6 +1034,15 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
       tl_ctx.bProtN = (pQuery->_pResults[0].cPrevAA == '-');
       tl_ctx.bProtC = (pQuery->_pResults[0].cNextAA == '-');
       tl_ctx.vOrigSlot.assign(pQuery->_pResults[0].piVarModSites, pQuery->_pResults[0].piVarModSites + tl_ctx.iLenPeptide);
+      tl_ctx.vProtein.clear();
+      if (g_staticParams.iDbType == DbType::FASTA_DB)
+      {
+         const auto& vEntries = pQuery->_pResults[0].pWhichProtein.empty()
+            ? pQuery->_pResults[0].pWhichDecoyProtein : pQuery->_pResults[0].pWhichProtein;
+         for (const auto& e : vEntries)
+            if (e.iStartResidue > 0 && e.iProteinLength > 0)
+               tl_ctx.vProtein.emplace_back(e.iStartResidue - 1, e.iProteinLength - 1);
+      }
 
       result = ascoreInterface->CalculateScoreWithOptions(sequence,
          pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, tl_opts);

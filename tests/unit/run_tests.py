@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T58; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T59; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -5019,6 +5019,21 @@ def test_t54_pyroglu_all_paths(comet_exe):
             warned = "only to peptides at that protein terminus" in log
             check(warned == (label != "plain"),
                   f"{label}: partial protein-distance warning {'present' if label != 'plain' else 'absent'}", failures)
+
+    # n-term mod under a peptide-C-terminus rule ('n 0 1 8 3': acetyl N-term only on peptides of
+    # length <= 9) on every path: QTAGSPELK (9) carries it, AGQEAPLSVR (10) must not
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        spectra = {1: ("QTAGSPELK", {0: 42.010565}, "t54_a"), 2: ("AGQEAPLSVR", {0: 42.010565}, "t54_a")}
+        res = _t54_three_paths(comet_exe, tmp, ("42.010565 n 0 1 8 3 0 0.0",), failures, "n-term 8 3", spectra=spectra)
+        for label, (r1, _, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "QTAGSPELK" and "_n" in (r.get("modifications") or ""),
+                  f"{label}: n-term acetyl under 'n 0 1 8 3' placed on QTAGSPELK (length 9), "
+                  f"got {r.get('modified_peptide')!r} mods={r.get('modifications')!r}", failures)
+            r = r1.get(2, {})
+            check(not (r.get("plain_peptide") == "AGQEAPLSVR" and "_n" in (r.get("modifications") or "")),
+                  f"{label}: no n-term acetyl on AGQEAPLSVR (length 10 > 9), got {r.get('modified_peptide')!r}", failures)
     return failures
 
 
@@ -5222,6 +5237,36 @@ def test_t58_protein_term_rule_attribution(comet_exe):
                   and _t37_proteins(r) == {"t58_a", "t58_b"},
                   f"{label}: unmodified MAGSPELK lists both proteins, got {r.get('modified_peptide')!r} "
                   f"{sorted(_t37_proteins(r))}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T59 -- AScorePro's peptidoform filter on the plain-FASTA path tests a protein-terminus rule on
+# the true protein offset (ProteinEntryStruct iStartResidue/iProteinLength), not on the flanks.
+# AMMGSPELK starts at protein offset 1 (after an N-terminal K); with 'M 0 3 3 0' both Ms (protein
+# positions 2 and 3) are legal sites, so AScorePro must see the alternative placement and report
+# a real site score. The flank test (cPrevAA == '-' is false) rejected the alternative, leaving
+# a 5000.0 "only possible site" score.
+# ---------------------------------------------------------------------------
+
+@register("t59_ascorepro_fasta_protein_offset")
+def test_t59_ascorepro_fasta_protein_offset(comet_exe):
+    """T59: with print_ascorepro_score on a FASTA search, a protein-N-terminus distance rule is
+    evaluated on the real protein offset so the alternative M site is scored, not filtered."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, ("15.9949 M 0 3 3 0 0 0.0",), failures, "AScorePro + M 0 3 3 0",
+                               protein=("t59_a", "KAMMGSPELKGGGR"),
+                               spectra={1: ("AMMGSPELK", {1: 15.9949}, "t59_a")},
+                               extra={"print_ascorepro_score": "1"})
+        r1, _, _ = res.get("plain", ({}, "", ""))
+        r = r1.get(1, {})
+        check(r.get("plain_peptide") == "AMMGSPELK" and (_t54_has_mod(r, 2, "15.99") or _t54_has_mod(r, 3, "15.99")),
+              f"plain: AMMGSPELK with the oxidation on one of its Ms, got {r.get('modified_peptide')!r}", failures)
+        site = r.get("ascore_sitescores") or ""
+        check(site and "5000" not in site,
+              f"plain: the alternative M (protein position 3 <= d) was scored, not filtered: site scores {site!r}", failures)
     return failures
 
 # ---------------------------------------------------------------------------

@@ -331,7 +331,7 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 //   residue at peptide position p (length L): d == -2 -> p != L-1; which_term 2 -> p <= d;
 //      3 -> L-1-p <= d; 0 -> at the protein N-terminus and p <= d; 1 -> at the protein
 //      C-terminus and L-1-p <= d
-//   N-terminal site: 2 -> always; 3 -> never; 0 -> at the protein N-terminus;
+//   N-terminal site: 2 -> always; 3 -> L-1 <= d; 0 -> at the protein N-terminus;
 //      1 -> at the protein C-terminus and L-1 <= d
 //   C-terminal site: 3 -> always; 2 -> L-1 <= d; 0 -> at the protein N-terminus and
 //      L-1 <= d; 1 -> at the protein C-terminus
@@ -358,7 +358,7 @@ unsigned char ModificationsPermuter::getPositionClass(int iPos,
       else if (d >= 0)
       {
          if (iPos < 0)             // N-terminal site
-            bOk = (t == 2) || (t == 0 && bProteinNterm) || (t == 1 && bProteinCterm && iLast <= d);
+            bOk = (t == 2) || (t == 3 && iLast <= d) || (t == 0 && bProteinNterm) || (t == 1 && bProteinCterm && iLast <= d);
          else if (iPos >= iPepLen) // C-terminal site
             bOk = (t == 3) || (t == 2 && iLast <= d) || (t == 0 && bProteinNterm && iLast <= d) || (t == 1 && bProteinCterm);
          else if (t == 0)
@@ -402,6 +402,22 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
 
    string sClasses;
 
+   // A rule's bit only matters where its mod can go at all; elsewhere it is forced to 1 so that
+   // positions a restricted mod cannot take never split the dedup key. Per character, computed
+   // once (bit m set when ALL_MODS[m] does not list the character).
+   unsigned char aucIrrelevant[256];
+   if (bRestricted)
+   {
+      for (int c = 0; c < 256; ++c)
+      {
+         unsigned char uc = 0;
+         for (int m = 0; m < (int)vRules.size() && m < 8; ++m)
+            if (ALL_MODS[m].find((char)c) == string::npos)
+               uc |= (unsigned char)(1u << m);
+         aucIrrelevant[c] = uc;
+      }
+   }
+
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
       //FIX: put restriction here for protein mod filter
@@ -416,15 +432,7 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
          const bool bProtN = ((*it).cPrevAA == '-');
          const bool bProtC = ((*it).cNextAA == '-');
 
-         // A rule's bit only matters where its mod can go at all; elsewhere it is forced to 1
-         // so that positions a restricted mod cannot take never split the dedup key.
-         auto irrelevant = [&ALL_MODS, &vRules](char c) -> unsigned char {
-            unsigned char uc = 0;
-            for (int m = 0; m < (int)vRules.size() && m < 8; ++m)
-               if (ALL_MODS[m].find(c) == string::npos)
-                  uc |= (unsigned char)(1u << m);
-            return uc;
-         };
+         auto irrelevant = [&aucIrrelevant](char c) -> unsigned char { return aucIrrelevant[(unsigned char)c]; };
 
          sClasses.clear();
          if (bIncludeTermini)
