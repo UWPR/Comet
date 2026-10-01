@@ -53,7 +53,11 @@ Fixed after the code review (T57): a binary mod under `-2` counted the peptide's
 residue as a site (the cumulative residue pass cannot know the end), so the all-or-nothing
 count never matched the sites `MergeVarMods()` can fill and the only valid form was never
 generated (`QTAGSPELK[+8.01]AGSPELK` under `K 1 3 -2 0`, same in 2.2); the per-end pass now
-takes that one site back out of the group total after the snapshot; binary mods with a protein-C-terminus rule counted their
+is judged with the end known; and a binary group's sites are claimed by the first member
+whose residues match *and whose own rule admits* the site (`BinarySiteClaimed()`) -- 2.2 and
+the restored code judged a group mate's residues under the first slot's rule, so an
+unrestricted first slot admitted a restricted mate everywhere and a restricted first slot
+dropped an unrestricted mate's sites; binary mods with a protein-C-terminus rule counted their
 sites against the peptide start instead of the residue, and binary mods with a
 peptide-C-terminus rule were never counted (the deferred per-end pass only updated
 iTotVarModCt), so neither was ever applied; a c-term mod's protein-N-terminus rule is now

@@ -5161,7 +5161,8 @@ def _t57_plain(comet_exe, tmp, mods, spectra, tag):
 def test_t57_position_rule_edge_cases(comet_exe):
     """T57: invalid which_term rejected; binary mods with protein-C / peptide-C rules applied;
     c-term mod with a protein-N rule reaches a peptide whose longer extensions pass d;
-    binary mod under -2 counts only non-terminal sites."""
+    binary mod under -2 counts only non-terminal sites; each binary-group member is judged by
+    its own rule."""
     failures = []
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -5218,6 +5219,24 @@ def test_t57_position_rule_edge_cases(comet_exe):
               and not _t54_has_mod(r, 16, "8.01"),
               f"binary 'K 1 3 -2 0': QTAGSPELK[+8.01]AGSPELK found with the terminal K unmodified, "
               f"got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # binary group whose members have different rules: each site must be judged by the rule
+        # of the member whose residues match it, not the first slot's. (a) unrestricted K head +
+        # S mate restricted to protein position 0: AGSPELK's S (protein position 7) is not a site,
+        # so the group has one site and AGSPELK[+8.01] is generated (counting S under the head's
+        # rule made it a 2-site peptide and the all-or-nothing check rejected the 1-mod form)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 -1 0 0 0.0", "79.966331 S 1 3 0 0 0 0.0"),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_mixed_a")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01") and not _t54_has_mod(r, 3, "79.96"),
+              f"binary group K(-1) + S(protein N, d=0): AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+        # (b) the reverse order: restricted M head + unrestricted K mate; K sites were counted under
+        # the head's protein-N rule and never admitted, so AGSPELK[+8.01] was never generated
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 1 3 0 0 0 0.0", "8.014199 K 1 3 -1 0 0 0.0"),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_mixed_b")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01"),
+              f"binary group M(protein N, d=0) + K(-1): AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
 
         # c-term mod within 11 of the protein N-terminus: QTAGSPELK ends at position 11; its
         # missed-cleavage extensions end past 11 (the peptide's own c-term mod must still apply)

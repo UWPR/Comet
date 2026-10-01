@@ -123,6 +123,77 @@ static inline bool VarModCtermCounted(int iWhichMod,
    return vm.iWhichTerm == 3;
 }
 
+// Residue site test for a mod's distance rule, the residue counterpart of VarModNtermCounted():
+// iPos is the residue's protein position in peptide [iStartPos, iEnd]; iEnd == -1 means the end is
+// not known yet, which decides nothing for -2 (not the peptide's C-terminal residue) and which_term 3.
+static inline bool VarModRuleNeedsEnd(const VarMods& vm)
+{
+   return vm.iVarModTermDistance == -2 || (vm.iVarModTermDistance >= 0 && vm.iWhichTerm == 3);
+}
+
+static inline bool VarModResidueCounted(int iWhichMod,
+                                        int iPos,
+                                        int iStartPos,
+                                        int iEnd,
+                                        int iLenProteinMinus1)
+{
+   const VarMods& vm = g_staticParams.variableModParameters.varModList[iWhichMod];
+   if (vm.iVarModTermDistance == -2)
+      return iEnd >= 0 && iPos != iEnd;
+   if (vm.iVarModTermDistance < 0)
+      return true;
+   if (vm.iWhichTerm == 0)
+      return iPos <= vm.iVarModTermDistance;
+   if (vm.iWhichTerm == 1)
+      return iPos + vm.iVarModTermDistance >= iLenProteinMinus1;
+   if (vm.iWhichTerm == 2)
+      return iPos - iStartPos <= vm.iVarModTermDistance;
+   return iEnd >= 0 && iEnd - iPos <= vm.iVarModTermDistance;   // which_term 3
+}
+
+// Binary group site accounting (iTotBinaryModCt of the group's first slot, iHead). One physical
+// site -- the residue at protein position iPos, or the n-term when iPos == -1 -- counts once for
+// the group, claimed by the first member in slot order whose residues / terminal code match it
+// and whose own distance rule admits it. Members whose rule needs the peptide end (-2,
+// which_term 3) cannot be judged by VariableModSearch()'s cumulative residue pass (iEnd == -1):
+// that pass stops at the first such member, and the per-end pass (iEnd >= 0) counts a claim only
+// when it is made by or after such a member, so between the two passes nothing is counted twice.
+static inline bool BinarySiteClaimed(int iHead,
+                                     int iPos,
+                                     int iStartPos,
+                                     int iEnd,
+                                     int iLenProteinMinus1,
+                                     char cResidue)
+{
+   const int iGroup = g_staticParams.variableModParameters.varModList[iHead].iBinaryMod;
+   bool bAfterEndRule = false;
+
+   for (int m = iHead; m < VMODS; ++m)
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[m];
+      if (!vm.bUseMod || vm.iBinaryMod != iGroup)
+         continue;
+
+      bool bSite = (iPos >= 0) ? (strchr(vm.szVarModChar, cResidue) != NULL) : VarModNtermAllowed(m, iStartPos);
+      if (!bSite)
+         continue;
+
+      if (VarModRuleNeedsEnd(vm))
+      {
+         if (iEnd < 0)
+            return false;      // judged by the per-end pass
+         bAfterEndRule = true;
+      }
+
+      bool bAdmits = (iPos >= 0) ? VarModResidueCounted(m, iPos, iStartPos, iEnd, iLenProteinMinus1)
+                                 : VarModNtermCounted(m, iStartPos, iEnd, iLenProteinMinus1);
+      if (bAdmits)
+         return iEnd < 0 || bAfterEndRule;   // per-end pass: a claim before any end rule was already counted
+   }
+
+   return false;
+}
+
 // PEFF 1.0 section 3.4.2 annotation identifiers (header "HasAnnotationIdentifiers=true"):
 // an entry's first field may carry an integer label and a colon ahead of the position,
 // e.g. "(1:25|MOD:00798|half cystine)" is residue 25 labeled 1, so a \DisulfideBond=(3:1,2)
@@ -6297,24 +6368,27 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
    int iSize = (int)dbe->vectorPeffMod.size();
 
    // Residue mods with a peptide-C-terminus distance rule (which_term 3) can only be counted
-   // once the end position is known; skip that per-end pass when no slot has one.
+   // once the end position is known; skip that per-end pass when no slot has one. Binary groups:
+   // the group's sites are kept in its first slot (pbBinaryHead), and a member whose rule needs
+   // the end (-2, which_term 3) is counted by the per-end pass (bAnyBinaryEndRule); see
+   // BinarySiteClaimed().
    bool bAnyPepCtermRule = false;
-   // Binary-group slots with a -2 rule (not on the peptide's C-terminal residue): the cumulative
-   // residue pass counts every matching residue, so the residue at each candidate end has to be
-   // taken back out of that group's site total before the binary all-or-nothing check.
-   bool bAnyBinaryNotCtermResidueRule = false;
+   bool bAnyBinaryEndRule = false;
+   bool pbBinaryHead[VMODS];
    for (i = 0; i < VMODS; ++i)
    {
       const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
       if (vm.bUseMod && vm.iWhichTerm == 3 && vm.iVarModTermDistance >= 0)
          bAnyPepCtermRule = true;
-      if (vm.bUseMod && vm.iBinaryMod && vm.iVarModTermDistance == -2)
-         bAnyBinaryNotCtermResidueRule = true;
+      if (vm.bUseMod && vm.iBinaryMod && VarModRuleNeedsEnd(vm))
+         bAnyBinaryEndRule = true;
+      pbBinaryHead[i] = (vm.iBinaryMod != 0);
+      for (int ii = 0; ii < i && pbBinaryHead[i]; ++ii)
+      {
+         if (g_staticParams.variableModParameters.varModList[ii].iBinaryMod == vm.iBinaryMod)
+            pbBinaryHead[i] = false;
+      }
    }
-   // Per start position: binary-group slots whose n-term site the start-residue pass counted
-   // through a group mate (no distance test); the per-end which_term 3 pass must not count
-   // that one physical site again.
-   bool pbNtermViaMate[VMODS];
 
    // do not apply PEFF mods to a PEFF variant peptide
    if (_proteinInfo.iPeffOrigResiduePosition < 0 && iSize > 0)
@@ -6632,7 +6706,6 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
                                                       // The start of the peptide is established; need to evaluate
                                                       // where the end of the peptide is.
-                                                      memset(pbNtermViaMate, 0, sizeof(pbNtermViaMate));
                                                       for (iTmpEnd = iStartPos; iTmpEnd <= iEndPos; ++iTmpEnd)
                                                       {
                                                          if (iTmpEnd - iStartPos + 1 <= g_staticParams.options.peptideLengthRange.iEnd)
@@ -6686,134 +6759,20 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
                                                             if (g_staticParams.variableModParameters.bBinaryModSearch)
                                                             {
-                                                               // make iTotBinaryModCt similar to iTotVarModCt but count the
-                                                               // number of mod sites in peptide for that particular binary
-                                                               // mod group and store in first group entry
+                                                               // iTotBinaryModCt: sites of each binary group, kept in the group's first slot. The residue
+                                                               // at iTmpEnd and, at the start residue, the n-term site are claimed by the first group
+                                                               // member whose own residues / terminal code and distance rule admit them
+                                                               // (BinarySiteClaimed()); members whose rule needs the end are left to the per-end pass.
                                                                for (i = 0; i < VMODS; ++i)
                                                                {
-                                                                  bool bMatched = false;
-
-                                                                  if (g_staticParams.variableModParameters.varModList[i].iBinaryMod
-                                                                     && g_staticParams.variableModParameters.varModList[i].bUseMod
-                                                                     && !bMatched)
-                                                                  {
-                                                                     int ii;
-
-                                                                     if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
-                                                                     {
-                                                                        if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                                        {
-                                                                           _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                           bMatched = true;
-                                                                        }
-                                                                        else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
-                                                                        {
-                                                                           if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                                           {
-                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                              bMatched = true;
-                                                                           }
-                                                                        }
-                                                                        else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
-                                                                        {
-                                                                           if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
-                                                                              >= iLenProteinMinus1)
-                                                                           {
-                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                              bMatched = true;
-                                                                           }
-                                                                        }
-                                                                        else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
-                                                                        {
-                                                                           if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                                           {
-                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                              bMatched = true;
-                                                                           }
-                                                                        }
-
-                                                                        // analyse peptide C term mod later as iTmpEnd is variable
-                                                                     }
-
-                                                                     // if we didn't increment iTotBinaryModCt for base mod in group
-                                                                     if (!bMatched)
-                                                                     {
-                                                                        for (ii = i + 1; ii < VMODS; ++ii)
-                                                                        {
-                                                                           if (g_staticParams.variableModParameters.varModList[ii].bUseMod
-                                                                              && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
-                                                                                 == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
-                                                                              && strchr(g_staticParams.variableModParameters.varModList[ii].szVarModChar, cResidue))
-                                                                           {
-                                                                              if (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance < 0)
-                                                                              {
-                                                                                 _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                 bMatched = true;
-                                                                              }
-                                                                              else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 0) // protein N
-                                                                              {
-                                                                                 if (iTmpEnd <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                                                 {
-                                                                                    _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                    bMatched = true;
-                                                                                 }
-                                                                              }
-                                                                              else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
-                                                                              {
-                                                                                 if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
-                                                                                 {
-                                                                                    _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                    bMatched = true;
-                                                                                 }
-                                                                              }
-                                                                              else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 2) // peptide N
-                                                                              {
-                                                                                 if (iTmpEnd - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                                                 {
-                                                                                    _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                    bMatched = true;
-                                                                                 }
-                                                                              }
-                                                                           }
-
-                                                                           if (bMatched)
-                                                                              break;
-                                                                        }
-                                                                     }
-
-                                                                     // consider n-term mods only for start residue
-                                                                     if (iTmpEnd == iStartPos)
-                                                                     {
-                                                                        if (g_staticParams.variableModParameters.varModList[i].bUseMod
-                                                                           && VarModNtermCounted(i, iStartPos, -1, _proteinInfo.iTmpProteinSeqLength - 1))
-                                                                        {
-                                                                           _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                           bMatched = true;
-                                                                        }
-
-                                                                        if (!bMatched)
-                                                                        {
-                                                                           for (ii = i + 1; ii < VMODS; ++ii)
-                                                                           {
-                                                                              if (g_staticParams.variableModParameters.varModList[ii].bUseMod
-                                                                                 && (g_staticParams.variableModParameters.varModList[ii].iBinaryMod
-                                                                                    == g_staticParams.variableModParameters.varModList[i].iBinaryMod)
-                                                                                 && VarModNtermAllowed(ii, iStartPos))
-                                                                              {
-                                                                                 _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                 pbNtermViaMate[i] = true;
-                                                                                 bMatched = true;
-                                                                              }
-
-                                                                              if (bMatched)
-                                                                                 break;
-                                                                           }
-                                                                        }
-                                                                     }
-                                                                  }
+                                                                  if (!pbBinaryHead[i])
+                                                                     continue;
+                                                                  if (BinarySiteClaimed(i, iTmpEnd, iStartPos, -1, iLenProteinMinus1, cResidue))
+                                                                     _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                  if (iTmpEnd == iStartPos && BinarySiteClaimed(i, -1, iStartPos, -1, iLenProteinMinus1, '\0'))
+                                                                     _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                                }
                                                             }
-
 
                                                             bool bValid = true;
 
@@ -6844,35 +6803,29 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                   }
                                                                }
 
-                                                               // A binary group's -2 rule excludes the residue at this end; the residue pass
-                                                               // above counted it (a later, longer end makes it internal again). Undo that one
-                                                               // site here, after the snapshot, so the all-or-nothing count matches the sites
-                                                               // MergeVarMods() can actually fill. Mirrors the residue pass: the slot's own
-                                                               // residues, else a later mate of its group, counted under this slot's rule.
-                                                               if (bAnyBinaryNotCtermResidueRule && g_staticParams.variableModParameters.bBinaryModSearch)
+                                                               // Binary group members whose rule needs the end (-2, which_term 3): re-walk the n-term site
+                                                               // and every residue of this end with the end known; BinarySiteClaimed() counts only a claim
+                                                               // made by or after such a member, so the residue pass's counts are not repeated. Undone with
+                                                               // the snapshot restore like every other per-end increment.
+                                                               if (g_staticParams.variableModParameters.bBinaryModSearch && bAnyBinaryEndRule)
                                                                {
-                                                                  cResidue = szProteinSeq[iTmpEnd];
                                                                   for (i = 0; i < VMODS; ++i)
                                                                   {
-                                                                     const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
-                                                                     if (!vm.bUseMod || !vm.iBinaryMod || vm.iVarModTermDistance != -2)
+                                                                     if (!pbBinaryHead[i])
                                                                         continue;
-                                                                     bool bCounted = strchr(vm.szVarModChar, cResidue) != NULL;
-                                                                     for (int ii = i + 1; !bCounted && ii < VMODS; ++ii)
+                                                                     if (BinarySiteClaimed(i, -1, iStartPos, iTmpEnd, iLenProteinMinus1, '\0'))
+                                                                        _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                     for (int x = iStartPos; x <= iTmpEnd; ++x)
                                                                      {
-                                                                        const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
-                                                                        if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && strchr(vm2.szVarModChar, cResidue))
-                                                                           bCounted = true;
+                                                                        if (BinarySiteClaimed(i, x, iStartPos, iTmpEnd, iLenProteinMinus1, szProteinSeq[x]))
+                                                                           _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                                      }
-                                                                     if (bCounted && _varModInfo.varModStatList[i].iTotBinaryModCt > 0)
-                                                                        _varModInfo.varModStatList[i].iTotBinaryModCt--;
                                                                   }
                                                                }
 
                                                                // also need to consider all residue mods that have a peptide c-term distance
-                                                               // constraint because these depend on iTmpEnd which was not defined until now.
-                                                               // Binary mods count into iTotBinaryModCt the same way the per-residue loop above
-                                                               // does (the mod's own residues, else a later mod of its binary group).
+                                                               // constraint because these depend on iTmpEnd which was not defined until now
+                                                               // (iTotVarModCt only; the binary group totals are handled above).
                                                                if (bAnyPepCtermRule)
                                                                {
                                                                   // n-term site under a which_term 3 rule: known only now that the end is
@@ -6882,17 +6835,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                      if (!vm.bUseMod || vm.iWhichTerm != 3 || vm.iVarModTermDistance < 0)
                                                                         continue;
                                                                      if (VarModNtermCounted(i, iStartPos, iTmpEnd, iLenProteinMinus1))
-                                                                     {
                                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                                        if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
-                                                                        {
-                                                                           // The start-residue pass could not count this slot's own n-term site (end unknown)
-                                                                           // and may have counted it through a group mate (pbNtermViaMate); count the one
-                                                                           // physical site only if it did not.
-                                                                           if (!pbNtermViaMate[i])
-                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                        }
-                                                                     }
                                                                   }
 
                                                                   for (int x = iStartPos; x <= iTmpEnd; ++x)
@@ -6907,23 +6850,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                            continue;
 
                                                                         if (strchr(vm.szVarModChar, cResidue))
-                                                                        {
                                                                            _varModInfo.varModStatList[i].iTotVarModCt++;
-                                                                           if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
-                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                        }
-                                                                        else if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
-                                                                        {
-                                                                           for (int ii = i + 1; ii < VMODS; ++ii)
-                                                                           {
-                                                                              const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
-                                                                              if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && strchr(vm2.szVarModChar, cResidue))
-                                                                              {
-                                                                                 _varModInfo.varModStatList[i].iTotBinaryModCt++;
-                                                                                 break;
-                                                                              }
-                                                                           }
-                                                                        }
                                                                      }
                                                                   }
                                                                }

@@ -99,7 +99,6 @@ DECOY_VARIANT_MODES = {
 DEFAULT_DECOY_VARIANTS = list(DECOY_VARIANT_FILENAMES.keys())
 
 XCORR_THRESHOLD = 2.5   # minimum xcorr to count a PSM
-TARGET_ONLY_OUTPUT_LINES = 5   # ranks kept for a target-side-only comparison (see run_mode)
 
 # First release whose FI index generates Comet's internal decoys. Against an older
 # baseline, fi + internal-decoy rows compare a decoy-searching current build with a
@@ -342,9 +341,10 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
 
     `target_only`: the baseline cannot generate decoys for this mode/variant (FI before
     FI_INTERNAL_DECOYS_SINCE) while the current build can, and a concatenated decoy that
-    outscores the target would otherwise be the compared top hit. Both searches then report
-    TARGET_ONLY_OUTPUT_LINES ranks and decoy PSMs are dropped before the comparison, so
-    the top *target* is compared on both sides.
+    outscores the target would otherwise be the compared top hit. The current binary then
+    builds and searches with decoy_search = 2 (decoys go to a separate .decoy.txt, so
+    the compared file holds every spectrum's best target at any rank depth); decoy-prefixed
+    PSMs are dropped from both compared files as a guard.
     """
     run_dir.mkdir(parents=True, exist_ok=True)
     metrics = {"mode": mode}
@@ -355,8 +355,6 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
             "database_name": comet_path(FASTA_FILE),
             "output_txtfile": "1",
         }
-        if target_only:
-            overrides["num_output_lines"] = str(TARGET_ONLY_OUTPUT_LINES)
         params_path = run_dir / "search.params"
         write_params(patch_params(base_params, overrides), params_path)
 
@@ -394,6 +392,9 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
             }
             if mode == "pi":
                 build_overrides["create_peptide_index"] = "1"
+            if target_only and label == "current":
+                # the .idx header's DecoySearch: value wins at load, so the build must say 2 too
+                build_overrides["decoy_search"] = "2"
 
             build_params_path = sub / "build.params"
             write_params(patch_params(base_params, build_overrides), build_params_path)
@@ -417,8 +418,8 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
                 "database_name": comet_path(idx_path),
                 "output_txtfile": "1",
             }
-            if target_only:
-                search_overrides["num_output_lines"] = str(TARGET_ONLY_OUTPUT_LINES)
+            if target_only and label == "current":
+                search_overrides["decoy_search"] = "2"
             search_params_path = sub / "search.params"
             write_params(patch_params(base_params, search_overrides), search_params_path)
 
@@ -500,8 +501,9 @@ def print_report(all_metrics: list[dict], current_bin: Path, baseline_tag: str):
         if m.get("target_side_only"):
             print(f"  NOTE: target-side only -- baseline {baseline_tag} predates FI internal decoys "
                   f"(v{FI_INTERNAL_DECOYS_SINCE[0]}.{FI_INTERNAL_DECOYS_SINCE[1]:02d}.{FI_INTERNAL_DECOYS_SINCE[2]}); "
-                  f"current PSMs with protein prefix {m.get('decoy_prefix_filtered', 'DECOY_')!r} dropped, "
-                  f"both searched with num_output_lines = {TARGET_ONLY_OUTPUT_LINES}; "
+                  f"current built and searched with decoy_search = 2 (decoys in current.decoy.txt, "
+                  f"best target at any rank in the compared file), PSMs with protein prefix "
+                  f"{m.get('decoy_prefix_filtered', 'DECOY_')!r} dropped from both; "
                   f"decoy-side numbers are not a comparison")
 
         if m.get("skipped"):
