@@ -1174,8 +1174,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             // flanks complete a total order. Without them such copies (e.g. UBC's ubiquitin
             // repeats) tie, arrive in thread-scheduling order, and the representative -- whose
             // flanks and dPepMass are stored -- varies from build to build (T18).
-            if (a.cPrevAA != b.cPrevAA) return a.cPrevAA < b.cPrevAA;
-            return a.cNextAA < b.cNextAA;
+            // unsigned so the order does not depend on the platform's char signedness
+            if (a.cPrevAA != b.cPrevAA) return (unsigned char)a.cPrevAA < (unsigned char)b.cPrevAA;
+            return (unsigned char)a.cNextAA < (unsigned char)b.cNextAA;
          });
 
          auto bCanonEqual = [canonCompare, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
@@ -1328,8 +1329,8 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                return a.lProteinFileOffset < b.lProteinFileOffset;
             // flanks complete the total order, as in the long-length path (T18)
             if (a.cPrevAA != b.cPrevAA)
-               return a.cPrevAA < b.cPrevAA;
-            return a.cNextAA < b.cNextAA;
+               return (unsigned char)a.cPrevAA < (unsigned char)b.cPrevAA;
+            return (unsigned char)a.cNextAA < (unsigned char)b.cNextAA;
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
