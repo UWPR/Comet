@@ -1733,17 +1733,16 @@ bool CometSearchManager::InitializeStaticParams()
          }
          fclose(fp);
 
-         // An explicit index_search_type that disagrees with the file's own type is ignored;
-         // say so, since the parameter reads like a search-mode switch (issue #132 comment).
-         if (g_staticParams.options.iIndexSearchType != -1
-               && (g_staticParams.options.iIndexSearchType == 0) != (g_staticParams.iDbType == DbType::PI_DB))
+         // index_search_type = 0 asked for a peptide index but the file is a fragment ion index:
+         // the file's own type wins, say so (the parameter reads like a search-mode switch --
+         // issue #132 comment). 1 is the default everywhere (comet -p template, RealtimeSearch,
+         // the fallback here) and carries no intent, so a 1 against a peptide index stays quiet.
+         if (g_staticParams.options.iIndexSearchType == 0 && g_staticParams.iDbType != DbType::PI_DB)
          {
-            const bool bPI = (g_staticParams.iDbType == DbType::PI_DB);
             char szMsg[SIZE_FILE + 256];
-            snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is a %s and its own"
-                  " IndexSearchType: header line decides. Delete the file or rebuild it with %s to change the type.\n",
-                  g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase,
-                  bPI ? "peptide index" : "fragment ion index", bPI ? "-i" : "-j");
+            snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = 0 is ignored: \"%s\" is a fragment ion index and its own"
+                  " IndexSearchType: header line decides. Delete the file or rebuild it with -j to get a peptide index.\n",
+                  g_staticParams.databaseInfo.szDatabase);
             logout(szMsg);
          }
 
@@ -1757,15 +1756,16 @@ bool CometSearchManager::InitializeStaticParams()
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
    }
-   else if (g_staticParams.options.iIndexSearchType != -1
+   else if (g_staticParams.options.iIndexSearchType == 0
          && !g_staticParams.options.bCreateFragmentIndex && !g_staticParams.options.bCreatePeptideIndex)
    {
-      // Plain FASTA (or PEFF) search: the parameter has no effect. An explicit -i/-j build is
-      // left quiet -- the flag, not the parameter, chose the type.
+      // Plain FASTA (or PEFF) search with an explicit request for a peptide index: the
+      // parameter has no effect here. The default 1 (what comet -p writes) stays quiet, and so
+      // does an explicit -i/-j build -- the flag, not the parameter, chose the type.
       char szMsg[SIZE_FILE + 256];
-      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is not an .idx file (plain FASTA"
+      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = 0 is ignored: \"%s\" is not an .idx file (plain FASTA"
             " search). It only selects the index type to auto-build when database_name names an .idx file that does not exist yet.\n",
-            g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase);
+            g_staticParams.databaseInfo.szDatabase);
       logout(szMsg);
    }
 

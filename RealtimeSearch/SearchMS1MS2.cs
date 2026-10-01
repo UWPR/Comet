@@ -115,11 +115,11 @@ namespace RealTimeSearch
             }
          }
 
-         // Parse index_search_type (default 1, FI_DB). Only consulted when database.idx does
-         // not exist yet and is auto-built from its FASTA; an existing .idx records its own
-         // type in its IndexSearchType: header line and this argument is ignored for it.
-         // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index).
-         int iIndexSearchType = 1;
+         // Parse index_search_type. Only consulted when database.idx does not exist yet and is
+         // auto-built from its FASTA (the native default is 1, FI_DB); an existing .idx records
+         // its own type in its IndexSearchType: header line and this argument is ignored for it.
+         // -1 = not given (the parameter is then not sent at all); 0=PI_DB, 1=FI_DB.
+         int iIndexSearchType = -1;
          if (args.Length >= 6)
          {
             if (!int.TryParse(args[5], out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
@@ -746,10 +746,14 @@ namespace RealTimeSearch
             // RTS-side equivalent of batch's index_search_type comet.params key: picks the
             // index type to auto-build when the .idx does not exist yet (0=PI_DB, 1=FI_DB,
             // default). An existing .idx is self-describing (its IndexSearchType: header
-            // line) and the native side ignores this value for it, with a warning if they
-            // disagree.
-            sTmp = iIndexSearchType.ToString();
-            SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
+            // line) and the native side ignores this value for it (warning if an explicit 0
+            // meets a fragment ion index). Sent only when the argument was given, so the
+            // native default applies otherwise and no warning is manufactured.
+            if (iIndexSearchType != -1)
+            {
+               sTmp = iIndexSearchType.ToString();
+               SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
+            }
 
             if (bDatabaseSearch)
             {

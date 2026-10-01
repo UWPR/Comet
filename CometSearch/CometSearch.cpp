@@ -6380,8 +6380,6 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
    // C-terminus; the exact per-end test is applied inside the loop.
    for (i = 0; i < VMODS; ++i)
    {
-      piTmpTotVarModCt[i] = piTmpTotBinaryModCt[i] = 0; // useless but supresses gcc 'may be used uninitialized in this function' warnings
-
       piVarModCountsNC[i] = piVarModCounts[i];
 
       if (g_staticParams.variableModParameters.varModList[i].bUseMod)
@@ -6850,7 +6848,21 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                      {
                                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                                         if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
-                                                                           _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                        {
+                                                                           // The start-residue binary pass could not count this slot's own n-term site (end
+                                                                           // unknown) and then fell back to a group mate with an n-term code, which it counts
+                                                                           // without a distance test; counting the one physical site again here would fail the
+                                                                           // group-sum check. Mirror that fallback's condition and skip when it applied.
+                                                                           bool bCountedViaMate = false;
+                                                                           for (int ii = i + 1; ii < VMODS && !bCountedViaMate; ++ii)
+                                                                           {
+                                                                              const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
+                                                                              if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && VarModNtermAllowed(ii, iStartPos))
+                                                                                 bCountedViaMate = true;
+                                                                           }
+                                                                           if (!bCountedViaMate)
+                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                        }
                                                                      }
                                                                   }
 
@@ -7057,12 +7069,10 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                             }
 
                                                             // Undo this end's per-end increments (snapshot taken above the enzyme check)
+                                                            for (i = 0; i < VMODS; ++i)
                                                             {
-                                                               for (i = 0; i < VMODS; ++i)
-                                                               {
-                                                                  _varModInfo.varModStatList[i].iTotVarModCt = piTmpTotVarModCt[i];
-                                                                  _varModInfo.varModStatList[i].iTotBinaryModCt = piTmpTotBinaryModCt[i];
-                                                               }
+                                                               _varModInfo.varModStatList[i].iTotVarModCt = piTmpTotVarModCt[i];
+                                                               _varModInfo.varModStatList[i].iTotBinaryModCt = piTmpTotBinaryModCt[i];
                                                             }
                                                          }
                                                       } // loop through iStartPos to iEndPos

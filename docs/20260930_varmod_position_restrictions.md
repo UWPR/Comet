@@ -153,3 +153,10 @@ T55 (AScorePro filter) added; `PermuterTest` P14-P17 cover the position classes.
   target and decoy stay mass-matched. Re-applying position rules to decoys would be a
   cross-path FDR-calibration change and is not part of this work.
 - Protein-terminus distance rules with d > 0 are partial on FI/PI (section 3).
+- AScorePro's FASTA protein-offset check (section 5) knows only the proteins recorded for the
+  PSM's stored placement (`pWhichProtein`, capped by `max_duplicate_proteins`); an alternative
+  site that is legal only in a protein not on that list is filtered. A PSM carries no more
+  protein context than that.
+- Binary groups whose n-term mods combine a which_term 3 rule with a plain n-term mate: the
+  start-residue pass counts the group's n-term site through the mate without a distance test
+  (v2026.02.2 behavior), and the per-end pass then does not count it again (T57).
