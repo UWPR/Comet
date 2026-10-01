@@ -809,7 +809,16 @@ bool CometSearchManager::InitializeStaticParams()
    // but ambiguous" case. RTS sets this via the corresponding RealtimeSearch.exe CLI
    // argument, since it never loads comet.params.
    if (GetParamValue("index_search_type", iIntData))
+   {
+      if (iIntData != 0 && iIntData != 1)
+      {
+         char szMsg[256];
+         snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is not 0 or 1; using 1 (fragment ion index).\n", iIntData);
+         logout(szMsg);
+         iIntData = 1;
+      }
       g_staticParams.options.iIndexSearchType = iIntData;
+   }
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
@@ -1724,6 +1733,20 @@ bool CometSearchManager::InitializeStaticParams()
          }
          fclose(fp);
 
+         // An explicit index_search_type that disagrees with the file's own type is ignored;
+         // say so, since the parameter reads like a search-mode switch (issue #132 comment).
+         if (g_staticParams.options.iIndexSearchType != -1
+               && (g_staticParams.options.iIndexSearchType == 0) != (g_staticParams.iDbType == DbType::PI_DB))
+         {
+            const bool bPI = (g_staticParams.iDbType == DbType::PI_DB);
+            char szMsg[SIZE_FILE + 256];
+            snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is a %s and its own"
+                  " IndexSearchType: header line decides. Delete the file or rebuild it with %s to change the type.\n",
+                  g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase,
+                  bPI ? "peptide index" : "fragment ion index", bPI ? "-i" : "-j");
+            logout(szMsg);
+         }
+
          // This clamp only matters for the legacy load-all-then-search-all path
          // (PiStrategy falls back to it for Mango/speclib runs; see
          // PiStrategy::executeBatch()) -- the fused path ignores iSpectrumBatchSize
@@ -1733,6 +1756,17 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
+   }
+   else if (g_staticParams.options.iIndexSearchType != -1
+         && !g_staticParams.options.bCreateFragmentIndex && !g_staticParams.options.bCreatePeptideIndex)
+   {
+      // Plain FASTA (or PEFF) search: the parameter has no effect. An explicit -i/-j build is
+      // left quiet -- the flag, not the parameter, chose the type.
+      char szMsg[SIZE_FILE + 256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is not an .idx file (plain FASTA"
+            " search). It only selects the index type to auto-build when database_name names an .idx file that does not exist yet.\n",
+            g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase);
+      logout(szMsg);
    }
 
    if (g_staticParams.options.bCreateFragmentIndex && g_staticParams.iDbType != DbType::FASTA_DB)

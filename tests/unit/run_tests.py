@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T59; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T60; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -5267,6 +5267,82 @@ def test_t59_ascorepro_fasta_protein_offset(comet_exe):
         site = r.get("ascore_sitescores") or ""
         check(site and "5000" not in site,
               f"plain: the alternative M (protein position 3 <= d) was scored, not filtered: site scores {site!r}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T60 -- index_search_type scope. The parameter only selects the index type to auto-build when
+# database_name names an .idx that does not exist yet. Everywhere else it is ignored, and since
+# it reads like a search-mode switch (issue-132 comment: a PEFF search with index_search_type = 1
+# was taken for an index search), Comet now says so: a FASTA database warns "not an .idx file",
+# an existing .idx whose own type differs warns naming that type, and a value other than 0/1
+# warns and uses 1. Results never change.
+# ---------------------------------------------------------------------------
+
+@register("t60_index_search_type_scope")
+def test_t60_index_search_type_scope(comet_exe):
+    """T60: index_search_type picks the auto-build type for a missing .idx and is otherwise
+    ignored with a warning (FASTA database; existing .idx of the other type; invalid value)."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t60.fasta"
+        fasta.write_text(f">{_T54_PROTEIN[0]}\n{_T54_PROTEIN[1]}\n")
+        ms2 = tmp / "t60.ms2"
+        _t52_write_ms2(ms2, {1: ("QTAGSPELK", {}, "t54_a")})
+        txt = ms2.with_suffix(".txt")
+        idx = fasta.with_suffix(".fasta.idx")
+
+        def search(db, ist=None, flag=None):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0, num_output_lines=5)
+            if ist is not None:
+                pr = _set_param_line(pr, "index_search_type", ist)
+            pf = tmp / "t60.params"
+            pf.write_text(pr)
+            txt.unlink(missing_ok=True)
+            args = ([flag] if flag else []) + [f"-P{fmt(pf)}"] + ([] if flag else [fmt(ms2)])
+            rc, log = _run_t19_step(comet_exe, args)
+            r1 = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"} if txt.exists() else {}
+            return rc, r1, log
+
+        def idx_type():
+            head = idx.read_bytes()[:4096].decode("latin-1").splitlines()
+            return next((l for l in head if l.startswith("IndexSearchType:")), "")
+
+        # (a) FASTA database: ignored, warned, results identical to the run without the parameter
+        rc0, ref, log0 = search(fasta)
+        rc1, got, log1 = search(fasta, 0)
+        check(rc0 == 0 and rc1 == 0 and ref.get(1, {}).get("plain_peptide") == "QTAGSPELK", "FASTA searches ran", failures)
+        check("index_search_type = 0 is ignored" in log1 and "not an .idx file" in log1,
+              "FASTA database: 'ignored: not an .idx file' warning printed", failures)
+        check("index_search_type" not in log0, "no warning when the parameter is absent", failures)
+        check(ref.get(1) == got.get(1), "FASTA database: results identical with and without index_search_type", failures)
+
+        # (b) invalid value: warned, treated as 1
+        rc, _, log = search(fasta, 5)
+        check(rc == 0 and "index_search_type = 5 is not 0 or 1; using 1" in log, "invalid value warns and uses 1", failures)
+
+        # (c) missing .idx + index_search_type = 0: a peptide index is auto-built; = 1 / absent: fragment ion index
+        for ist, want in ((0, "peptide index"), (1, "fragment ion index"), (None, "fragment ion index")):
+            idx.unlink(missing_ok=True)
+            rc, r1, log = search(idx, ist)
+            check(rc == 0 and idx.exists() and want in idx_type(),
+                  f"missing .idx with index_search_type={ist}: auto-built as {want!r}, got {idx_type()!r} (rc={rc})", failures)
+            check(r1.get(1, {}).get("plain_peptide") == "QTAGSPELK", f"index_search_type={ist}: auto-built index search finds the peptide", failures)
+            check("is ignored" not in log, f"index_search_type={ist}: no 'ignored' warning for an auto-build", failures)
+
+        # (d) existing .idx of the other type: ignored, warned naming the file's type; explicit -i/-j builds stay quiet
+        idx.unlink(missing_ok=True)
+        rc, _, log = search(fasta, 0, flag="-i")
+        check(rc == 0 and idx.exists() and "fragment ion index" in idx_type() and "is ignored" not in log,
+              f"-i build with index_search_type = 0 builds a fragment ion index without a warning (rc={rc})", failures)
+        rc, r1, log = search(idx, 0)
+        check(rc == 0 and "index_search_type = 0 is ignored" in log and "is a fragment ion index" in log and "rebuild it with -j" in log,
+              "existing FI .idx + index_search_type = 0: warning names the file's type and -j", failures)
+        check(r1.get(1, {}).get("plain_peptide") == "QTAGSPELK", "existing FI .idx: search ran as the file's type", failures)
+        rc, _, log = search(idx, 1)
+        check(rc == 0 and "is ignored" not in log, "existing FI .idx + index_search_type = 1: no warning", failures)
     return failures
 
 # ---------------------------------------------------------------------------

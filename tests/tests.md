@@ -5,13 +5,13 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (88 Python test IDs), and 77 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (89 Python test IDs), and 77 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
-Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T59): `run_tests.py` registers 67 named
-tests plus 21 generated `t21_*` legacy cases (88 IDs, 10 of them integration-only);
+Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T60): `run_tests.py` registers 68 named
+tests plus 21 generated `t21_*` legacy cases (89 IDs, 10 of them integration-only);
 `CometUnitTests.exe` has 77 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T59
+### `run_tests.py` -- T1-T60
 
 | ID | Summary |
 |---|---|
@@ -110,6 +110,7 @@ not exist.
 | **T57** (`t57_position_rule_edge_cases`) | Plain-FASTA position-rule edge cases from the terminalmods code review: invalid fifth/sixth-field values (`M 0 3 0 4`, `M 0 3 -3 0`) are rejected with an error; binary mods honor a peptide-C-terminus rule (`8.014199 K 1 3 1 3` -> `AGSPELK[+8.01]`) and a protein-C-terminus rule (`79.966331 S 1 3 3 1` -> `AGPEMNVS[+80]S[+80]R`, whose start is farther than 3 from the protein end); a c-term mod with a protein-N-terminus rule (`14.01565 c 0 1 11 0`) reaches `QTAGSPELK`, whose missed-cleavage extensions end past 11. All five checks fail on v2026.02.2 (FI/PI do not implement binary mods, so FASTA only). |
 | **T58** (`t58_protein_term_rule_attribution`) | Protein attribution of a residue mod with a protein-terminus position rule: `MAGSPELK` is protein-N-terminal in `t58_a` and internal in `t58_b`; with `15.9949 M 0 3 0 0` the oxidized PSM must list only `t58_a` on plain FASTA, FI_DB and PI_DB (the unmodified control lists both). Before the fix FI/PI listed both: the shared index row admits the mod from its OR'd flanks, so attribution now goes through the protein-occurrence context bits, like `^`/`$`. |
 | **T59** (`t59_ascorepro_fasta_protein_offset`) | AScorePro's peptidoform filter on the plain-FASTA path evaluates a protein-terminus rule on the true protein offset (`ProteinEntryStruct` `iStartResidue`/`iProteinLength`), not on the flanks: `AMMGSPELK` starts at protein offset 1 after an N-terminal K, and with `15.9949 M 0 3 3 0` both Ms (protein positions 2 and 3) are legal, so the alternative placement must be scored and the site score must not be the 5000.0 "only possible site" value. Fails on the build before the fix (flank test rejected the alternative). |
+| **T60** (`t60_index_search_type_scope`) | `index_search_type` only selects the index type to auto-build when `database_name` names a missing `.idx` (`0` builds a peptide index, `1`/absent a fragment ion index, checked in the `IndexSearchType:` header). Otherwise it is ignored with a warning: a FASTA database ("not an .idx file", results identical to the run without the parameter), an existing `.idx` of the other type (names the file's type and the `-i`/`-j` to rebuild), a value other than 0/1 (uses 1); an explicit `-i`/`-j` build stays quiet. Prompted by an issue-132 comment. |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 

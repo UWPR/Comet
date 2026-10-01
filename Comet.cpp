@@ -935,7 +935,7 @@ decoy_search = 0                       # 0=no (default), 1=internal decoy concat
 # Once an .idx file exists, it is self-describing (its own IndexSearchType: header line\n\
 # records whether -i or -j built it) and this parameter is ignored for it, as is the case\n\
 # for a plain FASTA search.\n\
-index_search_type = 1                  # 0=peptide index (PI_DB), 1=fragment ion index (FI_DB, default)\n\
+index_search_type = 1                  # auto-build only: 0=peptide index, 1=fragment ion index (default); ignored for a FASTA or an existing .idx\n\
 \n\
 num_threads = 0                        # 0=poll CPU to set num threads; else specify num threads directly (max %d)\n\n", MAX_THREADS);
 
