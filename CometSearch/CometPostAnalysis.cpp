@@ -956,17 +956,23 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    // are all among allowed peptidoforms -- using the rule the FI/PI permuter applies. A mod at the
    // position Comet already placed it is always allowed: the search admitted it, and on the FASTA
    // path a protein-terminus distance rule can admit positions a PSM alone cannot re-derive.
-   // A per-call copy, since g_AScoreOptions is shared by concurrent RTS threads.
-   bool bRestricted = false;
-   for (int i = 0; i < 9; ++i)   // AScorePro sees variable_mod01-09 (symbols '1'-'9')
+   // Each thread keeps its own copy of g_AScoreOptions (shared by concurrent RTS threads) with the
+   // filter installed, refreshed only when SetAScoreOptions() runs again; per PSM just the filter's
+   // context is updated. AScorePro scores synchronously on this thread, so the filter can read the
+   // thread_local context directly.
+   struct AScoreFilterContext
    {
-      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
-      if (vm.iVarModTermDistance != -1 && !isEqual(vm.dVarModMass, 0.0) && vm.szVarModChar[0] != '-')
-         bRestricted = true;
-   }
+      int iLenPeptide = 0;
+      bool bProtN = false;
+      bool bProtC = false;
+      std::vector<int> vOrigSlot;   // Comet's placement: slot number (1-based) per residue
+   };
+   thread_local AScoreFilterContext tl_ctx;
+   thread_local AScoreOptions tl_opts;
+   thread_local unsigned int tl_uiGeneration = UINT_MAX;
 
    AScoreOutput result;
-   if (!bRestricted)
+   if (!g_bAScoreRestrictedSlots)
    {
       // Calculate AScore using the DLL interface
       result = ascoreInterface->CalculateScoreWithOptions(sequence,
@@ -974,36 +980,40 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    }
    else
    {
-      const int iLenPeptide = pQuery->_pResults[0].usiLenPeptide;
-      const bool bProtN = (pQuery->_pResults[0].cPrevAA == '-');
-      const bool bProtC = (pQuery->_pResults[0].cNextAA == '-');
-      std::vector<int> vOrigSlot(iLenPeptide, 0);   // Comet's placement: slot number (1-based) per residue
-      for (int i = 0; i < iLenPeptide; ++i)
-         vOrigSlot[i] = pQuery->_pResults[0].piVarModSites[i];
-
-      AScoreOptions opts = g_AScoreOptions;
-      opts.setPeptideFilter([iLenPeptide, bProtN, bProtC, vOrigSlot](const Peptide& p)
+      const unsigned int uiGeneration = g_uiAScoreOptionsGeneration.load();
+      if (tl_uiGeneration != uiGeneration)
       {
-         for (const auto& mod : p.getMods())
+         tl_opts = g_AScoreOptions;
+         tl_opts.setPeptideFilter([](const Peptide& p)
          {
-            const int iSlot = mod.getSymbol() - '1';
-            const int iPos = mod.getPosition();
-            if (iSlot < 0 || iSlot >= 9 || iPos < 0 || iPos >= iLenPeptide)
-               continue;
+            const AScoreFilterContext& ctx = tl_ctx;
+            for (const auto& mod : p.getMods())
+            {
+               const int iSlot = mod.getSymbol() - '1';
+               const int iPos = mod.getPosition();
+               if (iSlot < 0 || iSlot >= 9 || iPos < 0 || iPos >= ctx.iLenPeptide)
+                  continue;
 
-            const VarMods& vm = g_staticParams.variableModParameters.varModList[iSlot];
-            if (vm.iVarModTermDistance == -1 || vOrigSlot[iPos] == iSlot + 1)
-               continue;
+               const VarMods& vm = g_staticParams.variableModParameters.varModList[iSlot];
+               if (vm.iVarModTermDistance == -1 || ctx.vOrigSlot[iPos] == iSlot + 1)
+                  continue;
 
-            const std::vector<ModPositionRule> vRule = { { vm.iVarModTermDistance, vm.iWhichTerm } };
-            if (!(ModificationsPermuter::getPositionClass(iPos, iLenPeptide, bProtN, bProtC, vRule) & 1))
-               return false;
-         }
-         return true;
-      });
+               const std::vector<ModPositionRule> vRule = { { vm.iVarModTermDistance, vm.iWhichTerm } };
+               if (!(ModificationsPermuter::getPositionClass(iPos, ctx.iLenPeptide, ctx.bProtN, ctx.bProtC, vRule) & 1))
+                  return false;
+            }
+            return true;
+         });
+         tl_uiGeneration = uiGeneration;
+      }
+
+      tl_ctx.iLenPeptide = pQuery->_pResults[0].usiLenPeptide;
+      tl_ctx.bProtN = (pQuery->_pResults[0].cPrevAA == '-');
+      tl_ctx.bProtC = (pQuery->_pResults[0].cNextAA == '-');
+      tl_ctx.vOrigSlot.assign(pQuery->_pResults[0].piVarModSites, pQuery->_pResults[0].piVarModSites + tl_ctx.iLenPeptide);
 
       result = ascoreInterface->CalculateScoreWithOptions(sequence,
-         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, opts);
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, tl_opts);
    }
 
    if (!result.peptides.empty())

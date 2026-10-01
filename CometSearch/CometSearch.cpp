@@ -75,8 +75,9 @@ static inline bool VarModCtermAllowed(int iWhichMod,
 // Whether a terminal mod is counted as a site of peptide [iStartPos, iEndPos]: the terminal
 // code test above plus the variable_modNN fifth/sixth-field distance rule (term_distance d,
 // which_term 0 = protein N, 1 = protein C, 2 = peptide N, 3 = peptide C), exactly as
-// v2026.02.2's VariableModSearch() applied it -- including that a which_term 3 distance never
-// admits an n-term mod and a which_term 0 distance tests a c-term mod against iStartPos.
+// v2026.02.2's VariableModSearch() applied it, including that a which_term 3 distance never
+// admits an n-term mod. (2.2 tested a c-term mod's which_term 0 distance against the peptide
+// start in one place and its end in others; the c-terminus position, iEndPos, is used here.)
 // VariableModSearch() counts sites and MergeVarMods() consumes them with these same two
 // tests, so the n-term, c-term, residue site order the two share stays aligned.
 static inline bool VarModNtermCounted(int iWhichMod,
@@ -108,7 +109,7 @@ static inline bool VarModCtermCounted(int iWhichMod,
    if (vm.iVarModTermDistance < 0)
       return true;
    if (vm.iWhichTerm == 0)
-      return iStartPos <= vm.iVarModTermDistance;
+      return iEndPos <= vm.iVarModTermDistance;
    if (vm.iWhichTerm == 1)
       return iEndPos + vm.iVarModTermDistance >= iLenProteinMinus1;
    if (vm.iWhichTerm == 2)
@@ -6169,7 +6170,7 @@ bool CometSearch::HasVariableMod(int* pVarModCounts,
                   return true;
                }
                if (VarModCtermAllowed(i, iEndPos, _proteinInfo.iTmpProteinSeqLength - 1)
-                  && iEndPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+                  && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
                {
                   return true;
                }
@@ -6195,12 +6196,10 @@ bool CometSearch::HasVariableMod(int* pVarModCounts,
                // if distance contraint is from peptide n-term and n-term mod is specified
                if (VarModNtermAllowed(i, iStartPos))
                   return true;
-               // if distance constraint is from peptide n-term, make sure c-term is within that distance from the n-term
-               if (VarModCtermAllowed(i, iEndPos, _proteinInfo.iTmpProteinSeqLength - 1)
-                  && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-               {
+               // c-term within d of the peptide N-terminus: a shorter end can always qualify, and
+               // iEndPos here may be the longest candidate end, so this is only an upper bound
+               if (VarModCtermAllowed(i, iEndPos, _proteinInfo.iTmpProteinSeqLength - 1))
                   return true;
-               }
             }
             else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  // peptide C
             {
@@ -6282,6 +6281,16 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
       iLenProteinMinus1 = _proteinInfo.iTmpProteinSeqLength - 1;
 
    int iSize = (int)dbe->vectorPeffMod.size();
+
+   // Residue mods with a peptide-C-terminus distance rule (which_term 3) can only be counted
+   // once the end position is known; skip that per-end pass when no slot has one.
+   bool bAnyPepCtermRule = false;
+   for (i = 0; i < VMODS; ++i)
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+      if (vm.bUseMod && vm.iWhichTerm == 3 && vm.iVarModTermDistance >= 0)
+         bAnyPepCtermRule = true;
+   }
 
    // do not apply PEFF mods to a PEFF variant peptide
    if (_proteinInfo.iPeffOrigResiduePosition < 0 && iSize > 0)
@@ -6378,11 +6387,11 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
             {
                piVarModCountsNC[i] += 1;
             }
-            // Since don't know if iEndPos is last residue in peptide (not necessarily),
-            // have to be conservative here and count possible c-term mods if within iStartPos+3
-            // Honestly not sure why I chose iStartPos+3 here.
+            // upper bound over the ends tried below: the c-terminus can be within d of the
+            // protein N-terminus only if the peptide starts there (was iStartPos + 3, which
+            // dropped peptides whose c-term mod the placement code admits)
             if (VarModCtermAllowed(i, iEndPos, iLenProteinMinus1)
-               && iStartPos + 3 <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
+               && iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
             {
                piVarModCountsNC[i] += 1;
             }
@@ -6405,11 +6414,9 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
          {
             if (VarModNtermAllowed(i, iStartPos))
                piVarModCountsNC[i] += 1;
-            if (VarModCtermAllowed(i, iEndPos, iLenProteinMinus1)
-               && iEndPos - iStartPos <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-            {
+            // upper bound: the shortest end is always within d of the peptide N-terminus
+            if (VarModCtermAllowed(i, iEndPos, iLenProteinMinus1))
                piVarModCountsNC[i] += 1;
-            }
          }
          else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  // peptide C
          {
@@ -6683,7 +6690,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                         }
                                                                         else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
                                                                         {
-                                                                           if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
+                                                                           if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance
                                                                               >= iLenProteinMinus1)
                                                                            {
                                                                               _varModInfo.varModStatList[i].iTotBinaryModCt++;
@@ -6727,7 +6734,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                               }
                                                                               else if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 1) // protein C
                                                                               {
-                                                                                 if (iStartPos + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
+                                                                                 if (iTmpEnd + g_staticParams.variableModParameters.varModList[i].iVarModTermDistance >= iLenProteinMinus1)
                                                                                  {
                                                                                     _varModInfo.varModStatList[i].iTotBinaryModCt++;
                                                                                     bMatched = true;
@@ -6782,6 +6789,7 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
 
                                                             bool bValid = true;
+                                                            bool bSnapshotTaken = false;   // piTmpTot*ModCt hold the pre-end counts to restore
 
                                                             // since we're varying iEndPos, check enzyme consistency first
                                                             if (!CheckEnzymeTermini(szProteinSeq, iStartPos, iTmpEnd))
@@ -6789,6 +6797,8 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
 
                                                             if (bValid)
                                                             {
+                                                               bSnapshotTaken = true;
+
                                                                // at this point, consider variable c-term mod at iTmpEnd position
                                                                for (i = 0; i < VMODS; ++i)
                                                                {
@@ -6809,22 +6819,38 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                }
 
                                                                // also need to consider all residue mods that have a peptide c-term distance
-                                                               // constraint because these depend on iTmpEnd which was not defined until now
-                                                               int x;
-                                                               for (x = iStartPos; x <= iTmpEnd; ++x)
+                                                               // constraint because these depend on iTmpEnd which was not defined until now.
+                                                               // Binary mods count into iTotBinaryModCt the same way the per-residue loop above
+                                                               // does (the mod's own residues, else a later mod of its binary group).
+                                                               if (bAnyPepCtermRule)
                                                                {
-                                                                  cResidue = szProteinSeq[x];
-
-                                                                  for (i = 0; i < VMODS; ++i)
+                                                                  for (int x = iStartPos; x <= iTmpEnd; ++x)
                                                                   {
-                                                                     if (g_staticParams.variableModParameters.varModList[i].bUseMod)
+                                                                     cResidue = szProteinSeq[x];
+
+                                                                     for (i = 0; i < VMODS; ++i)
                                                                      {
-                                                                        if (strchr(g_staticParams.variableModParameters.varModList[i].szVarModChar, cResidue))
+                                                                        const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+                                                                        if (!vm.bUseMod || vm.iWhichTerm != 3 || vm.iVarModTermDistance < 0
+                                                                              || iTmpEnd - x > vm.iVarModTermDistance)
+                                                                           continue;
+
+                                                                        if (strchr(vm.szVarModChar, cResidue))
                                                                         {
-                                                                           if (g_staticParams.variableModParameters.varModList[i].iWhichTerm == 3)  //c-term pep
+                                                                           _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                                           if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
+                                                                              _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                        }
+                                                                        else if (g_staticParams.variableModParameters.bBinaryModSearch && vm.iBinaryMod)
+                                                                        {
+                                                                           for (int ii = i + 1; ii < VMODS; ++ii)
                                                                            {
-                                                                              if (iTmpEnd - x <= g_staticParams.variableModParameters.varModList[i].iVarModTermDistance)
-                                                                                 _varModInfo.varModStatList[i].iTotVarModCt++;
+                                                                              const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
+                                                                              if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && strchr(vm2.szVarModChar, cResidue))
+                                                                              {
+                                                                                 _varModInfo.varModStatList[i].iTotBinaryModCt++;
+                                                                                 break;
+                                                                              }
                                                                            }
                                                                         }
                                                                      }
@@ -7000,7 +7026,9 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                }
                                                             }
 
-                                                            if (bValid)
+                                                            // Restore whenever the counts were snapshotted: a count, required-mod or binary check
+                                                            // can clear bValid after the per-end increments, which must not carry into longer ends.
+                                                            if (bSnapshotTaken)
                                                             {
                                                                for (i = 0; i < VMODS; ++i)
                                                                {

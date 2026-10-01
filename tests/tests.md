@@ -5,14 +5,14 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (85 Python test IDs), and 76 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (86 Python test IDs), and 77 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
-Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T56): `run_tests.py` registers 64 named
-tests plus 21 generated `t21_*` legacy cases (85 IDs, 10 of them integration-only);
-`CometUnitTests.exe` has 76 `TEST_F` cases.
+Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T57): `run_tests.py` registers 65 named
+tests plus 21 generated `t21_*` legacy cases (86 IDs, 10 of them integration-only);
+`CometUnitTests.exe` has 77 `TEST_F` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
 what each individual test actually checks.
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T56
+### `run_tests.py` -- T1-T57
 
 | ID | Summary |
 |---|---|
@@ -107,6 +107,7 @@ not exist.
 | **T54** (`t54_pyroglu_all_paths`) | Peptide-N-terminal pyroglutamate (`-17.026549 Q 0 1 0 2`, `-18.010565 E 0 1 0 2`) on plain FASTA, FI_DB and PI_DB: `Q[-17]TAGSPELK` and `E[-18]GTWLDNAPK` are found, the internal Q of `AGQEAPLSVR` is never modified (an unrestricted `Q` control does modify it on every path), the `.idx` `VariableMod:` slots persist the `:0:2` restriction, and a protein-terminus distance > 0 (`M 0 3 2 0`) warns on the index paths only. FASTA, spectra and params are generated into a temp dir. |
 | **T55** (`t55_ascorepro_position_filter`) | AScorePro respects position restrictions: the spectrum carries pyroglutamate on the internal Q5 of `QTAGQPELK`, which `Q 0 1 0 2` forbids, so the search reports `Q[-17]TAGQPELK`; with `print_ascorepro_score = 1` on all three paths the peptide is not relocalized to Q5 and the site scores never name position 5 (Comet passes AScorePro a peptidoform filter; without it AScorePro relocalizes to `QTAGQ[-17]PELK`). |
 | **T56** (`t56_idx_build_determinism`) | Default-suite counterpart of T18: a generated 400-protein FASTA where every protein repeats a 10-mer (short path) and a 14-mer (long path) at its N-terminus and internally with a different next residue each time, so one protein feeds the dedup merge several tuples of the same sequence. No-enzyme builds (length 8-15) with `num_threads = 1` and `16` must be byte-identical, with `equal_I_and_L` 0 and 1. Fails on the pre-fix build (the dedup sort tied such copies and the stored representative followed thread scheduling). |
+| **T57** (`t57_position_rule_edge_cases`) | Plain-FASTA position-rule edge cases from the terminalmods code review: invalid fifth/sixth-field values (`M 0 3 0 4`, `M 0 3 -3 0`) are rejected with an error; binary mods honor a peptide-C-terminus rule (`8.014199 K 1 3 1 3` -> `AGSPELK[+8.01]`) and a protein-C-terminus rule (`79.966331 S 1 3 3 1` -> `AGPEMNVS[+80]S[+80]R`, whose start is farther than 3 from the protein end); a c-term mod with a protein-N-terminus rule (`14.01565 c 0 1 11 0`) reaches `QTAGSPELK`, whose missed-cleavage extensions end past 11. All five checks fail on v2026.02.2 (FI/PI do not implement binary mods, so FASTA only). |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 
@@ -186,7 +187,7 @@ reach through a full search:
 | `TestCometSearchAndPreprocess.cpp` | `CometSearchTest` | 28 | `CometSearch` static helpers with a minimal `g_staticParams` setup: `CheckEnzymeTermini`/`CheckEnzymeStartTermini`/`CheckEnzymeEndTermini` (tryptic rules, K-before-P, protein termini, `num_enzyme_termini=1`), `CheckMassMatchStatic` with `isotope_error` 0/1 (C13 window), `GetAA` codon translation on forward/reverse strands (stop codon, unknown codon), and `AllocateMemory`/`DeallocateMemory` idempotence. |
 | `TestCometSearchAndPreprocess.cpp` | `CometPreprocessTest` | 26 | `CometPreprocess` driver helpers: `CheckExit` under every scan-selection mode (entire file, scan range, specific scan, batch size, error status), `GetMassCushion` for amu/mmu/ppm and precursor-m/z tolerances, `IsValidInputType` per file type (`.raw`/`.mzXML` true; `.ms2`/`.mgf`/`.mzML` false), `Reset`/`DoneProcessingAllSpectra`, and allocate/deallocate idempotence. |
 | `TestCometSearchAndPreprocess.cpp` | `BinarySearchMassFixture` | 5 | `CheckMassMatchStatic` at and beyond the lower/upper tolerance bounds, driving the mass-window binary search used by the index paths. |
-| `TestModificationsPermuter.cpp` | `PermuterTest` | 17 | `ModificationsPermuter` (P1-P17): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits; P14-P17: variable_mod fifth/sixth-field position rules (peptide-N, `-2`, peptide-C and protein-N rules; position classes in the dedup key; `getPositionClass()` terminal-site rules). |
+| `TestModificationsPermuter.cpp` | `PermuterTest` | 18 | `ModificationsPermuter` (P1-P18): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits; P14-P17: variable_mod fifth/sixth-field position rules (peptide-N, `-2`, peptide-C and protein-N rules; position classes in the dedup key; `getPositionClass()` terminal-site rules; P18: positions a restricted mod cannot take do not split the dedup key). |
 
 ### `test_il_sequence.py` (standalone, not part of `run_tests.py`)
 

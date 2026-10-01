@@ -1008,6 +1008,11 @@ extern vector<string> g_pvProteinNameCache;  // protein name by .idx name-sectio
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
+// Set by CometSearchManager::SetAScoreOptions(): whether a slot AScorePro sees (variable_mod01-09)
+// has a position restriction, and a counter bumped on every call so per-thread option copies
+// (CometPostAnalysis::CalculateAScorePro()) know when to refresh.
+extern bool g_bAScoreRestrictedSlots;
+extern std::atomic<unsigned int> g_uiAScoreOptionsGeneration;
 
 // Flat-pooled mod-permutation tables (docs/20260827_PI_memory.md Phase 1). MOD_NUMBERS_POOL
 // replaces the former vector<ModificationNumber>, which paid a 16-byte vector slot plus one

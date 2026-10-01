@@ -71,6 +71,8 @@ map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 vector<string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
+bool                          g_bAScoreRestrictedSlots = false;       // see core/Types.h
+std::atomic<unsigned int>     g_uiAScoreOptionsGeneration{0};         // see core/Types.h
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
 // AScoreDllInterface::CalculateScoreWithOptions() is assumed to be thread-safe because
 // it does not modify any mutable member state; all intermediate computation uses local
@@ -1418,6 +1420,22 @@ bool CometSearchManager::InitializeStaticParams()
          vm.iVarModTermDistance = -1;
          vm.iWhichTerm = 0;
          continue;
+      }
+
+      // Reject values no search path defines: term_distance below -2, or a distance rule
+      // (term_distance >= 0) naming a terminus other than 0-3. Accepting them silently
+      // gave different results on FASTA, FI/PI and AScorePro.
+      if (vm.iVarModTermDistance < -2 || (vm.iVarModTermDistance >= 0 && (vm.iWhichTerm < 0 || vm.iWhichTerm > 3)))
+      {
+         char szErr[256];
+         snprintf(szErr, sizeof(szErr), " Error - variable_mod%02d (%s): invalid term_distance/which_term \"%d %d\";"
+               " term_distance must be -2, -1 or >= 0, and which_term 0-3 (0 = protein N,"
+               " 1 = protein C, 2 = peptide N, 3 = peptide C).\n",
+               i + 1, vm.szVarModChar, vm.iVarModTermDistance, vm.iWhichTerm);
+         string strErrorMsg = szErr;
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
       }
 
       if (vm.iVarModTermDistance == 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
@@ -3797,6 +3815,18 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
          masses.modifyCTermMass(mod.getMass());
       }
    }
+
+   // Position-restricted slots need AScorePro's peptidoform filter (CalculateAScorePro());
+   // decided once here rather than per PSM. The generation bump makes each thread refresh
+   // its private copy of these options.
+   g_bAScoreRestrictedSlots = false;
+   for (int i = 0; i < 9; ++i)   // AScorePro sees variable_mod01-09 (symbols '1'-'9')
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+      if (vm.iVarModTermDistance != -1 && !isEqual(vm.dVarModMass, 0.0) && vm.szVarModChar[0] != '-')
+         g_bAScoreRestrictedSlots = true;
+   }
+   g_uiAScoreOptionsGeneration++;
 }
 
 

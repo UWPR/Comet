@@ -333,8 +333,8 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 //      C-terminus and L-1-p <= d
 //   N-terminal site: 2 -> always; 3 -> never; 0 -> at the protein N-terminus;
 //      1 -> at the protein C-terminus and L-1 <= d
-//   C-terminal site: 3 -> always; 2 -> L-1 <= d; 0 -> at the protein N-terminus;
-//      1 -> at the protein C-terminus
+//   C-terminal site: 3 -> always; 2 -> L-1 <= d; 0 -> at the protein N-terminus and
+//      L-1 <= d; 1 -> at the protein C-terminus
 // The protein-terminus rules (0/1) need the peptide's offset in its protein, which an index
 // does not keep: they are exact for d == 0 and, for d > 0, only admit peptides that sit at
 // that protein terminus (CometFragmentIndex::PermuteIndexPeptideMods() warns).
@@ -360,7 +360,7 @@ unsigned char ModificationsPermuter::getPositionClass(int iPos,
          if (iPos < 0)             // N-terminal site
             bOk = (t == 2) || (t == 0 && bProteinNterm) || (t == 1 && bProteinCterm && iLast <= d);
          else if (iPos >= iPepLen) // C-terminal site
-            bOk = (t == 3) || (t == 2 && iLast <= d) || (t == 0 && bProteinNterm) || (t == 1 && bProteinCterm);
+            bOk = (t == 3) || (t == 2 && iLast <= d) || (t == 0 && bProteinNterm && iLast <= d) || (t == 1 && bProteinCterm);
          else if (t == 0)
             bOk = bProteinNterm && iPos <= d;
          else if (t == 1)
@@ -416,16 +416,28 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
          const bool bProtN = ((*it).cPrevAA == '-');
          const bool bProtC = ((*it).cNextAA == '-');
 
+         // A rule's bit only matters where its mod can go at all; elsewhere it is forced to 1
+         // so that positions a restricted mod cannot take never split the dedup key.
+         auto irrelevant = [&ALL_MODS, &vRules](char c) -> unsigned char {
+            unsigned char uc = 0;
+            for (int m = 0; m < (int)vRules.size() && m < 8; ++m)
+               if (ALL_MODS[m].find(c) == string::npos)
+                  uc |= (unsigned char)(1u << m);
+            return uc;
+         };
+
          sClasses.clear();
          if (bIncludeTermini)
          {
-            sClasses += (char)getPositionClass(-1, iPepLen, bProtN, bProtC, vRules);
-            sClasses += (char)getPositionClass(iPepLen, iPepLen, bProtN, bProtC, vRules);
+            const char cN = bProtN ? TERM_PROT_N : TERM_PEP_N;
+            const char cC = bProtC ? TERM_PROT_C : TERM_PEP_C;
+            sClasses += (char)(getPositionClass(-1, iPepLen, bProtN, bProtC, vRules) | irrelevant(cN));
+            sClasses += (char)(getPositionClass(iPepLen, iPepLen, bProtN, bProtC, vRules) | irrelevant(cC));
          }
          for (int p = 0; p < iPepLen; ++p)
          {
             if (isModifiable((*it).szPeptide[p], ALL_MODS))
-               sClasses += (char)getPositionClass(p, iPepLen, bProtN, bProtC, vRules);
+               sClasses += (char)(getPositionClass(p, iPepLen, bProtN, bProtC, vRules) | irrelevant((*it).szPeptide[p]));
          }
       }
 

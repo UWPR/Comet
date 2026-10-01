@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T56; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T57; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -5108,6 +5108,79 @@ def test_t56_idx_build_determinism(comet_exe):
                           f"equal_IL={il}: 1-thread and 16-thread .idx builds are byte-identical", failures)
         finally:
             PARAMS_TEMPLATE = base_template
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T57 -- plain-FASTA position-rule edge cases fixed after the terminalmods code review:
+# invalid fifth/sixth-field values are rejected; binary mods honor protein-C-terminus (1) and
+# peptide-C-terminus (3) rules (v2026.02.2 tested the peptide start for the former and never
+# counted the latter); a c-term mod's protein-N-terminus rule is tested against the peptide's
+# C-terminus, and the upper-bound checks no longer drop a start whose longest extension is
+# past d. FI/PI do not implement binary mods and apply protein-terminus d > 0 rules only at
+# the protein terminus, so these run on plain FASTA only.
+# ---------------------------------------------------------------------------
+
+_T57_PROTEIN = ("t57_a", "MSKQTAGSPELKAGSPELKAGPEMNVSSR")
+
+
+def _t57_plain(comet_exe, tmp, mods, spectra, tag):
+    """Plain-FASTA tryptic search of `spectra` against _T57_PROTEIN; returns (rc, rank-1 by scan, log)."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    fasta = tmp / "t57.fasta"
+    fasta.write_text(f">{_T57_PROTEIN[0]}\n{_T57_PROTEIN[1]}\n")
+    ms2 = tmp / f"t57_{tag}.ms2"
+    _t52_write_ms2(ms2, spectra)
+    txt = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    pf = tmp / f"t57_{tag}.params"
+    pf.write_text(legacy_cases.build_params(database=fmt(fasta), enzyme1=1, mods=mods, static_C=0.0,
+                                            num_output_lines=5))
+    rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+    rows = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"} if txt.exists() else {}
+    return rc, rows, log
+
+
+@register("t57_position_rule_edge_cases")
+def test_t57_position_rule_edge_cases(comet_exe):
+    """T57: invalid which_term rejected; binary mods with protein-C / peptide-C rules applied;
+    c-term mod with a protein-N rule reaches a peptide whose longer extensions pass d."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        one = {1: ("QTAGSPELK", {}, "t57_a")}
+
+        # invalid which_term: a clean error, no results
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 0 3 0 4 0 0.0",), one, "invalid")
+        check(rc != 0 and "invalid term_distance/which_term" in log,
+              f"'M 0 3 0 4' (which_term 4) is rejected with an error (rc={rc})", failures)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 0 3 -3 0 0 0.0",), one, "invalid2")
+        check(rc != 0 and "invalid term_distance/which_term" in log,
+              f"'M 0 3 -3 0' (term_distance -3) is rejected with an error (rc={rc})", failures)
+
+        # binary mod, K within 1 of the peptide C-terminus
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 1 3 0 0.0",),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_pepc")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01"),
+              f"binary 'K 1 3 1 3': AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # binary mod, S within 3 of the protein C-terminus (peptide start is not)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("79.966331 S 1 3 3 1 0 0.0",),
+                                   {1: ("AGPEMNVSSR", {7: 79.966331, 8: 79.966331}, "t57_a")}, "bin_protc")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGPEMNVSSR"
+              and _t54_has_mod(r, 8, "79.96") and _t54_has_mod(r, 9, "79.96"),
+              f"binary 'S 1 3 3 1': AGPEMNVS[+80]S[+80]R found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # c-term mod within 11 of the protein N-terminus: QTAGSPELK ends at position 11; its
+        # missed-cleavage extensions end past 11 (the peptide's own c-term mod must still apply)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("14.01565 c 0 1 11 0 0 0.0",),
+                                   {1: ("QTAGSPELK", {8: 14.01565}, "t57_a")}, "cterm_protn")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "QTAGSPELK" and "14.01565" in (r.get("modifications") or ""),
+              f"'c 0 1 11 0': QTAGSPELK carries the c-term mod, got {r.get('modified_peptide')!r} "
+              f"mods={r.get('modifications')!r} (rc={rc})", failures)
     return failures
 
 # ---------------------------------------------------------------------------

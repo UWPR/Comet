@@ -26,7 +26,8 @@ equivalent -- `n` with `0 0`, `c` with `0 1` -- to `^` / `$` (now silently), and
 fields to `-1 0` when the slot holds nothing else; a slot that also lists residues (e.g.
 `nK 0 3 0 0`) keeps the fields, which restrict K to protein position 0 as in v2026.02.2. The
 slot-merge step again compares the two fields, so a restricted slot is never folded into an
-unrestricted one of the same mass.
+unrestricted one of the same mass. Values no path defines -- term_distance below -2, or a
+distance rule (d >= 0) with which_term outside 0-3 -- stop the search with an error.
 
 ## 2. Plain-FASTA path: v2026.02.2 restored
 
@@ -41,6 +42,18 @@ every later site assignment of that slot. Both now use the same `VarModNtermCoun
 which_term 3 distance never admits an n-term mod and a which_term 0 distance tests a c-term
 mod against the peptide start).
 
+Fixed after the code review (T57): binary mods with a protein-C-terminus rule counted their
+sites against the peptide start instead of the residue, and binary mods with a
+peptide-C-terminus rule were never counted (the deferred per-end pass only updated
+iTotVarModCt), so neither was ever applied; a c-term mod's protein-N-terminus rule is now
+tested against the C-terminus position (iEndPos <= d) everywhere -- 2.2 used the start in one
+place, the end in another and "start + 3" in the pre-count -- and the upper-bound checks
+(`HasVariableMod()` with the longest candidate end, the pre-count) no longer reject a start
+whose shorter ends qualify; per-end counts added after the snapshot are restored even when a
+later check invalidates the end (they used to carry into longer ends as extra permutations);
+the deferred peptide-C-terminus pass is skipped when no slot has such a rule. Binary mods
+remain FASTA-only: the index paths do not implement them.
+
 ## 3. FI/PI path: position classes in the permuter
 
 `CometFragmentIndex::PermuteIndexPeptideMods()` passes each compacted mod's rule
@@ -50,7 +63,9 @@ modifiable-sequence position (terminal sentinels included) gets a class byte -- 
 when mod m may take that position (`getPositionClass()`) -- and the class bytes become part
 of the dedup key, so two peptides sharing modifiable residues (`QAQK`, `AQQK` -> `QQ`) but
 not eligibility get distinct permutation sets. `generateModifications()` ANDs each
-restricted mod's position bitmask with its class bits. The pool keeps plain residue letters,
+restricted mod's position bitmask with its class bits. A rule's bit is forced to 1 at positions
+its mod cannot take (a different residue, or a terminal sentinel it has no code for), so those
+positions never split the dedup key (P18). The pool keeps plain residue letters,
 so every consumer (fragment ladders, `ComputeIndexedPepMass()`, `MaterializeOneEntry()`,
 `SearchFragmentIndex()`) is unchanged; the class pool is build-time only and released after
 `getModificationCombinations()`.
@@ -79,8 +94,10 @@ AScorePro knows a mod only as residues + mass and could relocalize a restricted 
 forbidden residue (e.g. pyroglutamate onto an internal Q). `AScoreOptions` gains an optional
 `std::function<bool(const Peptide&)>` filter; `AScoreCalculator` skips a generated
 peptidoform the filter rejects before scoring, so it is neither the top peptide nor a
-site-scoring alternative. `CometPostAnalysis::CalculateAScorePro()` sets it (on a per-call
-copy of the shared `g_AScoreOptions`) only when a slot AScorePro sees is restricted, using
+site-scoring alternative. `CometPostAnalysis::CalculateAScorePro()` sets it only when a slot AScorePro sees is
+restricted (decided once per `SetAScoreOptions()`, `g_bAScoreRestrictedSlots`), on a per-thread
+copy of the shared `g_AScoreOptions` refreshed only when the options change
+(`g_uiAScoreOptionsGeneration`), with just the filter's per-PSM context updated per call, using
 `getPositionClass()`; a mod at the position Comet itself placed it is always allowed, which
 covers FASTA protein-distance rules a PSM cannot re-derive. The reported MOB and site scores
 are therefore computed among allowed peptidoforms; when the original is the only one, it

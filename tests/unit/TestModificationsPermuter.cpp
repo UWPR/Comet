@@ -526,3 +526,16 @@ TEST_F(PermuterTest, P17_PositionClass_TerminalSites)
    const std::vector<ModPositionRule> vUnres = { {-1, 0} };
    EXPECT_EQ(1, (int)ModificationsPermuter::getPositionClass(2, 4, false, false, vUnres));
 }
+
+
+// P18: a rule's bit is forced to 1 where its mod cannot go, so such positions never split the
+// dedup key. "AMAK" and "MAAK" (mods M, and K within 2 of the peptide C-terminus) share the
+// modifiable sequence "MK" and the same K eligibility; only the M position differs -- 2 vs 3
+// from the C-terminus, inside vs outside the K rule -- which the K rule must not see.
+TEST_F(PermuterTest, P18_PositionClass_IrrelevantPositionsDoNotSplit)
+{
+   RunPermuter({ {"AMAK",'K','S'}, {"MAAK",'K','S'} }, {"M", "K"}, {1, 1}, 3, false, 8, { {-1, 0}, {2, 3} });
+   EXPECT_EQ(1, GetNumModSeqs());
+   EXPECT_EQ(std::string("MK"), ModSeqOf(0));
+   EXPECT_EQ(std::string("MK"), ModSeqOf(1));
+}
