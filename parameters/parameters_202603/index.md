@@ -1,6 +1,6 @@
-### Search parameters (2026.01)
+### Search parameters (2026.03)
 
-Comet search parameters are defined here. These are valid for Comet version 2026.01.X.
+Comet search parameters are defined here. These are valid for Comet version 2026.03.X.
 
 Parameters for all versions of Comet [can be found here](/Comet/parameters/).
 Entries marked with an <font color="red">*</font> are new parameters.
@@ -16,8 +16,8 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 #### Database
 
 - [database_name](database_name.html)
-- [decoy_search](decoy_search.html)
-- [peff_format](peff_format.html)
+- [decoy_search](decoy_search.html) <font color="red">**</font> (v2026.03.0)
+- [peff_format](peff_format.html) <font color="red">**</font> (v2026.03.0)
 - [peff_obo](peff_obo.html)
 
 #### CPU threads
@@ -64,7 +64,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [fragindex_num_spectrumpeaks](fragindex_num_spectrumpeaks.html)
 - [fragindex_skipreadprecursors](fragindex_skipreadprecursors.html)
 
-
 #### Output
 
 - [output_mzidentmlfile](output_mzidentmlfile.html)
@@ -96,6 +95,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [equal_I_and_L](equal_I_and_L.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
+- [index_search_type](index_search_type.html) <font color="red">**</font> (v2026.03.0)
 - [mango_search](mango_search.html)
 - [mass_offsets](mass_offsets.html)
 - [max_duplicate_proteins](max_duplicate_proteins.html)
@@ -112,7 +112,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [peptide_length_range](peptide_length_range.html)
 - [pinfile_protein_delimiter](pinfile_protein_delimiter.html)
 - [precursor_NL_ions](precursor_NL_ions.html)
-- [print_ascorepro_score](print_ascorepro_score.html)
+- [print_ascorepro_score](print_ascorepro_score.html) <font color="red">**</font> (v2026.03.0)
 - [resolve_fullpaths](resolve_fullpaths.html)
 - [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue
 - [skip_researching](skip_researching.html)
@@ -137,7 +137,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 
 #### Variable modifications
 
-- [variable_mod01 thru variable_mod15](variable_modXX.html)
+- [variable_mod01 thru variable_mod15](variable_modXX.html) <font color="red">**</font> (v2026.03.0)
 - [max_variable_mods_in_peptide](max_variable_mods_in_peptide.html)
 - [require_variable_mod](require_variable_mod.html)
 - [scale_fragmentNL](scale_fragmentNL.html)

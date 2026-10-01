@@ -120,7 +120,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [text_file_extension](text_file_extension.html)
 - [xcorr_processing_offset](xcorr_processing_offset.html)
 
-### MS1 real-time alignment
+#### MS1 real-time alignment
 - [ms1_bin_tol](ms1_bin_tol.html)
 - [ms1_bin_offset](ms1_bin_offset.html)
 - [ms1_mass_range](ms1_mass_range.html)
