@@ -929,18 +929,20 @@ void PrintParams(int iPrintParams)
 "#\n\
 database_name = /some/path/db.fasta\n\
 decoy_search = 0                       # 0=no (default), 1=internal decoy concatenated, 2=internal decoy separate; .idx searches use the value the index was built with\n\
-\n\
+");
+
+   if (iPrintParams == 2)
+   {
+      // -q only: index_search_type matters only for auto-building a missing .idx
+      fprintf(fp,
+"\n\
 # index_search_type matters only when database_name names an .idx file that does not\n\
 # exist yet: Comet then digests the corresponding FASTA and this picks the index type to\n\
 # build, 0 = peptide index, 1 = fragment ion index. -1 (the default) means not set, which\n\
 # builds a fragment ion index. An existing .idx records its own type (-i builds a fragment\n\
 # ion index, -j a peptide index) and a plain FASTA search has no index, so in both cases a\n\
-# 0 or 1 set here is ignored and Comet warns. To auto-build a peptide index, set it to 0.\n");
-
-   if (iPrintParams == 2)
-   {
-      fprintf(fp,
-"index_search_type = -1                 # 0=create peptide index, 1=create fragment ion index; if .idx specified but not present\n");
+# 0 or 1 set here is ignored and Comet warns. To auto-build a peptide index, set it to 0.\n\
+index_search_type = -1                 # 0=create peptide index, 1=create fragment ion index; if .idx specified but not present\n");
    }
 
    fprintf(fp,

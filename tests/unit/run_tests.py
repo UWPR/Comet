@@ -5324,7 +5324,7 @@ def test_t60_index_search_type_scope(comet_exe):
             head = idx.read_bytes()[:4096].decode("latin-1").splitlines()
             return next((l for l in head if l.startswith("IndexSearchType:")), "")
 
-        # comet -p writes no active index_search_type line; comet -q writes "index_search_type = -1"
+        # comet -p does not mention index_search_type at all; comet -q writes "index_search_type = -1"
         # (-1 = not set), so a 0/1 in a params file always expresses intent
         for flag, want in (("-p", None), ("-q", "-1")):
             (tmp / "comet.params.new").unlink(missing_ok=True)
@@ -5333,6 +5333,8 @@ def test_t60_index_search_type_scope(comet_exe):
             m = re.search(r"^index_search_type\s*=\s*(-?\d+)", tmpl, re.M)
             check(rc == 0 and tmpl and (m.group(1) if m else None) == want,
                   f"comet {flag} template: active index_search_type line is {want!r}, got {m.group(0) if m else None!r}", failures)
+            if want is None:
+                check("index_search_type" not in tmpl, "comet -p template does not mention index_search_type", failures)
 
         # (a) FASTA database: any explicit value is ignored and warned; results identical with and
         #     without the parameter
