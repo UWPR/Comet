@@ -148,10 +148,13 @@ public:
    // '^' mod on the N-term slot needs an occurrence at the protein N-terminus, '$' one at
    // the protein C-terminus, both need one occurrence carrying both -- checked against the
    // raw peptide's ProteinsListCSR row flags (docs/20260915_permuter_terminal_mods.md
-   // section 11, option C). Returns true when no protein-scoped terminal slot is set.
-   static unsigned char ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx, const char* mods);
+   // section 11, option C). Mods with a protein-terminus position rule (variable_modNN fifth
+   // field >= 0, sixth 0/1), on a residue or a terminus, add that terminus too (iModSeqLen is
+   // the entry length, for the residue walk). Returns true when nothing requires a terminus.
+   static unsigned char ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx, const char* mods,
+      int iModSeqLen);
    static bool PassesProteinTerminusContext(const vector<int>& vModSlotForAllModsIdx, const char* mods,
-      comet_fileoffset_t lProteinRow);
+      int iModSeqLen, comet_fileoffset_t lProteinRow);
 
    static bool PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
       const char* mods, int modStringLen, unsigned short siVarModProteinFilter);

@@ -1078,6 +1078,11 @@ inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
 // the sentinel positions. Set once per session by CometFragmentIndex::PermuteIndexPeptideMods().
 extern int g_iTermSlotBytes;
 
+// True when a permuted variable mod has a protein-terminus position rule (fifth field >= 0,
+// sixth field 0/1): such a variant, like one carrying '^'/'$', may only be attributed to
+// protein occurrences at that terminus. Set by CometFragmentIndex::PermuteIndexPeptideMods().
+extern bool g_bProteinTermRuleMods;
+
 inline int ModEntryResidueOffset()
 {
    return g_iTermSlotBytes;

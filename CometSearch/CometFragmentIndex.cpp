@@ -54,6 +54,7 @@ int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequ
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable sequence.
 int MOD_NUM = 0;
 int g_iTermSlotBytes = 0;   // see core/Types.h ModEntryTermSlot(); set by PermuteIndexPeptideMods()
+bool g_bProteinTermRuleMods = false;   // see core/Types.h; set by PermuteIndexPeptideMods()
 size_t tTmp;
 
 
@@ -144,6 +145,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
    vector<ModPositionRule> vModRules; // parallel to ALL_MODS: variable_modNN fifth/sixth fields
+   g_bProteinTermRuleMods = false;
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
    // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
@@ -163,6 +165,8 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
          vMaxNumVarModsPerMod.push_back(g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
          vModRules.push_back({ g_staticParams.variableModParameters.varModList[i].iVarModTermDistance,
                                g_staticParams.variableModParameters.varModList[i].iWhichTerm });
+         if (CometMassSpecUtils::ProteinTermRuleMask(i) != 0)
+            g_bProteinTermRuleMods = true;
 
          // A protein-terminus distance rule needs the peptide's offset in its protein, which
          // the index does not keep: only peptides at that protein terminus are admitted
@@ -638,12 +642,13 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                   pEntry, iModSeqLen, g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
             }
 
-            // protein-scoped terminal mods need an occurrence of this peptide at that terminus
-            // (both termini in ONE protein when both are set) -- see PassesProteinTerminusContext()
-            if (bPass && g_iTermSlotBytes)
+            // protein-scoped terminal mods and protein-terminus position rules need an occurrence
+            // of this peptide at that terminus (both termini in ONE protein when both are set)
+            // -- see PassesProteinTerminusContext()
+            if (bPass && (g_iTermSlotBytes || g_bProteinTermRuleMods))
             {
                bPass = CometPeptideIndex::PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry,
-                  g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
+                  iModSeqLen, g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
             }
 
             if (bPass)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T57; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T58; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -4931,7 +4931,8 @@ def _t54_three_paths(comet_exe, tmp, mods, failures, tag, protein=None, spectra=
     fasta = tmp / "t54.fasta"
     ms2 = tmp / "t54.ms2"
     if not fasta.exists():
-        fasta.write_text(f">{protein[0]}\n{protein[1]}\n")
+        prots = protein if isinstance(protein, list) else [protein]   # one (name, seq) or a list
+        fasta.write_text("".join(f">{n}\n{q}\n" for n, q in prots))
         _t52_write_ms2(ms2, spectra)
     txt = ms2.with_suffix(".txt")
     idx = fasta.with_suffix(".fasta.idx")
@@ -5181,6 +5182,46 @@ def test_t57_position_rule_edge_cases(comet_exe):
         check(rc == 0 and r.get("plain_peptide") == "QTAGSPELK" and "14.01565" in (r.get("modifications") or ""),
               f"'c 0 1 11 0': QTAGSPELK carries the c-term mod, got {r.get('modified_peptide')!r} "
               f"mods={r.get('modifications')!r} (rc={rc})", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T58 -- protein attribution of a residue mod with a protein-terminus position rule on every
+# path. MAGSPELK is the protein-N-terminal peptide of t58_a and an internal tryptic peptide of
+# t58_b; 'M 0 3 0 0' allows the oxidation only at protein position 0. Plain FASTA evaluates each
+# protein separately; the FI/PI index row is shared and its flanks are OR'd ("protein-terminal
+# in any protein"), so the PSM must be attributed through the protein-occurrence context bits,
+# like '^'/'$' mods. Before that, FI/PI listed both proteins for M[ox]AGSPELK.
+# ---------------------------------------------------------------------------
+
+_T58_PROTEINS = [("t58_a", "MAGSPELKGGRTWLDNAPK"), ("t58_b", "GGRTWLDNAPKMAGSPELKAAR")]
+_T58_SPECTRA = {
+    1: ("MAGSPELK", {0: 15.9949}, "t58_a"),   # oxidized: allowed only where M is at protein position 0
+    2: ("MAGSPELK", {}, "t58_a"),             # unmodified control: both proteins
+}
+
+
+@register("t58_protein_term_rule_attribution")
+def test_t58_protein_term_rule_attribution(comet_exe):
+    """T58: a residue mod restricted to the protein N-terminus ('M 0 3 0 0') is attributed only
+    to proteins where the peptide is protein-N-terminal, on plain FASTA, FI_DB and PI_DB."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, ("15.9949 M 0 3 0 0 0 0.0",), failures, "M 0 3 0 0",
+                               protein=_T58_PROTEINS, spectra=_T58_SPECTRA)
+        for label, (r1, _, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "MAGSPELK" and _t54_has_mod(r, 1, "15.99"),
+                  f"{label}: scan 1 is M[ox]AGSPELK, got {r.get('modified_peptide')!r}", failures)
+            check(_t37_proteins(r) == {"t58_a"},
+                  f"{label}: M[ox]AGSPELK is attributed to t58_a only (protein-N-terminal there), "
+                  f"got {sorted(_t37_proteins(r))}", failures)
+            r = r1.get(2, {})
+            check(r.get("plain_peptide") == "MAGSPELK" and not _t54_has_mod(r, 1, "15.99")
+                  and _t37_proteins(r) == {"t58_a", "t58_b"},
+                  f"{label}: unmodified MAGSPELK lists both proteins, got {r.get('modified_peptide')!r} "
+                  f"{sorted(_t37_proteins(r))}", failures)
     return failures
 
 # ---------------------------------------------------------------------------

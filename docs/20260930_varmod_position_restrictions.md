@@ -77,8 +77,15 @@ so every consumer (fragment ladders, `ComputeIndexedPepMass()`, `MaterializeOneE
 | protein N/C, d > 0 | partial: only peptides at that protein terminus are admitted (the index has no position-in-protein); `PermuteIndexPeptideMods()` warns |
 
 As with `^`/`$`, a peptide shared by several proteins is one index row whose flanks are
-OR'd across its occurrences ("protein-terminal in any protein"), so protein-terminus rules
-use that union on the index paths while the FASTA path evaluates each protein separately.
+OR'd across its occurrences ("protein-terminal in any protein"), so the permuter admits a
+protein-terminus rule from that union. Attribution then narrows it exactly as for `^`/`$`:
+any placed mod (residue or terminal) whose slot has a protein-terminus rule adds that
+terminus to the context mask (`CometMassSpecUtils::ProteinTermRuleMask()`), both at index
+build time (`CometPeptideIndex::ProteinTerminusContextMask()` /
+`PassesProteinTerminusContext()`, gated by `g_bProteinTermRuleMods`) and when reporting
+proteins (`ProteinTermContextMask()`: txt/pepXML, mzIdentML and the RTS result path), so a PSM
+lists only proteins whose occurrence sits at that terminus -- what the FASTA path, which
+evaluates each protein separately, reports (T58).
 
 ## 4. .idx format (stays v5)
 

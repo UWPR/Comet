@@ -14,6 +14,7 @@
 
 
 #include "CometPeptideIndex.h"
+#include "CometMassSpecUtils.h"   // ProteinTermRuleMask()
 
 // For GenerateVariantArray()'s page-granular staging buffer (AllocStagingPages() et al.):
 // mmap/madvise/munmap on POSIX; Windows uses plain malloc/free (see AllocStagingPages()'s
@@ -645,19 +646,34 @@ int CometPeptideIndex::TranslateVarModSlot(const vector<int>& vModSlotForAllMods
 
 
 unsigned char CometPeptideIndex::ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx,
-                                                            const char* mods)
+                                                            const char* mods,
+                                                            int iModSeqLen)
 {
    unsigned char ucMask = 0;
-   if (mods == NULL || g_iTermSlotBytes == 0)
+   if (mods == NULL)
       return 0;
+
+   // Residue mods (and terminal ones, below) whose slot has a protein-terminus position rule
+   // (fifth field >= 0, sixth 0/1) require that terminus too: the permuter admits them from the
+   // merged row's flanks ("terminal in ANY protein"), so the protein occurrences must be checked.
+   if (g_bProteinTermRuleMods)
+   {
+      for (int j = ModEntryResidueOffset(); j < iModSeqLen; ++j)
+         ucMask |= CometMassSpecUtils::ProteinTermRuleMask(TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]));
+   }
+
+   if (g_iTermSlotBytes == 0)
+      return ucMask;
 
    int iSlotN = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
    if (iSlotN >= 0 && g_staticParams.variableModParameters.varModList[iSlotN].bProteinNtermOnly)
       ucMask |= ProteinsListCSR::PROT_NTERM_HERE;
+   ucMask |= CometMassSpecUtils::ProteinTermRuleMask(iSlotN);
 
    int iSlotC = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
    if (iSlotC >= 0 && g_staticParams.variableModParameters.varModList[iSlotC].bProteinCtermOnly)
       ucMask |= ProteinsListCSR::PROT_CTERM_HERE;
+   ucMask |= CometMassSpecUtils::ProteinTermRuleMask(iSlotC);
 
    return ucMask;
 }
@@ -665,9 +681,10 @@ unsigned char CometPeptideIndex::ProteinTerminusContextMask(const vector<int>& v
 
 bool CometPeptideIndex::PassesProteinTerminusContext(const vector<int>& vModSlotForAllModsIdx,
                                                      const char* mods,
+                                                     int iModSeqLen,
                                                      comet_fileoffset_t lProteinRow)
 {
-   unsigned char ucMask = ProteinTerminusContextMask(vModSlotForAllModsIdx, mods);
+   unsigned char ucMask = ProteinTerminusContextMask(vModSlotForAllModsIdx, mods, iModSeqLen);
    if (ucMask == 0)
       return true;
    if (lProteinRow < 0 || (size_t)lProteinRow >= g_pvProteinsList.size())
@@ -812,9 +829,10 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
          if (g_staticParams.variableModParameters.bVarModProteinFilter)
             bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.siVarModProteinFilter);
 
-         // protein-scoped terminal mods need an occurrence of this peptide at that terminus
-         if (bPass && g_iTermSlotBytes)
-            bPass = PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry, raw.lIndexProteinFilePosition);
+         // protein-scoped terminal mods / protein-terminus position rules need an occurrence of
+         // this peptide at that terminus
+         if (bPass && (g_iTermSlotBytes || g_bProteinTermRuleMods))
+            bPass = PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.lIndexProteinFilePosition);
 
          if (!bPass)
             continue;
