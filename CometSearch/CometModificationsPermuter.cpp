@@ -51,6 +51,11 @@ ModificationsPermuter::~ModificationsPermuter()
 unsigned int MAX_BITCOUNT = (MAX_PEPTIDE_LEN - 1) + ModificationsPermuter::TERM_SLOT_BYTES;
 int MAX_K_VAL = 10;
 
+// Position-class bytes parallel to MOD_SEQS_POOL (same MOD_SEQS_OFFSET offsets), filled by
+// getModifiableSequences() only when a permuted mod has a position restriction and consumed
+// and released by getModificationCombinations(); empty otherwise.
+static vector<unsigned char> s_vModSeqClass;
+
 int IGNORED_SEQ_CNT = 0; // Sequences that were ignored because they would generate more than FRAGINDEX_MAX_COMBINATIONS combinations.
 
 long TIME_IN_COMBINE = 0;
@@ -320,24 +325,129 @@ string ModificationsPermuter::getModifiableAas(std::string peptide,
 // with the unique modifiable sequences, replacing the former vector<string> MOD_SEQS return
 // value (one std::string header + possible heap allocation per unique sequence). The dedup
 // map itself stays a transient unordered_map, freed when this function returns.
+// Position eligibility under the variable_modNN fifth/sixth-field rules, matching what the
+// plain-FASTA path (CometSearch.cpp CountVarMods()/VariableModSearch()/MergeVarMods(),
+// VarModNtermCounted()/VarModCtermCounted()) admits:
+//   residue at peptide position p (length L): d == -2 -> p != L-1; which_term 2 -> p <= d;
+//      3 -> L-1-p <= d; 0 -> at the protein N-terminus and p <= d; 1 -> at the protein
+//      C-terminus and L-1-p <= d
+//   N-terminal site: 2 -> always; 3 -> L-1 <= d; 0 -> at the protein N-terminus;
+//      1 -> at the protein C-terminus and L-1 <= d
+//   C-terminal site: 3 -> always; 2 -> L-1 <= d; 0 -> at the protein N-terminus and
+//      L-1 <= d; 1 -> at the protein C-terminus
+// The protein-terminus rules (0/1) need the peptide's offset in its protein, which an index
+// does not keep: they are exact for d == 0 and, for d > 0, only admit peptides that sit at
+// that protein terminus (CometFragmentIndex::PermuteIndexPeptideMods() warns).
+unsigned char ModificationsPermuter::getPositionClass(int iPos,
+                                                      int iPepLen,
+                                                      bool bProteinNterm,
+                                                      bool bProteinCterm,
+                                                      const vector<ModPositionRule>& vRules)
+{
+   unsigned char ucClass = 0;
+   const int iLast = iPepLen - 1;
+
+   for (int m = 0; m < (int)vRules.size() && m < 8; ++m)
+   {
+      const int d = vRules[m].iTermDistance;
+      const int t = vRules[m].iWhichTerm;
+      bool bOk = true;
+
+      if (d == -2)
+         bOk = (iPos >= 0 && iPos < iPepLen) ? (iPos != iLast) : true;
+      else if (d >= 0)
+      {
+         if (iPos < 0)             // N-terminal site
+            bOk = (t == 2) || (t == 3 && iLast <= d) || (t == 0 && bProteinNterm) || (t == 1 && bProteinCterm && iLast <= d);
+         else if (iPos >= iPepLen) // C-terminal site
+            bOk = (t == 3) || (t == 2 && iLast <= d) || (t == 0 && bProteinNterm && iLast <= d) || (t == 1 && bProteinCterm);
+         else if (t == 0)
+            bOk = bProteinNterm && iPos <= d;
+         else if (t == 1)
+            bOk = bProteinCterm && iLast - iPos <= d;
+         else if (t == 2)
+            bOk = iPos <= d;
+         else if (t == 3)
+            bOk = iLast - iPos <= d;
+      }
+
+      if (bOk)
+         ucClass |= (unsigned char)(1u << m);
+   }
+
+   return ucClass;
+}
+
+
 void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPeptides,
                                                    int* PEPTIDE_MOD_SEQ_IDXS,
                                                    vector<string>& ALL_MODS,
-                                                   bool bIncludeTermini)
+                                                   bool bIncludeTermini,
+                                                   const vector<ModPositionRule>& vRules)
 {
    std::unordered_map<string, int> modifiableSeqMap;
    int pepIdx = 0;
    int modSeqIdx = 0;
    int modifiablePeptides = 0;
 
+   bool bRestricted = false;
+   for (const auto& r : vRules)
+      if (r.IsRestricted())
+         bRestricted = true;
+
    MOD_SEQS_POOL.clear();
    MOD_SEQS_OFFSET.clear();
    MOD_SEQS_OFFSET.push_back(0);
+   s_vModSeqClass.clear();
+
+   string sClasses;
+
+   // A rule's bit only matters where its mod can go at all; elsewhere it is forced to 1 so that
+   // positions a restricted mod cannot take never split the dedup key. Per character, computed
+   // once (bit m set when ALL_MODS[m] does not list the character).
+   unsigned char aucIrrelevant[256];
+   if (bRestricted)
+   {
+      for (int c = 0; c < 256; ++c)
+      {
+         unsigned char uc = 0;
+         for (int m = 0; m < (int)vRules.size() && m < 8; ++m)
+            if (ALL_MODS[m].find((char)c) == string::npos)
+               uc |= (unsigned char)(1u << m);
+         aucIrrelevant[c] = uc;
+      }
+   }
 
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
       //FIX: put restriction here for protein mod filter
       string modifiableAas = getModifiableAas(string((*it).szPeptide, (size_t)(*it).iLen), ALL_MODS);
+
+      if (bRestricted)
+      {
+         // One class byte per modifiable-sequence position, in the same order as the
+         // sequence built below: [N-sentinel][C-sentinel] (when bIncludeTermini) then the
+         // modifiable residues in peptide order.
+         const int iPepLen = (int)(*it).iLen;
+         const bool bProtN = ((*it).cPrevAA == '-');
+         const bool bProtC = ((*it).cNextAA == '-');
+
+         auto irrelevant = [&aucIrrelevant](char c) -> unsigned char { return aucIrrelevant[(unsigned char)c]; };
+
+         sClasses.clear();
+         if (bIncludeTermini)
+         {
+            const char cN = bProtN ? TERM_PROT_N : TERM_PEP_N;
+            const char cC = bProtC ? TERM_PROT_C : TERM_PEP_C;
+            sClasses += (char)(getPositionClass(-1, iPepLen, bProtN, bProtC, vRules) | irrelevant(cN));
+            sClasses += (char)(getPositionClass(iPepLen, iPepLen, bProtN, bProtC, vRules) | irrelevant(cC));
+         }
+         for (int p = 0; p < iPepLen; ++p)
+         {
+            if (isModifiable((*it).szPeptide[p], ALL_MODS))
+               sClasses += (char)(getPositionClass(p, iPepLen, bProtN, bProtC, vRules) | irrelevant((*it).szPeptide[p]));
+         }
+      }
 
       if (bIncludeTermini)
       {
@@ -355,12 +465,17 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
       if (!modifiableAas.empty())
       {
          modifiablePeptides++;
-         std::unordered_map<string, int>::iterator iter = modifiableSeqMap.find(modifiableAas);
+         // With restrictions the class bytes are part of the key (same length as the
+         // sequence, so sequence + classes is unambiguous).
+         const string sKey = bRestricted ? modifiableAas + sClasses : modifiableAas;
+         std::unordered_map<string, int>::iterator iter = modifiableSeqMap.find(sKey);
          if (iter == modifiableSeqMap.end())
          {
-            modifiableSeqMap[modifiableAas] = modSeqIdx;
+            modifiableSeqMap[sKey] = modSeqIdx;
             MOD_SEQS_POOL.insert(MOD_SEQS_POOL.end(), modifiableAas.begin(), modifiableAas.end());
             MOD_SEQS_OFFSET.push_back((unsigned int)MOD_SEQS_POOL.size());
+            if (bRestricted)
+               s_vModSeqClass.insert(s_vModSeqClass.end(), sClasses.begin(), sClasses.end());
             PEPTIDE_MOD_SEQ_IDXS[pepIdx] = modSeqIdx;
             modSeqIdx++;
          }
@@ -545,6 +660,7 @@ bool ModificationsPermuter::combine(int* modNumbers,
 // acids (pointer + length into MOD_SEQS_POOL, not NUL-terminated).
 void ModificationsPermuter::generateModifications(const char* sequence,
                                                   int iSeqLen,
+                                                  const unsigned char* pClasses,
                                                   vector<int>& vMaxNumVarModsPerMod,
                                                   int* ret_modNumStart,
                                                   int* ret_modNumCount,
@@ -568,7 +684,17 @@ void ModificationsPermuter::generateModifications(const char* sequence,
       //FIX: apply protein modifications filter here??
       string sModChars = ALL_MODS[m];
 
-      const unsigned long long bitmask = getModBitmask(sequence, iSeqLen, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
+      unsigned long long bitmask = getModBitmask(sequence, iSeqLen, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')
+
+      // Position-restricted mod: keep only the positions its rule admits (class bit m).
+      if (pClasses != NULL && m < 8)
+      {
+         for (int i = 0; i < iSeqLen; ++i)
+         {
+            if (!(pClasses[i] & (1u << m)))
+               bitmask &= ~(static_cast<uint64_t>(1ULL) << (iSeqLen - i - 1));
+         }
+      }
 
       if (bitmask != 0)
       {
@@ -848,7 +974,9 @@ void ModificationsPermuter::getModificationCombinations(vector<int>& vMaxNumVarM
       // MOD_NUMBERS_POOL computable -- see GetModNumEntry() (core/Types.h).
       MOD_SEQ_MOD_NUM_POOL_START[i] = (uint64_t)MOD_NUMBERS_POOL.size();
 
-      generateModifications(pModSeq, iModSeqLen, vMaxNumVarModsPerMod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
+      const unsigned char* pClasses = s_vModSeqClass.empty() ? NULL : s_vModSeqClass.data() + MOD_SEQS_OFFSET[i];
+
+      generateModifications(pModSeq, iModSeqLen, pClasses, vMaxNumVarModsPerMod, &modNumStart, &modNumCount, ALL_MODS, MOD_CNT, ALL_COMBINATION_CNT, ALL_COMBINATIONS);
 
       MOD_SEQ_MOD_NUM_START[i] = modNumStart;
       MOD_SEQ_MOD_NUM_CNT[i] = modNumCount;
@@ -856,4 +984,7 @@ void ModificationsPermuter::getModificationCombinations(vector<int>& vMaxNumVarM
 
    // Trim the geometric-growth slack now that the pool's final size is known.
    MOD_NUMBERS_POOL.shrink_to_fit();
+
+   // The position classes are build-time only: the pool entries now encode the result.
+   vector<unsigned char>().swap(s_vModSeqClass);
 }

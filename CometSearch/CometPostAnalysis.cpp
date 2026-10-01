@@ -28,6 +28,7 @@
 #include "AScoreMass.h"
 
 #include "CometDecoys.h"  // this is where decoyIons[EXPECT_DECOY_SIZE] is initialized
+#include "CometModificationsPermuter.h"   // ModPositionRule, getPositionClass()
 
 #include <mutex>    // std::once_flag, std::call_once
 #include <cassert>
@@ -948,9 +949,104 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    }
    sequence += std::string(".") + pQuery->_pResults[0].cNextAA;
 
-   // Calculate AScore using the DLL interface
-   AScoreOutput result = ascoreInterface->CalculateScoreWithOptions(sequence,
-      pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+   // Position-restricted mods (variable_modNN fifth/sixth fields, e.g. N-terminal pyroglutamate
+   // "Q 0 1 0 2"): AScorePro knows a mod only as residues + mass, so without help it would score
+   // and could relocalize such a mod onto a residue its rule forbids. Give it a filter that drops
+   // those peptidoforms before scoring -- so the reported MOB/site scores and any relocalization
+   // are all among allowed peptidoforms -- using the rule the FI/PI permuter applies. A mod at the
+   // position Comet already placed it is always allowed: the search admitted it, and on the FASTA
+   // path a protein-terminus distance rule can admit positions a PSM alone cannot re-derive.
+   // Each thread keeps its own copy of g_AScoreOptions (shared by concurrent RTS threads) with the
+   // filter installed, refreshed only when SetAScoreOptions() runs again; per PSM just the filter's
+   // context is updated. AScorePro scores synchronously on this thread, so the filter can read the
+   // thread_local context directly.
+   struct AScoreFilterContext
+   {
+      int iLenPeptide = 0;
+      bool bProtN = false;
+      bool bProtC = false;
+      std::vector<int> vOrigSlot;   // Comet's placement: slot number (1-based) per residue
+      // FASTA_DB only: (0-based start in protein, protein length - 1) per matched protein, so a
+      // protein-terminus rule (which_term 0/1) is tested on the true protein offset, as the
+      // search did -- legal in ANY matched protein, since the FASTA path evaluates each
+      // separately. Empty on the index paths, whose rows carry only the flanks (bProtN/bProtC).
+      std::vector<std::pair<int, int>> vProtein;
+   };
+   thread_local AScoreFilterContext tl_ctx;
+   thread_local AScoreOptions tl_opts;
+   thread_local unsigned int tl_uiGeneration = UINT_MAX;
+
+   AScoreOutput result;
+   if (!g_bAScoreRestrictedSlots)
+   {
+      // Calculate AScore using the DLL interface
+      result = ascoreInterface->CalculateScoreWithOptions(sequence,
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+   }
+   else
+   {
+      const unsigned int uiGeneration = g_uiAScoreOptionsGeneration.load();
+      if (tl_uiGeneration != uiGeneration)
+      {
+         tl_opts = g_AScoreOptions;
+         tl_opts.setPeptideFilter([](const Peptide& p)
+         {
+            const AScoreFilterContext& ctx = tl_ctx;
+            for (const auto& mod : p.getMods())
+            {
+               const int iSlot = mod.getSymbol() - '1';
+               const int iPos = mod.getPosition();
+               if (iSlot < 0 || iSlot >= 9 || iPos < 0 || iPos >= ctx.iLenPeptide)
+                  continue;
+
+               const VarMods& vm = g_staticParams.variableModParameters.varModList[iSlot];
+               if (vm.iVarModTermDistance == -1 || ctx.vOrigSlot[iPos] == iSlot + 1)
+                  continue;
+
+               if (!ctx.vProtein.empty() && vm.iVarModTermDistance >= 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
+               {
+                  bool bAdmitted = false;
+                  for (const auto& prot : ctx.vProtein)
+                  {
+                     const int iProteinPos = prot.first + iPos;
+                     if (vm.iWhichTerm == 0 ? (iProteinPos <= vm.iVarModTermDistance)
+                                            : (prot.second - iProteinPos <= vm.iVarModTermDistance))
+                     {
+                        bAdmitted = true;
+                        break;
+                     }
+                  }
+                  if (!bAdmitted)
+                     return false;
+                  continue;
+               }
+
+               const std::vector<ModPositionRule> vRule = { { vm.iVarModTermDistance, vm.iWhichTerm } };
+               if (!(ModificationsPermuter::getPositionClass(iPos, ctx.iLenPeptide, ctx.bProtN, ctx.bProtC, vRule) & 1))
+                  return false;
+            }
+            return true;
+         });
+         tl_uiGeneration = uiGeneration;
+      }
+
+      tl_ctx.iLenPeptide = pQuery->_pResults[0].usiLenPeptide;
+      tl_ctx.bProtN = (pQuery->_pResults[0].cPrevAA == '-');
+      tl_ctx.bProtC = (pQuery->_pResults[0].cNextAA == '-');
+      tl_ctx.vOrigSlot.assign(pQuery->_pResults[0].piVarModSites, pQuery->_pResults[0].piVarModSites + tl_ctx.iLenPeptide);
+      tl_ctx.vProtein.clear();
+      if (g_staticParams.iDbType == DbType::FASTA_DB)
+      {
+         const auto& vEntries = pQuery->_pResults[0].pWhichProtein.empty()
+            ? pQuery->_pResults[0].pWhichDecoyProtein : pQuery->_pResults[0].pWhichProtein;
+         for (const auto& e : vEntries)
+            if (e.iStartResidue > 0 && e.iProteinLength > 0)
+               tl_ctx.vProtein.emplace_back(e.iStartResidue - 1, e.iProteinLength - 1);
+      }
+
+      result = ascoreInterface->CalculateScoreWithOptions(sequence,
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, tl_opts);
+   }
 
    if (!result.peptides.empty())
    {

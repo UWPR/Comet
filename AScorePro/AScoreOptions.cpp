@@ -41,6 +41,7 @@ namespace AScoreProCpp
       filterLowIntensity_(other.filterLowIntensity_),
       deisotopingType_(other.deisotopingType_),
       noCterm_(other.noCterm_),
+      peptideFilter_(other.peptideFilter_),
       useMobScore_(other.useMobScore_),
       useDeltaAscore_(other.useDeltaAscore_),
       symbol_(other.symbol_),
@@ -76,6 +77,7 @@ namespace AScoreProCpp
          filterLowIntensity_ = other.filterLowIntensity_;
          deisotopingType_ = other.deisotopingType_;
          noCterm_ = other.noCterm_;
+         peptideFilter_ = other.peptideFilter_;
          useMobScore_ = other.useMobScore_;
          useDeltaAscore_ = other.useDeltaAscore_;
          symbol_ = other.symbol_;
@@ -278,6 +280,16 @@ namespace AScoreProCpp
    void AScoreOptions::setNoCterm(bool noCterm)
    {
       noCterm_ = noCterm;
+   }
+
+   const std::function<bool(const Peptide&)>& AScoreOptions::getPeptideFilter() const
+   {
+      return peptideFilter_;
+   }
+
+   void AScoreOptions::setPeptideFilter(const std::function<bool(const Peptide&)>& filter)
+   {
+      peptideFilter_ = filter;
    }
 
    bool AScoreOptions::getUseMobScore() const

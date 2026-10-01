@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T53; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T60; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -24,6 +24,7 @@ Exit code 0 = all tests passed; non-zero = failures.
 import argparse
 import filecmp
 import os
+import random
 import re
 import shutil
 import struct
@@ -3572,22 +3573,34 @@ def test_t37_protein_term_plain(comet_exe):
     return failures
 
 
-@register("t41_termmod_deprecation")
-def test_t41_termmod_deprecation(comet_exe):
-    """T41: variable_mod fields 5/6 (term_distance, n/c-term) are deprecated: the legacy
-    protein-terminus idiom is bridged to '^'/'$' with a warning; other non-default values
-    warn and are ignored."""
+@register("t41_termmod_fields")
+def test_t41_termmod_fields(comet_exe):
+    """T41: variable_mod fields 5/6 (term_distance, which_term) restrict mod positions on the
+    plain-FASTA path as in v2026.02.2: the legacy protein-terminus idiom still equals '^'/'$'
+    (silently rewritten), and residue distance rules admit only the positions they name."""
     failures = []
     if not (_T37_FASTA.exists() and _T37_MS2.exists()):
         failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
         return failures
+
+    def mox_positions(rows):
+        """0-based peptide positions of every M oxidation across all rows."""
+        pos = []
+        for r in rows:
+            for tok in (r.get("modifications") or "").split(","):
+                tok = tok.strip()
+                if "_V_15.99" in tok and tok[0].isdigit():
+                    k = int(tok.split("_")[0]) - 1
+                    if r.get("plain_peptide", "")[k:k + 1] == "M":
+                        pos.append((r.get("plain_peptide"), k))
+        return pos
 
     rc, ref_rows, out = _t37_search(comet_exe, (_T37_MOX,
                                                  "128.094963050 $ 0 3 -1 0 0 0.0",
                                                  "163.063328575 ^ 0 3 -1 0 0 0.0"))
     if not check(rc == 0 and ref_rows, f"reference '^'/'$' search ran (rc={rc})", failures):
         return failures
-    check("deprecated" not in out, "no deprecation warning for default fields 5/6 (-1 0)", failures)
+    check("Warning - variable_mod" not in out, "no variable_mod warning for default fields 5/6 (-1 0)", failures)
 
     # legacy idiom: n + distance 0 + which_term 0 (protein N), c + distance 0 + which_term 1 (protein C)
     rc, rows, out = _t37_search(comet_exe, (_T37_MOX,
@@ -3596,30 +3609,36 @@ def test_t41_termmod_deprecation(comet_exe):
     if check(rc == 0 and rows, f"legacy protein-terminus idiom search ran (rc={rc})", failures):
         check(_t37_signature(rows) == _t37_signature(ref_rows),
               "legacy 'n 0 3 0 0' / 'c 0 3 0 1' params give results identical to '^' / '$'", failures)
-        check("translated 'n' with distance 0 to '^'" in out,
-              "bridge warning names the 'n' -> '^' translation", failures)
-        check("translated 'c' with distance 0 to '$'" in out,
-              "bridge warning names the 'c' -> '$' translation", failures)
+        check("deprecated" not in out and "Warning - variable_mod" not in out,
+              "the legacy idiom is rewritten silently (fields 5/6 are not deprecated)", failures)
 
-    # residue restricted to the protein terminus by distance 0: restriction dropped, warned
-    rc, rows_ref_m, _ = _t37_search(comet_exe, (_T37_MOX,))
-    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 0 0 0 0.0",))
-    if check(rc == 0 and rows, f"'M 0 3 0 0' search ran (rc={rc})", failures):
-        check("restricted residues \"M\"" in out and "dropped" in out,
-              "warning says the residue restriction was dropped", failures)
-        check(_t37_signature(rows) == _t37_signature(rows_ref_m),
-              "'M 0 3 0 0' now behaves as unrestricted 'M 0 3 -1 0'", failures)
+    # unrestricted M oxidation reference: the fixture spectra do carry oxidized-M hits
+    rc, rows_m, _ = _t37_search(comet_exe, (_T37_MOX,))
+    ref_pos = mox_positions(rows_m)
+    if not check(rc == 0 and ref_pos, f"unrestricted 'M 0 3 -1 0' search reports M oxidations (rc={rc}, {len(ref_pos)})", failures):
+        return failures
 
-    # positive distance: ignored, warned
-    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 2 0 0 0.0",))
-    if check(rc == 0 and rows, f"'M 0 3 2 0' search ran (rc={rc})", failures):
-        check("term_distance 2 is deprecated and ignored" in out,
-              "warning names the ignored positive distance", failures)
-        check(_t37_signature(rows) == _t37_signature(rows_ref_m),
-              "'M 0 3 2 0' now behaves as unrestricted 'M 0 3 -1 0'", failures)
+    # protein-N-terminus distance 0 and 2: no fixture protein has an M within 2 residues of
+    # its N-terminus, so no M may be oxidized at all
+    for mod in ("15.9949 M 0 3 0 0 0 0.0", "15.9949 M 0 3 2 0 0 0.0"):
+        rc, rows, out = _t37_search(comet_exe, (mod,))
+        if check(rc == 0 and rows, f"'{mod}' search ran (rc={rc})", failures):
+            got = mox_positions(rows)
+            check(not got, f"'{mod}': no M oxidation away from the protein N-terminus, got {got[:3]}", failures)
+
+    # peptide-N-terminus distance 3: only M within the first 4 residues of the peptide
+    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 3 2 0 0.0",))
+    if check(rc == 0 and rows, f"'M 0 3 3 2' search ran (rc={rc})", failures):
+        bad = [x for x in mox_positions(rows) if x[1] > 3]
+        check(not bad, f"'M 0 3 3 2': every oxidized M is within 3 of the peptide N-terminus, got {bad[:3]}", failures)
+
+    # -2: never on the peptide's C-terminal residue
+    rc, rows, out = _t37_search(comet_exe, ("15.9949 M 0 3 -2 0 0 0.0",))
+    if check(rc == 0 and rows, f"'M 0 3 -2 0' search ran (rc={rc})", failures):
+        bad = [x for x in mox_positions(rows) if x[1] == len(x[0]) - 1]
+        check(not bad, f"'M 0 3 -2 0': no oxidized M on the peptide C-terminal residue, got {bad[:3]}", failures)
 
     return failures
-
 
 # ---------------------------------------------------------------------------
 # T38-T43 -- terminal variable mods permuted inside ModificationsPermuter on the index
@@ -4382,9 +4401,9 @@ def test_t48_v5_missing_context_bytes_rejected(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T49 -- deprecation bridge edge cases on every path (review follow-up): a legacy mixed
-# residue+terminus slot ('nK 0 3 0 0', 'cM 0 3 0 1') collapses to the protein code plus an
-# unrestricted residue; peptide- and protein-scoped N-term mods coexisting in different slots.
+# T49 -- legacy protein-terminus slots on every path: a mixed residue+terminus slot
+# ('nK 0 3 0 0', 'cM 0 3 0 1') becomes the protein code with the residue still restricted to
+# that terminus; peptide- and protein-scoped N-term mods coexisting in different slots.
 # T50 -- the persisted protein-occurrence context bytes are validated on disk against the
 # FASTA, including a peptide repeated in one protein with different context (bits OR'd) and a
 # peptide shared by proteins with different context (bits per occurrence), on a fresh build and
@@ -4393,31 +4412,35 @@ def test_t48_v5_missing_context_bytes_rejected(comet_exe):
 
 @register("t49_bridge_edge_cases")
 def test_t49_bridge_edge_cases(comet_exe):
-    """T49: legacy 'nK 0 3 0 0' / 'cM 0 3 0 1' == explicit '^K' / '$M' with a warning, on plain
-    FASTA, FI_DB and PI_DB; 'n' and '^' in different slots coexist without cross-talk."""
+    """T49: legacy mixed slots 'nK 0 3 0 0' / 'cM 0 3 0 1' keep v2026.02.2's meaning -- the
+    terminal code becomes '^'/'$' and the residue stays restricted to that protein terminus --
+    identically on plain FASTA, FI_DB and PI_DB; 'n' and '^' in different slots coexist."""
     failures = []
     if not (_T37_FASTA.exists() and _T37_MS2.exists()):
         failures.append(f"fixture missing: {_T37_FASTA} / {_T37_MS2}")
         return failures
 
-    # (a) legacy mixed slot: N-term or K, "at the protein N-terminus" -> '^K' (K unrestricted, warned)
-    ref = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 ^K 0 3 -1 0 0 0.0"), failures, "^K")
+    # (a) N-term or K at the protein N-terminus. No fixture protein starts with K, so the
+    # restricted K can never apply and the slot must behave exactly like '^' on every path.
+    ref = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 ^ 0 3 -1 0 0 0.0"), failures, "^")
     got = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 nK 0 3 0 0 0 0.0"), failures, "legacy nK 0 3 0 0")
     for label in ref:
         if label in got:
             check(_t37_signature(got[label]) == _t37_signature(ref[label]),
-                  f"{label}: legacy 'nK 0 3 0 0' equals explicit '^K'", failures)
-    rc, _, out = _t37_search(comet_exe, (_T37_MOX, "163.063328575 nK 0 3 0 0 0 0.0"))
-    check("translated 'n' with distance 0 to '^'" in out, "legacy nK: bridge translation warned", failures)
-    check('restricted residues "K"' in out and "dropped" in out, "legacy nK: dropped K restriction warned", failures)
+                  f"{label}: legacy 'nK 0 3 0 0' equals '^' (K restricted to protein position 0)", failures)
+    unres = _t45_all_paths(comet_exe, (_T37_MOX, "163.063328575 ^K 0 3 -1 0 0 0.0"), failures, "^K")
+    for label in unres:
+        if label in got:
+            check(_t37_signature(got[label]) != _t37_signature(unres[label]),
+                  f"{label}: legacy 'nK 0 3 0 0' differs from unrestricted '^K'", failures)
 
-    # (b) legacy mixed C-term slot
-    ref = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 $M 0 3 -1 0 0 0.0"), failures, "$M")
+    # (b) C-term or M at the protein C-terminus: no fixture protein ends in M -> equals '$'
+    ref = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 $ 0 3 -1 0 0 0.0"), failures, "$")
     got = _t45_all_paths(comet_exe, (_T37_MOX, "128.094963050 cM 0 3 0 1 0 0.0"), failures, "legacy cM 0 3 0 1")
     for label in ref:
         if label in got:
             check(_t37_signature(got[label]) == _t37_signature(ref[label]),
-                  f"{label}: legacy 'cM 0 3 0 1' equals explicit '$M'", failures)
+                  f"{label}: legacy 'cM 0 3 0 1' equals '$' (M restricted to the protein C-terminus)", failures)
 
     # (c) 'n' (peptide) and '^' (protein) in different slots with different masses: the 'n'
     # PSM keeps its peptide scope and full attribution; the '^' slot changes nothing about it.
@@ -4430,7 +4453,6 @@ def test_t49_bridge_edge_cases(comet_exe):
         check(not any("_N" in x.get("modifications", "") for x in rows),
               f"n+^ {label}: no _N code appears (no spectrum matches the 42.01 protein mod)", failures)
     return failures
-
 
 def _t50_expected_flags(fasta_path, seq):
     """{protein accession: OR'd context bits} for every protein containing seq, from the FASTA:
@@ -4878,6 +4900,536 @@ def test_t53_peff_nested_parens(comet_exe):
 
     return failures
 
+
+
+# ---------------------------------------------------------------------------
+# T54 -- peptide-N-terminal pyroglutamate (variable_mod fifth/sixth fields "0 2") on plain
+# FASTA, FI_DB and PI_DB. v2026.02.2 honored the position restriction only on the plain-FASTA
+# path; the index paths now apply it through the permuter's position classes, and the .idx
+# VariableMod: slots persist the two fields.
+# ---------------------------------------------------------------------------
+
+_T54_PROTEIN = ("t54_a", "MSKQTAGSPELKAGQEAPLSVREGTWLDNAPKGGGR")
+_T54_PYRO_Q = "-17.026549 Q 0 1 0 2 0 0.0"
+_T54_PYRO_E = "-18.010565 E 0 1 0 2 0 0.0"
+
+# scan -> (peptide, {0-based residue: delta}, protein)
+_T54_SPECTRA = {
+    1: ("QTAGSPELK", {0: -17.026549}, "t54_a"),    # pyro-Q at the peptide N-terminus
+    2: ("AGQEAPLSVR", {2: -17.026549}, "t54_a"),   # same mass on an internal Q: not allowed
+    3: ("EGTWLDNAPK", {0: -18.010565}, "t54_a"),   # pyro-E at the peptide N-terminus
+}
+
+
+def _t54_three_paths(comet_exe, tmp, mods, failures, tag, protein=None, spectra=None, extra=None):
+    """Search the T54 spectra with `mods` via plain FASTA, FI_DB and PI_DB (tryptic).
+    Returns {label: (rank-1 rows by scan, log, VariableMod: header line)}. `protein`/`spectra`
+    replace the T54 fixture (written on first use per tmp dir); `extra` adds params lines."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    protein = protein or _T54_PROTEIN
+    spectra = spectra or _T54_SPECTRA
+    fasta = tmp / "t54.fasta"
+    ms2 = tmp / "t54.ms2"
+    if not fasta.exists():
+        prots = protein if isinstance(protein, list) else [protein]   # one (name, seq) or a list
+        fasta.write_text("".join(f">{n}\n{q}\n" for n, q in prots))
+        _t52_write_ms2(ms2, spectra)
+    txt = ms2.with_suffix(".txt")
+    idx = fasta.with_suffix(".fasta.idx")
+    out = {}
+
+    def params(db, more=None):
+        pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=mods, static_C=0.0,
+                                       num_output_lines=5)
+        for k, v in {**(extra or {}), **(more or {})}.items():
+            pr = _set_param_line(pr, k, v)
+        pf = tmp / "t54.params"
+        pf.write_text(pr)
+        return pf
+
+    def rank1():
+        return {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"} if txt.exists() else {}
+
+    txt.unlink(missing_ok=True)
+    rc, log = _run_t19_step(comet_exe, [f"-P{fmt(params(fasta))}", fmt(ms2)])
+    if check(rc == 0 and txt.exists(), f"{tag}: plain-FASTA search ran (rc={rc})", failures):
+        out["plain"] = (rank1(), log, "")
+    else:
+        print(log[-1500:])
+
+    for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+        idx.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        rc, blog = _run_t19_step(comet_exe, [flag, f"-P{fmt(params(fasta))}"])
+        if not check(rc == 0 and idx.exists(), f"{tag}: {label} index build ran (rc={rc})", failures):
+            print(blog[-1500:])
+            continue
+        head = idx.read_bytes()[:4096].decode("latin-1").splitlines()
+        vm_line = next((l for l in head if l.startswith("VariableMod:")), "")
+        rc, slog = _run_t19_step(comet_exe, [f"-P{fmt(params(idx, {'index_search_type': ist}))}", fmt(ms2)])
+        if check(rc == 0 and txt.exists(), f"{tag}: {label} search ran (rc={rc})", failures):
+            out[label] = (rank1(), blog + slog, vm_line)
+        else:
+            print(slog[-1500:])
+    idx.unlink(missing_ok=True)
+    txt.unlink(missing_ok=True)
+    return out
+
+
+def _t54_has_mod(row, pos1, mass_prefix):
+    """True if the row's modifications column carries `mass_prefix` at 1-based position pos1."""
+    mods = [t.strip() for t in (row.get("modifications") or "").split(",")]
+    return any(t.startswith(f"{pos1}_V_{mass_prefix}") for t in mods)
+
+
+@register("t54_pyroglu_all_paths")
+def test_t54_pyroglu_all_paths(comet_exe):
+    """T54: pyroglutamate restricted to the peptide N-terminus ('Q 0 1 0 2', 'E 0 1 0 2') is
+    placed only on a peptide's first residue on plain FASTA, FI_DB and PI_DB alike; the .idx
+    persists the restriction; an unrestricted 'Q' control does modify the internal Q."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+
+        res = _t54_three_paths(comet_exe, tmp, (_T54_PYRO_Q, _T54_PYRO_E), failures, "pyro-glu 0 2")
+        for label, (r1, log, vm_line) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "QTAGSPELK" and _t54_has_mod(r, 1, "-17.02"),
+                  f"{label}: scan 1 is Q[-17.03]TAGSPELK, got {r.get('modified_peptide')!r}", failures)
+            r = r1.get(3, {})
+            check(r.get("plain_peptide") == "EGTWLDNAPK" and _t54_has_mod(r, 1, "-18.01"),
+                  f"{label}: scan 3 is E[-18.01]GTWLDNAPK, got {r.get('modified_peptide')!r}", failures)
+            r = r1.get(2, {})
+            check(not (r.get("plain_peptide") == "AGQEAPLSVR" and _t54_has_mod(r, 3, "-17.02")),
+                  f"{label}: scan 2's internal Q is not given pyro-glu, got {r.get('modified_peptide')!r}", failures)
+            if label != "plain":
+                check("Q:-17.026549:0.000000:0.000000:1:0:2" in vm_line and "E:-18.010565:0.000000:0.000000:1:0:2" in vm_line,
+                      f"{label}: VariableMod: header persists the '0 2' restriction, got {vm_line[:120]!r}", failures)
+
+        # control: without the restriction the internal Q of scan 2 is modified on every path
+        ctl = _t54_three_paths(comet_exe, tmp, ("-17.026549 Q 0 1 -1 0 0 0.0",), failures, "pyro-glu unrestricted")
+        for label, (r1, _, _) in ctl.items():
+            r = r1.get(2, {})
+            check(r.get("plain_peptide") == "AGQEAPLSVR" and _t54_has_mod(r, 3, "-17.02"),
+                  f"{label} control: unrestricted Q modifies scan 2's internal Q, got {r.get('modified_peptide')!r}", failures)
+
+        # protein-terminus distance > 0 is only partially applicable on the index paths: warned
+        part = _t54_three_paths(comet_exe, tmp, ("15.9949 M 0 3 2 0 0 0.0",), failures, "protein-N distance 2")
+        for label, (_, log, _) in part.items():
+            warned = "only to peptides at that protein terminus" in log
+            check(warned == (label != "plain"),
+                  f"{label}: partial protein-distance warning {'present' if label != 'plain' else 'absent'}", failures)
+
+    # n-term mod under a peptide-C-terminus rule ('n 0 1 8 3': acetyl N-term only on peptides of
+    # length <= 9) on every path: QTAGSPELK (9) carries it, AGQEAPLSVR (10) must not
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        spectra = {1: ("QTAGSPELK", {0: 42.010565}, "t54_a"), 2: ("AGQEAPLSVR", {0: 42.010565}, "t54_a")}
+        res = _t54_three_paths(comet_exe, tmp, ("42.010565 n 0 1 8 3 0 0.0",), failures, "n-term 8 3", spectra=spectra)
+        for label, (r1, _, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "QTAGSPELK" and "_n" in (r.get("modifications") or ""),
+                  f"{label}: n-term acetyl under 'n 0 1 8 3' placed on QTAGSPELK (length 9), "
+                  f"got {r.get('modified_peptide')!r} mods={r.get('modifications')!r}", failures)
+            r = r1.get(2, {})
+            check(not (r.get("plain_peptide") == "AGQEAPLSVR" and "_n" in (r.get("modifications") or "")),
+                  f"{label}: no n-term acetyl on AGQEAPLSVR (length 10 > 9), got {r.get('modified_peptide')!r}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T55 -- AScorePro respects position restrictions: the spectrum carries pyroglutamate on the
+# internal Q5 of QTAGQPELK, which 'Q 0 1 0 2' forbids, so the search reports Q[-17]TAGQPELK.
+# AScorePro alone would score the forbidden QTAGQ[-17]PELK placement higher and Comet would
+# relocalize to it; Comet's peptidoform filter keeps AScorePro to allowed placements, so the
+# reported peptide and its MOB/site scores stay those of the allowed Q1 placement.
+# ---------------------------------------------------------------------------
+
+_T55_PROTEIN = ("t55_a", "MSKQTAGQPELKGGR")
+_T55_SPECTRA = {1: ("QTAGQPELK", {4: -17.026549}, "t55_a")}
+
+
+@register("t55_ascorepro_position_filter")
+def test_t55_ascorepro_position_filter(comet_exe):
+    """T55: with print_ascorepro_score on, a position-restricted mod is never relocalized by
+    AScorePro onto a forbidden residue (plain FASTA, FI_DB, PI_DB)."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, (_T54_PYRO_Q,), failures, "AScorePro + pyro-glu 0 2",
+                               protein=_T55_PROTEIN, spectra=_T55_SPECTRA,
+                               extra={"print_ascorepro_score": "1"})
+        for label, (r1, log, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "QTAGQPELK",
+                  f"{label}: scan 1 top hit is QTAGQPELK, got {r.get('plain_peptide')!r}", failures)
+            check(_t54_has_mod(r, 1, "-17.02") and not _t54_has_mod(r, 5, "-17.02"),
+                  f"{label}: pyro-glu stays on Q1 (not relocalized to the forbidden Q5), "
+                  f"got {r.get('modified_peptide')!r}", failures)
+            site = r.get("ascore_sitescores") or ""
+            check("5:" not in site,
+                  f"{label}: AScorePro site scores never name the forbidden Q5, got {site!r}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T56 -- .idx build determinism in the default suite. T18 checks it at scale but needs
+# human.small.fasta (integration-only). A peptide repeated within one protein with different
+# protein-terminus context (N-terminal copy + internal copies, different next residue each)
+# reaches the dedup merge as several tuples of one protein; before the tie-break fix their
+# order -- and so the stored representative -- depended on thread scheduling. The generated
+# FASTA puts a 10-mer (short-peptide path) and a 14-mer (long path) in every protein; a
+# no-enzyme build with 1 and with 16 threads must be byte-identical, with and without
+# equal_I_and_L. Reproduces the pre-fix nondeterminism (both builds differed).
+# ---------------------------------------------------------------------------
+
+def _t56_write_fasta(path, n=400, seed=56):
+    rnd = random.Random(seed)
+    aas = "ACDEFGHIKLMNPQRSTVWY"
+    lines = []
+    for p in range(n):
+        rand = lambda k: "".join(rnd.choice(aas) for _ in range(k))
+        short, long_ = rand(10), rand(14)
+        lines += [f">t56_{p:04d}", short + rand(25) + short + rand(25) + long_ + rand(25) + long_ + rand(20)]
+    path.write_text("\n".join(lines) + "\n")
+
+
+@register("t56_idx_build_determinism")
+def test_t56_idx_build_determinism(comet_exe):
+    """T56: no-enzyme .idx builds with 1 and 16 threads are byte-identical when peptides repeat
+    within a protein with different terminus context (short and long paths, I/L on and off)."""
+    global PARAMS_TEMPLATE
+    failures = []
+    base_template = PARAMS_TEMPLATE
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t56.fasta"
+        _t56_write_fasta(fasta)
+        try:
+            for il in (0, 1):
+                kw = {"enzyme": 0, "missed_cleavage": 2, "len_min": 8, "len_max": 15,
+                      "mass_low": 200.0, "equal_IL": il, "static_C": 0.0}
+                built = []
+                for n in (1, 16):
+                    PARAMS_TEMPLATE = base_template.replace("num_threads = 4", f"num_threads = {n}")
+                    idx = run_comet_index(comet_exe, fasta, kw)
+                    if not check(idx is not None and Path(idx).exists(),
+                                 f"equal_IL={il}: {n}-thread build produced an .idx", failures):
+                        break
+                    dst = tmp / f"il{il}_t{n}.idx"
+                    shutil.copy2(idx, dst)
+                    built.append(dst)
+                if len(built) == 2:
+                    check(filecmp.cmp(str(built[0]), str(built[1]), shallow=False),
+                          f"equal_IL={il}: 1-thread and 16-thread .idx builds are byte-identical", failures)
+        finally:
+            PARAMS_TEMPLATE = base_template
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T57 -- plain-FASTA position-rule edge cases fixed after the terminalmods code review:
+# invalid fifth/sixth-field values are rejected; binary mods honor protein-C-terminus (1) and
+# peptide-C-terminus (3) rules (v2026.02.2 tested the peptide start for the former and never
+# counted the latter); a c-term mod's protein-N-terminus rule is tested against the peptide's
+# C-terminus, and the upper-bound checks no longer drop a start whose longest extension is
+# past d. FI/PI do not implement binary mods and apply protein-terminus d > 0 rules only at
+# the protein terminus, so these run on plain FASTA only.
+# ---------------------------------------------------------------------------
+
+_T57_PROTEIN = ("t57_a", "MSKQTAGSPELKAGSPELKAGPEMNVSSR")
+
+
+def _t57_plain(comet_exe, tmp, mods, spectra, tag):
+    """Plain-FASTA tryptic search of `spectra` against _T57_PROTEIN; returns (rc, rank-1 by scan, log)."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    fasta = tmp / "t57.fasta"
+    fasta.write_text(f">{_T57_PROTEIN[0]}\n{_T57_PROTEIN[1]}\n")
+    ms2 = tmp / f"t57_{tag}.ms2"
+    _t52_write_ms2(ms2, spectra)
+    txt = ms2.with_suffix(".txt")
+    txt.unlink(missing_ok=True)
+    pf = tmp / f"t57_{tag}.params"
+    pf.write_text(legacy_cases.build_params(database=fmt(fasta), enzyme1=1, mods=mods, static_C=0.0,
+                                            num_output_lines=5))
+    rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+    rows = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"} if txt.exists() else {}
+    return rc, rows, log
+
+
+@register("t57_position_rule_edge_cases")
+def test_t57_position_rule_edge_cases(comet_exe):
+    """T57: invalid which_term rejected; binary mods with protein-C / peptide-C rules applied;
+    c-term mod with a protein-N rule reaches a peptide whose longer extensions pass d;
+    binary mod under -2 counts only non-terminal sites; each binary-group member is judged by
+    its own rule."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        one = {1: ("QTAGSPELK", {}, "t57_a")}
+
+        # invalid which_term: a clean error, no results
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 0 3 0 4 0 0.0",), one, "invalid")
+        check(rc != 0 and "invalid term_distance/which_term" in log,
+              f"'M 0 3 0 4' (which_term 4) is rejected with an error (rc={rc})", failures)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 0 3 -3 0 0 0.0",), one, "invalid2")
+        check(rc != 0 and "invalid term_distance/which_term" in log,
+              f"'M 0 3 -3 0' (term_distance -3) is rejected with an error (rc={rc})", failures)
+
+        # binary mod, K within 1 of the peptide C-terminus
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 1 3 0 0.0",),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_pepc")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01"),
+              f"binary 'K 1 3 1 3': AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # binary mod, S within 3 of the protein C-terminus (peptide start is not)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("79.966331 S 1 3 3 1 0 0.0",),
+                                   {1: ("AGPEMNVSSR", {7: 79.966331, 8: 79.966331}, "t57_a")}, "bin_protc")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGPEMNVSSR"
+              and _t54_has_mod(r, 8, "79.96") and _t54_has_mod(r, 9, "79.96"),
+              f"binary 'S 1 3 3 1': AGPEMNVS[+80]S[+80]R found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # binary group: n-term acetyl under 'n 1 3 8 3' (peptides of length <= 9) plus a plain n-term
+        # dimethyl mate in the same group; the one n-term site must be counted once, so the
+        # acetylated QTAGSPELK (length 9) is generated and the 10-mer is not
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("42.010565 n 1 3 8 3 0 0.0", "28.031300 n 1 3 -1 0 0 0.0"),
+                                   {1: ("QTAGSPELK", {0: 42.010565}, "t57_a"), 2: ("AGPEMNVSSR", {0: 42.010565}, "t57_a"),
+                                    3: ("AGPEMNVSSR", {0: 28.031300}, "t57_a")},
+                                   "bin_nterm_pepc")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "QTAGSPELK" and "42.010565_n" in (r.get("modifications") or ""),
+              f"binary group 'n 1 3 8 3' + 'n 1 3 -1 0': acetyl placed on QTAGSPELK, got {r.get('modified_peptide')!r} "
+              f"mods={r.get('modifications')!r} (rc={rc})", failures)
+        r = rows.get(2, {})
+        check(not (r.get("plain_peptide") == "AGPEMNVSSR" and "42.010565_n" in (r.get("modifications") or "")),
+              f"binary group: no acetyl on the 10-mer AGPEMNVSSR, got {r.get('modified_peptide')!r}", failures)
+        r = rows.get(3, {})   # positive control: the 10-mer is searched and takes the unrestricted mate
+        check(r.get("plain_peptide") == "AGPEMNVSSR" and "28.031300_n" in (r.get("modifications") or ""),
+              f"binary group: dimethyl (unrestricted mate) placed on the 10-mer AGPEMNVSSR, got {r.get('modified_peptide')!r}", failures)
+
+        # binary mod under -2 (not on the peptide C-terminal residue): QTAGSPELKAGSPELK has an internal
+        # and a terminal K, so the group has exactly one site; the all-or-nothing count must not
+        # include the terminal K or the only valid form (internal K modified) is never generated
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 -2 0 0 0.0",),
+                                   {1: ("QTAGSPELKAGSPELK", {8: 8.014199}, "t57_a")}, "bin_minus2")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "QTAGSPELKAGSPELK" and _t54_has_mod(r, 9, "8.01")
+              and not _t54_has_mod(r, 16, "8.01"),
+              f"binary 'K 1 3 -2 0': QTAGSPELK[+8.01]AGSPELK found with the terminal K unmodified, "
+              f"got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # binary group whose members have different rules: each site must be judged by the rule
+        # of the member whose residues match it, not the first slot's. (a) unrestricted K head +
+        # S mate restricted to protein position 0: AGSPELK's S (protein position 7) is not a site,
+        # so the group has one site and AGSPELK[+8.01] is generated (counting S under the head's
+        # rule made it a 2-site peptide and the all-or-nothing check rejected the 1-mod form)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 -1 0 0 0.0", "79.966331 S 1 3 0 0 0 0.0"),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_mixed_a")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01") and not _t54_has_mod(r, 3, "79.96"),
+              f"binary group K(-1) + S(protein N, d=0): AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+        # (b) the reverse order: restricted M head + unrestricted K mate; K sites were counted under
+        # the head's protein-N rule and never admitted, so AGSPELK[+8.01] was never generated
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("15.9949 M 1 3 0 0 0 0.0", "8.014199 K 1 3 -1 0 0 0.0"),
+                                   {1: ("AGSPELK", {6: 8.014199}, "t57_a")}, "bin_mixed_b")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "AGSPELK" and _t54_has_mod(r, 7, "8.01"),
+              f"binary group M(protein N, d=0) + K(-1): AGSPELK[+8.01] found, got {r.get('modified_peptide')!r} (rc={rc})", failures)
+
+        # c-term mod within 11 of the protein N-terminus: QTAGSPELK ends at position 11; its
+        # missed-cleavage extensions end past 11 (the peptide's own c-term mod must still apply)
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("14.01565 c 0 1 11 0 0 0.0",),
+                                   {1: ("QTAGSPELK", {8: 14.01565}, "t57_a")}, "cterm_protn")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "QTAGSPELK" and "14.01565" in (r.get("modifications") or ""),
+              f"'c 0 1 11 0': QTAGSPELK carries the c-term mod, got {r.get('modified_peptide')!r} "
+              f"mods={r.get('modifications')!r} (rc={rc})", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T58 -- protein attribution of a residue mod with a protein-terminus position rule on every
+# path. MAGSPELK is the protein-N-terminal peptide of t58_a and an internal tryptic peptide of
+# t58_b; 'M 0 3 0 0' allows the oxidation only at protein position 0. Plain FASTA evaluates each
+# protein separately; the FI/PI index row is shared and its flanks are OR'd ("protein-terminal
+# in any protein"), so the PSM must be attributed through the protein-occurrence context bits,
+# like '^'/'$' mods. Before that, FI/PI listed both proteins for M[ox]AGSPELK.
+# ---------------------------------------------------------------------------
+
+_T58_PROTEINS = [("t58_a", "MAGSPELKGGRTWLDNAPK"), ("t58_b", "GGRTWLDNAPKMAGSPELKAAR")]
+_T58_SPECTRA = {
+    1: ("MAGSPELK", {0: 15.9949}, "t58_a"),   # oxidized: allowed only where M is at protein position 0
+    2: ("MAGSPELK", {}, "t58_a"),             # unmodified control: both proteins
+}
+
+
+@register("t58_protein_term_rule_attribution")
+def test_t58_protein_term_rule_attribution(comet_exe):
+    """T58: a residue mod restricted to the protein N-terminus ('M 0 3 0 0') is attributed only
+    to proteins where the peptide is protein-N-terminal, on plain FASTA, FI_DB and PI_DB."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, ("15.9949 M 0 3 0 0 0 0.0",), failures, "M 0 3 0 0",
+                               protein=_T58_PROTEINS, spectra=_T58_SPECTRA)
+        for label, (r1, _, _) in res.items():
+            r = r1.get(1, {})
+            check(r.get("plain_peptide") == "MAGSPELK" and _t54_has_mod(r, 1, "15.99"),
+                  f"{label}: scan 1 is M[ox]AGSPELK, got {r.get('modified_peptide')!r}", failures)
+            check(_t37_proteins(r) == {"t58_a"},
+                  f"{label}: M[ox]AGSPELK is attributed to t58_a only (protein-N-terminal there), "
+                  f"got {sorted(_t37_proteins(r))}", failures)
+            r = r1.get(2, {})
+            check(r.get("plain_peptide") == "MAGSPELK" and not _t54_has_mod(r, 1, "15.99")
+                  and _t37_proteins(r) == {"t58_a", "t58_b"},
+                  f"{label}: unmodified MAGSPELK lists both proteins, got {r.get('modified_peptide')!r} "
+                  f"{sorted(_t37_proteins(r))}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T59 -- AScorePro's peptidoform filter on the plain-FASTA path tests a protein-terminus rule on
+# the true protein offset (ProteinEntryStruct iStartResidue/iProteinLength), not on the flanks.
+# AMMGSPELK starts at protein offset 1 (after an N-terminal K); with 'M 0 3 3 0' both Ms (protein
+# positions 2 and 3) are legal sites, so AScorePro must see the alternative placement and report
+# a real site score. The flank test (cPrevAA == '-' is false) rejected the alternative, leaving
+# a 5000.0 "only possible site" score.
+# ---------------------------------------------------------------------------
+
+@register("t59_ascorepro_fasta_protein_offset")
+def test_t59_ascorepro_fasta_protein_offset(comet_exe):
+    """T59: with print_ascorepro_score on a FASTA search, a protein-N-terminus distance rule is
+    evaluated on the real protein offset so the alternative M site is scored, not filtered."""
+    failures = []
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        res = _t54_three_paths(comet_exe, tmp, ("15.9949 M 0 3 3 0 0 0.0",), failures, "AScorePro + M 0 3 3 0",
+                               protein=("t59_a", "KAMMGSPELKGGGR"),
+                               spectra={1: ("AMMGSPELK", {1: 15.9949}, "t59_a")},
+                               extra={"print_ascorepro_score": "1"})
+        r1, _, _ = res.get("plain", ({}, "", ""))
+        r = r1.get(1, {})
+        check(r.get("plain_peptide") == "AMMGSPELK" and (_t54_has_mod(r, 2, "15.99") or _t54_has_mod(r, 3, "15.99")),
+              f"plain: AMMGSPELK with the oxidation on one of its Ms, got {r.get('modified_peptide')!r}", failures)
+        site = r.get("ascore_sitescores") or ""
+        check(site and "5000" not in site,
+              f"plain: the alternative M (protein position 3 <= d) was scored, not filtered: site scores {site!r}", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T60 -- index_search_type scope. The parameter only selects the index type to auto-build when
+# database_name names an .idx that does not exist yet. Everywhere else it is ignored, and since
+# it reads like a search-mode switch (issue-132 comment: a PEFF search with index_search_type = 1
+# was taken for an index search), Comet now says so: a FASTA database warns "not an .idx file",
+# an existing .idx whose own type differs warns naming that type, and a value other than 0/1
+# warns and uses 1. Results never change.
+# ---------------------------------------------------------------------------
+
+@register("t60_index_search_type_scope")
+def test_t60_index_search_type_scope(comet_exe):
+    """T60: index_search_type picks the auto-build type for a missing .idx and is otherwise
+    ignored with a warning (FASTA database; existing .idx of the other type; invalid value)."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t60.fasta"
+        fasta.write_text(f">{_T54_PROTEIN[0]}\n{_T54_PROTEIN[1]}\n")
+        ms2 = tmp / "t60.ms2"
+        _t52_write_ms2(ms2, {1: ("QTAGSPELK", {}, "t54_a")})
+        txt = ms2.with_suffix(".txt")
+        idx = fasta.with_suffix(".fasta.idx")
+
+        def search(db, ist=None, flag=None):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0, num_output_lines=5)
+            if ist is not None:
+                pr = _set_param_line(pr, "index_search_type", ist)
+            pf = tmp / "t60.params"
+            pf.write_text(pr)
+            txt.unlink(missing_ok=True)
+            args = ([flag] if flag else []) + [f"-P{fmt(pf)}"] + ([] if flag else [fmt(ms2)])
+            rc, log = _run_t19_step(comet_exe, args)
+            r1 = {int(r["scan"]): r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"} if txt.exists() else {}
+            return rc, r1, log
+
+        def idx_type():
+            head = idx.read_bytes()[:4096].decode("latin-1").splitlines()
+            return next((l for l in head if l.startswith("IndexSearchType:")), "")
+
+        # comet -p does not mention index_search_type at all; comet -q writes "index_search_type = -1"
+        # (-1 = not set), so a 0/1 in a params file always expresses intent
+        for flag, want in (("-p", None), ("-q", "-1")):
+            (tmp / "comet.params.new").unlink(missing_ok=True)
+            rc = subprocess.run([str(comet_exe), flag], capture_output=True, text=True, cwd=str(tmp)).returncode
+            tmpl = (tmp / "comet.params.new").read_text() if (tmp / "comet.params.new").exists() else ""
+            m = re.search(r"^index_search_type\s*=\s*(-?\d+)", tmpl, re.M)
+            check(rc == 0 and tmpl and (m.group(1) if m else None) == want,
+                  f"comet {flag} template: active index_search_type line is {want!r}, got {m.group(0) if m else None!r}", failures)
+            if want is None:
+                check("index_search_type" not in tmpl, "comet -p template does not mention index_search_type", failures)
+
+        # (a) FASTA database: any explicit value is ignored and warned; results identical with and
+        #     without the parameter
+        rc0, ref, log0 = search(fasta)
+        rc1, got, log1 = search(fasta, 0)
+        rc2, got2, log2 = search(fasta, 1)
+        check(rc0 == 0 and rc1 == 0 and rc2 == 0 and ref.get(1, {}).get("plain_peptide") == "QTAGSPELK", "FASTA searches ran", failures)
+        check("index_search_type = 0 is ignored" in log1 and "not an .idx file" in log1,
+              "FASTA database + index_search_type = 0: 'ignored: not an .idx file' warning printed", failures)
+        check("index_search_type = 1 is ignored" in log2 and "not an .idx file" in log2,
+              "FASTA database + index_search_type = 1: 'ignored: not an .idx file' warning printed", failures)
+        check("index_search_type" not in log0, "no warning when the parameter is absent", failures)
+        rc3, got3, log3 = search(fasta, -1)
+        check(rc3 == 0 and "index_search_type" not in log3, "FASTA database + index_search_type = -1 (comet -q default): no warning", failures)
+        check(ref.get(1) == got.get(1) == got2.get(1) == got3.get(1), "FASTA database: results identical with and without index_search_type", failures)
+
+        # (b) invalid value: warned, treated as 1
+        rc, _, log = search(fasta, 5)
+        check(rc == 0 and "index_search_type = 5 is not -1, 0 or 1; using the default" in log, "invalid value warns and uses the default", failures)
+
+        # (c) missing .idx + index_search_type = 0: a peptide index is auto-built; = 1 / absent: fragment ion index
+        for ist, want in ((0, "peptide index"), (1, "fragment ion index"), (-1, "fragment ion index"), (None, "fragment ion index")):
+            idx.unlink(missing_ok=True)
+            rc, r1, log = search(idx, ist)
+            check(rc == 0 and idx.exists() and want in idx_type(),
+                  f"missing .idx with index_search_type={ist}: auto-built as {want!r}, got {idx_type()!r} (rc={rc})", failures)
+            check(r1.get(1, {}).get("plain_peptide") == "QTAGSPELK", f"index_search_type={ist}: auto-built index search finds the peptide", failures)
+            check("is ignored" not in log, f"index_search_type={ist}: no 'ignored' warning for an auto-build", failures)
+
+        # (d) existing .idx of the other type: ignored, warned naming the file's type; explicit -i/-j builds stay quiet
+        idx.unlink(missing_ok=True)
+        rc, _, log = search(fasta, 0, flag="-i")
+        check(rc == 0 and idx.exists() and "fragment ion index" in idx_type() and "is ignored" not in log
+              and "index_search_type = 0 is overridden by -i" in log,
+              f"-i build with index_search_type = 0 builds a fragment ion index and warns that -i overrides it (rc={rc})", failures)
+        rc, r1, log = search(idx, 0)
+        check(rc == 0 and "index_search_type = 0 is ignored" in log and "is a fragment ion index" in log and "rebuild it with -j" in log,
+              "existing FI .idx + index_search_type = 0: warning names the file's type and -j", failures)
+        check(r1.get(1, {}).get("plain_peptide") == "QTAGSPELK", "existing FI .idx: search ran as the file's type", failures)
+        rc, _, log = search(idx, 1)
+        check(rc == 0 and "is ignored" not in log, "existing FI .idx + index_search_type = 1: no warning", failures)
+        idx.unlink(missing_ok=True)
+        rc, _, log = search(fasta, 1, flag="-j")
+        check(rc == 0 and idx.exists() and "peptide index" in idx_type() and "is ignored" not in log
+              and "index_search_type = 1 is overridden by -j" in log,
+              f"-j build with index_search_type = 1 builds a peptide index and warns that -j overrides it (rc={rc})", failures)
+        rc, r1, log = search(idx, 1)
+        check(rc == 0 and "index_search_type = 1 is ignored" in log and "is a peptide index" in log and "rebuild it with -i" in log
+              and r1.get(1, {}).get("plain_peptide") == "QTAGSPELK",
+              "existing PI .idx + index_search_type = 1: searched as PI, warning names the file's type and -i", failures)
+        rc, _, log = search(idx, 0)
+        check(rc == 0 and "is ignored" not in log, "existing PI .idx + index_search_type = 0: no warning", failures)
+        rc, _, log = search(idx)
+        check(rc == 0 and "index_search_type" not in log, "existing PI .idx, parameter absent: no warning", failures)
+        rc, _, log = search(idx, -1)
+        check(rc == 0 and "index_search_type" not in log, "existing PI .idx + index_search_type = -1: no warning", failures)
+        idx.unlink(missing_ok=True)
+        rc, _, log = search(fasta, 1, flag="-i")
+        check(rc == 0 and idx.exists() and "index_search_type" not in log, "-i build with index_search_type = 1: quiet (agrees)", failures)
+    return failures
 
 # ---------------------------------------------------------------------------
 # main

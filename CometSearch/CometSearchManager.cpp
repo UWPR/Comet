@@ -71,6 +71,8 @@ map<long long, IndexProteinStruct>    g_pvProteinNames;  // for either db index
 vector<string> g_pvProteinNameCache;  // populated at index load; eliminates per-spectrum fopen in RTS path
 
 AScoreProCpp::AScoreOptions   g_AScoreOptions;  // AScore options
+bool                          g_bAScoreRestrictedSlots = false;       // see core/Types.h
+std::atomic<unsigned int>     g_uiAScoreOptionsGeneration{0};         // see core/Types.h
 // Thread-safety note - g_AScoreInterface is shared across PostAnalysis threads.
 // AScoreDllInterface::CalculateScoreWithOptions() is assumed to be thread-safe because
 // it does not modify any mutable member state; all intermediate computation uses local
@@ -807,7 +809,18 @@ bool CometSearchManager::InitializeStaticParams()
    // but ambiguous" case. RTS sets this via the corresponding RealtimeSearch.exe CLI
    // argument, since it never loads comet.params.
    if (GetParamValue("index_search_type", iIntData))
+   {
+      // -1 = not set (what comet -q writes): the default, a fragment ion index for an
+      // auto-build and never a warning. 0/1 express intent.
+      if (iIntData != -1 && iIntData != 0 && iIntData != 1)
+      {
+         char szMsg[256];
+         snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is not -1, 0 or 1; using the default (-1, not set).\n", iIntData);
+         logout(szMsg);
+         iIntData = -1;
+      }
       g_staticParams.options.iIndexSearchType = iIntData;
+   }
 
    GetParamValue("max_iterations", g_staticParams.options.lMaxIterations);
 
@@ -1401,17 +1414,14 @@ bool CometSearchManager::InitializeStaticParams()
       }
    }
 
-   // Deprecated variable_mod fields 5 (term_distance) and 6 (n/c-term), 2026-09.
-   //
-   // Terminus scope now lives in the residue string: 'n'/'c' = any peptide terminus,
-   // '^'/'$' = protein N-/C-terminus only.  The two integer fields are still parsed so
-   // existing params files load, but they are ignored.  The one legacy idiom that has an
-   // exact replacement -- 'n' with distance 0 + which_term 0 (protein N-term only), or 'c'
-   // with distance 0 + which_term 1 (protein C-term only) -- is translated to '^'/'$' here
-   // for one release so those searches keep their meaning; everything else non-default
-   // gets a warning saying what was dropped.  Afterwards both fields are normalized to their
-   // defaults so no downstream code can observe them.  See docs/20260915_permuter_terminal_mods.md
-   // sections 3.1 and 5.
+   // variable_modNN fields 5 (term_distance) and 6 (which_term) restrict where a mod may go
+   // (CometData.h VarMods).  The one idiom with an exact terminal-code equivalent -- 'n' with
+   // distance 0 from the protein N-terminus, or 'c' with distance 0 from the protein
+   // C-terminus -- is rewritten to '^' / '$' here: identical on the plain-FASTA path, and on
+   // the FI/PI path the terminal-code form is what the permuter places exactly.  A slot that
+   // is only that terminal code then has nothing left to restrict and gets the default
+   // fields back; a slot that also lists residues keeps them, since they restrict the
+   // residues too.  Other restrictions are left in place for the search paths to apply.
    for (int i=0; i<VMODS; ++i)
    {
       VarMods& vm = g_staticParams.variableModParameters.varModList[i];
@@ -1423,78 +1433,44 @@ bool CometSearchManager::InitializeStaticParams()
          continue;
       }
 
-      if (vm.iVarModTermDistance != -1 || vm.iWhichTerm != 0)
+      // Reject values no search path defines: term_distance below -2, or a distance rule
+      // (term_distance >= 0) naming a terminus other than 0-3. Accepting them silently
+      // gave different results on FASTA, FI/PI and AScorePro.
+      if (vm.iVarModTermDistance < -2 || (vm.iVarModTermDistance >= 0 && (vm.iWhichTerm < 0 || vm.iWhichTerm > 3)))
       {
-         char szSlot[32];
-         char szMsg[512];
-         snprintf(szSlot, sizeof(szSlot), "variable_mod%02d", i + 1);
+         char szErr[256];
+         snprintf(szErr, sizeof(szErr), " Error - variable_mod%02d (%s): invalid term_distance/which_term \"%d %d\";"
+               " term_distance must be -2, -1 or >= 0, and which_term 0-3 (0 = protein N,"
+               " 1 = protein C, 2 = peptide N, 3 = peptide C).\n",
+               i + 1, vm.szVarModChar, vm.iVarModTermDistance, vm.iWhichTerm);
+         string strErrorMsg = szErr;
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
 
-         string strResidues;   // residue letters in this slot, excluding terminal codes
-         for (const char* p = vm.szVarModChar; *p; ++p)
-         {
-            if (*p != 'n' && *p != 'c' && *p != '^' && *p != '$')
-               strResidues += *p;
-         }
+      if (vm.iVarModTermDistance == 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
+      {
+         const char cFrom = (vm.iWhichTerm == 0) ? 'n' : 'c';
+         const char cTo   = (vm.iWhichTerm == 0) ? '^' : '$';
+         bool bOtherChars = false;   // residues, or the other terminus' code, still use the fields
 
-         bool bBridged = false;
-
-         if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 0 && strchr(vm.szVarModChar, 'n'))
+         for (char* p = vm.szVarModChar; *p; ++p)
          {
-            for (char* p = vm.szVarModChar; *p; ++p)
-               if (*p == 'n')
-                  *p = '^';
-            bBridged = true;
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'n' with distance 0 to '^'\n"
-                   "           (protein N-terminus only). Update the params file to use '^' directly.\n",
-                     szSlot);
-            logout(szMsg);
-         }
-         else if (vm.iVarModTermDistance == 0 && vm.iWhichTerm == 1 && strchr(vm.szVarModChar, 'c'))
-         {
-            for (char* p = vm.szVarModChar; *p; ++p)
-               if (*p == 'c')
-                  *p = '$';
-            bBridged = true;
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term are deprecated; translated 'c' with distance 0 to '$'\n"
-                   "           (protein C-terminus only). Update the params file to use '$' directly.\n",
-                     szSlot);
-            logout(szMsg);
+            if (*p == cFrom)
+               *p = cTo;
+            else if (*p != cTo)
+               bOtherChars = true;
          }
 
-         if (vm.iVarModTermDistance == 0 && strResidues.length() > 0)
+         if (!bOtherChars)
          {
-            // legacy which_term: 0 protein N-term, 1 protein C-term, 2 peptide N-term, 3 peptide C-term
-            static const char* szLegacyTerm[4] = { "protein N-terminus", "protein C-terminus", "peptide N-terminus", "peptide C-terminus" };
-            const char* szTerm = (vm.iWhichTerm >= 0 && vm.iWhichTerm <= 3) ? szLegacyTerm[vm.iWhichTerm] : "a terminus";
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance 0 / which_term %d restricted residues \"%s\" to the %s; that\n"
-                   "           restriction is deprecated and dropped -- the residue modification now applies anywhere.\n",
-                     szSlot, vm.iWhichTerm, strResidues.c_str(), szTerm);
-            logout(szMsg);
+            vm.iVarModTermDistance = -1;
+            vm.iWhichTerm = 0;
          }
-         else if (vm.iVarModTermDistance > 0)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored (no distance constraint is applied).\n",
-                     szSlot, vm.iVarModTermDistance);
-            logout(szMsg);
-         }
-         else if (vm.iVarModTermDistance < -1)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance %d is deprecated and ignored.\n",
-                     szSlot, vm.iVarModTermDistance);
-            logout(szMsg);
-         }
-         else if (!bBridged)
-         {
-            snprintf(szMsg, sizeof(szMsg), " Warning - %s: term_distance/which_term (%d %d) are deprecated and ignored; 'n'/'c' mean any\n"
-                   "           peptide terminus, use '^'/'$' for protein N-/C-terminus only.\n",
-                     szSlot, vm.iVarModTermDistance, vm.iWhichTerm);
-            logout(szMsg);
-         }
-
-         vm.iVarModTermDistance = -1;
-         vm.iWhichTerm = 0;
       }
    }
+
 
    // reduce variable modifications if entries are the same
    for (int i=0; i<VMODS; ++i)
@@ -1523,6 +1499,8 @@ bool CometSearchManager::InitializeStaticParams()
                      && (g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMaxNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iMinNumVarModAAPerMod == g_staticParams.variableModParameters.varModList[ii].iMinNumVarModAAPerMod)
                      && (g_staticParams.variableModParameters.varModList[i].iRequireThisMod == g_staticParams.variableModParameters.varModList[ii].iRequireThisMod)
+                     && (g_staticParams.variableModParameters.varModList[i].iVarModTermDistance == g_staticParams.variableModParameters.varModList[ii].iVarModTermDistance)
+                     && (g_staticParams.variableModParameters.varModList[i].iWhichTerm == g_staticParams.variableModParameters.varModList[ii].iWhichTerm)
                      &&  g_staticParams.variableModParameters.varModList[i].iRequireThisMod != -1)
                {
                   // everything the same merge the modifications
@@ -1757,6 +1735,22 @@ bool CometSearchManager::InitializeStaticParams()
          }
          fclose(fp);
 
+         // An explicit index_search_type that disagrees with the file's own type is ignored;
+         // say so, since the parameter reads like a search-mode switch (issue #132 comment).
+         // The comet -p template does not set the parameter, and RealtimeSearch sends it only
+         // when its argument was given, so a value here always expresses intent.
+         if (g_staticParams.options.iIndexSearchType != -1
+               && (g_staticParams.options.iIndexSearchType == 0) != (g_staticParams.iDbType == DbType::PI_DB))
+         {
+            const bool bPI = (g_staticParams.iDbType == DbType::PI_DB);
+            char szMsg[SIZE_FILE + 256];
+            snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is a %s and its own"
+                  " IndexSearchType: header line decides. Delete the file or rebuild it with %s to change the type.\n",
+                  g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase,
+                  bPI ? "peptide index" : "fragment ion index", bPI ? "-i" : "-j");
+            logout(szMsg);
+         }
+
          // This clamp only matters for the legacy load-all-then-search-all path
          // (PiStrategy falls back to it for Mango/speclib runs; see
          // PiStrategy::executeBatch()) -- the fused path ignores iSpectrumBatchSize
@@ -1766,6 +1760,29 @@ bool CometSearchManager::InitializeStaticParams()
          if (g_staticParams.options.iSpectrumBatchSize > FRAGINDEX_MAX_BATCHSIZE || g_staticParams.options.iSpectrumBatchSize == 0)
             g_staticParams.options.iSpectrumBatchSize = FRAGINDEX_MAX_BATCHSIZE;
       }
+   }
+   else if (g_staticParams.options.iIndexSearchType != -1
+         && !g_staticParams.options.bCreateFragmentIndex && !g_staticParams.options.bCreatePeptideIndex)
+   {
+      // Plain FASTA (or PEFF) search: the parameter has no effect here (it is never set by the
+      // comet -p template, so its presence expresses intent). A -i/-j build that agrees with
+      // the value stays quiet; one that disagrees warns in the branch below.
+      char szMsg[SIZE_FILE + 256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is ignored: \"%s\" is not an .idx file (plain FASTA"
+            " search). It only selects the index type to auto-build when database_name names an .idx file that does not exist yet.\n",
+            g_staticParams.options.iIndexSearchType, g_staticParams.databaseInfo.szDatabase);
+      logout(szMsg);
+   }
+   else if ((g_staticParams.options.bCreateFragmentIndex && g_staticParams.options.iIndexSearchType == 0)
+         || (g_staticParams.options.bCreatePeptideIndex && g_staticParams.options.iIndexSearchType == 1))
+   {
+      // Explicit -i/-j disagreeing with the parameter: the flag wins; say so now rather than at
+      // the first search of the resulting .idx.
+      const bool bFI = g_staticParams.options.bCreateFragmentIndex;
+      char szMsg[256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - index_search_type = %d is overridden by %s: building a %s.\n",
+            g_staticParams.options.iIndexSearchType, bFI ? "-i" : "-j", bFI ? "fragment ion index" : "peptide index");
+      logout(szMsg);
    }
 
    if (g_staticParams.options.bCreateFragmentIndex && g_staticParams.iDbType != DbType::FASTA_DB)
@@ -3848,6 +3865,18 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
          masses.modifyCTermMass(mod.getMass());
       }
    }
+
+   // Position-restricted slots need AScorePro's peptidoform filter (CalculateAScorePro());
+   // decided once here rather than per PSM. The generation bump makes each thread refresh
+   // its private copy of these options.
+   g_bAScoreRestrictedSlots = false;
+   for (int i = 0; i < 9; ++i)   // AScorePro sees variable_mod01-09 (symbols '1'-'9')
+   {
+      const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+      if (vm.iVarModTermDistance != -1 && !isEqual(vm.dVarModMass, 0.0) && vm.szVarModChar[0] != '-')
+         g_bAScoreRestrictedSlots = true;
+   }
+   g_uiAScoreOptionsGeneration++;
 }
 
 

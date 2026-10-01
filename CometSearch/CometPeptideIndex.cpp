@@ -14,6 +14,7 @@
 
 
 #include "CometPeptideIndex.h"
+#include "CometMassSpecUtils.h"   // ProteinTermRuleMask()
 
 // For GenerateVariantArray()'s page-granular staging buffer (AllocStagingPages() et al.):
 // mmap/madvise/munmap on POSIX; Windows uses plain malloc/free (see AllocStagingPages()'s
@@ -645,19 +646,34 @@ int CometPeptideIndex::TranslateVarModSlot(const vector<int>& vModSlotForAllMods
 
 
 unsigned char CometPeptideIndex::ProteinTerminusContextMask(const vector<int>& vModSlotForAllModsIdx,
-                                                            const char* mods)
+                                                            const char* mods,
+                                                            int iModSeqLen)
 {
    unsigned char ucMask = 0;
-   if (mods == NULL || g_iTermSlotBytes == 0)
+   if (mods == NULL)
       return 0;
+
+   // Residue mods (and terminal ones, below) whose slot has a protein-terminus position rule
+   // (fifth field >= 0, sixth 0/1) require that terminus too: the permuter admits them from the
+   // merged row's flanks ("terminal in ANY protein"), so the protein occurrences must be checked.
+   if (g_bProteinTermRuleMods)
+   {
+      for (int j = ModEntryResidueOffset(); j < iModSeqLen; ++j)
+         ucMask |= CometMassSpecUtils::ProteinTermRuleMask(TranslateVarModSlot(vModSlotForAllModsIdx, mods[j]));
+   }
+
+   if (g_iTermSlotBytes == 0)
+      return ucMask;
 
    int iSlotN = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, true));
    if (iSlotN >= 0 && g_staticParams.variableModParameters.varModList[iSlotN].bProteinNtermOnly)
       ucMask |= ProteinsListCSR::PROT_NTERM_HERE;
+   ucMask |= CometMassSpecUtils::ProteinTermRuleMask(iSlotN);
 
    int iSlotC = TranslateVarModSlot(vModSlotForAllModsIdx, ModEntryTermSlot(mods, false));
    if (iSlotC >= 0 && g_staticParams.variableModParameters.varModList[iSlotC].bProteinCtermOnly)
       ucMask |= ProteinsListCSR::PROT_CTERM_HERE;
+   ucMask |= CometMassSpecUtils::ProteinTermRuleMask(iSlotC);
 
    return ucMask;
 }
@@ -665,9 +681,10 @@ unsigned char CometPeptideIndex::ProteinTerminusContextMask(const vector<int>& v
 
 bool CometPeptideIndex::PassesProteinTerminusContext(const vector<int>& vModSlotForAllModsIdx,
                                                      const char* mods,
+                                                     int iModSeqLen,
                                                      comet_fileoffset_t lProteinRow)
 {
-   unsigned char ucMask = ProteinTerminusContextMask(vModSlotForAllModsIdx, mods);
+   unsigned char ucMask = ProteinTerminusContextMask(vModSlotForAllModsIdx, mods, iModSeqLen);
    if (ucMask == 0)
       return true;
    if (lProteinRow < 0 || (size_t)lProteinRow >= g_pvProteinsList.size())
@@ -812,9 +829,10 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
          if (g_staticParams.variableModParameters.bVarModProteinFilter)
             bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.siVarModProteinFilter);
 
-         // protein-scoped terminal mods need an occurrence of this peptide at that terminus
-         if (bPass && g_iTermSlotBytes)
-            bPass = PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry, raw.lIndexProteinFilePosition);
+         // protein-scoped terminal mods / protein-terminus position rules need an occurrence of
+         // this peptide at that terminus
+         if (bPass && (g_iTermSlotBytes || g_bProteinTermRuleMods))
+            bPass = PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.lIndexProteinFilePosition);
 
          if (!bPass)
             continue;
@@ -1383,19 +1401,21 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
    // CometFragmentIndex::PermuteIndexPeptideMods()/CometModificationsPermuter always read them
    // from whatever was live in g_staticParams at search time, from comet.params/SetParam() --
    // this is the first version where an index is self-consistent for its own mod *counts*, not
-   // just mod *identity*. iVarModTermDistance/iWhichTerm (peptide/protein N/C-term mod
-   // restriction) remain unsupported for FI_DB/PI_DB and are not persisted here either --
-   // CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp have never
-   // referenced either field; only the plain-FASTA search path (CometSearch.cpp) enforces them.
+   // just mod *identity*. v5 then appends each slot's iVarModTermDistance:iWhichTerm (the
+   // variable_modNN fifth/sixth-field position restriction), which the permuter applies when
+   // it enumerates the index's modifications (CometModificationsPermuter getModBitmask());
+   // an early-v5 file's 5-field slots read back as unrestricted, which is how it was built.
    fprintf(fptr, "VariableMod:");
    for (int x = 0; x < FRAGINDEX_VMODS; ++x)
    {
-      fprintf(fptr, " %s:%lf:%lf:%lf:%d",
+      fprintf(fptr, " %s:%lf:%lf:%lf:%d:%d:%d",
          g_staticParams.variableModParameters.varModList[x].szVarModChar,
          g_staticParams.variableModParameters.varModList[x].dVarModMass,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss,
          g_staticParams.variableModParameters.varModList[x].dNeutralLoss2,
-         g_staticParams.variableModParameters.varModList[x].iMaxNumVarModAAPerMod);
+         g_staticParams.variableModParameters.varModList[x].iMaxNumVarModAAPerMod,
+         g_staticParams.variableModParameters.varModList[x].iVarModTermDistance,
+         g_staticParams.variableModParameters.varModList[x].iWhichTerm);
    }
    fprintf(fptr, "\n");
 
@@ -1568,9 +1588,8 @@ bool CometPeptideIndex::WritePeptideIndex(ThreadPool* tp)
 // (the other three). All four are optional in the parse (no bFound.../error-if-missing
 // gate, matching DecoySearch:/Enzyme:/Enzyme2:'s existing precedent) so older .idx files
 // built before this addition still load, just without this restore.
-// iVarModTermDistance/iWhichTerm remain unsupported for FI_DB/PI_DB (never referenced by
-// CometFragmentIndex.cpp/CometModificationsPermuter.cpp/CometPeptideIndex.cpp) and are
-// not part of the header.
+// Each VariableMod: slot also carries iVarModTermDistance/iWhichTerm (optional; an early-v5
+// 5-field slot reads back unrestricted), which the permuter applies to the index's mods.
 //
 // Also validates the magic string/version (rejecting anything other than the current
 // "Comet index database v5" with a clear rebuild message -- v4 and older are intentionally
@@ -1765,16 +1784,23 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
          // parse, not silently leave a slot at its reset-to-default identity.
          while (iNumMods < FRAGINDEX_VMODS && (iss >> subStr))
          {
-            // colon-delimited quintuplet (v4): mod_chars:mass:NL1:NL2:maxPerMod. %31s caps
-            // szVarModChar's write at its declared size (MAX_VARMOD_AA, CometData.h) --
-            // sscanf's %s is otherwise unbounded and this field comes straight from the file.
+            // colon-delimited mod_chars:mass:NL1:NL2:maxPerMod (v4, early v5), optionally
+            // followed by :termDistance:whichTerm (v5 with position restrictions); absent, the
+            // slot is unrestricted, as such files were built. %31s caps szVarModChar's write at
+            // its declared size (MAX_VARMOD_AA, CometData.h) -- sscanf's %s is otherwise
+            // unbounded and this field comes straight from the file.
             std::replace(subStr.begin(), subStr.end(), ':', ' ');
-            if (sscanf(subStr.c_str(), "%31s %lf %lf %lf %d",
+            g_staticParams.variableModParameters.varModList[iNumMods].iVarModTermDistance = -1;
+            g_staticParams.variableModParameters.varModList[iNumMods].iWhichTerm = 0;
+            int iFields = sscanf(subStr.c_str(), "%31s %lf %lf %lf %d %d %d",
                   g_staticParams.variableModParameters.varModList[iNumMods].szVarModChar,
                   &(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass),
                   &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss),
                   &(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss2),
-                  &(g_staticParams.variableModParameters.varModList[iNumMods].iMaxNumVarModAAPerMod)) != 5)
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].iMaxNumVarModAAPerMod),
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].iVarModTermDistance),
+                  &(g_staticParams.variableModParameters.varModList[iNumMods].iWhichTerm));
+            if (iFields != 5 && iFields != 7)
             {
                string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
                   + "\" has a malformed VariableMod: entry (slot " + to_string(iNumMods)
@@ -1784,17 +1810,33 @@ bool CometPeptideIndex::ParsePeptideIndexHeader(FILE* fp)
                return false;
             }
 
+            // Same range check InitializeStaticParams() applies to comet.params: these values
+            // bypass it (the header overwrites the slots), and an out-of-range rule means
+            // different things to the FASTA counters, the permuter and AScorePro.
+            {
+               const VarMods& vm = g_staticParams.variableModParameters.varModList[iNumMods];
+               if (vm.iVarModTermDistance < -2 || (vm.iVarModTermDistance >= 0 && (vm.iWhichTerm < 0 || vm.iWhichTerm > 3)))
+               {
+                  string strErrorMsg = " Error - \"" + string(g_staticParams.databaseInfo.szDatabase)
+                     + "\" VariableMod: slot " + to_string(iNumMods) + " has an invalid term_distance/which_term \""
+                     + to_string(vm.iVarModTermDistance) + " " + to_string(vm.iWhichTerm)
+                     + "\" (term_distance must be -2, -1 or >= 0, which_term 0-3).\n";
+                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                  logerr(strErrorMsg);
+                  return false;
+               }
+            }
+
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dVarModMass, 0.0))
                g_staticParams.variableModParameters.bVarModSearch = true;
 
             if (!isEqual(g_staticParams.variableModParameters.varModList[iNumMods].dNeutralLoss, 0.0))
                g_staticParams.variableModParameters.bUseFragmentNeutralLoss = true;
 
-            // bNtermMod/bCtermMod/bVarTermModSearch gate AddFragmentsThreadProc()'s and
-            // EnumerateIndexPeptideMods()'s terminal-mod enumeration (CometFragmentIndex.cpp,
-            // CometPeptideIndex.cpp) -- unlike iWhichTerm/iVarModTermDistance (peptide vs.
-            // protein N/C-term restriction), which FI_DB/PI_DB never reference at all, these
-            // three must be derived from the .idx header's szVarModChar the same way
+            // bNtermMod/bCtermMod/bVarTermModSearch gate the permuter's terminal-mod
+            // enumeration (CometFragmentIndex::PermuteIndexPeptideMods()); like the slot's
+            // iVarModTermDistance/iWhichTerm read above, these three must be derived from the
+            // .idx header's szVarModChar the same way
             // InitializeStaticParams() derives them from comet.params, or an index built with
             // an n/c-term variable mod silently searches without it.
             // Same derivation as InitializeStaticParams(): 'n'/'c' = any peptide terminus,

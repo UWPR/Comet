@@ -59,6 +59,11 @@ public:
    // protein-scoped ('^' / '$'). Indexed databases only; 0 = no restriction.
    static unsigned char ProteinTermContextMask(const int* piVarModSites, int iLenPeptide);
 
+   // PROT_NTERM_HERE / PROT_CTERM_HERE required by variable_modNN slot iSlot's position rule:
+   // a protein-terminus rule (fifth field >= 0, sixth 0 = protein N, 1 = protein C); 0 otherwise
+   // (including iSlot < 0).
+   static unsigned char ProteinTermRuleMask(int iSlot);
+
    static void GetProteinNameString(FILE *fpdb,
                                     int iWhichQuery,  // which search
                                     int iWhichResult, // which peptide within the search

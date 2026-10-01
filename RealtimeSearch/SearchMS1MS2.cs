@@ -67,7 +67,8 @@ namespace RealTimeSearch
             Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro] [index_search_type]\n",
                System.AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
-            Console.WriteLine("    index_search_type: 0=PI_DB (peptide index), 1=FI_DB (fragment ion index, default)\n");
+            Console.WriteLine("    index_search_type: index type to auto-build when database.idx does not exist yet:");
+            Console.WriteLine("                       0=peptide index, 1=fragment ion index (default); an existing .idx records its own type\n");
             return;
          }
 
@@ -114,16 +115,17 @@ namespace RealTimeSearch
             }
          }
 
-         // Parse index_search_type (default 1, FI_DB -- matches the pre-unification default
-         // for an ambiguous .idx; docs/20260730_PI_reduction.md Phase 0).
-         // 0=PI_DB (peptide index), 1=FI_DB (fragment ion index).
-         int iIndexSearchType = 1;
+         // Parse index_search_type. Only consulted when database.idx does not exist yet and is
+         // auto-built from its FASTA (the native default is 1, FI_DB); an existing .idx records
+         // its own type in its IndexSearchType: header line and this argument is ignored for it.
+         // -1 = not given (the parameter is then not sent at all); 0=PI_DB, 1=FI_DB.
+         int iIndexSearchType = -1;
          if (args.Length >= 6)
          {
             if (!int.TryParse(args[5], out iIndexSearchType) || (iIndexSearchType != 0 && iIndexSearchType != 1))
             {
-               Console.WriteLine(" Warning: Invalid index_search_type '{0}', using default (1, FI_DB)", args[5]);
-               iIndexSearchType = 1;
+               Console.WriteLine(" Warning: Invalid index_search_type '{0}', ignoring it (not sent; an auto-build then makes a fragment ion index)", args[5]);
+               iIndexSearchType = -1;
             }
          }
 
@@ -741,12 +743,17 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("print_ascorepro_score", sTmp, iTmp);
 
-            // docs/20260730_PI_reduction.md Phase 0: which search mode to run against the
-            // (now-shared-format) .idx file. 0=PI_DB, 1=FI_DB (default). Since PI_DB and
-            // FI_DB share one on-disk format, the file itself no longer implies a mode --
-            // this is the RTS-side equivalent of batch's index_search_type comet.params key.
-            sTmp = iIndexSearchType.ToString();
-            SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
+            // RTS-side equivalent of batch's index_search_type comet.params key: picks the
+            // index type to auto-build when the .idx does not exist yet (0=PI_DB, 1=FI_DB,
+            // default). An existing .idx is self-describing (its IndexSearchType: header
+            // line) and the native side ignores this value for it (warning if an explicit 0
+            // meets a fragment ion index). Sent only when the argument was given, so the
+            // native default applies otherwise and no warning is manufactured.
+            if (iIndexSearchType != -1)
+            {
+               sTmp = iIndexSearchType.ToString();
+               SearchMgr.SetParam("index_search_type", sTmp, iIndexSearchType);
+            }
 
             if (bDatabaseSearch)
             {

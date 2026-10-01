@@ -136,6 +136,8 @@ struct ProteinEntryStruct
 {
    comet_fileoffset_t   lWhichProtein;     // file pointer to protein
    int    iStartResidue;      // start residue position in protein (1-based)
+   int    iProteinLength;     // length of the (possibly Met-clipped) sequence the peptide was digested
+                              // from, same frame as iStartResidue; 0 on the index paths (unknown)
    char   cPrevAA;
    char   cNextAA;
 
@@ -1008,6 +1010,11 @@ extern vector<string> g_pvProteinNameCache;  // protein name by .idx name-sectio
 
 extern AScoreProCpp::AScoreOptions g_AScoreOptions;  // AScore options
 extern AScoreProCpp::AScoreDllInterface* g_AScoreInterface;
+// Set by CometSearchManager::SetAScoreOptions(): whether a slot AScorePro sees (variable_mod01-09)
+// has a position restriction, and a counter bumped on every call so per-thread option copies
+// (CometPostAnalysis::CalculateAScorePro()) know when to refresh.
+extern bool g_bAScoreRestrictedSlots;
+extern std::atomic<unsigned int> g_uiAScoreOptionsGeneration;
 
 // Flat-pooled mod-permutation tables (docs/20260827_PI_memory.md Phase 1). MOD_NUMBERS_POOL
 // replaces the former vector<ModificationNumber>, which paid a 16-byte vector slot plus one
@@ -1072,6 +1079,11 @@ inline const char* GetModNumEntry(int modNumIdx, int modSeqIdx, int iModSeqLen)
 // stride arithmetic in GetModNumEntry() is unaffected because iModSeqLen already includes
 // the sentinel positions. Set once per session by CometFragmentIndex::PermuteIndexPeptideMods().
 extern int g_iTermSlotBytes;
+
+// True when a permuted variable mod has a protein-terminus position rule (fifth field >= 0,
+// sixth field 0/1): such a variant, like one carrying '^'/'$', may only be attributed to
+// protein occurrences at that terminus. Set by CometFragmentIndex::PermuteIndexPeptideMods().
+extern bool g_bProteinTermRuleMods;
 
 inline int ModEntryResidueOffset()
 {

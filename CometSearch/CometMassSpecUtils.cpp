@@ -194,7 +194,32 @@ unsigned char CometMassSpecUtils::ProteinTermContextMask(const int* piVarModSite
       ucMask |= ProteinsListCSR::PROT_NTERM_HERE;
    if (iCodeC > 0 && iCodeC <= VMODS && g_staticParams.variableModParameters.varModList[iCodeC - 1].bProteinCtermOnly)
       ucMask |= ProteinsListCSR::PROT_CTERM_HERE;
+
+   // Any placed mod -- residue or terminal -- whose slot has a protein-terminus position rule
+   // likewise restricts the reported proteins to those with the peptide at that terminus. On
+   // FI/PI such a mod was admitted from the merged row's "terminal in any protein" flanks.
+   for (int i = 0; i < iLenPeptide + 2; ++i)
+   {
+      const int iCode = piVarModSites[i];
+      if (iCode > 0 && iCode <= VMODS)
+         ucMask |= ProteinTermRuleMask(iCode - 1);
+   }
    return ucMask;
+}
+
+
+unsigned char CometMassSpecUtils::ProteinTermRuleMask(int iSlot)
+{
+   if (iSlot < 0 || iSlot >= VMODS)
+      return 0;
+   const VarMods& vm = g_staticParams.variableModParameters.varModList[iSlot];
+   if (vm.iVarModTermDistance < 0 || isEqual(vm.dVarModMass, 0.0))
+      return 0;
+   if (vm.iWhichTerm == 0)
+      return ProteinsListCSR::PROT_NTERM_HERE;
+   if (vm.iWhichTerm == 1)
+      return ProteinsListCSR::PROT_CTERM_HERE;
+   return 0;
 }
 
 
@@ -551,17 +576,20 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
 
 
 // sort by mass, then peptide, then modification state, then protein fp location
+//
+// Masses are compared as integer keys quantized to FLOAT_ZERO (1e-6 Da), so peptides whose
+// masses differ only in rounding still order by sequence. The key must be a quantization,
+// not "equal if within FLOAT_ZERO": that tolerance test is not transitive (a~b and b~c
+// while a<c), so std::sort would get a comparator that is not a strict weak ordering --
+// undefined behavior, and an index order that could depend on input layout.
 bool CometMassSpecUtils::DBICompareByMass(const DBIndex& lhs,
                                           const DBIndex& rhs)
 {
-   if (fabs(lhs.dPepMass - rhs.dPepMass) > FLOAT_ZERO)
-   {
-      // masses are different
-      if (lhs.dPepMass < rhs.dPepMass)
-         return true;
-      else
-         return false;
-   }
+   const long long llMassL = llround(lhs.dPepMass / FLOAT_ZERO);
+   const long long llMassR = llround(rhs.dPepMass / FLOAT_ZERO);
+
+   if (llMassL != llMassR)
+      return llMassL < llMassR;   // masses are different
 
    // at this point, peptides are same mass so next need to compare sequences
 

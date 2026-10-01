@@ -166,7 +166,7 @@ int main(int argc, char** argv)
    int numThreads = atoi(argv[3]);
    string szOutput = argv[4];
    bool bEnableAScorePro = (argc > 5) && (atoi(argv[5]) != 0);
-   int iIndexSearchType = (argc > 6) ? atoi(argv[6]) : 1;   // default FI_DB, matching RTS's default
+   int iIndexSearchType = (argc > 6) ? atoi(argv[6]) : -1;  // -1 = not given: not sent, matching RealtimeSearch
 
    if (numThreads < 1)
       numThreads = 1;
@@ -212,7 +212,8 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "use_B_ions", 1);
    SetIntParam(mgr, "use_Y_ions", 1);
    SetIntParam(mgr, "print_ascorepro_score", bEnableAScorePro ? -1 : 0);
-   SetIntParam(mgr, "index_search_type", iIndexSearchType);
+   if (iIndexSearchType != -1)   // only when given; an existing .idx records its own type
+      SetIntParam(mgr, "index_search_type", iIndexSearchType);
 
    // Variable mods: as of docs/20260811_restore_idx_header_mods.md's v4 format, the .idx
    // header carries mod IDENTITY (chars/mass/neutral-loss, restored from Phase 0.5) *and*

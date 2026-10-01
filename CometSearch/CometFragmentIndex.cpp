@@ -54,6 +54,7 @@ int* MOD_SEQ_MOD_NUM_CNT;   // Total modifications numbers for a modifiable sequ
 int* PEPTIDE_MOD_SEQ_IDXS;  // Index into the modifiable-sequence tables; -1 for peptides that have no modifiable sequence.
 int MOD_NUM = 0;
 int g_iTermSlotBytes = 0;   // see core/Types.h ModEntryTermSlot(); set by PermuteIndexPeptideMods()
+bool g_bProteinTermRuleMods = false;   // see core/Types.h; set by PermuteIndexPeptideMods()
 size_t tTmp;
 
 
@@ -143,6 +144,8 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
 {
    vector<string> ALL_MODS; // An array of all the user specified amino acids that can be modified
    vector<int> vMaxNumVarModsPerMod;  // replciates iMaxNumVarModAAPerMod
+   vector<ModPositionRule> vModRules; // parallel to ALL_MODS: variable_modNN fifth/sixth fields
+   g_bProteinTermRuleMods = false;
 
    // Pre-computed bitmask combinations for peptides of length MAX_PEPTIDE_LEN with up
    // to FRAGINDEX_MAX_MODS_PER_MOD modified amino acids.
@@ -160,6 +163,24 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
       {
          ALL_MODS.push_back(g_staticParams.variableModParameters.varModList[i].szVarModChar);
          vMaxNumVarModsPerMod.push_back(g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod);
+         vModRules.push_back({ g_staticParams.variableModParameters.varModList[i].iVarModTermDistance,
+                               g_staticParams.variableModParameters.varModList[i].iWhichTerm });
+         if (CometMassSpecUtils::ProteinTermRuleMask(i) != 0)
+            g_bProteinTermRuleMods = true;
+
+         // A protein-terminus distance rule needs the peptide's offset in its protein, which
+         // the index does not keep: only peptides at that protein terminus are admitted
+         // (ModificationsPermuter::getPositionClass()), a subset of what a FASTA search allows.
+         const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+         if (vm.iVarModTermDistance > 0 && (vm.iWhichTerm == 0 || vm.iWhichTerm == 1))
+         {
+            char szMsg[512];
+            snprintf(szMsg, sizeof(szMsg), " Warning - variable_mod%02d (%s): a protein %s-terminus distance of %d is applied"
+               " by fragment/peptide index searches only to peptides at that protein terminus"
+               " (a FASTA search also admits peptides that start within %d residues of it).\n",
+               i + 1, vm.szVarModChar, vm.iWhichTerm == 0 ? "N" : "C", vm.iVarModTermDistance, vm.iVarModTermDistance);
+            logout(szMsg);
+         }
 
          if (iMaxNumVariableMods < g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod)
             iMaxNumVariableMods = g_staticParams.variableModParameters.varModList[i].iMaxNumVarModAAPerMod;
@@ -225,7 +246,7 @@ void CometFragmentIndex::PermuteIndexPeptideMods(const RawPeptideTable& g_vRawPe
    // MOD_SEQS_OFFSET flat pool -- docs/20260827_PI_memory.md Phase 1)
    PEPTIDE_MOD_SEQ_IDXS = new int[g_vRawPeptides.size()];
 
-   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini);
+   ModificationsPermuter::getModifiableSequences(g_vRawPeptides, PEPTIDE_MOD_SEQ_IDXS, ALL_MODS, bIncludeTermini, vModRules);
 
    // Get the modification combinations for each unique modifiable substring
    ModificationsPermuter::getModificationCombinations(vMaxNumVarModsPerMod, ALL_MODS,
@@ -621,12 +642,13 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
                   pEntry, iModSeqLen, g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);
             }
 
-            // protein-scoped terminal mods need an occurrence of this peptide at that terminus
-            // (both termini in ONE protein when both are set) -- see PassesProteinTerminusContext()
-            if (bPass && g_iTermSlotBytes)
+            // protein-scoped terminal mods and protein-terminus position rules need an occurrence
+            // of this peptide at that terminus (both termini in ONE protein when both are set)
+            // -- see PassesProteinTerminusContext()
+            if (bPass && (g_iTermSlotBytes || g_bProteinTermRuleMods))
             {
                bPass = CometPeptideIndex::PassesProteinTerminusContext(vModSlotForAllModsIdx, pEntry,
-                  g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
+                  iModSeqLen, g_vRawPeptides.at(iWhichPeptide).lIndexProteinFilePosition);
             }
 
             if (bPass)
@@ -1125,29 +1147,45 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
             return PepRowSplitClass(t.cPrevAA, t.cNextAA, dAddNP, dAddCP);
          };
 
-         sort(buf.begin(), buf.end(), [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+         // Canonical (L -> I when bIL) sequence comparison: a plain memcmp unless I/L are merged.
+         // Residues are uppercase ASCII, so memcmp's unsigned order equals the char order.
+         auto canonCompare = [iLen, bIL](const PepGenTuple& a, const PepGenTuple& b) -> int {
+            if (!bIL)
+               return memcmp(a.sPeptide, b.sPeptide, iLen);
             for (int k = 0; k < iLen; ++k)
             {
-               char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
-               char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
-               if (ca != cb) return ca < cb;
+               char ca = (a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
+               char cb = (b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
+               if (ca != cb) return ca < cb ? -1 : 1;
             }
-            if (splitClass(a) != splitClass(b)) return splitClass(a) < splitClass(b);
-            return a.lProteinFileOffset < b.lProteinFileOffset;
+            return 0;
+         };
+
+         sort(buf.begin(), buf.end(), [canonCompare, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+            const int iCmp = canonCompare(a, b);
+            if (iCmp != 0) return iCmp < 0;
+            const unsigned char ucA = splitClass(a);
+            const unsigned char ucB = splitClass(b);
+            if (ucA != ucB) return ucA < ucB;
+            if (a.lProteinFileOffset != b.lProteinFileOffset) return a.lProteinFileOffset < b.lProteinFileOffset;
+            // Copies of one sequence from one protein reach here only with different protein-
+            // terminus context (the within-protein dedup key in SearchForPeptides() is sequence +
+            // context), and different context always means a different cPrevAA or cNextAA, so the
+            // flanks complete a total order. Without them such copies (e.g. UBC's ubiquitin
+            // repeats) tie, arrive in thread-scheduling order, and the representative -- whose
+            // flanks and dPepMass are stored -- varies from build to build (T18).
+            // unsigned so the order does not depend on the platform's char signedness
+            if (a.cPrevAA != b.cPrevAA) return (unsigned char)a.cPrevAA < (unsigned char)b.cPrevAA;
+            return (unsigned char)a.cNextAA < (unsigned char)b.cNextAA;
          });
 
-         auto bCanonEqual = [iLen, bIL, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
-            for (int k = 0; k < iLen; ++k)
-            {
-               char ca = (bIL && a.sPeptide[k] == 'L') ? 'I' : a.sPeptide[k];
-               char cb = (bIL && b.sPeptide[k] == 'L') ? 'I' : b.sPeptide[k];
-               if (ca != cb) return false;
-            }
-            return splitClass(a) == splitClass(b);
+         auto bCanonEqual = [canonCompare, splitClass](const PepGenTuple& a, const PepGenTuple& b) {
+            return canonCompare(a, b) == 0 && splitClass(a) == splitClass(b);
          };
 
          vector<unsigned int> prot;
          vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
+         vector<pair<unsigned int, unsigned char>> vOcc;   // per-run scratch, reused across runs
          // OR'd (not just the representative's) across every occurrence in the dedup run:
          // with protein_modslist_file active, a peptide shared between a listed and an
          // unlisted protein must not silently lose the listed protein's allowed-mod bits just
@@ -1175,9 +1213,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                // their terminus-context bits (a peptide repeated in one protein may be
                // N-terminal in one copy and internal in another).
                {
-                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  vOcc.clear();
                   for (size_t k = 0; k < prot.size(); ++k)
-                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                     vOcc.emplace_back(prot[k], protFlags[k]);
                   sort(vOcc.begin(), vOcc.end(),
                      [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
                   prot.clear();
@@ -1283,14 +1321,22 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
          sort(buf.begin(), buf.end(), [splitClass](const PepGenTupleShort& a, const PepGenTupleShort& b) {
             if (a.uPackedPep != b.uPackedPep)
                return a.uPackedPep < b.uPackedPep;
-            if (splitClass(a) != splitClass(b))
-               return splitClass(a) < splitClass(b);
-            return a.lProteinFileOffset < b.lProteinFileOffset;
+            const unsigned char ucA = splitClass(a);
+            const unsigned char ucB = splitClass(b);
+            if (ucA != ucB)
+               return ucA < ucB;
+            if (a.lProteinFileOffset != b.lProteinFileOffset)
+               return a.lProteinFileOffset < b.lProteinFileOffset;
+            // flanks complete the total order, as in the long-length path (T18)
+            if (a.cPrevAA != b.cPrevAA)
+               return (unsigned char)a.cPrevAA < (unsigned char)b.cPrevAA;
+            return (unsigned char)a.cNextAA < (unsigned char)b.cNextAA;
          });
 
          char szSeq[MAX_PEPTIDE_LEN + 1];
          vector<unsigned int> prot;
          vector<unsigned char> protFlags;   // parallel to prot: protein-terminus context of each occurrence
+         vector<pair<unsigned int, unsigned char>> vOcc;   // per-run scratch, reused across runs
          // Same fix as the long-length path above: OR the mask across the whole dedup run
          // instead of taking only the representative occurrence's mask.
          unsigned short siVarModFilterUnion = 0;
@@ -1314,9 +1360,9 @@ bool CometFragmentIndex::GeneratePlainPeptideIndex(ThreadPool* tp)
                // their terminus-context bits (a peptide repeated in one protein may be
                // N-terminal in one copy and internal in another).
                {
-                  vector<pair<unsigned int, unsigned char>> vOcc(prot.size());
+                  vOcc.clear();
                   for (size_t k = 0; k < prot.size(); ++k)
-                     vOcc[k] = make_pair(prot[k], protFlags[k]);
+                     vOcc.emplace_back(prot[k], protFlags[k]);
                   sort(vOcc.begin(), vOcc.end(),
                      [](const pair<unsigned int, unsigned char>& a, const pair<unsigned int, unsigned char>& b) { return a.first < b.first; });
                   prot.clear();
