@@ -99,6 +99,7 @@ DECOY_VARIANT_MODES = {
 DEFAULT_DECOY_VARIANTS = list(DECOY_VARIANT_FILENAMES.keys())
 
 XCORR_THRESHOLD = 2.5   # minimum xcorr to count a PSM
+TARGET_ONLY_OUTPUT_LINES = 5   # ranks kept for a target-side-only comparison (see run_mode)
 
 # First release whose FI index generates Comet's internal decoys. Against an older
 # baseline, fi + internal-decoy rows compare a decoy-searching current build with a
@@ -122,6 +123,15 @@ def tag_version(tag: str):
 
 def load_params(path: Path) -> list[str]:
     return path.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True)
+
+
+def get_param(lines: list[str], key: str, default: str) -> str:
+    """Value of the first 'key = value' line (comment stripped), else `default`."""
+    for line in lines:
+        m = re.match(rf"^\s*{re.escape(key)}\s*=\s*([^#]*)", line)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
+    return default
 
 
 def patch_params(lines: list[str], overrides: dict[str, str]) -> list[str]:
@@ -234,7 +244,7 @@ def run_search(binary: Path, params_path: Path, mzxml: Path,
 # .txt result parsing
 # ---------------------------------------------------------------------------
 
-def parse_txt(path: Path) -> dict[str, dict]:
+def parse_txt(path: Path, skip_decoy_prefix: str | None = None) -> dict[str, dict]:
     """
     Parse a Comet tab-delimited .txt output file.
 
@@ -246,7 +256,9 @@ def parse_txt(path: Path) -> dict[str, dict]:
 
     Returns {scan_charge_key -> {"peptide": str, "xcorr": float, "evalue": float}}
     where scan_charge_key = "<scan>_<charge>".
-    Only the highest-xcorr hit per (scan, charge) is kept.
+    Only the highest-xcorr hit per (scan, charge) is kept. With `skip_decoy_prefix`,
+    rows whose protein column starts with that prefix (a decoy PSM) are dropped first,
+    so the kept hit is the highest-xcorr *target* at that rank depth.
     """
     results = {}
     if not path.exists():
@@ -277,6 +289,8 @@ def parse_txt(path: Path) -> dict[str, dict]:
                 continue
 
             row = dict(zip(header, fields))
+            if skip_decoy_prefix and row.get("protein", "").strip().upper().startswith(skip_decoy_prefix.upper()):
+                continue
             try:
                 scan   = row.get("scan", "").strip()
                 charge = row.get("charge", "").strip()
@@ -321,10 +335,16 @@ def compare_results(base: dict, curr: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
-             base_params: list[str], run_dir: Path) -> dict:
+             base_params: list[str], run_dir: Path, target_only: bool = False) -> dict:
     """
     Build index (fi/pi) if needed, run both binaries, compare results.
     Returns a metrics dict for this mode.
+
+    `target_only`: the baseline cannot generate decoys for this mode/variant (FI before
+    FI_INTERNAL_DECOYS_SINCE) while the current build can, and a concatenated decoy that
+    outscores the target would otherwise be the compared top hit. Both searches then report
+    TARGET_ONLY_OUTPUT_LINES ranks and decoy PSMs are dropped before the comparison, so
+    the top *target* is compared on both sides.
     """
     run_dir.mkdir(parents=True, exist_ok=True)
     metrics = {"mode": mode}
@@ -335,6 +355,8 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
             "database_name": comet_path(FASTA_FILE),
             "output_txtfile": "1",
         }
+        if target_only:
+            overrides["num_output_lines"] = str(TARGET_ONLY_OUTPUT_LINES)
         params_path = run_dir / "search.params"
         write_params(patch_params(base_params, overrides), params_path)
 
@@ -395,6 +417,8 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
                 "database_name": comet_path(idx_path),
                 "output_txtfile": "1",
             }
+            if target_only:
+                search_overrides["num_output_lines"] = str(TARGET_ONLY_OUTPUT_LINES)
             search_params_path = sub / "search.params"
             write_params(patch_params(base_params, search_overrides), search_params_path)
 
@@ -415,8 +439,12 @@ def run_mode(mode: str, current_bin: Path, baseline_bin: Path,
 
     # ---- Compare ----
     print(f"  [{mode}] comparing results ...")
-    base_psms = parse_txt(run_dir / "baseline.txt")
-    curr_psms = parse_txt(run_dir / "current.txt")
+    skip = get_param(base_params, "decoy_prefix", "DECOY_") if target_only else None
+    base_psms = parse_txt(run_dir / "baseline.txt", skip)
+    curr_psms = parse_txt(run_dir / "current.txt", skip)
+    if target_only:
+        metrics["target_side_only"] = True
+        metrics["decoy_prefix_filtered"] = skip
     metrics.update(compare_results(base_psms, curr_psms))
 
     # decoy_search=2 writes a separate <basename>.decoy.txt; compare that too
@@ -472,6 +500,8 @@ def print_report(all_metrics: list[dict], current_bin: Path, baseline_tag: str):
         if m.get("target_side_only"):
             print(f"  NOTE: target-side only -- baseline {baseline_tag} predates FI internal decoys "
                   f"(v{FI_INTERNAL_DECOYS_SINCE[0]}.{FI_INTERNAL_DECOYS_SINCE[1]:02d}.{FI_INTERNAL_DECOYS_SINCE[2]}); "
+                  f"current PSMs with protein prefix {m.get('decoy_prefix_filtered', 'DECOY_')!r} dropped, "
+                  f"both searched with num_output_lines = {TARGET_ONLY_OUTPUT_LINES}; "
                   f"decoy-side numbers are not a comparison")
 
         if m.get("skipped"):
@@ -562,16 +592,19 @@ def main():
                         "skip_reason": "mode not applicable to this variant",
                     })
                     continue
+                tv = tag_version(tag)
+                target_only = (mode == "fi" and variant != "nodecoy"
+                               and tv is not None and tv < FI_INTERNAL_DECOYS_SINCE)
                 try:
                     m = run_mode(mode, args.current, baseline_bin,
-                                 decoy_variant_params[variant], run_root / variant / mode)
+                                 decoy_variant_params[variant], run_root / variant / mode,
+                                 target_only=target_only)
                 except Exception as e:
                     print(f"  [{variant}/{mode}] FAILED: {e}", file=sys.stderr)
                     m = {"mode": mode, "error": str(e)}
                     had_error = True
                 m["decoy_variant"] = variant
-                tv = tag_version(tag)
-                if mode == "fi" and variant != "nodecoy" and tv is not None and tv < FI_INTERNAL_DECOYS_SINCE:
+                if target_only:
                     m["target_side_only"] = True
                 tag_metrics.append(m)
 

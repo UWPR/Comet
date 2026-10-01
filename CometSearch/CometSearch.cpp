@@ -6299,11 +6299,17 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
    // Residue mods with a peptide-C-terminus distance rule (which_term 3) can only be counted
    // once the end position is known; skip that per-end pass when no slot has one.
    bool bAnyPepCtermRule = false;
+   // Binary-group slots with a -2 rule (not on the peptide's C-terminal residue): the cumulative
+   // residue pass counts every matching residue, so the residue at each candidate end has to be
+   // taken back out of that group's site total before the binary all-or-nothing check.
+   bool bAnyBinaryNotCtermResidueRule = false;
    for (i = 0; i < VMODS; ++i)
    {
       const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
       if (vm.bUseMod && vm.iWhichTerm == 3 && vm.iVarModTermDistance >= 0)
          bAnyPepCtermRule = true;
+      if (vm.bUseMod && vm.iBinaryMod && vm.iVarModTermDistance == -2)
+         bAnyBinaryNotCtermResidueRule = true;
    }
    // Per start position: binary-group slots whose n-term site the start-residue pass counted
    // through a group mate (no distance test); the per-end which_term 3 pass must not count
@@ -6835,6 +6841,31 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                      {
                                                                         _varModInfo.varModStatList[i].iTotVarModCt++;
                                                                      }
+                                                                  }
+                                                               }
+
+                                                               // A binary group's -2 rule excludes the residue at this end; the residue pass
+                                                               // above counted it (a later, longer end makes it internal again). Undo that one
+                                                               // site here, after the snapshot, so the all-or-nothing count matches the sites
+                                                               // MergeVarMods() can actually fill. Mirrors the residue pass: the slot's own
+                                                               // residues, else a later mate of its group, counted under this slot's rule.
+                                                               if (bAnyBinaryNotCtermResidueRule && g_staticParams.variableModParameters.bBinaryModSearch)
+                                                               {
+                                                                  cResidue = szProteinSeq[iTmpEnd];
+                                                                  for (i = 0; i < VMODS; ++i)
+                                                                  {
+                                                                     const VarMods& vm = g_staticParams.variableModParameters.varModList[i];
+                                                                     if (!vm.bUseMod || !vm.iBinaryMod || vm.iVarModTermDistance != -2)
+                                                                        continue;
+                                                                     bool bCounted = strchr(vm.szVarModChar, cResidue) != NULL;
+                                                                     for (int ii = i + 1; !bCounted && ii < VMODS; ++ii)
+                                                                     {
+                                                                        const VarMods& vm2 = g_staticParams.variableModParameters.varModList[ii];
+                                                                        if (vm2.bUseMod && vm2.iBinaryMod == vm.iBinaryMod && strchr(vm2.szVarModChar, cResidue))
+                                                                           bCounted = true;
+                                                                     }
+                                                                     if (bCounted && _varModInfo.varModStatList[i].iTotBinaryModCt > 0)
+                                                                        _varModInfo.varModStatList[i].iTotBinaryModCt--;
                                                                   }
                                                                }
 

@@ -5160,7 +5160,8 @@ def _t57_plain(comet_exe, tmp, mods, spectra, tag):
 @register("t57_position_rule_edge_cases")
 def test_t57_position_rule_edge_cases(comet_exe):
     """T57: invalid which_term rejected; binary mods with protein-C / peptide-C rules applied;
-    c-term mod with a protein-N rule reaches a peptide whose longer extensions pass d."""
+    c-term mod with a protein-N rule reaches a peptide whose longer extensions pass d;
+    binary mod under -2 counts only non-terminal sites."""
     failures = []
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -5206,6 +5207,17 @@ def test_t57_position_rule_edge_cases(comet_exe):
         r = rows.get(3, {})   # positive control: the 10-mer is searched and takes the unrestricted mate
         check(r.get("plain_peptide") == "AGPEMNVSSR" and "28.031300_n" in (r.get("modifications") or ""),
               f"binary group: dimethyl (unrestricted mate) placed on the 10-mer AGPEMNVSSR, got {r.get('modified_peptide')!r}", failures)
+
+        # binary mod under -2 (not on the peptide C-terminal residue): QTAGSPELKAGSPELK has an internal
+        # and a terminal K, so the group has exactly one site; the all-or-nothing count must not
+        # include the terminal K or the only valid form (internal K modified) is never generated
+        rc, rows, log = _t57_plain(comet_exe, tmp, ("8.014199 K 1 3 -2 0 0 0.0",),
+                                   {1: ("QTAGSPELKAGSPELK", {8: 8.014199}, "t57_a")}, "bin_minus2")
+        r = rows.get(1, {})
+        check(rc == 0 and r.get("plain_peptide") == "QTAGSPELKAGSPELK" and _t54_has_mod(r, 9, "8.01")
+              and not _t54_has_mod(r, 16, "8.01"),
+              f"binary 'K 1 3 -2 0': QTAGSPELK[+8.01]AGSPELK found with the terminal K unmodified, "
+              f"got {r.get('modified_peptide')!r} (rc={rc})", failures)
 
         # c-term mod within 11 of the protein N-terminus: QTAGSPELK ends at position 11; its
         # missed-cleavage extensions end past 11 (the peptide's own c-term mod must still apply)
