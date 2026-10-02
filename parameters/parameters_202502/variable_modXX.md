@@ -11,7 +11,7 @@ There are 8 fields/settings that are associated with these parameters:
     entries, Comet will treat those variable modifications as a "binary set".  This means
     that all modifiable residues in the "binary set" must be unmodified or modified.  Multiple
     "binary sets" can be specified by setting a different binary modification value e.g.
-    use "1" for all modifications in set 1, and "2" or all modifications in set 2.
+    use "1" for all modifications in set 1, and "2" for all modifications in set 2.
     Binary modification groups were added with version 2015.02 rev. 1.
     - 0 = variable modification analyzes all permutations of modified and unmodified residues.
     - non-zero value = binary modification analyzes peptides where all residues are either modified or all residues are not modified.
@@ -23,7 +23,7 @@ There are 8 fields/settings that are associated with these parameters:
     would specify that peptides must have between 2 and 4 of this variable modification.
   - The fifth entry specifies the distance the modification is applied to from the respective terminus:
     - -2 = apply anywhere except c-terminal residue of peptide
-    - -1 = no distance contraint
+    - -1 = no distance constraint
     - 0 = only applies to terminal residue
     - 1 = only applies to terminal residue and next residue
     - 2 = only applies to terminal residue through next 2 residues
@@ -37,10 +37,10 @@ There are 8 fields/settings that are associated with these parameters:
     only peptides that contain this modification will be analyzed.
     - 0 = not forced to be present
     - 1 = modification is required 
-    - -1 = exclusive modification; only of of the set of exclusive modifications can appear in the peptide;
+    - -1 = exclusive modification; only one of the set of exclusive modifications can appear in the peptide;
            this functionality was added with release 2024.01.0
   - The eighth entry is an optional fragment neutral loss field. For any fragment ion that
-    contain the variable modification, a neutral loss will also be analyzed if the specified
+    contains the variable modification, a neutral loss will also be analyzed if the specified
     neutral loss value is not zero (0.0).  With version 2025.01.0, this field has been extended
     to accept two fragment neutral loss values.  Use a comma (no spaces) to delimit the second neutral
     loss; see example below.
@@ -65,7 +65,7 @@ variable_mod04 = -18.010565 E 0 1 0 2 0 0.0          ... cyclization of N-termin
 Here is a binary modification search example of triple SILAC plus acetylation of lysine.
 The SILAC modifications are "R +6 and K +4" (medium) and "R +10 and K +8" (heavy).
 In conjunction with K +42 acetylation, the binary modification sets would be
-"R +6, K +4, K +4+42" for SILAC medium (binary group 1)> and
+"R +6, K +4, K +4+42" for SILAC medium (binary group 1) and
 "R +10, K +8, K +8+42" for SILAC heavy (binary group 2).
 Mass values are listed with no precision for clarity; definitely use precise
 modification masses in practice.

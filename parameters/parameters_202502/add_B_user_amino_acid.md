@@ -1,4 +1,4 @@
-Comet parameter: add_B_user_amino_acid
+### Comet parameter: add_B_user_amino_acid
 
 - This parameter allows users to define their own custom residue. Just
 encode the letter 'B' in the input FASTA file and specify its mass here.

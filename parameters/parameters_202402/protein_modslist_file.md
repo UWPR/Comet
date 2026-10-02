@@ -22,7 +22,7 @@ protein_modslist_file = C:\local\myproteinmods.txt
 protein_modslist_file = /usr/local/proteinmods.file
 ```
 
-Example contents of the protein modifications file.  In this example, varible_mod02 will only be applied to HLAA_HUMAN
+Example contents of the protein modifications file.  In this example, variable_mod02 will only be applied to HLAA_HUMAN
 through HLAH_HUMAN and variable_mod03 will only be applied to HLAA_HUMAN and HLAG_HUMAN.  If variable_mod01 were specified
 in the search parameters, it is not restricted to any subset of proteins and will apply to all proteins including the
 proteins listed in this modifications file.

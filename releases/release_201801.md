@@ -42,7 +42,7 @@ access issues were causing Comet to abort searches. The "skip_updatecheck"
 parameter is now deprecated.
 
 #### release 2018.01 rev. 1 (2018.01.1), release date 2018/05/16
-- Bug fix: "equal_I_and_L" was not properly implemented in previously releases.
+- Bug fix: "equal_I_and_L" was not properly implemented in previous releases.
 This parameter controls whether Comet treats isoleucine and leucine residues as
 being the same (yes by default) since they cannot be distinguished in most
 data.
@@ -61,7 +61,7 @@ reported in the peptide (e.g. "n[230]DIGSTK"). As only variable amino acid
 modifications are reported in the "modified_peptide" string, Comet will now
 just report termini modifications in this peptide string if they contain a
 variable modification.
-- If any input file reports no spectra searched (such as an mzML files without
+- If any input file reports no spectra searched (such as an mzML file without
 a scan index), the incomplete output files are removed and a non-zero exit code
 is returned.
 - Comet will now check if there is an updated version available and report if
@@ -74,7 +74,7 @@ than the monoisotopic peak, is listed as the precursor peak. This can occur
 when a noise peak or a peak from a different peptide appears at the -1 mass
 location.
 - Bug fix: Starting with 2017.01 rev. 0, not all permutations of variable
-modifications get analyzed when multiple variable modification is specified.
+modifications get analyzed when multiple variable modifications are specified.
 The permutations of modifications would be terminated at the first permutation
 occurrence of two variable modifications on the same residue. This is now
 fixed.

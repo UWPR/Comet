@@ -11,6 +11,6 @@ rule and then the n-terminal amino acid will be removed before analysis.
 
 Example:
 ```
-clip_nterm_aa= 0
-clip_nterm_aa= 1
+clip_nterm_aa = 0
+clip_nterm_aa = 1
 ```

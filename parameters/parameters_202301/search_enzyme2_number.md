@@ -7,11 +7,11 @@ and this second enzyme will be applied to generate peptides.
 - The list of search enzymes is specified at the end of the comet.params file
 beginning with the line [COMET_ENZYME_INFO].  The actual enzyme list and
 digestion parameters are read from here in each search.  So one can edit/add/delete
-enzyme definitions simply be changing the enzyme information.
-- This parameter works in conjection with the [num_enzyme_termini](num_enzyme_termini.html)
+enzyme definitions simply by changing the enzyme information.
+- This parameter works in conjunction with the [num_enzyme_termini](num_enzyme_termini.html)
 parameter to define the cleavage rule for fully-digested vs. semi-digested search options.
-- This parameter works in conjection with the [allowed_missed_cleavage](allowed_missed_cleavage.html)
-parameter to define the miss cleavage rule.
+- This parameter works in conjunction with the [allowed_missed_cleavage](allowed_missed_cleavage.html)
+parameter to define the missed cleavage rule.
 - The default value is "0" if this parameter is missing.
 
 Example:
@@ -40,7 +40,7 @@ The format of the parameter definition looks like the following:
 The first column of the parameter definition is the enzyme number. This number list
 must start from 0 and sequentially increase by 1.  The second column is the enzyme name;
 no spaces are allowed in this name field.  The third column is the digestion "sense"
-i.e. a value of "0" specifies cleavage N-teriminal to (before) the specified residues
+i.e. a value of "0" specifies cleavage N-terminal to (before) the specified residues
 in column 4 and a value of "1" specifies cleavage C-terminal to (after) the specified
 residues in column 4.  Column 4 contains the residue(s) that the enzyme cleaves at.
 Column 5 contains the flanking residue(s) that negate cleavage.

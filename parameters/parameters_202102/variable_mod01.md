@@ -11,7 +11,7 @@ There are 8 fields/settings that are associated with these parameters:
     entries, Comet will treat those variable modifications as a "binary set".  This means
     that all modifiable residues in the "binary set" must be unmodified or modified.  Multiple
     "binary sets" can be specified by setting a different binary modification value e.g.
-    use "1" for all modifications in set 1, and "2" or all modifications in set 2.
+    use "1" for all modifications in set 1, and "2" for all modifications in set 2.
     Binary modification groups were added with version 2015.02 rev. 1.
     - 0 = variable modification analyzes all permutations of modified and unmodified residues.
     - non-zero value = binary modification analyzes peptides where all residues are either modified or all residues are not modified.
@@ -38,7 +38,7 @@ There are 8 fields/settings that are associated with these parameters:
     - 0 = not forced to be present
     - 1 = modification is required 
   - The eighth entry is an optional fragment neutral loss field. For any fragment ion that
-    contain the variable modification, a neutral loss will also be analyzed if the specified
+    contains the variable modification, a neutral loss will also be analyzed if the specified
     neutral loss value is not zero (0.0).
   - The default value is "0.0 X 0 3 -1 0 0 0.0" if this parameter is missing *except* if Comet is
     compiled with the [Crux](http://crux.ms) flag on.

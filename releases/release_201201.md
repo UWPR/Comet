@@ -10,7 +10,7 @@ Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 specified for input file.
 - Removes full/relative paths in pep.xml output (i.e. in "summary_xml" and
 "spectrum" elements).
-- Fixes issue where spurrious modifications are reported if no variable
+- Fixes issue where spurious modifications are reported if no variable
 modification is specified in the search.
 - Known issue with pep.xml modification reporting, see
 [this post describing the problem](https://groups.google.com/forum/#!topic/comet-ms/KrbM57S050M).
@@ -38,7 +38,7 @@ output.
 - Source and binary release files are named comet_source.2012011.zip and
 comet_binaries.2012011.zip, respectively.
 - Known bug: in pep.xml output, the "deltacnstar" and "deltacn" parameters
-currently still does not implement the code logic of noting "similar" peptides.
+currently still do not implement the code logic of noting "similar" peptides.
 This is important for the "leave alone asterisked score values" option in
 PeptideProphet in conjunction with variable modification searches.
 
@@ -46,4 +46,4 @@ PeptideProphet in conjunction with variable modification searches.
 - This is the initial release of Comet.
 - Known bug: modifications with internal decoy search will cause a segfault if
 the enzyme cuts n-terminal to specified residues. This bug has been fixed in
-the sources files in trunk as of 2012/10/09.
+the source files in trunk as of 2012/10/09.

@@ -2,7 +2,7 @@
 
 - This parameter defines the minimum precursor charge state that will be analyzed.
 - Only spectra with this number of precursor charges or more will be searched.
-- Valid values are any integer greater than 1.
+- Valid values are any integer 1 or greater.
 - The default value is "1" if this parameter is missing.  A maximum
 allowed value of "9" is enforced for this parameter.
 - This parameter works in conjunction with the

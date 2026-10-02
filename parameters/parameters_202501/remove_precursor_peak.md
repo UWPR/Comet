@@ -9,10 +9,9 @@ from the input MS/MS spectrum.
 as expected to be present for ETD/ECD spectra.
 - Set this parameter to 3 to remove the HPO3 (-80) and H3PO4 (-98)
 precursor phosphate neutral loss peaks.
-- This parameter works in conjuction with
+- This parameter works in conjunction with
 "[remove_precursor_tolerance](remove_precursor_tolerance.html)"
-to specify the tolerance around each precuror m/z that will be removed.
-- Valid values are 0, 1, and 2.
+to specify the tolerance around each precursor m/z that will be removed.
 - The default value is "0" if this parameter is missing.
 
 Example:

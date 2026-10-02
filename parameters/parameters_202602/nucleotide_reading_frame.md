@@ -1,7 +1,7 @@
 ### Comet parameter: nucleotide_reading_frame
 
 - This parameter is used to search nucleotide sequence databases.
-- It controls how the nucleotides are translated specifically
+- It controls how the nucleotides are translated, specifically
 which sets of reading frames are translated.
 - Valid values are 0 through 9.
 - Set this parameter to 0 for a protein sequence database.

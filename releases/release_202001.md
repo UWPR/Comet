@@ -139,7 +139,9 @@ what the returned scan numbers represent. Also, a function to return the file's
 last scan number was not updated for these TIMS-TOF files; this causes Comet's
 search progress percentage reporting to return nonsensical values. Thanks to D.
 Shteynberg and M. Hoopmann for the MSToolkit mods to support this.
-- Extend the "activation_method"
+- Extend the "activation_method" parameter to accept "SID" as a filter string for searching
+Thermo mzML/mzXML files with the string " sid=" in the filter line text. Feature requested
+by J. Mohr.
 - Removed reporting of "deltacnstar" in the pepXML output. It appears that the
 score has been reported as "0.0" for every result and I've never understood
 what it represented so I'm taking this opportunity to get rid of it now. NOTE:

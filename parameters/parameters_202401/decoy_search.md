@@ -3,7 +3,7 @@
 - This parameter controls whether or not an internal decoy search is performed.
 - Comet generates decoys by reversing each target peptide sequence, keeping the
 N-terminal or C-terminal amino acid in place (depending on the "sense" value of the
-digestion enzyme specified by [search_enzyme_number](search_enzyme_number.html).
+digestion enzyme specified by [search_enzyme_number](search_enzyme_number.html)).
 For example, peptide DIGSESTK becomes decoy peptide TSESGIDK for a tryptic search
   and peptide DVINHKGGA becomes DAGGKHNIV for an Asp-N search.
 - Valid parameter values are 0, 1, or 2:

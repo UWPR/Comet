@@ -6,7 +6,7 @@ and the first dissimilar peptide (default behavior, "explicit_deltacn = 0").
 - The deltaCn score is the normalized difference between two cross-correlation scores.
 So deltaCn between the top two peptides is calculated as "(xcorr1 - xcorr2) / xcorr1"
 where xcorr1 is the top scoring peptide and xcorr2 is the second best scoring peptide.
-- However, there are cases were the top two (or top N) scoring peptides are very
+- However, there are cases where the top two (or top N) scoring peptides are very
 similar.  They may be different modified forms of the same peptide e.g. DLRS*TWDK
 and DLRST*WDK.  In this case, the deltaCn score will be very small because the two
 peptides are very similar and will have very similar xcorr scores.

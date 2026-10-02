@@ -1,7 +1,7 @@
 ### Comet parameter: peptide_mass_tolerance_upper
 
 - This parameter controls the upper bound of the precursor mass tolerance value.
-- The units of the mass tolerance is controlled by the parameter "[peptide_mass_units](peptide_mass_units.html)".
+- The units of the mass tolerance are controlled by the parameter "[peptide_mass_units](peptide_mass_units.html)".
 - Usually you want to specify a positive number for this upper bound tolerance.
 - The default value is "3.0" if this parameter is missing.
 - The mass error is defined as (experimental - theoretical). So if the upper tolerance

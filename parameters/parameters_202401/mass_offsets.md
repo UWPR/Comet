@@ -1,12 +1,12 @@
 ### Comet parameter: mass_offsets
 
 - This parameter allows the user to specify one or more "mass offsets" to apply.
-- This value is effective subtracted from
+- This value is effectively subtracted from
 each precursor mass such that peptides that are smaller than the precursor mass
 by the offset value can still be matched to the respective spectrum.
-The application of this parameter is for those uses cases where say a chemical
+The application of this parameter is for those use cases where say a chemical
 tag is applied and always falls off the peptide before/during fragmentation.
-- Only positive numbers only are allowed.
+- Only positive numbers are allowed.
 - When this parameter is applied, one must add the offset "0.0" if you want
 the search to also analyze peptides that match the base precursor mass.
 

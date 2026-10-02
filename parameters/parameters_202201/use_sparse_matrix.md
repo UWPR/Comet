@@ -4,7 +4,7 @@
 - The sparse matrix data representation will use a significantly smaller amount
 of memory/RAM for small
 [fragment_bin_tol](fragment_bin_tol.html)
-settings such as 0.05 or 0.01.  On the order tens of GB (gigabytes) down to a few hundred
+settings such as 0.05 or 0.01.  On the order of tens of GB (gigabytes) down to a few hundred
 megabytes (MB)!
 - In this release, the sparse matrix searches will always be slower than the classical
 data representation (i.e. use_sparse_matrix = 0).  So it should be used only when

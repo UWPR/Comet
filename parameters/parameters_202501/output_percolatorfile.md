@@ -1,6 +1,6 @@
 ### Comet parameter: output_percolatorfile
 
-- Controls whether to output search results in a [Percolator's](http://percolator.ms)
+- Controls whether to output search results in [Percolator's](http://percolator.ms)
 tab-delimited input format.
 - Valid values are 0 (do not output) or 1 (output).
 - The default value is "0" if this parameter is missing.
@@ -20,7 +20,7 @@ tab-delimited input format.
   - IonFrac:  decimal value representing matched fragment ions count divided by total fragment ions count
   - Mass:  repeat of ExpMass (this column may not even be relevant and could be deprecated in the future) 
   - PepLen:  length of peptide
-  - Charge[n]:  boolean, is this a charged n spectrum
+  - Charge[n]:  boolean, is this a charge n spectrum
   - enzN: boolean, is the peptide's n-terminus consistent with the sample enzyme
   - enzC: boolean, is the peptide's c-terminus consistent with the sample enzyme
   - enzInt: number of missed cleavages

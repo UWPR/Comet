@@ -40,7 +40,7 @@ multiple decoy proteins. A fix has been implemented and will be included in the
 next release; let me know if you need a patched binary sooner than that.
 
 #### release 2015.02 rev. 1 (2015.02.1), release date 2015/09/30
-- Modify behavior the binary modifications which is controlled by the third
+- Modify behavior of the binary modifications which is controlled by the third
 parameter entry in the variable modifications (e.g. "variable_mod01"). Instead
 of a binary 0 or 1 value to turn off or on each binary modification, one can
 now set the third parameter entry to the same value across multiple variable
@@ -61,7 +61,7 @@ visualize results is available. The Comet GUI supports 64-bit Windows only.
 - Updated to [MSToolkit](https://github.com/mhoopmann/mstoolkit)
 revision 81 which includes .mgf input file support.
 Thanks to M. Hoopmann for updating MSToolkit for this.
-- Add a fourth option to ("override_charge") which will either use the
+- Add a fourth option to "override_charge" which will either use the
 specified charge in the input file or apply the charge states in the
 charge_range parameter but include the 1+ charge rule. Requested by D.
 Shteynberg.
@@ -77,5 +77,5 @@ internal data representation by default.
 - Corrected specification of terminal modifications in pep.xml output in cases
 when both static peptide and protein terminal modifications are specified.
 Reported by D. Hernandez.
-- Fix small bug that inadvertantly removed .cms2 input file support in previous
+- Fix small bug that inadvertently removed .cms2 input file support in previous
 release. Reported by MacCoss lab.

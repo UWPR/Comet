@@ -8,7 +8,7 @@ in the output.
 - The pepXML format encodes the enzyme that is applied to the sample
 i.e. trypsin.  This enzyme is written to the "sample\_enzyme" element.
 - The sample enzyme could be different from the search enzyme i.e.
-the sample enzyme is "trypsin" yet the search enzyme is "Cut\_everwhere"
+the sample enzyme is "trypsin" yet the search enzyme is "Cut\_everywhere"
 for a non-specific search.  Hence the need for this separate parameter.
 - Valid values are any integer represented in the enzyme list.
 - The default value is "0" if this parameter is missing.

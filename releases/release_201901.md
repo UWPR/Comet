@@ -15,12 +15,12 @@ were updated with this fix on 2020/05/28. Thanks to N. Tay for reporting the
 issue.
 - Known bug: Searches of mzML and mzXML files without scan index do not work
 under Windows. A fix has been implemented; the 2019.01.5 release binaries were
-updated with this fix on 2020/05/28. Thanks to R. Marrisen for reporting the
+updated with this fix on 2020/05/28. Thanks to R. Marissen for reporting the
 issue.
 
 #### release 2019.01 rev. 4 (2019.01.4), release date 2020/01/15
 - Add support for searching mzML and mzXML files that do not contain the
-options scan index. Such files would previously have not been searched as
+optional scan index. Such files would previously have not been searched as
 MSToolkit would throw an error message about the missing index.
 - Bug fix: PEFF substitutions on flanking residues, generating a new peptide
 that would otherwise not be analyzed, are treated more rigorously.
@@ -35,7 +35,7 @@ reporting the bug.
 - Bug fix: introduced in the 2019.01 rev. 0 release, Comet would not properly
 handle a "clip_nterm_methionine" search. This bug would manifest as either a
 segmentation fault or as a NULL character reported for a flanking residue due
-to not properly tracking the shortened protein length when the start methione
+to not properly tracking the shortened protein length when the start methionine
 is clipped off. Thanks to the Villen Lab and R. Johnson for reporting the
 issue.
 
@@ -64,10 +64,10 @@ identifiers reported/returned for a given peptide.
 - Add "peptide_length_range" parameter. This parameter allows the specification
 of a minimum and maximum peptide length.
 - Add "search_enzyme2_number" parameter. Allows optional selection of a second
-digestion enzyme. Enzyme specificity and missed cleavage settings are are
+digestion enzyme. Enzyme specificity and missed cleavage settings are
 shared between both "search_enzyme_number" and "search_enzyme2_number".
 - Update "max_variable_mods_in_peptide" parameter to support value 0.
-- In the example comet.params files available here and the when generated using
+- In the example comet.params files available here and when generated using
 "comet -p", the "spectrum_batch_size" parameter is now set to 15000 instead of 0.
 For high-res "fragment_bin_tol" settings, Comet should use less than 6GB of
 memory with a 15K batch size with very little impact on search times compared

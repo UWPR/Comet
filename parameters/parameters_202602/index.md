@@ -10,8 +10,8 @@ To generate a comet.params file appropriate for your Comet binary, issue the com
 
 Example comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
 - [comet.params.low-low](comet.params.low-low) for low res MS1 and low res MS2 e.g. ion trap
-- [comet.params.high-low](comet.params.high-low) high res MS1 and low res MS2 e.g. Velos-Orbitrap
-- [comet.params.high-high](comet.params.high-high) high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
+- [comet.params.high-low](comet.params.high-low) for high res MS1 and low res MS2 e.g. Velos-Orbitrap
+- [comet.params.high-high](comet.params.high-high) for high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
 
 #### Database
 
@@ -67,7 +67,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 #### Output
 
 - [output_mzidentmlfile](output_mzidentmlfile.html)
-- [output_outfiles](output_outfiles.html)
 - [output_pepxmlfile](output_pepxmlfile.html)
 - [output_percolatorfile](output_percolatorfile.html)
 - [output_sqtfile](output_sqtfile.html)
@@ -75,7 +74,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [output_txtfile](output_txtfile.html)
 - [print_expect_score](print_expect_score.html)
 - [num_output_lines](num_output_lines.html)
-- [show_fragment_ions](show_fragment_ions.html)
 - [sample_enzyme_number](sample_enzyme_number.html)
 
 #### mzXML/mzML parameters
@@ -95,7 +93,7 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [equal_I_and_L](equal_I_and_L.html)
 - [explicit_deltacn](explicit_deltacn.html)
 - [export_additional_pepxml_scores](export_additional_pepxml_scores.html)
-- [index_search_type](index_search_type.html) <font color="red">**</font> (v2026.02.2)
+- [index_search_type](index_search_type.html) <font color="red">*</font> (v2026.02.2)
 - [mango_search](mango_search.html)
 - [mass_offsets](mass_offsets.html)
 - [max_duplicate_proteins](max_duplicate_proteins.html)
@@ -115,7 +113,6 @@ Example comet.params files (primary differences are the MS and MS/MS mass tolera
 - [print_ascorepro_score](print_ascorepro_score.html)
 - [resolve_fullpaths](resolve_fullpaths.html)
 - [set_X_residue](set_X_residue.html) aka set_A_residue through set_Z_residue
-- [skip_researching](skip_researching.html)
 - [spectrum_batch_size](spectrum_batch_size.html)
 - [text_file_extension](text_file_extension.html)
 - [xcorr_processing_offset](xcorr_processing_offset.html)

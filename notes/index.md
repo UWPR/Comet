@@ -1,6 +1,6 @@
 ### Comet Notes
 
-### Support
+#### Support
                      
 - The main support venue is via [Comet's Google group](http://groups.google.com/group/comet-ms).
   Post your questions, problems, and feature requests here.
@@ -15,7 +15,7 @@ ms2/cms2 formats and a comet.params file.  Then issue a command such as:
 - comet.exe input.ms2
 - comet.exe *.ms2
 
-### Miscellaneous Notes
+#### Miscellaneous Notes
 
 - 2026/07/29:  [RTS (peptide index and fragment-ion index) performance with v2026.02.1 release](20260729_RTS_2026021.html)
 - 2026/06/10:  [Comet fragment ion index performance update with v2026.02.0 release](20260610_FI.html)

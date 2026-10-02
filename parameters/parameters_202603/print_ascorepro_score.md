@@ -5,7 +5,7 @@ to the search results.
 - The AScorePro algorithm is only applied to the top ranked hit for each spectrum query.
 - If it is applied, the AScorePro MOB score will be available in the real-time search
 interface as well as .txt, .pep.xml, and .mzid output formats.
-- In the .txt output, the AScorePro MOB score is reported in column titled "ascorepro".
+- In the .txt output, the AScorePro MOB score is reported in a column titled "ascorepro".
 - In the .pep.xml output, the AScorePro MOB score is reported as a search score using 
 the "ascorepro_score" attribute. The site scores are reported as a search score using
 the "ascorepro_sitescore" attribute.
@@ -15,7 +15,7 @@ cvRef="PSI-MS" accession="MS:1001968" name="PTM localization PSM-level statistic
 - Both the MOB score and site scores are returned through the CometWrapper real-time
 search interface.
 - AScorePro MOB scores are a decimal value whereas site scores are reported as
-a string composed of space separate pairs of "position":"score". An examplie site score
+a string composed of space-separated pairs of "position":"score". An example site score
 might be "1:13.86 5:15.94" for the peptide "QAS[79.9663]ES[79.9663]K".
 - When the AScorePro algorithm is applied, any peptide with a MOB score >= 13 will have
 its localized peptidoform replace Comet's top ranked peptide. This means that the
@@ -32,6 +32,7 @@ further details of their algorithm.
   - "3" to localize the modification specified by variable_mod03
   - "4" to localize the modification specified by variable_mod04
   - "5" to localize the modification specified by variable_mod05
+  - "6" through "9" to localize the modification specified by variable_mod06 through variable_mod09
 - The default value is "0" if this parameter is missing.
 - AScorePro localization is supported for variable_mod01 through variable_mod09. Starting
 with release 2026.03.0, a search that enables this parameter while any of variable_mod10
@@ -43,14 +44,14 @@ relocalized onto a residue it is not allowed on, and the MOB and site scores are
 among the allowed peptidoforms only.
 - Note that this is currently considered an experimental score in Comet. Especially the
 extension to localize all modifications in a peptide (or any modification that is not
-phosphoprylation per the (AScorePro publication)[https://pubmed.ncbi.nlm.nih.gov/36280721/]).
+phosphorylation per the [AScorePro publication](https://pubmed.ncbi.nlm.nih.gov/36280721/)).
 The meaning or utility of the AScorePro MOB score to localize non-phosphorylation
 modifications will need to be validated.
 
 Example:
 ```
-print_expect_score = 0     (do not run AScorePro)
-print_expect_score = 1     (to localize the variable_mod01 mods)
-print_expect_score = 3     (to localize the variable_mod03 mods)
-print_expect_score = -1    (to localize all variable mods in a peptide)
+print_ascorepro_score = 0     (do not run AScorePro)
+print_ascorepro_score = 1     (to localize the variable_mod01 mods)
+print_ascorepro_score = 3     (to localize the variable_mod03 mods)
+print_ascorepro_score = -1    (to localize all variable mods in a peptide)
 ```

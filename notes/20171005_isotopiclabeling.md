@@ -18,7 +18,7 @@ clear_mz_range = 113.5 117.5
 
 #### ITRAQ 8-plex:
 
-Similarly, the 8-plex reagent has two different set of masses for
+Similarly, the 8-plex reagent has two different sets of masses for
 115/118/119/121 (304.199040) and 113/114/116/117 (304.205360).  The mass
 modification below is the average of the two.
 ```
@@ -53,7 +53,7 @@ Adjust the modification mass and residue(s) applied to as necessary.
 To perform a mixed light/heavy search using a variable modification search
 in binary mode (binary mode = no mixing light and heavy modifications within a
 peptide so all arginine residues are considered light or all arginine
-residues are considered light):
+residues are considered heavy):
 
 ```
 variable_mod01 = 3.988140 R 1 3 -1 0 0
@@ -62,7 +62,7 @@ variable_mod01 = 3.988140 R 1 3 -1 0 0
 To search just the heavy labeled sample, you can apply a static modification:
 
 ```
-add_R_lysine = 3.988140
+add_R_arginine = 3.988140
 ```
 
 #### SILAC6:
@@ -74,7 +74,7 @@ with ~6 Da modification mass and different residue specificity: 13C(5) 15N(1)
 To perform a mixed light/heavy search using a variable modification search in
 binary mode (binary mode = no mixing light and heavy modifications within a
 peptide so all arginine+lysine residues are considered light or all
-arginine+lysine residues are considered light):
+arginine+lysine residues are considered heavy):
 
 ```
 variable_mod01 = 6.020129 KR 1 3 -1 0 0

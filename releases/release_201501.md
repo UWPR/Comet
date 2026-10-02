@@ -36,7 +36,7 @@ have Comet ignore all charge states except for those specified in the
 binary that supports this input file type.
 
 #### release 2015.01 rev. 0 (2015.01.0), release date 2015/02/23
-- A new the sparse matrix data format implementation ("use_sparse_matrix") to
+- A new sparse matrix data format implementation ("use_sparse_matrix") to
 improve performance. This provides memory savings with no negative impact on
 search performance so it's recommended that this parameter should always be set
 on. In the next release, this parameter option will likely go away and the
@@ -55,7 +55,7 @@ described in the previous bullet point where any particular variable
 modification can be forced to be present. So this new parameter will force the
 peptide to be modified with any variable modification whereas the additional
 field in the variable modification parameters would force that particular
-variable modification) to be present.
+variable modification to be present.
 - In the Percolator output ("output_percolatorfile"), the peptide will now use
 modification characters to denote variable modifications instead of bracketed
 masses. For example, "K.M*DLR.T" instead of "K.M[147.1]DLR.T". Implemented by
@@ -80,12 +80,12 @@ peptide will always be reported in this scenario (not that the alphabetical
 first peptide is any better than the same scoring next peptide).
 - Change deltaCn reporting. In previous pep.xml output, the deltaCn value was
 set to 1.0 for a peptide if "num_output_lines = 1" as there is no second hit
-peptide being reported. This behavior is changed to calculated the deltaCn
+peptide being reported. This behavior is changed to calculate the deltaCn
 against the next best scoring peptide even though it is not being reported in
 the output.
 - Replaced a constant check in a while loop with a semaphore when checking
 queue status for loading sequences to search. Before this change, some search
-conditions would cause the CPU usage to be very low due to the contant while
+conditions would cause the CPU usage to be very low due to the constant while
 loop check. Implemented by T. Jahan.
 - Ability to now search Thermo .raw files directly on Windows. This requires
 Thermo's freely available MSFileReader library to be installed. Implemented by
@@ -93,9 +93,9 @@ T. Jahan. Unfortunately you will need to copy the XRawfile2.dll or
 XRawfile2_x64.dll to c:\Windows\MSFileReader.XRawfile2.dll for this to work.
 Note this is no longer needed with release 2015.01 rev. 1.
 - Change "scannr" to "ScanNr" in the column header line of Percolator output
-("output_percolator").
+("output_percolatorfile").
 - Update to MSToolkit version r76: mz5 support removed.
-- Known bug: in some (relatively rate) instances of variable modification
+- Known bug: in some (relatively rare) instances of variable modification
 searches, the number of duplicate proteins will not be correctly reported.
 - Known issue: just ran performance tests (2/25/2015) and discovered that
 releases after 2013.02 are slower and do not scale well with the thread count.

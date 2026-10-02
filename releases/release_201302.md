@@ -30,7 +30,7 @@ database name will break some downstream tools (like TPP).
 - Change Percolator pin.xml features. "dM" and "absdM" are now calculated as
 (experimental_mass - calculated_mass)/calculated_mass. Previously this feature
 was reporting (calculated_mz - experimental_mz). Sadly this also means that the
-"calculatedMassToCharge" and "experimentalMassToCharge" attributes are actually
+"calculatedMassToCharge" and "experimentalMassToCharge" attributes actually
 report MH+ masses now. Although this is completely wrong, this is to be
 consistent with a different tool (sqt2pin) that is also generating these files.
 - Change behavior in pep.xml output where "summary_xml" and "base_name"
@@ -39,7 +39,7 @@ directive.
 - Increase number of significant digits to 6 for reported masses in all of the
 output formats.
 - Known issue: The nucleotide database search options, invoked using the
-"nucleotide_reading_frame" parameter entry, is not functional.
+"nucleotide_reading_frame" parameter entry, are not functional.
 - Known issue: Windows performance when using large memory (i.e. when the
 "fragment_bin_tol" parameter is set to a small value) is poor. We believe this
 is due to disk paging even for systems with sufficient memory. A fix, using
@@ -60,7 +60,7 @@ formats are the supported input formats.
 introduced typos. In the past, these were ignored. The recommended method to
 generate a valid/current parameters file is still to use the command "comet.exe
 -p" to avoid silly errors like this.
-- A new parameter "decoy_prefix" allows one to define the string pre-pended to
+- A new parameter "decoy_prefix" allows one to define the string prepended to
 the protein name for decoy matches when the decoy_search parameter is used.
 - A new parameter "output_pinxmlfile" controls support for outputting
 Percolator pin.xml files.
@@ -70,5 +70,5 @@ as in the past).
 - During testing of this release, it was discovered that a subset of N-terminal
 fragment ions for internally generated decoy peptides were incorrectly being
 calculated; this has been corrected in this release.
-- The tab-delimited text output was reported the second best hit and not the
+- The tab-delimited text output was reporting the second best hit and not the
 top ranked hit. This has also been corrected in this release.

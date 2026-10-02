@@ -15,7 +15,7 @@ below as well as better support for ETD+SA scans. Thanks to P. Pedrioli for
 originally implementing the ETD+SA fixes.
 - Incorporate r981 which was missing edge cases in internal binary mass search.
 - pepXML output fix: declare aminoacid_modification before any instance of
-terminal_modification per schema. Thank to L. Mendoza for reporting this issue.
+terminal_modification per schema. Thanks to L. Mendoza for reporting this issue.
 
 #### release 2016.01 rev. 2 (2016.01.2), release date 2016/04/06
 - Reverts the modification encoding in the "output_txtfile" output back to
@@ -66,7 +66,7 @@ accurate E-values. Reported by A. Cheng. (Note "print_expect_score" was
 intended to only affect ".out" output.)
 - For Comet compiled for [Crux](http://crux.ms/), return the missing modified
 peptide column in the text output.
-- Update deltaCn calculation for non top-ranked peptides or .pep.xml, .pin and
+- Update deltaCn calculation for non top-ranked peptides for .pep.xml, .pin and
 .txt outputs. The deltaCn values for the top ranked hits do not change. The
 lower hit entries had incorrect values associated with them (normalized xcorr
 difference between consecutive entries instead of the normalized xcorr

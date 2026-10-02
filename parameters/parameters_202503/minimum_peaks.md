@@ -3,7 +3,7 @@
 - An integer value indicating the minimum number of m/z-intensity pairs
 that must be present in a spectrum before it is searched.
 - This parameter can be used to avoid searching nearly sparse spectra
-that will not likely yield an indentification.
+that will not likely yield an identification.
 - This parameter is checked against the spectrum after [clear_mz_range](clear_mz_range.html)
 is applied but before any other spectral processing occurs
 (i.e.  [remove_precursor_peak](remove_precursor_peak.html)).

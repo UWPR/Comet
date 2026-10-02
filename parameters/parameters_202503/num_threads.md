@@ -2,7 +2,7 @@
 
 - This parameter controls the number of processing threads that will be spawned for a search.
 Ideally the number of threads is set to the same value as the number of CPU cores available.
-- Valid values range for this parameter are numbers ranging from -64 to 64.
+- Valid values for this parameter range from -64 to 64.
 - A value of 0 will cause Comet to poll the system and launch the same number of threads
 as CPU cores.
 - To set an explicit thread count, enter any value between 1 and 64.

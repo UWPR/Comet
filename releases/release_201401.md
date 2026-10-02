@@ -17,11 +17,11 @@ parameter will be deprecated in the next release.
 - Known issue: high-res ms/ms searches (using small "fragment_bin_tol" values)
 are ~2x slower than 2014.01.0 due to an unnecessary array initialization that
 was added in this maintenance release.
-- Known issue: Using -N<name> command line option adds full path to "spectrum"
+- Known issue: Using `-N<name>` command line option adds full path to "spectrum"
 attribute on Windows.
-- Known issue: Using -N<name> command line option, the pep.xml "base_name"
+- Known issue: Using `-N<name>` command line option, the pep.xml "base_name"
 attribute has full path to the output file instead of to the input file.
-- Re-use temporary arrays during spectral preprocessing for better memory
+- Reuse temporary arrays during spectral preprocessing for better memory
 management running under Windows, implemented by M. Hoopmann.
 - New parameter "override_charge" instructs Comet to override the listed
 precursor charge state in the input file with that specified by the
@@ -55,7 +55,7 @@ the number of threads used in a search (Windows). Some numbers deviate in the
 of pep.xml, pin.xml, txt, and sqt output files.
 - Add Native ID attribute to pep.xml output when searching mzML files. This
 entails an update to the MSToolkit file parsing library which was made by M.
-Hoopman.
+Hoopmann.
 - Report the name of the file that's being searched in the runtime output.
 - Avoid creating empty/stub output files in the case where an input file has
 been moved away during a search. These first four features were based on
@@ -83,7 +83,7 @@ for identifying these last two issues.
 and VirtualLock functions) as there were negative consequences associated with
 unexpected out of memory errors.
 - For Crux compiled version only: modify text output, primarily changing column
-order using changes submitted by S. McIlWain.
+order using changes submitted by S. McIlwain.
 - For Crux compiled version only: report all peptide hits, including those with
 negative xcorr scores.
 - As the "output_suffix" is the only new parameter entry which most researchers

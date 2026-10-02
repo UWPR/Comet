@@ -44,7 +44,7 @@ Schweppe DK, Eng JK, Yu Q, Bailey D, Rad R, Navarrete-Perea J, Huttlin EL,
 Erickson BK, Paulo JA, Gygi SP.  J Proteome Res. 2020 May 1;19(5):2026-2034.
 doi: 10.1021/acs.jproteome.9b00860
 - [Extending Comet for Global Amino Acid Variant and Post-Translational Modification Analysis Using the PSI Extended FASTA Format](https://analyticalsciencejournals.onlinelibrary.wiley.com/doi/10.1002/pmic.201900362).
-Eng JK and Deutsch EW. Proteomics. Proteomics. 2020 Nov;20(21-22):e1900362. 
+Eng JK and Deutsch EW. Proteomics. 2020 Nov;20(21-22):e1900362. 
 doi: 10.1002/pmic.201900362.
 - [Comet Fragment-Ion Indexing for Enhanced Peptide Sequencing](https://pubs.acs.org/doi/10.1021/acs.jproteome.4c01094)
 McGann CD, Bergstrom EJ, Sharma V, Heil LR, Yu Q, Eng JK, Schweppe DK.

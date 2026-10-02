@@ -1,4 +1,4 @@
-Comet parameter: add_M_methionine
+### Comet parameter: add_M_methionine
 
 - Specify a static modification to the residue M.
 - The specified mass is added to the unmodified mass of M.

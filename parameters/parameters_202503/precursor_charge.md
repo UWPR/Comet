@@ -1,7 +1,7 @@
 ### Comet parameter: precursor_charge
 
 - This parameter specifies the precursor charge range to search.
-- This parameter expects to integer values as input.
+- This parameter expects two integer values as input.
 - If the first input value is 0 then this parameter is ignored and all charge
 states are searched
 - Only in the case where a spectrum does not have a precursor charge will all charges

@@ -4,7 +4,7 @@
   in the fragment ion index.
 - The mass is the singly charged fragment mass.
 - A larger value will use less memory and generate the fragment ion
-  index faster as less fragment ions will be added to the index.
+  index faster as fewer fragment ions will be added to the index.
 - Specifying too large a value may remove fragment ions
   from consideration that would otherwise aid in peptides passing
   the fragment ion index filter.

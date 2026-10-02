@@ -31,7 +31,7 @@ only a small number of candidate peptides are analyzed, Comet will now require
 (and generate) 1000 xcorr scores for the E-value calculation, up from 500. This
 corrects a couple of reported examples where poor scoring identifications from
 sparse searches received artificially low E-values.
-- Implement a memory pool that's shared between threads for the re-use of an
+- Implement a memory pool that's shared between threads for the reuse of an
 array (pbDuplFragment). This change gives upwards of ~35% performance
 improvement in addition to better memory use from constantly creating and
 destroying the arrays. Implemented by T. Jahan.
@@ -47,18 +47,18 @@ contributed by J. Slagel.
 2014.01.1. This caused searches to be upwards of 2X slower; most noticeable
 when using small "fragment_bin_tol" values.
 - Bug fix: addressed a couple of esoteric pep.xml output issues (paths and
-such) when using the -N<name> command line option.
+such) when using the `-N<name>` command line option.
 - Bug fix: fix the StaticMod output string in SQT format header (H) line; was
 not printing out the modification residue and these header lines were not
 present in the decoy output.
-- Bug fix: fix the "override_charge", parameter. The charge ranges were being
+- Bug fix: fix the "override_charge" parameter. The charge ranges were being
 searched but these were in addition to the existing charge states specified in
 the input file. The logic has been corrected so that only the specified charge
 range will be searched.
 - New parameters: All of the variable_modXX parameters (for example
 "variable_mod01") have been modified to add two new options for an optional
 terminal distance constraint and which terminus that distance constraint is
-applied to. And the nubmer of variable mods has been extended to 9. The
+applied to. And the number of variable mods has been extended to 9. The
 modification character codes for mods 1 through 9 are: *#@^~$%!+
 - New parameter "output_percolatorfile". Percolator, I believe as of version 2.08,
 no longer supports the Percolator-in or pin.xml format. The supported input

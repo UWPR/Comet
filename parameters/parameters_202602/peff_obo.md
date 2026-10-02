@@ -9,6 +9,6 @@ use depends on your PEFF input file.
 Example:
 ```
 peff_obo = PSI-MOD.obo
-peff_obo = C:\local\obo\PSI-MOD.obo)
+peff_obo = C:\local\obo\PSI-MOD.obo
 peff_obo = /usr/local/obo/PSI-MOD.obo
 ```

@@ -1,4 +1,4 @@
-Comet parameter: add_K_lysine
+### Comet parameter: add_K_lysine
 
 - Specify a static modification to the residue K.
 - The specified mass is added to the unmodified mass of K.

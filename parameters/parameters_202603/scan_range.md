@@ -2,9 +2,9 @@
 
 - Defines the scan range to search.  Only spectra within (and inclusive) of the specified
 scan range are searched.
-- This parameter works with MS2, mzXML and mzML inputs files.
-- Two digits are specified for this parameter.  The first digit is the start scan and the
-second digit is the end scan.
+- This parameter works with MS2, mzXML and mzML input files.
+- Two values are specified for this parameter.  The first value is the start scan and the
+second value is the end scan.
 - You can set either just the start scan (leaving end scan 0) or just the end scan
 (leaving start scan 0).  
 - When the end scan is less than the start scan, no scan can satisfy that scan range

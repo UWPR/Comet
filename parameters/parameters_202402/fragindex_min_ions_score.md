@@ -1,8 +1,8 @@
 ### Comet parameter: fragindex_min_ions_score
 
-- This parameter sets the minimum number fragment ions a peptide must match
+- This parameter sets the minimum number of fragment ions a peptide must match
   against the fragment ion index in order to proceed to xcorr scoring.
-- This parameter could be different (typically same or larger) than the
+- This parameter could be different (typically the same or smaller) than the
   [fragindex_min_ions_report](fragindex_min_ions_report.html)
   parameter.
 - This parameter is intended to allow more candidate peptides to be scored, thus

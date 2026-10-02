@@ -16,9 +16,9 @@ PEFF substitutions.  The "code" field can be "S" for a static modification, "V" 
 original amino acid is listed in the "massdiff" field, e.g. "2\_p\_L" indicates the 2nd residue was originally
 a leucine before the PEFF substitution.
 - The "modifications" string can be appended with:
-  - "\_N" to denote a N-term protein modification, e.g. "1\_S\_-17.0265\_N"
-  - "\_n" to denote a N-term peptide modification, e.g. "1\_A\_42.0146\_n"
-  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882_C"
+  - "\_N" to denote an N-term protein modification, e.g. "1\_S\_-17.0265\_N"
+  - "\_n" to denote an N-term peptide modification, e.g. "1\_A\_42.0146\_n"
+  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882\_C"
   - "\_c" to denote a C-term peptide modification, e.g. "12\_K\_42.0106\_c"
 
 Example:
@@ -27,7 +27,7 @@ output_txtfile = 0
 output_txtfile = 1
 ```
 
-Here's snippet of sample output below.  The first line of the output file is a
+Here's a snippet of sample output below.  The first line of the output file is a
 header line which contains the Comet version, search start time/date, and search
 database.  The second line contains the column headers.
 
@@ -59,7 +59,7 @@ scan   num  charge  exp_neutral_mass  calc_neutral_mass  e-value   xcorr   delta
 Note that there is a different text output if Comet is compiled with the
 Crux flag (i.e. add -DCRUX to the CXXFLAGS in the Makefiles under Linux or #define CRUX
 in Common.h).  Here's the Crux-specific text output where the files have a
-".target.txt" or ".decoy.txt" extensions.
+".target.txt" or ".decoy.txt" extension.
 
 ```
 scan  charge   spectrum precursor m/z  spectrum neutral mass   peptide mass   delta_cn sp score sp rank  xcorr score xcorr rank  b/y ions matched  b/y ions total total matches/spectrum  sequence modified sequence modifications  protein id  flanking aa e-value
@@ -93,7 +93,7 @@ Here's a description of each column in the regular Comet (non-Crux) output:
 - charge:  The precursor charge state.
 - exp_neutral_mass:  The experimental neutral mass of the measured precursor ion.
 - calc_neutral_mass:  The calculated neutral mass of the matched peptide.
-- e_value:  The expectation value or E-value score for the peptide.  See this paper for some info on [how Comet calculates E-values](https://pubs.acs.org/doi/10.1021/pr800420s) (although there is a correction where the log transform of the cumulative xcorr distribution is used instead of the log transform of the xcorr histogram).
+- e-value:  The expectation value or E-value score for the peptide.  See this paper for some info on [how Comet calculates E-values](https://pubs.acs.org/doi/10.1021/pr800420s) (although there is a correction where the log transform of the cumulative xcorr distribution is used instead of the log transform of the xcorr histogram).
 - xcorr:  The cross correlation score for the peptide.  [Here's a very nice illustration](https://willfondrie.com/2019/02/an-intuitive-look-at-the-xcorr-score-function-in-proteomics/) of how this score is calculated by Will Fondrie.
 - delta_cn:  The deltaCn which is the difference in the normalized cross correlation score, historically between top hit and next best hit.  In Comet, each deltaCn score for each row is the  difference in the normalized cross correlation score between that hit and next lower peptide hit.
 - sp_score:  The preliminary score which is the sum of peak intensities that match the peptide and accounts for continuity of an ion series and the length of the peptide.  I think of this as a quick/simple peptide match score that now exists only for backwards compatibility for post-search processing tools.
@@ -104,7 +104,7 @@ Here's a description of each column in the regular Comet (non-Crux) output:
 - prev_aa:  In the first protein that contains this peptide, the amino acid just before or n-terminal to the peptide.
 - next_aa:   In the first protein that contains this peptide, the amino acid just after or c-terminal to the peptide.
 - protein:  A comma separated list of proteins that contain the identified peptide. The maximum number of proteins printed out is controlled by the [max_duplicate_proteins](max_duplicate_proteins.html) parameter.
-- protein_count:  The total number of proteins in the database that contains the peptide.
+- protein_count:  The total number of proteins in the database that contain the peptide.
 - modifications:  An encoding of static and variable modifications in the peptide as described above.
 - retention_time_sec:  If available from the query file, this reports the retention time in seconds of the spectrum being searched.
 - sp_rank:  The rank of the preliminary score (Sp).  If the peptide results were ordered by the sp_score column, this column reports the rank order of this peptide when sorted by sp_score.  So if this peptide had the fourth highest sp_score, this column would contain a "4".

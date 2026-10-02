@@ -2,7 +2,7 @@
 
 - This parameter controls whether or not Comet reads all precursors from the
   input files.  It uses this information to limit the peptides that
-  are included in the fragment ion index.  Otherwise, every peptides within
+  are included in the fragment ion index.  Otherwise, every peptide within
   the mass range defined by [digest_mass_range](digest_mass_range.html)
   will be included in the fragment ion index (even though only those
   with precursor masses corresponding to experimental spectra would be

@@ -1,13 +1,13 @@
 ### Comet parameter: skip_researching
 
-**Note that this parameter has been deprecated in version 2018.01 rev. 2.**
+**Note: this parameter, together with .out file output, was removed in release 2025.03.0.**
 
 - This parameter is valid only when
          [output_outfiles](output_outfiles.html),
 is set to 1 and each of
          [output_pepxmlfile](output_pepxmlfile.html),
          [output_sqtfile](output_sqtfile.html), and
-         [output_sqtstream](output_sqtstream.html), are set to 0.
+         [output_sqtstream](output_sqtstream.html) are set to 0.
 - When .out files only are set to be exported, this parameter will look to see if
 an .out file already exists for each query spectrum.  If so, it will not re-search
 that particular spectrum.

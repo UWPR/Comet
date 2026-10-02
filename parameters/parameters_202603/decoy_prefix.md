@@ -1,6 +1,6 @@
 ### Comet parameter: decoy_prefix
 
-- This parameter specifies the prefix string that is pre-pended to
+- This parameter specifies the prefix string that is prepended to
 the protein identifier and reported for decoy hits.
 - This parameter is only valid when a [decoy_search](decoy_search.html) is performed.
 - For example, if the prefix parameter is set to "decoy_prefix = reverse_",

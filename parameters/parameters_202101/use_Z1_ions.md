@@ -1,4 +1,4 @@
-### Comet parameter: use_Z_ions
+### Comet parameter: use_Z1_ions
 
 - Controls whether or not Z• + 1 ions are considered in the search.
 - Valid values are 0 and 1.

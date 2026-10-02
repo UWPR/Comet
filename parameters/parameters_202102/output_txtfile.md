@@ -16,9 +16,9 @@ PEFF substitutions.  The "code" field can be "S" for a static modification, "V" 
 original amino acid is listed in the "massdiff" field, e.g. "2\_p\_L" indicates the 2nd residue was originally
 a leucine before the PEFF substitution.
 - The "modifications" string can be appended with:
-  - "\_N" to denote a N-term protein modification, e.g. "1\_S\_-17.0265\_N"
-  - "\_n" to denote a N-term peptide modification, e.g. "1\_A\_42.0146\_n"
-  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882_C"
+  - "\_N" to denote an N-term protein modification, e.g. "1\_S\_-17.0265\_N"
+  - "\_n" to denote an N-term peptide modification, e.g. "1\_A\_42.0146\_n"
+  - "\_C" to denote a C-term protein modification, e.g. "9\_R\_356.1882\_C"
   - "\_c" to denote a C-term peptide modification, e.g. "12\_K\_42.0106\_c"
 
 Example:
@@ -27,7 +27,7 @@ output_txtfile = 0
 output_txtfile = 1
 ```
 
-Here's snippet of sample output below.  The first line of the output file is a
+Here's a snippet of sample output below.  The first line of the output file is a
 header line which contains the Comet version, search start time/date, and search
 database.  The second line contains the column headers.
 
@@ -58,7 +58,7 @@ scan   num  charge  exp_neutral_mass  calc_neutral_mass  e-value   xcorr   delta
 Note that there is a different text output if Comet is compiled with the
 Crux flag (i.e. add -DCRUX to the CXXFLAGS in the Makefiles under Linux or #define CRUX
 in Common.h).  Here's the Crux-specific text output where the files have a
-".target.txt" or ".decoy.txt" extensions.
+".target.txt" or ".decoy.txt" extension.
 
 ```
 scan    charge  spectrum precursor m/z  spectrum neutral mass   peptide mass    delta_cn        sp score        sp rank xcorr score     xcorr rank      b/y ions matched        b/y ions total  total matches/spectrum  sequence        modified sequence       modifications   protein id      flanking aa     e-value

@@ -1,6 +1,6 @@
 ### Notes 2016.01.01
 
-To create a comet.params file, run the following command and rename the create
+To create a comet.params file, run the following command and rename the created
 file from "comet.params.new" to "comet.params".
 ```
 comet.exe -p

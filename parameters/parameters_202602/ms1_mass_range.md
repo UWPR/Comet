@@ -7,7 +7,7 @@ is typically specified in the C# calling program.
 - The first value is the lower mass cutoff and the second value is
 the high mass cutoff.
 - Valid values are two decimal numbers where the first number must
-be less or equal to the second number.
+be less than or equal to the second number.
 
 Example:
 ```

@@ -6,5 +6,5 @@
 
 Example:
 ```
-add_O_pyrrolysine= 15.9949
+add_O_pyrrolysine = 15.9949
 ```

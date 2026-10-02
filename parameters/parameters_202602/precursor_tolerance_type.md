@@ -2,7 +2,7 @@
 
 - This parameter controls how the peptide mass tolerance
 parameters([1](peptide_mass_tolerance_lower.html))([2](peptide_mass_tolerance_upper.html))
-are applied.  The tolerances can be applied to the singly charged peptide mass or it can
+are applied.  The tolerances can be applied to the singly charged peptide mass or they can
 be applied to the precursor m/z.
 - Note that this parameter is applied only when amu or mmu tolerances are specified.  It is
 ignored when ppm tolerances are specified.
@@ -17,7 +17,7 @@ precursor_tolerance_type = 0
 precursor_tolerance_type = 1
 ```
 
-For example, assume a 1.0 Da [peptide_mass_tolerance](peptide_mass_tolerance.html) was
+For example, assume a 1.0 Da peptide mass tolerance ([peptide_mass_tolerance_upper](peptide_mass_tolerance_upper.html) = 1.0, [peptide_mass_tolerance_lower](peptide_mass_tolerance_lower.html) = -1.0) was
 specified.  If "precursor_tolerance_type = 0" then a peptide with MH+ mass of 1250.4 will be queried
 against peptide sequences with MH+ masses between 1249.4 to 1251.4.  If "precursor_tolerance_type = 1"
 then say the 2+ m/z is 625.7 so the search mass range would be 624.7 m/z to 626.7 m/z which

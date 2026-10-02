@@ -8,7 +8,7 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 - Add fragment ion indexing support.
 While fragment ion indexing code was present in the 2024.01 rev. 0 release, 
-this is the first Comet release to official support fragment ion indexing
+this is the first Comet release to officially support fragment ion indexing
 which is a method that was originally implemented by
 [MSFragger](https://www.nature.com/articles/nmeth.4256).
 In Comet's implementation, the fragment ion index is applied as a

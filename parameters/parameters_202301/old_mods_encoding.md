@@ -1,7 +1,7 @@
 ### Comet parameter: old_mods_encoding
 
 - This parameter enables using the old character based modification encodings
-(e.g. DLYM*NCK) instead mass based encodings (e.g. DLYM[15.9949]NCK) in the
+(e.g. DLYM*NCK) instead of mass based encodings (e.g. DLYM[15.9949]NCK) in the
 SQT output files.
 - A value of "1" will cause Comet to use the old character based modification
 encodings (e.g. DLYM*NCK).

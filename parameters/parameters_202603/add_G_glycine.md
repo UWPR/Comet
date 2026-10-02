@@ -6,5 +6,5 @@
 
 Example:
 ```
-add_G_cysteine = 15.9949
+add_G_glycine = 15.9949
 ```

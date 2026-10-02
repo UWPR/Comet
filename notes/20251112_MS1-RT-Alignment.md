@@ -1,4 +1,4 @@
-### Notes 2024/11/12: MS1 retention time alignment in Comet
+### Notes 2025/11/12: MS1 retention time alignment in Comet
 
 Comet's real-time search interface has been extended to incorporate functionality to
 align an acquisition run against a reference run using MS1 scans.
@@ -9,7 +9,7 @@ The range of reference MS1 scans is limited by those within the retention time t
 specified.  Alignment of runs of different linear gradient lengths is supported although
 now that I'm writing this documentation, I think I may need to add another parameter to
 allow the user to specify the RTS query's gradient length to support this. I guess I need to
-label this as an experimental feature until it can be tested in an real-time environment to
+label this as an experimental feature until it can be tested in a real-time environment to
 identify whether or not any feature/parameters need to be implemented.
 
 The best match reference MS1 scan, based on having the highest unit vector dot product score,
@@ -17,7 +17,7 @@ is returned.
 
 MS1 spectra are represented as spectral arrays in the same manner as Comet represents MS/MS
 spectra internally.  These arrays are defined by the ms1_bin_tol and ms1_bin_offset
-parameters where 1.0005 and 0.4 is recommended for these two parameters, respectively.
+parameters where 1.0005 and 0.4 are recommended for these two parameters, respectively.
 Smaller ms1_bin_tol values can be used for more sensitive matching (which I've found to
 be unnecessary) but at the expense of longer query times.
 

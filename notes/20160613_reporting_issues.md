@@ -14,7 +14,7 @@ this zip file (rename comet.20XXXXX.win64.exe to c:\inetpub\tpp-bin\comet.exe).
 Also update your Comet search parameters file comet.params with a version
 appropriate for release 20XX.0X rev X.  You can find updated example
 comet.params files in the "parameters" tab above.  If you download one of
-those, such a the file comet.params.high-low for high-res MS1 and low-res MS2
+those, such as the file comet.params.high-low for high-res MS1 and low-res MS2
 data, just remember to change the name to simply "comet.params" and update any
 parameter settings as needed.
 

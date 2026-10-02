@@ -7,7 +7,7 @@ controls how many of those 5 additional duplicate proteins are reported.
 - If "[decoy_search](decoy_search.html) = 2"
 is set to report separate target and decoy results, this parameter will be
 applied to the target and decoy outputs separately.
-- Valid values are any integer greater than or equal to 0.
+- Valid values are any integer greater than or equal to 0, or -1 for no limit.
 - If set to "-1", there will be no limit on the number of reported additional proteins.
 - The default value is "20" if this parameter is missing.  This means up to 21 proteins,
   one reference and twenty additional, will be reported for each search result.

@@ -3,7 +3,7 @@
 - This parameter sets the maximum indexed database search run time for a scan/query.
 - Valid values are integers 0 or higher representing the maximum run time in milliseconds.
 - As Comet loops through analyzing peptides from the database index file,
-it checks the cummulative run time of that spectrum search after each
+it checks the cumulative run time of that spectrum search after each
 peptide is analyzed.  If the run time exceeds the value set for this
 parameter, the search is aborted and the best peptide result analyzed
 up to that point is returned.

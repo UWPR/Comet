@@ -126,7 +126,7 @@ This release combines a Thermo raw file reading infrastructure migration, RTS pe
 #### Tools and Build
 
 - Migrated MSToolkit's `.raw` file reading from MSFileReader COM to Thermo's RawFileReader .NET (see New Features above).
-- Windows release packages now includes the two RawFileReader DLLs needed to read `.raw` files given the COM to .NET file reading migration.
+- Windows release packages now include the two RawFileReader DLLs needed to read `.raw` files given the COM to .NET file reading migration.
 - Added a dependency-free C++ unit test harness (`CometUnitTests`).
 
 **Full Changelog**: https://github.com/UWPR/Comet/compare/v2026.02.0...v2026.02.1
@@ -177,7 +177,7 @@ This release combines a Thermo raw file reading infrastructure migration, RTS pe
 - I/L deduplication: When `equal_I_and_L=1`, the FASTA-original (L-containing) peptide sequence is now preserved in the index; the I-containing variant is the one discarded. Previously the choice was arbitrary, causing extra spurious entries in the index.
 - `g_pvProteinsList` heap-allocation storm: Replaced element-by-element vector growth with a CSR (compressed sparse row) pre-allocation, eliminating O(N²) reallocation behavior on large databases.
 - `DBIndex::sPeptide` / `PlainPeptideIndexStruct::sPeptide`: Refactored from `std::string` to `char[MAX_PEPTIDE_LEN]` fixed-size arrays, eliminating per-peptide heap allocations during index construction and search.
-- set_`Z_user_amino_acid` parameter: Was incorrectly setting the X residue mass; now sets Z as intended.
+- `set_Z_user_amino_acid` parameter: Was incorrectly setting the X residue mass; now sets Z as intended.
 - Peptide length range error message: Was displaying scan range values instead of peptide length values.
 - `logout()` routing: All `logout()` calls now go to `stdout` instead of `stderr`.
 

@@ -1,8 +1,8 @@
 ### Comet parameter: fragindex_min_ions_report
 
-- This parameter sets the minimum number fragment ions a peptide must match
+- This parameter sets the minimum number of fragment ions a peptide must match
   against the fragment ion index in order to report this peptide in the output.
-- This parameter value could be different (typically same or larger) than the
+- This parameter value could be different (typically the same or smaller) than the
   [fragindex_min_ions_score](fragindex_min_ions_score.html)
   parameter.
 - Any peptide that passes this filter is a candidate to be reported in the output

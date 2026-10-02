@@ -9,7 +9,7 @@ Download release [here](https://github.com/UWPR/Comet/releases).
 
 - Report the previous and next amino acid residues in the fragment ion index search output.  Previously the index search did not track this information and simply returned '-' for the preceding and trailing residues. Thanks to E. Bergstrom for tracking this and the other issues in the fragment ion index project.
 - Remove the lower limit to allow smaller than 0.01 [fragment_bin_tol](https://uwpr.github.io/Comet/parameters/parameters_202401/fragment_bin_tol.html) values.  Thanks to I. Smith for reporting the presence of this lower limit in the code.
-- Adds support for the new parameter "[pinfile_protein_delimiter](https://uwpr.github.io/Comet/parameters/parameters_202401/pinfile_protein_delimiter.html)" which will replace the Percolator pin file protein field delimiter from a tab to the specified character or string.  If this parameter entry is left blank the protein field delimiter remains a tab.  This is a hidden parameter in that it doesn't appear in the example comet.params files that can be downloaded from the Comet website.  Nor is it present in the abbreviated "comet.params.new" file generated with "comet -p".  It will be present in the full "comet.param.new" file generated with "comet -q". Thanks to S. Paez for requesting this feature in issue #66. (I should note that I also deprecated a previously undocumented "pin_mod_proteindelim" parameter that, when set, changed the pin file protein delimiter to a comma from the tab.)
+- Adds support for the new parameter "[pinfile_protein_delimiter](https://uwpr.github.io/Comet/parameters/parameters_202401/pinfile_protein_delimiter.html)" which will replace the Percolator pin file protein field delimiter from a tab to the specified character or string.  If this parameter entry is left blank the protein field delimiter remains a tab.  This is a hidden parameter in that it doesn't appear in the example comet.params files that can be downloaded from the Comet website.  Nor is it present in the abbreviated "comet.params.new" file generated with "comet -p".  It will be present in the full "comet.params.new" file generated with "comet -q". Thanks to S. Paez for requesting this feature in issue #66. (I should note that I also deprecated a previously undocumented "pin_mod_proteindelim" parameter that, when set, changed the pin file protein delimiter to a comma from the tab.)
 - Fix backwards compatibility with the old/retired [peptide_mass_tolerance](https://uwpr.github.io/Comet/parameters/parameters_202301/peptide_mass_tolerance.html) parameter.  Although this parameter has been replaced by [peptide_mass_tolerance_lower](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_lower.html) and [peptide_mass_tolerance_upper](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_upper.html), Comet code was intended to continue supporting the old [peptide_mass_tolerance](https://uwpr.github.io/Comet/parameters/parameters_202301/peptide_mass_tolerance.html) parameter.  During a late change to support the new parameters, I broke support for the old parameter.  This is addressed by commit 23a3901.  Thanks to C. Bielow for posting this issue #60.
 - Searches will stall when a fasta sequence loading threshold has been hit; addressed by commit e5cf236.  Thanks to C. Bielow for posting the issue #62.
 - A logic error in the StorePeptide() kills the search as I did not properly account for the strcmp() string comparison returning true when one of the strings is empty.  This was also addressed by commit e5cf236.  Thanks to C. Bielow for posting the issue #63.
@@ -26,7 +26,7 @@ and
 "[peptide_mass_tolerance_upper](https://uwpr.github.io/Comet/parameters/parameters_202401/peptide_mass_tolerance_upper.html)"
 to allow the specification of non-symmetric precursor mass tolerances.
 This means that "peptide_mass_tolerance" is retired and you should start
-with a fresh comet.params with this release and not re-use an old
+with a fresh comet.params with this release and not reuse an old
 parameters file.
 - Add support for up to 15 variable modifications with the addition of
 "[variable_mod10](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
@@ -37,7 +37,7 @@ using some serious constraints unless you are the most patient person in the wor
 - Add support for what I will term an "exclusive" modification where only one from
 the set of exclusive variable modifications can appear in a peptide. You would want
 to apply this option to rare modifications that are unlikely to co-exist and be
-identified along with another rate modification in the same peptide.  Denoting which
+identified along with another rare modification in the same peptide.  Denoting which
 variable modifications are an "exclusive" modification is accomplished by setting
 field 7 in the 
 "[variable_mod##](https://uwpr.github.io/Comet/parameters/parameters_202401/variable_modXX.html)"
@@ -78,10 +78,10 @@ unless you want to be a beta tester). Documentation will be added when it is
 ready for general use.  The fragment ion indexing is used as a pre-filter
 to the full cross-correlation scoring and is not fast compared to other search tools.
 Thanks to V. Sharma for implementing the modifications permutation code and
-the E. Bergstrom, C. McGann, and D. Schweppe for development/testing feedback.
+E. Bergstrom, C. McGann, and D. Schweppe for development/testing feedback.
 - Added
 "[set_X_residue](https://uwpr.github.io/Comet/parameters/parameters_202401/set_X_residue.html)"
-parameters which allow user to redefine the base mass of each amino acid residue
+parameters which allow the user to redefine the base mass of each amino acid residue
 e.g. set_A_residue to modify the base mass of alanine. Making use of static modifications
 can effectively accomplish the same thing so there is a very limited use case
 for this new feature.  Feature requested by m.f.abdollahnia via the Comet google group.

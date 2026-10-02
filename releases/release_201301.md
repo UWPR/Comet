@@ -8,7 +8,7 @@ Download release [here](https://sourceforge.net/projects/comet-ms/files/).
 - This is the second major release of Comet.
 - Comet now supports searching multiple input files i.e. "comet.exe *.mzXML".
 Comet will search each input file sequentially, one after the other.
-- New command line option '-F<num>' and '-L<num>' to specify the first and last
+- New command line option `-F<num>` and `-L<num>` to specify the first and last
 scan to search. This scan range can also be specified using the scan_range
 parameter. Additionally, the scan range can still be specified appended to each
 input file i.e. comet.exe file.mzXML:1500-5000. Scan ranges specified appended
@@ -20,7 +20,7 @@ database to override the database specified in the params file.
 logic was not applying neutral loss peaks to all relevant ion series.
 - Updated MSToolkit code for more robust reading of input files.
 - New parameter: use_sparse_matrix
-- Implemented by Mike Hoopman, the main new feature of Comet release 2013.01 is
+- Implemented by Mike Hoopmann, the main new feature of Comet release 2013.01 is
 the ability to use a sparse matrix data representation internally. When using a
 small fragment_bin_tol value (i.e. 0.01), the original implementation of Comet
 will use a *huge* amount of memory. The sparse

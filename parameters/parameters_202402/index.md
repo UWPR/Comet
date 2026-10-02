@@ -10,8 +10,8 @@ To generate a comet.params file appropriate for your Comet binary, issue the com
 
 Example comet.params files (primary differences are the MS and MS/MS mass tolerance settings):
 - [comet.params.low-low](comet.params.low-low) for low res MS1 and low res MS2 e.g. ion trap
-- [comet.params.high-low](comet.params.high-low) high res MS1 and low res MS2 e.g. Velos-Orbitrap
-- [comet.params.high-high](comet.params.high-high) high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
+- [comet.params.high-low](comet.params.high-low) for high res MS1 and low res MS2 e.g. Velos-Orbitrap
+- [comet.params.high-high](comet.params.high-high) for high res MS1 and high res MS2 e.g. Q Exactive or Q-Tof
 
 #### Database
 

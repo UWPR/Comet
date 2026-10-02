@@ -1,7 +1,7 @@
 ### Comet parameter: isotope_error
 
 - This parameter controls whether the [peptide_mass_tolerance](peptide_mass_tolerance.html)
-takes into account possible isotope errors in the precursor mass measurement.
+take into account possible isotope errors in the precursor mass measurement.
 - It is possible that an accurately read precursor mass is not measured on the monoisotopic
 peak of a precursor isotopic pattern. In these cases, the precursor mass is measured on the
 first isotope peak (one C13 atom) or possibly even the second or third isotope peak. To address
