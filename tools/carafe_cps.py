@@ -56,6 +56,7 @@ experiment measures.
 """
 
 import array
+import mmap
 import struct
 import sys
 import zlib
@@ -210,10 +211,19 @@ class CpsReader:
             raise ValueError(f"{path!r}: unknown Quant {self.quant!r}")
         self._qchar, self.qmax = QUANT_PARAMS[self.quant]
         self._qsize = struct.calcsize(self._qchar)
-        self._offsets = array.array("Q")
-        self._offsets.frombytes(self._f.read(8 * self.row_count))
-        if sys.byteorder != "little":
-            self._offsets.byteswap()
+        # Directory: row_count x u64. Memory-mapped rather than read into a per-process
+        # array -- at 215.7M rows the table is 1.73 GB, and the mask builder opens one
+        # reader per worker (18 workers -> 31 GB of identical copies, which exhausted a
+        # 64 GB machine on the 7-40/2MC phospho store). A file-backed read-only map
+        # shares pages between processes through the OS page cache. Only the directory
+        # region is mapped (offset aligned down to the allocation granularity).
+        dir_start = self._f.tell()
+        dir_len = 8 * self.row_count
+        self._map_base = dir_start - (dir_start % mmap.ALLOCATIONGRANULARITY)
+        self._dir_off = dir_start - self._map_base
+        self._mm = mmap.mmap(self._f.fileno(), self._dir_off + dir_len,
+                             offset=self._map_base, access=mmap.ACCESS_READ)
+        self._f.seek(dir_start + dir_len)
 
     def verify_source(self, out_tsv_path, n_data_rows=None):
         """Raise if this store wasn't built from (a file identical in its first 64KB to)
@@ -233,7 +243,8 @@ class CpsReader:
         DEQUANTIZED floats (b_z1, y_z1, b_modloss_z1, y_modloss_z1)."""
         if not (0 <= row_index < self.row_count):
             raise IndexError(row_index)
-        self._f.seek(self._offsets[row_index])
+        (off,) = struct.unpack_from("<Q", self._mm, self._dir_off + 8 * row_index)
+        self._f.seek(off)
         nAA, base8, base4 = struct.unpack("<Bff", self._f.read(9))
         n_pos = nAA - 1
         flat = struct.unpack(f"<{n_pos * 4}{self._qchar}",
@@ -247,6 +258,7 @@ class CpsReader:
         return nAA, base8, base4, rows4
 
     def close(self):
+        self._mm.close()
         self._f.close()
 
 
