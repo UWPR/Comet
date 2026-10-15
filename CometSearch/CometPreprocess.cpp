@@ -431,7 +431,46 @@ void CometPreprocess::Reset()
     _bDoneProcessingAllSpectra = false;
 }
 
-bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
+// Spectrum charge Comet would use for precursor i of a header-only read, or 0 if the file does not
+// supply one (mirrors the charge selection in ReadPrecursors() below, minus the warning message).
+static int PrecursorFileCharge(Spectrum &spec, int i)
+{
+   if (spec.sizeMZ() == spec.sizeZ())
+      return spec.atZ(i).z;
+   if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
+      return spec.atZ(i).z;
+   return 0;
+}
+
+
+// A header-only spectrum has no peaks.  They are only needed when a precursor has no charge
+// from the file and the charge must be guessed from the peak intensities (1+ vs 2+/3+).
+static bool PrecursorNeedsPeaks(Spectrum &spec)
+{
+   if (g_staticParams.options.iStartCharge > 0
+         && (g_staticParams.options.iOverrideCharge == 1 || g_staticParams.options.iOverrideCharge == 2))
+   {
+      return false;
+   }
+
+   for (int i = 0; i < spec.sizeMZ(); ++i)
+   {
+      if (PrecursorFileCharge(spec, i) == 0)
+         return true;
+   }
+
+   return false;
+}
+
+
+// Marks the precursor mass bins of every spectrum in one input file in pBins, an array of
+// BIN(dPeptideMassHigh) + 1 flags owned by the caller.  Everything this touches is local to the
+// call (own reader, own bins; the g_staticParams reads are const), so it can run on several
+// threads at once, one file each.  Spectra are read header-only (mzML/mzXML) since only the
+// precursor m/z and charge are needed, not the peaks.
+bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
+                                     const char *szFileName,
+                                     bool *pBins)
 {
    int iFileLastScan = -1;         // The actual last scan in the file.
    int iFirstScan = 0;
@@ -440,6 +479,10 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
    int iScanNumber = 0;
    int iSpectrumCharge;
    Spectrum mstSpectrum;           // For holding spectrum.
+   bool bFirstScan = true;
+   bool bSkipToStartScan = true;
+
+   mstReader.setHeaderOnly(true);
 
    int iMaxBin = BIN(g_staticParams.options.dPeptideMassHigh);
 
@@ -453,14 +496,14 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
    while (true)
    {
       // Loads in MSMS spectrum data.
-      if (_bFirstScan)
+      if (bFirstScan)
       {
-         PreloadIons(mstReader, mstSpectrum, false, 0);  // Use 0 as scan num here in last argument instead of iFirstScan; must
-         _bFirstScan = false;                            // be MS/MS scan else data not read by MSToolkit so safer to start at 0.
-      }                                                  // Not ideal as could be reading non-relevant scans but it's fast enough.
+         mstReader.readFile(szFileName, mstSpectrum, 0);  // Use 0 as scan num here in last argument instead of iFirstScan; must
+         bFirstScan = false;                              // be MS/MS scan else data not read by MSToolkit so safer to start at 0.
+      }                                                   // Not ideal as could be reading non-relevant scans but it's fast enough.
       else
       {
-         PreloadIons(mstReader, mstSpectrum, true);
+         mstReader.readFile(NULL, mstSpectrum);
       }
 
       if (iFileLastScan == -1)
@@ -471,21 +514,18 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
       }
 
       if ((iFileLastScan != -1) && (iFileLastScan < iFirstScan))
-      {
-         _bDoneProcessingAllSpectra = true;
          break;
-      }
 
       iScanNumber = mstSpectrum.getScanNumber();
 
       if (iLastScan > 0 && iScanNumber > iLastScan)
          break;
 
-      if (g_staticParams.bSkipToStartScan && iScanNumber < iFirstScan)
+      if (bSkipToStartScan && iScanNumber < iFirstScan)
       {
-         g_staticParams.bSkipToStartScan = false;
+         bSkipToStartScan = false;
 
-         PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+         mstReader.readFile(szFileName, mstSpectrum, iFirstScan);
          iScanNumber = mstSpectrum.getScanNumber();
 
          // iScanNumber will equal 0 if iFirstScan is not the right scan level
@@ -493,7 +533,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
          while (iScanNumber == 0 && iFirstScan < iFileLastScan)
          {
             iFirstScan++;
-            PreloadIons(mstReader, mstSpectrum, false, iFirstScan);
+            mstReader.readFile(szFileName, mstSpectrum, iFirstScan);
             iScanNumber = mstSpectrum.getScanNumber();
          }
       }
@@ -501,17 +541,22 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
       if (iScanNumber != 0)
       {
          if (iLastScan > 0 && iScanNumber > iLastScan)
-         {
-            _bDoneProcessingAllSpectra = true;
             break;
-         }
          if (iFirstScan != 0 && iLastScan > 0 && !(iFirstScan <= iScanNumber && iScanNumber <= iLastScan))
             continue;
          if (iFirstScan != 0 && iLastScan == 0 && iScanNumber < iFirstScan)
             continue;
 
-         g_staticParams.bSkipToStartScan = false;
+         bSkipToStartScan = false;
          iTmpCount = iScanNumber;
+
+         // Header-only read left out the peaks; fetch them for the few spectra that need them.
+         if (mstReader.lastReadHeaderOnly() && PrecursorNeedsPeaks(mstSpectrum))
+         {
+            mstReader.setHeaderOnly(false);
+            mstReader.readFile(szFileName, mstSpectrum, iScanNumber);
+            mstReader.setHeaderOnly(true);
+         }
 
          // To run a search, all that's needed is MH+ and Z. So need to generate
          // all combinations of these for each spectrum, whether there's a known
@@ -720,48 +765,51 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                   iEnd = iMaxBin;
 
                for (int x = iStart ; x <= iEnd; ++x)
-                  g_bIndexPrecursors[x] = true;
+                  pBins[x] = true;
 
-               // now go through each isotope offset
+               // now go through each isotope offset.  The search accepts a peptide when mass + x * C13_DIFF
+               // falls in the precursor window (CheckMassMatch()), so the bins must be shifted by exactly
+               // x * C13_DIFF.  (AdjustMassTol()'s coarse window multiplies by PROTON_MASS too; that only
+               // widens a pre-filter, whereas a mask shifted by that factor drops peptides near window edges.)
                if (g_staticParams.tolerances.iIsotopeError > 0)
                {
                   if (g_staticParams.tolerances.iIsotopeError >= 1
                         && g_staticParams.tolerances.iIsotopeError <= 6)
                   {
-                     iStart = BIN(dMassLow - C13_DIFF * PROTON_MASS);     // do +1 offset
-                     iEnd   = BIN(dMassHigh - C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow - C13_DIFF);     // do +1 offset
+                     iEnd   = BIN(dMassHigh - C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
 
                      if (g_staticParams.tolerances.iIsotopeError >= 2
                            && g_staticParams.tolerances.iIsotopeError <= 6
                            && g_staticParams.tolerances.iIsotopeError != 5)
                      {
-                        iStart = BIN(dMassLow - 2.0 * C13_DIFF * PROTON_MASS);     // do +2 offset
-                        iEnd   = BIN(dMassHigh - 2.0 * C13_DIFF * PROTON_MASS);
+                        iStart = BIN(dMassLow - 2.0 * C13_DIFF);     // do +2 offset
+                        iEnd   = BIN(dMassHigh - 2.0 * C13_DIFF);
                         if (iStart < 0)
                            iStart = 0;
                         if (iEnd > iMaxBin)
                            iEnd = iMaxBin;
                         for (int x = iStart ; x <= iEnd; ++x)
-                           g_bIndexPrecursors[x] = true;
+                           pBins[x] = true;
 
                         if (g_staticParams.tolerances.iIsotopeError >= 3
                               && g_staticParams.tolerances.iIsotopeError <= 6
                               && g_staticParams.tolerances.iIsotopeError != 5)
                         {
-                           iStart = BIN(dMassLow - 3.0 * C13_DIFF * PROTON_MASS);     // do +3 offset
-                           iEnd   = BIN(dMassHigh - 3.0 * C13_DIFF * PROTON_MASS);
+                           iStart = BIN(dMassLow - 3.0 * C13_DIFF);     // do +3 offset
+                           iEnd   = BIN(dMassHigh - 3.0 * C13_DIFF);
                            if (iStart < 0)
                               iStart = 0;
                            if (iEnd > iMaxBin)
                               iEnd = iMaxBin;
                            for (int x = iStart ; x <= iEnd; ++x)
-                              g_bIndexPrecursors[x] = true;
+                              pBins[x] = true;
                         }
                      }
                   }
@@ -769,73 +817,73 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader)
                   if (g_staticParams.tolerances.iIsotopeError == 5
                         || g_staticParams.tolerances.iIsotopeError == 6)
                   {         
-                     iStart = BIN(dMassLow + C13_DIFF * PROTON_MASS);      // do -1 offset
-                     iEnd   = BIN(dMassHigh + C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow + C13_DIFF);      // do -1 offset
+                     iEnd   = BIN(dMassHigh + C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
 
                      if (g_staticParams.tolerances.iIsotopeError == 6)     // do -2 and -3 offsets
                      {
-                        iStart = BIN(dMassLow + 2.0 * C13_DIFF * PROTON_MASS);
-                        iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF * PROTON_MASS);
+                        iStart = BIN(dMassLow + 2.0 * C13_DIFF);
+                        iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF);
                         if (iStart < 0)
                            iStart = 0;
                         if (iEnd > iMaxBin)
                            iEnd = iMaxBin;
                         for (int x = iStart ; x <= iEnd; ++x)
-                           g_bIndexPrecursors[x] = true;
+                           pBins[x] = true;
 
-                        iStart = BIN(dMassLow + 3.0 * C13_DIFF * PROTON_MASS);
-                        iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF * PROTON_MASS);
+                        iStart = BIN(dMassLow + 3.0 * C13_DIFF);
+                        iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF);
                         if (iStart < 0)
                            iStart = 0;
                         if (iEnd > iMaxBin)
                            iEnd = iMaxBin;
                         for (int x = iStart ; x <= iEnd; ++x)
-                           g_bIndexPrecursors[x] = true;
+                           pBins[x] = true;
                      }
                   }
                   else if (g_staticParams.tolerances.iIsotopeError == 7)            // do -8, -4, +4, +8 offsets
                   {
-                     iStart = BIN(dMassLow + 8.0 * C13_DIFF * PROTON_MASS);
-                     iEnd   = BIN(dMassHigh + 8.0 * C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow + 8.0 * C13_DIFF);
+                     iEnd   = BIN(dMassHigh + 8.0 * C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
 
-                     iStart = BIN(dMassLow + 4.0 * C13_DIFF * PROTON_MASS);
-                     iEnd   = BIN(dMassHigh + 4.0 * C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow + 4.0 * C13_DIFF);
+                     iEnd   = BIN(dMassHigh + 4.0 * C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
 
-                     iStart = BIN(dMassLow - 8.0 * C13_DIFF * PROTON_MASS);
-                     iEnd   = BIN(dMassHigh - 8.0 * C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow - 8.0 * C13_DIFF);
+                     iEnd   = BIN(dMassHigh - 8.0 * C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
 
-                     iStart = BIN(dMassLow - 4.0 * C13_DIFF * PROTON_MASS);
-                     iEnd   = BIN(dMassHigh - 4.0 * C13_DIFF * PROTON_MASS);
+                     iStart = BIN(dMassLow - 4.0 * C13_DIFF);
+                     iEnd   = BIN(dMassHigh - 4.0 * C13_DIFF);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
                         iEnd = iMaxBin;
                      for (int x = iStart ; x <= iEnd; ++x)
-                        g_bIndexPrecursors[x] = true;
+                        pBins[x] = true;
                   }
                }
             }

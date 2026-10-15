@@ -560,6 +560,7 @@ public:
   bool                    readSpectrum(int num=-1);
   bool                    readSpectrumFromOffset(f_off offset, int scNm=-1);
   void                    setMZMLB(bool b);
+  void                    setSkipPeaks(bool b) { m_bSkipPeaks = b; }  // readHeader*() stops parsing before the binary data arrays
   
 protected:
 
@@ -626,6 +627,7 @@ private:
   //  mzpSAXMzmlHandler procedural flags.
   bool m_bChromatogramIndex;
   bool m_bHeaderOnly;
+  bool m_bSkipPeaks;
   bool m_bLowPrecision;
   bool m_bMZMLB;
   bool m_bNetworkData;  // i.e. big endian
@@ -696,6 +698,7 @@ public:
   bool            readHeaderFromOffset(f_off offset);
   bool            readSpectrum(int num=-1);
   bool            readSpectrumFromOffset(f_off offset);
+  void            setSkipPeaks(bool b) { m_bSkipPeaks = b; }  // readHeader*() stops parsing before <peaks>
   
 protected:
 
@@ -727,6 +730,7 @@ private:
   //  mzpSAXMzxmlHandler procedural flags.
   bool m_bCompressedData;
   bool m_bHeaderOnly;
+  bool m_bSkipPeaks;
   bool m_bLowPrecision;
   bool m_bNetworkData;  // i.e. big endian
   bool m_bNoIndex;
@@ -1343,6 +1347,7 @@ typedef struct RAMPFILE{
   int peakCapacity;
   RAMPREAL* pPeaks;
   ramp_fileoffset_t lLastScanIndex;
+  bool bSkipPeaks;  // header reads stop before the peak data (see rampSetSkipPeaks)
   RAMPFILE(){
     bs=NULL;
     mzML=NULL;
@@ -1356,6 +1361,7 @@ typedef struct RAMPFILE{
     fileType=0;
     bIsMzData=0;
     lLastScanIndex=0;
+    bSkipPeaks=false;
   }
   ~RAMPFILE(){
     if(bs!=NULL) delete bs;
@@ -1470,6 +1476,7 @@ char*               rampConstructInputFileName(char *buf,int buflen,const char *
 char*               rampConstructInputPath(char *buf, int inbuflen, const char *dir_in, const char *basename);
 const char**        rampListSupportedFileTypes();
 RAMPFILE*           rampOpenFile(const char *filename);
+void                rampSetSkipPeaks(RAMPFILE *pFI, bool b);
 char*               rampValidFileType(const char *buf);
 void                readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct ScanHeaderStruct *scanHeader, int iIndex=-1, BasicSpectrum **bs=NULL);
 ramp_fileoffset_t*  readIndex(RAMPFILE *pFI, ramp_fileoffset_t indexOffset, int *iLastScan);

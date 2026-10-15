@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T60; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T63; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -5922,6 +5922,362 @@ def test_t36_decoy_norelocalize(comet_exe):
               and results["FASTA_DB"].get("ascorepro") == results["PI_DB"].get("ascorepro"),
               f"FASTA_DB and PI_DB agree on the decoy's label and AScore", failures)
     return failures
+
+
+# ---------------------------------------------------------------------------
+# T61 -- fragindex_skipreadprecursors = 0: the precursor pre-read (CometPreprocess::ReadPrecursors)
+# reads mzML/mzXML header-only (no peak decoding) and runs one thread-pool task per input file.
+# Its only product is which precursor-mass bins the fragment index keeps, so a broken pre-read
+# shows up as PSMs that vanish with skip = 0 while skip = 1 (no pre-read) still finds them. The
+# interesting case is a spectrum whose file gives no precursor charge: Comet then guesses 2+/3+
+# (or 1+) from the peak intensities, so a header-only read that lost the peaks would see an empty
+# spectrum, assume 1+, and prune the 2+/3+ bins. mzXML and mzML files, with and without
+# charges, are searched in ONE invocation (several files -> several pool tasks, num_threads 16).
+# ---------------------------------------------------------------------------
+
+# Every file gets its own peptides: the precursor-mass bins a charge-less file contributes must not
+# be covered by another file's spectra, or losing them would go unnoticed.
+_T61_PROTEIN = "MSKQTAGSPELKAGQEAPLSVREGTWLDNAPKDSTLIMQRLSDEFGSQPSRGGGR"
+_T61_FILES = (   # (name, charge in file?, peptides)
+    ("a_charge.mzXML",   True,  ("QTAGSPELK", "AGQEAPLSVR")),
+    ("b_nocharge.mzXML", False, ("EGTWLDNAPK",)),
+    ("c_charge.mzML",    True,  ("DSTLIMQR",)),
+    ("d_nocharge.mzML",  False, ("LSDEFGSQPSR",)),
+)
+
+
+def _t61_scans(peptides, with_charge):
+    """[(scan, ms_level, precursor_mz or None, charge or None, [(mz, intensity)])]: one MS1 scan
+    then one MS2 per peptide, scans 2.. (2+ precursor; charge only reported when with_charge)."""
+    scans = [(1, 1, None, None, [(400.0 + 50.0 * i, 1000.0) for i in range(8)])]
+    for k, pep in enumerate(peptides):
+        res = [_MONO_RESIDUE_MASS[aa] for aa in pep]
+        n = len(res)
+        peaks = sorted([sum(res[:j]) + _PROTON_MASS for j in range(1, n)]
+                       + [sum(res[n - j:]) + _H2O_MASS + _PROTON_MASS for j in range(1, n)])
+        mh = sum(res) + _H2O_MASS + _PROTON_MASS
+        scans.append((2 + k, 2, (mh + _PROTON_MASS) / 2, 2 if with_charge else None, [(m, 100.0) for m in peaks]))
+    return scans
+
+
+def _t61_write_mzxml(path, peptides, with_charge):
+    scans = _t61_scans(peptides, with_charge)
+    head = ('<?xml version="1.0" encoding="ISO-8859-1"?>\n'
+            '<mzXML xmlns="http://sashimi.sourceforge.net/schema_revision/mzXML_3.2">\n'
+            f'<msRun scanCount="{len(scans)}" startTime="PT0S" endTime="PT10S">\n')
+    body, offsets = "", {}
+    base = len(head.encode("ascii"))
+    for num, lvl, pmz, chg, peaks in scans:
+        offsets[num] = base + len(body.encode("ascii"))
+        flat = [v for pk in peaks for v in pk]
+        b64 = __import__("base64").b64encode(struct.pack(f">{len(flat)}d", *flat)).decode("ascii")
+        body += (f'<scan num="{num}" msLevel="{lvl}" peaksCount="{len(peaks)}" polarity="+" '
+                 f'retentionTime="PT{num}.0S" lowMz="100" highMz="2000" basePeakMz="100" '
+                 f'basePeakIntensity="100" totIonCurrent="1000">\n')
+        if pmz is not None:
+            chg_attr = f' precursorCharge="{chg}"' if chg else ""
+            body += f'<precursorMz precursorIntensity="1000"{chg_attr} activationMethod="CID">{pmz:.6f}</precursorMz>\n'
+        body += (f'<peaks compressionType="none" compressedLen="0" precision="64" byteOrder="network" '
+                 f'contentType="m/z-int">{b64}</peaks>\n</scan>\n')
+    idx_pos = base + len(body.encode("ascii")) + len("</msRun>\n")
+    tail = "</msRun>\n" + '<index name="scan">\n' + "".join(f'<offset id="{n}">{o}</offset>\n' for n, o in offsets.items())
+    tail += f'</index>\n<indexOffset>{idx_pos}</indexOffset>\n<sha1>{"0" * 40}</sha1>\n</mzXML>\n'
+    path.write_bytes((head + body + tail).encode("ascii"))
+
+
+def _t61_write_mzml(path, peptides, with_charge):
+    scans = _t61_scans(peptides, with_charge)
+    head = ('<?xml version="1.0" encoding="utf-8"?>\n'
+            '<indexedmzML xmlns="http://psi.hupo.org/ms/mzml">\n'
+            '<mzML xmlns="http://psi.hupo.org/ms/mzml" version="1.1.0">\n'
+            '<cvList count="1"><cv id="MS" fullName="Proteomics Standards Initiative Mass Spectrometry Ontology" '
+            'version="4.1.0" URI="https://raw.githubusercontent.com/HUPO-PSI/psi-ms-CV/master/psi-ms.obo"/></cvList>\n'
+            '<fileDescription><fileContent><cvParam cvRef="MS" accession="MS:1000579" name="MS1 spectrum" value=""/>'
+            '</fileContent></fileDescription>\n'
+            '<softwareList count="1"><software id="sw" version="1"><cvParam cvRef="MS" accession="MS:1000799" '
+            'name="custom unreleased software tool" value="t61"/></software></softwareList>\n'
+            '<instrumentConfigurationList count="1"><instrumentConfiguration id="IC1"><cvParam cvRef="MS" '
+            'accession="MS:1000031" name="instrument model" value=""/></instrumentConfiguration></instrumentConfigurationList>\n'
+            '<dataProcessingList count="1"><dataProcessing id="dp"><processingMethod order="0" softwareRef="sw">'
+            '<cvParam cvRef="MS" accession="MS:1000544" name="Conversion to mzML" value=""/></processingMethod>'
+            '</dataProcessing></dataProcessingList>\n'
+            f'<run id="t61" defaultInstrumentConfigurationRef="IC1"><spectrumList count="{len(scans)}" defaultDataProcessingRef="dp">\n')
+    body, offsets = "", []
+    base = len(head.encode("ascii"))
+
+    def array(vals, acc, name):
+        b64 = __import__("base64").b64encode(struct.pack(f"<{len(vals)}d", *vals)).decode("ascii")
+        return ('<binaryDataArray encodedLength="%d"><cvParam cvRef="MS" accession="MS:1000523" name="64-bit float" value=""/>'
+                '<cvParam cvRef="MS" accession="MS:1000576" name="no compression" value=""/>'
+                '<cvParam cvRef="MS" accession="%s" name="%s" value=""/><binary>%s</binary></binaryDataArray>\n'
+                % (len(b64), acc, name, b64))
+
+    for i, (num, lvl, pmz, chg, peaks) in enumerate(scans):
+        sid = f"controllerType=0 controllerNumber=1 scan={num}"
+        offsets.append((sid, base + len(body.encode("ascii"))))
+        body += (f'<spectrum index="{i}" id="{sid}" defaultArrayLength="{len(peaks)}">\n'
+                 f'<cvParam cvRef="MS" accession="MS:1000511" name="ms level" value="{lvl}"/>\n'
+                 '<cvParam cvRef="MS" accession="MS:1000127" name="centroid spectrum" value=""/>\n'
+                 '<cvParam cvRef="MS" accession="MS:1000130" name="positive scan" value=""/>\n'
+                 f'<scanList count="1"><cvParam cvRef="MS" accession="MS:1000795" name="no combination" value=""/>'
+                 f'<scan><cvParam cvRef="MS" accession="MS:1000016" name="scan start time" value="{num / 60.0:.5f}" '
+                 'unitCvRef="UO" unitAccession="UO:0000031" unitName="minute"/></scan></scanList>\n')
+        if pmz is not None:
+            body += ('<precursorList count="1"><precursor><isolationWindow><cvParam cvRef="MS" accession="MS:1000827" '
+                     f'name="isolation window target m/z" value="{pmz:.6f}"/></isolationWindow>'
+                     f'<selectedIonList count="1"><selectedIon><cvParam cvRef="MS" accession="MS:1000744" '
+                     f'name="selected ion m/z" value="{pmz:.6f}"/>')
+            if chg:
+                body += f'<cvParam cvRef="MS" accession="MS:1000041" name="charge state" value="{chg}"/>'
+            body += ('</selectedIon></selectedIonList><activation><cvParam cvRef="MS" accession="MS:1000133" '
+                     'name="collision-induced dissociation" value=""/></activation></precursor></precursorList>\n')
+        body += (f'<binaryDataArrayList count="2">\n' + array([m for m, _ in peaks], "MS:1000514", "m/z array")
+                 + array([v for _, v in peaks], "MS:1000515", "intensity array") + '</binaryDataArrayList>\n</spectrum>\n')
+    list_pos = base + len(body.encode("ascii")) + len("</spectrumList></run></mzML>\n")
+    tail = "</spectrumList></run></mzML>\n" + '<indexList count="1"><index name="spectrum">\n'
+    tail += "".join(f'<offset idRef="{sid}">{o}</offset>\n' for sid, o in offsets)
+    tail += f'</index></indexList>\n<indexListOffset>{list_pos}</indexListOffset>\n<fileChecksum>0</fileChecksum>\n</indexedmzML>\n'
+    path.write_bytes((head + body + tail).encode("ascii"))
+
+
+@register("t61_readprecursors_header_only")
+def test_t61_readprecursors_header_only(comet_exe):
+    """T61: fragindex_skipreadprecursors = 0 (precursor pre-read: header-only mzML/mzXML reads, one
+    thread-pool task per file) finds every PSM that skip = 1 finds, including for spectra whose
+    file reports no precursor charge, searching several mzXML/mzML files in one run."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t61.fasta"
+        fasta.write_text(f">t61_a\n{_T61_PROTEIN}\n")
+        idx = tmp / "t61.fasta.idx"
+        inputs = {}
+        for name, charge, peps in _T61_FILES:
+            inputs[name] = tmp / name
+            (_t61_write_mzxml if name.endswith(".mzXML") else _t61_write_mzml)(inputs[name], peps, charge)
+
+        def params(db):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0,
+                                           num_output_lines=5, num_threads=16)
+            pf = tmp / "t61.params"
+            pf.write_text(pr)
+            return pr, pf
+
+        pr, pf = params(fasta)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"])
+        if not check(rc == 0 and idx.exists(), f"fragment index build ran (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        results = {}
+        for skip in (1, 0):
+            pr, _ = params(idx)
+            pr = _set_param_line(pr, "index_search_type", 1)
+            pr = _set_param_line(pr, "fragindex_skipreadprecursors", skip)
+            pf.write_text(pr)
+            for f in inputs.values():
+                f.with_suffix(".txt").unlink(missing_ok=True)
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}"] + [fmt(f) for f in inputs.values()])
+            check(rc == 0, f"skipreadprecursors={skip}: four-file search ran (rc={rc})", failures)
+            check(("read precursors" in log) == (skip == 0),
+                  f"skipreadprecursors={skip}: 'read precursors' step {'ran' if skip == 0 else 'skipped'}", failures)
+            res = {}
+            for name, f in inputs.items():
+                t = f.with_suffix(".txt")
+                rows = {int(r["scan"]): r.get("plain_peptide") for r in legacy_cases.parse_txt(t) if r.get("num") == "1"} if t.exists() else {}
+                res[name] = rows
+            results[skip] = res
+
+        for name, _, peps in _T61_FILES:
+            expected = {2 + k: pep for k, pep in enumerate(peps)}
+            check(results[1][name] == expected,
+                  f"{name}: skipreadprecursors=1 (no pre-read) identifies every peptide, got {results[1][name]}", failures)
+            check(results[0][name] == results[1][name],
+                  f"{name}: skipreadprecursors=0 gives the same rank-1 PSMs as skipreadprecursors=1, got {results[0][name]}", failures)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T62 -- the precursor-mass mask built by the fragindex_skipreadprecursors = 0 pre-read must cover
+# exactly the windows the search accepts. The search takes a peptide when mass + x * C13_DIFF
+# (C13_DIFF = 1.00335 Da) lies in the precursor window; the mask used to shift each isotope window
+# by x * C13_DIFF * PROTON_MASS (1.01064 Da per step), so a peptide within ~0.0073 * x Da of a window
+# edge fell into an unmarked bin and vanished from the index (skip = 1 still found it). With a 0.01 Da
+# fragment bin (which is also the precursor bin width) the shift of the +2 and -3 windows is larger
+# than a bin, so a peptide just inside the upper edge of the +2 window, or the lower edge of the
+# -3 window, is lost on the old code.
+# ---------------------------------------------------------------------------
+
+_T62_C13_DIFF = 1.00335483
+_T62_PEPTIDE = "QTAGSPELK"
+
+
+def _t62_write_ms2(path, exp_mh):
+    """One 2+ scan of _T62_PEPTIDE's b/y ions whose precursor MH+ is exp_mh (not the peptide's own)."""
+    res = [_MONO_RESIDUE_MASS[aa] for aa in _T62_PEPTIDE]
+    n = len(res)
+    peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
+                   + [sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS for k in range(1, n)])
+    lines = [f"S\t1\t1\t{(exp_mh + _PROTON_MASS) / 2:.6f}", f"Z\t2\t{exp_mh:.6f}"]
+    lines += [f"{m:.6f}\t100.0" for m in peaks]
+    path.write_text("\n".join(lines) + "\n")
+
+
+@register("t62_precursor_mask_isotope_edges")
+def test_t62_precursor_mask_isotope_edges(comet_exe):
+    """T62: with fragindex_skipreadprecursors = 0 a peptide whose isotope-shifted mass lies just inside
+    the edge of the 20 ppm precursor window (+2 isotope, upper edge; -3 isotope, lower edge) must
+    still be in the index, i.e. be found exactly as with skipreadprecursors = 1."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    res = [_MONO_RESIDUE_MASS[aa] for aa in _T62_PEPTIDE]
+    calc_mh = sum(res) + _H2O_MASS + _PROTON_MASS
+    ppm, t = 20e-6, 0.99      # the peptide sits at 99% of the way to the window edge
+
+    def exp_mh_for(offset):
+        """Experimental MH+ such that calc_mh + offset*C13 is at fraction t of the way to the window edge."""
+        exp = calc_mh + offset * _T62_C13_DIFF
+        for _ in range(3):                                   # the window half-width depends on exp (2+: MH+ plus a proton)
+            tol = (exp + _PROTON_MASS) * ppm
+            exp = calc_mh + offset * _T62_C13_DIFF - (t * tol if offset > 0 else -t * tol)
+        return exp
+
+    cases = (   # (label, isotope_error, isotope offset applied to the peptide)
+        ("+2 isotope, upper window edge", 2, 2),
+        ("-3 isotope, lower window edge", 6, -3),
+    )
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t62.fasta"
+        fasta.write_text(f">t62_a\nMSK{_T62_PEPTIDE}GGGR\n")
+        idx = tmp / "t62.fasta.idx"
+        pf = tmp / "t62.params"
+
+        def params(db, **kv):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0, num_output_lines=5)
+            for k, v in {"peptide_mass_units": 2, "peptide_mass_tolerance_upper": 20.0, "peptide_mass_tolerance_lower": -20.0,
+                         "fragment_bin_tol": 0.01, "fragment_bin_offset": 0.0, **kv}.items():
+                pr = _set_param_line(pr, k, v)
+            pf.write_text(pr)
+
+        params(fasta)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"])
+        if not check(rc == 0 and idx.exists(), f"fragment index build ran (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        for label, iso, offset in cases:
+            ms2 = tmp / f"t62_{iso}.ms2"
+            _t62_write_ms2(ms2, exp_mh_for(offset))
+            txt = ms2.with_suffix(".txt")
+            found = {}
+            for skip in (1, 0):
+                params(idx, index_search_type=1, isotope_error=iso, fragindex_skipreadprecursors=skip)
+                txt.unlink(missing_ok=True)
+                rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+                rows = [r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"] if txt.exists() else []
+                found[skip] = rows[0].get("plain_peptide") if rows else None
+                check(rc == 0, f"{label}: skipreadprecursors={skip} search ran (rc={rc})", failures)
+            check(found[1] == _T62_PEPTIDE,
+                  f"{label}: without the pre-read (skip=1) the isotope-shifted peptide is found, got {found[1]!r}", failures)
+            check(found[0] == _T62_PEPTIDE,
+                  f"{label}: with the pre-read (skip=0) it is found too -- its mass bin is in the precursor mask, got {found[0]!r}", failures)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T63 -- the fragment index orders equal-mass entries deterministically. The index array is sorted by
+# mass; entries of identical mass (isobaric peptides, target/decoy twins, I/L variants) used to land in
+# an arbitrary order that depended on which other entries were in the sorted set, e.g. on what the
+# fragindex_skipreadprecursors = 0 precursor mask pruned. The search scores only the first
+# FRAGINDEX_MAX_NUMSCORED (100) candidates ranked by matched ions then index position, and the first of
+# several equal scores keeps rank 1, so the arbitrary order changed which tied candidates were scored (and
+# the e-value histogram built from them) between skip = 0 and skip = 1. 160 permutations of one residue
+# set (all the same mass, all matching the same three fragment ions, so more than 100 tie at the cap)
+# plus filler peptides that only the skip = 1 index contains (the mask drops them) must give the
+# same top hits and e-values either way.
+# ---------------------------------------------------------------------------
+
+_T63_RESIDUES = "STVNDE"
+
+
+def _t63_fixture():
+    """(fasta text, true peptide). 160 'AG' + permutation + 'K' peptides of one composition, then 400
+    filler tryptic peptides of other masses."""
+    import itertools
+    rng = random.Random(63)
+    perms = ["".join(p) for p in itertools.permutations(_T63_RESIDUES)]
+    rng.shuffle(perms)
+    peps = ["AG" + p + "K" for p in perms[:160]]
+    filler_res = "ADEFGHMNPQSTVWY"
+    prots = [(f"t63_tie{i}", pep) for i, pep in enumerate(peps)]
+    for i in range(400):
+        n = rng.randint(8, 14)
+        prots.append((f"t63_fill{i}", "".join(rng.choice(filler_res) for _ in range(n)) + "K"))
+    return "".join(f">{n}\n{s}\n" for n, s in prots), peps[0]
+
+
+def _t63_write_ms2(path, true_pep):
+    """One 2+ scan with the true peptide's own b/y ions; the b1, b2 and y1 ions are shared by every
+    'AG...K' permutation, so each of them matches at least those three fragments."""
+    res = [_MONO_RESIDUE_MASS[aa] for aa in true_pep]
+    n = len(res)
+    peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
+                   + [sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS for k in range(1, n)])
+    mh = sum(res) + _H2O_MASS + _PROTON_MASS
+    path.write_text("\n".join([f"S\t1\t1\t{(mh + _PROTON_MASS) / 2:.6f}", f"Z\t2\t{mh:.6f}"]
+                              + [f"{m:.6f}\t100.0" for m in peaks]) + "\n")
+
+
+@register("t63_fi_equal_mass_order_invariant")
+def test_t63_fi_equal_mass_order_invariant(comet_exe):
+    """T63: a fragment-index search returns identical hits and e-values with skipreadprecursors = 0 and 1
+    even when more than FRAGINDEX_MAX_NUMSCORED equal-mass candidates tie on matched ions at the cap."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta_text, true_pep = _t63_fixture()
+        fasta = tmp / "t63.fasta"
+        fasta.write_text(fasta_text)
+        ms2 = tmp / "t63.ms2"
+        _t63_write_ms2(ms2, true_pep)
+        txt = ms2.with_suffix(".txt")
+        idx = tmp / "t63.fasta.idx"
+        pf = tmp / "t63.params"
+
+        def params(db, **kv):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0, num_output_lines=100)   # all 100 scored candidates
+            for k, v in {"fragment_bin_tol": 0.02, "fragment_bin_offset": 0.0, "peptide_mass_units": 2,
+                         "peptide_mass_tolerance_upper": 20.0, "peptide_mass_tolerance_lower": -20.0, **kv}.items():
+                pr = _set_param_line(pr, k, v)
+            pf.write_text(pr)
+
+        params(fasta)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"])
+        if not check(rc == 0 and idx.exists(), f"fragment index build ran (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        hits = {}
+        for skip in (1, 0):
+            params(idx, index_search_type=1, fragindex_skipreadprecursors=skip)
+            txt.unlink(missing_ok=True)
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+            rows = [r for r in legacy_cases.parse_txt(txt)] if txt.exists() else []
+            hits[skip] = [(r.get("num"), r.get("plain_peptide"), r.get("protein"), r.get("xcorr"), r.get("e-value")) for r in rows]
+            check(rc == 0 and len(rows) == 100, f"skipreadprecursors={skip}: search ran and reported the 100 scored candidates (rc={rc}, {len(rows)} rows)", failures)
+        check(bool(hits[1]) and hits[1][0][1] == true_pep,
+              f"the true peptide {true_pep} is rank 1, got {hits[1][:1]}", failures)
+        n_diff = sum(1 for a, b in zip(hits[0], hits[1]) if a != b)
+        check(hits[0] == hits[1],
+              "skipreadprecursors=0 and =1 report identical hits (peptide, protein, xcorr, e-value) for all 100 "
+              f"scored candidates; {n_diff} of 100 rows differ", failures)
+    return failures
+
 
 
 if __name__ == "__main__":

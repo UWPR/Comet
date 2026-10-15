@@ -71,7 +71,7 @@ public:
    ~CometPreprocess();
 
    static void Reset();
-   static bool ReadPrecursors(MSReader &mstReader);
+   static bool ReadPrecursors(MSReader &mstReader, const char *szFileName, bool *pBins);
    static bool LoadAndPreprocessSpectra(MSReader &mstReader,
                                         int iFirstScan,
                                         int iLastScan,

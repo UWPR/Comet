@@ -55,6 +55,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   m_bInIndexList=false;
   m_bInProduct=false;
   m_bHeaderOnly=false;
+  m_bSkipPeaks=false;
   m_bSpectrumIndex=false;
   m_bNoIndex=true;
   m_bIndexSorted = true;
@@ -96,6 +97,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
   m_bInIndexList=false;
   m_bInProduct=false;
   m_bHeaderOnly=false;
+  m_bSkipPeaks=false;
   m_bSpectrumIndex=false;
   m_bNoIndex=true;
   m_bIndexSorted = true;
@@ -132,9 +134,9 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
 
   } else if (isElement("binaryDataArrayList",el)) {
 #ifdef MZP_HDF
-    if(m_bHeaderOnly) stopParser();
+    if(m_bHeaderOnly || m_bSkipPeaks) stopParser();
 #else
-    if (m_bHeaderOnly) stopParser();
+    if (m_bHeaderOnly || m_bSkipPeaks) stopParser();
 #endif
     m_bionMobility = false;
 

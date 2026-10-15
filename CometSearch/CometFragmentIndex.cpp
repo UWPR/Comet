@@ -374,15 +374,26 @@ bool CometFragmentIndex::GenerateFragmentIndex(ThreadPool *tp)
 
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
-   // now sort the staging array by mass; this was filled in the above count pass. Same
-   // element type, comparator, and input order as the pre-SoA vector sort (raw pointers
-   // resolve to the same std::sort instantiation), so the sorted order -- equal-mass ties
-   // included, which determine the posting lists' index values -- is byte-identical.
+   // now sort the staging array by mass; this was filled in the above count pass.  Equal-mass
+   // entries (isobaric peptides, target/decoy twins, I/L variants) are ordered by raw peptide,
+   // then mod number, then decoy flag, so the order is a total order that does not depend on
+   // which other entries are in the array.  With the mass alone as the key, std::sort left
+   // equal-mass ties in an order that changed with the set being sorted (e.g. what the
+   // fragindex_skipreadprecursors = 0 precursor mask pruned), and these index positions are the
+   // tie-break used to pick the FRAGINDEX_MAX_NUMSCORED candidates SearchFragmentIndex() scores,
+   // so the scored set, the e-value histogram and which of several equal scores is rank 1
+   // varied with it.  The posting lists' index values follow this order.
    tStartTime = chrono::steady_clock::now();
    cout << "   - sort peptides by mass ... "; fflush(stdout);
    sort(pStaging, pStaging + tNumFragPeptides, [](const FragmentPeptidesStruct& a, const FragmentPeptidesStruct& b)
       {
-         return a.dPepMass < b.dPepMass;
+         if (a.dPepMass != b.dPepMass)
+            return a.dPepMass < b.dPepMass;
+         if (a.iWhichPeptide != b.iWhichPeptide)
+            return a.iWhichPeptide < b.iWhichPeptide;
+         if (a.modNumIdx != b.modNumIdx)
+            return a.modNumIdx < b.modNumIdx;
+         return a.cIsDecoy < b.cIsDecoy;
       });
    cout << CometMassSpecUtils::ElapsedTime(tStartTime) << endl;
 
