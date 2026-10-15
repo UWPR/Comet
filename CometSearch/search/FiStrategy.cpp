@@ -63,6 +63,9 @@ bool FiStrategy::initialize(SearchSession& session, ThreadPool* tp)
       mutex mutexMergeBins;
       atomic<bool> bReadOK(true);
 
+      // The tasks capture iNumBins, mutexMergeBins and bReadOK by reference.  That is safe because every
+      // path from here to tp->wait_on_threads() below reaches it (doJob() throws only when the pool was
+      // never filled, which DoSearch() always does before a strategy runs), so these locals outlive all tasks.
       for (size_t i = 0; i < g_pvInputFiles.size(); ++i)
       {
          tp->doJob([&, i]()

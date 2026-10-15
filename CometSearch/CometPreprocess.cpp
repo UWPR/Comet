@@ -512,6 +512,11 @@ static int PrecursorFileCharge(Spectrum &spec, int i)
 
 // A header-only spectrum has no peaks.  They are only needed when a precursor has no charge
 // from the file and the charge must be guessed from the peak intensities (1+ vs 2+/3+).
+// precursor_charge with override_charge 1 ignores the file's charge and tries the whole charge
+// range, and override_charge 2 keeps the file's charge only when it is inside that range (and
+// otherwise searches nothing); neither looks at the peaks, so no spectrum needs them.  With
+// override_charge 0 or 3 (or no precursor_charge range) a charge-less precursor is guessed from
+// the peaks, which is why those spectra are re-read with them.
 static bool PrecursorNeedsPeaks(Spectrum &spec)
 {
    if (g_staticParams.options.iStartCharge > 0

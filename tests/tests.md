@@ -5,14 +5,14 @@ purpose, plus one supporting driver:
 
 | Subdirectory | Purpose | Runner(s) |
 |---|---|---|
-| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (93 Python test IDs), and 77 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
+| `unit/` | Index-building correctness, byte-level format checks, end-to-end search regressions for specific fixed bugs (93 Python test IDs), and 82 C++ unit tests of `CometSearch`/`CometPreprocess`/`ModificationsPermuter` internals | `run_tests.py`, `test_il_sequence.py`, `CometUnitTests.exe` (built from `CometUnitTests.vcxproj`) |
 | `regression/` | Compare the current build against a tagged release binary on real MS data (timing, PSM counts, PSM agreement); also verifies Windows `.raw` file support | `setup_baselines.py`, `run_regression.py`, `test_raw_vs_mzxml.py` |
 | `perf/` | Wall-clock time and peak memory benchmarks across search modes | `run_perf.py` |
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
 Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T64): `run_tests.py` registers 72 named
 tests plus 21 generated `t21_*` legacy cases (93 IDs, 10 of them integration-only);
-`CometUnitTests.exe` has 77 `TEST_F` cases.
+`CometUnitTests.exe` has 82 `TEST_F`/`TEST` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
 what each individual test actually checks.
@@ -195,6 +195,7 @@ reach through a full search:
 | `TestCometSearchAndPreprocess.cpp` | `CometPreprocessTest` | 26 | `CometPreprocess` driver helpers: `CheckExit` under every scan-selection mode (entire file, scan range, specific scan, batch size, error status), `GetMassCushion` for amu/mmu/ppm and precursor-m/z tolerances, `IsValidInputType` per file type (`.raw`/`.mzXML` true; `.ms2`/`.mgf`/`.mzML` false), `Reset`/`DoneProcessingAllSpectra`, and allocate/deallocate idempotence. |
 | `TestCometSearchAndPreprocess.cpp` | `BinarySearchMassFixture` | 5 | `CheckMassMatchStatic` at and beyond the lower/upper tolerance bounds, driving the mass-window binary search used by the index paths. |
 | `TestModificationsPermuter.cpp` | `PermuterTest` | 18 | `ModificationsPermuter` (P1-P18): sentinel terminal-slot positions in the mod sequence, residue-only sequences without sentinels, mod-char translation, terminal + residue entries, terminal mods counting toward the per-peptide and per-mod caps, protein-N-term-only and both-termini cases, zero-combination/overflow guards, determinism, upstream overlapping-K mods, and the `PROT_*_HERE` context-flag rule that a both-termini variant needs one occurrence carrying both bits; P14-P17: variable_mod fifth/sixth-field position rules (peptide-N, `-2`, peptide-C and protein-N rules; position classes in the dedup key; `getPositionClass()` terminal-site rules, incl. an n-term site under a which_term 3 rule admitted when L-1 <= d; P18: positions a restricted mod cannot take do not split the dedup key). |
+| `TestMSReaderHeaderOnly.cpp` | `MSReaderHeaderOnlyTest` | 5 | `MSReader`'s header-only mode (`setHeaderOnly()` / `lastReadHeaderOnly()`), the reader contract the `fragindex_skipreadprecursors = 0` pre-read relies on, on an mzXML (and an ms2) the tests write to the temp directory: a header-only read returns scan, precursor m/z and charge without peaks; header-only -> full read of the same scan -> header-only on one reader has no stale state either way; a read that returns peaks (full read, another format, ms2) never leaves the flag set; 200 header-only reads in a row stay consistent. Verified to fail (`FlagDoesNotLeakIntoOtherFormats`) with the flag resets in `readFile`/`readMSTFile` removed. |
 
 ### `test_il_sequence.py` (standalone, not part of `run_tests.py`)
 
