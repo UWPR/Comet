@@ -517,12 +517,23 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // docs/RealTimeSearch.md's "RTS variable-mod source"). Neither is persisted in the .idx
    // file any more.
    //
-   // PROCESS-LIFETIME, NOT PER-SESSION: g_bPeptideIndexRead/g_bPlainPeptideIndexRead below
-   // guard ReadPeptideIndex() against re-entry for as long as the process lives -- neither
-   // FinalizeSingleSpectrumSearch() nor anything else ever clears them, so a hypothetical
-   // second InitializeSingleSpectrumSearch() call in the same process (after Finalize) would
-   // skip this regeneration and keep serving whatever the first call built, even if
-   // g_staticParams' variable mods had since changed. This is not new: g_staticParams itself
+   // PROCESS-LIFETIME, NOT PER-SESSION: nothing resets this state consistently, so a second
+   // InitializeSingleSpectrumSearch() in the same process (after Finalize) is not supported.
+   // ReadPeptideIndex() returns early on g_bPeptideIndexRead (top of this function); the FI_DB
+   // callers gate on g_bPlainPeptideIndexRead instead. Both are set at the end of this function
+   // and are cleared in exactly two places, neither of them FinalizeSingleSpectrumSearch():
+   //   - FiStrategy::finalize() clears g_bPlainPeptideIndexRead only (batch FI_DB), so a later
+   //     DoSearch() rebuilds the fragment index it just freed. g_bPeptideIndexRead stays set, so
+   //     ReadPeptideIndex() returns early and g_vRawPeptides, the protein lists and the mod
+   //     tables below stay resident and are reused as they are.
+   //   - InitializeSingleSpectrumSearch() clears g_bPeptideIndexRead when it finds an existing
+   //     PI_DB .idx, just before its own !g_bPeptideIndexRead branch, so every RTS init of a
+   //     peptide index runs this function in full.
+   // So a hypothetical second InitializeSingleSpectrumSearch() after Finalize differs by mode:
+   // FI_DB still finds g_bPlainPeptideIndexRead set and redoes nothing, so it keeps serving the
+   // first call's tables even if g_staticParams' variable mods had since changed; PI_DB with an
+   // existing .idx re-runs ReadPeptideIndex() and regenerates everything below, which runs into
+   // the leak and stale-cache problems described next. This is not new: g_staticParams itself
    // is documented process-lifetime-immutable-after-init (CLAUDE.md's Key Globals table),
    // and every current caller (RealtimeSearch.exe's Main(), tests/rts_repro/rts_repro.cpp,
    // batch comet.exe) calls Initialize.../Finalize... exactly once each, right before the
@@ -531,14 +542,15 @@ bool CometPeptideIndex::ReadPeptideIndex(bool bIsRTS)
    // GenerateVariantArray()/EnumerateIndexPeptideMods() below allocate
    // MOD_SEQ_MOD_NUM_START/CNT/POOL_START and PEPTIDE_MOD_SEQ_IDXS with raw new[] that
    // nothing currently frees (the MOD_NUMBERS_POOL/MOD_SEQS_POOL flat pools would at least
-   // free cleanly, but are likewise never torn down), and GetVModSlotForAllModsIdx() caches
-   // its result in a function-local static for the same reason -- all of these would need an
-   // explicit, ordered teardown (not just clearing these two bools) to support real
-   // re-parameterization safely. Do not "fix" this by resetting only the two bools below:
-   // that would make a reused process regenerate the mod pools/g_dbIndexVariants against
-   // the new params while GetVModSlotForAllModsIdx() kept translating them with the OLD
-   // compacted mod-slot mapping -- silently wrong scoring, worse than today's clean (if
-   // surprising) stale-reuse.
+   // free cleanly, but are likewise never torn down; a second PI_DB pass leaks the raw
+   // arrays), and GetVModSlotForAllModsIdx() caches its result in a function-local static --
+   // all of these would need an explicit, ordered teardown (not just clearing these two
+   // bools) to support real re-parameterization safely. Do not "fix" this by resetting only
+   // the two bools below: that would make a reused FI_DB process regenerate the mod
+   // pools/g_dbIndexVariants against the new params while GetVModSlotForAllModsIdx() kept
+   // translating them with the OLD compacted mod-slot mapping -- silently wrong scoring,
+   // worse than FI_DB's clean (if surprising) stale-reuse. A PI_DB re-init already has that
+   // exposure if the .idx header's variable mods differ from the first pass.
    //
    // FI_DB doesn't need an equivalent call for its own posting list -- GenerateFragmentIndex()
    // (via AddFragmentsThreadProc()) already consumes MOD_NUMBERS_POOL/MOD_SEQS_POOL/etc. from wherever

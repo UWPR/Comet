@@ -5,6 +5,8 @@ Comet supports two search modes:
 - **Batch search**: `DoSearch()` -- reads a file, processes spectra in configurable batches, writes result files. `DoSearch()` is orchestrated by a `Pipeline` that owns one concrete `ISearchStrategy` (`FiStrategy`, `FastaStrategy`, or `PiStrategy`) and a set of `IResultWriter` implementations. All mutable batch-run state (query lists, per-run flags) lives in a `SearchSession` struct passed by reference through the pipeline.
 - **Real-time search (RTS)**: called per-spectrum by an external C# application; returns results synchronously within the same call. Designed for concurrent calls from multiple threads.
 
+Last reviewed against the code at `master` 69b9b936 (2026-10-15, after #135). Source locations are given as function or symbol names, not line numbers.
+
 This document covers the RTS path. The design history and task-by-task implementation record are in `docs/20260227_RTS_THREAD_PLAN.md` (MS2) and `docs/20260228_MS1_THREAD_PLAN.md` (MS1).
 
 ---
@@ -22,9 +24,9 @@ bool DoSingleSpectrumSearchMultiResults(
     const int topN,
     const int iPrecursorCharge,
     const double dMZ,
-    double* pdMass, double* pdInten, int iNumPeaks,
-    vector<string>& strReturnPeptides,
-    vector<string>& strReturnProteins,
+    double* dMass, double* dInten, const int iNumPeaks,
+    vector<string>& strReturnPeptide,
+    vector<string>& strReturnProtein,
     vector<vector<Fragment>>& matchedFragments,
     vector<CometScores>& scores);
 ```
@@ -59,7 +61,7 @@ bool DoMS1SearchMultiResults(
     const double dMaxQueryRT,
     const int topN,
     const double dRT,
-    double* pdMass, double* pdInten, int iNumPeaks,
+    double* dMass, double* dInten, const int iNumPeaks,
     vector<CometScoresMS1>& scores);
 ```
 
@@ -92,9 +94,10 @@ Uses a double-checked locking pattern with `std::atomic<bool> singleSearchInitia
 `docs/20260730_PI_reduction.md` Phase 0). An existing `.idx` is self-describing again
 (`docs/20260811_restore_idx_header_mods.md`): its own `IndexSearchType:` header line says
 which mode to search it as, read via `CometPeptideIndex::ParsePeptideIndexHeader()`.
-`g_staticParams.options.iIndexSearchType` (`0`=PI_DB, `1`=FI_DB, default when unset) is
+`g_staticParams.options.iIndexSearchType` (`0`=PI_DB, `1`=FI_DB, `-1`=unset, treated as FI_DB) is
 consulted only when the requested `.idx` doesn't exist yet and must be auto-built from a
-FASTA first -- for RTS this is set via a `CometSearchManagerWrapper::SetParam(
+FASTA first (an explicit value that disagrees with an existing `.idx`'s own type is ignored, with
+a warning naming the file's type -- T60) -- for RTS this is set via a `CometSearchManagerWrapper::SetParam(
 "index_search_type", ...)` call in `RealtimeSearch/SearchMS1MS2.cs` (an `[index_search_type]`
 CLI argument), since RTS has no `comet.params` file to read a `index_search_type` key from
 the way batch does.
@@ -102,7 +105,12 @@ the way batch does.
 ```
 fast path: singleSearchInitializationComplete.load(acquire) -> return true if set
 slow path: mutex-guarded check + initialization
-  -> InitializeStaticParams()         populates g_staticParams
+  -> InitializeStaticParams()         populates g_staticParams. For a database ending in .idx it
+                                      also sets iDbType: from index_search_type when the file is
+                                      missing (auto-build), otherwise from the existing file's own
+                                      IndexSearchType: header via ParsePeptideIndexHeader(), which
+                                      overwrites g_staticParams' static AND variable mods (plus
+                                      decoy/enzyme/mass settings) from that header
   -> ValidateSequenceDatabaseFile()   validates FASTA / index. If the requested .idx is
                                       absent but the underlying FASTA exists, sets EITHER
                                       bCreatePeptideIndex=true + iDbType=PI_DB OR
@@ -110,9 +118,9 @@ slow path: mutex-guarded check + initialization
                                       iIndexSearchType -- the only place either gets set
                                       for a missing .idx (the block below only runs when
                                       the file already exists).
-  -> if requested database ends in ".idx" and the file exists: read its first line as a
-       sanity check only (must start "Comet index database"; does NOT select a mode), then
-       set iDbType from iIndexSearchType (same as ValidateSequenceDatabaseFile's branch above)
+  -> if the requested database ends in ".idx" and the file exists: iDbType is already known
+       (InitializeStaticParams() above), so this block only clears the build-request flags
+       (bCreatePeptideIndex / bCreateFragmentIndex, and g_bPeptideIndexRead for PI_DB)
   -> CometPreprocess::AllocateMemory()  preprocessing thread buffers
   -> CometSearch::AllocateMemory()      search thread pool (s_pool, a SearchMemoryPool
                                         instance; aliased into _ppbDuplFragmentArr)
@@ -126,17 +134,22 @@ slow path: mutex-guarded check + initialization
                                        before returning
          CometSearch::AllocateMemory() re-allocate search pool freed by DoSearch() above
        if !g_bPlainPeptideIndexRead:
-         CometPeptideIndex::ReadPeptideIndex(true)   loads g_vRawPeptides from the .idx file,
-                                                      then (Phase 0.5) regenerates
+         CometPeptideIndex::ReadPeptideIndex(true)   parses the .idx header (its static AND
+                                                      variable mods -- VariableMod:/
+                                                      ProteinModList:/RequireVariableMod: --
+                                                      overwrite g_staticParams), stream-loads
+                                                      g_vRawPeptides / g_pvProteinsList /
+                                                      g_pvProteinNameCache, then regenerates
                                                       MOD_SEQS/MOD_NUMBERS/etc. in memory from
-                                                      g_vRawPeptides + whatever variable mods are
-                                                      active in g_staticParams right now --
-                                                      neither is read from disk any more. RTS
-                                                      never loads comet.params (see "RTS
-                                                      variable-mod source" below): those active
-                                                      mods came from the explicit SetParam()
-                                                      calls SearchMS1MS2.cs made before this
-                                                      point, not from a params file
+                                                      g_vRawPeptides + those header mods --
+                                                      the permutation tables are never read
+                                                      from disk. RTS never loads comet.params
+                                                      (see "RTS variable-mod source" below):
+                                                      for an existing .idx the mods come from
+                                                      its header; for an auto-build, the
+                                                      SetParam() calls SearchMS1MS2.cs made
+                                                      before this point are what the build
+                                                      just wrote into that header
          sqSearch.CreateFragmentIndex(tp, true)       builds g_iFragmentIndex /
                                                       g_iFragmentIndexOffset in memory
                                                       (CSR posting lists) from those
@@ -154,26 +167,26 @@ slow path: mutex-guarded check + initialization
                                                       CometSearch::DeallocateMemory()
                                                       internally before returning
          CometSearch::AllocateMemory()               re-allocate search pool freed above
-       CometPeptideIndex::ReadPeptideIndex(true)      loads g_vRawPeptides from the .idx file,
-                                                       then (Phase 0.5) regenerates
+       CometPeptideIndex::ReadPeptideIndex(true)      parses the .idx header (static AND
+                                                       variable mods overwrite g_staticParams),
+                                                       stream-loads g_vRawPeptides and the
+                                                       protein lists/names, then regenerates
                                                        MOD_SEQS/MOD_NUMBERS/etc. and
                                                        g_dbIndexVariants in memory from
-                                                       g_vRawPeptides + whatever variable mods
-                                                       are active in g_staticParams right now
-                                                       (RTS: from SetParam(), never comet.params
-                                                       -- see "RTS variable-mod source" below)
-       CometSearch::InitializeMassesFromPeptideIndex() re-parses the .idx header
-                                                        (MassType/StaticMod/DecoySearch/
-                                                        Enzyme/Enzyme2 -- no variable-mod
-                                                        fields, Phase 0.5 removed those from
-                                                        the header entirely) into
+                                                       g_vRawPeptides + those header mods
+                                                       (RTS: see "RTS variable-mod source"
+                                                       below)
+       CometSearch::InitializeMassesFromPeptideIndex() re-runs ParsePeptideIndexHeader() over the
+                                                        whole .idx header (MassType, StaticMod,
+                                                        DecoySearch, Enzyme/Enzyme2 and the
+                                                        VariableMod:/ProteinModList:/
+                                                        RequireVariableMod: lines) into
                                                         g_staticParams so fragment masses match
                                                         the static mods baked into the index
                                                         (otherwise InitializeStaticParams()'s
                                                         values may have double-applied them);
-                                                        does not touch variable mods, which
-                                                        ReadPeptideIndex() already regenerated
-                                                        from the active params above
+                                                        the variable mods it sets are the same
+                                                        ones ReadPeptideIndex() already used
        if iPrintAScoreProScore: SetAScoreOptions() + CreateAScoreDllInterface()
                                 (mirrors the FI_DB branch's AScore setup, since
                                 EnsurePeptideIndexLoaded()'s own AScore-creation code is
@@ -219,11 +232,17 @@ including `variable_mod01`/`variable_mod02`/`max_variable_mods_in_peptide`
 (`RealtimeSearch/SearchMS1MS2.cs`, the unconditional block right before
 `InitializeSingleSpectrumSearch()`). Those calls populate the same
 `g_staticParams.variableModParameters` that a batch search populates by parsing
-`comet.params`, so by the time `ReadPeptideIndex()` regenerates `MOD_SEQS`/`MOD_NUMBERS`/etc.
-(Phase 0.5, above) the two paths converge on the same in-memory state -- "comet.params" in
-the flow diagrams above always means "whatever populated `g_staticParams` for this run",
-RTS's `SetParam()` calls or batch's `comet.params` parse, not literally a params file in the
-RTS case.
+`comet.params`. For an *existing* `.idx`, though, they do not decide what is searched:
+`ParsePeptideIndexHeader()` (called from `InitializeStaticParams()`, again from
+`ReadPeptideIndex()` and from `InitializeMassesFromPeptideIndex()`) overwrites
+`g_staticParams.variableModParameters` with the header's `VariableMod:`/`ProteinModList:`/
+`RequireVariableMod:` lines before the mod tables are regenerated
+(`docs/20260811_restore_idx_header_mods.md`), so the mods the index was built with win. The
+`SetParam()` values matter when RTS auto-builds a missing `.idx` (they are what gets written
+into its header) and for settings the header does not carry, such as
+`max_variable_mods_in_peptide`. "comet.params" in the flow diagrams above therefore means
+"whatever populated `g_staticParams` before the header overwrite", not literally a params
+file in the RTS case.
 
 ### MS1 (`InitializeSingleSpectrumMS1Search`)
 
@@ -273,10 +292,12 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |     -> AcquirePoolSlot() reserves one slot of the shared SearchMemoryPool
   |        (s_pool), guarded by a SearchMemoryPoolSlotGuard so the slot is
   |        released on any exit path (including exceptions)
-  |     -> branches on g_staticParams.iDbType (CometSearch.cpp:171-215):
-  |        FI_DB -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot])
+  |     -> branches on g_staticParams.iDbType:
+  |        FI_DB -> SearchFragmentIndex(pQuery, _ppbDuplFragmentArr[iSlot], iSlot)
   |                   reads g_iFragmentIndex / g_iFragmentIndexOffset (READ-ONLY) [x]
   |                   reads g_fragmentPeptides (READ-ONLY) [x]
+  |                   ranks candidates by matched fragment ions, then index position, and
+  |                     scores only the first FRAGINDEX_MAX_NUMSCORED (100)
   |                   XcorrScoreI(pQuery, ...) -- updates only pQuery->_pResults
   |                   CheckMassMatch(pQuery, dMass) -- reads only pQuery->_pepMassInfo
   |                   timeout checked periodically against pQuery->tSearchStart
@@ -292,20 +313,30 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |        any other iDbType -> error
   |     -> guard destructor releases the pool slot on return
   |
-  +- timeout re-checked against pQuery->tSearchStart (iMaxIndexRunTime) before
-  |     each of CalculateSP/CalculateEValue/CalculateDeltaCn (each is skipped
-  |     past the deadline); CalculateAScorePro is NOT individually gated -- it
-  |     always runs once CalculateDeltaCn completes, and is only implicitly
-  |     bounded by the next timeout check below (CometSearchManager.cpp:2582,
-  |     2599, 2613 have explicit pre-checks; 2640's CalculateAScorePro call
-  |     does not; the next check is at 2658, after AScorePro has already run)
-  +- CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, iSize)
-  +- CometPostAnalysis::CalculateEValue(pQuery, bSkip)
-  +- CometPostAnalysis::CalculateDeltaCn(pQuery)
-  +- CometPostAnalysis::CalculateAScorePro(pQuery, g_AScoreInterface)
+  +- if iSize > 1: std::partial_sort(_pResults, _pResults + iSortBound, _pResults + iSize,
+  |     SortFnXcorr), with iSortBound = max(hits returned, iNumPeptideOutputLines + 1) clamped to
+  |     iSize -- only that prefix is read again this call (CalculateSP reads the first
+  |     takeSearchResultsN; CalculateEValue does not depend on order; CalculateDeltaCn walks
+  |     iNumPeptideOutputLines + 1 entries and needs them in sorted order)
   |
-  +- sort _pResults by XCorr, extract top topN hits into output vectors
-  |     protein names resolved via g_pvProteinNameCache.find(offset) [READ-ONLY, O(1)] [x]
+  +- timeout re-checked against pQuery->tSearchStart (iMaxIndexRunTime) before each of
+  |     CalculateSP / CalculateEValue / CalculateDeltaCn / CalculateAScorePro; past the
+  |     deadline the call skips straight to cleanup and returns no hits
+  +- CometPostAnalysis::CalculateSP(pQuery->_pResults, pQuery, takeSearchResultsN)
+  +- CometPostAnalysis::CalculateEValue(pQuery, false)
+  +- CometPostAnalysis::CalculateDeltaCn(pQuery)
+  +- CometPostAnalysis::CalculateAScorePro(pQuery, g_AScoreInterface) -- only when
+  |     print_ascorepro_score is -1 or > 0, the top hit has an AScorePro-eligible variable
+  |     mod, and it carries no terminal variable mod
+  +- IsCancel() check, then one more timeout check
+  |
+  +- extract the top topN hits into the output vectors: peptide string with n[mass] /
+  |     [mass] / c[mass] mod annotations; protein names come from the per-result protein
+  |     buckets (pWhichProtein / pWhichDecoyProtein; the legacy lProteinFilePosition row when
+  |     both are empty) -> g_pvProteinsList row -> name-section ordinal ->
+  |     g_pvProteinNameCache[ordinal] [READ-ONLY, O(1)] [x]; occurrences are filtered by
+  |     protein-terminus context for ^/$ mods, decoy names get the decoy prefix (see
+  |     "Internal decoys in RTS" below), and max_duplicate_proteins caps the names per hit
   |
   +- cleanup_results:
        delete pQuery          (destructor frees sparse arrays, _pResults[], accessMutex)
@@ -315,6 +346,16 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
 Note: `pdTmpSpectrum` above is a thread-local buffer owned by the per-thread
 `RtsScratch` pool (`CometPreprocess::GetRtsRawDataBuffer()`), not a per-call
 heap allocation -- this replaced an earlier per-call `new[]`/`delete[]` design.
+
+### Internal decoys in RTS
+
+With `decoy_search = 1` (read from an existing `.idx`'s `DecoySearch:` header; FI_DB supports it since #129, PI_DB
+always did) an RTS result can be an internal pseudo-reverse decoy. Such a hit carries its *target's* protein-list
+row, so its protein names never carry the decoy prefix. `DoSingleSpectrumSearchMultiResults()` therefore walks
+the per-result target (`pWhichProtein`) and decoy (`pWhichDecoyProtein`) buckets separately and prepends
+`decoy_prefix` to every name from the decoy bucket (unless it already has it, as a FASTA-level decoy from a
+target-decoy index does), so the C# layer can tell the two apart; before #129 every internal decoy was reported as
+a target. See `docs/20260914_FI_internal_decoys.md` Section 4.5.
 
 ### MS1 (`DoMS1SearchMultiResults`)
 
@@ -362,10 +403,11 @@ DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, masses, intensiti
 |-------|:--------:|-------|
 | `g_staticParams` | Read-only [x] | Set once at init; never written during search. |
 | `g_iFragmentIndex` / `g_iFragmentIndexOffset` | Read-only [x] | CSR index loaded at init; never modified. |
-| `g_fragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_fragmentPeptides` is built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
-| `g_dbIndexVariants` | Read-only [x] | PI_DB's compact per-variant SoA (mass-sorted, 13B/entry -- docs/20260827_PI_memory.md Phase 2), built once at init from `g_vRawPeptides` + live `comet.params` mods (Phase 0.5, not read from disk), then read-only for the rest of the session; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Only populated when `iDbType == PI_DB`. |
+| `g_fragmentPeptides` / `g_vRawPeptides` | Read-only [x] | `g_vRawPeptides` loaded from the `.idx` file at init and never modified after; shared with PI_DB (both modes read the same unified `.idx` file -- `docs/20260730_PI_reduction.md`). `g_fragmentPeptides` is built once at init from `g_vRawPeptides` + the `.idx` header's variable mods (Phase 0.5: regenerated each session, not read from disk), then likewise never modified during search. FI_DB uses it for its own posting-list resolution. |
+| `g_dbIndexVariants` | Read-only [x] | PI_DB's compact per-variant SoA (mass-sorted, 13B/entry -- docs/20260827_PI_memory.md Phase 2), built once at init from `g_vRawPeptides` + the `.idx` header's variable mods (Phase 0.5: regenerated each session, not read from disk), then read-only for the rest of the session; `MaterializeOneEntry()` reconstructs a stack-local `DBIndex` per candidate rather than mutating anything shared. Only populated when `iDbType == PI_DB`. |
 | `g_vSpecLib` / `g_vulSpecLibPrecursorIndex` | Read-only [x] | Loaded at init. |
-| `g_pvProteinNames` / `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init. |
+| `g_pvProteinsList` / `g_pvProteinNameCache` | Read-only [x] | Loaded at init: `g_pvProteinsList` rows hold name-section ordinals, `g_pvProteinNameCache` is the ordinal-indexed name vector. `g_pvProteinNames` is build-time only and is not read at search time (see `docs/GlobalVariables.md`). |
+| `g_bIndexPrecursors` | Read-only [x] | All `true` for RTS (there are no input files to pre-read), so `fragindex_skipreadprecursors` never prunes an RTS index. |
 | `g_AScoreOptions` / `g_AScoreInterface` | Read-only [x] | Pointer set at init; each call uses its own data. |
 | `SearchSession::queries` / `SearchSession::ms1Queries` | Not touched [x] | `SearchSession` is batch-path only. RTS path uses per-call `Query*` / `QueryMS1*`. |
 | `g_massRange` | Not written [x] | Mass limits derived from per-call `Query*._pepMassInfo`. |
@@ -388,6 +430,12 @@ CometWrapper/CometSearchManagerWrapper  (C++/CLI ref class, managed heap)
       ->  calls native C++
 CometSearch/CometSearchManager          (native library)
 ```
+
+`CometWrapperCore` (#127) is the .NET 8 sibling: it builds the same `CometWrapper.cpp` as a `net8.0`
+(`CLRSupport=NetCore`) assembly and compiles `MSToolkit/src/MSToolkit/RAWReader.cpp` into the DLL itself, since a
+C++/CLI file with `CLRSupport=NetCore` cannot live in the static `MSToolkitCore` library. `RealtimeSearch.exe`
+still references the .NET Framework 4.7.2 `CometWrapper`. Both wrappers are C++/CLI, so both are Windows-only;
+the marshaling below is shared.
 
 ### CometWrapper marshaling
 
@@ -473,10 +521,10 @@ downstream skip logic still works.
 The timeout clock is `pQuery->tSearchStart`, a `chrono::time_point` member set
 once on the per-call `Query*` right after preprocessing (`CometSearchManager.cpp`,
 inside `DoSingleSpectrumSearchMultiResults`). `RunSearch(Query*)` and
-`SearchFragmentIndex(Query*, bool*)` take no separate time parameter -- they read
+`SearchFragmentIndex(Query*, bool*, int)` take no separate time parameter -- they read
 the deadline directly off `pQuery` at several checkpoints during the search, and
 `DoSingleSpectrumSearchMultiResults` re-checks it again before each post-analysis
-step (`CalculateSP`/`CalculateEValue`/`CalculateDeltaCn`), skipping ahead to
+step (`CalculateSP`/`CalculateEValue`/`CalculateDeltaCn`/`CalculateAScorePro`), skipping ahead to
 cleanup once the deadline has passed. Each concurrent call has an independent
 clock via its own `Query*`; there is no shared timeout state.
 
@@ -495,7 +543,7 @@ clock via its own `Query*`; there is no shared timeout state.
 
 - `CometPreprocess::GetRtsRawDataBuffer()` -- returns the thread-local raw-data buffer owned by a per-thread `RtsScratch` pool, initializing it on first use per thread. This replaced an earlier per-call `new[] iArraySizeGlobal doubles` / `delete[]` design (`pdTmpSpectrum` is no longer a per-call heap allocation).
   - **Per-thread memory footprint (P10):** `RtsScratch::EnsureInitialized()` allocates 3 double arrays and 3 float arrays each sized `iArraySizeGlobal` (plus a small `iXcorrProcessingOffset` pad on the doubles), a sparse-matrix child pool sized `6 * (iArraySizeGlobal / SPARSE_MATRIX_SIZE + 2)` floats, and a `Results`/`Decoys` pool (~1.6 KB per stored result x `iNumStored`). `iArraySizeGlobal` scales with `peptide_mass_high / fragment_bin_tol`, so this totals roughly **~300 KB/thread at default low-res settings up to ~15 MB/thread at high-resolution `fragment_bin_tol` (e.g. 0.02)** -- allocated once per thread and held for that thread's lifetime, not per spectrum. A C# host that spins up a large `Task` pool for RTS (rather than a small, bounded worker pool) multiplies this by however many distinct native threads end up running RTS work, which is worth sizing against for high-res searches with many concurrent threads.
-- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems)` (`CometSearch.cpp:63`; the latter two args size the PI_DB target/decoy scratch buffers) (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
+- `CometSearch::AllocateMemory(N)` -- calls `s_pool.allocate(N, g_staticParams.iArraySizeGlobal, nBinnedIonMassesElems, nBinnedPrecursorNLElems)` (in `CometSearch::AllocateMemory()`; the latter two args size the PI_DB target/decoy scratch buffers) (`s_pool` is a file-static `SearchMemoryPool` instance in `CometSearch.cpp`; see `threading/SearchMemoryPool.h`) and aliases each slot's scratch buffer into `_ppbDuplFragmentArr[N][]`. `AcquirePoolSlot()` / `releaseSlot()` forward to `s_pool.acquireSlot()` / `s_pool.releaseSlot()`. Every acquire site wraps the slot in a `SearchMemoryPoolSlotGuard` so the slot is released on scope exit even if the search body throws. Must be valid before any call reaches `RunSearch(Query*, ...)`. If the index-build path was taken during init, this pool is freed inside `DoSearch()` and re-allocated by `InitializeSingleSpectrumSearch()` before proceeding.
 - **Known limitation:** `s_pool` is a single process-wide instance, so it does not support multiple concurrent `ICometSearchManager` instances performing RTS searches against different fragment indexes in the same process -- see the `TODO` comment at the top of `CometSearch.cpp` and `docs/20260615_multiple_rts_instances.md`.
 
 ---

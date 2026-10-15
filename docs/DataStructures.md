@@ -1,12 +1,14 @@
 # Core Data Structures
 
 Key types used throughout `CometSearch/`. Struct definitions were reorganized in Phase 3-4 of the architecture migration:
-- `core/Types.h` -- per-spectrum, index, and runtime structs (`Results`, `Query`, `QueryMS1`, `DBIndex`, `RawPeptideTable`, `FragmentPeptidesStruct`, `PiVariantArray`, `ProteinsListCSR`, etc.)
+- `core/Types.h` -- per-spectrum, index, and runtime structs (`Results`, `Query`, `QueryMS1`, `DBIndex`, `RawPeptideTable`, `FragmentPeptidesStruct`, `VariantArray`, `ProteinsListCSR`, etc.)
 - `core/Params.h` -- `StaticParams` and all its nested sub-structs
 - `core/Constants.h` -- compile-time constants (`MAX_PEPTIDE_LEN`, `VMODS`, `HISTO_SIZE`, etc.)
 - `CometData.h` -- public API types that cross the library boundary into `CometWrapper` and `RealtimeSearch`
 
 `CometDataInternal.h` `#include`s all three `core/` headers; existing code that includes `CometDataInternal.h` continues to see everything.
+
+Last reviewed against the code at `master` 69b9b936 (2026-10-15, after #135). Source locations are given as function or symbol names rather than line numbers, which go stale with every edit.
 
 ---
 
@@ -126,8 +128,12 @@ Contains nested sub-structs (defined in `core/Params.h`, except `enzymeInformati
 | `ionInformation` | `IonInfo` | Active ion series bitmask, water/ammonia loss flag, flanking peak mode. |
 | `enzymeInformation` | `EnzymeInfo` | Search enzyme, sample enzyme, 2nd enzyme, allowed missed cleavages, offset directions. **Defined in `CometData.h`, not `core/Params.h`** (it's a public API type shared with `CometWrapper`; see "Public API types" below). |
 | `databaseInfo` | `DBInfo` | FASTA path; `iTotalNumProteins` and `uliTotAACount` updated during batch scan. |
+| `peffInfo` | `PEFFInfo` | PEFF handling: OBO file path (`szPeffOBO`) and the `iPeffSearch` mode (PSI-MOD / Unimod / variants only). |
+| `speclibInfo` | `SpecLibInfo` | Path of the spectral library file (`strSpecLibFile`); a library search is enabled when it is set and validates. |
+| `inputFile` | `InputFileInfo` | The input file currently being searched. `UpdateInputFile()` rewrites it per file, so concurrent per-file work (such as the `fragindex_skipreadprecursors = 0` pre-read tasks) must use the `g_pvInputFiles` entry's own path, not this. |
+| `iDbType` | `DbType` | `FASTA_DB`, `FI_DB` or `PI_DB`: picks the strategy (batch) and the dispatch in `RunSearch(Query*)` (RTS). Set from an existing `.idx`'s own `IndexSearchType:` header, or from `index_search_type` when a missing index must be auto-built. |
+| `vectorMassOffsets` | `vector<double>` | `mass_offsets`. When non-empty, only the listed offsets (not 0, unless listed) are tried when matching a peptide to a precursor window; `PrecursorWindowShifts()` builds the `fragindex_skipreadprecursors = 0` mask from the same list. |
 | `dInverseBinWidth` / `dOneMinusBinOffset` | `double` | Used in the `BIN(mass)` macro on every fragment ion -- computed once to turn division into multiplication. |
-| `tRealTimeStart` | `chrono::time_point` | Declared but unused -- grep confirms no code anywhere reads or assigns it besides its own declaration. Both the FI_DB and PI_DB RTS paths instead use a genuinely per-call clock, `pQuery->tSearchStart` on the heap-allocated `Query`, set fresh by `DoSingleSpectrumSearchMultiResults()` for every call and checked by both `SearchFragmentIndex()` and the PI_DB thread-local search (see `docs/RealTimeSearch.md`). |
 
 ---
 
@@ -169,7 +175,7 @@ Each `VarMods` entry:
 | `iMaxNumVarModAAPerMod` / `iMinNumVarModAAPerMod` | Per-mod occurrence limits. |
 | `iBinaryMod` | If 1, either all eligible residues in the peptide are modified or none. |
 | `iRequireThisMod` | Tri-state, not a bool: `0` = not required; `1` = required (only report peptides carrying this mod); negative = "exactly one from this set of mods" grouping. |
-| `iVarModTermDistance` / `iWhichTerm` | **Deprecated (2026-09).** Parsed from `variable_modNN` fields 5/6 for backward compatibility, normalized to -1/0 in `InitializeStaticParams()` (with a warning, and a one-release bridge translating the legacy `n 0 3 0 0` protein-terminus idiom to `^`), never consulted by the search. |
+| `iVarModTermDistance` / `iWhichTerm` | The `variable_modNN` fifth/sixth fields (`term_distance`, `which_term`): a position restriction on the mod. `-1` = unrestricted (default); `-2` = not on the peptide's C-terminal residue; `d >= 0` = the residue (or `n`/`c` terminus) must lie within `d` residues of the terminus `which_term` names (0 = protein N, 1 = protein C, 2 = peptide N, 3 = peptide C). #130 deprecated them and #134 restored them (`docs/20260930_varmod_position_restrictions.md`), so they are honored on every path: plain FASTA (the restored v2026.02.2 `CountVarMods()`/`MergeVarMods()` logic, through `VarModNtermAllowed()`/`VarModCtermAllowed()`), FI_DB and PI_DB (applied by `ModificationsPermuter` when it enumerates the index's modifications; persisted per slot in the v5 `.idx` header as `:termDistance:whichTerm`) and AScorePro's peptidoform filter. `InitializeStaticParams()` still rewrites the exact idiom `n 0 3 0 0` / `c 0 3 0 1` (nothing else in the slot) to `^` / `$` and resets the fields to `-1 0`; values no path defines (a distance below -2, or a distance rule with `which_term` outside 0-3) stop the search with an error, and the slot merge never folds a restricted slot into an unrestricted one of the same mass. |
 | `dNeutralLoss2` | Second fragment neutral-loss mass for this mod. |
 | `bNtermMod` / `bCtermMod` | Set if this mod can occupy the N-/C-terminus (`n`/`^` resp. `c`/`$` present). |
 | `bProteinNtermOnly` / `bProteinCtermOnly` | Set if the terminal mod is restricted to the protein terminus (`^` without `n`, `$` without `c`). |
@@ -179,21 +185,24 @@ Each `VarMods` entry:
 
 ## DBIndex
 
-**Build-time and per-candidate transient use only -- not the search-time index.**
+**Per-candidate transient use only -- not the search-time index, and no longer a build-time accumulator either.**
 Historically one entry in `g_pvDBIndex`, used both during index generation and as PI_DB's
-resident search-time array; as of `docs/20260730_PI_reduction.md`, `g_pvDBIndex` is
-build-time-only (Phase A digestion output inside `CometPeptideIndex::WritePeptideIndex()`,
-copied into `g_vRawPeptides` and cleared before the function returns -- see
-`RawPeptideTable`/`FragmentPeptidesStruct` below for what replaced it at search
-time). `DBIndex` the *type* is still used, but only as a stack-local, per-candidate
-reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on demand from
-a `g_dbIndexVariants` entry for each mass-window candidate PI_DB search scores, then
-discards it. Since Phase 0.5, `g_dbIndexVariants` itself is also transient in a different
-sense: it's rebuilt once per search session (`CometPeptideIndex::GenerateVariantArray()`,
-called from `ReadPeptideIndex()`) from `g_vRawPeptides` + whichever variable mods are
-active in `g_staticParams.variableModParameters`, rather than read from disk. As of
-`docs/20260811_restore_idx_header_mods.md`, that active-mods source is the `.idx` file's
-own `VariableMod:` header line again, not live `comet.params`.
+resident search-time array. As of `docs/20260730_PI_reduction.md` the search-time role moved to
+`g_vRawPeptides` + `g_dbIndexVariants` (see `RawPeptideTable`/`FragmentPeptidesStruct` below), and
+since commit 1913b4eb the plain-peptide-index build no longer accumulates here either:
+`GeneratePlainPeptideIndex()` pools its per-length, per-thread `PepGenTuple` buffers straight into
+`g_vRawPeptides`. The `g_pvDBIndex` global is vestigial -- only the legacy non-fast branches of
+`SearchForPeptides()`/`MergeVarMods()` still push to it and nothing reads it (see
+`docs/GlobalVariables.md`). `DBIndex` the *type* is still used, but only as a stack-local,
+per-candidate reconstruction target: `CometPeptideIndex::MaterializeOneEntry()` builds one on
+demand from a `g_dbIndexVariants` entry for each mass-window candidate PI_DB search scores, then
+discards it. `g_dbIndexVariants` itself is rebuilt once per search session
+(`CometPeptideIndex::GenerateVariantArray()`, called from `ReadPeptideIndex()`) from
+`g_vRawPeptides` + whichever variable mods are active in
+`g_staticParams.variableModParameters`, rather than read from disk. As of
+`docs/20260811_restore_idx_header_mods.md`, that active-mods source is the `.idx` file's own
+`VariableMod:` header line (which, in v5, also carries each slot's position restriction), not
+live `comet.params`.
 
 ```cpp
 struct DBIndex  // core/Types.h
@@ -255,15 +264,17 @@ One entry in the fragment index peptide list. Represents one (peptide, mod-state
 
 Both carry an FI_DB-only internal-decoy marker (docs/20260914_FI_internal_decoys.md): the staging struct's `cIsDecoy` byte (in the 24B struct's tail padding, `static_assert`-guarded) and, in the resident `VariantArray`, bit 7 of `vucFlags` (`VariantArray::DECOY_FLAG`, read via `IsDecoy()`). Until docs/20260915_permuter_terminal_mods.md Phase 2 that byte was `vucTermMods` and packed the two terminal-mod slots into its low 7 bits; terminal mods now live in the `MOD_NUMBERS_POOL` entry (see below), so the byte holds only the flag. With `decoy_search != 0` `CometFragmentIndex::AddFragmentsThreadProcRange()` emits one pseudo-reverse decoy twin right after each accepted target variant, with the same `iWhichPeptide`, `modNumIdx`, terminal mods and (by composition) mass; only its b/y ladder -- built by `AddFragments(bDecoy = true)` from the `CometSearch::PseudoReversePeptide()`-permuted sequence and mod-slot array -- differs. PI_DB's `g_dbIndexVariants` never sets the flag (PI_DB reverses at score time in `AnalyzePeptideIndex()`).
 
-**PI_DB's compact per-variant array used to be this same type** (`g_vDBIndexVariants`,
-`docs/20260730_PI_reduction.md`); as of docs/20260827_PI_memory.md Phase 2 it is
-`g_dbIndexVariants` (`PiVariantArray`, core/Types.h) -- a 13B/entry structure-of-arrays
-with a 4-byte fixed-point mass key instead of the 24B AoS, still built by PI_DB's own
-path rather than sharing `g_fragmentPeptides` (tracked as a follow-up). PI_DB's
-`CometSearch::SearchPeptideIndex()` binary-searches the quantized keys (conservatively
-widened), then reconstructs a full `DBIndex` -- exact double mass included -- per
-surviving candidate via `CometPeptideIndex::MaterializeOneEntry()` instead of resolving a
-fragment-ion posting list.
+**Both resident arrays are the same type.** `g_fragmentPeptides` (FI_DB) and `g_dbIndexVariants`
+(PI_DB) are both `VariantArray` (core/Types.h): a 13B/entry structure-of-arrays -- `vuiMassKey` (a
+4-byte fixed-point mass key, 1e-4 Da), `vuiWhichPeptide`, `vuiModNumIdx`, `vucFlags` -- instead of
+the former 24B AoS. (The PI_DB array was briefly its own `PiVariantArray`, docs/20260827_PI_memory.md
+Phase 2; `2facbc2c` ported FI_DB to the same layout and made it the shared `VariantArray`. Before
+that it was this AoS struct, `g_vDBIndexVariants`, `docs/20260730_PI_reduction.md`.) PI_DB's is still
+built by its own path (`CometPeptideIndex::GenerateVariantArray()`) rather than sharing
+`g_fragmentPeptides` (tracked as a follow-up). PI_DB's `CometSearch::SearchPeptideIndex()`
+binary-searches the quantized keys (conservatively widened), then reconstructs a full `DBIndex` --
+exact double mass included -- per surviving candidate via
+`CometPeptideIndex::MaterializeOneEntry()` instead of resolving a fragment-ion posting list.
 
 ```cpp
 struct FragmentPeptidesStruct  // core/Types.h
@@ -283,6 +294,13 @@ for the sizing rationale).
 | `iWhichPeptide` | Index into `g_vRawPeptides`; provides sequence and protein info. Narrowed to `unsigned int` from `size_t` since `g_vRawPeptides.size()` is checked to fit before this struct is ever populated. |
 | `modNumIdx` | Mod-combination entry index (resolved against `MOD_NUMBERS_POOL` via `GetModNumEntry()`); -1 = fully unmodified. Terminal variable mods are part of the entry. |
 | `cIsDecoy` | 1 = internal pseudo-reverse decoy twin of the same (peptide, mods) tuple (FI_DB only). |
+
+**Sort order.** The staging array is sorted by `dPepMass`; entries of equal mass (isobaric peptides, I/L
+variants, target/decoy twins) are then ordered by `iWhichPeptide`, `modNumIdx` and `cIsDecoy`. That makes
+the posting lists' index values -- and the tie-break `SearchFragmentIndex()` uses when it scores only the
+first `FRAGINDEX_MAX_NUMSCORED` (100) candidates ranked by matched ions -- the same whatever other
+entries were built, for example what the `fragindex_skipreadprecursors = 0` mask pruned (#135; `std::sort`
+on mass alone left equal-mass ties in an order that varied with the set being sorted).
 
 ---
 
@@ -362,7 +380,7 @@ struct SearchSession  // search/SearchSession.h
 | `sparseArenas` / `pointerArenas` / `resultsArenas` | `vector<FusedSparseArena>` / `vector<FusedPointerArena>` / `vector<FusedResultsArena>` -- per-thread scratch-memory arenas for the fused FI_DB/PI_DB batch path (`FusedLoadAndSearchSpectra`); freed in `Pipeline`'s `cleanupBatch()`. |
 | `statusRef` | `CometStatus&` -- a **reference** to the process-wide singleton `g_cometStatus`, not a per-run copy. Pipeline and strategy code use `session.statusRef` so they are not coupled to the global name, but both spellings touch the same object. |
 
-`SearchSession` has no `params` member -- code reads `g_staticParams` directly throughout; an earlier draft carried a `const StaticParams& params` field but it was unused and removed. There is also no `bPlainPeptideIndexRead` / `bSpecLibRead` member: `g_bPlainPeptideIndexRead`, `g_bSpecLibRead`, and `g_pvQueryMutex` remain plain globals rather than `SearchSession` fields, specifically because the RTS path (which never constructs a `SearchSession`) also reads/writes them -- see the header comment in `search/SearchSession.h` and the `g_pvQueryMutex` entry in `docs/GlobalVariables.md`.
+`SearchSession` has no `params` member -- code reads `g_staticParams` directly throughout; an earlier draft carried a `const StaticParams& params` field but it was unused and removed. There is also no `bPlainPeptideIndexRead` / `bSpecLibRead` member: `g_bPlainPeptideIndexRead`, `g_bSpecLibRead`, and `g_pvQueryMutex` remain process-wide globals (the two flags are `std::atomic<bool>`) rather than `SearchSession` fields, specifically because the RTS path (which never constructs a `SearchSession`) also reads/writes them -- see the header comment in `search/SearchSession.h` and the `g_pvQueryMutex` entry in `docs/GlobalVariables.md`.
 
 `SearchSession` is non-copyable. The RTS paths (`DoSingleSpectrumSearchMultiResults`, `DoMS1SearchMultiResults`) do **not** use `SearchSession`; they use per-call `Query*`/`QueryMS1*` objects directly.
 
@@ -381,9 +399,9 @@ class Pipeline         // search/Pipeline.h
 
 | Method | Called | Purpose |
 |--------|--------|---------|
-| `initialize(session, tp)` | Once before file loop | Allocate pools, load/build index, pre-read precursors (FI_DB), read var-mod filter file (FASTA). |
+| `initialize(session, tp)` | Once before file loop | Allocate pools, load/build index, pre-read precursors (FI_DB with `fragindex_skipreadprecursors = 0`: one thread-pool task per input file, header-only reads, merged into `g_bIndexPrecursors`), read var-mod filter file (FASTA). |
 | `openFiles(szDB, fpfasta, fpidx, fpdb, session)` | Once per file | Open DB file handles; set `session.bIdxNoFasta`. |
-| `executeBatch(mstReader, firstScan, lastScan, analysisType, iPercentStart, iPercentEnd, tp, session)` | Once per batch | Preprocess + search + post-analysis for one spectrum batch; fills `session.queries`. |
+| `executeBatch(mstReader, iFirstScan, iLastScan, iAnalysisType, iPercentStart, iPercentEnd, tp, session)` | Once per batch | Preprocess + search + post-analysis for one spectrum batch; fills `session.queries`. |
 | `closeFiles(fpfasta, fpidx)` | Once per file | Close file handles. |
 | `finalize()` | Once after all files | Free memory pools and index arrays. |
 | `isIndexBased()` | Any time | `true` for `FiStrategy`/`PiStrategy`. `Pipeline::run()` is the only consumer, and uses it solely to choose between the compact index-style progress line and the verbose FASTA-style per-file banners -- it carries no other semantics and must not be used to gate search behavior. |
@@ -419,6 +437,28 @@ struct SpectrumInfoInternal // core/Types.h
 
 ---
 
+## MSReader header-only mode
+
+`MSToolkit`'s `MSReader` has an opt-in header-only mode, used by `CometPreprocess::ReadPrecursors()` for the
+`fragindex_skipreadprecursors = 0` precursor pre-read, which needs only each spectrum's precursor m/z and charge.
+
+| Call | Contract |
+|------|----------|
+| `setHeaderOnly(bool)` | Applies to every following read until changed; it may be toggled between reads of an open file. mzML/mzXML only: the SAX handlers stop parsing before the peak data (`<binaryDataArrayList>` for mzML, `<peaks>` for mzXML), so the binary arrays are never base64/zlib-decoded and the returned `Spectrum` has its scan number, precursor m/z, charge and Z-states but `size() == 0`. Other formats (ms2, MGF, Thermo raw) ignore it and return peaks as usual. |
+| `lastReadHeaderOnly()` | `true` only if the most recent read really left the peaks out. It is reset at the top of every top-level read (`readFile`, `readMSTFile`, both MGF readers, `readMZPFile`), so a read that returned peaks never leaves it set. |
+
+Plumbing: `MSReader::readMZPFile()` calls `mzParser::rampSetSkipPeaks()`, which sets `RAMPFILE::bSkipPeaks`;
+`mzParser::readHeader()` forwards it to the mzML/mzXML handler (`setSkipPeaks()`). A header-only parse leaves
+`lLastScanIndex = 0`, so a later `readPeaks()` of the same scan re-parses it in full instead of being served the
+peak-less cached spectrum. The mzML handler's early stop also pops the spectrum from `m_vState` and clears
+`m_strData`, because the end tags that normally do that are never reached. `ReadPrecursors()` switches to a full
+read of one scan (`setHeaderOnly(false)`, then back) only when a precursor has no charge in the file and the
+charge must be guessed from the peaks (`PrecursorNeedsPeaks()`). Each pre-read task owns its `MSReader` and the
+flag is per instance, so concurrent tasks do not interact. Contract tests: `MSReaderHeaderOnlyTest` in
+`CometUnitTests`; end to end: T61.
+
+---
+
 ## sDBEntry
 
 Passed through the FASTA search loop; holds data for a single protein from the database.
@@ -447,10 +487,12 @@ extern MassRange g_massRange;
 
 `dMinMass`/`dMaxMass` are set once at init (either the batch path's
 `DoSearch()` or the RTS path's `InitializeSingleSpectrumSearch()`) as the
-outer bounds from the configured peptide mass range. On the legacy
+outer bounds from the configured peptide mass range. `CometPeptideIndex::WritePeptideIndex()` sets them,
+together with `bNarrowMassRange` (which only `SearchForPeptides()` reads, to choose how to parse peptides),
+the same way when it builds an index. On the legacy
 three-sweep batch paths (FASTA, and the PI_DB/FI_DB legacy fallback), the
 shared `RunSearchAndPostAnalysis()` helper (`search/SearchUtils.cpp`) then
-**re-narrows** them every batch from that batch's actual `SearchSession.queries`
+**re-narrows** them (and recomputes `bNarrowMassRange`) every batch from that batch's actual `SearchSession.queries`
 (sorted by peptide mass: `queries.front()`'s tolerance-minus and `queries.back()`'s
 tolerance-plus), so they track the current batch rather than the whole run's
 range. The fused batch path (`FusedLoadAndSearchSpectra`) and the RTS path do
