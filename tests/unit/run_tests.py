@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T63; T8-T10 do not exist) and
+Comet unit tests (T1-T7, T11-T16, T19-T21, T25-T43, T45-T64; T8-T10 do not exist) and
 integration tests (T17, T18, T22, T22b, T23, T24, T24b, T44 -- see INTEGRATION_TESTS).
 
 T1-T18 run Comet.exe -i on each crafted FASTA and verify the .idx contents; T19 onward
@@ -6132,8 +6132,8 @@ def _t62_write_ms2(path, exp_mh):
 def test_t62_precursor_mask_isotope_edges(comet_exe):
     """T62: with fragindex_skipreadprecursors = 0 a peptide whose isotope-shifted mass lies just inside
     the edge of the 20 ppm precursor window (isotope_error 2: +2 isotope, upper edge; 6: -3 isotope,
-    lower edge; 7: +-2 steps of 4.0070995 Da, upper and lower edge) must still be in the index, i.e.
-    be found exactly as with skipreadprecursors = 1."""
+    lower edge; 7: +-2 steps of 4.0070995 Da, upper and lower edge; 4: -1 isotope) must still be in the
+    index, i.e. be found exactly as with skipreadprecursors = 1."""
     failures = []
     fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
     res = [_MONO_RESIDUE_MASS[aa] for aa in _T62_PEPTIDE]
@@ -6154,6 +6154,7 @@ def test_t62_precursor_mask_isotope_edges(comet_exe):
         ("-3 isotope, lower window edge", 6, -3 * _T62_C13_DIFF),
         ("isotope_error 7, +2 steps, upper window edge", 7, 2 * _T62_ISOTOPE7_STEP),
         ("isotope_error 7, -2 steps, lower window edge", 7, -2 * _T62_ISOTOPE7_STEP),
+        ("isotope_error 4, -1 isotope (the mask used to mark -1 only for modes 5 and 6)", 4, -_T62_C13_DIFF),
     )
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -6283,6 +6284,75 @@ def test_t63_fi_equal_mass_order_invariant(comet_exe):
         check(hits[0] == hits[1],
               "skipreadprecursors=0 and =1 report identical hits (peptide, protein, xcorr, e-value) for all 100 "
               f"scored candidates; {n_diff} of 100 rows differ", failures)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T64 -- mass_offsets and the fragindex_skipreadprecursors = 0 precursor mask. The search accepts a peptide
+# when mass + offset + isotope step lies in the precursor window for one of the listed mass_offsets (only
+# the listed ones are tried: 0 only if listed); the mask used to be built from the unshifted window only,
+# so with skip = 0 every peptide that matched through an offset was missing from the index while skip = 1
+# found it. The unshifted peptide (no offset) is not a match in either mode.
+# ---------------------------------------------------------------------------
+
+@register("t64_precursor_mask_mass_offsets")
+def test_t64_precursor_mask_mass_offsets(comet_exe):
+    """T64: peptides matched through mass_offsets (alone, from a list, with a +1 / -1 isotope step, with the
+    isotope_error 7 steps) are found with skipreadprecursors = 0 exactly as with = 1."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    res = [_MONO_RESIDUE_MASS[aa] for aa in _T62_PEPTIDE]
+    calc_mh = sum(res) + _H2O_MASS + _PROTON_MASS
+    c13, step7 = _T62_C13_DIFF, _T62_ISOTOPE7_STEP
+    phospho, methyl = 79.966331, 14.01565
+
+    cases = (   # (label, isotope_error, mass_offsets, precursor MH+ shift from the peptide, expected rank-1 peptide)
+        ("single offset", 0, f"{phospho}", phospho, _T62_PEPTIDE),
+        ("offset list, matched through the first entry", 0, f"{phospho} {methyl}", phospho, _T62_PEPTIDE),
+        ("offset list, matched through the second entry", 0, f"{phospho} {methyl}", methyl, _T62_PEPTIDE),
+        ("offset + isotope_error 1 (+1 isotope step)", 1, f"{phospho}", phospho + c13, _T62_PEPTIDE),
+        ("offset + isotope_error 5 (-1 isotope step)", 5, f"{phospho}", phospho - c13, _T62_PEPTIDE),
+        ("offset + isotope_error 7 (+2 steps)", 7, f"{phospho}", phospho + 2 * step7, _T62_PEPTIDE),
+        ("offset + isotope_error 7 (-2 steps)", 7, f"{phospho}", phospho - 2 * step7, _T62_PEPTIDE),
+        ("control: unshifted peptide is not a match when offsets are listed", 0, f"{phospho}", 0.0, None),
+    )
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t64.fasta"
+        fasta.write_text(f">t64_a\nMSK{_T62_PEPTIDE}GGGR\n")
+        idx = tmp / "t64.fasta.idx"
+        pf = tmp / "t64.params"
+
+        def params(db, **kv):
+            pr = legacy_cases.build_params(database=fmt(db), enzyme1=1, mods=(), static_C=0.0, num_output_lines=5)
+            for k, v in {"peptide_mass_units": 2, "peptide_mass_tolerance_upper": 20.0, "peptide_mass_tolerance_lower": -20.0,
+                         "fragment_bin_tol": 0.01, "fragment_bin_offset": 0.0, **kv}.items():
+                pr = _set_param_line(pr, k, v)
+            pf.write_text(pr)
+
+        params(fasta)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"])
+        if not check(rc == 0 and idx.exists(), f"fragment index build ran (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        for n, (label, iso, offsets, shift, want) in enumerate(cases):
+            ms2 = tmp / f"t64_{n}.ms2"
+            _t62_write_ms2(ms2, calc_mh + shift)
+            txt = ms2.with_suffix(".txt")
+            found = {}
+            for skip in (1, 0):
+                params(idx, index_search_type=1, isotope_error=iso, mass_offsets=offsets, fragindex_skipreadprecursors=skip)
+                txt.unlink(missing_ok=True)
+                rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+                rows = [r for r in legacy_cases.parse_txt(txt) if r.get("num") == "1"] if txt.exists() else []
+                found[skip] = rows[0].get("plain_peptide") if rows else None
+                check(rc == 0, f"{label}: skipreadprecursors={skip} search ran (rc={rc})", failures)
+            check(found[1] == want, f"{label}: without the pre-read (skip=1) the result is {want!r}, got {found[1]!r}", failures)
+            check(found[0] == found[1],
+                  f"{label}: with the pre-read (skip=0) the result is the same as skip=1 -- the mask covers the offset window, got {found[0]!r}",
+                  failures)
     return failures
 
 

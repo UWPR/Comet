@@ -431,6 +431,73 @@ void CometPreprocess::Reset()
     _bDoneProcessingAllSpectra = false;
 }
 
+// Peptide mass shifts the search tries when it matches a peptide to a precursor window: it accepts a
+// peptide when mass + shift lies in the window (CometSearch::CheckMassMatch()).  A shift is a
+// mass_offsets entry (only the listed ones are searched when any are given, so 0 is searched only
+// if listed) plus an isotope step.  Keep the isotope steps identical to CheckMassMatch(): the
+// precursor mask built from them must never be narrower than what the search accepts.  (Do not
+// multiply the steps by PROTON_MASS the way AdjustMassTol()'s coarse pre-filter window does: a mask
+// shifted by that factor drops peptides near window edges.)
+static vector<double> PrecursorWindowShifts()
+{
+   const int iIsotopeError = g_staticParams.tolerances.iIsotopeError;
+   vector<double> vIsotopeSteps;
+
+   if (iIsotopeError == 7)           // -2..+2 steps of ISOTOPE_ERROR_7_STEP
+   {
+      for (int x = -2; x <= 2; ++x)
+         vIsotopeSteps.push_back(x * ISOTOPE_ERROR_7_STEP);
+   }
+   else
+   {
+      int iMaxIsotope = 3;           // 0..+iMaxIsotope isotopes: mode 1 -> 1, 2 -> 2, 3 and 4 and 6 -> 3, 5 -> 1
+      if (iIsotopeError < 3)
+         iMaxIsotope = iIsotopeError;
+      if (iIsotopeError == 5)
+         iMaxIsotope = 1;
+
+      for (int x = 0; x <= iMaxIsotope; ++x)
+         vIsotopeSteps.push_back(x * C13_DIFF);
+
+      if (iIsotopeError >= 4 && iIsotopeError <= 6)    // also -1..-iMaxNegative isotopes: mode 4 and 5 -> 1, 6 -> 3
+      {
+         const int iMaxNegative = (iIsotopeError == 6) ? 3 : 1;
+         for (int x = 1; x <= iMaxNegative; ++x)
+            vIsotopeSteps.push_back(-x * C13_DIFF);
+      }
+   }
+
+   const vector<double>& vOffsets = g_staticParams.vectorMassOffsets;
+   if (vOffsets.empty())
+      return vIsotopeSteps;
+
+   vector<double> vShifts;
+   for (double dOffset : vOffsets)
+   {
+      for (double dStep : vIsotopeSteps)
+         vShifts.push_back(dOffset + dStep);
+   }
+
+   return vShifts;
+}
+
+
+// Marks every mass bin from dMassLow through dMassHigh (clamped to the array) in pBins.
+static void MarkBinRange(double dMassLow, double dMassHigh, int iMaxBin, bool *pBins)
+{
+   int iStart = BIN(dMassLow);
+   int iEnd = BIN(dMassHigh);
+
+   if (iStart < 0)
+      iStart = 0;
+   if (iEnd > iMaxBin)
+      iEnd = iMaxBin;
+
+   for (int x = iStart; x <= iEnd; ++x)
+      pBins[x] = true;
+}
+
+
 // Spectrum charge Comet would use for precursor i of a header-only read, or 0 if the file does not
 // supply one (mirrors the charge selection in ReadPrecursors() below, minus the warning message).
 static int PrecursorFileCharge(Spectrum &spec, int i)
@@ -485,6 +552,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
    mstReader.setHeaderOnly(true);
 
    int iMaxBin = BIN(g_staticParams.options.dPeptideMassHigh);
+   const vector<double> vShifts = PrecursorWindowShifts();
 
    if (g_staticParams.options.scanRange.iStart != 0)
       iFirstScan = g_staticParams.options.scanRange.iStart;
@@ -753,139 +821,14 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                }
 
                // these are the range of neutral mass bins if any theoretical peptide falls into,
-               // we want to add them to the fragment index
-               double dMassLow = dProtonatedMass + dToleranceLow;
-               double dMassHigh = dProtonatedMass + dToleranceHigh;
-               int iStart = BIN(dMassLow);  // add dToleranceLow as it will be negative number
-               int iEnd   = BIN(dMassHigh);
+               // we want to add them to the fragment index.  The search accepts a peptide when
+               // mass + shift falls in [dMassLow, dMassHigh] for one of the shifts in vShifts, so
+               // the peptide masses that can match are the same window moved down by that shift.
+               const double dMassLow = dProtonatedMass + dToleranceLow;    // dToleranceLow is negative
+               const double dMassHigh = dProtonatedMass + dToleranceHigh;
 
-               if (iStart < 0)
-                  iStart = 0;   // real problems if we actually get here
-               if (iEnd > iMaxBin)
-                  iEnd = iMaxBin;
-
-               for (int x = iStart ; x <= iEnd; ++x)
-                  pBins[x] = true;
-
-               // now go through each isotope offset.  The search accepts a peptide when mass + x * C13_DIFF
-               // falls in the precursor window (CheckMassMatch()), so the bins must be shifted by exactly
-               // x * C13_DIFF.  (AdjustMassTol()'s coarse window multiplies by PROTON_MASS too; that only
-               // widens a pre-filter, whereas a mask shifted by that factor drops peptides near window edges.)
-               if (g_staticParams.tolerances.iIsotopeError > 0)
-               {
-                  if (g_staticParams.tolerances.iIsotopeError >= 1
-                        && g_staticParams.tolerances.iIsotopeError <= 6)
-                  {
-                     iStart = BIN(dMassLow - C13_DIFF);     // do +1 offset
-                     iEnd   = BIN(dMassHigh - C13_DIFF);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-
-                     if (g_staticParams.tolerances.iIsotopeError >= 2
-                           && g_staticParams.tolerances.iIsotopeError <= 6
-                           && g_staticParams.tolerances.iIsotopeError != 5)
-                     {
-                        iStart = BIN(dMassLow - 2.0 * C13_DIFF);     // do +2 offset
-                        iEnd   = BIN(dMassHigh - 2.0 * C13_DIFF);
-                        if (iStart < 0)
-                           iStart = 0;
-                        if (iEnd > iMaxBin)
-                           iEnd = iMaxBin;
-                        for (int x = iStart ; x <= iEnd; ++x)
-                           pBins[x] = true;
-
-                        if (g_staticParams.tolerances.iIsotopeError >= 3
-                              && g_staticParams.tolerances.iIsotopeError <= 6
-                              && g_staticParams.tolerances.iIsotopeError != 5)
-                        {
-                           iStart = BIN(dMassLow - 3.0 * C13_DIFF);     // do +3 offset
-                           iEnd   = BIN(dMassHigh - 3.0 * C13_DIFF);
-                           if (iStart < 0)
-                              iStart = 0;
-                           if (iEnd > iMaxBin)
-                              iEnd = iMaxBin;
-                           for (int x = iStart ; x <= iEnd; ++x)
-                              pBins[x] = true;
-                        }
-                     }
-                  }
-
-                  if (g_staticParams.tolerances.iIsotopeError == 5
-                        || g_staticParams.tolerances.iIsotopeError == 6)
-                  {         
-                     iStart = BIN(dMassLow + C13_DIFF);      // do -1 offset
-                     iEnd   = BIN(dMassHigh + C13_DIFF);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-
-                     if (g_staticParams.tolerances.iIsotopeError == 6)     // do -2 and -3 offsets
-                     {
-                        iStart = BIN(dMassLow + 2.0 * C13_DIFF);
-                        iEnd   = BIN(dMassHigh + 2.0 * C13_DIFF);
-                        if (iStart < 0)
-                           iStart = 0;
-                        if (iEnd > iMaxBin)
-                           iEnd = iMaxBin;
-                        for (int x = iStart ; x <= iEnd; ++x)
-                           pBins[x] = true;
-
-                        iStart = BIN(dMassLow + 3.0 * C13_DIFF);
-                        iEnd   = BIN(dMassHigh + 3.0 * C13_DIFF);
-                        if (iStart < 0)
-                           iStart = 0;
-                        if (iEnd > iMaxBin)
-                           iEnd = iMaxBin;
-                        for (int x = iStart ; x <= iEnd; ++x)
-                           pBins[x] = true;
-                     }
-                  }
-                  else if (g_staticParams.tolerances.iIsotopeError == 7)            // do -8, -4, +4, +8 offsets
-                  {
-                     iStart = BIN(dMassLow + 2.0 * ISOTOPE_ERROR_7_STEP);
-                     iEnd   = BIN(dMassHigh + 2.0 * ISOTOPE_ERROR_7_STEP);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-
-                     iStart = BIN(dMassLow + ISOTOPE_ERROR_7_STEP);
-                     iEnd   = BIN(dMassHigh + ISOTOPE_ERROR_7_STEP);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-
-                     iStart = BIN(dMassLow - 2.0 * ISOTOPE_ERROR_7_STEP);
-                     iEnd   = BIN(dMassHigh - 2.0 * ISOTOPE_ERROR_7_STEP);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-
-                     iStart = BIN(dMassLow - ISOTOPE_ERROR_7_STEP);
-                     iEnd   = BIN(dMassHigh - ISOTOPE_ERROR_7_STEP);
-                     if (iStart < 0)
-                        iStart = 0;
-                     if (iEnd > iMaxBin)
-                        iEnd = iMaxBin;
-                     for (int x = iStart ; x <= iEnd; ++x)
-                        pBins[x] = true;
-                  }
-               }
+               for (double dShift : vShifts)
+                  MarkBinRange(dMassLow - dShift, dMassHigh - dShift, iMaxBin, pBins);
             }
          }
       }
