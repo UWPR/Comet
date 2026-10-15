@@ -429,6 +429,10 @@ RAMPFILE* mzParser::rampOpenFile(const char* filename){
 
 }
 
+void mzParser::rampSetSkipPeaks(RAMPFILE* pFI, bool b){
+  if(pFI!=NULL) pFI->bSkipPeaks=b;
+}
+
 char* mzParser::rampValidFileType(const char *buf){
   char ext[4096];
   char preExt[4096];
@@ -527,7 +531,10 @@ void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct Sc
 
   if(lScanIndex<0) return;
   if(lScanIndex!=pFI->lLastScanIndex){
-  
+    //header-only mode: handlers stop before the peak data. readPeaks() clears this again.
+    if(pFI->mzML!=NULL) pFI->mzML->setSkipPeaks(pFI->bSkipPeaks);
+    if(pFI->mzXML!=NULL) pFI->mzXML->setSkipPeaks(pFI->bSkipPeaks);
+
     switch(pFI->fileType){
       case 1:
       case 3:
@@ -574,7 +581,8 @@ void mzParser::readHeader(RAMPFILE *pFI, ramp_fileoffset_t lScanIndex, struct Sc
 #ifdef MZP_HDF
     v2=NULL;
 #endif
-    pFI->lLastScanIndex = lScanIndex;
+    //a header-only parse leaves bs without peaks, so it must not satisfy a later readPeaks()
+    pFI->lLastScanIndex = pFI->bSkipPeaks ? 0 : lScanIndex;
   }
 
   scanHeader->acquisitionNum=pFI->bs->getScanNum();
@@ -874,6 +882,8 @@ RAMPREAL* mzParser::readPeaks(RAMPFILE* pFI, ramp_fileoffset_t lScanIndex, int i
 
   //see if we already have this spectrum in memory
   if(lScanIndex!=pFI->lLastScanIndex){
+    if(pFI->mzML!=NULL) pFI->mzML->setSkipPeaks(false);
+    if(pFI->mzXML!=NULL) pFI->mzXML->setSkipPeaks(false);
 
     switch(pFI->fileType){
       case 1:

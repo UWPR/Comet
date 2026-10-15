@@ -33,6 +33,7 @@ mzpSAXMzxmlHandler::mzpSAXMzxmlHandler(BasicSpectrum* bs){
   m_bInPeaks=false;
   m_bCompressedData=false;
   m_bHeaderOnly=false;
+  m_bSkipPeaks=false;
   m_bLowPrecision=false;
   m_bNetworkData=true;
   m_bNoIndex=true;
@@ -108,6 +109,10 @@ void mzpSAXMzxmlHandler::startElement(const XML_Char *el, const XML_Char **attr)
     else m_compressLen=0;
 
     //if(m_bHeaderOnly) stopParser();
+    if(m_bSkipPeaks) {
+      m_bInPeaks=false;
+      stopParser();
+    }
 
   }  
   else if (isElement("precursorMz", el)) {

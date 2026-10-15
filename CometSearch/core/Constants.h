@@ -17,6 +17,7 @@
 
 #define PROTON_MASS                 1.00727646688
 #define C13_DIFF                    1.00335483
+#define ISOTOPE_ERROR_7_STEP        4.0070995    // isotope_error = 7 searches -2..+2 steps of this size (CheckMassMatch(), mask in ReadPrecursors())
 
 #define FLOAT_ZERO                  1e-6     // 0.000001
 

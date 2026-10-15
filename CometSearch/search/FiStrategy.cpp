@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include <cstdlib>
+#include <memory>
+#include <mutex>
 #include "Common.h"
 #include "FiStrategy.h"
 #include "SearchUtils.h"
@@ -51,14 +53,46 @@ bool FiStrategy::initialize(SearchSession& session, ThreadPool* tp)
       {
          if (!UpdateInputFile(g_pvInputFiles.at(i)))
             return false;
-
-         MSReader mstReader;
-         SetMSLevelFilter(mstReader);
-         CometPreprocess::Reset();
-
-         if (!CometPreprocess::ReadPrecursors(mstReader))
-            return false;
       }
+
+      // Each file is read by one pool task into a bin array of its own (reads are header-only and
+      // independent) that the task OR-s into g_bIndexPrecursors when it finishes and then frees, so
+      // mask memory scales with the number of running tasks, not with the number of input files
+      // (one array per file would be ~0.5 MB each for 0.01 Da bins -- over 600 MB for 1288 files).
+      const size_t iNumBins = (size_t)BIN(g_staticParams.options.dPeptideMassHigh) + 1;
+      mutex mutexMergeBins;
+      atomic<bool> bReadOK(true);
+
+      // The tasks capture iNumBins, mutexMergeBins and bReadOK by reference.  That is safe because every
+      // path from here to tp->wait_on_threads() below reaches it (doJob() throws only when the pool was
+      // never filled, which DoSearch() always does before a strategy runs), so these locals outlive all tasks.
+      for (size_t i = 0; i < g_pvInputFiles.size(); ++i)
+      {
+         tp->doJob([&, i]()
+         {
+            unique_ptr<bool[]> pBins(new bool[iNumBins]());   // value-initialized: all false
+            MSReader mstReader;
+            SetMSLevelFilter(mstReader);
+
+            if (!CometPreprocess::ReadPrecursors(mstReader, g_pvInputFiles.at(i)->szFileName, pBins.get()))
+            {
+               bReadOK = false;
+               return;
+            }
+
+            lock_guard<mutex> lock(mutexMergeBins);
+            for (size_t x = 0; x < iNumBins; ++x)
+            {
+               if (pBins[x])
+                  g_bIndexPrecursors[x] = true;
+            }
+         });
+      }
+
+      tp->wait_on_threads();
+
+      if (!bReadOK)
+         return false;
 
       if (!g_staticParams.options.bOutputSqtStream)
          cout << CometMassSpecUtils::ElapsedTime(tTime1) << endl;

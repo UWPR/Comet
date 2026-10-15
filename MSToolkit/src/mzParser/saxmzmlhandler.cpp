@@ -55,6 +55,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs){
   m_bInIndexList=false;
   m_bInProduct=false;
   m_bHeaderOnly=false;
+  m_bSkipPeaks=false;
   m_bSpectrumIndex=false;
   m_bNoIndex=true;
   m_bIndexSorted = true;
@@ -96,6 +97,7 @@ mzpSAXMzmlHandler::mzpSAXMzmlHandler(BasicSpectrum* bs, BasicChromatogram* cs){
   m_bInIndexList=false;
   m_bInProduct=false;
   m_bHeaderOnly=false;
+  m_bSkipPeaks=false;
   m_bSpectrumIndex=false;
   m_bNoIndex=true;
   m_bIndexSorted = true;
@@ -131,11 +133,14 @@ void mzpSAXMzmlHandler::startElement(const XML_Char *el, const XML_Char **attr){
     m_encodedLen=atoi(&s[0]);
 
   } else if (isElement("binaryDataArrayList",el)) {
-#ifdef MZP_HDF
-    if(m_bHeaderOnly) stopParser();
-#else
-    if (m_bHeaderOnly) stopParser();
-#endif
+    if (m_bHeaderOnly || m_bSkipPeaks) {
+      //The end tags of this spectrum are never reached, so do their bookkeeping here: pop the spectrum
+      //state and drop the character data gathered so far (otherwise m_vState gains an entry and
+      //m_strData keeps the inter-element whitespace for every header-only read).
+      m_strData.clear();
+      if (!m_vState.empty() && m_vState.back()==esSpectrum) m_vState.pop_back();
+      stopParser();
+    }
     m_bionMobility = false;
 
   } else if (isElement("chromatogram",el)) {

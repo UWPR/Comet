@@ -102,6 +102,12 @@ class MSReader {
   void setFilter(std::vector<MSSpectrumType>& m);
   void setFilter(MSSpectrumType m);
 
+  //Header-only reads (mzML/mzXML only): spectra come back with precursor/scan metadata but no peaks,
+  //and the parser skips decoding the binary data. Other formats ignore the setting and return peaks.
+  //lastReadHeaderOnly() reports whether the most recent read actually left the peaks out.
+  void setHeaderOnly(bool b);
+  bool lastReadHeaderOnly();
+
   //For RAW files
   bool lookupRT(char* c, int scanNum, float& rt);
   void setAverageRaw(bool b, int width=1, long cutoff=1000);
@@ -142,6 +148,8 @@ class MSReader {
 
   //File compression
   bool compressMe;
+  bool bHeaderOnly;
+  bool bLastReadHeaderOnly;
 
   //mzXML support variables;
   mzParser::ramp_fileoffset_t  *pScanIndex;
