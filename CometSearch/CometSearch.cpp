@@ -4810,8 +4810,8 @@ bool CometSearch::CheckMassMatch(size_t iWhichQuery,
             {
                for (int x = -2; x <= 2; ++x)
                {
-                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995
-                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+                  if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * ISOTOPE_ERROR_7_STEP
+                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * ISOTOPE_ERROR_7_STEP <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
                   {
                      return true;
                   }
@@ -4872,8 +4872,8 @@ bool CometSearch::CheckMassMatch(size_t iWhichQuery,
          {
             for (int x = -2; x <= 2; ++x)
             {
-               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x * 4.0070995
-                  && dCalcPepMass + x * 4.0070995 <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
+               if ((pQuery->_pepMassInfo.dPeptideMassToleranceLow <= dCalcPepMass + x * ISOTOPE_ERROR_7_STEP
+                  && dCalcPepMass + x * ISOTOPE_ERROR_7_STEP <= pQuery->_pepMassInfo.dPeptideMassToleranceHigh))
                {
                   return true;
                }
@@ -8537,8 +8537,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
             {
                for (int x = -2; x <= 2; ++x)
                {
-                  if ((dTolLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995
-                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * 4.0070995 <= dTolHigh))
+                  if ((dTolLow <= dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * ISOTOPE_ERROR_7_STEP
+                     && dCalcPepMass + g_staticParams.vectorMassOffsets[i] + x * ISOTOPE_ERROR_7_STEP <= dTolHigh))
                   {
                      return true;
                   }
@@ -8597,8 +8597,8 @@ bool CometSearch::CheckMassMatch(Query* pQuery,
          {
             for (int x = -2; x <= 2; ++x)
             {
-               if ((dTolLow <= dCalcPepMass + x * 4.0070995
-                  && dCalcPepMass + x * 4.0070995 <= dTolHigh))
+               if ((dTolLow <= dCalcPepMass + x * ISOTOPE_ERROR_7_STEP
+                  && dCalcPepMass + x * ISOTOPE_ERROR_7_STEP <= dTolHigh))
                {
                   return true;
                }

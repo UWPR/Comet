@@ -849,8 +849,8 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                   }
                   else if (g_staticParams.tolerances.iIsotopeError == 7)            // do -8, -4, +4, +8 offsets
                   {
-                     iStart = BIN(dMassLow + 8.0 * C13_DIFF);
-                     iEnd   = BIN(dMassHigh + 8.0 * C13_DIFF);
+                     iStart = BIN(dMassLow + 2.0 * ISOTOPE_ERROR_7_STEP);
+                     iEnd   = BIN(dMassHigh + 2.0 * ISOTOPE_ERROR_7_STEP);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
@@ -858,8 +858,8 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                      for (int x = iStart ; x <= iEnd; ++x)
                         pBins[x] = true;
 
-                     iStart = BIN(dMassLow + 4.0 * C13_DIFF);
-                     iEnd   = BIN(dMassHigh + 4.0 * C13_DIFF);
+                     iStart = BIN(dMassLow + ISOTOPE_ERROR_7_STEP);
+                     iEnd   = BIN(dMassHigh + ISOTOPE_ERROR_7_STEP);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
@@ -867,8 +867,8 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                      for (int x = iStart ; x <= iEnd; ++x)
                         pBins[x] = true;
 
-                     iStart = BIN(dMassLow - 8.0 * C13_DIFF);
-                     iEnd   = BIN(dMassHigh - 8.0 * C13_DIFF);
+                     iStart = BIN(dMassLow - 2.0 * ISOTOPE_ERROR_7_STEP);
+                     iEnd   = BIN(dMassHigh - 2.0 * ISOTOPE_ERROR_7_STEP);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)
@@ -876,8 +876,8 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                      for (int x = iStart ; x <= iEnd; ++x)
                         pBins[x] = true;
 
-                     iStart = BIN(dMassLow - 4.0 * C13_DIFF);
-                     iEnd   = BIN(dMassHigh - 4.0 * C13_DIFF);
+                     iStart = BIN(dMassLow - ISOTOPE_ERROR_7_STEP);
+                     iEnd   = BIN(dMassHigh - ISOTOPE_ERROR_7_STEP);
                      if (iStart < 0)
                         iStart = 0;
                      if (iEnd > iMaxBin)

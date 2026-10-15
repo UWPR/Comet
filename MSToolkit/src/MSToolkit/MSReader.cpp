@@ -379,6 +379,7 @@ bool MSReader::prevSpectrum(Spectrum& s){
 }
 
 bool MSReader::readMGFFile(const char* c, Spectrum& s){
+  bLastReadHeaderOnly=false;  //set again only by a read that really left the peaks out (see lastReadHeaderOnly())
 
   char* tok;
   char* nextTok;
@@ -567,6 +568,7 @@ bool MSReader::readMGFFile(const char* c, Spectrum& s){
 }
 
 bool MSReader::readMGFFile2(const char* c, Spectrum& s){
+  bLastReadHeaderOnly=false;  //set again only by a read that really left the peaks out (see lastReadHeaderOnly())
 
   char* tok;
   char* nextTok;
@@ -731,6 +733,7 @@ bool MSReader::readMGFFile2(const char* c, Spectrum& s){
 }
 
 bool MSReader::readMSTFile(const char *c, bool text, Spectrum& s, int scNum){
+  bLastReadHeaderOnly=false;  //set again only by a read that really left the peaks out (see lastReadHeaderOnly())
   MSScanInfo ms;
   Peak_T p;
   ZState z;
@@ -1207,6 +1210,7 @@ void MSReader::setPrecisionMZ(int i){
 }
 
 bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
+  bLastReadHeaderOnly=false;  //set again only by a read that really left the peaks out (see lastReadHeaderOnly())
 
   bool bNewRead=false;
   if(c!=NULL) {
@@ -1300,6 +1304,7 @@ bool MSReader::readFile(const char* c, Spectrum& s, int scNum){
 }
 
 bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
+  bLastReadHeaderOnly=false;  //set again only by a read that really left the peaks out (see lastReadHeaderOnly())
 	mzParser::ramp_fileoffset_t indexOffset;
   mzParser::ScanHeaderStruct scanHeader;
   mzParser::RAMPREAL *pPeaks;
@@ -1330,7 +1335,6 @@ bool MSReader::readMZPFile(const char* c, Spectrum& s, int scNum){
 	}
 
   //header-only mode is applied to every read (it can be toggled between reads of an open file)
-  bLastReadHeaderOnly=false;
   mzParser::rampSetSkipPeaks(rampFileIn,bHeaderOnly);
 
   //check scNum is less than rampLastScan otherwise will trigger segfault reading pScanIndex[] below

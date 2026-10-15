@@ -6107,10 +6107,13 @@ def test_t61_readprecursors_header_only(comet_exe):
 # edge fell into an unmarked bin and vanished from the index (skip = 1 still found it). With a 0.01 Da
 # fragment bin (which is also the precursor bin width) the shift of the +2 and -3 windows is larger
 # than a bin, so a peptide just inside the upper edge of the +2 window, or the lower edge of the
-# -3 window, is lost on the old code.
+# -3 window, is lost on the old code. isotope_error = 7 searches -2..+2 steps of 4.0070995 Da, not
+# of C13_DIFF; the mask there was off by 0.0126 Da at +-2 steps (more than a 0.01 Da bin) for the
+# same reason.
 # ---------------------------------------------------------------------------
 
 _T62_C13_DIFF = 1.00335483
+_T62_ISOTOPE7_STEP = 4.0070995
 _T62_PEPTIDE = "QTAGSPELK"
 
 
@@ -6128,25 +6131,29 @@ def _t62_write_ms2(path, exp_mh):
 @register("t62_precursor_mask_isotope_edges")
 def test_t62_precursor_mask_isotope_edges(comet_exe):
     """T62: with fragindex_skipreadprecursors = 0 a peptide whose isotope-shifted mass lies just inside
-    the edge of the 20 ppm precursor window (+2 isotope, upper edge; -3 isotope, lower edge) must
-    still be in the index, i.e. be found exactly as with skipreadprecursors = 1."""
+    the edge of the 20 ppm precursor window (isotope_error 2: +2 isotope, upper edge; 6: -3 isotope,
+    lower edge; 7: +-2 steps of 4.0070995 Da, upper and lower edge) must still be in the index, i.e.
+    be found exactly as with skipreadprecursors = 1."""
     failures = []
     fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
     res = [_MONO_RESIDUE_MASS[aa] for aa in _T62_PEPTIDE]
     calc_mh = sum(res) + _H2O_MASS + _PROTON_MASS
     ppm, t = 20e-6, 0.99      # the peptide sits at 99% of the way to the window edge
 
-    def exp_mh_for(offset):
-        """Experimental MH+ such that calc_mh + offset*C13 is at fraction t of the way to the window edge."""
-        exp = calc_mh + offset * _T62_C13_DIFF
+    def exp_mh_for(shift):
+        """Experimental MH+ such that calc_mh + shift (the isotope step the search adds to the peptide mass) is
+        at fraction t of the way to the upper (shift > 0) or lower (shift < 0) edge of the window."""
+        exp = calc_mh + shift
         for _ in range(3):                                   # the window half-width depends on exp (2+: MH+ plus a proton)
             tol = (exp + _PROTON_MASS) * ppm
-            exp = calc_mh + offset * _T62_C13_DIFF - (t * tol if offset > 0 else -t * tol)
+            exp = calc_mh + shift - (t * tol if shift > 0 else -t * tol)
         return exp
 
-    cases = (   # (label, isotope_error, isotope offset applied to the peptide)
-        ("+2 isotope, upper window edge", 2, 2),
-        ("-3 isotope, lower window edge", 6, -3),
+    cases = (   # (label, isotope_error, mass shift in Da the search adds to the peptide mass)
+        ("+2 isotope, upper window edge", 2, 2 * _T62_C13_DIFF),
+        ("-3 isotope, lower window edge", 6, -3 * _T62_C13_DIFF),
+        ("isotope_error 7, +2 steps, upper window edge", 7, 2 * _T62_ISOTOPE7_STEP),
+        ("isotope_error 7, -2 steps, lower window edge", 7, -2 * _T62_ISOTOPE7_STEP),
     )
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -6168,9 +6175,9 @@ def test_t62_precursor_mask_isotope_edges(comet_exe):
             print(log[-1500:])
             return failures
 
-        for label, iso, offset in cases:
-            ms2 = tmp / f"t62_{iso}.ms2"
-            _t62_write_ms2(ms2, exp_mh_for(offset))
+        for label, iso, shift in cases:
+            ms2 = tmp / f"t62_{iso}_{'p' if shift > 0 else 'm'}.ms2"
+            _t62_write_ms2(ms2, exp_mh_for(shift))
             txt = ms2.with_suffix(".txt")
             found = {}
             for skip in (1, 0):
