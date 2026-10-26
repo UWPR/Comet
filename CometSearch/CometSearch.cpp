@@ -6942,22 +6942,6 @@ void CometSearch::VariableModSearch(char* szProteinSeq,
                                                                   }
                                                                }
 
-                                                               if (!bValid)
-                                                               {
-                                                                  // Above checked to see if any individual required variable mod is present.
-                                                                  // If we pass above, now check if logical OR of one from a set of mods
-                                                                  // is present.
-                                                                  bValid = false;
-                                                                  for (i = 0; i < VMODS; ++i)
-                                                                  {
-                                                                     if (((g_staticParams.variableModParameters.iRequireVarMod >> (i + 1)) & 1U)
-                                                                        && piTmpVarModCounts[i] > 0)
-                                                                     {
-                                                                        bValid = true;
-                                                                        break;
-                                                                     }
-                                                                  }
-                                                               }
                                                             }
 
                                                             if (bValid && HasVariableMod(piTmpVarModCounts, iStartPos, iTmpEnd, dbe))
@@ -7557,11 +7541,9 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
          }
       }
 
-      // FIX 20250903: I don't understand this logic below. Looks like I should test that if
-      // any individual required mod is not present, return out of this fn. Current logic just
-      // tests if any required mod is present.
-
-      // above checked for required individual mods; now check if any of multiple mods is present
+      // above rejected the peptide if any individually required mod (seventh field > 0) is
+      // missing; what remains is the global require_variable_mod rule: at least one variable
+      // mod must be present
       bool bValid = false;
       int iSize = _varModInfo.iEndPos + 2;
       for (i = _varModInfo.iStartPos; i <= iSize; ++i)

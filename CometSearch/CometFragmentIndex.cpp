@@ -620,7 +620,6 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
       if (!g_staticParams.variableModParameters.iRequireVarMod)
          addVariant(iWhichPeptide, -1);
 
-      // FIX: need to see if individual required varmods are met
       int modSeqIdx = PEPTIDE_MOD_SEQ_IDXS[iWhichPeptide];
 
       if (modSeqIdx < 0)
@@ -644,10 +643,14 @@ void CometFragmentIndex::AddFragmentsThreadProcRange(size_t iPeptideStart,
             GetModSeq(modSeqIdx, iModSeqLen);
             const char* pEntry = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
+            // every mod with variable_modNN seventh field > 0 must be present in the variant
+            if (g_staticParams.variableModParameters.iRequireVarMod)
+               bPass = CometPeptideIndex::PassesRequiredVarMods(vModSlotForAllModsIdx, pEntry, iModSeqLen);
+
             // if protein variable mod filter is applied, check mods[] against the peptide's
             // siVarModProteinFilter -- shared with CometPeptideIndex.cpp's EnumerateIndexPeptideMods().
             // The entry's terminal-slot bytes are checked by the same walk.
-            if (g_staticParams.variableModParameters.bVarModProteinFilter)
+            if (bPass && g_staticParams.variableModParameters.bVarModProteinFilter)
             {
                bPass = CometPeptideIndex::PassesVarModProteinFilter(vModSlotForAllModsIdx,
                   pEntry, iModSeqLen, g_vRawPeptides.at(iWhichPeptide).siVarModProteinFilter);

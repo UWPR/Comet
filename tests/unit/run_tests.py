@@ -6357,5 +6357,57 @@ def test_t64_precursor_mask_mass_offsets(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T65 -- the seventh field of variable_modNN (required) on the fragment-ion and peptide indexes. Both index
+# builders only dropped the fully unmodified variant, so a variant carrying some OTHER variable mod (and not
+# the required one) was indexed and could be reported. Every mod flagged required must be in every variant.
+# ---------------------------------------------------------------------------
+
+@register("t65_required_varmod_index")
+def test_t65_required_varmod_index(comet_exe):
+    """T65: with variable_mod02 (K) required, the FI_DB and PI_DB indexes hold only the variants carrying it
+    (K and M+K of MAGGK), not the M-only variant; without the flag all three are present."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t65.fasta"
+        fasta.write_text(">t65\nMAGGKGGGGGR\n")
+        idx = tmp / "t65.fasta.idx"
+        pf = tmp / "t65.params"
+        ms2 = DATA_DIR / "t27_modcap.ms2"
+        txt = ms2.with_suffix(".txt")
+
+        # (build flag, regex of the variant count printed when the index is read for a search)
+        paths = (("-i", "FI_DB", r"(\d+) total peptides"), ("-j", "PI_DB", r"(\d+) modified peptides"))
+        for flag, label, rx in paths:
+            counts = {}
+            for required in (0, 1):
+                pr = legacy_cases.build_params(database=fmt(fasta), enzyme1=1, mods=(
+                    "15.9949 M 0 3 -1 0 0 0.0", f"42.0106 K 0 3 -1 0 {required} 0.0"), static_C=0.0, num_threads=2)
+                pr = _set_param_line(pr, "peptide_mass_tolerance_upper", 100000.0)
+                pr = _set_param_line(pr, "peptide_mass_tolerance_lower", -100000.0)
+                pf.write_text(pr)
+                idx.unlink(missing_ok=True)
+                rc, log = _run_t19_step(comet_exe, [flag, f"-P{fmt(pf)}"])
+                if not check(rc == 0 and idx.exists(), f"{label} required={required}: index build ran (rc={rc})", failures):
+                    print(log[-1500:])
+                    return failures
+                try:
+                    rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", f"-D{fmt(idx)}", fmt(ms2)])
+                finally:
+                    txt.unlink(missing_ok=True)
+                m = re.search(rx, log)
+                check(rc == 0 and m is not None, f"{label} required={required}: search ran and reported a variant count (rc={rc})", failures)
+                counts[required] = int(m.group(1)) if m else None
+            check(counts[1] == 2,
+                  f"{label}: with the K mod required only K and M+K variants of MAGGK are indexed, got {counts[1]}",
+                  failures)
+            check(counts[0] is not None and counts[1] is not None and counts[1] < counts[0],
+                  f"{label}: requiring the mod removes variants ({counts[0]} -> {counts[1]})", failures)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

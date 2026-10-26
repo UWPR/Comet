@@ -718,6 +718,34 @@ bool CometPeptideIndex::PassesVarModProteinFilter(const vector<int>& vModSlotFor
 }
 
 
+bool CometPeptideIndex::PassesRequiredVarMods(const vector<int>& vModSlotForAllModsIdx,
+   const char* mods, int modStringLen)
+{
+   // slots of mods that must each appear; only slots that exist in the compacted slot map
+   // (merged/unused slots have zero mass and are never present in an entry)
+   unsigned int uiRequired = 0;
+   for (size_t i = 0; i < vModSlotForAllModsIdx.size(); ++i)
+   {
+      int iSlot = vModSlotForAllModsIdx[i];
+      if (g_staticParams.variableModParameters.varModList[iSlot].iRequireThisMod > 0)
+         uiRequired |= 1U << iSlot;
+   }
+
+   if (uiRequired == 0)
+      return true;
+
+   unsigned int uiPresent = 0;
+   for (int i = 0; i < modStringLen; ++i)
+   {
+      int iSlot = TranslateVarModSlot(vModSlotForAllModsIdx, mods[i]);
+      if (iSlot >= 0)
+         uiPresent |= 1U << iSlot;
+   }
+
+   return (uiPresent & uiRequired) == uiRequired;
+}
+
+
 // Dual-mode since Phase 2 (docs/20260827_PI_memory.md): with pStaging == NULL this is a
 // count-only pass (*ptCursor is incremented per accepted tuple, nothing stored); with
 // pStaging set, accepted tuples are written at pStaging[*ptCursor++]. Both passes run the
@@ -838,7 +866,10 @@ bool CometPeptideIndex::EnumerateIndexPeptideMods(FragmentPeptidesStruct* pStagi
          GetModSeq(modSeqIdx, iModSeqLen);
          const char* pEntry = GetModNumEntry(modNumIdx, modSeqIdx, iModSeqLen);
 
-         if (g_staticParams.variableModParameters.bVarModProteinFilter)
+         if (g_staticParams.variableModParameters.iRequireVarMod)
+            bPass = PassesRequiredVarMods(vModSlotForAllModsIdx, pEntry, iModSeqLen);
+
+         if (bPass && g_staticParams.variableModParameters.bVarModProteinFilter)
             bPass = PassesVarModProteinFilter(vModSlotForAllModsIdx, pEntry, iModSeqLen, raw.siVarModProteinFilter);
 
          // protein-scoped terminal mods / protein-terminus position rules need an occurrence of

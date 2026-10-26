@@ -159,6 +159,13 @@ public:
    static bool PassesVarModProteinFilter(const vector<int>& vModSlotForAllModsIdx,
       const char* mods, int modStringLen, unsigned short siVarModProteinFilter);
 
+   // Returns true if the MOD_NUMBERS_POOL entry (residue and terminal slot bytes, modStringLen
+   // bytes in all) carries EVERY variable mod whose variable_modNN seventh field is > 0
+   // (iRequireThisMod). Always true when no per-mod requirement is set. Shared by PI_DB's
+   // EnumerateIndexPeptideMods() and FI_DB's AddFragmentsThreadProcRange().
+   static bool PassesRequiredVarMods(const vector<int>& vModSlotForAllModsIdx,
+      const char* mods, int modStringLen);
+
 };
 
 #endif // _COMETPEPTIDEINDEX_H_
