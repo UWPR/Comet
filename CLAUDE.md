@@ -367,7 +367,7 @@ When `--diff` is used with two files, unique PSMs are listed for each scoring me
 separately, showing scan, charge, score, and modified peptide sequence.
 
 FDR formula:
-- Standard TDA: `FDR(i) = n_decoy(i) / n_target(i)`, no +1 correction, no 2x scaling
+- Standard TDA with the +1 decoy correction (as mokapot/Percolator): `FDR(i) = (n_decoy(i) + 1) / n_target(i)`, no 2x scaling; `--no-plus-one` restores the uncorrected `n_decoy / n_target` (the default before 2026-10-26)
 - `q(i) = running minimum FDR from position i to the end`
 - Decoys identified by protein column starting with `DECOY_` or `rev_` (case-insensitive)
 

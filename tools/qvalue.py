@@ -9,8 +9,9 @@ FDR calculation uses **rank-1 PSMs only** (the top-ranked peptide per spectrum).
 Including lower ranks inflates counts and produces incorrect FDR estimates because
 each spectrum contributes at most one true positive.
 
-FDR convention: standard target-decoy approach (TDA), no +1 correction, no 2x scaling.
-    FDR(i) = n_decoy(i) / n_target(i)    (at rank i in the sorted list)
+FDR convention: standard target-decoy approach (TDA) with the +1 decoy correction (as in
+mokapot/Percolator), no 2x scaling.  --no-plus-one restores the older uncorrected estimate.
+    FDR(i) = (n_decoy(i) + 1) / n_target(i)    (at rank i in the sorted list)
     q(i)   = min FDR over all j >= i     (monotone running minimum from the tail)
 Decoys are identified by the protein column starting with "DECOY_" or "rev_"
 (case-insensitive).
@@ -33,6 +34,8 @@ Column indices in Comet tab-delimited output (0-based, after 2 header lines):
 """
 
 import argparse
+
+NO_PLUS_ONE = False   # set from --no-plus-one
 import math
 from pathlib import Path
 
@@ -120,7 +123,7 @@ def compute_qvalues(sorted_psms: list[tuple]) -> list[float]:
             n_decoy += 1
         else:
             n_target += 1
-        fdrs[i] = n_decoy / n_target if n_target > 0 else 1.0
+        fdrs[i] = (n_decoy + (0 if NO_PLUS_ONE else 1)) / n_target if n_target > 0 else 1.0
 
     qvals = fdrs[:]
     running_min = qvals[-1]
@@ -232,9 +235,13 @@ def main():
     parser.add_argument("--threshold", type=float, action="append",
                         dest="thresholds", metavar="Q",
                         help="Q-value threshold(s) to report (default: 0.01 and 0.05).")
+    parser.add_argument("--no-plus-one", action="store_true",
+                        help="use FDR = n_decoy / n_target (no +1 correction; the pre-2026-10-26 default)")
     parser.add_argument("--diff", action="store_true",
                         help="When two files are given, print PSMs unique to each file.")
     args = parser.parse_args()
+    global NO_PLUS_ONE
+    NO_PLUS_ONE = args.no_plus_one
 
     thresholds = sorted(args.thresholds) if args.thresholds else [0.01, 0.05]
 
