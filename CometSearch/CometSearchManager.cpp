@@ -3246,7 +3246,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                bPrintDelim = true;
 
             string sTmp;
-            if ((*itProt).starts_with(g_staticParams.szDecoyPrefix))
+            if ((*itProt).compare(0, strlen(g_staticParams.szDecoyPrefix), g_staticParams.szDecoyPrefix) == 0)
                sTmp = *itProt;
             else
             {
