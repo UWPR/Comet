@@ -2072,8 +2072,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // deliberately never writes into pdTmpRawData for (guarded by "iBinIon < iArraySize").
    // MakeCorrData() below reads/writes pdTmpRawData/pdTmpCorrelationData up to
    // iHighestIon (internally capped by iArraySizeGlobal, not iArraySize -- see the
-   // "FIX: need to check why both iArraySize and iHighestIons are used" comment on
-   // MakeCorrData() itself), so it is passed through unclamped here, matching the
+   // comment on MakeCorrData() itself for why both are used), so it is passed through unclamped here, matching the
    // batch path exactly (CometPreprocess::Preprocess() never clamps it either). The
    // RTS thread-local-pool buffers are zeroed up to iZeroBound (see its definition
    // above), which covers this same worst case, so there is no stale-data risk from
@@ -3104,7 +3103,10 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
 
 
 // pdTmpRawData now holds raw data, pdTmpCorrelationData is windowed data after this function
-// FIX: need to check why both iArraySize and iHighestIons are used
+// iHighestIon (the highest populated bin, which can exceed the array) sets the width of the 10
+// normalization windows and so is part of the XCorr definition; iArraySizeGlobal is only the
+// buffer-safety bound on the bins actually read/written. Both are needed -- do not clamp
+// iHighestIon to the array size (that changes the windows and hence the scores).
 void CometPreprocess::MakeCorrData(double* pdTmpRawData,
    double* pdTmpCorrelationData,
    int iHighestIon,

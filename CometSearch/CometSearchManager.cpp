@@ -511,7 +511,7 @@ bool CometSearchManager::InitializeStaticParams()
 
    if (GetParamValue("spectral_library_ms_level", iIntData))
    {
-      // FIX add check that input value is some sane range
+      // range (1-3) is validated where the library is loaded, which fails with an error
       g_staticParams.options.iSpecLibMSLevel = iIntData;
    }
 
@@ -3770,9 +3770,9 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
          ionSeriesList.push_back("nY");
       }
    }
-   // FIX: need to check if AScorePro uses Z or Z' series
-   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z]
-      || g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
+   // AScorePro's z ion is residues + 2.99966565 (z+2, z'), which is Comet's Z1 series
+   // (y - NH2 + H); Comet's Z series (y - NH2, z+1) has no AScorePro equivalent.
+   if (g_staticParams.ionInformation.iIonVal[ION_SERIES_Z1])
    {
       uiIonSeriesMask += 2048;
       ionSeriesList.push_back("z");
@@ -3824,7 +3824,9 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
    // options.setDeisotopingType("");
 
    // Set up static modifications
-   // FIX:  deal with static N-term and C-term mods
+   // Peptide-terminus static mods are applied as terminal masses below. Protein-terminus static
+   // mods (add_Nterm_protein/add_Cterm_protein) depend on where the peptide sits in its protein
+   // and cannot be expressed in these peptide-independent options.
    std::vector<PeptideMod> staticMods;
    for (int i = 'A'; i <= 'Z'; ++i)
    {
@@ -3839,6 +3841,26 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
          pepMod.setIsCTerm(false);
          staticMods.push_back(pepMod);
       }
+   }
+   if (!isEqual(g_staticParams.staticModifications.dAddNterminusPeptide, 0.0))
+   {
+      PeptideMod pepMod;
+      pepMod.setSymbol('n');
+      pepMod.setResidues("");
+      pepMod.setMass(g_staticParams.staticModifications.dAddNterminusPeptide);
+      pepMod.setIsNTerm(true);
+      pepMod.setIsCTerm(false);
+      staticMods.push_back(pepMod);
+   }
+   if (!isEqual(g_staticParams.staticModifications.dAddCterminusPeptide, 0.0))
+   {
+      PeptideMod pepMod;
+      pepMod.setSymbol('c');
+      pepMod.setResidues("");
+      pepMod.setMass(g_staticParams.staticModifications.dAddCterminusPeptide);
+      pepMod.setIsNTerm(false);
+      pepMod.setIsCTerm(true);
+      staticMods.push_back(pepMod);
    }
    options.setStaticMods(staticMods);
 

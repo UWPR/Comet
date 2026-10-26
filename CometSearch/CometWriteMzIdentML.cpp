@@ -551,7 +551,7 @@ bool CometWriteMzIdentML::ParseTmpFile(FILE *fpout,
                               strMods.c_str(),
                               g_staticParams.sDecoyPrefix.c_str(),
                               strProteinName.c_str(),
-                              strPeptide.c_str(),  //FIX is this right??
+                              strPeptide.c_str(),  // decoy evidence references the target Peptide element (decoy Peptide elements are not written)
                               strMods.c_str(),
                               g_staticParams.sDecoyPrefix.c_str(),
                               strProteinName.c_str());

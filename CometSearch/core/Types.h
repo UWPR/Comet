@@ -1382,7 +1382,7 @@ struct QueryMS1
 
    ~QueryMS1()
    {
-      //FIX delete _pSepcLibResults
+      // _pSpecLibResultsMS1 is a by-value member; nothing to free
 
       Threading::DestroyMutex(accessMutex);
    }

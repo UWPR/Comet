@@ -147,7 +147,7 @@ void ModificationsPermuter::initCombinations(int maxPeptideLen,
    int totalCount = 0;
    int i = maxMods;
 
-   unsigned long long* allCombos = 0;  // = new unsigned long long[0]; // FIX: confirm no need for this init allocation
+   unsigned long long* allCombos = 0;
    int currentAllCount = 0;
    while (i >= 1)
    {
@@ -420,7 +420,8 @@ void ModificationsPermuter::getModifiableSequences(const RawPeptideTable& vRawPe
 
    for (auto it = vRawPeptides.begin(); it != vRawPeptides.end(); ++it)
    {
-      //FIX: put restriction here for protein mod filter
+      // protein-level restrictions (variable-mod protein filter, '^'/'$' terminal context) are
+      // applied per variant by the callers (PassesVarModProteinFilter / PassesProteinTerminusContext)
       string modifiableAas = getModifiableAas(string((*it).szPeptide, (size_t)(*it).iLen), ALL_MODS);
 
       if (bRestricted)
@@ -681,7 +682,6 @@ void ModificationsPermuter::generateModifications(const char* sequence,
    // Step 1: Get a bitmask representing each user specified modification found in the sequence.
    for (int m = 0; m < MOD_CNT; ++m)
    {
-      //FIX: apply protein modifications filter here??
       string sModChars = ALL_MODS[m];
 
       unsigned long long bitmask = getModBitmask(sequence, iSeqLen, sModChars); // Example: CMHQQQMK -> 01000010 (for modChar = 'M')

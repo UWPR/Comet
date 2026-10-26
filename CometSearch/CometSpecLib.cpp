@@ -211,7 +211,8 @@ bool CometSpecLib::ReadSpecLibRaw(string /*strSpecLibFile*/)
       msLevel.push_back(MS3);
    else
    {
-      string strErrorMsg = "Error, MS level not set for the spectral library input.\n";
+      string strErrorMsg = "Error, spectral_library_ms_level must be 1, 2 or 3 for the spectral library input (got "
+         + to_string(g_staticParams.options.iSpecLibMSLevel) + ").\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
@@ -428,7 +429,8 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
             }
             else if (!strncmp(szBuf, "MW:", 3))
             {
-               // FIX:  in my example, the MW: field encodes (parent m/z * charge)
+               // assumes the MW: field encodes (parent m/z * charge), as in the supported libraries;
+               // the charge-proton adjustment to a neutral mass is made after the entry is parsed
                sscanf(szBuf+4, "%lf", &(pTmp.dSpecLibMW));
             }
             else if (!strncmp(szBuf, "Comment:", 8))
@@ -477,7 +479,7 @@ bool CometSpecLib::ReadSpecLibMSP(string strSpecLibFile)
 
          pTmp.dSpecLibMW -= pTmp.iSpecLibCharge * PROTON_MASS;  // make neutral mass
 
-         // FIX:  do something with the peak list depending on score/processing
+         // peaks are stored exactly as parsed; any scoring-specific processing happens at query time
          g_vSpecLib.push_back(pTmp);
          size_t iWhichSpecLib = g_vSpecLib.size() - 1;
          SetSpecLibPrecursorIndex(pTmp.dSpecLibMW, pTmp.iSpecLibCharge, iWhichSpecLib);
@@ -702,7 +704,7 @@ bool CometSpecLib::LoadSpecLibMS1Raw(ThreadPool* tp,
    cout << "100% (" << CometMassSpecUtils::ElapsedTime(tStartTime) << ")" << endl;
 
    g_bSpecLibRead = true;
-   //   mstReader.closeFile();   //FIX when does this get closed?
+   // mstReader is a local; MSReader's destructor closes the file
 
    printf("\n"); fflush(stdout);
 

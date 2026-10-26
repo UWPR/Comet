@@ -266,9 +266,9 @@ void CometMassSpecUtils::GetProteinNameString(FILE *fpdb,
       return string();
    };
 
-   // FIX:  protein references is so convoluted with the restoration of peptide index.  This
-   // seems to work now but definitely needs to be revisited to be cleaned up.
-   // Look into lProteinFilePosition and lWhichProtein with Results struct.
+   // Index-backed searches (FI_DB / PI_DB) reach proteins through Results::pWhichProtein
+   // (ProteinsListCSR row ordinals) or, as a fallback, lProteinFilePosition; FASTA_DB uses
+   // the file-position path in the else branch below.
    if (g_staticParams.iDbType != DbType::FASTA_DB)
    {
       Results* pOutput;
@@ -556,8 +556,6 @@ bool CometMassSpecUtils::DBICompareByPeptide(const DBIndex& lhs,
          else
             return false;
       }
-
-      // FIX: if protein terminal mods are specified, address them
 
       // at this point, same peptide, same mass, same mods so return first protein
       if (lhs.lIndexProteinFilePosition != rhs.lIndexProteinFilePosition)

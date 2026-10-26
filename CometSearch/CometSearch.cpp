@@ -1296,6 +1296,8 @@ bool CometSearch::RunSpecLibSearch(int /*iPercentStart*/,
       int iBinExpMass = BINPREC((*it)->_pepMassInfo.dExpPepMass);
 
       // FIX: need to address isotope offsets as well
+      // Note: the MS2 spectral library search is a prototype (exact precursor-bin lookup only);
+      // isotope offsets belong with a proper tolerance-based lookup rather than extra exact bins.
 
       if (g_vulSpecLibPrecursorIndex[iBinExpMass].size() > 0)
       {
@@ -2090,7 +2092,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          if (rawView.cNextAA == '-')
             dYion += g_staticParams.staticModifications.dAddCterminusProtein;
 
-         //FIX: set fragment neutral loss correctly
+         // fragment neutral-loss bookkeeping below mirrors SearchForPeptides()'s (iPositionNL*/iCountNL*)
          if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
          {
             memset(iCountNLB, 0, sizeof(iCountNLB));
@@ -7652,7 +7654,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
                      // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
                      if (iWhichQuery != -1)
                      {
-                        // FIX: add test here as piVarModSites must contain a negative PEFF value
+                        // piVarModSites holds the negative PEFF code at iTmpModPosition (set above)
                         CalcVarModIons(szProteinSeq, iWhichQuery, pbDuplFragment, piVarModSites, dTmpCalcPepMass, iLenPeptide, dbe);
                      }
                   }
