@@ -3825,8 +3825,8 @@ void CometSearchManager::SetAScoreOptions(AScoreProCpp::AScoreOptions& options)
 
    // Set up static modifications
    // Peptide-terminus static mods are applied as terminal masses below. Protein-terminus static
-   // mods (add_Nterm_protein/add_Cterm_protein) depend on where the peptide sits in its protein
-   // and cannot be expressed in these peptide-independent options.
+   // mods (add_Nterm_protein/add_Cterm_protein) apply per PSM (only when the peptide has a '-'
+   // flank), so CalculateAScorePro() adds them to a private copy of these options for such PSMs.
    std::vector<PeptideMod> staticMods;
    for (int i = 'A'; i <= 'Z'; ++i)
    {

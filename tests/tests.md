@@ -11,7 +11,7 @@ purpose, plus one supporting driver:
 | `rts_repro/` | Thermo-independent, Linux-buildable driver for the real-time search (RTS) single-spectrum path; not a test by itself, used by T22 | `rts_repro.cpp`, `ms2_to_fixture.py` |
 
 Test counts as of 2026-09-30 (2026.03 rev. 0 development, `terminalmods`: T1-T64): `run_tests.py` registers 72 named
-tests plus 21 generated `t21_*` legacy cases (94 IDs, 10 of them integration-only);
+tests plus 21 generated `t21_*` legacy cases (95 IDs, 10 of them integration-only);
 `CometUnitTests.exe` has 82 `TEST_F`/`TEST` cases.
 
 See `CLAUDE.md` for the canonical invocation examples. This document summarizes
@@ -44,7 +44,7 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T65
+### `run_tests.py` -- T1-T66
 
 | ID | Summary |
 |---|---|
@@ -116,6 +116,7 @@ not exist.
 | **T63** (`t63_fi_equal_mass_order_invariant`) | Fragment-index entries of identical mass are ordered by (mass, raw peptide, mod number, decoy flag), not by `std::sort`'s arbitrary order for equal keys. The index search scores only the first `FRAGINDEX_MAX_NUMSCORED` (100) candidates ranked by matched ions then index position, so an order that changed with the set being sorted (for example what the `fragindex_skipreadprecursors = 0` mask pruned) changed which tied candidates were scored, the e-value histogram built from them, and which of several equal scores was rank 1 (23 differing rows on a 40k-spectrum file after the mask fix; 38 of 100 on the fixture here). 160 permutations of one residue set (`AG` + permutation of `STVNDE` + `K`: identical mass, each matching at least the same three fragment ions, so more than 100 tie at the cap) plus 400 filler peptides that only the skip = 1 index contains are searched with `num_output_lines = 100`; skip = 0 and skip = 1 must report the same 100 rows (peptide, protein, xcorr, e-value). Verified to fail on the `mass`-only sort. |
 | **T64** (`t64_precursor_mask_mass_offsets`) | `mass_offsets` and the `fragindex_skipreadprecursors = 0` precursor mask. The search accepts a peptide when `mass + offset + isotope step` lies in the precursor window for one of the listed offsets (only listed offsets are tried, so 0 only if listed), but the mask was built from the unshifted window only, so with skip = 0 every peptide matched through an offset was missing from the index while skip = 1 found it (Crux exposes `mass_offsets` and defaults to skip = 0). Cases: a single offset, an offset list matched through the first and through the second entry, offset + `isotope_error` 1 (+1 step), offset + `isotope_error` 5 (-1 step), offset + `isotope_error` 7 (+-2 steps), and a control (the unshifted peptide is not a match when offsets are listed, in either mode); skip = 0 must give the same rank-1 peptide as skip = 1. The mask is now built from the same shift list as `CheckMassMatch()` (`PrecursorWindowShifts()` in `CometPreprocess.cpp`). Verified to fail on the offset cases with the old mask. |
 | **T65** (`t65_required_varmod_index`) | The seventh field of `variable_modNN` (required) on the FI_DB and PI_DB indexes. Both builders only dropped the unmodified variant, so a variant carrying another mod but not the required one was indexed and reportable. Fixture `MAGGK...R` with M oxidation and a required K mod: the indexed variant count must be exactly 2 (K, M+K) rather than 3, and lower than without the flag. Verified to fail (3 variants) with `PassesRequiredVarMods()` disabled. |
+| **T66** (`t66_ascore_protein_term_static`) | AScorePro and protein-terminus static mods. `add_Nterm_protein`/`add_Cterm_protein` apply only to a peptide with a `-` flank, so `CalculateAScorePro()` adds them per PSM to a private copy of the AScorePro options (peptide-terminus ones are in the shared options). Synthetic spectrum of `SSDTAGELK` (a whole one-peptide protein, phospho on S2) with N-term +100 and C-term +50 in the b/y ions: the rank-1 site is S2 with AScorePro score >= 13, on FASTA_DB, PI_DB and FI_DB, each with and without a position-restricted variable-mod slot (which routes through the thread-local options copy). Verified to fail (AScorePro score 0.0 in all six cases) with the per-PSM adjustment disabled. |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 

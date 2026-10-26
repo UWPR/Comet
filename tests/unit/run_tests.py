@@ -6409,5 +6409,93 @@ def test_t65_required_varmod_index(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T66 -- AScorePro and protein-terminus static mods (add_Nterm_protein / add_Cterm_protein). Those mods apply
+# only to a peptide with a '-' flank, so they cannot sit in the shared AScorePro options; CalculateAScorePro()
+# adds them per PSM to a private copy of the options. Without that, AScorePro's b/y ladders for a peptide at
+# the protein terminus are offset by the mod mass and it cannot localize the phosphosite from the b ions.
+# The synthetic spectrum has b and y ions (1+) of SSDTAGELK(S2 phospho) including both protein-terminus mods.
+# ---------------------------------------------------------------------------
+
+_T66_MASS = {"S": 87.032028, "D": 115.026943, "T": 101.047679, "A": 71.037114, "G": 57.021464,
+             "E": 129.042593, "L": 113.084064, "K": 128.094963}
+
+
+def _t66_write_ms2(path, pep, phospho_pos, nterm, cterm, phospho=79.966331):
+    res = [_T66_MASS[c] + (phospho if i == phospho_pos else 0.0) for i, c in enumerate(pep)]
+    proton, h2o = 1.007276, 18.010565
+    ions = []
+    for i in range(1, len(pep)):
+        ions.append(sum(res[:i]) + nterm + proton)             # b
+        ions.append(sum(res[i:]) + cterm + h2o + proton)       # y
+    mh = sum(res) + nterm + cterm + h2o + proton
+    lines = ["H\tCreationDate\tsynthetic", f"S\t1\t1\t{(mh + proton) / 2:.6f}", f"Z\t2\t{mh:.6f}"]
+    lines += [f"{m:.6f}\t100.00" for m in sorted(ions)]
+    path.write_text("\n".join(lines) + "\n")
+
+
+@register("t66_ascore_protein_term_static")
+def test_t66_ascore_protein_term_static(comet_exe):
+    """T66: AScorePro localizes a phosphosite on a peptide spanning a whole protein when add_Nterm_protein and
+    add_Cterm_protein are set, i.e. the protein-terminus static mods reach AScorePro -- on FASTA_DB, PI_DB and
+    FI_DB, each with and without a position-restricted variable mod slot (which routes through a thread-local
+    options copy)."""
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    pep, nmod, cmod = "SSDTAGELK", 100.0, 50.0
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        fasta = tmp / "t66.fasta"
+        fasta.write_text(f">t66\n{pep}\n")
+        idx = tmp / "t66.fasta.idx"
+        ms2 = tmp / "t66.ms2"
+        _t66_write_ms2(ms2, pep, 1, nmod, cmod)
+        txt = ms2.with_suffix(".txt")
+        pf = tmp / "t66.params"
+
+        def params(db, mod2, ist=None):
+            p = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(db), ascorepro=-1,
+                                           mod1="79.966331 STY 0 3 -1 0 0 97.976896", decoy_search=0, len_min=8, len_max=12)
+            p = _set_param_line(p, "add_Nterm_protein", nmod)
+            p = _set_param_line(p, "add_Cterm_protein", cmod)
+            if mod2:
+                p = _set_param_line(p, "variable_mod02", mod2)
+            if ist is not None:
+                p = _set_param_line(p, "index_search_type", ist)
+            pf.write_text(p)
+
+        # the second variant adds a position-restricted variable mod (distance 20 from the protein N-terminus
+        # admits every position, but any restricted slot switches CalculateAScorePro() to its thread-local
+        # options copy with the peptide filter -- the path the protein-terminus adjustment must also cover)
+        for dbname, flag, ist in (("FASTA_DB", None, None), ("PI_DB", "-j", 0), ("FI_DB", "-i", 1)):
+            for variant, mod2 in (("unrestricted", None), ("position-restricted slot", "0.984016 NQ 0 3 20 0 0 0.0")):
+                label = f"{dbname} {variant}"
+                db = fasta
+                if flag:
+                    idx.unlink(missing_ok=True)
+                    params(fasta, mod2)
+                    rc, out = _run_t19_step(comet_exe, [flag, f"-P{fmt(pf)}"])
+                    if not check(rc == 0 and idx.exists(), f"{label}: index builds (rc={rc})", failures):
+                        print(out[-1500:])
+                        continue
+                    db = idx
+                params(db, mod2, ist)
+                txt.unlink(missing_ok=True)
+                rc, out = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+                if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                    print(out[-1500:])
+                    continue
+                r1 = _t34_rank1(_t34_read_rows(txt), 1)
+                if not check(r1 is not None, f"{label}: scan 1 has a rank-1 row", failures):
+                    continue
+                check(r1.get("plain_peptide") == pep, f"{label}: rank-1 is {pep}, got {r1.get('plain_peptide')!r}", failures)
+                check("SS[79.9663]DTAGELK" in r1.get("modified_peptide", ""),
+                      f"{label}: phospho is localized on S2, got {r1.get('modified_peptide')!r}", failures)
+                check(float(r1.get("ascorepro", "0") or 0) >= 13.0,
+                      f"{label}: AScorePro confidently localizes the site (score {r1.get('ascorepro')!r} >= 13.0)", failures)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

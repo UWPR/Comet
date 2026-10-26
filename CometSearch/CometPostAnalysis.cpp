@@ -976,12 +976,33 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
    thread_local AScoreOptions tl_opts;
    thread_local unsigned int tl_uiGeneration = UINT_MAX;
 
+   // Protein-terminus static mods (add_Nterm_protein / add_Cterm_protein) apply only when this
+   // peptide sits at the protein terminus ('-' flank), so unlike the peptide-terminus ones they
+   // cannot live in the shared g_AScoreOptions. For such a PSM the options actually used are a
+   // private copy whose terminal masses include the mod (pPSMOpts below); every other PSM uses the
+   // shared/thread-local options unchanged. dPepMass (hence precursorMz) already includes the mod.
+   const double dProtNStatic = (pQuery->_pResults[0].cPrevAA == '-') ? g_staticParams.staticModifications.dAddNterminusProtein : 0.0;
+   const double dProtCStatic = (pQuery->_pResults[0].cNextAA == '-') ? g_staticParams.staticModifications.dAddCterminusProtein : 0.0;
+   const bool bProteinTermStatic = !isEqual(dProtNStatic, 0.0) || !isEqual(dProtCStatic, 0.0);
+   AScoreOptions protTermOpts;
+
    AScoreOutput result;
    if (!g_bAScoreRestrictedSlots)
    {
+      const AScoreOptions* pPSMOpts = &g_AScoreOptions;
+      if (bProteinTermStatic)
+      {
+         protTermOpts = g_AScoreOptions;
+         pPSMOpts = &protTermOpts;
+      }
+      if (!isEqual(dProtNStatic, 0.0))
+         protTermOpts.getMasses().modifyNTermMass(dProtNStatic);
+      if (!isEqual(dProtCStatic, 0.0))
+         protTermOpts.getMasses().modifyCTermMass(dProtCStatic);
+
       // Calculate AScore using the DLL interface
       result = ascoreInterface->CalculateScoreWithOptions(sequence,
-         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, g_AScoreOptions);
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, *pPSMOpts);
    }
    else
    {
@@ -1044,8 +1065,19 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
                tl_ctx.vProtein.emplace_back(e.iStartResidue - 1, e.iProteinLength - 1);
       }
 
+      const AScoreOptions* pPSMOpts = &tl_opts;
+      if (bProteinTermStatic)
+      {
+         protTermOpts = tl_opts;   // keeps the installed peptide filter, which reads tl_ctx
+         pPSMOpts = &protTermOpts;
+      }
+      if (!isEqual(dProtNStatic, 0.0))
+         protTermOpts.getMasses().modifyNTermMass(dProtNStatic);
+      if (!isEqual(dProtCStatic, 0.0))
+         protTermOpts.getMasses().modifyCTermMass(dProtCStatic);
+
       result = ascoreInterface->CalculateScoreWithOptions(sequence,
-         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, tl_opts);
+         pQuery->vRawFragmentPeakMassIntensity, precursorMz, precursorCharge, *pPSMOpts);
    }
 
    if (!result.peptides.empty())
