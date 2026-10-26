@@ -40,6 +40,11 @@
 // version), so it's available everywhere std::atomic_ref isn't.
 #if defined(__cpp_lib_atomic_ref) && __cpp_lib_atomic_ref >= 201806L
 #define FRAGINDEX_ATOMIC_FETCH_ADD(x) std::atomic_ref<uint64_t>(x).fetch_add(1, std::memory_order_relaxed)
+#elif defined(_MSC_VER)
+// MSVC at /std:c++17 has neither std::atomic_ref nor the GCC builtin; the interlocked intrinsic
+// is a full-barrier atomic add, stronger than the relaxed ordering needed for a commutative sum.
+#include <intrin.h>
+#define FRAGINDEX_ATOMIC_FETCH_ADD(x) _InterlockedExchangeAdd64(reinterpret_cast<volatile __int64*>(&(x)), 1)
 #else
 #define FRAGINDEX_ATOMIC_FETCH_ADD(x) __atomic_fetch_add(&(x), 1, __ATOMIC_RELAXED)
 #endif
