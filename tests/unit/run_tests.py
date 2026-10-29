@@ -6497,5 +6497,106 @@ def test_t66_ascore_protein_term_static(comet_exe):
 
 
 
+
+# ---------------------------------------------------------------------------
+# T67 -- Mango (mango_search = 1) regression, docs/20261029_mango_review.md section 9.
+# One scan with four Z lines and an S-line m/z of 0.0, as the Mango pipeline writes it.
+#   (a) the first Z line is 2+: pre-fix, Comet derived its m/z as MH+/z (missing a
+#       proton), so with isotope_error = 0 the peptide could not be found at all;
+#   (b) the second Z line is above digest_mass_range and is rejected: pre-fix, the A/B
+#       labels were assigned from the position among surviving queries, so the third
+#       and fourth Z lines came out as 000_B / 001_A instead of 001_A / 001_B.
+# ---------------------------------------------------------------------------
+
+T67_PARAMS_TEMPLATE = (
+    T19_PARAMS_TEMPLATE
+    .replace("search_enzyme_number = 0", "search_enzyme_number = 1")
+    .replace("peptide_length_range = 8 8", "peptide_length_range = 9 10")
+    .replace("override_charge = 0", "override_charge = 0\nmango_search = 1")
+)
+assert "search_enzyme_number = 1" in T67_PARAMS_TEMPLATE, \
+    "T67_PARAMS_TEMPLATE: search_enzyme_number replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 9 10" in T67_PARAMS_TEMPLATE, \
+    "T67_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "mango_search = 1" in T67_PARAMS_TEMPLATE, \
+    "T67_PARAMS_TEMPLATE: override_charge replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
+    "T67 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
+
+
+@register("t67_mango")
+def test_t67_mango(comet_exe):
+    """T67: Mango regression -- first Z line at 2+ gets the right precursor mass, and
+    a Z line rejected by digest_mass_range does not shift the A/B labels after it."""
+    failures = []
+
+    fasta = DATA_DIR / "t67_mango.fasta"
+    ms2   = DATA_DIR / "t67_mango.ms2"
+    txt   = ms2.with_suffix(".txt")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    txt.unlink(missing_ok=True)
+    params = T67_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed/crashed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+        # With mango_search = 1 the .txt writer inserts the Mango spectrum string as an
+        # unlabeled second column (CometWriteTxt.cpp), so every named column sits one
+        # position to the right of its header entry.
+        header = lines[1].split("\t")
+        col = {name: i + 1 for i, name in enumerate(header)}
+
+        # (label, charge, exp_neutral_mass, plain_peptide) expected for each surviving query.
+        # Z line 1 (MH+ 6000) is rejected and so has no row at all.
+        expected = {
+            "000_A": (2, 1018.454195, "ACDEFGHIK"),
+            "001_A": (1, 1262.640765, "LNPQSTVWYR"),
+            "001_B": (1, 1018.454195, "ACDEFGHIK"),
+        }
+        seen = {}
+        for row in rows:
+            spectrum = row[1]
+            check(spectrum.startswith("t67_mango_") and ".02401.02401." in spectrum,
+                  f"unexpected Mango spectrum string {spectrum!r}", failures)
+            label = spectrum[len("t67_mango_"):len("t67_mango_") + 5]
+            seen[label] = (int(row[col["charge"]]),
+                           float(row[col["exp_neutral_mass"]]),
+                           row[col["plain_peptide"]])
+
+        check(set(seen) == set(expected),
+              f"Mango labels: expected {sorted(expected)}, got {sorted(seen)}", failures)
+        for label, (z, mass, pep) in expected.items():
+            if label not in seen:
+                continue
+            got_z, got_mass, got_pep = seen[label]
+            check(got_z == z, f"{label}: charge expected {z}, got {got_z}", failures)
+            check(abs(got_mass - mass) < 0.001,
+                  f"{label}: exp_neutral_mass expected {mass:.6f}, got {got_mass:.6f}", failures)
+            check(got_pep == pep, f"{label}: plain_peptide expected {pep}, got {got_pep!r}", failures)
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+
+    return failures
+
+
 if __name__ == "__main__":
     main()

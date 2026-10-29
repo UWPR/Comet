@@ -34,7 +34,6 @@ struct Query  // core/Types.h
 | `fLowestSpecLibScore` | Current minimum stored speclib score for the MS2 speclib path. |
 | `iMatchPeptideCount` / `iDecoyMatchPeptideCount` | Number of results actually stored. |
 | `_uliNumMatchedPeptides` / `_uliNumMatchedDecoyPeptides` | Total peptides scored (including those below cutoff). |
-| `dMangoIndex` | Decimal scan-number encoding for Mango TMT-precursor searches. |
 
 **Spectrum data (set by CometPreprocess):**
 

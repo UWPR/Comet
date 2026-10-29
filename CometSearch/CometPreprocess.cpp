@@ -682,7 +682,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                dMZ = mstSpectrum.getMZ(i);
 
             if (dMZ == 0.0 && iSpectrumCharge != 0)
-               dMZ = mstSpectrum.atZ(i).mh / iSpectrumCharge;
+               dMZ = (mstSpectrum.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
 
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
@@ -2571,7 +2571,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = spec.atZ(i).mh / iSpectrumCharge;
+         dMZ = (spec.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
 
       // 1.  Have spectrum charge from file.  It may be 0.
       // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
@@ -2681,7 +2681,14 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          {
             Query *pScoring = new Query();
 
-            pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(),iter);  // for Mango; used to sort by this value to get original file order
+            if (g_staticParams.options.bMango)
+            {
+               // Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
+               // Label from the Z-line ordinal so a Z line rejected by the mass/charge filter above
+               // cannot shift the labels of the precursors that follow it in the same scan.
+               int iPrecursorIndex = (int)distance(vChargeStates.begin(), iter);
+               sprintf(pScoring->_spectrumInfoInternal.szMango, "%03d_%c", iPrecursorIndex / 2, (iPrecursorIndex % 2) ? 'B' : 'A');
+            }
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
@@ -3471,7 +3478,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = spec.atZ(i).mh / iSpectrumCharge;
+         dMZ = (spec.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
 
       if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
@@ -3566,7 +3573,15 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
          {
             Query* pScoring = new Query();
 
-            pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(), iter);
+            if (g_staticParams.options.bMango)
+            {
+               // Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
+               // Label from the Z-line ordinal so a Z line rejected by the mass/charge filter above
+               // cannot shift the labels of the precursors that follow it in the same scan.
+               int iPrecursorIndex = (int)distance(vChargeStates.begin(), iter);
+               sprintf(pScoring->_spectrumInfoInternal.szMango, "%03d_%c", iPrecursorIndex / 2, (iPrecursorIndex % 2) ? 'B' : 'A');
+            }
+
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;

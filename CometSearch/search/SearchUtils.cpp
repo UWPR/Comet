@@ -226,28 +226,8 @@ bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
                               ThreadPool* tp, SearchSession& session,
                               bool bLogPrePostAnalysis)
 {
-   if (g_staticParams.options.bMango)
-   {
-      int iCurrentScanNumber = 0;
-      int iMangoIndex = 0;
-
-      std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
-
-      for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
-      {
-         if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
-         {
-            iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
-            iMangoIndex = 0;
-         }
-         else
-         {
-            iMangoIndex++;
-         }
-         sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c",
-                 (int)iMangoIndex / 2, (iMangoIndex % 2) ? 'B' : 'A');
-      }
-   }
+   // Mango A/B pair labels (szMango) are assigned per precursor in CometPreprocess when the
+   // Query is created, from the Z-line ordinal; nothing here depends on file order.
 
    std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
 

@@ -49,11 +49,6 @@ inline bool compareByPeptideMass(Query const* a, Query const* b)
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
 }
 
-inline bool compareByMangoIndex(Query const* a, Query const* b)
-{
-   return (a->dMangoIndex < b->dMangoIndex);
-}
-
 inline bool compareByScanNumber(Query const* a, Query const* b)
 {
    if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
