@@ -1,4 +1,4 @@
-# RTSboost: chimeric-spectrum identification on the RTS path (2026-11-05)
+# RTSchimeric: chimeric-spectrum identification on the RTS path (2026-11-05)
 
 Project plan for a new real-time-search (RTS) entry point that can report more than one
 peptide from a single MS/MS spectrum. Written after the design discussion on 2026-11-05;
