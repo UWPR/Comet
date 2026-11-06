@@ -87,7 +87,7 @@ from its README and code and shapes this plan:
   there was none", "same peptide as partner", "two distinct peptides at E <= 0.01".
 - **Known gap it documents**: with `use_NL_ions = 1` the water/ammonia-loss peaks are
   scored by xcorr but not removed. Same gap here: the extraction loop only enumerates the
-  variable-mod neutral losses. Noted in section 9.
+  variable-mod neutral losses. Noted in section 10.
 - Cross-link-specific pieces (`keep_stump_terminal_ions`, pepXML merging, pair roles) do
   not carry over.
 
@@ -467,7 +467,15 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 4 | Removal validation (7.3) and benchmark (7.4) on real data; pick knob defaults. | Results appended to this doc. |
 | 5 | Docs: `RealTimeSearch.md`, `DataStructures.md`, `tests/tests.md`, `CLAUDE.md` threading table. | -- |
 
-## 9. Out of scope / later
+## 9. Progress
+
+| Date | Phase | Result |
+|------|-------|--------|
+| 2026-11-06 | 0 | `CometScores::iCharge` / `iIteration` (`CometData.h`), `ScoreWrapper::Charge` / `Iteration` (`CometDataWrapper.h`); `DoSingleSpectrumSearchMultiResults()` fills `iCharge`. |
+| 2026-11-06 | 1 | `SearchSingleSpectrumCore()` holds the moved body; `dToleranceMZ` threaded through `PreprocessSingleSpectrumThreadLocal()` -> `PreprocessSingleSpectrumCore()` -> `AdjustMassTol()` (override branch in place, default 0 = unchanged); `tStart` with the default-constructed sentinel keeping the old "after preprocessing" clock. Regression (7.2): a full-surface dump driver (top-5, every `CometScores` field, every matched fragment; a scratch copy of `tests/rts_repro/rts_repro.cpp`) over the 197-spectrum fixture is byte-identical before and after on FI and PI, each with AScorePro off and on (1220 / 1212 / 4244 / 4231 lines), as is the stock `rts_repro` output. `run_tests.py`: 85/85 unit, T22 RTS FI/PI (+ protein-terminal mod variants) 4/4. Windows: full solution (Release x64) builds clean, `CometWrapper.dll` included. |
+| 2026-11-06 | -- | Build-system side work prompted by Phase 1's baseline capture: root `-j` race (MSToolkit entered twice concurrently) fixed with an order-only `mstoolkit` target; automatic `-MMD -MP` header dependencies in all four Makefiles (previously only four objects wrote `.d` files and none were included); MSToolkit objects now wait for the expat/zlib header install. |
+
+## 10. Out of scope / later
 
 - Candidate retirement after an ID (decision 14) -- revisit with 7.3/7.4 numbers.
 - Per-candidate tolerance callers (decision 15) -- the field exists; nothing sets it yet.

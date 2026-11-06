@@ -22,6 +22,7 @@
 #include "githubsha.h"           // blank hash that github workflows should populate
 
 #include <atomic>
+#include <chrono>
 #include <errno.h>
 #include <string.h>
 #include <cstdio>
@@ -112,6 +113,26 @@ public:
 private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
+
+   // One (spectrum, precursor m/z, charge) RTS search: preprocess, index search,
+   // post-analysis and result extraction. The body of DoSingleSpectrumSearchMultiResults(),
+   // shared with the chimeric multi-precursor search (docs/20261105_RTSchimeric.md).
+   // Appends up to takeN rows to the four output vectors; returns the number appended,
+   // or -1 on error. dToleranceMZ > 0 overrides the configured precursor tolerance for
+   // this search; tStart is the max_index_runtime origin (default-constructed = after
+   // preprocessing, the original behaviour).
+   int SearchSingleSpectrumCore(const int takeN,
+                                const int iPrecursorCharge,
+                                const double dMZ,
+                                const double dToleranceMZ,
+                                double* pdMass,
+                                double* pdInten,
+                                const int iNumPeaks,
+                                const std::chrono::high_resolution_clock::time_point tStart,
+                                vector<string>& strReturnPeptide,
+                                vector<string>& strReturnProtein,
+                                vector<vector<Fragment>>& matchedFragments,
+                                vector<CometScores>& scores);
    std::atomic<bool> singleSearchInitializationComplete;
    std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;

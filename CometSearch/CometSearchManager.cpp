@@ -2766,7 +2766,46 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (!InitializeSingleSpectrumSearch())
       return false;
 
+   // Preprocess -> search -> post-analysis -> result extraction all live in
+   // SearchSingleSpectrumCore(), shared with the chimeric multi-precursor search
+   // (docs/20261105_RTSchimeric.md section 4.3). 0.0 = the configured precursor
+   // tolerance; the default-constructed time_point = start the max_index_runtime
+   // clock after preprocessing, exactly as this function always has.
+   return SearchSingleSpectrumCore(topN, iPrecursorCharge, dMZ, 0.0, pdMass, pdInten, iNumPeaks,
+      std::chrono::high_resolution_clock::time_point(),
+      strReturnPeptide, strReturnProtein, matchedFragments, scores) >= 0;
+}
+
+
+// One (spectrum, precursor m/z, charge) search on the thread-local RTS path: the
+// body of DoSingleSpectrumSearchMultiResults() before the chimeric search was added.
+// Appends up to takeN rows (peptide, protein, matched fragments, scores -- one row per
+// rank, including the empty "below minimum xcorr" rows the original always produced)
+// to the four output vectors and returns how many it appended; 0 when nothing scored,
+// the spectrum was filtered out, or max_index_runtime expired; -1 where the original
+// returned false (preprocessing rejected the input, the index search failed, or the
+// search was cancelled). Never touches SearchSession.
+//
+// dToleranceMZ > 0 overrides the configured precursor tolerance for this search only
+// (CometPreprocess::AdjustMassTol). tStart is the origin of the max_index_runtime
+// budget; a default-constructed time_point means "now, after preprocessing" (the
+// original behaviour), while the chimeric loop passes its own call start so the budget
+// spans every candidate and iteration.
+int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
+                                                 const int iPrecursorCharge,
+                                                 const double dMZ,
+                                                 const double dToleranceMZ,
+                                                 double* pdMass,
+                                                 double* pdInten,
+                                                 const int iNumPeaks,
+                                                 const std::chrono::high_resolution_clock::time_point tStart,
+                                                 vector<string>& strReturnPeptide,
+                                                 vector<string>& strReturnProtein,
+                                                 vector<vector<Fragment>>& matchedFragments,
+                                                 vector<CometScores>& scores)
+{
    bool bSucceeded = true;
+   const size_t uiRowsBefore = scores.size();
 
 #ifdef RTS_TIMING
    using hrc = std::chrono::high_resolution_clock;
@@ -2795,14 +2834,14 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    tTimingMark = hrc::now();
 #endif
    Query* pQuery = CometPreprocess::PreprocessSingleSpectrumThreadLocal(
-      iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum);
+      iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks, pdTmpSpectrum, dToleranceMZ);
 #ifdef RTS_TIMING
    llPreprocess = std::chrono::duration_cast<chus>(hrc::now() - tTimingMark).count();
 #endif
 
    if (pQuery == nullptr)
    {
-      return false;
+      return -1;
    }
 
 /*
@@ -2826,8 +2865,12 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
       return false;
 */
 
-   // Record per-query start time for iMaxIndexRunTime timeout (thread-safe; avoids writing to global)
-   pQuery->tSearchStart = std::chrono::high_resolution_clock::now();
+   // Record per-query start time for iMaxIndexRunTime timeout (thread-safe; avoids writing to global).
+   // The caller may supply the origin (chimeric search: one budget across all its searches).
+   if (tStart == std::chrono::high_resolution_clock::time_point())
+      pQuery->tSearchStart = std::chrono::high_resolution_clock::now();
+   else
+      pQuery->tSearchStart = tStart;
 
    // Step 3: Run the fragment index search on the thread-local Query*
    // This uses the new RunSearch(Query*) overload that allocates its own
@@ -2851,7 +2894,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iSize > g_staticParams.options.iNumStored)
       iSize = g_staticParams.options.iNumStored;
 
-   takeSearchResultsN = topN;
+   takeSearchResultsN = takeN;
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
 
@@ -3036,6 +3079,8 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    for (int iWhichResult = 0; iWhichResult < takeSearchResultsN; ++iWhichResult)
    {
       CometScores score;
+      score.iCharge = iPrecursorCharge;
+      score.iIteration = 0;   // the chimeric loop overwrites this on the rows it keeps
       score.dCn = 0;
       score.xCorr = g_staticParams.options.dMinimumXcorr;
       score.matchedIons = 0;
@@ -3504,7 +3549,7 @@ cleanup_results:
    delete pQuery;
    // pdTmpSpectrum is owned by the thread-local RtsScratch pool; do not delete.
 
-   return bSucceeded;
+   return bSucceeded ? (int)(scores.size() - uiRowsBefore) : -1;
 }
 
 

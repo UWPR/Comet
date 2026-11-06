@@ -1681,7 +1681,8 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                                                      double *pdInten,
                                                      int iNumPeaks,
                                                      double *pdTmpSpectrum,
-                                                     bool bUseThreadLocalPool)
+                                                     bool bUseThreadLocalPool,
+                                                     double dToleranceMZ)
 {
    // Unlike the batch/fused charge-guessing loops (which only ever generate charges already
    // bounded by iMaxPrecursorCharge before creating a Query), this RTS single-spectrum entry
@@ -1763,7 +1764,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // allocated to.
    pScoring->_spectrumInfoInternal.iArraySize = ComputeClampedArraySize(pScoring->_pepMassInfo.dExpPepMass);
 
-   if (!AdjustMassTol(pScoring))
+   if (!AdjustMassTol(pScoring, dToleranceMZ))
    {
       delete pScoring;
       return nullptr;
@@ -2359,13 +2360,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge
                                                             double *pdMass,
                                                             double *pdInten,
                                                             int iNumPeaks,
-                                                            double* /*pdTmpSpectrum*/)
+                                                            double* /*pdTmpSpectrum*/,
+                                                            double dToleranceMZ)
 {
    // pdTmpSpectrum is ignored: the thread-local g_rtsScratch.pdTmpRawData is used
    // instead, and the caller should obtain that pointer via GetRtsRawDataBuffer()
    // before calling this function.
    return PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
-                                       nullptr, /*bUseThreadLocalPool=*/true);
+                                       nullptr, /*bUseThreadLocalPool=*/true, dToleranceMZ);
 }
 
 
@@ -2745,9 +2747,20 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 }
 
 
-bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
+bool CometPreprocess::AdjustMassTol(struct Query *pScoring,
+                                    double dToleranceMZ)
 {
-   if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
+   if (dToleranceMZ > 0.0)
+   {
+      // Per-Query override (RTS chimeric search, docs/20261105_RTSchimeric.md section
+      // 4.3): a symmetric +/- dToleranceMZ window in m/z units, scaled to the precursor
+      // charge exactly as the precursor_tolerance_type = 1 branches below scale
+      // peptide_mass_tolerance. The configured width is not consulted; the isotope_error
+      // expansion that follows applies unchanged.
+      pScoring->_pepMassInfo.dPeptideMassToleranceLow  = -dToleranceMZ * pScoring->_spectrumInfoInternal.usiChargeState;
+      pScoring->_pepMassInfo.dPeptideMassToleranceHigh =  dToleranceMZ * pScoring->_spectrumInfoInternal.usiChargeState;
+   }
+   else if (g_staticParams.tolerances.iMassToleranceUnits == 0) // amu
    {
       pScoring->_pepMassInfo.dPeptideMassToleranceLow  = g_staticParams.tolerances.dInputToleranceMinus;
       pScoring->_pepMassInfo.dPeptideMassToleranceHigh = g_staticParams.tolerances.dInputTolerancePlus;

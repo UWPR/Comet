@@ -107,6 +107,10 @@ struct CometScores
     int matchedIons;
     int totalIons;
     string sAScoreProSiteScores;  // AScore site scores as string
+    int iCharge;                  // precursor charge the PSM was searched at
+    int iIteration;               // 0-based chimeric-search iteration that produced the PSM
+                                  // (always 0 from DoSingleSpectrumSearchMultiResults);
+                                  // see docs/20261105_RTSchimeric.md
 
     CometScores() :
         xCorr(0),
@@ -117,7 +121,9 @@ struct CometScores
         mass(0),
         matchedIons(0),
         totalIons(0),
-        sAScoreProSiteScores("")
+        sAScoreProSiteScores(""),
+        iCharge(0),
+        iIteration(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
@@ -129,7 +135,9 @@ struct CometScores
         mass(mass),
         matchedIons(matchedIons),
         totalIons(totalIons),
-        sAScoreProSiteScores(sAScoreProSiteScores)
+        sAScoreProSiteScores(sAScoreProSiteScores),
+        iCharge(0),
+        iIteration(0)
     { }
 
     CometScores(const CometScores& a) :
@@ -141,7 +149,9 @@ struct CometScores
         mass(a.mass),
         matchedIons(a.matchedIons),
         totalIons(a.totalIons),
-        sAScoreProSiteScores(a.sAScoreProSiteScores)
+        sAScoreProSiteScores(a.sAScoreProSiteScores),
+        iCharge(a.iCharge),
+        iIteration(a.iIteration)
     { }
 
     CometScores& operator=(const CometScores& a)
@@ -155,6 +165,8 @@ struct CometScores
         matchedIons = a.matchedIons;
         totalIons = a.totalIons;
         sAScoreProSiteScores = a.sAScoreProSiteScores;
+        iCharge = a.iCharge;
+        iIteration = a.iIteration;
         return *this;
     }
 };
