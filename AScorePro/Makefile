@@ -5,6 +5,10 @@ CFLAGS = -O3 -std=c++14
 SLFLAGS = -shared -fPIC -g
 INCLUDE = -I./include
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
+# Automatic header dependencies: each compile writes <object>.d (the .o and the .lo
+# of one source get separate files, so -j builds of both never race on one name);
+# included at the bottom so a header change recompiles the objects that include it.
+DEPFLAGS = -MMD -MP -MF $@.d
 
 SRC_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD_SRC = $(SRC_DIR)
@@ -28,13 +32,15 @@ $(BUILD_DIR)/ :
 
 $(ASCOREPRO_DST) : | $(BUILD_DIR)/
 $(ASCOREPRO_DST) : $(ASCOREPRO_DSTDIR)%.o : $(ASCOREPRO_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
+	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 $(ASCOREPRO_DSO) : | $(BUILD_DIR)/
 $(ASCOREPRO_DSO) : $(ASCOREPRO_DSTDIR)%.lo : $(ASCOREPRO_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $< -c -o $@
+	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 clean:
-	rm -rf $(ASCOREPRO_DST) $(ASCOREPRO_DSO) libascorepro.a
+	rm -rf $(ASCOREPRO_DST) $(ASCOREPRO_DSO) $(BUILD_DIR)/*.d libascorepro.a
 
 lib: ascorepro
+
+-include $(addsuffix .d, $(ASCOREPRO_DST) $(ASCOREPRO_DSO))

@@ -18,6 +18,10 @@ INCLUDE = -I./include
 INCLUDE_EXT = -I./include/extern
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 DFLAGS_EXT = -DHAVE_EXPAT_CONFIG_H
+# Automatic header dependencies: each compile writes <object>.d (the .o and the .lo
+# of one source get separate files, so -j builds of both never race on one name);
+# included at the bottom so a header change recompiles the objects that include it.
+DEPFLAGS = -MMD -MP -MF $@.d
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
@@ -151,15 +155,19 @@ MSTOOLKIT_DSO = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%.lo, $(
 mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
 	ar rcs $(BUILD_DIR)/libmst.a $(MSTOOLKIT_DST)
 
-$(MSTOOLKIT_DST) : | $(BUILD_DIR)/
+# The expat/zlib headers these sources include (via mzParser.h) are installed into
+# include/ by the expat and zlib targets, so every object waits for both (order-only,
+# so a rebuilt library never by itself forces a recompile) -- otherwise 'make -j'
+# can start compiling before expat.h exists.
+$(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
 $(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
+	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 $(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $< -c -o $@
-	
+	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
 mstoolkit-clean :
-	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
+	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO))
 
 mstoolkit-realclean : mstoolkit-clean
 	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(BUILD_DIR)/libmst.a 
@@ -181,15 +189,15 @@ MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZP
 mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
 	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
 	
-$(MZPARSER_DST) : | $(BUILD_DIR)/
+$(MZPARSER_DST) $(MZPARSER_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
 $(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
-	
+	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
 $(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS)  $< -c -o $@
-	
+	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
 mzparser-clean :
-	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO)
+	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(addsuffix .d, $(MZPARSER_DST) $(MZPARSER_DSO))
 
 mzparser-realclean : mzparser-clean
 	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(BUILD_DIR)/libmzparser.a
@@ -265,3 +273,5 @@ libextern-realclean : libextern-clean
 
 rc:
 	rm -rf $(BUILD_DIR) $(BUILD_LIC) mstoolkitlite.mri
+
+-include $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(MZPARSER_DST) $(MZPARSER_DSO))
