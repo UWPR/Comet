@@ -96,6 +96,30 @@ struct IntRange
    }
 };
 
+// One precursor hypothesis for the RTS chimeric search (DoSingleSpectrumSearchChimeric,
+// docs/20261105_RTSchimeric.md): an (m/z, charge) pair, e.g. one envelope deconvolved
+// from the MS1 isolation window, or one Z line of a multi-Z-line .ms2 scan.
+struct PrecursorCandidate
+{
+    double dMZ;
+    int iCharge;
+    double dToleranceMZ;   // +/- precursor window in m/z units for this candidate;
+                           // 0 = inherit the per-call value (which may itself be 0 =
+                           // the configured peptide_mass_tolerance)
+
+    PrecursorCandidate() :
+        dMZ(0.0),
+        iCharge(0),
+        dToleranceMZ(0.0)
+    { }
+
+    PrecursorCandidate(double mz, int z, double tol = 0.0) :
+        dMZ(mz),
+        iCharge(z),
+        dToleranceMZ(tol)
+    { }
+};
+
 struct CometScores
 {
     double xCorr;

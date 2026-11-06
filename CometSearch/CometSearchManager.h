@@ -70,6 +70,32 @@ public:
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
                                                    vector<CometScores>& scores);
+   virtual bool DoSingleSpectrumSearchChimeric(const int topN,
+                                               const std::vector<PrecursorCandidate>& vPrecursors,
+                                               const double dPrecursorToleranceMZ,
+                                               const double dMaxExpect,
+                                               const int iMaxPeptidesPerSpectrum,
+                                               double* pdMass,
+                                               double* pdInten,
+                                               const int iNumPeaks,
+                                               vector<string>& strReturnPeptide,
+                                               vector<string>& strReturnProtein,
+                                               vector<vector<Fragment>>& matchedFragments,
+                                               vector<CometScores>& scores);
+   virtual bool DoSingleSpectrumSearchChimeric(const int topN,
+                                               const double dMZ,
+                                               const int iMinPrecursorCharge,
+                                               const int iMaxPrecursorCharge,
+                                               const double dPrecursorToleranceMZ,
+                                               const double dMaxExpect,
+                                               const int iMaxPeptidesPerSpectrum,
+                                               double* pdMass,
+                                               double* pdInten,
+                                               const int iNumPeaks,
+                                               vector<string>& strReturnPeptide,
+                                               vector<string>& strReturnProtein,
+                                               vector<vector<Fragment>>& matchedFragments,
+                                               vector<CometScores>& scores);
    virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                         const double dMaxQueryRT,
                                         const int topN,
@@ -118,13 +144,19 @@ private:
    // post-analysis and result extraction. The body of DoSingleSpectrumSearchMultiResults(),
    // shared with the chimeric multi-precursor search (docs/20261105_RTSchimeric.md).
    // Appends up to takeN rows to the four output vectors; returns the number appended,
-   // or -1 on error. dToleranceMZ > 0 overrides the configured precursor tolerance for
-   // this search; tStart is the max_index_runtime origin (default-constructed = after
-   // preprocessing, the original behaviour).
+   // -1 when preprocessing produced no Query (input rejected or too few peaks), -2 when
+   // the index search failed or was cancelled. dToleranceMZ > 0 overrides the configured
+   // precursor tolerance for this search; iMinIonsScore / iMinIonsReport > 0 override
+   // fragindex_min_ions_score / _report for it (chimeric re-search passes); tStart is the
+   // max_index_runtime origin (default-constructed = after preprocessing, the original
+   // behaviour). pvRemovalBins, when given, receives the sorted, unique fragment-ion bins
+   // of the rank-1 PSM for the chimeric loop to clear (section 4.5 of the plan).
    int SearchSingleSpectrumCore(const int takeN,
                                 const int iPrecursorCharge,
                                 const double dMZ,
                                 const double dToleranceMZ,
+                                const int iMinIonsScore,
+                                const int iMinIonsReport,
                                 double* pdMass,
                                 double* pdInten,
                                 const int iNumPeaks,
@@ -132,7 +164,8 @@ private:
                                 vector<string>& strReturnPeptide,
                                 vector<string>& strReturnProtein,
                                 vector<vector<Fragment>>& matchedFragments,
-                                vector<CometScores>& scores);
+                                vector<CometScores>& scores,
+                                std::vector<int>* pvRemovalBins = nullptr);
    std::atomic<bool> singleSearchInitializationComplete;
    std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;

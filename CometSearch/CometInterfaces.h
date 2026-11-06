@@ -46,6 +46,43 @@ public:
                                                       vector<string>& strReturnProtein,
                                                       vector<vector<Fragment>>& matchedFragments,
                                                       vector<CometScores>& scores) = 0;
+
+      // Chimeric-spectrum search (docs/20261105_RTSchimeric.md): search the spectrum once
+      // per precursor candidate, keep the best PSM (lowest E-value, ties by xcorr), and if
+      // its E-value is <= dMaxExpect report it, remove the fragment peaks it explains and
+      // repeat on the reduced spectrum, up to iMaxPeptidesPerSpectrum rows. One row per
+      // reported peptide (its iteration's rank 1, with that iteration's delta-Cn); the
+      // charge it was found at and its iteration are in CometScores::iCharge / iIteration.
+      // dPrecursorToleranceMZ > 0 replaces the configured precursor tolerance (+/- m/z) for
+      // every candidate whose own dToleranceMZ is 0; 0 = peptide_mass_tolerance as configured.
+      // Returns true on a normal end (including zero rows); false on error.
+      virtual bool DoSingleSpectrumSearchChimeric(const int topN,
+                                                  const std::vector<PrecursorCandidate>& vPrecursors,
+                                                  const double dPrecursorToleranceMZ,
+                                                  const double dMaxExpect,
+                                                  const int iMaxPeptidesPerSpectrum,
+                                                  double* dMass,
+                                                  double* dInten,
+                                                  const int iNumPeaks,
+                                                  vector<string>& strReturnPeptide,
+                                                  vector<string>& strReturnProtein,
+                                                  vector<vector<Fragment>>& matchedFragments,
+                                                  vector<CometScores>& scores) = 0;
+      // Same, with one precursor m/z expanded across [iMinPrecursorCharge, iMaxPrecursorCharge].
+      virtual bool DoSingleSpectrumSearchChimeric(const int topN,
+                                                  const double dMZ,
+                                                  const int iMinPrecursorCharge,
+                                                  const int iMaxPrecursorCharge,
+                                                  const double dPrecursorToleranceMZ,
+                                                  const double dMaxExpect,
+                                                  const int iMaxPeptidesPerSpectrum,
+                                                  double* dMass,
+                                                  double* dInten,
+                                                  const int iNumPeaks,
+                                                  vector<string>& strReturnPeptide,
+                                                  vector<string>& strReturnProtein,
+                                                  vector<vector<Fragment>>& matchedFragments,
+                                                  vector<CometScores>& scores) = 0;
       virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                            const double dMaxQueryRT,
                                            const int topN,

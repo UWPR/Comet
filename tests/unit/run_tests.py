@@ -23,6 +23,7 @@ Exit code 0 = all tests passed; non-zero = failures.
 
 import argparse
 import filecmp
+import json
 import os
 import random
 import re
@@ -1441,10 +1442,16 @@ RTS_FIXTURE   = RTS_REPRO_DIR / "fixture_spectra.txt"
 
 
 def _ensure_rts_repro_built():
-    if RTS_REPRO_BIN.exists():
-        return True
     if not RTS_REPRO_CPP.exists():
         return False
+    if RTS_REPRO_BIN.exists():
+        # Rebuild when the driver source or the library it links is newer than the
+        # binary: a stale binary silently lacks newer driver modes (T67's chimeric
+        # modes) or searches with an older libcometsearch than the --comet under test.
+        lib = REPO_ROOT / "CometSearch" / "libcometsearch.a"
+        newest = max(p.stat().st_mtime for p in (RTS_REPRO_CPP, lib) if p.exists())
+        if RTS_REPRO_BIN.stat().st_mtime >= newest:
+            return True
     cmd = [
         "g++", "-O2", "-std=c++20", "-fpermissive", "-Wno-write-strings",
         "-D_LARGEFILE_SOURCE", "-D_FILE_OFFSET_BITS=64", "-DGCC", "-D_NOSQLITE", "-D__int64=off64_t",
@@ -1480,11 +1487,18 @@ def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
     return idx_path
 
 
-def _rts_run(idx_path, fixture_path, num_threads, output_path, ascorepro=0, index_search_type=1):
+def _rts_run(idx_path, fixture_path, num_threads, output_path, ascorepro=0, index_search_type=1, extra_args=(),
+             env=None):
+    """extra_args: rts_repro's optional trailing arguments after index_search_type -- the chimeric
+    mode and its settings (see rts_repro.cpp's usage text); env: extra environment variables."""
+    run_env = None
+    if env:
+        run_env = dict(os.environ)
+        run_env.update(env)
     result = subprocess.run(
         [str(RTS_REPRO_BIN), str(idx_path), str(fixture_path), str(num_threads), str(output_path),
-         str(ascorepro), str(index_search_type)],
-        capture_output=True, text=True, timeout=300,
+         str(ascorepro), str(index_search_type)] + [str(a) for a in extra_args],
+        capture_output=True, text=True, timeout=300, env=run_env,
     )
     return result.returncode, result.stdout + result.stderr
 
@@ -6493,6 +6507,132 @@ def test_t66_ascore_protein_term_static(comet_exe):
                       f"{label}: phospho is localized on S2, got {r1.get('modified_peptide')!r}", failures)
                 check(float(r1.get("ascorepro", "0") or 0) >= 13.0,
                       f"{label}: AScorePro confidently localizes the site (score {r1.get('ascorepro')!r} >= 13.0)", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T67 -- RTS chimeric-spectrum search: DoSingleSpectrumSearchChimeric() (docs/20261105_RTSchimeric.md,
+# section 7.1). Synthetic one- and two-peptide spectra written by tests/unit/data/t67_make_chimeric.py
+# (deterministic) are searched through tests/rts_repro/rts_repro's chimeric modes -- 1 = charge-range
+# form, 2 = explicit candidate list -- against FI_DB and PI_DB indexes of the generator's FASTA.
+# ---------------------------------------------------------------------------
+
+T67_GENERATOR = DATA_DIR / "t67_make_chimeric.py"
+
+
+def _t67_rows(path):
+    """{scan: [row...]} from rts_repro's chimeric output (one line per reported peptide, in
+    iteration order); a NO_MATCH scan maps to [], an ERROR scan to [{"error": True}]."""
+    rows = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split("\t")
+        scan = int(f[0].split()[1])
+        rows.setdefault(scan, [])
+        if len(f) < 4:
+            if f[1] == "ERROR":
+                rows[scan].append({"error": True})
+            continue
+        d = {"iter": int(f[1].split()[1]), "z": int(f[2].split()[1]), "peptide": f[3].split(".")[1]}
+        for tok in f[4:]:
+            k, _, v = tok.partition(" ")
+            d[k] = v
+        d["expect"] = float(d["expect"])
+        rows[scan].append(d)
+    return rows
+
+
+@register("t67_chimeric")
+def test_t67_chimeric(comet_exe):
+    """T67: DoSingleSpectrumSearchChimeric() reports every peptide in a synthetic chimeric spectrum, one row
+    per iteration (lowest E-value first), with its charge; removal of the first peptide's fragment bins lets
+    the second be found; the same precursor charge may be reported twice; a candidate charge that explains
+    nothing yields nothing; the E-value threshold ends the loop; a noise-only spectrum yields no rows;
+    1 vs 4 threads are byte-identical -- on FI_DB and PI_DB, in the charge-range and explicit-list forms."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    MAX_EXPECT = 0.01
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        info = json.loads((tmp / "t67_chimeric.json").read_text())
+        P1, P2, P3 = info["P1"]["seq"], info["P2"]["seq"], info["P3"]["seq"]
+        fasta = tmp / "t67_chimeric.fasta"
+        fx_range = tmp / "t67_chimeric_range.txt"
+        fx_list = tmp / "t67_chimeric_list.txt"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+
+        # scan -> the (peptide, charge) set it must report; within a scan the order is by E-value
+        expected = {1: {(P1, 2)}, 2: {(P2, 3), (P1, 2)}, 3: {(P1, 2), (P3, 2)}, 4: {(P1, 2)}, 5: set()}
+        range_args = ["1", "2", "4", "2.0", str(MAX_EXPECT), "5"]   # charges 2-4, +/- 2 m/z, max 5 peptides
+        list_args = ["2", "0", "0", "0", str(MAX_EXPECT), "5"]      # candidates from the fixture, configured (20 ppm) tolerance
+
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                for fixture, mode, extra in ((fx_range, "range", range_args), (fx_list, "list", list_args)):
+                    out = tmp / f"{label}_{mode}.out"
+                    rc, log = _rts_run(idx, fixture, 1, out, 0, ist, extra_args=extra)
+                    if not check(rc == 0 and out.exists(), f"{label} {mode}: rts_repro exits 0 (rc={rc})", failures):
+                        print(log[-1500:])
+                        continue
+                    rows = _t67_rows(out)
+                    for scan, want in expected.items():
+                        got = rows.get(scan, [])
+                        if not check(not any(x.get("error") for x in got), f"{label} {mode}: scan {scan} has no ERROR row", failures):
+                            continue
+                        found = {(x["peptide"], x["z"]) for x in got}
+                        check(found == want and len(got) == len(want),
+                              f"{label} {mode}: scan {scan} reports exactly {sorted(want)}, got {[(x['peptide'], x['z']) for x in got]}", failures)
+                        check([x["iter"] for x in got] == list(range(len(got))),
+                              f"{label} {mode}: scan {scan} rows carry iterations {list(range(len(got)))}", failures)
+                        check(all(x["expect"] <= MAX_EXPECT for x in got),
+                              f"{label} {mode}: scan {scan} every row passes E-value <= {MAX_EXPECT}", failures)
+                    got2 = rows.get(2, [])
+                    if len(got2) == 2:
+                        # the 14-mer at 3+ (52 ions at 1+/2+) beats the 10-mer at 2+ (18 ions) on E-value despite 1/3 the intensity
+                        check(got2[0]["peptide"] == P2 and got2[1]["peptide"] == P1,
+                              f"{label} {mode}: scan 2 iteration 0 is {P2}/3+ (lowest E-value), iteration 1 {P1}/2+", failures)
+
+                # E-value threshold: nothing reaches 1e-30, so every scan ends at iteration 0 with no rows
+                out = tmp / f"{label}_threshold.out"
+                rc, log = _rts_run(idx, fx_range, 1, out, 0, ist, extra_args=["1", "2", "4", "2.0", "1e-30", "5"])
+                if check(rc == 0, f"{label} threshold: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    check(len(rows) == 5 and all(len(v) == 0 for v in rows.values()),
+                          f"{label}: with dMaxExpect = 1e-30 every scan reports no rows", failures)
+
+                # the removal trace: scan 1 (first in the fixture) must drop all 18 of P1's b/y peaks
+                out = tmp / f"{label}_debug.out"
+                rc, log = _rts_run(idx, fx_range, 1, out, 0, ist, extra_args=range_args, env={"RTS_CHIMERIC_DEBUG": "1"})
+                m = re.search(r"RTS_CHIMERIC iter=0 removed (\d+) of (\d+) peaks", log)
+                check(rc == 0 and m is not None and int(m.group(1)) >= 18,
+                      f"{label}: RTS_CHIMERIC_DEBUG trace shows scan 1's iteration 0 removed >= 18 peaks ({m.group(0) if m else 'no trace'})", failures)
+
+                # determinism: 1 vs 4 worker threads
+                out4 = tmp / f"{label}_range4.out"
+                rc, log = _rts_run(idx, fx_range, 4, out4, 0, ist, extra_args=range_args)
+                if check(rc == 0, f"{label} 4 threads: rts_repro exits 0 (rc={rc})", failures):
+                    check(_rts_sorted_lines(tmp / f"{label}_range.out") == _rts_sorted_lines(out4),
+                          f"{label}: 1-thread and 4-thread chimeric output byte-identical", failures)
+            finally:
+                idx.unlink(missing_ok=True)
     return failures
 
 

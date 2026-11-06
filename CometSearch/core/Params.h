@@ -82,6 +82,13 @@ struct Options
    int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
+   // RTS chimeric search only (DoSingleSpectrumSearchChimeric, docs/20261105_RTSchimeric.md
+   // sections 4.5-4.6); set through SetParam, not read from comet.params.
+   int iChimericRemoveFlankBins;         // bins removed on each side of a matched fragment's bin:
+                                         // -1 = follow theoretical_fragment_ions (1 iff it is 0), else 0/1
+   int iChimericRemoveIsotopes;          // also remove the +1..+N 13C peaks of fragments that have a peak; 0 = off
+   int iChimericFragIndexMinIonsScore;   // fragindex_min_ions_score for iterations >= 1; 0 = unchanged
+   int iChimericFragIndexMinIonsReport;  // fragindex_min_ions_report for iterations >= 1; 0 = unchanged
    int iOverrideCharge;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
@@ -422,6 +429,10 @@ struct StaticParams
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
+      options.iChimericRemoveFlankBins = -1;
+      options.iChimericRemoveIsotopes = 2;
+      options.iChimericFragIndexMinIonsScore = 0;
+      options.iChimericFragIndexMinIonsReport = 0;
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

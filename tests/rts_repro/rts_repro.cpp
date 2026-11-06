@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <mutex>
 #include <sstream>
 #include <string>
@@ -157,7 +158,15 @@ int main(int argc, char** argv)
 {
    if (argc < 5)
    {
-      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n", argv[0]);
+      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n"
+                      "          [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
+                      "  chimeric 0 (default): DoSingleSpectrumSearchMultiResults, one line per SPECTRUM block\n"
+                      "  chimeric 1: DoSingleSpectrumSearchChimeric charge-range form -- each SPECTRUM block searched at\n"
+                      "              charges zmin..zmax with +/- tolMZ (m/z units; 0 = configured tolerance)\n"
+                      "  chimeric 2: DoSingleSpectrumSearchChimeric explicit-list form -- all SPECTRUM blocks that share\n"
+                      "              a scan number are the (m/z, charge) candidates of one spectrum (first block's peaks)\n"
+                      "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.05, maxPeptides 5; chimeric modes set\n"
+                      "  max_index_runtime = 0 (unlimited) since one call runs many searches\n", argv[0]);
       return 1;
    }
 
@@ -167,6 +176,14 @@ int main(int argc, char** argv)
    string szOutput = argv[4];
    bool bEnableAScorePro = (argc > 5) && (atoi(argv[5]) != 0);
    int iIndexSearchType = (argc > 6) ? atoi(argv[6]) : -1;  // -1 = not given: not sent, matching RealtimeSearch
+
+   // Chimeric-search mode (docs/20261105_RTSchimeric.md); 0 keeps this driver's original behaviour
+   int iChimeric = (argc > 7) ? atoi(argv[7]) : 0;
+   int iZmin = (argc > 8) ? atoi(argv[8]) : 2;
+   int iZmax = (argc > 9) ? atoi(argv[9]) : 4;
+   double dTolMZ = (argc > 10) ? atof(argv[10]) : 0.0;
+   double dMaxExpect = (argc > 11) ? atof(argv[11]) : 0.05;
+   int iMaxPeptides = (argc > 12) ? atoi(argv[12]) : 5;
 
    if (numThreads < 1)
       numThreads = 1;
@@ -204,6 +221,8 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "precursor_tolerance_type", 1);
    SetIntParam(mgr, "isotope_error", 0);
    SetIntParam(mgr, "max_index_runtime", 200);  // overwrites the 100 above -- matches RTS's actual (duplicate) call
+   if (iChimeric != 0)
+      SetIntParam(mgr, "max_index_runtime", 0);  // the chimeric call's budget spans every candidate x iteration
    SetIntParam(mgr, "minimum_peaks", 10);
    SetIntParam(mgr, "max_fragment_charge", 3);
    SetIntParam(mgr, "max_precursor_charge", 6);
@@ -246,30 +265,97 @@ int main(int argc, char** argv)
    std::mutex outMutex;
    ofstream out(szOutput);
 
+   // Work items: one per SPECTRUM block, except chimeric mode 2 where every block sharing a
+   // scan number is one candidate of a single spectrum (the first block's peaks are searched).
+   vector<vector<size_t>> jobs;
+   if (iChimeric == 2)
+   {
+      std::map<int, size_t> scanToJob;
+      for (size_t i = 0; i < spectra.size(); ++i)
+      {
+         auto it = scanToJob.find(spectra[i].scanNumber);
+         if (it == scanToJob.end())
+         {
+            scanToJob[spectra[i].scanNumber] = jobs.size();
+            jobs.push_back(vector<size_t>{i});
+         }
+         else
+            jobs[it->second].push_back(i);
+      }
+   }
+   else
+   {
+      for (size_t i = 0; i < spectra.size(); ++i)
+         jobs.push_back(vector<size_t>{i});
+   }
+
    auto worker = [&]()
    {
-      size_t i;
-      while ((i = nextIndex.fetch_add(1)) < spectra.size())
+      size_t j;
+      while ((j = nextIndex.fetch_add(1)) < jobs.size())
       {
-         const FixtureSpectrum& s = spectra[i];
+         const FixtureSpectrum& s = spectra[jobs[j][0]];
          vector<string> vPeptide, vProtein;
          vector<vector<Fragment>> vFrag;
          vector<CometScores> vScores;
 
-         bool ok = mgr->DoSingleSpectrumSearchMultiResults(1, s.charge, s.mz,
-            const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
-            vPeptide, vProtein, vFrag, vScores);
-
-         std::lock_guard<std::mutex> lk(outMutex);
-         if (ok && !vPeptide.empty() && !vPeptide[0].empty())
+         if (iChimeric == 0)
          {
-            out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
-                << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
-                << "\tprot '" << vProtein[0] << "'\n";
+            bool ok = mgr->DoSingleSpectrumSearchMultiResults(1, s.charge, s.mz,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores);
+
+            std::lock_guard<std::mutex> lk(outMutex);
+            if (ok && !vPeptide.empty() && !vPeptide[0].empty())
+            {
+               out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
+                   << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
+                   << "\tprot '" << vProtein[0] << "'\n";
+            }
+            else
+            {
+               out << "MS2 " << s.scanNumber << "\tNO_MATCH\n";
+            }
+            continue;
+         }
+
+         bool ok;
+         if (iChimeric == 1)
+         {
+            ok = mgr->DoSingleSpectrumSearchChimeric(1, s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores);
          }
          else
          {
+            vector<PrecursorCandidate> vCand;
+            for (size_t k : jobs[j])
+               vCand.emplace_back(spectra[k].mz, spectra[k].charge, 0.0);
+            ok = mgr->DoSingleSpectrumSearchChimeric(1, vCand, dTolMZ, dMaxExpect, iMaxPeptides,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores);
+         }
+
+         // One line per reported peptide, in iteration order, so a scan-sorted diff keeps them adjacent.
+         std::lock_guard<std::mutex> lk(outMutex);
+         if (!ok)
+         {
+            out << "MS2 " << s.scanNumber << "\tERROR\n";
+         }
+         else if (vPeptide.empty())
+         {
             out << "MS2 " << s.scanNumber << "\tNO_MATCH\n";
+         }
+         else
+         {
+            for (size_t r = 0; r < vPeptide.size(); ++r)
+            {
+               out << "MS2 " << s.scanNumber << "\titer " << vScores[r].iIteration << "\tz " << vScores[r].iCharge
+                   << "\t" << vPeptide[r] << "\txcorr " << vScores[r].xCorr << "\tdcn " << vScores[r].dCn
+                   << "\texpect " << vScores[r].dExpect << "\tmass " << vScores[r].mass
+                   << "\tions " << vScores[r].matchedIons << "/" << vScores[r].totalIons
+                   << "\tprot '" << vProtein[r] << "'\n";
+            }
          }
       }
    };

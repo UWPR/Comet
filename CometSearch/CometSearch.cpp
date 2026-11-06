@@ -1930,10 +1930,17 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
+   // The RTS chimeric search raises or lowers the candidate threshold per Query on its
+   // re-search passes (Query::iFragIndexMinIonsScoreOverride, docs/20261105_RTSchimeric.md
+   // section 4.6); 0 everywhere else, i.e. the configured value.
+   const int iMinIonsScore = (pQuery->iFragIndexMinIonsScoreOverride > 0)
+      ? pQuery->iFragIndexMinIonsScoreOverride
+      : g_staticParams.options.iFragIndexMinIonsScore;
+
    std::vector<std::pair<unsigned int, int>> vPeptides;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
-      if (ix->second >= g_staticParams.options.iFragIndexMinIonsScore)
+      if (ix->second >= iMinIonsScore)
          vPeptides.push_back(*ix);
    }
 
@@ -1979,7 +1986,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             break;
       }
 
-      if (ix->second >= g_staticParams.options.iFragIndexMinIonsScore)
+      if (ix->second >= iMinIonsScore)
       {
          int iFoundVariableMod = 0;
 
@@ -8792,8 +8799,14 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       else
          dLowestXcorrScore = pQuery->dLowestXcorrScore;
 
+      // Per-Query reporting floor override: RTS chimeric re-search passes only
+      // (Query::iFragIndexMinIonsReportOverride, docs/20261105_RTSchimeric.md section 4.6).
+      const int iMinIonsReport = (pQuery->iFragIndexMinIonsReportOverride > 0)
+         ? pQuery->iFragIndexMinIonsReportOverride
+         : g_staticParams.options.iFragIndexMinIonsReport;
+
       if (dXcorr >= g_staticParams.options.dMinimumXcorr
-         && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
+         && iNumMatchedFragmentIons >= iMinIonsReport
          && dXcorr + 0.00005 >= dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))
