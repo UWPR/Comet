@@ -121,6 +121,52 @@ bool CometSearchManagerWrapper::DoSearch()
 }
 
 
+// -----------------------------------------------------------------
+// Output conversion, shared by the single-spectrum search entry points
+// -----------------------------------------------------------------
+// Optimization principles:
+//   1. Avoid double string conversions.
+//   2. Reuse managed lists if passed preallocated (optional extension).
+//   3. Minimize managed object creation by reserving capacity.
+// -----------------------------------------------------------------
+static void ConvertSingleSpectrumResults(const std::vector<std::string>& stdPeptides,
+                                         const std::vector<std::string>& stdProteins,
+                                         const std::vector<std::vector<Fragment>>& stdMatchedFrags,
+                                         const std::vector<CometScores>& stdScores,
+                                         List<String^>^% szPeptide,
+                                         List<String^>^% szProtein,
+                                         List<List<FragmentWrapper^>^>^% matchingFragments,
+                                         List<ScoreWrapper^>^% score)
+{
+   // Convert peptides/proteins (1 allocation per string)
+   szPeptide = gcnew List<String^>(static_cast<int>(stdPeptides.size()));
+   for (const auto& pep : stdPeptides)
+      szPeptide->Add(gcnew String(pep.c_str())); // ✅ direct conversion
+
+   szProtein = gcnew List<String^>(static_cast<int>(stdProteins.size()));
+   for (const auto& prot : stdProteins)
+      szProtein->Add(gcnew String(prot.c_str()));
+
+   // Scores — allocate list with capacity and reuse wrappers if desired
+   score = gcnew List<ScoreWrapper^>(static_cast<int>(stdScores.size()));
+   for (const auto& s : stdScores)
+      score->Add(gcnew ScoreWrapper(s));
+
+   // Matched fragments — reserve capacity to avoid resizing overhead
+   matchingFragments = gcnew List<List<FragmentWrapper^>^>(
+      static_cast<int>(stdMatchedFrags.size()));
+
+   for (const auto& fragSet : stdMatchedFrags)
+   {
+      auto fragList = gcnew List<FragmentWrapper^>(static_cast<int>(fragSet.size()));
+      for (const auto& frag : fragSet)
+         fragList->Add(gcnew FragmentWrapper(frag));
+
+      matchingFragments->Add(fragList);
+   }
+}
+
+
 bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
    int topN,
    int iPrecursorCharge,
@@ -152,41 +198,114 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
       ptrMasses, ptrInten, iNumPeaks,
       stdPeptides, stdProteins, stdMatchedFrags, stdScores);
 
-   // -----------------------------------------------------------------
-   // Output conversion section
-   // -----------------------------------------------------------------
-   // Optimization principles:
-   //   1. Avoid double string conversions.
-   //   2. Reuse managed lists if passed preallocated (optional extension).
-   //   3. Minimize managed object creation by reserving capacity.
-   // -----------------------------------------------------------------
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
 
-   // Convert peptides/proteins (1 allocation per string)
-   szPeptide = gcnew List<String^>(static_cast<int>(stdPeptides.size()));
-   for (const auto& pep : stdPeptides)
-      szPeptide->Add(gcnew String(pep.c_str())); // ✅ direct conversion
+   return ok;
+}
 
-   szProtein = gcnew List<String^>(static_cast<int>(stdProteins.size()));
-   for (const auto& prot : stdProteins)
-      szProtein->Add(gcnew String(prot.c_str()));
 
-   // Scores — allocate list with capacity and reuse wrappers if desired
-   score = gcnew List<ScoreWrapper^>(static_cast<int>(stdScores.size()));
-   for (const auto& s : stdScores)
-      score->Add(gcnew ScoreWrapper(s));
-
-   // Matched fragments — reserve capacity to avoid resizing overhead
-   matchingFragments = gcnew List<List<FragmentWrapper^>^>(
-      static_cast<int>(stdMatchedFrags.size()));
-
-   for (const auto& fragSet : stdMatchedFrags)
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
+   int topN,
+   cli::array<double>^ pdCandidateMZ,
+   cli::array<int>^ piCandidateCharge,
+   cli::array<double>^ pdCandidateToleranceMZ,
+   double dPrecursorToleranceMZ,
+   double dMaxExpect,
+   int iMaxPeptidesPerSpectrum,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   const int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score)
+{
+   if (!_pSearchMgr || pdCandidateMZ == nullptr || piCandidateCharge == nullptr
+      || pdCandidateMZ->Length == 0 || piCandidateCharge->Length != pdCandidateMZ->Length
+      || (pdCandidateToleranceMZ != nullptr && pdCandidateToleranceMZ->Length != pdCandidateMZ->Length)
+      || pdMass == nullptr || pdInten == nullptr || iNumPeaks <= 0)
    {
-      auto fragList = gcnew List<FragmentWrapper^>(static_cast<int>(fragSet.size()));
-      for (const auto& frag : fragSet)
-         fragList->Add(gcnew FragmentWrapper(frag));
-
-      matchingFragments->Add(fragList);
+      szPeptide = gcnew List<String^>();
+      szProtein = gcnew List<String^>();
+      matchingFragments = gcnew List<List<FragmentWrapper^>^>();
+      score = gcnew List<ScoreWrapper^>();
+      return false;
    }
+
+   // The native candidate list is the only per-candidate allocation; the peak arrays are pinned.
+   std::vector<PrecursorCandidate> vPrecursors;
+   vPrecursors.reserve(pdCandidateMZ->Length);
+   for (int i = 0; i < pdCandidateMZ->Length; ++i)
+   {
+      // Copy out first: a managed array element cannot bind to the native references
+      // emplace_back's forwarding would deduce (C2664).
+      const double dCandMZ = pdCandidateMZ[i];
+      const int iCandCharge = piCandidateCharge[i];
+      const double dCandTol = (pdCandidateToleranceMZ != nullptr) ? pdCandidateToleranceMZ[i] : 0.0;
+      vPrecursors.push_back(PrecursorCandidate(dCandMZ, iCandCharge, dCandTol));
+   }
+
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+
+   std::vector<std::string> stdPeptides;
+   std::vector<std::string> stdProteins;
+   std::vector<CometScores> stdScores;
+   std::vector<std::vector<Fragment>> stdMatchedFrags;
+
+   bool ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
+      topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
+      ptrMasses, ptrInten, iNumPeaks,
+      stdPeptides, stdProteins, stdMatchedFrags, stdScores);
+
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
+
+   return ok;
+}
+
+
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
+   int topN,
+   double dMZ,
+   int iMinPrecursorCharge,
+   int iMaxPrecursorCharge,
+   double dPrecursorToleranceMZ,
+   double dMaxExpect,
+   int iMaxPeptidesPerSpectrum,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   const int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score)
+{
+   if (!_pSearchMgr || pdMass == nullptr || pdInten == nullptr || iNumPeaks <= 0)
+   {
+      szPeptide = gcnew List<String^>();
+      szProtein = gcnew List<String^>();
+      matchingFragments = gcnew List<List<FragmentWrapper^>^>();
+      score = gcnew List<ScoreWrapper^>();
+      return false;
+   }
+
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+
+   std::vector<std::string> stdPeptides;
+   std::vector<std::string> stdProteins;
+   std::vector<CometScores> stdScores;
+   std::vector<std::vector<Fragment>> stdMatchedFrags;
+
+   bool ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
+      topN, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
+      ptrMasses, ptrInten, iNumPeaks,
+      stdPeptides, stdProteins, stdMatchedFrags, stdScores);
+
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
 
    return ok;
 }

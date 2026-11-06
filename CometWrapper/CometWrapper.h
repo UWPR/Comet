@@ -61,6 +61,41 @@ namespace CometWrapper {
                                                 [Out] List<String^>^% szProtein,
                                                 [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
                                                 [Out] List<ScoreWrapper^>^% score);
+        // Chimeric-spectrum search (docs/20261105_RTSchimeric.md; ICometSearchManager for the
+        // contract). Explicit-list form: the candidates are three parallel arrays -- m/z, charge
+        // and per-candidate +/- tolerance in m/z (0 = inherit dPrecursorToleranceMZ; the array
+        // may be nullptr) -- rather than a managed candidate type, so a call allocates nothing
+        // per candidate. One row per reported peptide; ScoreWrapper::Charge / Iteration say
+        // where it was found.
+        bool DoSingleSpectrumSearchChimeric(int topN,
+                                            cli::array<double>^ pdCandidateMZ,
+                                            cli::array<int>^ piCandidateCharge,
+                                            cli::array<double>^ pdCandidateToleranceMZ,
+                                            double dPrecursorToleranceMZ,
+                                            double dMaxExpect,
+                                            int iMaxPeptidesPerSpectrum,
+                                            cli::array<double>^ pdMass,
+                                            cli::array<double>^ pdInten,
+                                            const int iNumPeaks,
+                                            [Out] List<String^>^% szPeptide,
+                                            [Out] List<String^>^% szProtein,
+                                            [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                            [Out] List<ScoreWrapper^>^% score);
+        // Charge-range form: one m/z across [iMinPrecursorCharge, iMaxPrecursorCharge].
+        bool DoSingleSpectrumSearchChimeric(int topN,
+                                            double dMZ,
+                                            int iMinPrecursorCharge,
+                                            int iMaxPrecursorCharge,
+                                            double dPrecursorToleranceMZ,
+                                            double dMaxExpect,
+                                            int iMaxPeptidesPerSpectrum,
+                                            cli::array<double>^ pdMass,
+                                            cli::array<double>^ pdInten,
+                                            const int iNumPeaks,
+                                            [Out] List<String^>^% szPeptide,
+                                            [Out] List<String^>^% szProtein,
+                                            [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                            [Out] List<ScoreWrapper^>^% score);
         // Need to convert vector to List and back
         bool DoMS1SearchMultiResults(double dVal3,
                                      double dVal4,

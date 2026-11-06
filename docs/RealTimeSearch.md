@@ -51,6 +51,60 @@ path is for. If FASTA_DB RTS support is ever genuinely wanted, `RunSearch(Query*
 third branch that does the on-the-fly digestion equivalent of `DoSearch()`, which is a
 substantially larger change than anything touched here.
 
+### Chimeric-spectrum search (`DoSingleSpectrumSearchChimeric`)
+
+```cpp
+// explicit candidate list
+bool DoSingleSpectrumSearchChimeric(
+    const int topN,
+    const std::vector<PrecursorCandidate>& vPrecursors,   // {dMZ, iCharge, dToleranceMZ (0 = inherit)}
+    const double dPrecursorToleranceMZ,                   // +/- m/z for candidates with dToleranceMZ 0; 0 = configured tolerance
+    const double dMaxExpect,
+    const int iMaxPeptidesPerSpectrum,
+    double* dMass, double* dInten, const int iNumPeaks,
+    vector<string>& strReturnPeptide, vector<string>& strReturnProtein,
+    vector<vector<Fragment>>& matchedFragments, vector<CometScores>& scores);
+// one m/z across a charge range (builds the list above with dToleranceMZ = 0)
+bool DoSingleSpectrumSearchChimeric(
+    const int topN,
+    const double dMZ, const int iMinPrecursorCharge, const int iMaxPrecursorCharge,
+    const double dPrecursorToleranceMZ, const double dMaxExpect, const int iMaxPeptidesPerSpectrum,
+    double* dMass, double* dInten, const int iNumPeaks,
+    ... same four outputs ...);
+```
+
+Finds more than one peptide in a spectrum (design and measurements:
+`docs/20261105_RTSchimeric.md`). Each iteration searches the current peak list once per
+candidate through the same per-search core as `DoSingleSpectrumSearchMultiResults()`
+(`SearchSingleSpectrumCore()`: preprocess, index search, post-analysis, extraction), keeps
+the rank-1 PSM with the lowest E-value (ties by xcorr), and if that passes `dMaxExpect`
+appends it as one output row, removes the fragment peaks it explains (every theoretical
+ion of the PSM, +/- flank bins when `theoretical_fragment_ions = 0`, and the +1..+N 13C
+peaks of ions that have an observed peak), and repeats on the reduced spectrum -- up to
+`iMaxPeptidesPerSpectrum` rows, or until no candidate scores, the best fails the
+threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime` budget
+(measured from the call's start, across every candidate and iteration) runs out.
+`CometScores::iCharge` / `iIteration` on each row say which candidate charge and which
+iteration produced it; `topN` is accepted but one row per iteration is reported. Rows are
+ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
+over a more intense one. Candidates whose mass falls outside the index range are skipped
+silently; a decoy winner is reported and removed like a target. Returns `true` on a normal
+end (zero rows included), `false` on an error. Same thread-safety as the single-spectrum
+call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
+is only read (the per-call tolerance and the re-search candidate thresholds live on the
+`Query`). Knobs, set through `SetParam` only: `chimeric_remove_flank_bins` (-1 = follow
+`theoretical_fragment_ions`), `chimeric_remove_isotopes` (2),
+`chimeric_fragindex_min_ions_score` / `_report` (0 = unchanged; iterations >= 1 only).
+`RTS_CHIMERIC_DEBUG=1` in the environment traces every iteration on stderr.
+
+C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes
+parallel `double[]` m/z, `int[]` charge and optional `double[]` tolerance arrays), driven by
+`RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [options]`
+(`RealtimeSearch/SearchChimeric.cs`; run it without options for the list). The driver reads
+a multi-`Z`-line `.ms2`: `--zrange zmin zmax` searches each scan's `S`-line m/z across the
+range, `--zlines` turns every `Z` line into one candidate. `tests/rts_repro/rts_repro`'s
+chimeric modes are the Linux equivalent (test T67).
+
 ### MS1 spectral library search
 
 ```cpp

@@ -6,6 +6,8 @@ Writes, into the directory given as the first argument (default: this script's):
   t67_chimeric.fasta        P1, P2, P3 as tryptic peptides inside small proteins, plus fillers
   t67_chimeric_range.txt    rts_repro SPECTRUM fixture for the charge-range form (one block per scan)
   t67_chimeric_list.txt     the same scans for the explicit-list form (one block per candidate)
+  t67_chimeric.ms2          the same scans as a multi-Z-line .ms2 for RealtimeSearch.exe chimeric
+                            (S line: P1's 2+ m/z; Z lines: the explicit-list candidates as MH+)
   t67_chimeric.json         the peptides, masses and m/z values the test asserts against
 
 Peptides (monoisotopic, no modifications):
@@ -140,6 +142,18 @@ def main():
 
     write_fixture(os.path.join(outdir, "t67_chimeric_range.txt"), range_blocks)
     write_fixture(os.path.join(outdir, "t67_chimeric_list.txt"), list_blocks)
+
+    # The same scans as a multi-Z-line .ms2 for the C# harness (RealtimeSearch.exe chimeric):
+    # the S line carries P1's 2+ m/z (the charge-range form's precursor), the Z lines the
+    # explicit-list candidates as (charge, MH+).
+    with open(os.path.join(outdir, "t67_chimeric.ms2"), "w", newline="\r\n") as f:
+        f.write("H\tCreationDate\tt67_make_chimeric.py\nH\tExtractor\tt67_make_chimeric.py\n")
+        for scan in sorted(scans):
+            f.write("S\t%d\t%d\t%.6f\n" % (scan, scan, mz(p1, 2)))
+            for z, m in list_blocks[scan]:
+                f.write("Z\t%d\t%.6f\n" % (z, m * z - (z - 1) * PROTON))
+            for pm, pi in scans[scan]:
+                f.write("%.5f %.3f\n" % (pm, pi))
 
     info = {
         "P1": {"seq": p1, "mass": neutral_mass(p1), "mz2": mz(p1, 2)},
