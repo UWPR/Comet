@@ -94,7 +94,10 @@ call: the caller's arrays are copied, every working buffer is per thread, `g_sta
 is only read (the per-call tolerance and the re-search candidate thresholds live on the
 `Query`). Knobs, set through `SetParam` only: `chimeric_remove_flank_bins` (-1 = follow
 `theoretical_fragment_ions`), `chimeric_remove_isotopes` (2),
-`chimeric_fragindex_min_ions_score` / `_report` (0 = unchanged; iterations >= 1 only).
+`chimeric_fragindex_min_ions_score` / `_report` (2; 0 = unchanged; iterations >= 1 only --
+measured in `docs/20261105_RTSchimeric.md` section 10). Also measured there: the plain RTS
+search gains 42% confident PSMs on the HeLa benchmark file from `isotope_error = 2`, which
+`SearchMS1MS2.cs` does not set.
 `RTS_CHIMERIC_DEBUG=1` in the environment traces every iteration on stderr.
 
 C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes

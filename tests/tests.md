@@ -332,8 +332,11 @@ output files sitting in `data/`.
 # build: single g++ line in rts_repro/README.md (no Makefile); T22 builds it itself
 ./rts_repro <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]
 # chimeric search (T67; docs/20261105_RTSchimeric.md): trailing [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]
-#   1 = charge-range form per SPECTRUM block; 2 = every block sharing a scan number is one (m/z, charge) candidate
+#   [flankBins] [isotopes] [minIonsScore] [minIonsReport] [isotopeError]
+#   1 = charge-range form per SPECTRUM block; 2 = every block sharing a scan number is one (m/z, charge) candidate;
+#   the four knobs are the chimeric_* params (-1 2 0 0); isotopeError sets isotope_error in every mode (0)
 python3 tests/rts_repro/ms2_to_fixture.py in.ms2 > fixture.txt
+python3 tests/rts_repro/mzxml_to_fixture.py in.mzXML [--max N] > fixture.txt   # MS2 scans of an mzXML (real data on Linux)
 ```
 
 Not a test suite itself but the driver T22/T22b run (T22 compiles it with

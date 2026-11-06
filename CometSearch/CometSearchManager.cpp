@@ -3684,12 +3684,16 @@ static void RemovePeaksInBins(std::vector<double>& vMass,
 }
 
 
-// Opt-in per-iteration trace of the chimeric loop on stderr (set RTS_CHIMERIC_DEBUG=1),
-// the same env-var pattern as COMET_PRELOAD_BENCHMARK. Read once per process.
-static bool ChimericDebugEnabled()
+// Opt-in trace of the chimeric loop on stderr, the same env-var pattern as
+// COMET_PRELOAD_BENCHMARK; read once per process. RTS_CHIMERIC_DEBUG=1: one line per
+// iteration (best PSM, decision, peaks removed). 2: additionally, for every kept PSM, its
+// matched-fragment bins and the full removal-bin set ("RTS_CHIMERIC_DETAIL"), which the
+// removal-validation analysis (docs/20261105_RTSchimeric.md section 7.3) pairs across
+// iterations; run single-threaded so the lines of one call stay together.
+static int ChimericDebugLevel()
 {
-   static const bool bEnabled = (getenv("RTS_CHIMERIC_DEBUG") != nullptr && atoi(getenv("RTS_CHIMERIC_DEBUG")) != 0);
-   return bEnabled;
+   static const int iLevel = (getenv("RTS_CHIMERIC_DEBUG") != nullptr) ? atoi(getenv("RTS_CHIMERIC_DEBUG")) : 0;
+   return iLevel;
 }
 
 
@@ -3721,7 +3725,8 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
       return false;
 
    const auto tStart = std::chrono::high_resolution_clock::now();
-   const bool bDebug = ChimericDebugEnabled();
+   const int iDebug = ChimericDebugLevel();
+   const bool bDebug = (iDebug >= 1);
 
    // Candidate list: drop invalid charges and de-duplicate (same charge, m/z within the
    // candidate's effective window -- the wrapper's same_precursor_ppm skip), keeping the
@@ -3840,6 +3845,27 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
       if (!bHaveBest || scBest.dExpect > dMaxExpect)
          break;
+
+      if (iDebug >= 2)
+      {
+         // Matched-fragment bins of the kept PSM (an NL fragment's mass already has the loss
+         // subtracted, so the same m/z formula applies) and the bins about to be removed.
+         std::string sMatched;
+         std::string sRemoved;
+         char szBuf[32];
+         for (const Fragment& f : vBestFrag)
+         {
+            snprintf(szBuf, sizeof(szBuf), "%d,", BIN((f.mass + (f.charge - 1) * PROTON_MASS) / f.charge));
+            sMatched += szBuf;
+         }
+         for (int iBin : vBestBins)
+         {
+            snprintf(szBuf, sizeof(szBuf), "%d,", iBin);
+            sRemoved += szBuf;
+         }
+         fprintf(stderr, "RTS_CHIMERIC_DETAIL iter=%d z=%d peptide=%s matched=%s removed=%s\n",
+            iIteration, scBest.iCharge, sBestPep.c_str(), sMatched.c_str(), sRemoved.c_str());
+      }
 
       scBest.iIteration = iIteration;   // iCharge was set by the core
       strReturnPeptide.push_back(std::move(sBestPep));

@@ -56,8 +56,8 @@ namespace RealTimeSearch
          public bool AScorePro = false;
          public int FlankBins = -1;
          public int Isotopes = 2;
-         public int MinIonsScore = 0;
-         public int MinIonsReport = 0;
+         public int MinIonsScore = 2;    // docs/20261105_RTSchimeric.md 10.6
+         public int MinIonsReport = 2;
          public int MaxRuntimeMs = 0;
          public string OutputFile = null;
       }
@@ -88,8 +88,8 @@ namespace RealTimeSearch
          Console.WriteLine("    --ascorepro 0|1       AScorePro localization [0]");
          Console.WriteLine("    --flank -1|0|1        chimeric_remove_flank_bins: -1 = follow theoretical_fragment_ions [-1]");
          Console.WriteLine("    --isotopes N          chimeric_remove_isotopes: +1..+N 13C peaks of matched ions [2]");
-         Console.WriteLine("    --min-ions-score N    chimeric_fragindex_min_ions_score for iterations >= 1; 0 = unchanged [0]");
-         Console.WriteLine("    --min-ions-report N   chimeric_fragindex_min_ions_report for iterations >= 1; 0 = unchanged [0]");
+         Console.WriteLine("    --min-ions-score N    chimeric_fragindex_min_ions_score for iterations >= 1; 0 = unchanged [2]");
+         Console.WriteLine("    --min-ions-report N   chimeric_fragindex_min_ions_report for iterations >= 1; 0 = unchanged [2]");
          Console.WriteLine("    --max-runtime ms      max_index_runtime budget for one whole chimeric call; 0 = unlimited [0]");
          Console.WriteLine("    --out file            output file [<spectra>.chimeric.txt]\n");
       }
