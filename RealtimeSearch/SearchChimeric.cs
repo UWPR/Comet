@@ -56,8 +56,7 @@ namespace RealTimeSearch
          public bool AScorePro = false;
          public int FlankBins = -1;
          public int Isotopes = 2;
-         public int MinIonsScore = 2;    // docs/20261105_RTSchimeric.md 10.6
-         public int MinIonsReport = 2;
+         public int MinIonsScore = 2;    // docs/20261105_RTSchimeric.md 10.6-10.7
          public int MaxRuntimeMs = 0;
          public string OutputFile = null;
       }
@@ -88,8 +87,7 @@ namespace RealTimeSearch
          Console.WriteLine("    --ascorepro 0|1       AScorePro localization [0]");
          Console.WriteLine("    --flank -1|0|1        chimeric_remove_flank_bins: -1 = follow theoretical_fragment_ions [-1]");
          Console.WriteLine("    --isotopes N          chimeric_remove_isotopes: +1..+N 13C peaks of matched ions [2]");
-         Console.WriteLine("    --min-ions-score N    chimeric_fragindex_min_ions_score for iterations >= 1; 0 = unchanged [2]");
-         Console.WriteLine("    --min-ions-report N   chimeric_fragindex_min_ions_report for iterations >= 1; 0 = unchanged [2]");
+         Console.WriteLine("    --min-ions-score N    chimeric_fragindex_min_ions_score for iterations >= 1 (E-value histogram fill); 0 = unchanged [2]");
          Console.WriteLine("    --max-runtime ms      max_index_runtime budget for one whole chimeric call; 0 = unlimited [0]");
          Console.WriteLine("    --out file            output file [<spectra>.chimeric.txt]\n");
       }
@@ -118,7 +116,6 @@ namespace RealTimeSearch
                   case "--flank": o.FlankBins = int.Parse(args[++i], inv); break;
                   case "--isotopes": o.Isotopes = int.Parse(args[++i], inv); break;
                   case "--min-ions-score": o.MinIonsScore = int.Parse(args[++i], inv); break;
-                  case "--min-ions-report": o.MinIonsReport = int.Parse(args[++i], inv); break;
                   case "--max-runtime": o.MaxRuntimeMs = int.Parse(args[++i], inv); break;
                   case "--out": o.OutputFile = args[++i]; break;
                   default:
@@ -225,8 +222,8 @@ namespace RealTimeSearch
          Console.WriteLine(" index:   {0}", o.Database);
          Console.WriteLine(" form:    {0}", o.ZLines ? "explicit list (one candidate per Z line)" : string.Format("charge range {0}..{1}", o.ZMin, o.ZMax));
          Console.WriteLine(" tol:     {0} (m/z; 0 = configured ppm)   max E-value: {1}   max peptides: {2}", o.TolMZ, o.MaxExpect, o.MaxPeptides);
-         Console.WriteLine(" removal: flank {0}, isotopes {1}; re-search min ions score/report {2}/{3}; max_index_runtime {4} ms",
-            o.FlankBins, o.Isotopes, o.MinIonsScore, o.MinIonsReport, o.MaxRuntimeMs);
+         Console.WriteLine(" removal: flank {0}, isotopes {1}; re-search min ions score {2}; max_index_runtime {3} ms",
+            o.FlankBins, o.Isotopes, o.MinIonsScore, o.MaxRuntimeMs);
          Console.WriteLine(" threads: {0}\n", o.Threads);
 
          List<Ms2Scan> scans = ReadMs2(o.Ms2File);
@@ -248,7 +245,6 @@ namespace RealTimeSearch
             searchMgr.SetParam("chimeric_remove_flank_bins", o.FlankBins.ToString(), o.FlankBins);
             searchMgr.SetParam("chimeric_remove_isotopes", o.Isotopes.ToString(), o.Isotopes);
             searchMgr.SetParam("chimeric_fragindex_min_ions_score", o.MinIonsScore.ToString(), o.MinIonsScore);
-            searchMgr.SetParam("chimeric_fragindex_min_ions_report", o.MinIonsReport.ToString(), o.MinIonsReport);
 
             if (!searchMgr.InitializeSingleSpectrumSearch())
             {

@@ -160,7 +160,7 @@ int main(int argc, char** argv)
    {
       fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n"
                       "          [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
-                      "          [flankBins] [isotopes] [minIonsScore] [minIonsReport] [isotopeError]\n"
+                      "          [flankBins] [isotopes] [minIonsScore] [isotopeError] [globalMinIonsScore]\n"
                       "  chimeric 0 (default): DoSingleSpectrumSearchMultiResults, one line per SPECTRUM block\n"
                       "  chimeric 1: DoSingleSpectrumSearchChimeric charge-range form -- each SPECTRUM block searched at\n"
                       "              charges zmin..zmax with +/- tolMZ (m/z units; 0 = configured tolerance)\n"
@@ -168,9 +168,10 @@ int main(int argc, char** argv)
                       "              a scan number are the (m/z, charge) candidates of one spectrum (first block's peaks)\n"
                       "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.05, maxPeptides 5; chimeric modes set\n"
                       "  max_index_runtime = 0 (unlimited) since one call runs many searches\n"
-                      "  flankBins/isotopes/minIonsScore/minIonsReport: the chimeric_remove_flank_bins (-1),\n"
-                      "  chimeric_remove_isotopes (2), chimeric_fragindex_min_ions_score/_report (2) params\n"
-                      "  isotopeError: the isotope_error param, every mode (default 0, matching RealtimeSearch)\n", argv[0]);
+                      "  flankBins/isotopes/minIonsScore: the chimeric_remove_flank_bins (-1),\n"
+                      "  chimeric_remove_isotopes (2), chimeric_fragindex_min_ions_score (2) params\n"
+                      "  isotopeError: the isotope_error param, every mode (default 0, matching RealtimeSearch)\n"
+                      "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n", argv[0]);
       return 1;
    }
 
@@ -191,8 +192,8 @@ int main(int argc, char** argv)
    int iFlankBins = (argc > 13) ? atoi(argv[13]) : -1;
    int iIsotopes = (argc > 14) ? atoi(argv[14]) : 2;
    int iMinIonsScore = (argc > 15) ? atoi(argv[15]) : 2;
-   int iMinIonsReport = (argc > 16) ? atoi(argv[16]) : 2;
-   int iIsotopeError = (argc > 17) ? atoi(argv[17]) : 0;
+   int iIsotopeError = (argc > 16) ? atoi(argv[16]) : 0;
+   int iGlobalMinIonsScore = (argc > 17) ? atoi(argv[17]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
 
    if (numThreads < 1)
       numThreads = 1;
@@ -229,6 +230,8 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "peptide_mass_units", 2);
    SetIntParam(mgr, "precursor_tolerance_type", 1);
    SetIntParam(mgr, "isotope_error", iIsotopeError);   // 0 unless given: RealtimeSearch's own setting
+   if (iGlobalMinIonsScore > 0)
+      SetIntParam(mgr, "fragindex_min_ions_score", iGlobalMinIonsScore);
    SetIntParam(mgr, "max_index_runtime", 200);  // overwrites the 100 above -- matches RTS's actual (duplicate) call
    if (iChimeric != 0)
    {
@@ -236,7 +239,6 @@ int main(int argc, char** argv)
       SetIntParam(mgr, "chimeric_remove_flank_bins", iFlankBins);
       SetIntParam(mgr, "chimeric_remove_isotopes", iIsotopes);
       SetIntParam(mgr, "chimeric_fragindex_min_ions_score", iMinIonsScore);
-      SetIntParam(mgr, "chimeric_fragindex_min_ions_report", iMinIonsReport);
    }
    SetIntParam(mgr, "minimum_peaks", 10);
    SetIntParam(mgr, "max_fragment_charge", 3);

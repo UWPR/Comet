@@ -8799,14 +8799,8 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       else
          dLowestXcorrScore = pQuery->dLowestXcorrScore;
 
-      // Per-Query reporting floor override: RTS chimeric re-search passes only
-      // (Query::iFragIndexMinIonsReportOverride, docs/20261105_RTSchimeric.md section 4.6).
-      const int iMinIonsReport = (pQuery->iFragIndexMinIonsReportOverride > 0)
-         ? pQuery->iFragIndexMinIonsReportOverride
-         : g_staticParams.options.iFragIndexMinIonsReport;
-
       if (dXcorr >= g_staticParams.options.dMinimumXcorr
-         && iNumMatchedFragmentIons >= iMinIonsReport
+         && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
          && dXcorr + 0.00005 >= dLowestXcorrScore)
       {
          if (!CheckDuplicateI(pQuery, iStartPos, iEndPos, bDecoyPep, szProteinSeq, piVarModSites, dbe))

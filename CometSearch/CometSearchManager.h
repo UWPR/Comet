@@ -146,8 +146,8 @@ private:
    // Appends up to takeN rows to the four output vectors; returns the number appended,
    // -1 when preprocessing produced no Query (input rejected or too few peaks), -2 when
    // the index search failed or was cancelled. dToleranceMZ > 0 overrides the configured
-   // precursor tolerance for this search; iMinIonsScore / iMinIonsReport > 0 override
-   // fragindex_min_ions_score / _report for it (chimeric re-search passes); tStart is the
+   // precursor tolerance for this search; iMinIonsScore > 0 overrides
+   // fragindex_min_ions_score for it (chimeric re-search passes); tStart is the
    // max_index_runtime origin (default-constructed = after preprocessing, the original
    // behaviour). pvRemovalBins, when given, receives the sorted, unique fragment-ion bins
    // of the rank-1 PSM for the chimeric loop to clear (section 4.5 of the plan).
@@ -156,7 +156,6 @@ private:
                                 const double dMZ,
                                 const double dToleranceMZ,
                                 const int iMinIonsScore,
-                                const int iMinIonsReport,
                                 double* pdMass,
                                 double* pdInten,
                                 const int iNumPeaks,

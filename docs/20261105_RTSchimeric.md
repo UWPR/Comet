@@ -312,23 +312,26 @@ sweep them without a rebuild):
 
 The defaults are the wrapper's validated ones; section 7.3 confirms them on RTS data.
 
-### 4.6 Candidate-step thresholds on re-search passes
+### 4.6 Candidate floor on re-search passes
 
-The wrapper's F10 numbers (section 2, "Prior art") show that the fragment-index candidate
-filter, not the scoring, is what loses second peptides: after removal a peptide can fall
-below `fragindex_min_ions_score` among the top `fragindex_num_spectrumpeaks` peaks and is
-never scored. Two new params, `chimeric_fragindex_min_ions_score` and
-`chimeric_fragindex_min_ions_report` (default 2 since the section 10 measurements; 0 = no change), apply to iterations >= 1
-only. They are carried on the `Query` (`Query::iFragIndexMinIonsScoreOverride`, set by the
-core from a new optional argument) and consulted at the three comparison sites
-(`CometSearch.cpp:1936`, `:1982`, `:8796`) in place of `g_staticParams` when non-zero.
-`g_staticParams` itself is never written, so the batch path and iteration 0 are untouched.
-Section 7.3 measures 3 vs 2 the way the wrapper did; the wrapper's default is "unchanged",
-and that stays the default here unless the RTS numbers say otherwise.
+As designed, this followed the wrapper's F10 observation (section 2, "Prior art") that
+second peptides vanish because they fall below `fragindex_min_ions_score` after removal,
+and it had two params (`_score` and `_report`). The measurements (sections 10.2, 10.4,
+10.7) showed the vanishing does not reproduce here and that the benefit is a different
+mechanism entirely, so the design is now:
 
-Lowering the threshold admits more weak candidates on re-search passes; `dMaxExpect` is
-the guard, and the harness reports "hits where there were none" separately so the effect
-is visible.
+- One param, `chimeric_fragindex_min_ions_score` (default 2; 0 = configured value), applied
+  to iterations >= 1 only, carried on the `Query` (`Query::iFragIndexMinIonsScoreOverride`,
+  set by the core from an argument) and consulted at the two candidate-step sites in
+  `CometSearch::SearchFragmentIndex()` in place of `g_staticParams` when non-zero.
+  `g_staticParams` is never written; batch and iteration 0 are untouched.
+- The reporting floor (`fragindex_min_ions_report`) is never lowered: the few PSMs that a
+  2-ion report floor lets win are junk (10.7).
+- What the lower score floor does is let 2-ion candidates be *scored into the E-value
+  histogram* without becoming reportable. On a stripped spectrum only a handful of real
+  candidates clear 3 ions, the synthetic decoy padding does not reach the xcorr range where
+  weak re-search winners sit, and those candidates are what make the fitted tail honest.
+  `dMaxExpect` remains the guard on what is reported.
 
 ### 4.7 Threading
 
@@ -356,7 +359,7 @@ remain safe for the same reason the existing function is.
 | Layer | File | Change |
 |-------|------|--------|
 | Native types | `CometSearch/CometData.h` | `PrecursorCandidate`; `CometScores::iCharge/iIteration` + ctors/copy/assign. |
-| Native params | `CometSearch/core/Params.h`, `CometSearchManager.cpp` (`InitializeStaticParams` param copy block, ~`:774` region) | `iChimericRemoveFlankBins`, `iChimericRemoveIsotopes`, `iChimericFragIndexMinIonsScore`, `iChimericFragIndexMinIonsReport`. |
+| Native params | `CometSearch/core/Params.h`, `CometSearchManager.cpp` (`InitializeStaticParams` param copy block, ~`:774` region) | `iChimericRemoveFlankBins`, `iChimericRemoveIsotopes`, `iChimericFragIndexMinIonsScore` (a `_report` twin existed from Phase 2 to Phase 4 and was removed after section 10.7). |
 | Preprocess | `CometSearch/CometPreprocess.h/.cpp` | `dToleranceMZ` parameter on `PreprocessSingleSpectrumThreadLocal()`, `PreprocessSingleSpectrumCore()`, `AdjustMassTol()`. |
 | Search | `CometSearch/core/Types.h` (`Query`), `CometSearch/CometSearch.cpp:1936,1982,8796` | Per-Query min-ions override fields consulted in place of `g_staticParams` when non-zero. |
 | Manager | `CometSearch/CometInterfaces.h`, `CometSearchManager.h/.cpp` | `SearchSingleSpectrumCore()` (moved body, optional removal-bin output), two `DoSingleSpectrumSearchChimeric()` overloads, `RemovePeaksInBins()`. |
@@ -474,8 +477,9 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 0 | `CometScores::iCharge` / `iIteration` (`CometData.h`), `ScoreWrapper::Charge` / `Iteration` (`CometDataWrapper.h`); `DoSingleSpectrumSearchMultiResults()` fills `iCharge`. |
 | 2026-11-06 | 1 | `SearchSingleSpectrumCore()` holds the moved body; `dToleranceMZ` threaded through `PreprocessSingleSpectrumThreadLocal()` -> `PreprocessSingleSpectrumCore()` -> `AdjustMassTol()` (override branch in place, default 0 = unchanged); `tStart` with the default-constructed sentinel keeping the old "after preprocessing" clock. Regression (7.2): a full-surface dump driver (top-5, every `CometScores` field, every matched fragment; a scratch copy of `tests/rts_repro/rts_repro.cpp`) over the 197-spectrum fixture is byte-identical before and after on FI and PI, each with AScorePro off and on (1220 / 1212 / 4244 / 4231 lines), as is the stock `rts_repro` output. `run_tests.py`: 85/85 unit, T22 RTS FI/PI (+ protein-terminal mod variants) 4/4. Windows: full solution (Release x64) builds clean, `CometWrapper.dll` included. |
 | 2026-11-06 | 2 | `PrecursorCandidate` (`CometData.h`); the four `chimeric_*` params (`core/Params.h`, `SetParam` only); `Query::iFragIndexMinIonsScoreOverride` / `ReportOverride` consulted at the three `CometSearch.cpp` sites; removal-bin collection in the core's Step 6 ion loop (`AddChimericRemovalBins()`: every theoretical ion, flanks per `theoretical_fragment_ions`, observed-peak isotopes), `RemovePeaksInBins()`, both `DoSingleSpectrumSearchChimeric()` overloads, `RTS_CHIMERIC_DEBUG` trace. `rts_repro` gained chimeric modes 1 (charge range) and 2 (candidate list = blocks sharing a scan). Test T67 (`tests/unit/data/t67_make_chimeric.py` + `run_tests.py`): all five fixture scans behave as section 7.1 specifies on FI_DB and PI_DB in both forms, the threshold ends the loop, the trace shows all 18 of P1's peaks removed, 1 vs 4 threads byte-identical. One behaviour the fixture made explicit: in scan 2 the 3+ 14-mer wins iteration 0 on E-value (52 ions vs 18) although it has a third of the intensity -- the loop orders by evidence, not abundance. The pre-existing path stayed byte-identical (same full-surface dump as Phase 1). |
-| 2026-11-06 | 3 | `CometWrapper`: both `DoSingleSpectrumSearchChimeric()` overloads (the list form takes parallel `double[] m/z`, `int[] charge`, `double[] tolerance` arrays -- no managed candidate type, nothing allocated per candidate) with the output conversion factored into one helper shared with `DoSingleSpectrumSearchMultiResults()`. `RealtimeSearch/SearchChimeric.cs`: `RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [--zrange zmin zmax \| --zlines] [--tol mz] [--max-expect E] [--max-peptides N] [--threads T] [--ascorepro 0\|1] [--flank -1\|0\|1] [--isotopes N] [--min-ions-score N] [--min-ions-report N] [--max-runtime ms] [--out file]`, selected by `chimeric` as the first argument of the existing executable; its own `.ms2` reader (every `Z` line kept), the MS1/MS2 harness's `ConfigureInputSettings()` block reused (`SearchSettings` made `internal`), the same `ConcurrentQueue` worker pattern; one tab-delimited row per reported peptide (scan, iteration, charge, precursor m/z, candidate count, calculated neutral mass, peptide, protein, xcorr, delta-Cn, E-value, ions, elapsed ms) and a run summary (spectra with 0/1/2/3+ peptides, rows at iteration >= 1, same-peptide repeats, errors). `t67_make_chimeric.py` also writes the scans as a multi-`Z`-line `.ms2`. Verified: on the T67 `.ms2` against a Windows-built FI index, both forms reproduce `rts_repro`'s rows exactly (peptides, charges, xcorr, E-values, ion counts); Windows solution builds clean. |
+| 2026-11-06 | 3 | `CometWrapper`: both `DoSingleSpectrumSearchChimeric()` overloads (the list form takes parallel `double[] m/z`, `int[] charge`, `double[] tolerance` arrays -- no managed candidate type, nothing allocated per candidate) with the output conversion factored into one helper shared with `DoSingleSpectrumSearchMultiResults()`. `RealtimeSearch/SearchChimeric.cs`: `RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [--zrange zmin zmax \| --zlines] [--tol mz] [--max-expect E] [--max-peptides N] [--threads T] [--ascorepro 0\|1] [--flank -1\|0\|1] [--isotopes N] [--min-ions-score N] [--max-runtime ms] [--out file]` (a `--min-ions-report` option existed until Phase 4b), selected by `chimeric` as the first argument of the existing executable; its own `.ms2` reader (every `Z` line kept), the MS1/MS2 harness's `ConfigureInputSettings()` block reused (`SearchSettings` made `internal`), the same `ConcurrentQueue` worker pattern; one tab-delimited row per reported peptide (scan, iteration, charge, precursor m/z, candidate count, calculated neutral mass, peptide, protein, xcorr, delta-Cn, E-value, ions, elapsed ms) and a run summary (spectra with 0/1/2/3+ peptides, rows at iteration >= 1, same-peptide repeats, errors). `t67_make_chimeric.py` also writes the scans as a multi-`Z`-line `.ms2`. Verified: on the T67 `.ms2` against a Windows-built FI index, both forms reproduce `rts_repro`'s rows exactly (peptides, charges, xcorr, E-values, ion counts); Windows solution builds clean. |
 | 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome: the wrapper's removal model confirmed (isotope removal is what matters); `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (+34% confident later IDs, decoy rate halved); the +/- 1 m/z window, not the charge range, is what finds chimeras (2,914 vs 445 confident later IDs); `isotope_error = 2` is worth +42% on the plain RTS search and is recommended for `SearchMS1MS2.cs` independently; cost 7.0 ms/spectrum/thread vs 0.63 for the plain search. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
+| 2026-11-06 | 4b | Review of the re-search floor (section 10.7): `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's histogram size and fit (`RTS_CHIMERIC_CAND` / `_EVAL`), `=3` the non-zero histogram bins; `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
 | 2026-11-06 | -- | Build-system side work prompted by Phase 1's baseline capture: root `-j` race (MSToolkit entered twice concurrently) fixed with an order-only `mstoolkit` target; automatic `-MMD -MP` header dependencies in all four Makefiles (previously only four objects wrote `.d` files and none were included); MSToolkit objects now wait for the expat/zlib header install. |
 
 ## 10. Phase 4 results: removal validation and cost on real data (2026-11-06)
@@ -531,7 +535,8 @@ iterations 0-3 (19,751 / 3,837 / 449 / 38 rows); S_exact 1.1 / 5.2 / 9.6 / 20.0%
   decoy rate halves (2.1% vs 4.4%) and confident later IDs rise by a third (2,914 vs 2,181):
   with more candidates scored, the E-value histogram is better populated, the E-values become
   more conservative, and `dMaxExpect` keeps the junk out. Pending the 20 ppm confirmation in
-  10.4, `chimeric_fragindex_min_ions_score/_report` should default to 2.
+  10.4, `chimeric_fragindex_min_ions_score` should default to 2 (section 10.7 then showed the
+  mechanism and that the `_report` floor must stay at 3).
 - No spectrum reported the same peptide twice in any setting.
 
 ### 10.3 What the charge range and the wide window do to iteration 0
@@ -601,7 +606,8 @@ Iteration >= 1 decoy rates: S_tol0 10.4%, S_tol0_iso2 6.9%, S_tol0_iso2_min2 5.8
 |---|---|---|---|
 | `chimeric_remove_flank_bins` | -1 | -1 (confirmed) | 10.2 |
 | `chimeric_remove_isotopes` | 2 | 2 (confirmed) | 10.2: 4.4% vs 5.9% decoy, +26% confident later IDs |
-| `chimeric_fragindex_min_ions_score` / `_report` | 0 (unchanged) | 2 | 10.2 / 10.4: +34% confident later IDs with the window, neutral without |
+| `chimeric_fragindex_min_ions_score` | 0 (unchanged) | 2 | 10.2 / 10.4 / 10.7: +43% confident later IDs with the window (3,116 vs 2,181 with the report floor kept at 3), neutral without |
+| `chimeric_fragindex_min_ions_report` | 0 (unchanged) | removed | 10.7: the 47 PSMs that only a 2-ion report floor lets win are 31.9% decoy |
 | `rts_repro` / `SearchChimeric.cs` `--min-ions-*` defaults | 0 | 2 | follow the params |
 | recommended for callers: `isotope_error` | 0 in `SearchMS1MS2.cs` | 2 | 10.4: +42% on the plain search; keeps the chimeric window honest about what it adds |
 
@@ -633,6 +639,50 @@ extra iterations add only ~50% on top of the first (most spectra stop after one 
 7 ms/spectrum/thread, a 20-thread RTS host sustains ~2,800 spectra/s on this index, well
 inside real-time budgets; the window width (and the charge ceiling) is the lever if a
 denser index or a smaller machine needs one.
+
+### 10.7 Why the re-search candidate floor works: the E-value histogram on a stripped spectrum
+
+Question raised in review: a peptide that cannot match 3 fragment-index entries is not a
+good identification, so what is a 2-ion floor for -- and with `GenerateXcorrDecoys()`
+padding every histogram to `EXPECT_DECOY_SIZE` (3,000) synthetic scores, how could a few
+real entries move the fit? Measured with `RTS_CHIMERIC_DEBUG=2/3` (per-query histogram
+size, `iNextCorr`, slope, intercept, rank-1 xcorr/E-value, and the non-zero histogram
+bins), on the same iteration-1 queries under both floors (identical spectrum state and
+candidate; 5,219 queries for the counts, 102 with full histograms):
+
+- **It is not rescue.** Lowering both floors to 2 let exactly 47 later-iteration PSMs win
+  (of 3,648) that a 3-ion report floor would have blocked, and they were 31.9% decoy. With
+  the report floor kept at 3 the 3,601 shared PSMs have identical xcorr; only their E-values
+  change (larger under floor 2 in 2,574, median x1.31-1.41). Score floor 2 with report
+  floor 3 is the best configuration: 3,116 confident later IDs at 1.9% decoy, against 2,914
+  with both floors at 2 and 2,181 with both at 3.
+- **It is not one entry among thousands: it is ~40 per query.** At floor 3 a re-search
+  query scores a median of **7** real candidates into the histogram (54% of queries fewer
+  than 10): the first peptide's peaks are gone, so few peptides reach 3 index hits among the
+  top peaks. At floor 2 the median is **100** (the `FRAGINDEX_MAX_NUMSCORED` cap, mean 72;
+  +36 median per query), and only 12% of queries stay below 10. Stored results are identical
+  (median 7) because the report floor stays at 3.
+- **The synthetic padding does not live where the fit happens.** The histogram does reach
+  ~8,500 entries (the generator scatters each of the 3,000 - N decoys per fragment charge),
+  but 97% of them are at xcorr 0.0-0.3. Per query, the entries above that are 99 / 46 / 20 /
+  9 / 3.4 / 1.1 at xcorr 0.4 / 0.5 / 0.6 / 0.7 / 0.8 / 0.9. `LinearRegression()` builds its
+  cumulative distribution downward from the "second-best" bin (`iNextCorr`, median 0.8),
+  so those thin bins are the fit. Floor 2 adds 30 / 19 / 9 / 4 / 1.8 / 0.6 entries in exactly
+  those bins (+30-50%); the median slope goes -0.457 -> -0.430 and the rank-1 E-value rises
+  x1.41 (in 81% of queries). The re-search winners themselves are weak (median xcorr 0.79,
+  at the edge of that tail), which is why their E-values depend on its shape; iteration-0
+  winners sit far above it and barely move (the plain search gains only +1.7% from a global
+  score floor of 2).
+- **Open item (not this project):** whether the synthetic decoys are poor or the stripped
+  spectrum is simply sparse. Random peptides scored against a spectrum with its dominant
+  peptide removed may genuinely score 0.0-0.3, in which case the padding is a correct null
+  and the 2-ion candidates -- real peptides *selected* for sharing >= 2 ions -- are a biased,
+  more conservative one. Target-decoy FDR sides with the conservative fit on these spectra
+  (decoy rate among later rows at E <= 0.05: 1.9% vs 4.4%), but a better
+  `CometPostAnalysis::GenerateXcorrDecoys()` -- synthetic scores that reach the xcorr range
+  where weak hits live, or scoring the next-weakest real candidates into the histogram
+  without storing them, for every sparse fragment-index query -- would remove the need for
+  this knob and is worth its own investigation.
 
 ## 11. Out of scope / later
 
