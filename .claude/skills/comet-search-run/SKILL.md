@@ -97,6 +97,9 @@ Output also includes:
 - `num_threads` — overridden by RTS command-line argument
 - `num_results` — hits to report per spectrum
 - `minimum_xcorr` — score cutoff
+- `fragindex_min_ions_score` / `fragindex_min_ions_report` (3 / 3) — fragment-ion-index candidate and reporting floors (index hits among the top `fragindex_num_spectrumpeaks` peaks); don't lower them to "rescue" weak hits, the 2-hit winners are junk
+- `fragindex_histogram_fill` (100; 0 = off) — FI searches also score their best-supported sub-floor candidates into the E-value histogram so FI E-values match PI/FASTA E-values; changes E-values of weak hits only, never xcorr or ranking (`docs/20261106_FI_evalue_histogram_fill.md`)
+- `isotope_error` — on the HeLa benchmark file `2` gave +42% confident PSMs over `0` in the RTS example harness (`docs/20261105_RTSchimeric.md` 10.4)
 
 ## g_pvProteinNameCache (indexed DB)
 
