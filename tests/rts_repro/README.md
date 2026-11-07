@@ -51,9 +51,12 @@ then optionally the chimeric-search settings (`docs/20261105_RTSchimeric.md`):
 number as one `(m/z, charge)` candidate of a single spectrum (the explicit-list form); 0 is
 this reproducer's original single-search behaviour and output. In the chimeric modes the
 output has one line per reported peptide (`iter`, `z`, peptide, xcorr, dCn, E-value, mass,
-ions, protein), `max_index_runtime` is set to 0, and `RTS_CHIMERIC_DEBUG=1|2|3` in the
-environment traces each iteration / each candidate search's E-value fit / its histogram
-bins on stderr (run single-threaded to keep one call's lines together). `isotopeError`
+ions, protein), `max_index_runtime` is set to 0, and `RTS_CHIMERIC_DEBUG=1|2` in the
+environment traces each iteration (1) plus, per candidate search, its real-candidate count
+and, per kept PSM, its matched and removed bins (2) on stderr; `COMET_EVALUE_TRACE=1|2`
+(any mode, any search path) adds each search's E-value fit and, at 2, its xcorr histogram
+before and after the synthetic padding (run single-threaded to keep one call's lines
+together; `docs/20261106_FI_evalue_histogram_fill.md`). `isotopeError`
 sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIonsScore`
 > 0 sets `fragindex_min_ions_score` itself. Run without arguments for the defaults.
 

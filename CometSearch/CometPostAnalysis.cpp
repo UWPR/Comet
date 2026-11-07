@@ -1596,6 +1596,35 @@ float CometPostAnalysis::FindSpScore(Query *pQuery,
 }
 
 
+// Opt-in E-value trace on stderr, every search path (batch legacy, fused batch, RTS,
+// chimeric): COMET_EVALUE_TRACE=1 prints one COMET_EVALUE line per query with the real
+// candidate count, the regression window (iMaxCorr / iNextCorr, 0.1-xcorr bins), slope and
+// intercept, and the rank-1 xcorr / E-value; =2 adds the xcorr histogram twice as "bin:count"
+// lists -- COMET_EVALUE_HIST_REAL (the scored candidates only, before GenerateXcorrDecoys()
+// pads it) and COMET_EVALUE_HIST (after padding, the counts LinearRegression() fits). Both
+// are raw per-bin counts: LinearRegression() overwrites bins 0..iNextCorr with the
+// cumulative distribution in place, so a dump taken after it is not a histogram. Read once
+// per process. docs/20261106_FI_evalue_histogram_fill.md.
+static int EValueTraceLevel()
+{
+   static const int iLevel = (getenv("COMET_EVALUE_TRACE") != nullptr) ? atoi(getenv("COMET_EVALUE_TRACE")) : 0;
+   return iLevel;
+}
+
+static void AppendHistogramBins(const int* piHistogram, std::string& sOut)
+{
+   char szBuf[32];
+   for (int iBin = 0; iBin < HISTO_SIZE; ++iBin)
+   {
+      if (piHistogram[iBin] != 0)
+      {
+         snprintf(szBuf, sizeof(szBuf), "%d:%d,", iBin, piHistogram[iBin]);
+         sOut += szBuf;
+      }
+   }
+}
+
+
 bool CometPostAnalysis::CalculateEValue(Query* pQuery,
                                         bool bTopHitOnly)
 {
@@ -1609,6 +1638,12 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
 
    piHistogram = pQuery->iXcorrHistogram;
 
+   const int iTrace = EValueTraceLevel();
+   std::string sHistReal;
+   std::string sHistPadded;
+   if (iTrace >= 2)
+      AppendHistogramBins(piHistogram, sHistReal);
+
    if (pQuery->uiHistogramCount < EXPECT_DECOY_SIZE)
    {
       if (!GenerateXcorrDecoys(pQuery))
@@ -1617,7 +1652,27 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
       }
    }
 
+   if (iTrace >= 2)
+      AppendHistogramBins(piHistogram, sHistPadded);
+
    LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
+
+   if (iTrace >= 1)
+   {
+      const int iScan = pQuery->_spectrumInfoInternal.iScanNumber;
+      const int iZ = pQuery->_spectrumInfoInternal.usiChargeState;
+      const bool bHasTop = (pQuery->iMatchPeptideCount > 0);
+      // slope / intercept are the regression on log10(cumulative count) vs xcorr bin (0.1 units)
+      fprintf(stderr, "COMET_EVALUE scan=%d z=%d scored=%d hist=%u maxcorr=%d nextcorr=%d slope=%.4f icpt=%.4f topx=%.4f tope=%.4g\n",
+         iScan, iZ, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount, iMaxCorr, iNextCorr, dSlope, dIntercept,
+         bHasTop ? pQuery->_pResults[0].fXcorr : 0.0f,
+         bHasTop ? std::exp((dSlope * 10.0 * pQuery->_pResults[0].fXcorr + dIntercept) * 2.302585092994046) : 0.0);
+      if (iTrace >= 2)
+      {
+         fprintf(stderr, "COMET_EVALUE_HIST_REAL scan=%d z=%d %s\n", iScan, iZ, sHistReal.c_str());
+         fprintf(stderr, "COMET_EVALUE_HIST scan=%d z=%d %s\n", iScan, iZ, sHistPadded.c_str());
+      }
+   }
 
    pQuery->fPar[0] = (float)dIntercept;  // b
    pQuery->fPar[1] = (float)dSlope    ;  // m

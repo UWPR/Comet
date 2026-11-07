@@ -3112,31 +3112,8 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
          goto cleanup_results;
    }
 
-   // RTS_CHIMERIC_DEBUG >= 2 (chimeric callers only): the E-value fit this search ended up
-   // with -- histogram size after GenerateXcorrDecoys() padding, the top real xcorr bin, the
-   // regression window start (iNextCorr), slope/intercept, and the rank-1 xcorr/E-value.
-   // >= 3 adds the non-zero histogram bins (bin:count). Plan section 10 discussion.
-   if (pvRemovalBins != nullptr && ChimericDebugLevel() >= 2)
-   {
-      fprintf(stderr, "RTS_CHIMERIC_EVAL z=%d minions=%d scored=%d hist=%u maxcorr=%d nextcorr=%.0f slope=%.4f icpt=%.4f topx=%.4f tope=%.4g\n",
-         iPrecursorCharge, iMinIonsScore, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount,
-         (int)pQuery->siMaxXcorr, pQuery->fPar[3], pQuery->fPar[1], pQuery->fPar[0],
-         pQuery->_pResults[0].fXcorr, pQuery->_pResults[0].dExpect);
-      if (ChimericDebugLevel() >= 3)
-      {
-         std::string sBins;
-         char szBuf[32];
-         for (int iB = 0; iB < HISTO_SIZE; ++iB)
-         {
-            if (pQuery->iXcorrHistogram[iB] != 0)
-            {
-               snprintf(szBuf, sizeof(szBuf), "%d:%d,", iB, pQuery->iXcorrHistogram[iB]);
-               sBins += szBuf;
-            }
-         }
-         fprintf(stderr, "RTS_CHIMERIC_HIST z=%d %s\n", iPrecursorCharge, sBins.c_str());
-      }
-   }
+   // (The per-query E-value fit and histogram dump that used to be here is now
+   // COMET_EVALUE_TRACE in CometPostAnalysis::CalculateEValue(), for every search path.)
 
    // Step 5: Open database file for protein name retrieval.
    // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
@@ -3720,10 +3697,13 @@ static void RemovePeaksInBins(std::vector<double>& vMass,
 
 // Opt-in trace of the chimeric loop on stderr, the same env-var pattern as
 // COMET_PRELOAD_BENCHMARK; read once per process. RTS_CHIMERIC_DEBUG=1: one line per
-// iteration (best PSM, decision, peaks removed). 2: additionally, for every kept PSM, its
-// matched-fragment bins and the full removal-bin set ("RTS_CHIMERIC_DETAIL"), which the
-// removal-validation analysis (docs/20261105_RTSchimeric.md section 7.3) pairs across
-// iterations; run single-threaded so the lines of one call stay together.
+// iteration (best PSM, decision, peaks removed). 2: additionally an "RTS_CHIMERIC_ITER"
+// marker per iteration, per candidate search its real-candidate count ("RTS_CHIMERIC_CAND")
+// and, for every kept PSM, its matched-fragment bins and the full removal-bin set
+// ("RTS_CHIMERIC_DETAIL"), which the removal-validation analysis
+// (docs/20261105_RTSchimeric.md section 7.3) pairs across iterations; run single-threaded
+// so the lines of one call stay together. The E-value fit / histogram of each search is
+// COMET_EVALUE_TRACE (CometPostAnalysis.cpp), which works on every search path.
 static int ChimericDebugLevel()
 {
    static const int iLevel = (getenv("RTS_CHIMERIC_DEBUG") != nullptr) ? atoi(getenv("RTS_CHIMERIC_DEBUG")) : 0;
