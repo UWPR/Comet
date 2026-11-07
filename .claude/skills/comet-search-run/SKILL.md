@@ -42,6 +42,21 @@ RealtimeSearch.exe <query.raw> <ms1_reference.raw> <database.idx> <num_threads>
 
 Output is written to `rts.out` in the working directory.
 
+### Chimeric-spectrum RTS (more than one peptide per spectrum)
+
+```bash
+RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [--zrange zmin zmax | --zlines] [--tol mz]
+                   [--max-expect E] [--max-peptides N] [--threads T] [--out file] ...
+```
+
+Run it with no options for the full list. `--zrange` searches each scan's `S`-line m/z
+across the charge range with a +/- `--tol` m/z window (the isolation-window use case);
+`--zlines` makes every `Z` line of the scan one `(m/z, charge)` candidate (multi-Z-line
+`.ms2`, the Mango wrapper's format). One tab-delimited row per reported peptide (scan,
+iteration, charge, ..., E-value) plus a run summary. Reads `.ms2` only (no `.raw`). Design,
+defaults and the HeLa measurements: `docs/20261105_RTSchimeric.md`; the Linux equivalent is
+`tests/rts_repro/rts_repro` with its chimeric arguments.
+
 ## Output file format (rts.out)
 
 Each identified MS2 scan:

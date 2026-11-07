@@ -43,7 +43,19 @@ cp /mnt/c/Work/Comet-master/data/comet_phospho.params comet.params
    /mnt/c/Work/Comet-master/tests/rts_repro/fixture_spectra.txt 8 run1.out 1
 ```
 
-Args: `<database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1]`.
+Args: `<database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]`,
+then optionally the chimeric-search settings (`docs/20261105_RTSchimeric.md`):
+`[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [minIonsScore] [isotopeError] [globalMinIonsScore]`.
+`chimeric` 1 searches every `SPECTRUM` block at charges `zmin..zmax` with a +/- `tolMZ` window
+(`DoSingleSpectrumSearchChimeric`'s charge-range form); 2 treats every block sharing a scan
+number as one `(m/z, charge)` candidate of a single spectrum (the explicit-list form); 0 is
+this reproducer's original single-search behaviour and output. In the chimeric modes the
+output has one line per reported peptide (`iter`, `z`, peptide, xcorr, dCn, E-value, mass,
+ions, protein), `max_index_runtime` is set to 0, and `RTS_CHIMERIC_DEBUG=1|2|3` in the
+environment traces each iteration / each candidate search's E-value fit / its histogram
+bins on stderr (run single-threaded to keep one call's lines together). `isotopeError`
+sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIonsScore`
+> 0 sets `fragindex_min_ions_score` itself. Run without arguments for the defaults.
 
 Output lines are unordered (worker threads finish in whatever order they finish) -- sort by scan
 number before diffing two runs:
@@ -71,7 +83,19 @@ Kept as a regression test for this bug class -- if this reproducer ever shows no
 start with `docs/20260714_EvalueJitter.md`'s Phase 3 methodology (full XCorr histogram dump,
 compare content not just count) rather than re-deriving it from scratch.
 
-## Using this from tests/unit/run_tests.py (t22_rts_fi, t22_rts_pi)
+## Real data on Linux: mzxml_to_fixture.py
+
+`mzxml_to_fixture.py` writes the MS2 scans of an mzXML file in the same `SPECTRUM` block
+format (base64 peaks decoded, 32/64-bit, optional zlib; `--max N`, `--first-scan`,
+`--last-scan`), which is how the chimeric-search measurements in
+`docs/20261105_RTSchimeric.md` section 10 ran the 42,030-scan HeLa benchmark file here
+without `.raw` access:
+
+```bash
+python3 tests/rts_repro/mzxml_to_fixture.py 20170103_HelaQC_01.mzXML > hela.txt
+```
+
+## Using this from tests/unit/run_tests.py (t22_rts_fi, t22_rts_pi, t67_chimeric)
 
 `tests/unit/run_tests.py` drives this reproducer as part of its `--integration` suite
 (see CLAUDE.md's Testing section). It builds `rts_repro` on demand (the same `g++`
