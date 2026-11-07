@@ -682,7 +682,10 @@ candidate; 5,219 queries for the counts, 102 with full histograms):
   `CometPostAnalysis::GenerateXcorrDecoys()` -- synthetic scores that reach the xcorr range
   where weak hits live, or scoring the next-weakest real candidates into the histogram
   without storing them, for every sparse fragment-index query -- would remove the need for
-  this knob and is worth its own investigation.
+  this knob. Follow-up measured on full spectra: the synthetic entries are already 97% at
+  0.0-0.3 before any subtraction (subtraction only thins the tail a further ~3x and lowers
+  the winner's xcorr 0.93 -> 0.79), so the null is wrong for every FI query, not just
+  stripped ones. Planned as its own project: `docs/20261106_FI_evalue_histogram_fill.md`.
 
 ## 11. Out of scope / later
 
