@@ -300,10 +300,78 @@ decile ratios in B move to ~1. Caveat: the histogram traces are 1,000-scan sampl
 repeats C and D on the full file. Note also that PI pads too (its ~1,600 real entries are
 below `EXPECT_DECOY_SIZE`), so PI is the batch-equivalent null, not an absolute truth.
 
+### Phase 2 (2026-11-06): measurements at fill 25 / 50 / 100
+
+Same file, indexes and `rts_repro` settings as Phase 0 (plain RTS: file charge, 20 ppm,
+`isotope_error` 0, 8 threads); PI as the comparator.
+
+**5.2 Calibration -- median E(FI) / E(PI) on the 19,598 spectra with the same rank-1
+peptide, by rank-1 xcorr decile (lowest to highest); [% of PSMs with FI below PI]**
+
+| fill | deciles 1-10 |
+|---|---|
+| 0 | 0.87 [66], 0.69 [77], 0.66 [78], 0.62 [78], 0.60 [78], 0.53 [79], 0.49 [79], 0.50 [76], 0.51 [75], 0.57 [69] |
+| 25 | 0.99 [52], 0.88 [65], 0.84 [67], 0.86 [66], 0.87 [65], 0.87 [64], 0.83 [67], 0.80 [64], 0.78 [64], 0.73 [62] |
+| 50 | 1.01 [44], 0.95 [59], 0.93 [60], 0.95 [60], 0.97 [57], 0.96 [57], 0.94 [58], 0.93 [57], 0.91 [57], 0.88 [56] |
+| **100** | **1.04 [37], 1.00 [50], 1.00 [52], 1.00 [52], 1.01 [47], 1.00 [48], 1.01 [49], 1.01 [48], 1.00 [50], 1.03 [48]** |
+
+Paired fits over the full file (19,596 spectra with the same rank-1 peptide in all three):
+
+| | real entries | `iNextCorr` | slope | intercept | median E |
+|---|---|---|---|---|---|
+| FI fill 0 | 4 | 0.9 | -0.397 | 3.93 | 0.00128 |
+| FI fill 100 | 100 | 0.9 | **-0.378** | **3.92** | **0.00263** |
+| PI | 1,513 | 0.9 | -0.379 | 3.93 | 0.00264 |
+
+E(FI fill 100) / E(PI): median 1.01, FI below PI on 48%. The FI fit lands on PI's slope
+and intercept to the third digit; the Phase 0 premise is confirmed in full.
+
+**5.3 / 5.5 FDR, yield and decoy-winner calibration (plain RTS, full file)**
+
+| | rank-1 | at E <= 0.05 (decoy %) | targets q <= 0.01 | q <= 0.05 | decoy winners E <= 0.05 / 0.01 |
+|---|---|---|---|---|---|
+| PI | 39,461 | 12,775 (0.7%) | 12,973 | 14,525 | 0.7% / 0.1% |
+| FI fill 0 | 27,655 | 13,174 (1.2%) | 12,808 | 14,441 | 2.4% / 0.7% |
+| FI fill 25 | 27,655 | 12,926 (0.8%) | 13,014 | 14,501 | 1.5% / 0.4% |
+| FI fill 50 | 27,655 | 12,822 (0.6%) | 13,035 | 14,522 | 1.1% / 0.3% |
+| **FI fill 100** | 27,655 | 12,723 (0.6%) | **13,055** | 14,532 | **1.1% / 0.2%** |
+
+The rank-1 set is identical across fills (xcorr and ranking never change); only the
+E-values move. Fill 100 yields +1.9% confident targets over fill 0 and passes PI; the
+decoy-winner leakage at E <= 0.05 halves.
+
+**Batch FI** (`comet.exe`, fused path, 20 threads, this template's `isotope_error = 2`,
+`tools/qvalue.py`): targets at 1% FDR by E-value 18,168 -> **18,466 (+1.6%)**, by xcorr
+16,189 in both; 28,639 of 31,371 rows differ only in the E-value column. The batch path
+behaves exactly like RTS.
+
+**Chimeric search at fill 100** (charges 2-4, +/- 1 m/z, <= 5 peptides):
+
+| | iteration 0 rows (decoy %, q01) | later rows (decoy %, q01) | all q <= 0.01 |
+|---|---|---|---|
+| fill 0, knob 2, dMaxExpect 0.05 (`docs/20261105_RTSchimeric.md` 10.7 best) | 19,751 (1.1%, 19,275) | 3,614 (1.9%, 3,116) | 22,453 |
+| fill 100, dMaxExpect 0.05 -- knob 0 and knob 2 **byte-identical** | 18,639 (0.5%, 18,549) | 3,524 (1.8%, 3,031) | 22,010 |
+| **fill 100, dMaxExpect 0.1** | 20,057 (1.1%, 19,727) | 4,596 (4.1%, 3,147) | **22,930** |
+| fill 100, dMaxExpect 0.2 | 19,968 (2.0%, 18,388) | 6,222 (8.6%, 3,239) | 21,566 |
+
+With the fill, `chimeric_fragindex_min_ions_score` no longer changes anything (the 2-hit
+candidates are scored regardless): it can be retired. The hard `dMaxExpect` gate was tuned
+under optimistic E-values; now that they are honest, 0.05 loses ~1,100 iteration-0 rows and
+0.1 is the better default for the harnesses (+2.1% over the old best in total), while 0.2
+overshoots.
+
+**5.4 Cost** (single thread, full file, 75.6 s load subtracted): fill 0 **27.0 s**
+(0.64 ms/spectrum), fill 100 **30.0 s** (0.71 ms/spectrum): +11%. At 8 threads the three
+fill runs took 39.8 / 40.8 / 42.7 s against 42.9 s for fill 0 -- within noise.
+
+**Decision**: `fragindex_histogram_fill` default **100**, as proposed in section 8;
+carried out in Phase 3 together with the knob retirement and the chimeric gate change.
+
 | Date | Phase | Result |
 |---|---|---|
 | 2026-11-06 | 0 | `COMET_EVALUE_TRACE` in `CalculateEValue()`; FI-vs-PI baseline tables A-D above; the premise sharpened to "the synthetic tail is steeper than the real one, and the gap is slope-only". |
 | 2026-11-06 | 1 | `fragindex_histogram_fill` (`Params.h` / `Constants.h` default 0, `Comet.cpp` parse table and `comet.params` text, `InitializeStaticParams()` with clamping to 0..`FRAGINDEX_MAX_NUMSCORED`); the fill in `SearchFragmentIndex()`: sub-floor candidates collected in the same map walk, the needed prefix `partial_sort`ed by (hits desc, index asc) and appended after the floor-clearing list, the one scoring loop taking them while `uiNumScored < fill` under the unchanged cap. `rts_repro` `histogramFill` argument. Byte-identical at 0: the full-surface RTS dump of the 197-spectrum fixture matches the original Phase-1 baseline on FI and PI with AScorePro off and on. T68 (`t68_make_histfill.py`: one target, 20 exact-2-hit and 30 exact-1-hit composition-identical fillers): histogram 1 / 51 / 25 entries at fill 0 / 100 / 25, one stored candidate throughout, identical xcorr, E-value 3.1e-11 -> 3.9e-9. Preview on the HeLa 1,000-scan subset, plain RTS at fill 100: real entries median 1 -> 100, stored set unchanged, same rank-1 on all 128 queries, median slope -0.458 -> -0.442 (PI: -0.443), E x1.37. Note for the semantics: `XcorrScoreI()`'s reporting floor is on the full-spectrum matched-ion count, so a fill candidate *can* be stored if it clears the same floor and xcorr threshold as any candidate; in every measurement so far the stored set was unchanged. |
+| 2026-11-06 | 2 | Full-file measurements at fill 25 / 50 / 100 (tables above): at 100 the FI E-values match PI's on the same PSMs in every xcorr decile (ratio 1.00-1.04; paired slope/intercept identical to the third digit), decoy-winner leakage at E <= 0.05 halves (2.4% -> 1.1%), confident targets +1.9% (RTS) / +1.6% (batch, fused path), cost +11% single-threaded and within noise at 8 threads. The chimeric knob becomes a no-op (byte-identical with and without it) and the chimeric `dMaxExpect` gate should move 0.05 -> 0.1 (+2.1% total confident PSMs over the Phase 4 best). Default 100 confirmed. |
 
 ## 10. Open questions (resolved in section 8)
 
