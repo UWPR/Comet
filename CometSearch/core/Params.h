@@ -80,6 +80,11 @@ struct Options
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    int iFragIndexMinIonsScore;   // minimum matched fragment index ions for scoring
    int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
+   int iFragIndexHistogramFill;  // FI_DB: when fewer than this many candidates clear fragindex_min_ions_score, keep
+                                 // scoring the ranked sub-floor candidates (2-hit, then 1-hit) into the E-value
+                                 // histogram up to this count (clamped to FRAGINDEX_MAX_NUMSCORED); they are
+                                 // stored/reported only under the same floors as any candidate. 0 = off.
+                                 // docs/20261106_FI_evalue_histogram_fill.md
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
    // RTS chimeric search only (DoSingleSpectrumSearchChimeric, docs/20261105_RTSchimeric.md
@@ -432,6 +437,7 @@ struct StaticParams
       options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
       options.iFragIndexMinIonsScore = FRAGINDEX_MIN_IONS_SCORE;
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
+      options.iFragIndexHistogramFill = FRAGINDEX_HISTOGRAM_FILL;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
       options.iChimericRemoveFlankBins = -1;

@@ -6636,6 +6636,99 @@ def test_t67_chimeric(comet_exe):
     return failures
 
 
+# ---------------------------------------------------------------------------
+# T68 -- fragment-index E-value histogram fill (fragindex_histogram_fill;
+# docs/20261106_FI_evalue_histogram_fill.md section 5.1). tests/unit/data/t68_make_histfill.py
+# writes a FASTA with one target peptide, 20 composition-identical "2-hit" and 30 "1-hit"
+# fillers (same precursor mass, sharing y2/y3 or y2 with the target's spectrum) and 150 0-hit
+# fillers, plus a one-scan rts_repro fixture of the target's 1+ b/y ions. COMET_EVALUE_TRACE=1
+# reports how many candidates each query scored into the histogram (hist=) and stored (scored=).
+# ---------------------------------------------------------------------------
+
+T68_GENERATOR = DATA_DIR / "t68_make_histfill.py"
+
+
+def _t68_trace(log):
+    """The COMET_EVALUE line of the one query: {scored, hist, topx, tope}."""
+    for line in log.splitlines():
+        if line.startswith("COMET_EVALUE "):
+            d = {}
+            for tok in line.split()[1:]:
+                k, _, v = tok.partition("=")
+                d[k] = v
+            return d
+    return None
+
+
+@register("t68_histogram_fill")
+def test_t68_histogram_fill(comet_exe):
+    """T68: fragindex_histogram_fill scores the best-supported sub-floor candidates into the E-value histogram
+    without storing them: with 0 (and when not sent) the one-scan fixture's histogram holds the target alone
+    and the output is byte-identical; with 100 it holds the target plus all 50 sub-floor fillers, with 25 exactly
+    25; the rank-1 peptide, its xcorr and the stored count never change and its E-value does not shrink."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T68_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T68_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T68_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        info = json.loads((tmp / "t68_histfill.json").read_text())
+        target, n_sub = info["target"], info["n2"] + info["n1"]
+        fasta, fixture = tmp / "t68_histfill.fasta", tmp / "t68_histfill.txt"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            # mode 0 (plain search) with the trailing chimeric slots filled so histogramFill is reachable
+            def run(label, fill):
+                extra = ["0", "2", "4", "0", "0.05", "5", "-1", "2", "2", "0", "0"] + ([str(fill)] if fill is not None else [])
+                out = tmp / f"{label}.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, extra_args=extra, env={"COMET_EVALUE_TRACE": "1"})
+                ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures)
+                if not ok:
+                    print(log[-1500:])
+                    return None, None, None
+                row = out.read_text().splitlines()[0].split("\t") if out.read_text().strip() else []
+                tr = _t68_trace(log)
+                check(tr is not None, f"{label}: a COMET_EVALUE trace line is present", failures)
+                return out.read_text(), row, tr
+
+            txt_none, row_none, tr_none = run("fill_notsent", None)
+            txt_0, row_0, tr_0 = run("fill_0", 0)
+            txt_100, row_100, tr_100 = run("fill_100", 100)
+            txt_25, row_25, tr_25 = run("fill_25", 25)
+            if None in (tr_none, tr_0, tr_100, tr_25):
+                return failures
+
+            check(txt_none == txt_0, "fill not sent and fill 0 give byte-identical output", failures)
+            for label, row, tr in (("fill 0", row_0, tr_0), ("fill 100", row_100, tr_100), ("fill 25", row_25, tr_25)):
+                check(len(row) > 3 and row[1].split(".")[1] == target, f"{label}: rank-1 is the target {target}, got {row[1] if len(row) > 1 else row!r}", failures)
+                check(int(tr["scored"]) == 1, f"{label}: exactly 1 candidate stored (scored={tr['scored']})", failures)
+            check(int(tr_0["hist"]) == 1, f"fill 0: the histogram holds the target alone (hist={tr_0['hist']})", failures)
+            check(int(tr_100["hist"]) == 1 + n_sub, f"fill 100: the histogram holds the target plus all {n_sub} sub-floor fillers (hist={tr_100['hist']})", failures)
+            check(int(tr_25["hist"]) == 25, f"fill 25: the histogram holds exactly 25 entries (hist={tr_25['hist']})", failures)
+            check(abs(float(tr_100["topx"]) - float(tr_0["topx"])) < 1e-6, f"fill 100: rank-1 xcorr unchanged ({tr_100['topx']} vs {tr_0['topx']})", failures)
+            check(float(tr_100["tope"]) >= float(tr_0["tope"]), f"fill 100: rank-1 E-value does not shrink ({tr_100['tope']} vs {tr_0['tope']})", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
 
 if __name__ == "__main__":
     main()

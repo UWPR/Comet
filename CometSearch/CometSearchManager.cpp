@@ -1091,6 +1091,11 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
    GetParamValue("fragindex_min_ions_score", g_staticParams.options.iFragIndexMinIonsScore);
    GetParamValue("fragindex_min_ions_report", g_staticParams.options.iFragIndexMinIonsReport);
+   GetParamValue("fragindex_histogram_fill", g_staticParams.options.iFragIndexHistogramFill);
+   if (g_staticParams.options.iFragIndexHistogramFill < 0)
+      g_staticParams.options.iFragIndexHistogramFill = 0;
+   if (g_staticParams.options.iFragIndexHistogramFill > FRAGINDEX_MAX_NUMSCORED)
+      g_staticParams.options.iFragIndexHistogramFill = FRAGINDEX_MAX_NUMSCORED;
 
    // RTS chimeric search knobs (docs/20261105_RTSchimeric.md sections 4.5-4.6)
    GetParamValue("chimeric_remove_flank_bins", g_staticParams.options.iChimericRemoveFlankBins);

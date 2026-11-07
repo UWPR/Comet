@@ -1937,11 +1937,24 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
       ? pQuery->iFragIndexMinIonsScoreOverride
       : g_staticParams.options.iFragIndexMinIonsScore;
 
+   // E-value histogram fill (docs/20261106_FI_evalue_histogram_fill.md): when fewer than
+   // iHistogramFill candidates clear the floor, the best-supported sub-floor candidates
+   // (2-hit, then 1-hit) are scored as well so the xcorr histogram the E-value regression
+   // fits holds the real chance-sharing tail instead of only the winner plus synthetic
+   // decoys. They sit after the floor-clearing candidates in vPeptides, in the same
+   // (hits desc, index asc) order, and the scoring loop below takes them only while
+   // uiNumScored < iHistogramFill; XcorrScoreI() stores/reports them only under the same
+   // floors as any other candidate. 0 = off, byte-identical to the pre-fill behaviour.
+   const int iHistogramFill = g_staticParams.options.iFragIndexHistogramFill;
+
    std::vector<std::pair<unsigned int, int>> vPeptides;
+   std::vector<std::pair<unsigned int, int>> vFill;
    for (auto ix = mPeptides.begin(); ix != mPeptides.end(); ++ix)
    {
       if (ix->second >= iMinIonsScore)
          vPeptides.push_back(*ix);
+      else if (iHistogramFill > 0)
+         vFill.push_back(*ix);
    }
 
    mPeptides.clear();
@@ -1954,11 +1967,27 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
-   sort(vPeptides.begin(), vPeptides.end(), [](const std::pair<unsigned int, int>& a, const std::pair<unsigned int, int>& b)
+   auto byHitsThenIndex = [](const std::pair<unsigned int, int>& a, const std::pair<unsigned int, int>& b)
    {
       if (a.second != b.second) return a.second > b.second;
       return a.first < b.first;  // tie-break by peptide index for deterministic output
-   });
+   };
+   sort(vPeptides.begin(), vPeptides.end(), byHitsThenIndex);
+
+   if (!vFill.empty() && vPeptides.size() < (size_t)iHistogramFill)
+   {
+      // Only the first (iHistogramFill - already-qualified) sub-floor candidates can ever be
+      // scored, so order just that prefix (the 1-hit bucket can be large).
+      const size_t uiNeed = (size_t)iHistogramFill - vPeptides.size();
+      if (uiNeed < vFill.size())
+      {
+         std::partial_sort(vFill.begin(), vFill.begin() + uiNeed, vFill.end(), byHitsThenIndex);
+         vFill.resize(uiNeed);
+      }
+      else
+         sort(vFill.begin(), vFill.end(), byHitsThenIndex);
+      vPeptides.insert(vPeptides.end(), vFill.begin(), vFill.end());
+   }
 
    int iLenPeptide;
    int iWhichIonSeries;
@@ -1986,7 +2015,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             break;
       }
 
-      if (ix->second >= iMinIonsScore)
+      if (ix->second >= iMinIonsScore || uiNumScored < (unsigned int)iHistogramFill)
       {
          int iFoundVariableMod = 0;
 

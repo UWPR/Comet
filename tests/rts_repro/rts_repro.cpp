@@ -160,7 +160,7 @@ int main(int argc, char** argv)
    {
       fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n"
                       "          [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
-                      "          [flankBins] [isotopes] [minIonsScore] [isotopeError] [globalMinIonsScore]\n"
+                      "          [flankBins] [isotopes] [minIonsScore] [isotopeError] [globalMinIonsScore] [histogramFill]\n"
                       "  chimeric 0 (default): DoSingleSpectrumSearchMultiResults, one line per SPECTRUM block\n"
                       "  chimeric 1: DoSingleSpectrumSearchChimeric charge-range form -- each SPECTRUM block searched at\n"
                       "              charges zmin..zmax with +/- tolMZ (m/z units; 0 = configured tolerance)\n"
@@ -171,7 +171,8 @@ int main(int argc, char** argv)
                       "  flankBins/isotopes/minIonsScore: the chimeric_remove_flank_bins (-1),\n"
                       "  chimeric_remove_isotopes (2), chimeric_fragindex_min_ions_score (2) params\n"
                       "  isotopeError: the isotope_error param, every mode (default 0, matching RealtimeSearch)\n"
-                      "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n", argv[0]);
+                      "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
+                      "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n", argv[0]);
       return 1;
    }
 
@@ -194,6 +195,7 @@ int main(int argc, char** argv)
    int iMinIonsScore = (argc > 15) ? atoi(argv[15]) : 2;
    int iIsotopeError = (argc > 16) ? atoi(argv[16]) : 0;
    int iGlobalMinIonsScore = (argc > 17) ? atoi(argv[17]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
+   int iHistogramFill = (argc > 18) ? atoi(argv[18]) : -1;      // >= 0 sets fragindex_histogram_fill (every mode); -1 = not sent
 
    if (numThreads < 1)
       numThreads = 1;
@@ -232,6 +234,8 @@ int main(int argc, char** argv)
    SetIntParam(mgr, "isotope_error", iIsotopeError);   // 0 unless given: RealtimeSearch's own setting
    if (iGlobalMinIonsScore > 0)
       SetIntParam(mgr, "fragindex_min_ions_score", iGlobalMinIonsScore);
+   if (iHistogramFill >= 0)
+      SetIntParam(mgr, "fragindex_histogram_fill", iHistogramFill);
    SetIntParam(mgr, "max_index_runtime", 200);  // overwrites the 100 above -- matches RTS's actual (duplicate) call
    if (iChimeric != 0)
    {
