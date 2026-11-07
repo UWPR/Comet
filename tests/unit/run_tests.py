@@ -6575,7 +6575,7 @@ def test_t67_chimeric(comet_exe):
                                             mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
 
         # scan -> the (peptide, charge) set it must report; within a scan the order is by E-value
-        expected = {1: {(P1, 2)}, 2: {(P2, 3), (P1, 2)}, 3: {(P1, 2), (P3, 2)}, 4: {(P1, 2)}, 5: set()}
+        expected = {1: {(P1, 2)}, 2: {(P2, 3), (P1, 2)}, 3: {(P1, 2), (P3, 2)}, 4: {(P1, 2)}, 5: set(), 6: {(P1, 2)}}
         range_args = ["1", "2", "4", "2.0", str(MAX_EXPECT), "5"]   # charges 2-4, +/- 2 m/z, max 5 peptides
         list_args = ["2", "0", "0", "0", str(MAX_EXPECT), "5"]      # candidates from the fixture, configured (20 ppm) tolerance
 
@@ -6615,7 +6615,7 @@ def test_t67_chimeric(comet_exe):
                 rc, log = _rts_run(idx, fx_range, 1, out, 0, ist, extra_args=["1", "2", "4", "2.0", "1e-30", "5"])
                 if check(rc == 0, f"{label} threshold: rts_repro exits 0 (rc={rc})", failures):
                     rows = _t67_rows(out)
-                    check(len(rows) == 5 and all(len(v) == 0 for v in rows.values()),
+                    check(len(rows) == len(expected) and all(len(v) == 0 for v in rows.values()),
                           f"{label}: with dMaxExpect = 1e-30 every scan reports no rows", failures)
 
                 # the removal trace: scan 1 (first in the fixture) must drop all 18 of P1's b/y peaks
@@ -6624,6 +6624,26 @@ def test_t67_chimeric(comet_exe):
                 m = re.search(r"RTS_CHIMERIC iter=0 removed (\d+) of (\d+) peaks", log)
                 check(rc == 0 and m is not None and int(m.group(1)) >= 18,
                       f"{label}: RTS_CHIMERIC_DEBUG trace shows scan 1's iteration 0 removed >= 18 peaks ({m.group(0) if m else 'no trace'})", failures)
+
+                # use_NL_ions removal: scan 6 carries a water-loss peak under each of P1's 18 ions.
+                # XcorrScoreI() credits those peaks only on PI_DB (1+ a/b/y, 0.2 weight), so the
+                # removal must take them there and only there. Single thread, RTS_CHIMERIC_DEBUG=2:
+                # the sixth call's iteration-0 "removed N of M" line.
+                def removed_in_call(log, call_no):
+                    calls = 0
+                    for line in log.splitlines():
+                        if line.startswith("RTS_CHIMERIC_ITER 0"):
+                            calls += 1
+                        elif calls == call_no and line.startswith("RTS_CHIMERIC iter=0 removed "):
+                            return int(line.split()[3]), int(line.split()[5])
+                    return None, None
+                want_on = 36 if label == "PI_DB" else 18
+                for nl, want in ((0, 18), (1, want_on)):
+                    out = tmp / f"{label}_nl{nl}.out"
+                    rc, log = _rts_run(idx, fx_range, 1, out, 0, ist, extra_args=range_args + ["-1", "2", "0", "0", "-1", str(nl)],
+                                       env={"RTS_CHIMERIC_DEBUG": "2"})
+                    n, m = removed_in_call(log, 6)
+                    check(rc == 0 and n == want, f"{label}: with use_NL_ions = {nl}, scan 6's first removal takes {want} of its peaks (got {n} of {m})", failures)
 
                 # determinism: 1 vs 4 worker threads
                 out4 = tmp / f"{label}_range4.out"

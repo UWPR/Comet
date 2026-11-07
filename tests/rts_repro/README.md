@@ -45,7 +45,7 @@ cp /mnt/c/Work/Comet-master/data/comet_phospho.params comet.params
 
 Args: `<database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]`,
 then optionally the chimeric-search settings (`docs/20261105_RTSchimeric.md`):
-`[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill]`.
+`[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill] [useNLIons]`.
 `chimeric` 1 searches every `SPECTRUM` block at charges `zmin..zmax` with a +/- `tolMZ` window
 (`DoSingleSpectrumSearchChimeric`'s charge-range form); 2 treats every block sharing a scan
 number as one `(m/z, charge)` candidate of a single spectrum (the explicit-list form); 0 is
@@ -59,8 +59,8 @@ before and after the synthetic padding (run single-threaded to keep one call's l
 together; `docs/20261106_FI_evalue_histogram_fill.md`). `isotopeError`
 sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIonsScore`
 > 0 sets `fragindex_min_ions_score` itself; `histogramFill` >= 0 sets
-`fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`; test T68). Run
-without arguments for the defaults.
+`fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`; test T68);
+`useNLIons` >= 0 sets `use_NL_ions`. Run without arguments for the defaults.
 
 Output lines are unordered (worker threads finish in whatever order they finish) -- sort by scan
 number before diffing two runs:

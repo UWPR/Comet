@@ -22,6 +22,9 @@ Scans (synthetic b/y ions, y 100 / b 60 per peptide, a fixed-seed noise floor):
   3  P1 (x3) + P3 (x1), same m/z             -> two rows, both 2+ (P1 then P3)
   4  P1 only, candidates 2+ and 3+ at P1 m/z -> one row at 2+ (list form; range form = scan 1)
   5  noise only                              -> no rows
+  6  P1 plus a water-loss peak under every ion -> one row, P1 2+; with use_NL_ions on, a PI_DB
+                                              search removes the 18 water peaks too (36 peaks),
+                                              FI_DB (which never scores the NL matrix) only the 18
 Deterministic: random.seed(67).
 """
 
@@ -111,24 +114,30 @@ def main():
         maxz = 1 if precursor_z == 1 else min(precursor_z - 1, 3)
         return [(m, (100.0 if s == "y" else 60.0) * scale) for m, s in by_ions(pep, maxz)]
 
+    # scan 6: P1 plus a water-loss (-18.0106) peak under every ion, for the use_NL_ions removal
+    # check -- XcorrScoreI() credits those peaks (0.2 weight, PI_DB only, 1+ a/b/y ions), so the
+    # chimeric removal must clear them on PI_DB with use_NL_ions on and leave them otherwise
+    water = [(m - H2O, i * 0.3) for m, i in ions(p1, 2, 1.0)]
     scans = {
         1: ions(p1, 2, 1.0) + noise(40),
         2: ions(p1, 2, 3.0) + ions(p2, 3, 1.0) + noise(40),
         3: ions(p1, 2, 3.0) + ions(p3, 2, 1.0) + noise(40),
         4: ions(p1, 2, 1.0) + noise(40),
         5: noise(60),
+        6: ions(p1, 2, 1.0) + water + noise(40),
     }
     for k in scans:
         scans[k].sort()
 
     # the precursor candidates each form searches
-    range_blocks = {1: [(2, mz(p1, 2))], 2: [(2, mz(p1, 2))], 3: [(2, mz(p1, 2))], 4: [(2, mz(p1, 2))], 5: [(2, mz(p1, 2))]}
+    range_blocks = {s: [(2, mz(p1, 2))] for s in (1, 2, 3, 4, 5, 6)}
     list_blocks = {
         1: [(2, mz(p1, 2))],
         2: [(2, mz(p1, 2)), (3, mz(p2, 3))],
         3: [(2, mz(p1, 2)), (2, mz(p3, 2))],   # identical candidates -> de-duplicated to one
         4: [(2, mz(p1, 2)), (3, mz(p1, 2))],
         5: [(2, mz(p1, 2)), (3, mz(p1, 2))],
+        6: [(2, mz(p1, 2))],
     }
 
     def write_fixture(path, blocks):

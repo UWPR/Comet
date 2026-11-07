@@ -2794,20 +2794,15 @@ static int ChimericDebugLevel();   // defined with the chimeric search below
 // SearchSingleSpectrumCore() when a caller asks for removal bins.
 typedef std::unordered_map<int, std::pair<double, double>> ChimericObservedPeakMap;
 
-// Appends to vBins the bins the chimeric loop must clear for one theoretical ion at m/z
-// dIonMz and fragment charge iIonCharge (docs/20261105_RTSchimeric.md section 4.5): the
-// ion's bin +/- iFlank, and for each of those bins that holds an observed peak, the bins
-// of that peak's +1..+iIsotopes 13C isotopes (+/- iFlank), computed from the observed
-// m/z -- never from a theoretical m/z that matched nothing. Bins may repeat; the caller
-// sorts and de-duplicates once at the end.
-static void AddChimericRemovalBins(std::vector<int>& vBins,
-                                   const double dIonMz,
-                                   const int iIonCharge,
-                                   const int iFlank,
-                                   const int iIsotopes,
-                                   const ChimericObservedPeakMap& mObserved)
+// Adds iBin +/- iFlank and, for each of those bins that holds an observed peak, the bins of
+// that peak's +1..+iIsotopes 13C isotopes (+/- iFlank), computed from the observed m/z.
+static void AddChimericBinsAround(std::vector<int>& vBins,
+                                  const int iBin,
+                                  const int iIonCharge,
+                                  const int iFlank,
+                                  const int iIsotopes,
+                                  const ChimericObservedPeakMap& mObserved)
 {
-   const int iBin = BIN(dIonMz);
    for (int d = -iFlank; d <= iFlank; ++d)
    {
       const int iB = iBin + d;
@@ -2830,6 +2825,40 @@ static void AddChimericRemovalBins(std::vector<int>& vBins,
             }
          }
       }
+   }
+}
+
+
+// Appends to vBins the bins the chimeric loop must clear for one theoretical ion at m/z
+// dIonMz and fragment charge iIonCharge (docs/20261105_RTSchimeric.md section 4.5): the
+// ion's bin +/- iFlank, and for each of those bins that holds an observed peak, the bins
+// of that peak's +1..+iIsotopes 13C isotopes (+/- iFlank), computed from the observed
+// m/z -- never from a theoretical m/z that matched nothing. When bWaterAmmoniaNL is set
+// (use_NL_ions on a PI_DB search, 1+ a/b/y ions -- exactly when XcorrScoreI() scores the
+// ion against ppfSparseFastXcorrDataNL, which credits the peaks at ion - H2O and
+// ion - NH3 at 0.2 weight), those two loss positions get the same treatment. Bins may
+// repeat; the caller sorts and de-duplicates once at the end.
+static void AddChimericRemovalBins(std::vector<int>& vBins,
+                                   const double dIonMz,
+                                   const int iIonCharge,
+                                   const int iFlank,
+                                   const int iIsotopes,
+                                   const ChimericObservedPeakMap& mObserved,
+                                   const bool bWaterAmmoniaNL)
+{
+   const int iBin = BIN(dIonMz);
+   AddChimericBinsAround(vBins, iBin, iIonCharge, iFlank, iIsotopes, mObserved);
+
+   if (bWaterAmmoniaNL)
+   {
+      // precalcMasses.iMinus17 / iMinus18 hold BIN(H2O) / BIN(NH3); the NL matrix is built
+      // as pfFastXcorrDataNL[i] += 0.2 * data[i - iMinus17] + 0.2 * data[i - iMinus18].
+      const int iWater = iBin - g_staticParams.precalcMasses.iMinus17;
+      const int iAmmonia = iBin - g_staticParams.precalcMasses.iMinus18;
+      if (iWater >= 0)
+         AddChimericBinsAround(vBins, iWater, iIonCharge, iFlank, iIsotopes, mObserved);
+      if (iAmmonia >= 0)
+         AddChimericBinsAround(vBins, iAmmonia, iIonCharge, iFlank, iIsotopes, mObserved);
    }
 }
 
@@ -3517,7 +3546,15 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
 
                   double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
                   if (pvRemovalBins != nullptr && iWhichResult == 0)
-                     AddChimericRemovalBins(*pvRemovalBins, mz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz);
+                  {
+                     // Mirror XcorrScoreI(): the water/ammonia-loss matrix is used only on
+                     // PI_DB, for 1+ a/b/y ions, when use_NL_ions is on.
+                     const bool bWaterAmmoniaNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+                        && g_staticParams.iDbType == DbType::PI_DB
+                        && ctCharge == 1
+                        && (ionSeries == ION_SERIES_A || ionSeries == ION_SERIES_B || ionSeries == ION_SERIES_Y);
+                     AddChimericRemovalBins(*pvRemovalBins, mz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz, bWaterAmmoniaNL);
+                  }
                   iTmp = BIN(mz);
                   if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
                   {
@@ -3573,7 +3610,7 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
 
                            double dNLfragMz = mz - (dNLmass / ctCharge);
                            if (pvRemovalBins != nullptr && iWhichResult == 0)
-                              AddChimericRemovalBins(*pvRemovalBins, dNLfragMz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz);
+                              AddChimericRemovalBins(*pvRemovalBins, dNLfragMz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz, false);
                            iTmp = BIN(dNLfragMz);
                            if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
                            {
