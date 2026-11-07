@@ -1930,12 +1930,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
          return;
    }
 
-   // The RTS chimeric search raises or lowers the candidate threshold per Query on its
-   // re-search passes (Query::iFragIndexMinIonsScoreOverride, docs/20261105_RTSchimeric.md
-   // section 4.6); 0 everywhere else, i.e. the configured value.
-   const int iMinIonsScore = (pQuery->iFragIndexMinIonsScoreOverride > 0)
-      ? pQuery->iFragIndexMinIonsScoreOverride
-      : g_staticParams.options.iFragIndexMinIonsScore;
+   const int iMinIonsScore = g_staticParams.options.iFragIndexMinIonsScore;
 
    // E-value histogram fill (docs/20261106_FI_evalue_histogram_fill.md): when fewer than
    // iHistogramFill candidates clear the floor, the best-supported sub-floor candidates

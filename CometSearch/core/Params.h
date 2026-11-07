@@ -92,13 +92,8 @@ struct Options
    int iChimericRemoveFlankBins;         // bins removed on each side of a matched fragment's bin:
                                          // -1 = follow theoretical_fragment_ions (1 iff it is 0), else 0/1
    int iChimericRemoveIsotopes;          // also remove the +1..+N 13C peaks of fragments that have a peak; 0 = off
-   int iChimericFragIndexMinIonsScore;   // fragindex_min_ions_score for iterations >= 1 (default 2; 0 = unchanged).
-                                         // An E-value histogram-population control, not a rescue: on a spectrum
-                                         // with its first peptide's peaks removed only ~7 real candidates reach 3
-                                         // index hits, the synthetic decoy padding scores 0.0-0.3, and the fit's
-                                         // tail bins (0.4-0.9) are nearly empty; 2-ion candidates refill them,
-                                         // so weak re-search winners get honest E-values (plan section 10.7).
-                                         // The report floor is never lowered: a 2-ion winner is junk (31.9% decoy).
+                                         // (a chimeric_fragindex_min_ions_score re-search floor existed until
+                                         // fragindex_histogram_fill made it a no-op; docs/20261106_FI_evalue_histogram_fill.md)
    int iOverrideCharge;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
@@ -442,7 +437,6 @@ struct StaticParams
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
       options.iChimericRemoveFlankBins = -1;
       options.iChimericRemoveIsotopes = 2;
-      options.iChimericFragIndexMinIonsScore = 2;    // docs/20261105_RTSchimeric.md 10.6-10.7: measured on HeLa
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

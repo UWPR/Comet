@@ -52,7 +52,6 @@ struct Query  // core/Types.h
 | `_pepMassInfo` | Experimental mass and tolerance window (see `PepMassInfo`). |
 | `_spectrumInfoInternal` | Scan number, charge state, RT, array size, nativeID (see `SpectrumInfoInternal`). |
 | `tSearchStart` | Per-query search start time; used to enforce `iMaxIndexRunTime` timeout. The chimeric RTS search passes its own call start so one budget spans every candidate and iteration. |
-| `iFragIndexMinIonsScoreOverride` | RTS chimeric re-search passes only: when > 0 replaces `fragindex_min_ions_score` for this query's fragment-index candidate step (lets 2-ion candidates be scored into the E-value histogram; the reporting floor is never overridden). 0 everywhere else. `docs/20261105_RTSchimeric.md` 10.7. |
 
 **Results:**
 

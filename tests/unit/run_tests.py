@@ -6663,9 +6663,9 @@ def _t68_trace(log):
 @register("t68_histogram_fill")
 def test_t68_histogram_fill(comet_exe):
     """T68: fragindex_histogram_fill scores the best-supported sub-floor candidates into the E-value histogram
-    without storing them: with 0 (and when not sent) the one-scan fixture's histogram holds the target alone
-    and the output is byte-identical; with 100 it holds the target plus all 50 sub-floor fillers, with 25 exactly
-    25; the rank-1 peptide, its xcorr and the stored count never change and its E-value does not shrink."""
+    without storing them: with 0 the one-scan fixture's histogram holds the target alone; with 100 (the default,
+    so also when not sent -- byte-identical) it holds the target plus all 50 sub-floor fillers, with 25 exactly 25;
+    the rank-1 peptide, its xcorr and the stored count never change and its E-value does not shrink."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
         print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
@@ -6696,7 +6696,7 @@ def test_t68_histogram_fill(comet_exe):
         try:
             # mode 0 (plain search) with the trailing chimeric slots filled so histogramFill is reachable
             def run(label, fill):
-                extra = ["0", "2", "4", "0", "0.05", "5", "-1", "2", "2", "0", "0"] + ([str(fill)] if fill is not None else [])
+                extra = ["0", "2", "4", "0", "0.1", "5", "-1", "2", "0", "0"] + ([str(fill)] if fill is not None else [])
                 out = tmp / f"{label}.out"
                 rc, log = _rts_run(idx, fixture, 1, out, 0, 1, extra_args=extra, env={"COMET_EVALUE_TRACE": "1"})
                 ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures)
@@ -6715,7 +6715,8 @@ def test_t68_histogram_fill(comet_exe):
             if None in (tr_none, tr_0, tr_100, tr_25):
                 return failures
 
-            check(txt_none == txt_0, "fill not sent and fill 0 give byte-identical output", failures)
+            check(txt_none == txt_100, "fill not sent (default 100) and fill 100 give byte-identical output", failures)
+            check(txt_none != txt_0, "fill not sent (default 100) differs from fill 0 (the E-value moved)", failures)
             for label, row, tr in (("fill 0", row_0, tr_0), ("fill 100", row_100, tr_100), ("fill 25", row_25, tr_25)):
                 check(len(row) > 3 and row[1].split(".")[1] == target, f"{label}: rank-1 is the target {target}, got {row[1] if len(row) > 1 else row!r}", failures)
                 check(int(tr["scored"]) == 1, f"{label}: exactly 1 candidate stored (scored={tr['scored']})", failures)

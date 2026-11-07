@@ -320,18 +320,17 @@ and it had two params (`_score` and `_report`). The measurements (sections 10.2,
 10.7) showed the vanishing does not reproduce here and that the benefit is a different
 mechanism entirely, so the design is now:
 
-- One param, `chimeric_fragindex_min_ions_score` (default 2; 0 = configured value), applied
-  to iterations >= 1 only, carried on the `Query` (`Query::iFragIndexMinIonsScoreOverride`,
-  set by the core from an argument) and consulted at the two candidate-step sites in
-  `CometSearch::SearchFragmentIndex()` in place of `g_staticParams` when non-zero.
-  `g_staticParams` is never written; batch and iteration 0 are untouched.
-- The reporting floor (`fragindex_min_ions_report`) is never lowered: the few PSMs that a
-  2-ion report floor lets win are junk (10.7).
-- What the lower score floor does is let 2-ion candidates be *scored into the E-value
-  histogram* without becoming reportable. On a stripped spectrum only a handful of real
-  candidates clear 3 ions, the synthetic decoy padding does not reach the xcorr range where
-  weak re-search winners sit, and those candidates are what make the fitted tail honest.
-  `dMaxExpect` remains the guard on what is reported.
+- For a while one param remained, `chimeric_fragindex_min_ions_score` (re-search passes
+  only, carried on the `Query`), whose real effect was to let 2-ion candidates be *scored
+  into the E-value histogram* without becoming reportable: on a stripped spectrum only a
+  handful of real candidates clear 3 ions and the synthetic decoy padding's tail is steeper
+  than the real one, so weak re-search winners got optimistic E-values (10.7).
+- That is a property of every fragment-index query, not of chimeric passes, and
+  `fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`, default 100) now
+  fixes it for all of them; with it on, the chimeric floor was byte-for-byte a no-op and was
+  removed. The reporting floor (`fragindex_min_ions_report`) is never lowered: the few PSMs
+  that a 2-ion report floor lets win are junk (10.7). `dMaxExpect` remains the guard on what
+  is reported -- 0.1 by default in the harnesses now that the E-values are calibrated.
 
 ### 4.7 Threading
 
@@ -480,6 +479,7 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 3 | `CometWrapper`: both `DoSingleSpectrumSearchChimeric()` overloads (the list form takes parallel `double[] m/z`, `int[] charge`, `double[] tolerance` arrays -- no managed candidate type, nothing allocated per candidate) with the output conversion factored into one helper shared with `DoSingleSpectrumSearchMultiResults()`. `RealtimeSearch/SearchChimeric.cs`: `RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [--zrange zmin zmax \| --zlines] [--tol mz] [--max-expect E] [--max-peptides N] [--threads T] [--ascorepro 0\|1] [--flank -1\|0\|1] [--isotopes N] [--min-ions-score N] [--max-runtime ms] [--out file]` (a `--min-ions-report` option existed until Phase 4b), selected by `chimeric` as the first argument of the existing executable; its own `.ms2` reader (every `Z` line kept), the MS1/MS2 harness's `ConfigureInputSettings()` block reused (`SearchSettings` made `internal`), the same `ConcurrentQueue` worker pattern; one tab-delimited row per reported peptide (scan, iteration, charge, precursor m/z, candidate count, calculated neutral mass, peptide, protein, xcorr, delta-Cn, E-value, ions, elapsed ms) and a run summary (spectra with 0/1/2/3+ peptides, rows at iteration >= 1, same-peptide repeats, errors). `t67_make_chimeric.py` also writes the scans as a multi-`Z`-line `.ms2`. Verified: on the T67 `.ms2` against a Windows-built FI index, both forms reproduce `rts_repro`'s rows exactly (peptides, charges, xcorr, E-values, ion counts); Windows solution builds clean. |
 | 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome: the wrapper's removal model confirmed (isotope removal is what matters); `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (+34% confident later IDs, decoy rate halved); the +/- 1 m/z window, not the charge range, is what finds chimeras (2,914 vs 445 confident later IDs); `isotope_error = 2` is worth +42% on the plain RTS search and is recommended for `SearchMS1MS2.cs` independently; cost 7.0 ms/spectrum/thread vs 0.63 for the plain search. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
 | 2026-11-06 | 4b | Review of the re-search floor (section 10.7): `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's real-candidate count (`RTS_CHIMERIC_CAND`); the E-value fit and raw histogram dump became `COMET_EVALUE_TRACE` in `CalculateEValue()` for every search path (the histogram-fill project's Phase 0); `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
+| 2026-11-06 | 6 | `chimeric_fragindex_min_ions_score` and `Query::iFragIndexMinIonsScoreOverride` removed: `fragindex_histogram_fill` (default 100, the histogram-fill project's Phase 3) makes FI E-values honest on every query and the chimeric floor a byte-for-byte no-op. Harness `dMaxExpect` defaults 0.05 -> 0.1; `rts_repro` and `SearchChimeric.cs` lose their min-ions arguments. At the new defaults (fill 100, no floor, gate 0.1) the full-file chimeric run reports 22,930 confident PSMs vs 22,453 for the best Phase 4 configuration. |
 | 2026-11-06 | 5 | Documentation pass: `CLAUDE.md` threading model (chimeric MS2 RTS entry), `docs/DataStructures.md` (`CometScores::iCharge/iIteration`, `PrecursorCandidate`, `Query::iFragIndexMinIonsScoreOverride`), `docs/GlobalVariables.md` (the `chimeric_*` options), `tests/rts_repro/README.md` (chimeric arguments, `RTS_CHIMERIC_DEBUG`, `mzxml_to_fixture.py`), the `comet-codebase` / `comet-search-run` / `comet-benchmark` skills (call path, harness command, measured cost). `docs/RealTimeSearch.md` and `tests/tests.md` were updated in Phases 3-4b. Follow-on project planned separately: `docs/20261106_FI_evalue_histogram_fill.md`. |
 | 2026-11-06 | -- | Build-system side work prompted by Phase 1's baseline capture: root `-j` race (MSToolkit entered twice concurrently) fixed with an order-only `mstoolkit` target; automatic `-MMD -MP` header dependencies in all four Makefiles (previously only four objects wrote `.d` files and none were included); MSToolkit objects now wait for the expat/zlib header install. |
 
@@ -607,8 +607,9 @@ Iteration >= 1 decoy rates: S_tol0 10.4%, S_tol0_iso2 6.9%, S_tol0_iso2_min2 5.8
 |---|---|---|---|
 | `chimeric_remove_flank_bins` | -1 | -1 (confirmed) | 10.2 |
 | `chimeric_remove_isotopes` | 2 | 2 (confirmed) | 10.2: 4.4% vs 5.9% decoy, +26% confident later IDs |
-| `chimeric_fragindex_min_ions_score` | 0 (unchanged) | 2 | 10.2 / 10.4 / 10.7: +43% confident later IDs with the window (3,116 vs 2,181 with the report floor kept at 3), neutral without |
+| `chimeric_fragindex_min_ions_score` | 0 (unchanged) | 2, then removed | 10.2 / 10.4 / 10.7: +43% confident later IDs with the window (3,116 vs 2,181 with the report floor kept at 3), neutral without; superseded by `fragindex_histogram_fill` (byte-identical results with the floor on or off once the fill is on) |
 | `chimeric_fragindex_min_ions_report` | 0 (unchanged) | removed | 10.7: the 47 PSMs that only a 2-ion report floor lets win are 31.9% decoy |
+| harness `dMaxExpect` default | 0.05 | 0.1 | with calibrated E-values 0.05 drops ~1,100 iteration-0 rows; 0.1 gives 22,930 confident PSMs in total vs 22,453 for the best fill-0 configuration (`docs/20261106_FI_evalue_histogram_fill.md` Phase 2) |
 | `rts_repro` / `SearchChimeric.cs` `--min-ions-*` defaults | 0 | 2 | follow the params |
 | recommended for callers: `isotope_error` | 0 in `SearchMS1MS2.cs` | 2 | 10.4: +42% on the plain search; keeps the chimeric window honest about what it adds |
 

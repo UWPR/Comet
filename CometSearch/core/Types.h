@@ -1191,14 +1191,6 @@ struct Query
 
    std::chrono::high_resolution_clock::time_point tSearchStart;  // per-query search start time for iMaxIndexRunTime timeout
 
-   // RTS chimeric search only (docs/20261105_RTSchimeric.md sections 4.6, 10.7): when > 0
-   // this replaces g_staticParams.options.iFragIndexMinIonsScore for this Query's
-   // fragment-index candidate step (re-search passes: it lets 2-ion candidates be scored
-   // into the E-value histogram, whose synthetic padding does not reach the xcorr range
-   // where weak re-search winners sit). The reporting floor is never overridden. 0 -- the
-   // constructor default and every other path -- means use the configured value.
-   int iFragIndexMinIonsScoreOverride;
-
    Mutex accessMutex;
 
    Query()
@@ -1230,7 +1222,6 @@ struct Query
       _uliNumMatchedDecoyPeptides = 0;
 
       bSparseFromPool = false;
-      iFragIndexMinIonsScoreOverride = 0;
       bSparsePointerArraysFromPool = false;
       bResultsFromPool = false;
 

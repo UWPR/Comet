@@ -180,7 +180,7 @@ The happens-before edge that makes the `acquire`/`release` ordering meaningful c
 
 | Member | Type | Purpose |
 |--------|------|---------|
-| `options` | `Options` | All boolean/integer user options (decoy search mode, output formats, charge limits, index creation, etc.). Includes the RTS-only `chimeric_remove_flank_bins` / `chimeric_remove_isotopes` / `chimeric_fragindex_min_ions_score` (`iChimeric*`, set through `SetParam`, read-only after init; `docs/20261105_RTSchimeric.md`) and `fragindex_histogram_fill` (`iFragIndexHistogramFill`, batch and RTS: how many best-supported sub-floor candidates an FI_DB query also scores into its E-value histogram; `docs/20261106_FI_evalue_histogram_fill.md`). |
+| `options` | `Options` | All boolean/integer user options (decoy search mode, output formats, charge limits, index creation, etc.). Includes the RTS-only `chimeric_remove_flank_bins` / `chimeric_remove_isotopes` (`iChimeric*`, set through `SetParam`, read-only after init; `docs/20261105_RTSchimeric.md`) and `fragindex_histogram_fill` (`iFragIndexHistogramFill`, batch and RTS, default 100: how many best-supported sub-floor candidates an FI_DB query also scores into its E-value histogram; `docs/20261106_FI_evalue_histogram_fill.md`). |
 | `tolerances` | `ToleranceParams` | Precursor tolerance, fragment bin size + offset, isotope error setting. |
 | `massUtility` | `MassUtil` | AA mass tables (`pdAAMassParent[]`, `pdAAMassFragment[]`), used in hot loops. |
 | `precalcMasses` | `PrecalcMasses` | Pre-computed N/C-terminus proton values; `iMinus17`/`iMinus18` BIN'd values. |

@@ -1056,7 +1056,7 @@ use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral
 fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
 fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
 fragindex_num_spectrumpeaks = 150      # number of peaks from spectrum to use for fragment ion index matching\n\
-fragindex_histogram_fill = 0           # also score the best-supported candidates below fragindex_min_ions_score, up to this many per spectrum, into the E-value histogram (0 = off)\n\
+fragindex_histogram_fill = 100         # also score the best-supported candidates below fragindex_min_ions_score, up to this many per spectrum, into the E-value histogram (0 = off)\n\
 fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
 fragindex_skipreadprecursors = 1       # 0=read precursors to limit fragment ion index, 1=skip reading precursors (default)\n\

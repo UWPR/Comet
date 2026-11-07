@@ -155,11 +155,11 @@ A synthetic sparse spectrum and a small FASTA built so that exactly one peptide 
 3-ion floor while several share 1-2 ions (the T67 generator's approach: theoretical b/y
 ions written to a fixture, a FASTA with the target and designed near-miss peptides):
 
-- `fragindex_histogram_fill = 0`: output byte-identical to the pre-change build (the
-  determinism and T63 guarantees hold);
+- `fragindex_histogram_fill = 0`: the histogram holds the target alone (the pre-change
+  behaviour; the determinism and T63 guarantees hold);
 - `fragindex_histogram_fill = N`: the same rank-1 peptide, xcorr identical, E-value larger,
   `uiHistogramCount` (via the trace) equal to the number of designed sub-floor candidates;
-  no sub-floor candidate is reported at any `num_output_lines`;
+  the stored count unchanged; not sent = the default (100), byte-identical to 100;
 - 1 vs 8 threads byte-identical on the T22 fixture with the fill on.
 
 ### 5.2 Calibration against the PI null (the decisive measurement)
@@ -371,6 +371,7 @@ carried out in Phase 3 together with the knob retirement and the chimeric gate c
 |---|---|---|
 | 2026-11-06 | 0 | `COMET_EVALUE_TRACE` in `CalculateEValue()`; FI-vs-PI baseline tables A-D above; the premise sharpened to "the synthetic tail is steeper than the real one, and the gap is slope-only". |
 | 2026-11-06 | 1 | `fragindex_histogram_fill` (`Params.h` / `Constants.h` default 0, `Comet.cpp` parse table and `comet.params` text, `InitializeStaticParams()` with clamping to 0..`FRAGINDEX_MAX_NUMSCORED`); the fill in `SearchFragmentIndex()`: sub-floor candidates collected in the same map walk, the needed prefix `partial_sort`ed by (hits desc, index asc) and appended after the floor-clearing list, the one scoring loop taking them while `uiNumScored < fill` under the unchanged cap. `rts_repro` `histogramFill` argument. Byte-identical at 0: the full-surface RTS dump of the 197-spectrum fixture matches the original Phase-1 baseline on FI and PI with AScorePro off and on. T68 (`t68_make_histfill.py`: one target, 20 exact-2-hit and 30 exact-1-hit composition-identical fillers): histogram 1 / 51 / 25 entries at fill 0 / 100 / 25, one stored candidate throughout, identical xcorr, E-value 3.1e-11 -> 3.9e-9. Preview on the HeLa 1,000-scan subset, plain RTS at fill 100: real entries median 1 -> 100, stored set unchanged, same rank-1 on all 128 queries, median slope -0.458 -> -0.442 (PI: -0.443), E x1.37. Note for the semantics: `XcorrScoreI()`'s reporting floor is on the full-spectrum matched-ion count, so a fill candidate *can* be stored if it clears the same floor and xcorr threshold as any candidate; in every measurement so far the stored set was unchanged. |
+| 2026-11-06 | 3 | Default set to 100 (`Constants.h`, `comet.params` text). `chimeric_fragindex_min_ions_score`, `Query::iFragIndexMinIonsScoreOverride` and the core's `iMinIonsScore` argument removed; `SearchFragmentIndex()` reads the configured floor again. `rts_repro` and `SearchChimeric.cs` lose their min-ions arguments and default `dMaxExpect` to 0.1. T68 updated (not sent = 100). Verified: T67/T68, the full suite and T22 at the new defaults; the full-file chimeric run at the defaults byte-identical to Phase 2's fill-100 / gate-0.1 run (22,930 confident PSMs); Windows solution builds clean. Docs: `RealTimeSearch.md`, `GlobalVariables.md`, `DataStructures.md`, `tests.md`, the `rts_repro` README, the chimeric doc (4.6, 10.6, progress). |
 | 2026-11-06 | 2 | Full-file measurements at fill 25 / 50 / 100 (tables above): at 100 the FI E-values match PI's on the same PSMs in every xcorr decile (ratio 1.00-1.04; paired slope/intercept identical to the third digit), decoy-winner leakage at E <= 0.05 halves (2.4% -> 1.1%), confident targets +1.9% (RTS) / +1.6% (batch, fused path), cost +11% single-threaded and within noise at 8 threads. The chimeric knob becomes a no-op (byte-identical with and without it) and the chimeric `dMaxExpect` gate should move 0.05 -> 0.1 (+2.1% total confident PSMs over the Phase 4 best). Default 100 confirmed. |
 
 ## 10. Open questions (resolved in section 8)

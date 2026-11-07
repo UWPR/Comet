@@ -45,7 +45,7 @@ cp /mnt/c/Work/Comet-master/data/comet_phospho.params comet.params
 
 Args: `<database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]`,
 then optionally the chimeric-search settings (`docs/20261105_RTSchimeric.md`):
-`[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [minIonsScore] [isotopeError] [globalMinIonsScore] [histogramFill]`.
+`[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill]`.
 `chimeric` 1 searches every `SPECTRUM` block at charges `zmin..zmax` with a +/- `tolMZ` window
 (`DoSingleSpectrumSearchChimeric`'s charge-range form); 2 treats every block sharing a scan
 number as one `(m/z, charge)` candidate of a single spectrum (the explicit-list form); 0 is

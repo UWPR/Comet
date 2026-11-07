@@ -1100,7 +1100,6 @@ bool CometSearchManager::InitializeStaticParams()
    // RTS chimeric search knobs (docs/20261105_RTSchimeric.md sections 4.5-4.6)
    GetParamValue("chimeric_remove_flank_bins", g_staticParams.options.iChimericRemoveFlankBins);
    GetParamValue("chimeric_remove_isotopes", g_staticParams.options.iChimericRemoveIsotopes);
-   GetParamValue("chimeric_fragindex_min_ions_score", g_staticParams.options.iChimericFragIndexMinIonsScore);
    GetParamValue("fragindex_skipreadprecursors", g_staticParams.options.iFragIndexSkipReadPrecursors);
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
@@ -2783,7 +2782,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // (docs/20261105_RTSchimeric.md section 4.3). 0.0 = the configured precursor
    // tolerance; the default-constructed time_point = start the max_index_runtime
    // clock after preprocessing, exactly as this function always has.
-   return SearchSingleSpectrumCore(topN, iPrecursorCharge, dMZ, 0.0, 0, pdMass, pdInten, iNumPeaks,
+   return SearchSingleSpectrumCore(topN, iPrecursorCharge, dMZ, 0.0, pdMass, pdInten, iNumPeaks,
       std::chrono::high_resolution_clock::time_point(),
       strReturnPeptide, strReturnProtein, matchedFragments, scores) >= 0;
 }
@@ -2846,9 +2845,7 @@ static void AddChimericRemovalBins(std::vector<int>& vBins,
 // Never touches SearchSession.
 //
 // dToleranceMZ > 0 overrides the configured precursor tolerance for this search only
-// (CometPreprocess::AdjustMassTol). iMinIonsScore > 0 overrides fragindex_min_ions_score
-// for this Query (chimeric re-search passes, docs/20261105_RTSchimeric.md sections 4.6 and
-// 10.7; the report floor is never overridden). tStart is the origin of the
+// (CometPreprocess::AdjustMassTol). tStart is the origin of the
 // max_index_runtime budget; a default-constructed time_point means "now, after
 // preprocessing" (the original behaviour), while the chimeric loop passes its own call
 // start so the budget spans every candidate and iteration. pvRemovalBins, when
@@ -2858,7 +2855,6 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
                                                  const int iPrecursorCharge,
                                                  const double dMZ,
                                                  const double dToleranceMZ,
-                                                 const int iMinIonsScore,
                                                  double* pdMass,
                                                  double* pdInten,
                                                  const int iNumPeaks,
@@ -2912,10 +2908,6 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
       return -1;
    }
 
-   // Chimeric re-search passes may lower the fragment-index candidate floor for this
-   // Query only (0 = configured value; see CometSearch::SearchFragmentIndex).
-   pQuery->iFragIndexMinIonsScoreOverride = iMinIonsScore;
-
 /*
    // Validate the sparse matrix spectrum for pQuery is valid and not empty after preprocessing (e.g. all peaks filtered out).
    // first check if first dimension of ppSparseFastXcorrData is non-null
@@ -2960,8 +2952,8 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
    // pads it -- the quantity the re-search candidate floor acts on (plan section 10).
    if (pvRemovalBins != nullptr && ChimericDebugLevel() >= 2)
    {
-      fprintf(stderr, "RTS_CHIMERIC_CAND z=%d minions=%d scored=%d hist=%u\n",
-         iPrecursorCharge, iMinIonsScore, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount);
+      fprintf(stderr, "RTS_CHIMERIC_CAND z=%d scored=%d hist=%u\n",
+         iPrecursorCharge, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount);
    }
 
    FILE* fp = NULL;
@@ -3799,9 +3791,6 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
       std::vector<int> vBestBins;
       int iCandidatesSearched = 0;
 
-      // Re-search passes may use a lower fragment-index candidate floor (sections 4.6, 10.7).
-      const int iMinIonsScore = (iIteration >= 1) ? g_staticParams.options.iChimericFragIndexMinIonsScore : 0;
-
       if (iDebug >= 2)
          fprintf(stderr, "RTS_CHIMERIC_ITER %d\n", iIteration);
 
@@ -3818,7 +3807,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          vProt.clear();
          vFrag.clear();
          vSc.clear();
-         const int iRows = SearchSingleSpectrumCore(1, c.iCharge, c.dMZ, dTol, iMinIonsScore,
+         const int iRows = SearchSingleSpectrumCore(1, c.iCharge, c.dMZ, dTol,
             tl_vMass.data(), tl_vInten.data(), (int)tl_vMass.size(), tStart,
             vPep, vProt, vFrag, vSc, &vBins);
          ++iCandidatesSearched;
