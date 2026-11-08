@@ -6751,5 +6751,99 @@ def test_t68_histogram_fill(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T69 -- histogram-fill candidates are histogram-only in a batch FI_DB search
+# (docs/20261106_FI_evalue_histogram_fill.md). The T68 fixture, searched by comet.exe with
+# pepXML output: with fragindex_histogram_fill on, the 50 sub-floor fillers are scored into
+# the E-value histogram but never stored -- not even with fragindex_min_ions_report (2) below
+# fragindex_min_ions_score (3), which before the fix let the 20 2-hit fillers become reported
+# PSMs -- and they do not count toward num_matched_peptides (before the fix 51, not 1). A
+# report floor below the score floor prints a warning.
+# ---------------------------------------------------------------------------
+
+@register("t69_histogram_fill_batch")
+def test_t69_histogram_fill_batch(comet_exe):
+    """T69: in a batch FI_DB search, fragindex_histogram_fill candidates move the E-value only: the stored PSMs
+    and num_matched_peptides are the same with the fill on and off, for report >= score and report < score,
+    and a report floor below the score floor is warned about."""
+    failures = []
+    if not T68_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T68_GENERATOR}")
+        return failures
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T68_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        info = json.loads((tmp / "t68_histfill.json").read_text())
+        target = info["target"]
+        fasta, idx = tmp / "t68_histfill.fasta", tmp / "t68_histfill.fasta.idx"
+
+        # the rts_repro SPECTRUM fixture as a one-scan .ms2
+        lines = (tmp / "t68_histfill.txt").read_text().splitlines()
+        _, scan, z, mz, _n = lines[0].split()
+        mh = float(mz) * int(z) - (int(z) - 1) * _PROTON_MASS
+        ms2 = tmp / "t69.ms2"
+        ms2.write_text(f"S\t{scan}\t{scan}\t{float(mz):.6f}\nZ\t{z}\t{mh:.6f}\n"
+                       + "".join(l.replace(" ", "\t") + "\n" for l in lines[1:]))
+        pepxml = ms2.with_suffix(".pep.xml")
+
+        base = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                          mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        pf = tmp / "t69.params"
+        pf.write_text(base)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"], timeout=300)
+        if not check(rc == 0 and idx.exists(), f"fragment ion index builds (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        def search(score, report, fill):
+            pr = base.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}")
+            for key, val in (("output_pepxmlfile", 1), ("num_output_lines", 20), ("fragindex_min_ions_score", score),
+                             ("fragindex_min_ions_report", report), ("fragindex_histogram_fill", fill)):
+                pr = _set_param_line(pr, key, val)
+            pf.write_text(pr)
+            pepxml.unlink(missing_ok=True)
+            label = f"score {score} report {report} fill {fill}"
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+            if not check(rc == 0 and pepxml.exists(), f"{label}: search exits 0 and writes pepXML (rc={rc})", failures):
+                print(log[-1500:])
+                return None
+            x = pepxml.read_text()
+            nm = re.search(r'num_matched_peptides="(\d+)"', x)
+            ev = re.search(r'name="expect" value="([^"]+)"', x)
+            return {"label": label, "log": log,
+                    "hits": re.findall(r'<search_hit hit_rank="\d+" peptide="([A-Z]+)"', x),
+                    "num_matched": int(nm.group(1)) if nm else None,
+                    "expect": float(ev.group(1)) if ev else None}
+
+        warn = "Warning - fragindex_min_ions_report"
+        results = {}
+        for score, report in ((3, 3), (3, 2)):
+            for fill in (0, 100):
+                res = search(score, report, fill)
+                if res is None:
+                    return failures
+                results[(score, report, fill)] = res
+                check(res["hits"] == [target], f"{res['label']}: exactly one stored PSM, the target {target} "
+                      f"(got {res['hits']})", failures)
+                check(res["num_matched"] == 1, f"{res['label']}: num_matched_peptides is 1, the target alone "
+                      f"(got {res['num_matched']})", failures)
+                check((warn in res["log"]) == (report < score),
+                      f"{res['label']}: report-below-score warning {'printed' if report < score else 'absent'}", failures)
+        off, on = results[(3, 3, 0)], results[(3, 3, 100)]
+        if off["expect"] is not None and on["expect"] is not None:
+            # guards against a vacuous pass: the fill must actually have run
+            check(on["expect"] > off["expect"], f"fill 100 moved the E-value (the fill ran): {on['expect']} vs {off['expect']}",
+                  failures)
+        else:
+            failures.append("rank-1 expect missing from pepXML")
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

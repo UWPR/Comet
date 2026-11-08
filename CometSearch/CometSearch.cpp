@@ -1938,8 +1938,10 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    // fits holds the real chance-sharing tail instead of only the winner plus synthetic
    // decoys. They sit after the floor-clearing candidates in vPeptides, in the same
    // (hits desc, index asc) order, and the scoring loop below takes them only while
-   // uiNumScored < iHistogramFill; XcorrScoreI() stores/reports them only under the same
-   // floors as any other candidate. 0 = off, byte-identical to the pre-fill behaviour.
+   // uiNumScored < iHistogramFill. They only feed the histogram: XcorrScoreI() recognizes
+   // them by their hit count (below iMinIonsScore), never stores or reports them and leaves
+   // them out of the matched-peptide counts, so the fill changes E-values and nothing else.
+   // 0 = off, byte-identical to the pre-fill behaviour.
    const int iHistogramFill = g_staticParams.options.iFragIndexHistogramFill;
 
    std::vector<std::pair<unsigned int, int>> vPeptides;
@@ -8765,13 +8767,27 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
 
    dXcorr = std::round(dXcorr * 1000.0) / 1000.0;  // round to 3 decimal points
 
+   // An FI_DB candidate below fragindex_min_ions_score was scored only because of
+   // fragindex_histogram_fill (SearchFragmentIndex()); without the fill it would never have
+   // been scored. It feeds the E-value histogram and nothing else: it is never stored, so
+   // a fragindex_min_ions_report below the score floor cannot turn it into a reported PSM
+   // (the effective report floor stays max(score, report), as before the fill existed),
+   // and it is left out of the matched-peptide counts written as pepXML
+   // num_matched_peptides, the SQT match count and Percolator's lnNumSP. PI_DB callers
+   // pass iNumMatchedFragmentIons = 0 and are excluded by the type check.
+   const bool bFillCandidate = (g_staticParams.iDbType == DbType::FI_DB
+      && iNumMatchedFragmentIons < g_staticParams.options.iFragIndexMinIonsScore);
+
    Threading::LockMutex(pQuery->accessMutex);
 
-   // Increment matched peptide counts.
-   if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
-      pQuery->_uliNumMatchedDecoyPeptides++;
-   else
-      pQuery->_uliNumMatchedPeptides++;
+   // Increment matched peptide counts; a fill candidate is histogram-only (see above).
+   if (!bFillCandidate)
+   {
+      if (bDecoyPep && g_staticParams.options.iDecoySearch == 2)
+         pQuery->_uliNumMatchedDecoyPeptides++;
+      else
+         pQuery->_uliNumMatchedPeptides++;
+   }
 
    if (g_staticParams.options.bPrintExpectScore
       || g_staticParams.options.bOutputPepXMLFile
@@ -8823,7 +8839,8 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
       else
          dLowestXcorrScore = pQuery->dLowestXcorrScore;
 
-      if (dXcorr >= g_staticParams.options.dMinimumXcorr
+      if (!bFillCandidate
+         && dXcorr >= g_staticParams.options.dMinimumXcorr
          && iNumMatchedFragmentIons >= g_staticParams.options.iFragIndexMinIonsReport
          && dXcorr + 0.00005 >= dLowestXcorrScore)
       {

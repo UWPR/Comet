@@ -1091,6 +1091,18 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
    GetParamValue("fragindex_min_ions_score", g_staticParams.options.iFragIndexMinIonsScore);
    GetParamValue("fragindex_min_ions_report", g_staticParams.options.iFragIndexMinIonsReport);
+   // Only candidates that clear the score floor can be reported (a candidate scored only to
+   // fill the E-value histogram is never stored; XcorrScoreI()), so a report floor below the
+   // score floor has no effect. The value is left as set; this says so.
+   if (g_staticParams.options.iFragIndexMinIonsReport < g_staticParams.options.iFragIndexMinIonsScore)
+   {
+      char szMsg[256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - fragindex_min_ions_report = %d is below fragindex_min_ions_score = %d;"
+            " fragment ion index searches report only candidates with at least %d matched fragment ions.\n",
+            g_staticParams.options.iFragIndexMinIonsReport, g_staticParams.options.iFragIndexMinIonsScore,
+            g_staticParams.options.iFragIndexMinIonsScore);
+      logout(szMsg);
+   }
    GetParamValue("fragindex_histogram_fill", g_staticParams.options.iFragIndexHistogramFill);
    if (g_staticParams.options.iFragIndexHistogramFill < 0)
       g_staticParams.options.iFragIndexHistogramFill = 0;
