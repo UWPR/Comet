@@ -6908,5 +6908,116 @@ def test_t70_fi_fragment_charge(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T71 -- z+1 ions in the RTS result table (CometSearchManager's matched-fragment / chimeric
+# removal table). The scorer places z+1 (z', z-dot plus one H) at y - NH2 + H = y - 15.0109;
+# the table used y - NH3 = y - 17.0265, so with use_Z1_ions the chimeric search never removed
+# the winner's z+1 peaks (and reported the same peptide again) and the RTS matched fragments
+# listed z+1 matches at the wrong m/z. One scan of LVNELTEFAK (T67's P1) at 2+ holding its 1+
+# b, y and z+1 ions (27 peaks), searched through rts_repro with RTS_REPRO_PARAMS="i:use_Z1_ions=1".
+# ---------------------------------------------------------------------------
+
+_T71_N_MONO, _T71_H_MONO = 14.0030740048, 1.00782503207
+
+
+def _t71_frag_rows(path):
+    """FRAG lines of an rts_repro RTS_REPRO_FRAGMENTS=1 output: [{scan,row,type,num,z,mass,nl}]."""
+    out = []
+    for line in Path(path).read_text().splitlines():
+        if not line.startswith("FRAG "):
+            continue
+        f = line.split("\t")
+        d = {"scan": int(f[0].split()[1])}
+        for tok in f[1:]:
+            k, _, v = tok.partition(" ")
+            d[k] = float(v) if k in ("mass", "inten") else int(v)
+        out.append(d)
+    return out
+
+
+@register("t71_rts_z1_ions")
+def test_t71_rts_z1_ions(comet_exe):
+    """T71: with use_Z1_ions the RTS result table places z+1 ions where the scorer does: the chimeric search
+    removes every z+1 peak of its winner in iteration 0 and reports the peptide once, and the matched fragments
+    list the z+1 ions at y - NH2 + H -- on FI_DB and PI_DB."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 2 * _T71_H_MONO + 15.9949146196
+        b_ions, y_ions = [], []
+        bm, ym = _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            b_ions.append(bm)
+            y_ions.append(ym)
+        z1_ions = [y - (_T71_N_MONO + 2 * _T71_H_MONO) + _T71_H_MONO for y in y_ions]
+        peaks = sorted([(m, 60.0) for m in b_ions] + [(m, 100.0) for m in y_ions] + [(m, 80.0) for m in z1_ions])
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        fixture = tmp / "t71.txt"
+        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        env = {"RTS_REPRO_PARAMS": "i:use_Z1_ions=1"}
+        range_args = ["1", "2", "4", "2.0", "0.01", "5"]   # charges 2-4, +/- 2 m/z, max 5 peptides
+
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                # chimeric: one row; the removal trace shows all 27 peaks gone after iteration 0
+                out = tmp / f"{label}_chim.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, ist, extra_args=range_args, env={**env, "RTS_CHIMERIC_DEBUG": "1"})
+                if not check(rc == 0 and out.exists(), f"{label} chimeric: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1500:])
+                    continue
+                check("RTS_REPRO_PARAMS: use_Z1_ions = 1" in log, f"{label}: RTS_REPRO_PARAMS applied use_Z1_ions = 1", failures)
+                rows = _t67_rows(out).get(1, [])
+                check([(x.get("peptide"), x.get("z")) for x in rows] == [(pep, 2)],
+                      f"{label} chimeric: the one scan reports {pep} 2+ exactly once, got {[(x.get('peptide'), x.get('z')) for x in rows]}", failures)
+                m = re.search(r"RTS_CHIMERIC iter=0 removed (\d+) of (\d+) peaks", log)
+                check(m is not None and int(m.group(1)) == len(peaks),
+                      f"{label} chimeric: iteration 0 removed all {len(peaks)} b/y/z+1 peaks ({m.group(0) if m else 'no trace'})", failures)
+
+                # plain RTS search with matched fragments: the 9 z+1 ions at the scorer's mass
+                out = tmp / f"{label}_frag.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, ist, env={**env, "RTS_REPRO_FRAGMENTS": "1"})
+                if not check(rc == 0 and out.exists(), f"{label} fragments: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1500:])
+                    continue
+                frags = [f for f in _t71_frag_rows(out) if f["row"] == 0 and f["nl"] == 0]
+                z1 = sorted(f["mass"] for f in frags if f["type"] == 6)   # ION_SERIES_Z1
+                check(len(z1) == len(z1_ions) and all(abs(a - e) < 0.005 for a, e in zip(z1, sorted(z1_ions))),
+                      f"{label} fragments: all {len(z1_ions)} z+1 ions matched at y - NH2 + H (got {len(z1)}: {z1[:3]}...)", failures)
+                check(sum(1 for f in frags if f["type"] in (1, 4)) == len(b_ions) + len(y_ions),
+                      f"{label} fragments: all {len(b_ions) + len(y_ions)} b/y ions matched", failures)
+            finally:
+                idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

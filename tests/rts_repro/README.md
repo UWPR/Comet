@@ -62,6 +62,19 @@ sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIon
 `fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`; test T68);
 `useNLIons` >= 0 sets `use_NL_ions`. Run without arguments for the defaults.
 
+Two more environment variables, so a new knob needs no new positional argument:
+
+- `RTS_REPRO_PARAMS="<i|d|s>:<name>=<value>;..."` sets any further parameter, as an int,
+  double or string, after every built-in setting (so it can override one) and before
+  `InitializeSingleSpectrumSearch()`, e.g. `RTS_REPRO_PARAMS="i:use_Z1_ions=1"` (test T71).
+  The type must be the one Comet reads the parameter as: `GetParamValue()` casts to the
+  requested type and a mismatch dereferences null instead of failing cleanly. Each applied
+  entry is echoed to stderr; a malformed one stops the run.
+- `RTS_REPRO_FRAGMENTS=1` adds, after each result line, one `FRAG` line per matched fragment
+  the API returned: `FRAG <scan>`, `row`, `type` (the `ION_SERIES_*` index: 0 a, 1 b, 2 c,
+  3 x, 4 y, 5 z, 6 z+1), `num`, `z` (fragment charge), `mass` (the fragment's 1+ mass), `nl`
+  (neutral loss) and `inten`.
+
 Output lines are unordered (worker threads finish in whatever order they finish) -- sort by scan
 number before diffing two runs:
 

@@ -107,6 +107,83 @@ static void SetStringParam(ICometSearchManager* mgr, const string& name, const s
    mgr->SetParam(name, val, val);
 }
 
+// RTS_REPRO_FRAGMENTS=1: one FRAG line per matched fragment of result row iRow, as the API
+// returns them (type = ION_SERIES_* index, mass = the fragment's 1+ mass, z = its charge).
+static void WriteFragments(ostream& out, int iScan, size_t iRow, const vector<vector<Fragment>>& vFrag)
+{
+   if (iRow >= vFrag.size())
+      return;
+   for (const Fragment& f : vFrag[iRow])
+   {
+      char szFrag[256];
+      snprintf(szFrag, sizeof(szFrag), "FRAG %d\trow %zu\ttype %d\tnum %d\tz %d\tmass %.5f\tnl %d\tinten %.3f\n",
+         iScan, iRow, f.type, f.number, f.charge, f.mass, f.neutralLoss ? 1 : 0, f.intensity);
+      out << szFrag;
+   }
+}
+
+// RTS_REPRO_PARAMS: extra parameters for tests and experiments, so a new knob needs no new
+// positional argument. Entries are separated by ';', each "<type>:<name>=<value>" with type
+// i (int), d (double) or s (string), e.g. "i:use_Z1_ions=1;d:fragment_bin_tol=1.0005".
+// The type must be the one Comet reads the parameter as: GetParamValue() casts to the
+// requested type, and a mismatch is a null dereference, not an error. Applied after every
+// built-in setting (so an entry overrides it) and before InitializeSingleSpectrumSearch().
+// Returns false, after printing why, on a malformed entry.
+static bool ApplyExtraParams(ICometSearchManager* mgr)
+{
+   const char* pszEnv = getenv("RTS_REPRO_PARAMS");
+   if (pszEnv == nullptr || *pszEnv == '\0')
+      return true;
+
+   stringstream ss(pszEnv);
+   string entry;
+   while (getline(ss, entry, ';'))
+   {
+      if (entry.empty())
+         continue;
+      size_t iColon = entry.find(':');
+      size_t iEq = entry.find('=');
+      if (iColon != 1 || iEq == string::npos || iEq <= iColon + 1)
+      {
+         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\" is not <i|d|s>:<name>=<value>\n", entry.c_str());
+         return false;
+      }
+      char cType = entry[0];
+      string name = entry.substr(iColon + 1, iEq - iColon - 1);
+      string value = entry.substr(iEq + 1);
+      char* pEnd = nullptr;
+      if (cType == 'i')
+      {
+         long lVal = strtol(value.c_str(), &pEnd, 10);
+         if (value.empty() || *pEnd != '\0')
+         {
+            fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not an int\n", name.c_str(), value.c_str());
+            return false;
+         }
+         SetIntParam(mgr, name, (int)lVal);
+      }
+      else if (cType == 'd')
+      {
+         double dVal = strtod(value.c_str(), &pEnd);
+         if (value.empty() || *pEnd != '\0')
+         {
+            fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not a number\n", name.c_str(), value.c_str());
+            return false;
+         }
+         SetDoubleParam(mgr, name, dVal);
+      }
+      else if (cType == 's')
+         SetStringParam(mgr, name, value);
+      else
+      {
+         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\": type must be i, d or s\n", entry.c_str());
+         return false;
+      }
+      fprintf(stderr, "RTS_REPRO_PARAMS: %s = %s\n", name.c_str(), value.c_str());
+   }
+   return true;
+}
+
 // Reads MassRange:/LengthRange: from the .idx header, mirroring the
 // "if (System.IO.File.Exists(sDB))" branch of ConfigureInputSettings().
 static bool SetRangesFromIndexHeader(ICometSearchManager* mgr, const string& szDB)
@@ -172,7 +249,10 @@ int main(int argc, char** argv)
                       "  isotopeError: the isotope_error param, every mode (default 0, matching RealtimeSearch)\n"
                       "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
                       "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n"
-                      "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n", argv[0]);
+                      "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n"
+                      "  environment: RTS_REPRO_PARAMS=\"<i|d|s>:<name>=<value>;...\" sets any further parameter, applied\n"
+                      "              last (e.g. \"i:use_Z1_ions=1\"); the type must be the one Comet reads it as\n"
+                      "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n", argv[0]);
       return 1;
    }
 
@@ -272,6 +352,12 @@ int main(int argc, char** argv)
       return 1;
    }
 
+   if (!ApplyExtraParams(mgr))
+      return 1;
+
+   const char* pszFrag = getenv("RTS_REPRO_FRAGMENTS");
+   const bool bPrintFragments = (pszFrag != nullptr && atoi(pszFrag) != 0);
+
    if (!mgr->InitializeSingleSpectrumSearch())
    {
       string msg;
@@ -333,6 +419,8 @@ int main(int argc, char** argv)
                out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
                    << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
                    << "\tprot '" << vProtein[0] << "'\n";
+               if (bPrintFragments)
+                  WriteFragments(out, s.scanNumber, 0, vFrag);
             }
             else
             {
@@ -377,6 +465,8 @@ int main(int argc, char** argv)
                    << "\texpect " << vScores[r].dExpect << "\tmass " << vScores[r].mass
                    << "\tions " << vScores[r].matchedIons << "/" << vScores[r].totalIons
                    << "\tprot '" << vProtein[r] << "'\n";
+               if (bPrintFragments)
+                  WriteFragments(out, s.scanNumber, r, vFrag);
             }
          }
       }

@@ -3461,19 +3461,27 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
 
-         // Conversion table from b/y ions to the other types (a,c,x,z)
+         // Conversion table from b/y ions to the other types (a,c,x,z,z+1). It must place
+         // every ion exactly where the scorer does -- the matched fragments reported here and
+         // the chimeric removal bins both come from it -- so it uses the same constants as
+         // CometMassSpecUtils::GetFragmentIonMass(): g_staticParams.massUtility follows
+         // mass_type_fragment (mono or average), and z+1 is z plus one hydrogen. z is the
+         // z-dot ion (y - NH2), z+1 the z' ion (y - NH2 + H). Until 2026-11-08 this table held
+         // hardcoded monoisotopic values and z+1 = y - NH3, 2.016 Da below the scored z+1, so
+         // with use_Z1_ions the winner's z+1 peaks were never removed by the chimeric search
+         // and RTS matched fragments listed z+1 matches at the wrong m/z.
          const double ionMassesRelative[NUM_ION_SERIES] =
          {
             // N term relative
-            -(Carbon_Mono + Oxygen_Mono),                       // a (CO difference from b)
-            0,                                                  // b
-            (Nitrogen_Mono + (3 * Hydrogen_Mono)),              // c (NH3 difference from b)
+            -g_staticParams.massUtility.dCO,                    // a (CO difference from b)
+            0.0,                                                // b
+            g_staticParams.massUtility.dNH3,                    // c (NH3 difference from b)
 
             // C Term relative
-            (Carbon_Mono + Oxygen_Mono - (2 * Hydrogen_Mono)),  // x (CO-2H difference from y)
-            0,                                                  // y
-            -(Nitrogen_Mono + (2 * Hydrogen_Mono)),             // z (NH2 difference from y)
-            -(Nitrogen_Mono + (3 * Hydrogen_Mono))              // z+1
+            g_staticParams.massUtility.dCOminusH2,              // x (CO-2H difference from y)
+            0.0,                                                // y
+            -g_staticParams.massUtility.dNH2,                   // z, z-dot (NH2 difference from y)
+            -g_staticParams.massUtility.dNH2 + Hydrogen_Mono    // z+1, z' (z plus H)
          };
 
          // now deal with calculating b- and y-ions and returning most intense matches
