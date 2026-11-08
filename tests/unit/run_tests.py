@@ -6845,5 +6845,68 @@ def test_t69_histogram_fill_batch(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T70 -- fragment-index lookup of multiply-charged fragment peaks. The index holds 1+ b/y
+# masses; SearchFragmentIndex() converts a peak seen at charge z to mz * z - (z - 1) * proton.
+# It used to subtract (z - 1) * 1.0, a 0.0073 Da error per extra charge (a third of a 0.02 Da
+# bin). tests/unit/data/t70_make_highcharge.py writes a 3+ spectrum holding only the 2+ b/y ions
+# of one peptide that the old conversion looked up in the wrong bin: the old build counted no
+# index hits and found nothing, the fixed build counts all of them and finds the peptide.
+# ---------------------------------------------------------------------------
+
+T70_GENERATOR = DATA_DIR / "t70_make_highcharge.py"
+
+
+@register("t70_fi_fragment_charge")
+def test_t70_fi_fragment_charge(comet_exe):
+    """T70: a fragment-index search finds a 3+ peptide from its 2+ fragment peaks alone -- the peak-to-1+-mass
+    conversion subtracts (z - 1) proton masses, not (z - 1) * 1.0 -- and a peptide-index search agrees."""
+    failures = []
+    if not T70_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T70_GENERATOR}")
+        return failures
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T70_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=120)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        info = json.loads((tmp / "t70_highcharge.json").read_text())
+        target = info["target"]
+        fasta, idx = tmp / "t70_highcharge.fasta", tmp / "t70_highcharge.fasta.idx"
+        ms2 = tmp / "t70_highcharge.ms2"
+        txt = ms2.with_suffix(".txt")
+        check(info["n_peaks"] >= 10, f"fixture has at least minimum_peaks (10) peaks: {info['n_peaks']}", failures)
+
+        base = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                          mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=8, len_max=30)
+        base = _set_param_line(base, "digest_mass_range", "600.0 5000.0")
+        pf = tmp / "t70.params"
+
+        for label, flag in (("fragment ion index", "-i"), ("peptide index", "-j")):
+            idx.unlink(missing_ok=True)
+            pf.write_text(base)
+            rc, log = _run_t19_step(comet_exe, [flag, f"-P{fmt(pf)}"], timeout=120)
+            if not check(rc == 0 and idx.exists(), f"{label}: index builds (rc={rc})", failures):
+                print(log[-1500:])
+                continue
+            pf.write_text(base.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}"))
+            txt.unlink(missing_ok=True)
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+            if not check(rc == 0 and txt.exists(), f"{label}: search exits 0 and writes .txt (rc={rc})", failures):
+                print(log[-1500:])
+                continue
+            lines = txt.read_text().splitlines()
+            header = lines[1].split("\t") if len(lines) > 1 else []
+            rows = [dict(zip(header, l.split("\t"))) for l in lines[2:] if l.strip()]
+            got = rows[0].get("plain_peptide") if rows else None
+            check(got == target, f"{label}: rank-1 is the 3+ target {target} found from {info['n_peaks']} 2+ fragment "
+                  f"peaks (got {got!r})", failures)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

@@ -1805,7 +1805,13 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    {
       for (int iChg = 1; iChg <= pQuery->_spectrumInfoInternal.usiMaxFragCharge && !bTimeout; ++iChg)
       {
-         uiFragmentMass = BIN((*it2) * iChg - (iChg - 1.0));
+         // The index holds 1+ fragment masses (one proton). A peak observed at charge iChg
+         // is (M + iChg * proton) / iChg, so its 1+ mass is mz * iChg - (iChg - 1) * proton.
+         // Subtracting 1.0 instead of the proton mass put every 2+ probe 0.0073 Da (a third
+         // of a 0.02 Da bin) high and every 3+ probe 0.0146 Da high, so high-res searches
+         // missed many multiply-charged fragment hits; CometMassSpecUtils::GetFragmentIonMass()
+         // and the scoring have always used PROTON_MASS.
+         uiFragmentMass = BIN((*it2) * iChg - (iChg - 1) * PROTON_MASS);
 
          if (uiFragmentMass < g_massRange.uiMaxFragmentArrayIndex)
          {
