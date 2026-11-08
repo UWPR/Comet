@@ -33,11 +33,14 @@ LIBASCOREPRO = $(ASCOREPRO)/libascorepro.a
 # library out of date *here*, so the sub-make is entered; the sub-make's own .d
 # files then decide which objects actually recompile. CometSearch's objects include
 # headers from its subdirectories (core/, search/, threading/) and from AScorePro
-# and MSToolkit, so those are listed too.
-COMETSEARCH_FILES = $(wildcard $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp \
+# and MSToolkit, so those are listed too. The sub-make's own Makefile is listed so
+# a change to its rules re-enters it: otherwise an up-to-date library hides objects
+# the new rules would rebuild, such as ones with no .d file.
+COMETSEARCH_FILES = $(wildcard $(COMETSEARCH)/Makefile \
+                               $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp \
                                $(COMETSEARCH)/*/*.cpp $(COMETSEARCH)/*/*.h $(COMETSEARCH)/*/*.hpp \
                                $(ASCOREPRO)/include/*.h $(MSTOOLKIT)/include/*.h)
-ASCOREPRO_FILES = $(wildcard $(ASCOREPRO)/*.cpp $(ASCOREPRO)/include/*.h)
+ASCOREPRO_FILES = $(wildcard $(ASCOREPRO)/Makefile $(ASCOREPRO)/*.cpp $(ASCOREPRO)/include/*.h)
 
 UNITTEST_BIN = tests/unit/test_comet_internal
 UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp tests/unit/TestModificationsPermuter.cpp
@@ -69,7 +72,14 @@ $(LIBCOMETSEARCH): $(COMETSEARCH_FILES) | mstoolkit
 $(LIBASCOREPRO): $(ASCOREPRO_FILES)
 	cd $(ASCOREPRO) && $(MAKE) all
 
-Comet.o: Comet.cpp | mstoolkit
+# Comet.o also depends on its own .d file, so an object with no .d (a deleted .d,
+# or one built by a Makefile that did not pass -MMD) recompiles instead of being
+# kept with no header prerequisites; the empty rule "remakes" a missing .d by doing
+# nothing. CometSearch/, AScorePro/ and MSToolkit/ do the same.
+Comet.d: ;
+.PRECIOUS: Comet.d
+
+Comet.o: Comet.cpp Comet.d | mstoolkit
 	${CXX} ${CXXFLAGS} ${DEPFLAGS} Comet.cpp -c
 
 # Dependency-free unit tests (tests/unit/MiniTest.h -- no gtest, no CMake).

@@ -21,6 +21,10 @@ DFLAGS_EXT = -DHAVE_EXPAT_CONFIG_H
 # Automatic header dependencies: each compile writes <object>.d (the .o and the .lo
 # of one source get separate files, so -j builds of both never race on one name);
 # included at the bottom so a header change recompiles the objects that include it.
+# Each object also depends on its own .d file, so an object with no .d (a deleted
+# .d, or one built by a Makefile that did not pass -MMD) recompiles instead of being
+# kept with no header prerequisites; the empty rule at the bottom "remakes" a
+# missing .d by doing nothing.
 DEPFLAGS = -MMD -MP -MF $@.d
 
 UNAME_S := $(shell uname -s)
@@ -160,10 +164,10 @@ mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
 # so a rebuilt library never by itself forces a recompile) -- otherwise 'make -j'
 # can start compiling before expat.h exists.
 $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
-$(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp
+$(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp $(MSTOOLKIT_DSTDIR)%.o.d
 	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
-$(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp
+$(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp $(MSTOOLKIT_DSTDIR)%.lo.d
 	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 mstoolkit-clean :
@@ -190,10 +194,10 @@ mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
 	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
 	
 $(MZPARSER_DST) $(MZPARSER_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
-$(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
+$(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp $(MZPARSER_DSTDIR)%.o.d
 	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
-$(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp
+$(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp $(MZPARSER_DSTDIR)%.lo.d
 	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 mzparser-clean :
@@ -274,4 +278,7 @@ libextern-realclean : libextern-clean
 rc:
 	rm -rf $(BUILD_DIR) $(BUILD_LIC) mstoolkitlite.mri
 
--include $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(MZPARSER_DST) $(MZPARSER_DSO))
+MSTOOLKIT_DEP = $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(MZPARSER_DST) $(MZPARSER_DSO))
+$(MSTOOLKIT_DEP) : ;
+.PRECIOUS : $(MSTOOLKIT_DEP)
+-include $(MSTOOLKIT_DEP)

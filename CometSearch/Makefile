@@ -43,15 +43,26 @@ COMETSEARCH_OBJ = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(COMETSEARCH_SRC))) \
 
 all: libcometsearch.a
 
-libcometsearch.a: $(COMETSEARCH_OBJ)
+# The Makefile is a prerequisite so a rules change re-archives the library: the top
+# level re-enters this sub-make when this Makefile is newer than the library, and
+# without the refresh it would keep re-entering on every build.
+libcometsearch.a: $(COMETSEARCH_OBJ) Makefile
 	ar rcs libcometsearch.a $(COMETSEARCH_OBJ)
 
-# One rule for every object, including those under obj/search/ and obj/threading/:
-# the header prerequisites come from the .d file written by the previous compile
-# of the same object (none on a first build, when the object is missing anyway).
-$(OBJDIR)/%.o: %.cpp
+# One rule for every object, including those under obj/search/ and obj/threading/.
+# The header prerequisites come from the .d file written by the previous compile of
+# the same object. Each object also depends on its .d file itself, so an object
+# that has no .d -- a deleted .d, or a tree last built by a Makefile that did not
+# pass -MMD -- counts as out of date and recompiles. Without this, such an object
+# has no header prerequisites at all and is kept, and a struct-layout change in a
+# header links stale code that crashes at run time. The empty rule lets make
+# "remake" a missing .d by doing nothing; .PRECIOUS stops make deleting .d files.
+$(OBJDIR)/%.o: %.cpp $(OBJDIR)/%.d
 	@mkdir -p $(dir $@)
 	${CXX} ${CXXFLAGS} ${DEPFLAGS} $< -c -o $@
+
+$(OBJDIR)/%.d: ;
+.PRECIOUS: $(OBJDIR)/%.d
 
 clean:
 	rm -rf $(OBJDIR) *.a

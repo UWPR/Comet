@@ -8,6 +8,10 @@ DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 # Automatic header dependencies: each compile writes <object>.d (the .o and the .lo
 # of one source get separate files, so -j builds of both never race on one name);
 # included at the bottom so a header change recompiles the objects that include it.
+# Each object also depends on its own .d file, so an object with no .d (a deleted
+# .d, or one built by a Makefile that did not pass -MMD) recompiles instead of being
+# kept with no header prerequisites; the empty rule near the bottom "remakes" a
+# missing .d by doing nothing.
 DEPFLAGS = -MMD -MP -MF $@.d
 
 SRC_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
@@ -31,11 +35,11 @@ $(BUILD_DIR)/ :
 	mkdir -p $(BUILD_DIR)
 
 $(ASCOREPRO_DST) : | $(BUILD_DIR)/
-$(ASCOREPRO_DST) : $(ASCOREPRO_DSTDIR)%.o : $(ASCOREPRO_SRCDIR)%.cpp
+$(ASCOREPRO_DST) : $(ASCOREPRO_DSTDIR)%.o : $(ASCOREPRO_SRCDIR)%.cpp $(ASCOREPRO_DSTDIR)%.o.d
 	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 $(ASCOREPRO_DSO) : | $(BUILD_DIR)/
-$(ASCOREPRO_DSO) : $(ASCOREPRO_DSTDIR)%.lo : $(ASCOREPRO_SRCDIR)%.cpp
+$(ASCOREPRO_DSO) : $(ASCOREPRO_DSTDIR)%.lo : $(ASCOREPRO_SRCDIR)%.cpp $(ASCOREPRO_DSTDIR)%.lo.d
 	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
 
 clean:
@@ -43,4 +47,7 @@ clean:
 
 lib: ascorepro
 
--include $(addsuffix .d, $(ASCOREPRO_DST) $(ASCOREPRO_DSO))
+ASCOREPRO_DEP = $(addsuffix .d, $(ASCOREPRO_DST) $(ASCOREPRO_DSO))
+$(ASCOREPRO_DEP) : ;
+.PRECIOUS : $(ASCOREPRO_DEP)
+-include $(ASCOREPRO_DEP)
