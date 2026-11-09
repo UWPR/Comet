@@ -44,7 +44,25 @@ Integration-only IDs (need `--integration`, some also `--bigdata`): T17, T18,
 `t44_termmod_parity_bigdata` (`INTEGRATION_TESTS` in `run_tests.py`). T8-T10 do
 not exist.
 
-### `run_tests.py` -- T1-T66
+**Skips are counted as skips (2026-11-08, test T79).** A test that cannot run in the current
+environment raises `TestSkipped(reason)`. That covers missing data, `--integration` not given, a
+Windows `--comet` for a Linux-only test, `g++` not installed, and `RealtimeSearch.exe` not built.
+The runner counts it as SKIPPED and lists every skipped test with its reason under the
+`Results:` line. Before, tests printed "SKIP" and returned no failures, which counted as passed,
+so "N passed, 0 skipped" could hide tests that never ran. Skips still do not fail the run. Two
+partial skips stay printed notes inside a test that otherwise runs: T23/T24's cross-version
+checks without a baseline, and T74's RTS half.
+
+**rts_repro build (`_rts_repro_status()`).** The RTS tests (T22, T67, T68, T71-T73, T75-T77, and
+T74's RTS half) need `tests/rts_repro/rts_repro`, built once per run when it is missing or older
+than `rts_repro.cpp` or any library it links: `libcometsearch.a`, `libmstoolkit.a`,
+`libmstoolkitextern.a` and `libascorepro.a`. A missing `g++` is a skip. A failed build, with
+`g++` present, is a **failure** of each RTS test, reported with the compiler output. Before, a
+failed build, for example after an interface change that broke `rts_repro.cpp`, turned every
+RTS test into a "SKIP" that counted as passed, and only `libcometsearch.a` was checked for
+staleness.
+
+### `run_tests.py` -- T1-T79
 
 | ID | Summary |
 |---|---|
@@ -129,6 +147,7 @@ not exist.
 | **T76** (`t76_rts_shared_bins`) | The RTS result extraction (matched fragments, chimeric removal bins) is built from the shared bin builder, so it covers exactly the bins `XcorrScoreI()` credits (`docs/20261108_shared_bin_builder.md` step 2). Its old hand-maintained loop subtracted one fragment neutral loss even when `scale_fragmentNL` scores k losses, and never touched `precursor_NL_ions` peaks. `LVS[80]ELT[80]EFAK` (phospho on S3 and T6, loss 97.976896; `max_variable_mods_in_peptide` 3) at 2+, its own FASTA with 40 fillers, through `rts_repro` with `RTS_CHIMERIC_DEBUG=1` and `RTS_REPRO_PARAMS`. FI_DB, `scale_fragmentNL = 1`: a spectrum of the 18 b/y ions plus each phosphorylated ion at ion - k x loss (30 peaks) -- iteration 0 removes all 30 (24 before: the six 2x-loss peaks stayed). Adding `precursor_NL_ions = 97.976896` and its 2+ and 1+ precursor-loss peaks: 32 of 32 (24 before). PI_DB with the same scaled spectrum: 30 of 30 (24 under PI's pre-2026-11-08 rules, which never scaled). PI/FI parity (`docs/20261108_shared_bin_builder.md` section 5): plain searches give the same xcorr on FI_DB and PI_DB for the doubly-phosphorylated peptide with `scale_fragmentNL` (6.795; old PI 5.59) and for `LVS[80]EGLEM[16]AK` with a phospho S3 and an oxidized M8 carrying a 63.998285 loss (7.984; old PI 7.144, which credited only one mod type per ion series). Plain search with `RTS_REPRO_FRAGMENTS=1` on FI_DB: the six doubly-phosphorylated ions are listed at ion - 2 x loss and the six singly-phosphorylated ones at ion - loss (no 2x-loss fragments before). Linux only. |
 | **T77** (`t77_rts_charge_limits`) | Precursor charge limits in RTS (`docs/20261105_RTSchimeric.md` 4.8). The chimeric charge-range overload used to take the requested range as given, and neither RTS entry point honored `min_precursor_charge` / `max_precursor_charge`. `LVNELTEFAK` 2+ (b/y ions) against T67's FASTA (FI_DB), through `rts_repro`. Chimeric charge range: 10..12 returns false (ERROR row; before, true with nothing searched); 2..12 and 2..2147483647 (with `max_precursor_charge` 9) find the peptide with at most 8 candidate searches (before, 2..INT_MAX aborted with `std::bad_alloc`); 2..4 under `min_precursor_charge` 3 skips the 2+ candidate and finds nothing (before, it found the peptide). Plain search: found with the defaults; not searched under `min_precursor_charge` 3 or `max_precursor_charge` 1 (before, found in both). Linux only. |
 | **T78** (`t78_wrappercheck`) | CometWrapper input validation (`docs/RealTimeSearch.md`, C# / wrapper integration). Runs `RealtimeSearch.exe wrappercheck` (`RealtimeSearch/WrapperCheck.cs`) from the Windows build against a fragment ion index of T67's FASTA and a `LVNELTEFAK` 2+ fixture. Each of the four RTS calls -- `DoSingleSpectrumSearchMultiResults`, `DoSingleSpectrumSearchChimeric` in list and charge-range form, `DoMS1SearchMultiResults` -- is given six kinds of bad peak arrays: null mass, null intensity, empty with `iNumPeaks` 0, empty with 5, `iNumPeaks` one larger than the arrays, and an intensity array 5 shorter. Each must return false with empty, non-null outputs, no exception, and a `GetLastWrapperError()` reason. Before the fix, `&pdMass[0]` on a null or empty array throws (`NullReferenceException`, `IndexOutOfRangeException`) by C++/CLI semantics, and a count larger than the arrays reads past them. That is from the code: the check cannot run against the old wrapper, which lacks `GetLastWrapperError()`. A list-form call with 2 m/z values and 1 charge is rejected. The three MS2 calls then find the peptide with valid arrays and with buffers 20 longer than `iNumPeaks`: 31 checks in all. Skips when `RealtimeSearch/bin/x64/Release/RealtimeSearch.exe` is not built. Native-exception containment is not exercised: the known trigger, an unclamped `chimeric_remove_isotopes`, loops rather than throws on Windows, and review item 14 clamps it. |
+| **T79** (`t79_runner_accounting`) | The runner's own accounting (code review item 12; see "Skips are counted as skips" above). Each check runs `run_tests.py` code in a fresh Python process. (a) A probe test that raises `TestSkipped` is reported by `main()` as `0 passed, 0 failed, 1 skipped`, with its reason listed. (b) With `RTS_REPRO_CPP` pointed at a copy of `rts_repro.cpp` with a syntax error, T67 returns a "failed to build" failure carrying the compiler error instead of skipping. (c) A copy of the `rts_repro` binary backdated an hour, with an extra fake library newer than it added to `RTS_REPRO_LIBS`, is rebuilt. (b) and (c) need `g++`; without it the test skips after (a). |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 
@@ -340,7 +359,8 @@ output files sitting in `data/`.
 ## `tests/rts_repro/`
 
 ```bash
-# build: single g++ line in rts_repro/README.md (no Makefile); T22 builds it itself
+# build: single g++ line in rts_repro/README.md (no Makefile); run_tests.py builds it itself (_rts_repro_status():
+#   rebuilt when older than rts_repro.cpp or any linked library; a failed build fails the RTS tests)
 ./rts_repro <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]
 # chimeric search (T67; docs/20261105_RTSchimeric.md): trailing [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]
 #   [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill] [useNLIons]

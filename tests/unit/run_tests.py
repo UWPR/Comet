@@ -330,6 +330,12 @@ def run_comet_index(comet_exe, fasta_path, params_kwargs,
     return idx_path
 
 
+class TestSkipped(Exception):
+    """Raised by a test that cannot run in this environment (missing data, toolchain, platform or
+    --integration): main() counts it as SKIPPED -- not PASSED -- and prints the reason. Before
+    2026-11-08 tests printed "SKIP" and returned no failures, which counted as a pass."""
+
+
 def check(condition, msg, failures):
     if not condition:
         print(f"  FAIL: {msg}")
@@ -893,15 +899,13 @@ def test_t16(comet_exe):
 def test_t17(comet_exe):
     """T17 [integration]: Build human.small.fasta (no-enzyme len 8-13) and verify peptide count."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
 
     failures = []
     small_fasta = REAL_DATA_DIR / "human.small.fasta"
 
     if not small_fasta.exists():
-        print(f"  SKIP: {small_fasta} not found")
-        return []
+        raise TestSkipped(f"{small_fasta} not found")
 
     sys.path.insert(0, str(UNIT_DIR))
     import compare_idx as _cmp   # noqa: PLC0415
@@ -939,14 +943,12 @@ def test_t17(comet_exe):
 def test_t18(comet_exe):
     """T18 [integration]: Two stratified builds of human.small.fasta are byte-identical (no-enzyme len 8-13)."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
 
     failures = []
     small_fasta = REAL_DATA_DIR / "human.small.fasta"
     if not small_fasta.exists():
-        print(f"  SKIP: {small_fasta} not found")
-        return []
+        raise TestSkipped(f"{small_fasta} not found")
 
     kwargs = {
         "enzyme": 0, "missed_cleavage": 2,
@@ -1441,17 +1443,33 @@ RTS_REPRO_CPP = RTS_REPRO_DIR / "rts_repro.cpp"
 RTS_FIXTURE   = RTS_REPRO_DIR / "fixture_spectra.txt"
 
 
-def _ensure_rts_repro_built():
+# Everything rts_repro links: a newer one makes the binary stale.
+RTS_REPRO_LIBS = (REPO_ROOT / "CometSearch" / "libcometsearch.a", REPO_ROOT / "MSToolkit" / "libmstoolkit.a",
+                  REPO_ROOT / "MSToolkit" / "libmstoolkitextern.a", REPO_ROOT / "AScorePro" / "libascorepro.a")
+
+_RTS_REPRO_STATUS = None   # cached for the run: ("ok", "") / ("no-toolchain", reason) / ("failed", compiler output)
+
+
+def _rts_repro_status():
+    """Build tests/rts_repro/rts_repro if it is missing or older than its source or any library it
+    links, once per run. Returns ("ok", ""), ("no-toolchain", reason) when g++ is not installed (a
+    real skip), or ("failed", compiler output) when it is installed and the build failed -- which the
+    RTS tests report as a failure: an interface change that breaks rts_repro.cpp must not silently
+    turn every RTS test into a skip."""
+    global _RTS_REPRO_STATUS
+    if _RTS_REPRO_STATUS is not None:
+        return _RTS_REPRO_STATUS
     if not RTS_REPRO_CPP.exists():
-        return False
+        _RTS_REPRO_STATUS = ("failed", f"{RTS_REPRO_CPP} is missing")
+        return _RTS_REPRO_STATUS
     if RTS_REPRO_BIN.exists():
-        # Rebuild when the driver source or the library it links is newer than the
-        # binary: a stale binary silently lacks newer driver modes (T67's chimeric
-        # modes) or searches with an older libcometsearch than the --comet under test.
-        lib = REPO_ROOT / "CometSearch" / "libcometsearch.a"
-        newest = max(p.stat().st_mtime for p in (RTS_REPRO_CPP, lib) if p.exists())
+        newest = max(p.stat().st_mtime for p in (RTS_REPRO_CPP,) + RTS_REPRO_LIBS if p.exists())
         if RTS_REPRO_BIN.stat().st_mtime >= newest:
-            return True
+            _RTS_REPRO_STATUS = ("ok", "")
+            return _RTS_REPRO_STATUS
+    if shutil.which("g++") is None:
+        _RTS_REPRO_STATUS = ("no-toolchain", "g++ not found: cannot build tests/rts_repro/rts_repro")
+        return _RTS_REPRO_STATUS
     cmd = [
         "g++", "-O2", "-std=c++20", "-fpermissive", "-Wno-write-strings",
         "-D_LARGEFILE_SOURCE", "-D_FILE_OFFSET_BITS=64", "-DGCC", "-D_NOSQLITE", "-D__int64=off64_t",
@@ -1463,7 +1481,29 @@ def _ensure_rts_repro_built():
         "-lcometsearch", "-lmstoolkit", "-lmstoolkitextern", "-lascorepro", "-lm", "-lpthread",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
-    return result.returncode == 0 and RTS_REPRO_BIN.exists()
+    if result.returncode == 0 and RTS_REPRO_BIN.exists():
+        _RTS_REPRO_STATUS = ("ok", "")
+    else:
+        out = (result.stdout + result.stderr).strip()
+        _RTS_REPRO_STATUS = ("failed", f"g++ exited {result.returncode}:\n" + "\n".join(out.splitlines()[-25:]))
+    return _RTS_REPRO_STATUS
+
+
+def _ensure_rts_repro_built():
+    """True when rts_repro is built and current (ad-hoc and compatibility use; tests call _require_rts_repro)."""
+    return _rts_repro_status()[0] == "ok"
+
+
+def _require_rts_repro(failures):
+    """For an RTS test: True when rts_repro is ready; raises TestSkipped when g++ is not installed;
+    appends the compiler output to failures and returns False when the build failed."""
+    state, detail = _rts_repro_status()
+    if state == "no-toolchain":
+        raise TestSkipped(detail)
+    if state == "failed":
+        failures.append("tests/rts_repro/rts_repro failed to build (a build failure is a failure, not a skip):\n" + detail)
+        return False
+    return True
 
 
 def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
@@ -1515,20 +1555,16 @@ def _test_rts_index_type(comet_exe, index_flag, label):
     # index_flag's build-time PI-vs-FI choice for the search-time dispatch too.
     index_search_type = 0 if index_flag == "-j" else 1
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("pass --integration to run this test")
+    if not _require_rts_repro(failures):
+        return failures
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
 
     small_fasta = REAL_DATA_DIR / "human.small.fasta"
     phospho_params = REAL_DATA_DIR / "comet_phospho.params"
     if not small_fasta.exists() or not RTS_FIXTURE.exists() or not phospho_params.exists():
-        print(f"  SKIP: {small_fasta}, {phospho_params}, or {RTS_FIXTURE} not found")
-        return []
+        raise TestSkipped(f"{small_fasta}, {phospho_params}, or {RTS_FIXTURE} not found")
 
     # --- 1. Ground truth: t19's unambiguous phospho-S peptide, same fixture
     #        T19/T20 use for the batch path ---
@@ -1911,8 +1947,7 @@ def _ensure_baseline():
 def test_t23_decoy_modes(comet_exe):
     """T23 [integration]: comet-debug3 -- internal-decoy vs target-decoy 1% FDR parity."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
 
     failures = []
     d3 = Path(_BIGDATA_DIR) / "comet-debug3"
@@ -1921,9 +1956,8 @@ def test_t23_decoy_modes(comet_exe):
     human_td_fasta = d3 / "human.target-decoy.fasta"
     base_params_file = d3 / "comet.params"
     if not (mzxml.exists() and human_fasta.exists() and human_td_fasta.exists() and base_params_file.exists()):
-        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR "
-              f"(this test needs ~350MB of real data not checked into the repo)")
-        return []
+        raise TestSkipped(f"{d3} not found or incomplete -- pass --bigdata DIR "
+                          f"(this test needs ~350MB of real data not checked into the repo)")
 
     base = base_params_file.read_text()
     internaldecoy_params = _set_param_line(base, "database_name", human_fasta)
@@ -2017,8 +2051,7 @@ def test_t23_decoy_modes(comet_exe):
 def test_t24_index_parity(comet_exe):
     """T24 [integration]: comet-debug4 -- plain FASTA vs FI_DB vs PI_DB 1% FDR parity."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
 
     failures = []
     d3 = Path(_BIGDATA_DIR) / "comet-debug3"  # comet-debug4 reuses comet-debug3's mzXML + fasta
@@ -2026,9 +2059,8 @@ def test_t24_index_parity(comet_exe):
     human_td_fasta = d3 / "human.target-decoy.fasta"
     base_params_file = d3 / "comet.params"
     if not (mzxml.exists() and human_td_fasta.exists() and base_params_file.exists()):
-        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR "
-              f"(this test needs ~350MB of real data not checked into the repo)")
-        return []
+        raise TestSkipped(f"{d3} not found or incomplete -- pass --bigdata DIR "
+                          f"(this test needs ~350MB of real data not checked into the repo)")
 
     base = base_params_file.read_text()
     plain_params = _set_param_line(base, "database_name", human_td_fasta)
@@ -2129,8 +2161,7 @@ def test_t24_index_parity(comet_exe):
 def test_t24_internal_decoy_parity(comet_exe):
     """T24b [integration, bigdata]: internal-decoy (decoy_search=1) 1% FDR parity, FASTA vs FI_DB vs PI_DB."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
 
     failures = []
     d3 = Path(_BIGDATA_DIR) / "comet-debug3"
@@ -2139,8 +2170,7 @@ def test_t24_internal_decoy_parity(comet_exe):
     human_td_fasta = d3 / "human.target-decoy.fasta"
     base_params_file = d3 / "comet.params"
     if not (mzxml.exists() and human_fasta.exists() and human_td_fasta.exists() and base_params_file.exists()):
-        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR")
-        return []
+        raise TestSkipped(f"{d3} not found or incomplete -- pass --bigdata DIR")
 
     base = base_params_file.read_text()
     dec_params = _set_param_line(base, "database_name", human_fasta)
@@ -3973,19 +4003,15 @@ def _test_rts_protterm(comet_exe, index_flag, label):
     failures = []
     index_search_type = 0 if index_flag == "-j" else 1
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("pass --integration to run this test")
+    if not _require_rts_repro(failures):
+        return failures
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
     small_fasta = REAL_DATA_DIR / "human.small.fasta"
     phospho_params = REAL_DATA_DIR / "comet_phospho.params"
     if not small_fasta.exists() or not RTS_FIXTURE.exists() or not phospho_params.exists():
-        print(f"  SKIP: {small_fasta}, {phospho_params}, or {RTS_FIXTURE} not found")
-        return []
+        raise TestSkipped(f"{small_fasta}, {phospho_params}, or {RTS_FIXTURE} not found")
     params = phospho_params.read_text().replace(
         "database_name = human.target-decoy.fasta", f"database_name = {small_fasta}")
     params = _set_param_line(params, "variable_mod03", "42.010565 ^ 0 1 -1 0 0 0.0")
@@ -4038,16 +4064,14 @@ def test_t22_rts_pi_protterm(comet_exe):
 def test_t44_termmod_parity_bigdata(comet_exe):
     """T44 [integration, bigdata]: plain vs FI_DB vs PI_DB 1% FDR parity with 'n' and '^' acetyl and '$' amidation."""
     if not _RUN_INTEGRATION:
-        print("  SKIP: pass --integration to run this test")
-        return []
+        raise TestSkipped("pass --integration to run this test")
     failures = []
     d3 = Path(_BIGDATA_DIR) / "comet-debug3"
     mzxml = d3 / "20170103_HelaQC_01.mzXML"
     human_td_fasta = d3 / "human.target-decoy.fasta"
     base_params_file = d3 / "comet.params"
     if not (mzxml.exists() and human_td_fasta.exists() and base_params_file.exists()):
-        print(f"  SKIP: {d3} not found or incomplete -- pass --bigdata DIR")
-        return []
+        raise TestSkipped(f"{d3} not found or incomplete -- pass --bigdata DIR")
 
     base = base_params_file.read_text()
     base = _set_param_line(base, "database_name", human_td_fasta)
@@ -5504,19 +5528,30 @@ def main():
         total_fail = 0
         total_pass = 0
         total_skip = 0
+        skipped = []   # (test, reason): reported, never counted as passed
 
         for name in requested:
             print(f"\n{'='*60}")
             print(f"  {name}: {TESTS[name].__doc__.strip().splitlines()[0]}")
             print(f"{'='*60}")
+            skip_reason = None
             try:
                 failures = TESTS[name](comet_exe)
+            except TestSkipped as e:
+                skip_reason = str(e)
+                failures = []
             except Exception as e:
                 print(f"  ERROR: {e}")
                 failures = [str(e)]
 
-            if failures == [] and name in INTEGRATION_TESTS and not _RUN_INTEGRATION:
+            if skip_reason is not None:
                 total_skip += 1
+                skipped.append((name, skip_reason))
+                print(f"  SKIP: {skip_reason}")
+                print("  --> SKIPPED")
+            elif failures == [] and name in INTEGRATION_TESTS and not _RUN_INTEGRATION:
+                total_skip += 1
+                skipped.append((name, "pass --integration to run this test"))
                 print("  --> SKIPPED")
             elif failures:
                 total_fail += 1
@@ -5527,6 +5562,8 @@ def main():
 
         print(f"\n{'='*60}")
         print(f"  [{comet_exe}] Results: {total_pass} passed, {total_fail} failed, {total_skip} skipped")
+        for sk_name, sk_reason in skipped:
+            print(f"    skipped {sk_name}: {sk_reason}")
         print(f"{'='*60}")
         grand_fail += total_fail
 
@@ -6557,11 +6594,9 @@ def test_t67_chimeric(comet_exe):
     1 vs 4 threads are byte-identical -- on FI_DB and PI_DB, in the charge-range and explicit-list forms."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -6695,11 +6730,9 @@ def test_t68_histogram_fill(comet_exe):
     the rank-1 peptide, its xcorr and the stored count never change and its E-value does not shrink."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T68_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T68_GENERATOR}")
         return failures
@@ -6949,11 +6982,9 @@ def test_t71_rts_z1_ions(comet_exe):
     list the z+1 ions at y - NH2 + H -- on FI_DB and PI_DB."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7041,11 +7072,9 @@ def test_t72_chimeric_budget(comet_exe):
     runs; without a budget all 400 candidates are searched and the call goes on to iteration 1."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7166,11 +7195,9 @@ def test_t73_rts_invalid_inputs(comet_exe):
     the clean spectrum), a NaN dMaxExpect is rejected and +inf means no cutoff -- on FI_DB and PI_DB."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7300,9 +7327,14 @@ def test_t74_minimum_peaks_counting(comet_exe):
         return failures
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
-    rts = not use_win and _ensure_rts_repro_built()
+    rts = False
+    if not use_win:
+        state, detail = _rts_repro_status()
+        if state == "failed":
+            failures.append("tests/rts_repro/rts_repro failed to build:\n" + detail)
+        rts = (state == "ok")
     if not rts:
-        print("  NOTE: RTS half skipped (rts_repro is Linux-only or could not be built); batch half runs")
+        print("  NOTE: RTS half skipped (rts_repro is Linux-only, or g++ is missing or the build failed); batch half runs")
 
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -7408,11 +7440,9 @@ def test_t75_chimeric_exact_duplicates(comet_exe):
     tolerances is searched twice."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7508,11 +7538,9 @@ def test_t76_rts_shared_bins(comet_exe):
     scale_fragmentNL, and for a peptide with two different loss-bearing mods (phospho S, oxidized M)."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
 
     PHOS, NL = 79.966331, 97.976896
     pep = "LVSELTEFAK"
@@ -7670,11 +7698,9 @@ def test_t77_rts_charge_limits(comet_exe):
     min_precursor_charge / max_precursor_charge like batch, in the plain and the chimeric search."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
-        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
-        return []
-    if not _ensure_rts_repro_built():
-        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
-        return []
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7775,8 +7801,7 @@ def test_t78_wrappercheck(comet_exe):
     (including a buffer longer than iNumPeaks) -- RealtimeSearch.exe wrappercheck, Windows build."""
     failures = []
     if not REALTIMESEARCH_EXE.exists():
-        print(f"  SKIP: {REALTIMESEARCH_EXE} not built (Windows solution)")
-        return []
+        raise TestSkipped(f"{REALTIMESEARCH_EXE} not built (Windows solution)")
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
         return failures
@@ -7815,8 +7840,7 @@ def test_t78_wrappercheck(comet_exe):
             res = subprocess.run([str(REALTIMESEARCH_EXE), "wrappercheck", _to_win(idx), _to_win(fixture), pep],
                                  capture_output=True, text=True, timeout=300)
         except OSError as e:
-            print(f"  SKIP: cannot run {REALTIMESEARCH_EXE} here ({e})")
-            return []
+            raise TestSkipped(f"cannot run {REALTIMESEARCH_EXE} here ({e})")
         out = res.stdout + res.stderr
         for line in out.splitlines():
             if line.startswith("  FAIL:"):
@@ -7825,6 +7849,83 @@ def test_t78_wrappercheck(comet_exe):
               f"RealtimeSearch.exe wrappercheck exits 0 and reports PASSED (rc={res.returncode})", failures)
         if res.returncode != 0:
             print(out[-2500:])
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T79 -- the runner's own accounting (branch code review item 12). A test that cannot run
+# raises TestSkipped and is counted as skipped, not passed; a failed rts_repro build is a
+# failure of the RTS tests, not a skip (only a missing g++ is a skip); and rts_repro is rebuilt
+# when any library it links is newer than it. Each check runs in a fresh Python process so the
+# cached build status and the test registry of this run are untouched.
+# ---------------------------------------------------------------------------
+
+@register("t79_runner_accounting")
+def test_t79_runner_accounting(comet_exe):
+    """T79: run_tests.py counts a TestSkipped test as skipped (not passed) and lists its reason; a failed
+    rts_repro build fails an RTS test with the compiler output instead of skipping it; and rts_repro is rebuilt
+    when a library it links is newer than the binary."""
+    failures = []
+    unit = str(UNIT_DIR)
+
+    def run_snippet(code, timeout=300):
+        r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=timeout, cwd=unit)
+        return r.returncode, r.stdout + r.stderr
+
+    # (a) skip accounting through main()
+    code_a = (
+        "import sys; sys.path.insert(0, %r)\n"
+        "import run_tests as rt\n"
+        "@rt.register('zz_skip_probe')\n"
+        "def zz(comet_exe):\n"
+        "    'probe: always skips'\n"
+        "    raise rt.TestSkipped('probe reason')\n"
+        "sys.argv = ['run_tests.py', '--comet', %r, 'zz_skip_probe']\n"
+        "rt.main()\n" % (unit, str(comet_exe)))
+    rc, out = run_snippet(code_a)
+    check("Results: 0 passed, 0 failed, 1 skipped" in out, "a TestSkipped test is counted as skipped, not passed "
+          f"({[l.strip() for l in out.splitlines() if 'Results:' in l]})", failures)
+    check("skipped zz_skip_probe: probe reason" in out, "the summary lists the skipped test with its reason", failures)
+
+    if shutil.which("g++") is None:
+        raise TestSkipped("g++ not found: the rts_repro build checks need it")
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        # (b) a broken rts_repro.cpp: an RTS test fails with the compiler output
+        broken = tmp / "rts_repro_broken.cpp"
+        broken.write_text(RTS_REPRO_CPP.read_text() + "\nthis is not C++;\n")
+        code_b = (
+            "import sys; sys.path.insert(0, %r)\n"
+            "from pathlib import Path\n"
+            "import run_tests as rt\n"
+            "rt.RTS_REPRO_CPP = Path(%r); rt.RTS_REPRO_BIN = Path(%r)\n"
+            "f = rt.test_t67_chimeric(Path(%r))\n"
+            "print('RESULT', repr(f[:1])[:400])\n" % (unit, str(broken), str(tmp / "rts_repro_broken"), str(comet_exe)))
+        rc, out = run_snippet(code_b)
+        res = next((l for l in out.splitlines() if l.startswith("RESULT")), "")
+        check("failed to build" in res and "error" in res.lower(),
+              f"a failed rts_repro build makes an RTS test fail with the compiler output, not skip ({res[:200]!r})", failures)
+
+        # (c) staleness: a linked library newer than the binary triggers a rebuild
+        if RTS_REPRO_BIN.exists():
+            stale = tmp / "rts_repro_copy"
+            shutil.copy2(RTS_REPRO_BIN, stale)
+            old = time.time() - 3600
+            os.utime(stale, (old, old))
+            fake_lib = tmp / "libfake.a"
+            fake_lib.write_text("newer than the binary")
+            code_c = (
+                "import sys; sys.path.insert(0, %r)\n"
+                "from pathlib import Path\n"
+                "import run_tests as rt\n"
+                "rt.RTS_REPRO_BIN = Path(%r)\n"
+                "rt.RTS_REPRO_LIBS = rt.RTS_REPRO_LIBS + (Path(%r),)\n"
+                "print('STATUS', rt._rts_repro_status()[0])\n" % (unit, str(stale), str(fake_lib)))
+            rc, out = run_snippet(code_c)
+            check("STATUS ok" in out and stale.stat().st_mtime > old + 60,
+                  f"a library newer than rts_repro triggers a rebuild ({[l for l in out.splitlines() if l.startswith('STATUS')]})", failures)
     return failures
 
 
