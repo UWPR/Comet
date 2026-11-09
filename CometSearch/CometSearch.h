@@ -154,6 +154,79 @@ public:
                                     char* szDecoy,
                                     int* piSitesDecoy);
 
+   // Shared bin builder (docs/20261108_shared_bin_builder.md): one implementation of "the
+   // fragment ladder of a peptide, then the bins XcorrScoreI() credits", used by FI_DB scoring
+   // (SearchFragmentIndex()), PI_DB scoring (AnalyzePeptideIndex(), target and internal decoy)
+   // and the RTS result extraction (matched fragments and chimeric removal bins), so the
+   // reported/removed ions cannot drift from the scored ones.
+   //
+   // The two index paths follow different fragment neutral-loss rules, kept distinct so both
+   // stay byte-identical:
+   //   FragmentIndex: the first position of every loss-bearing mod is tracked, the loss is
+   //                  scaled by the number of such mods in the fragment when scale_fragmentNL
+   //                  is on, and only the first FRAGINDEX_VMODS mods are considered (the batch
+   //                  FASTA path, CalcVarModIons(), follows the same rules over all VMODS).
+   //   PeptideIndex:  only the first loss-bearing mod (from either end) gets a position, the
+   //                  loss is never scaled, and all VMODS mods are considered.
+   enum class IonRules
+   {
+      FragmentIndex,
+      PeptideIndex
+   };
+
+   // Builds pdAAforward/pdAAreverse (1+ b and y ladders, protonated, mods included) for
+   // szPeptide[0..iLenPeptide) with piVarModSites[0..iLenPeptide+2) (peptide N-/C-terminal
+   // variable mods in the last two slots), adding the static protein-terminal masses when
+   // bAddProteinNterm/bAddProteinCterm. With use_fragment neutral losses on it also fills the
+   // per-mod loss positions (piPositionNLB/Y, VMODS entries) and, for FragmentIndex, the
+   // cumulative per-position loss counts (piCountNLB/Y, FRAGINDEX_VMODS rows; may be nullptr
+   // for PeptideIndex). Returns iFoundVariableMod updated from iFoundVariableModIn: 1 for any
+   // variable mod, 2 for a mod carrying a fragment neutral loss (last one seen wins, as in the
+   // code this replaced).
+   static int BuildIonLadder(IonRules eRules,
+                             const char* szPeptide,
+                             int iLenPeptide,
+                             const int* piVarModSites,
+                             bool bAddProteinNterm,
+                             bool bAddProteinCterm,
+                             double* pdAAforward,
+                             double* pdAAreverse,
+                             int* piPositionNLB,
+                             int* piPositionNLY,
+                             int (*piCountNLB)[MAX_PEPTIDE_LEN],
+                             int (*piCountNLY)[MAX_PEPTIDE_LEN],
+                             int iFoundVariableModIn);
+
+   // Called for every bin BuildBinnedIons() stores (each bin once: the same dedup the scorer
+   // uses). iWhichIonSeries is an ION_SERIES_* value, iLen the 0-based ladder position (the
+   // ion number minus 1), dMZ the m/z the bin was computed from, dNeutralLoss the total loss
+   // subtracted in 1+ units (0 for the ion itself). A precursor neutral-loss peak is reported
+   // with iWhichIonSeries = -1, iLen = its precursor_NL_ions index and dNeutralLoss = that loss.
+   typedef void (*BinnedIonVisitor)(void* pContext, int iCharge, int iWhichIonSeries, int iLen,
+                                    int iBin, double dMZ, double dNeutralLoss);
+
+   // Fills uiBinnedIonMasses/uiBinnedPrecursorNL -- exactly what XcorrScoreI() reads -- from
+   // a ladder built by BuildIonLadder() with the same eRules, for pQuery's charge state and
+   // fragment charges. dPepMass is the peptide's MH+. pbDuplFragment is an iArraySizeGlobal
+   // scratch buffer (only the bins this peptide touches are cleared). Sets iFoundVariableMod
+   // to 2 when a neutral-loss bin is stored. pfnVisit (optional) sees every stored bin.
+   static void BuildBinnedIons(IonRules eRules,
+                               const Query* pQuery,
+                               int iLenPeptide,
+                               const double* pdAAforward,
+                               const double* pdAAreverse,
+                               const int* piPositionNLB,
+                               const int* piPositionNLY,
+                               int (*piCountNLB)[MAX_PEPTIDE_LEN],
+                               int (*piCountNLY)[MAX_PEPTIDE_LEN],
+                               double dPepMass,
+                               bool* pbDuplFragment,
+                               unsigned int uiBinnedIonMasses[MAX_FRAGMENT_CHARGE + 1][NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2],
+                               unsigned int uiBinnedPrecursorNL[MAX_PRECURSOR_NL_SIZE][MAX_PRECURSOR_CHARGE + 1],
+                               int& iFoundVariableMod,
+                               BinnedIonVisitor pfnVisit = nullptr,
+                               void* pVisitContext = nullptr);
+
    bool SearchPeptideIndex(ThreadPool* tp, vector<Query*>& queries);
 
    struct ProteinInfo
