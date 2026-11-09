@@ -283,8 +283,10 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    [Out] List<String^>^% szPeptide,
    [Out] List<String^>^% szProtein,
    [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-   [Out] List<ScoreWrapper^>^% score)
+   [Out] List<ScoreWrapper^>^% score,
+   [Out] bool% bIncomplete)
 {
+   bIncomplete = false;
    s_strLastWrapperError = nullptr;
    if (!_pSearchMgr || pdCandidateMZ == nullptr || piCandidateCharge == nullptr
       || pdCandidateMZ->Length == 0 || piCandidateCharge->Length != pdCandidateMZ->Length
@@ -323,12 +325,13 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    std::vector<std::vector<Fragment>> stdMatchedFrags;
 
    bool ok = false;
+   bool bNativeIncomplete = false;
    try
    {
       ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
          topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
          ptrMasses, ptrInten, iNumPeaks,
-         stdPeptides, stdProteins, stdMatchedFrags, stdScores);
+         stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
    }
    catch (const std::exception& e)
    {
@@ -340,9 +343,18 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    }
    if (s_strLastWrapperError != nullptr)
    {
-      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      // The rows appended before the exception are complete iterations -- keep them, as a
+      // cancelled call does, unless an exception mid-row left the four vectors misaligned.
+      bIncomplete = true;
+      const size_t n = stdScores.size();
+      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
+         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+            szPeptide, szProtein, matchingFragments, score);
+      else
+         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
       return false;
    }
+   bIncomplete = bNativeIncomplete;
 
    ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
       szPeptide, szProtein, matchingFragments, score);
@@ -365,8 +377,10 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    [Out] List<String^>^% szPeptide,
    [Out] List<String^>^% szProtein,
    [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-   [Out] List<ScoreWrapper^>^% score)
+   [Out] List<ScoreWrapper^>^% score,
+   [Out] bool% bIncomplete)
 {
+   bIncomplete = false;
    s_strLastWrapperError = nullptr;
    if (!_pSearchMgr || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
    {
@@ -384,12 +398,13 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    std::vector<std::vector<Fragment>> stdMatchedFrags;
 
    bool ok = false;
+   bool bNativeIncomplete = false;
    try
    {
       ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
          topN, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
          ptrMasses, ptrInten, iNumPeaks,
-         stdPeptides, stdProteins, stdMatchedFrags, stdScores);
+         stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
    }
    catch (const std::exception& e)
    {
@@ -401,9 +416,18 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    }
    if (s_strLastWrapperError != nullptr)
    {
-      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      // The rows appended before the exception are complete iterations -- keep them, as a
+      // cancelled call does, unless an exception mid-row left the four vectors misaligned.
+      bIncomplete = true;
+      const size_t n = stdScores.size();
+      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
+         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+            szPeptide, szProtein, matchingFragments, score);
+      else
+         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
       return false;
    }
+   bIncomplete = bNativeIncomplete;
 
    ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
       szPeptide, szProtein, matchingFragments, score);

@@ -65,6 +65,7 @@ namespace RealTimeSearch
          public double PrecursorMZ;
          public int Candidates;
          public bool Ok;
+         public bool Incomplete;   // the call stopped early: budget (Ok) or cancelled / failed (!Ok); its rows are kept
          public double ElapsedMs;
          public List<string> Peptides;
          public List<string> Proteins;
@@ -279,14 +280,18 @@ namespace RealTimeSearch
                            mz[k] = MzFromMH(s.ZLines[k].Value, z[k]);
                         }
                         r.Candidates = n;
+                        bool bInc = false;
                         r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(1, mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
-                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores);
+                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                        r.Incomplete = bInc;
                      }
                      else
                      {
                         r.Candidates = o.ZMax - o.ZMin + 1;
+                        bool bInc;
                         r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(1, r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
-                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores);
+                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                        r.Incomplete = bInc;
                      }
                      watch.Stop();
                      r.ElapsedMs = watch.Elapsed.TotalMilliseconds;
@@ -306,7 +311,7 @@ namespace RealTimeSearch
             var ordered = outcomes.OrderBy(x => x.ScanNumber).ToList();
             var inv = CultureInfo.InvariantCulture;
             int[] histogram = new int[4];   // spectra with 0 / 1 / 2 / 3+ peptides
-            int rows = 0, rowsLater = 0, repeats = 0, errors = 0;
+            int rows = 0, rowsLater = 0, repeats = 0, errors = 0, incomplete = 0;
             double sumMs = 0.0;
 
             using (var w = new StreamWriter(o.OutputFile, false))
@@ -315,7 +320,10 @@ namespace RealTimeSearch
                foreach (ScanOutcome r in ordered)
                {
                   sumMs += r.ElapsedMs;
-                  if (!r.Ok)
+                  // ERROR: false without Incomplete (invalid input). A call that stopped early keeps its
+                  // rows (complete iterations) and gets an INCOMPLETE line after them: "budget" when
+                  // max_index_runtime ran out (Ok), "stopped" when cancelled or a search failed (!Ok).
+                  if (!r.Ok && !r.Incomplete)
                   {
                      ++errors;
                      w.WriteLine(string.Format(inv, "{0}\tERROR\t\t{1:0.0000}\t{2}", r.ScanNumber, r.PrecursorMZ, r.Candidates));
@@ -324,7 +332,9 @@ namespace RealTimeSearch
                   int n = r.Peptides.Count;
                   histogram[Math.Min(n, 3)] += 1;
                   rows += n;
-                  if (n == 0)
+                  if (r.Incomplete)
+                     ++incomplete;
+                  if (n == 0 && !r.Incomplete)
                   {
                      w.WriteLine(string.Format(inv, "{0}\tNO_MATCH\t\t{1:0.0000}\t{2}\t\t\t\t\t\t\t\t\t{3:0.00}", r.ScanNumber, r.PrecursorMZ, r.Candidates, r.ElapsedMs));
                      continue;
@@ -341,6 +351,8 @@ namespace RealTimeSearch
                         r.ScanNumber, sc.Iteration, sc.Charge, r.PrecursorMZ, r.Candidates, sc.mass, r.Peptides[i], r.Proteins[i],
                         sc.xCorr, sc.dCn, sc.dExpect, sc.MatchedIons, sc.TotalIons, r.ElapsedMs));
                   }
+                  if (r.Incomplete)
+                     w.WriteLine(string.Format(inv, "{0}\tINCOMPLETE\t{1}\t{2:0.0000}\t{3}", r.ScanNumber, r.Ok ? "budget" : "stopped", r.PrecursorMZ, r.Candidates));
                }
             }
 
@@ -353,6 +365,8 @@ namespace RealTimeSearch
             Console.WriteLine(" same peptide twice in a spectrum: {0}", repeats);
             if (errors > 0)
                Console.WriteLine(" calls that returned an error:     {0}", errors);
+            if (incomplete > 0)
+               Console.WriteLine(" calls that stopped early:         {0} (rows kept; budget or cancel)", incomplete);
             string sPeakMem = searchMgr.GetPeakMemory();
             Console.WriteLine("{0} Done.{1}{2}", Environment.NewLine, string.IsNullOrEmpty(sPeakMem) ? "" : " (" + sPeakMem + ")", Environment.NewLine);
          }

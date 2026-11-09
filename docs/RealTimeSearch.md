@@ -93,11 +93,20 @@ The charge-range form searches only charges up to `MAX_PRECURSOR_CHARGE` (9), an
 wholly above it returns `false`. A decoy winner is reported and removed like a target.
 Both RTS entry points honor `min_precursor_charge` / `max_precursor_charge` as batch does,
 since 2026-11-08: `DoSingleSpectrumSearchMultiResults()` returns `false` for a spectrum
-whose charge is outside them. Returns `true` on a normal
-end (zero rows included), `false` on an error. Same thread-safety as the single-spectrum
+whose charge is outside them. The return value and the `bIncomplete` output (2026-11-08)
+together say how the call ended:
+
+| Return | `bIncomplete` | Meaning |
+|---|---|---|
+| `true` | `false` | Normal end: no PSM left, the best failed `dMaxExpect`, `iMaxPeptidesPerSpectrum` rows, or too few peaks remain. Zero rows is included. |
+| `true` | `true` | The `max_index_runtime` budget ran out. The rows are the PSMs found so far, and the spectrum may hold more. |
+| `false` | `true` | The call stopped early because the search was cancelled (`IsCancelSearch()`) or an index search failed. The rows are the complete iterations before that, and they are valid. |
+| `false` | `false` | Invalid arguments. There are no rows. |
+
+Rows are appended one complete row per kept iteration. The C# harness writes an `INCOMPLETE
+budget|stopped` line after the rows of a call that stopped early. Same thread-safety as the single-spectrum
 call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
-is only read (the per-call tolerance and the re-search candidate thresholds live on the
-`Query`). One knob, set through `SetParam` only: `chimeric_remove_isotopes` (default 2;
+is only read (the per-call tolerance is an argument, applied to the call's own `Query`). One knob, set through `SetParam` only: `chimeric_remove_isotopes` (default 2;
 clamped to 0..3 at init with a warning). The removal flank follows `theoretical_fragment_ions`
 (+/- 1 bin when it is 0, else none), the bins the scorer credits; a
 `chimeric_remove_flank_bins` knob existed until 2026-11-08.
@@ -526,7 +535,9 @@ arrays before pinning them: `DoSingleSpectrumSearchMultiResults`, both
   empty array threw `IndexOutOfRangeException` at `&pdMass[0]`.
 - The chimeric list form also requires its candidate arrays to be non-empty and of equal length.
 - A native C++ exception thrown during a call (`std::bad_alloc`, ...) is caught. The call returns
-  `false` with empty outputs instead of the host receiving an `SEHException`.
+  `false` with empty outputs instead of the host receiving an `SEHException`. The chimeric calls
+  are the exception: they keep the rows appended before it, as a cancelled call does, set
+  `bIncomplete`, and clear the outputs only if the four vectors are misaligned.
 - `GetLastWrapperError()` returns the reason for the calling thread's last such `false`, or
   `null` after a normal return. The reason is "invalid peak arrays: ...", "invalid candidate
   arrays: ...", "native exception: ..." or "no search manager".

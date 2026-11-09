@@ -38,12 +38,14 @@
 #include "CometData.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <map>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -293,7 +295,10 @@ int main(int argc, char** argv)
                       "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n"
                       "  environment: RTS_REPRO_PARAMS=\"<i|d|s|v>:<name>=<value>;...\" sets any further parameter, applied\n"
                       "              last (e.g. \"i:use_Z1_ions=1\"); the type must be the one Comet reads it as\n"
-                      "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n", argv[0]);
+                      "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n"
+                      "              RTS_REPRO_CANCEL_RACE=<us> cancels/resets the search at random intervals (test T82)\n"
+                      "  chimeric output: a call that stopped early keeps its rows and adds 'INCOMPLETE budget' (budget ran out)\n"
+                      "              or 'INCOMPLETE stopped' (cancelled or a search failed); ERROR = invalid arguments\n", argv[0]);
       return 1;
    }
 
@@ -472,11 +477,12 @@ int main(int argc, char** argv)
          }
 
          bool ok;
+         bool bIncomplete = false;
          if (iChimeric == 1)
          {
             ok = mgr->DoSingleSpectrumSearchChimeric(1, s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
-               vPeptide, vProtein, vFrag, vScores);
+               vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }
          else
          {
@@ -485,16 +491,20 @@ int main(int argc, char** argv)
                vCand.emplace_back(spectra[k].mz, spectra[k].charge, spectra[k].tolMZ);
             ok = mgr->DoSingleSpectrumSearchChimeric(1, vCand, dTolMZ, dMaxExpect, iMaxPeptides,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
-               vPeptide, vProtein, vFrag, vScores);
+               vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }
 
          // One line per reported peptide, in iteration order, so a scan-sorted diff keeps them adjacent.
+         // A call that stopped early (bIncomplete) keeps its rows and adds a marker line after them:
+         // "INCOMPLETE budget" (max_index_runtime ran out, returned true) or "INCOMPLETE stopped"
+         // (cancelled or an index search failed, returned false). ERROR = false without
+         // bIncomplete (invalid arguments).
          std::lock_guard<std::mutex> lk(outMutex);
-         if (!ok)
+         if (!ok && !bIncomplete)
          {
             out << "MS2 " << s.scanNumber << "\tERROR\n";
          }
-         else if (vPeptide.empty())
+         else if (vPeptide.empty() && !bIncomplete)
          {
             out << "MS2 " << s.scanNumber << "\tNO_MATCH\n";
          }
@@ -510,9 +520,35 @@ int main(int argc, char** argv)
                if (bPrintFragments)
                   WriteFragments(out, s.scanNumber, r, vFrag);
             }
+            if (bIncomplete)
+               out << "MS2 " << s.scanNumber << "\tINCOMPLETE " << (ok ? "budget" : "stopped") << "\n";
          }
       }
    };
+
+   // RTS_REPRO_CANCEL_RACE=<us>: a thread that, until the workers finish, sleeps a random 0..us
+   // microseconds, calls CancelSearch() and ResetSearchStatus() 20 us later -- so chimeric calls are
+   // cancelled at arbitrary points (test T82: a cancelled call returns false with bIncomplete and
+   // keeps its complete earlier iterations).
+   std::atomic<bool> bWorkersDone{false};
+   std::thread cancelThread;
+   const char* pszRace = getenv("RTS_REPRO_CANCEL_RACE");
+   if (pszRace != nullptr && atoi(pszRace) > 0)
+   {
+      const int iMaxUs = atoi(pszRace);
+      cancelThread = std::thread([&bWorkersDone, mgr, iMaxUs]()
+      {
+         std::mt19937 rng(82);
+         std::uniform_int_distribution<int> dist(0, iMaxUs);
+         while (!bWorkersDone.load())
+         {
+            std::this_thread::sleep_for(std::chrono::microseconds(dist(rng)));
+            mgr->CancelSearch();
+            std::this_thread::sleep_for(std::chrono::microseconds(20));
+            mgr->ResetSearchStatus();
+         }
+      });
+   }
 
    vector<std::thread> threads;
    threads.reserve(numThreads);
@@ -520,6 +556,9 @@ int main(int argc, char** argv)
       threads.emplace_back(worker);
    for (auto& th : threads)
       th.join();
+   bWorkersDone = true;
+   if (cancelThread.joinable())
+      cancelThread.join();
 
    mgr->FinalizeSingleSpectrumSearch();
    ReleaseCometSearchManager();

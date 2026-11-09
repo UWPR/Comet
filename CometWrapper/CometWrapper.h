@@ -66,7 +66,9 @@ namespace CometWrapper {
         // and per-candidate +/- tolerance in m/z (0 = inherit dPrecursorToleranceMZ; the array
         // may be nullptr) -- rather than a managed candidate type, so a call allocates nothing
         // per candidate. One row per reported peptide; ScoreWrapper::Charge / Iteration say
-        // where it was found.
+        // where it was found. bIncomplete: the call stopped before its normal end -- true with
+        // the rows found so far when max_index_runtime ran out; false with the complete earlier
+        // iterations' rows when the search was cancelled or failed (CometInterfaces.h).
         bool DoSingleSpectrumSearchChimeric(int topN,
                                             cli::array<double>^ pdCandidateMZ,
                                             cli::array<int>^ piCandidateCharge,
@@ -80,7 +82,8 @@ namespace CometWrapper {
                                             [Out] List<String^>^% szPeptide,
                                             [Out] List<String^>^% szProtein,
                                             [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-                                            [Out] List<ScoreWrapper^>^% score);
+                                            [Out] List<ScoreWrapper^>^% score,
+                                            [Out] bool% bIncomplete);
         // Charge-range form: one m/z across [iMinPrecursorCharge, iMaxPrecursorCharge].
         bool DoSingleSpectrumSearchChimeric(int topN,
                                             double dMZ,
@@ -95,7 +98,8 @@ namespace CometWrapper {
                                             [Out] List<String^>^% szPeptide,
                                             [Out] List<String^>^% szProtein,
                                             [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-                                            [Out] List<ScoreWrapper^>^% score);
+                                            [Out] List<ScoreWrapper^>^% score,
+                                            [Out] bool% bIncomplete);
         // Need to convert vector to List and back
         bool DoMS1SearchMultiResults(double dVal3,
                                      double dVal4,

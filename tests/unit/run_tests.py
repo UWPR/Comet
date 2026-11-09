@@ -6607,6 +6607,18 @@ def _t67_rows(path):
     return rows
 
 
+def _rts_incomplete(path):
+    """{scan: "budget" | "stopped"} from the INCOMPLETE marker lines rts_repro writes after a chimeric
+    call that stopped early (bIncomplete): budget = max_index_runtime ran out (returned true), stopped =
+    cancelled or an index search failed (returned false). _t67_rows() ignores these lines."""
+    out = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split("\t")
+        if len(f) >= 2 and f[1].startswith("INCOMPLETE "):
+            out[int(f[0].split()[1])] = f[1].split()[1]
+    return out
+
+
 @register("t67_chimeric")
 def test_t67_chimeric(comet_exe):
     """T67: DoSingleSpectrumSearchChimeric() reports every peptide in a synthetic chimeric spectrum, one row
@@ -7159,6 +7171,7 @@ def test_t72_chimeric_budget(comet_exe):
                 check(iters.get(0, (0,))[0] == N_CAND, f"unlimited: iteration 0 searched all {N_CAND} candidates "
                       f"({iters.get(0, (None, 'no trace'))[1]})", failures)
                 check(1 in iters, "unlimited: the call went on to iteration 1 (the target was found and removed)", failures)
+                check(_rts_incomplete(tmp / "unlimited.out") == {}, "unlimited: the call is complete (no INCOMPLETE marker)", failures)
 
             iters, log = run("budget_1ms", 1)
             if iters is not None:
@@ -7167,6 +7180,8 @@ def test_t72_chimeric_budget(comet_exe):
                 check(n0 is not None and n0 < N_CAND, f"budget_1ms: iteration 0 stopped before the last of {N_CAND} candidates ({line0})", failures)
                 check(line0.endswith("budget-expired"), f"budget_1ms: iteration 0 is marked budget-expired ({line0})", failures)
                 check(sorted(iters) == [0], f"budget_1ms: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
+                check(_rts_incomplete(tmp / "budget_1ms.out") == {1: "budget"},
+                      f"budget_1ms: bIncomplete is set and the call returned true (INCOMPLETE budget), got {_rts_incomplete(tmp / 'budget_1ms.out')}", failures)
 
             # A budget that runs out after the target is found (the first search carries one-time
             # setup, ~15 ms here; then ~0.2 ms per candidate): the best PSM of the incomplete
@@ -7177,6 +7192,8 @@ def test_t72_chimeric_budget(comet_exe):
                 n0, line0 = iters.get(0, (None, "no trace"))
                 if line0.endswith("budget-expired"):
                     check(sorted(iters) == [0], f"budget_40ms: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
+                    check(_rts_incomplete(tmp / "budget_40ms.out") == {1: "budget"},
+                          "budget_40ms: the kept row is followed by INCOMPLETE budget (bIncomplete, returned true)", failures)
                 if " keep budget-expired" in line0:
                     rows = _t67_rows(tmp / "budget_40ms.out").get(1, [])
                     check([(x.get("peptide"), x.get("iter")) for x in rows] == [(pep, 0)],
@@ -8069,6 +8086,122 @@ def test_t81_chimeric_knob_clamps(comet_exe):
         finally:
             idx.unlink(missing_ok=True)
     return failures
+
+
+# ---------------------------------------------------------------------------
+# T82 -- a cancelled chimeric call keeps its complete iterations (branch code review item 15).
+# DoSingleSpectrumSearchChimeric() returns false with bIncomplete when the search is cancelled (or
+# an index search fails) and keeps the rows of the iterations completed before that; it used to
+# return false with no way to tell those rows were valid, and every caller dropped them.
+# rts_repro's RTS_REPRO_CANCEL_RACE thread cancels and resets the search at random points while
+# 4 workers search 600 copies of T67's scans; every call's rows must be a prefix of the same scan's
+# uncancelled result -- the whole result when the call completed -- and no call may return false
+# without bIncomplete (an ERROR line). The race is timing-dependent; the invariants are not.
+# ---------------------------------------------------------------------------
+
+@register("t82_chimeric_cancel_keeps_rows")
+def test_t82_chimeric_cancel_keeps_rows(comet_exe):
+    """T82: under a cancel race, a cancelled chimeric call returns false with bIncomplete and keeps exactly the
+    complete iterations before the cancel (a prefix of the uncancelled result); completed calls match it fully;
+    no call returns false without bIncomplete."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        # 600 calls: T67 scans 1, 2, 3 and 6 (one, two, two and one peptides) copied 150 times
+        blocks, cur = {}, None
+        for line in (tmp / "t67_chimeric_range.txt").read_text().splitlines():
+            if line.startswith("SPECTRUM"):
+                cur = int(line.split()[1])
+                blocks[cur] = [line]
+            elif cur is not None:
+                blocks[cur].append(line)
+        base_scans = [s for s in (1, 2, 3, 6) if s in blocks]
+        lines, origin = [], {}
+        for copy in range(150):
+            for s in base_scans:
+                scan = 1000 * (copy + 1) + s
+                origin[scan] = s
+                head = blocks[s][0].split()
+                head[1] = str(scan)
+                lines += [" ".join(head)] + blocks[s][1:]
+        fixture = tmp / "t82.txt"
+        fixture.write_text("\n".join(lines) + "\n")
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            args = ["1", "2", "4", "2.0", "0.01", "5"]
+            ref_out = tmp / "ref.out"
+            rc, log = _rts_run(idx, fixture, 4, ref_out, 0, 1, extra_args=args)
+            if not check(rc == 0 and ref_out.exists(), f"reference run (no race) exits 0 (rc={rc})", failures):
+                print(log[-1200:])
+                return failures
+
+            def rows_by_scan(path):
+                out = {}
+                for line in Path(path).read_text().splitlines():
+                    f = line.split("\t")
+                    scan = int(f[0].split()[1])
+                    out.setdefault(scan, [])
+                    if len(f) >= 4:
+                        out[scan].append("\t".join(f[1:]))
+                return out
+
+            ref = rows_by_scan(ref_out)
+            ref_by_base = {origin[s]: v for s, v in ref.items() if s < 2000}
+            check(_rts_incomplete(ref_out) == {} and "ERROR" not in ref_out.read_text(),
+                  "reference run: every call completes", failures)
+
+            race_out = tmp / "race.out"
+            rc, log = _rts_run(idx, fixture, 4, race_out, 0, 1, extra_args=args, env={"RTS_REPRO_CANCEL_RACE": "300"})
+            if not check(rc == 0 and race_out.exists(), f"cancel-race run exits 0 (rc={rc})", failures):
+                print(log[-1200:])
+                return failures
+            text = race_out.read_text()
+            race = rows_by_scan(race_out)
+            inc = _rts_incomplete(race_out)
+            n_error = sum(1 for l in text.splitlines() if l.endswith("\tERROR"))
+            check(n_error == 0, f"no call returned false without bIncomplete (ERROR lines: {n_error})", failures)
+            bad_prefix, bad_complete = [], []
+            for scan, rows in race.items():
+                want = ref_by_base[origin[scan]]
+                if inc.get(scan) == "stopped":
+                    if rows != want[:len(rows)] or len(rows) >= len(want) + 1:
+                        bad_prefix.append(scan)
+                elif scan not in inc:
+                    if rows != want:
+                        bad_complete.append(scan)
+            check(not bad_prefix, f"every cancelled call kept a prefix of the uncancelled rows ({len(bad_prefix)} did not: {bad_prefix[:5]})", failures)
+            check(not bad_complete, f"every completed call matches the uncancelled result ({len(bad_complete)} did not: {bad_complete[:5]})", failures)
+            check(set(inc.values()) <= {"stopped"}, f"only 'stopped' markers under a cancel race (got {sorted(set(inc.values()))})", failures)
+            n_stopped = sum(1 for v in inc.values() if v == "stopped")
+            n_kept = sum(1 for s, v in inc.items() if v == "stopped" and race.get(s))
+            n_complete = len(race) - len(inc)
+            check(len(race) == len(origin), f"every call produced output ({len(race)} of {len(origin)})", failures)
+            check(n_stopped > 0 and n_complete > 0,
+                  f"the race happened: {n_stopped} calls cancelled, {n_complete} completed", failures)
+            print(f"  NOTE: {n_stopped} cancelled calls, {n_kept} of them returned rows from earlier iterations")
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
 
 
 if __name__ == "__main__":

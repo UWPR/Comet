@@ -81,7 +81,8 @@ public:
                                                vector<string>& strReturnPeptide,
                                                vector<string>& strReturnProtein,
                                                vector<vector<Fragment>>& matchedFragments,
-                                               vector<CometScores>& scores);
+                                               vector<CometScores>& scores,
+                                               bool& bIncomplete);
    virtual bool DoSingleSpectrumSearchChimeric(const int topN,
                                                const double dMZ,
                                                const int iMinPrecursorCharge,
@@ -95,7 +96,8 @@ public:
                                                vector<string>& strReturnPeptide,
                                                vector<string>& strReturnProtein,
                                                vector<vector<Fragment>>& matchedFragments,
-                                               vector<CometScores>& scores);
+                                               vector<CometScores>& scores,
+                                               bool& bIncomplete);
    virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                         const double dMaxQueryRT,
                                         const int topN,

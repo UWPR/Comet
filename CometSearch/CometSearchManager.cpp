@@ -3735,9 +3735,15 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
                                                         vector<string>& strReturnPeptide,
                                                         vector<string>& strReturnProtein,
                                                         vector<vector<Fragment>>& matchedFragments,
-                                                        vector<CometScores>& scores)
+                                                        vector<CometScores>& scores,
+                                                        bool& bIncomplete)
 {
    (void)topN;   // accepted for interface symmetry; one rank-1 row per iteration is reported (plan section 4.4)
+
+   // bIncomplete (CometInterfaces.h): set when the call stops before its normal end -- the
+   // max_index_runtime budget ran out (return true), or the search was cancelled / an index
+   // search failed (return false). Rows already appended are complete iterations and are kept.
+   bIncomplete = false;
 
    // A NaN dMaxExpect would pass every E-value (each "dExpect > dMaxExpect" is false), so it
    // is rejected like the other invalid arguments; +inf is allowed and means no cutoff.
@@ -3874,6 +3880,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          if (BudgetExpired())
          {
             bBudgetExhausted = true;
+            bIncomplete = true;
             break;
          }
 
@@ -3894,7 +3901,10 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          ++iCandidatesSearched;
 
          if (iRows == -2)
-            return false;              // index search failed / cancelled
+         {
+            bIncomplete = true;        // index search cancelled or failed: earlier rows are kept
+            return false;
+         }
 
          // 0 rows: rejected input, nothing scored, below minimum xcorr -- or the budget ran
          // out inside the core, which then discards the truncated search (plan 4.8).
@@ -3914,12 +3924,16 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          if (BudgetExpired())
          {
             bBudgetExhausted = true;
+            bIncomplete = true;
             break;
          }
       }
 
       if (g_cometStatus.IsCancel())
+      {
+         bIncomplete = true;           // cancelled: earlier iterations' rows are kept
          return false;
+      }
 
       if (bDebug)
       {
@@ -4000,8 +4014,10 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
                                                         vector<string>& strReturnPeptide,
                                                         vector<string>& strReturnProtein,
                                                         vector<vector<Fragment>>& matchedFragments,
-                                                        vector<CometScores>& scores)
+                                                        vector<CometScores>& scores,
+                                                        bool& bIncomplete)
 {
+   bIncomplete = false;
    if (iMinPrecursorCharge < 1 || iMaxPrecursorCharge < iMinPrecursorCharge)
       return false;
 
@@ -4025,7 +4041,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
    return DoSingleSpectrumSearchChimeric(topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
       iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks,
-      strReturnPeptide, strReturnProtein, matchedFragments, scores);
+      strReturnPeptide, strReturnProtein, matchedFragments, scores, bIncomplete);
 }
 
 

@@ -87,6 +87,13 @@ Two more environment variables, so a new knob needs no new positional argument:
 - Fixture numbers (the SPECTRUM line's m/z and every peak's m/z and intensity) are read
   with `strtod`, so `nan`, `inf` and `-inf` load as those values; T73 feeds invalid inputs
   through the API this way.
+- `RTS_REPRO_CANCEL_RACE=<us>` runs a thread that, until the workers finish, sleeps a random
+  0..us microseconds, calls `CancelSearch()`, and calls `ResetSearchStatus()` 20 us later, so
+  chimeric calls are cancelled at arbitrary points (test T82).
+- Chimeric output: a call that stopped early (`bIncomplete`) keeps its rows and adds a line
+  `MS2 <scan>\tINCOMPLETE budget` (`max_index_runtime` ran out, returned true) or `INCOMPLETE
+  stopped` (cancelled or an index search failed, returned false). `ERROR` means false without
+  `bIncomplete`, that is, invalid arguments.
 - `RTS_REPRO_FRAGMENTS=1` adds, after each result line, one `FRAG` line per matched fragment
   the API returned: `FRAG <scan>`, `row`, `type` (the `ION_SERIES_*` index: 0 a, 1 b, 2 c,
   3 x, 4 y, 5 z, 6 z+1), `num`, `z` (fragment charge), `mass` (the fragment's 1+ mass), `nl`
