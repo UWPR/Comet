@@ -3800,12 +3800,19 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    const int iDebug = ChimericDebugLevel();
    const bool bDebug = (iDebug >= 1);
 
-   // Candidate list: drop invalid charges and de-duplicate (same charge, m/z within the
-   // candidate's effective window -- the wrapper's same_precursor_ppm skip), keeping the
-   // first. Candidates whose mass falls outside the index's range are skipped per
-   // iteration below (decision 8) rather than here, so the trace can report them.
-   std::vector<PrecursorCandidate> vCand;
-   vCand.reserve(vPrecursors.size());
+   // Candidate list: drop invalid candidates and exact duplicates, keep everything else in
+   // the caller's order. Candidates whose mass falls outside the index's range are skipped
+   // per iteration below (decision 8) rather than here, so the trace can report them.
+   //
+   // Precursor merging is left to the caller (2026-11-08): only a candidate identical to an
+   // earlier one -- same charge, same m/z, same effective tolerance, so the same search -- is
+   // dropped. The earlier rule merged same-charge candidates whose m/z lay within the incoming
+   // candidate's search tolerance: it depended on list order (a kept candidate's window need
+   // not cover a dropped one's precursor) and merged genuinely different precursors under a
+   // wide tolerance. Whatever builds the list knows the instrument's mass accuracy; a near-
+   // duplicate costs one extra search and cannot cause a duplicate row (one row per iteration).
+   std::vector<PrecursorCandidate> vValid;
+   vValid.reserve(vPrecursors.size());
    for (const PrecursorCandidate& c : vPrecursors)
    {
       // Invalid candidates are dropped, not fatal: one bad entry from a mixed candidate source
@@ -3813,19 +3820,42 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
       // preprocessing (the mass gate below is NaN-safe too, and so is the preprocess core).
       if (c.iCharge < 1 || !(std::isfinite(c.dMZ) && c.dMZ > 0.0))
          continue;
-      const double dTol = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
-      const double dDupWindow = (dTol > 0.0) ? dTol : 1e-6;   // configured (ppm) tolerance: exact duplicates only
-      bool bDup = false;
-      for (const PrecursorCandidate& k : vCand)
-      {
-         if (k.iCharge == c.iCharge && fabs(k.dMZ - c.dMZ) <= dDupWindow)
-         {
-            bDup = true;
-            break;
-         }
-      }
-      if (!bDup)
-         vCand.push_back(c);
+      PrecursorCandidate v = c;
+      v.dToleranceMZ = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
+      if (!(v.dToleranceMZ > 0.0))
+         v.dToleranceMZ = 0.0;   // the configured tolerance (NaN / negative / -0.0 normalized)
+      vValid.push_back(v);
+   }
+
+   // Exact duplicates by sorting indices on (charge, m/z, tolerance), then (index) so the
+   // first occurrence is the one kept: O(n log n) for any list size.
+   std::vector<size_t> vOrder(vValid.size());
+   for (size_t i = 0; i < vOrder.size(); ++i)
+      vOrder[i] = i;
+   std::sort(vOrder.begin(), vOrder.end(), [&vValid](size_t a, size_t b)
+   {
+      const PrecursorCandidate& x = vValid[a];
+      const PrecursorCandidate& y = vValid[b];
+      if (x.iCharge != y.iCharge) return x.iCharge < y.iCharge;
+      if (x.dMZ != y.dMZ) return x.dMZ < y.dMZ;
+      if (x.dToleranceMZ != y.dToleranceMZ) return x.dToleranceMZ < y.dToleranceMZ;
+      return a < b;
+   });
+   std::vector<char> vbDuplicate(vValid.size(), 0);
+   for (size_t k = 1; k < vOrder.size(); ++k)
+   {
+      const PrecursorCandidate& prev = vValid[vOrder[k - 1]];
+      const PrecursorCandidate& cur = vValid[vOrder[k]];
+      if (cur.iCharge == prev.iCharge && cur.dMZ == prev.dMZ && cur.dToleranceMZ == prev.dToleranceMZ)
+         vbDuplicate[vOrder[k]] = 1;
+   }
+
+   std::vector<PrecursorCandidate> vCand;
+   vCand.reserve(vValid.size());
+   for (size_t i = 0; i < vValid.size(); ++i)
+   {
+      if (!vbDuplicate[i])
+         vCand.push_back(vValid[i]);
    }
    if (vCand.empty())
       return false;

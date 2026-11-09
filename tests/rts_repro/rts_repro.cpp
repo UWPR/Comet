@@ -53,6 +53,7 @@ struct FixtureSpectrum
    int scanNumber = 0;
    int charge = 0;
    double mz = 0.0;
+   double tolMZ = 0.0;   // optional 6th SPECTRUM field: this candidate's own tolerance (chimeric mode 2)
    vector<double> mass;
    vector<double> inten;
 };
@@ -83,6 +84,9 @@ static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
       int numPeaks = 0;
       iss >> tag >> s.scanNumber >> s.charge >> szMZ >> numPeaks;
       s.mz = ParseDouble(szMZ);
+      string szTol;
+      if (iss >> szTol)
+         s.tolMZ = ParseDouble(szTol);   // optional: per-candidate tolerance in m/z (0 = the per-call value)
 
       if (numPeaks <= 0)
          continue;
@@ -453,7 +457,7 @@ int main(int argc, char** argv)
          {
             vector<PrecursorCandidate> vCand;
             for (size_t k : jobs[j])
-               vCand.emplace_back(spectra[k].mz, spectra[k].charge, 0.0);
+               vCand.emplace_back(spectra[k].mz, spectra[k].charge, spectra[k].tolMZ);
             ok = mgr->DoSingleSpectrumSearchChimeric(1, vCand, dTolMZ, dMaxExpect, iMaxPeptides,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
                vPeptide, vProtein, vFrag, vScores);

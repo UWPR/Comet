@@ -7384,5 +7384,105 @@ def test_t74_minimum_peaks_counting(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T75 -- chimeric explicit-list candidates: only exact duplicates are dropped. The old rule
+# merged same-charge candidates whose m/z lay within the incoming candidate's tolerance, so the
+# result depended on list order (the kept candidate's window need not cover the dropped one's
+# precursor) and different precursors merged under a wide tolerance. Now a candidate is dropped
+# only when an earlier one has the same charge, m/z and effective tolerance. rts_repro's
+# optional 6th SPECTRUM field sets a candidate's own tolerance (m/z).
+# ---------------------------------------------------------------------------
+
+@register("t75_chimeric_exact_duplicates")
+def test_t75_chimeric_exact_duplicates(comet_exe):
+    """T75: DoSingleSpectrumSearchChimeric() drops only exact duplicate candidates (same charge, m/z and
+    tolerance): two nearby 2+ candidates with +/- 0.5 m/z windows find the peptide in either list order; an exact
+    duplicate is searched once while a candidate 0.17 ppm away is searched too; the same m/z with two different
+    tolerances is searched twice."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks.sort()
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2   # 582.319
+
+        def fixture(name, cands):
+            """cands: [(m/z string, tolerance)]; the first block carries the spectrum, the rest one dummy peak."""
+            lines = []
+            for k, (mz, tol) in enumerate(cands):
+                pk = peaks if k == 0 else [(500.0, 1.0)]
+                lines.append(f"SPECTRUM 1 2 {mz} {len(pk)} {tol}")
+                lines += [f"{m:.5f} {i:.1f}" for m, i in pk]
+            path = tmp / f"{name}.txt"
+            path.write_text("\n".join(lines) + "\n")
+            return path
+
+        mz2s = f"{mz2:.6f}"
+        near = f"{mz2 + 1e-4:.6f}"   # 0.17 ppm away: a different candidate, however close
+        cases = {
+            # name: (candidates, check)
+            "pair_low_first": ([("581.750000", 0.5), ("582.200000", 0.5)], "finds"),
+            "pair_high_first": ([("582.200000", 0.5), ("581.750000", 0.5)], "finds"),
+            "exact_duplicate": ([(mz2s, 0), (mz2s, 0), (near, 0)], 2),
+            "two_tolerances": ([(mz2s, 0.5), (mz2s, 1.0)], 2),
+            "same_tolerance": ([(mz2s, 0.5), (mz2s, 0.5)], 1),
+        }
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            for name, (cands, want) in cases.items():
+                fx = fixture(name, cands)
+                out = tmp / f"{name}.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, 1, extra_args=["2", "0", "0", "0", "0.01", "5"],
+                                   env={"RTS_CHIMERIC_DEBUG": "1"})
+                if not check(rc == 0 and out.exists(), f"{name}: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1200:])
+                    continue
+                rows = _t67_rows(out).get(1, [])
+                m = re.search(r"^RTS_CHIMERIC iter=0 candidates=(\d+) .*$", log, re.M)
+                if want == "finds":
+                    got = [(x.get("peptide"), x.get("iter")) for x in rows if "peptide" in x]
+                    check(got[:1] == [(pep, 0)], f"{name}: {pep} found at iteration 0 whatever the list order "
+                          f"(got {got or rows})", failures)
+                    check(m is not None and int(m.group(1)) == 2, f"{name}: both nearby candidates searched "
+                          f"({m.group(0) if m else 'no trace'})", failures)
+                else:
+                    check(m is not None and int(m.group(1)) == want, f"{name}: {want} candidate search(es) in iteration 0 "
+                          f"({m.group(0) if m else 'no trace'})", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

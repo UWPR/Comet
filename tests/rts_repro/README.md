@@ -152,8 +152,12 @@ resulting fixture file.
 Format: repeated blocks of
 
 ```
-SPECTRUM <scanNumber> <charge> <precursorMz> <numPeaks>
+SPECTRUM <scanNumber> <charge> <precursorMz> <numPeaks> [toleranceMZ]
 <mass1> <intensity1>
 <mass2> <intensity2>
 ...
 ```
+
+The optional `toleranceMZ` is that candidate's own precursor tolerance in m/z, used by the
+chimeric explicit-list form (`chimeric` 2) as `PrecursorCandidate::dToleranceMZ`; absent or 0
+means the per-call `tolMZ` (test T75).
