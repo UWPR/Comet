@@ -70,8 +70,7 @@ public:
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
                                                    vector<CometScores>& scores);
-   virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                               const std::vector<PrecursorCandidate>& vPrecursors,
+   virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
                                                const double dPrecursorToleranceMZ,
                                                const double dMaxExpect,
                                                const int iMaxPeptidesPerSpectrum,
@@ -83,8 +82,7 @@ public:
                                                vector<vector<Fragment>>& matchedFragments,
                                                vector<CometScores>& scores,
                                                bool& bIncomplete);
-   virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                               const double dMZ,
+   virtual bool DoSingleSpectrumSearchChimeric(const double dMZ,
                                                const int iMinPrecursorCharge,
                                                const int iMaxPrecursorCharge,
                                                const double dPrecursorToleranceMZ,

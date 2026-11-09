@@ -139,12 +139,14 @@ without `.raw` access:
 python3 tests/rts_repro/mzxml_to_fixture.py 20170103_HelaQC_01.mzXML > hela.txt
 ```
 
-## Using this from tests/unit/run_tests.py (t22_rts_fi, t22_rts_pi, t67_chimeric)
+## Using this from tests/unit/run_tests.py
 
-`tests/unit/run_tests.py` drives this reproducer as part of its `--integration` suite
-(see CLAUDE.md's Testing section). It builds `rts_repro` on demand (the same `g++`
-invocation as above) if the binary isn't already present, then runs two checks per index
-type (FI_DB via `-i`, PI_DB via `-j`):
+`tests/unit/run_tests.py` drives this reproducer from the T22 variants (integration tests,
+`--integration`) and from the regular unit tests T43, T67, T68, T71-T77 and T81-T83 (see
+`tests/tests.md`). It builds `rts_repro` once per run (the same `g++` invocation as above)
+when the binary is missing or older than `rts_repro.cpp` or any library it links; a failed
+build fails those tests rather than skipping them. T22 runs two checks per index type
+(FI_DB via `-i`, PI_DB via `-j`):
 
 1. **Ground truth**: builds an FI_DB/PI_DB from `tests/unit/data/t19_ascore_fidb.fasta`
    (the same unambiguous single-phospho-peptide fixture T19/T20 use for the batch path)

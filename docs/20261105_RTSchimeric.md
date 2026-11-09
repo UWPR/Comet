@@ -30,7 +30,7 @@ delta-Cn, plus the charge state and iteration number it was found at.
 | 3 | Fragment removal | Remove every bin a theoretical fragment of the winning PSM can be credited in: all enabled ion series, fragment charges 1..`usiMaxFragCharge`, variable-mod neutral-loss variants, plus the flanking bins when `theoretical_fragment_ions = 0` (xcorr credits those at half weight), plus the +1..+N 13C isotope peaks of fragments that actually have a peak (N = `chimeric_remove_isotopes`, default 2). This is the model `mango_search_wrapper.py` validated (see "Prior art" below); the knobs stay so the defaults can be confirmed on real high-resolution data. Precursor-derived peaks stay with `remove_precursor_peak` (evaluated per pass with that pass's charge). |
 | 4 | Decoy winners | Treated exactly like targets: reported, fragments removed, iteration continues. Needed for honest FDR on this path. |
 | 5 | Termination guards | `iMaxPeptidesPerSpectrum` cap passed by the caller; `max_index_runtime` is a budget for the whole call; preprocessing returning null (too few peaks) ends the loop. |
-| 6 | Rows per iteration | Only the winning PSM. `topN` is still accepted (passed through to the per-candidate core) but the chimeric loop reports one row per iteration. Multiple IDs at the same charge from different iterations are legitimate and expected. |
+| 6 | Rows per iteration | Only the winning PSM; the chimeric loop reports one row per iteration. Neither overload takes a `topN` (removed 2026-11-09: it was accepted and ignored, an API trap; a runner-up option would be a new parameter, section 11). Multiple IDs at the same charge from different iterations are legitimate and expected. |
 | 7 | Where charge lives | New fields `iCharge` and `iIteration` on `CometScores` / `ScoreWrapper`; no parallel out-vectors. The existing function fills `iCharge` too. |
 | 8 | Charge/mass out of range | A candidate whose MH+ lies above `dPeptideMassHigh` is skipped silently; it never fails the call. There is no lower bound, the same gate `DoSingleSpectrumSearchMultiResults()` applies: with an isotope error or a wide m/z tolerance a precursor just below `dPeptideMassLow` can still match a peptide inside the range (changed 2026-11-09; before, candidates below the range were skipped too). |
 | 9 | Cost | Measured with the benchmark harness; the charge/candidate loop stays sequential within a call (the C# layer already parallelises across spectra). |
@@ -147,8 +147,7 @@ and `CometSearchManager.cpp`:
 ```cpp
 // Core form: explicit precursor candidates (e.g. deconvolved from the MS1 isolation window,
 // or the Z lines of a multi-Z .ms2 scan).
-virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                            const std::vector<PrecursorCandidate>& vPrecursors,
+virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
                                             const double dPrecursorToleranceMZ,   // per-call override; 0 = configured tolerance
                                             const double dMaxExpect,
                                             const int iMaxPeptidesPerSpectrum,
@@ -158,11 +157,11 @@ virtual bool DoSingleSpectrumSearchChimeric(const int topN,
                                             vector<string>& strReturnPeptide,
                                             vector<string>& strReturnProtein,
                                             vector<vector<Fragment>>& matchedFragments,
-                                            vector<CometScores>& scores) = 0;
+                                            vector<CometScores>& scores,
+                                            bool& bIncomplete) = 0;
 
 // Convenience form: one m/z expanded across [iMinPrecursorCharge, iMaxPrecursorCharge].
-virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                            const double dMZ,
+virtual bool DoSingleSpectrumSearchChimeric(const double dMZ,
                                             const int iMinPrecursorCharge,
                                             const int iMaxPrecursorCharge,
                                             const double dPrecursorToleranceMZ,
@@ -174,7 +173,8 @@ virtual bool DoSingleSpectrumSearchChimeric(const int topN,
                                             vector<string>& strReturnPeptide,
                                             vector<string>& strReturnProtein,
                                             vector<vector<Fragment>>& matchedFragments,
-                                            vector<CometScores>& scores) = 0;
+                                            vector<CometScores>& scores,
+                                            bool& bIncomplete) = 0;
 ```
 
 Return value: `true` if the call ran to a normal termination (including "zero peptides
@@ -265,10 +265,10 @@ rank-1 row (peptide string, protein string, matched fragments) is microseconds a
 multi-millisecond index search, so doing it for every candidate and keeping the best is
 simpler than keeping a per-candidate copy of the 40 KB buffer.
 
-`topN` is accepted for interface symmetry and is honoured by the convenience overload
-exactly as by the list form: the core is always asked for 1 row per candidate. If a
-future caller wants the losing candidates or the runner-up rows, `topN > 1` is the natural
-place to hang that; the plan does not implement it now.
+The core is always asked for 1 row per candidate. Neither overload takes a `topN`: one was
+accepted "for interface symmetry" and ignored until 2026-11-09, when it was removed, since a
+caller passing `topN > 1` silently got one row per iteration. If a future caller wants the
+losing candidates or the runner-up rows, that is a new parameter (section 11).
 
 ### 4.5 Fragment removal
 
@@ -487,7 +487,7 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome: the wrapper's removal model confirmed (isotope removal is what matters); `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (+34% confident later IDs, decoy rate halved); the +/- 1 m/z window, not the charge range, is what finds chimeras (2,914 vs 445 confident later IDs); `isotope_error = 2` is worth +42% on the plain RTS search and is recommended for `SearchMS1MS2.cs` independently; cost 7.0 ms/spectrum/thread vs 0.63 for the plain search. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
 | 2026-11-06 | 4b | Review of the re-search floor (section 10.7): `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's real-candidate count (`RTS_CHIMERIC_CAND`); the E-value fit and raw histogram dump became `COMET_EVALUE_TRACE` in `CalculateEValue()` for every search path (the histogram-fill project's Phase 0); `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
 | 2026-11-06 | 6 | `chimeric_fragindex_min_ions_score` and `Query::iFragIndexMinIonsScoreOverride` removed: `fragindex_histogram_fill` (default 100, the histogram-fill project's Phase 3) makes FI E-values honest on every query and the chimeric floor a byte-for-byte no-op. Harness `dMaxExpect` defaults 0.05 -> 0.1; `rts_repro` and `SearchChimeric.cs` lose their min-ions arguments. At the new defaults (fill 100, no floor, gate 0.1) the full-file chimeric run reports 22,930 confident PSMs vs 22,453 for the best Phase 4 configuration. |
-| 2026-11-09 | review | Lower-severity review items. The candidate mass gate is now the one `DoSingleSpectrumSearchMultiResults()` uses, only above `dPeptideMassHigh` (decision 8): a precursor just below the range whose window or isotope offset reaches an in-range peptide used to be skipped. Outside the chimeric loop: `DoSingleSpectrumSearchMultiResults()` returns false for `topN < 1`, `COMET_EVALUE_TRACE`'s `tope` follows the 999 reporting rules, `SearchChimeric.cs` reports bad input with exit code 1 instead of an unhandled exception, and the top-level Makefile relinks `comet.exe` after an MSToolkit-only change. Tests T83, T84. |
+| 2026-11-09 | review | Lower-severity review items. The candidate mass gate is now the one `DoSingleSpectrumSearchMultiResults()` uses, only above `dPeptideMassHigh` (decision 8): a precursor just below the range whose window or isotope offset reaches an in-range peptide used to be skipped. Outside the chimeric loop: `DoSingleSpectrumSearchMultiResults()` returns false for `topN < 1`, `COMET_EVALUE_TRACE`'s `tope` follows the 999 reporting rules, `SearchChimeric.cs` reports bad input with exit code 1 instead of an unhandled exception, and the top-level Makefile relinks `comet.exe` after an MSToolkit-only change. Tests T83, T84. Cleanup: `topN` removed from both chimeric overloads (native and wrapper; it was accepted and ignored), the wrapper overloads share one search-and-convert helper, and the synthetic-spectrum helpers moved into `tests/unit/fixture_peptides.py`. |
 | 2026-11-08 | review | Calls that stop early keep their rows, flagged (review item 15). Both `DoSingleSpectrumSearchChimeric()` overloads, native and wrapper, gain a `bIncomplete` output. With the budget out, the call returns `true` with `bIncomplete` and the rows found so far. When cancelled or when a search fails (core -2), it returns `false` with `bIncomplete` and keeps the completed iterations' rows. Invalid arguments give `false` with no rows. A separate output, not a per-row flag, so a call that stops before keeping any PSM is still marked. The wrapper also keeps the rows on a caught native exception when the four vectors are aligned. `SearchChimeric.cs` and `rts_repro` write the rows and then an `INCOMPLETE budget|stopped` line; `RealtimeSearch.exe chimeric --max-runtime 1` showed it end to end. T82 is a cancel race through `rts_repro`'s `RTS_REPRO_CANCEL_RACE`: 600 calls, about 440 cancelled, over 100 of those returning rows. Every cancelled call kept a prefix of its uncancelled result, every completed call matched it exactly, and no call returned `false` without the flag. T72 checks the budget marker. |
 | 2026-11-08 | review | Removal knobs (review item 14). `chimeric_remove_flank_bins` and `chimeric_remove_isotopes` were loop bounds with no range check. A flank of 1000 stripped nearly every peak, so T67's second peptides were lost; 100,000 threw `std::bad_alloc`. An isotope count of `INT_MAX` looped about 2 billion times per observed peak: hours on Windows, `bad_alloc` or a test timeout on Linux, and an int overflow in the isotope m/z. `chimeric_remove_isotopes` is now clamped at init to 0..3, with a warning when a value changes. `chimeric_remove_flank_bins` is removed: the flank always follows `theoretical_fragment_ions` (+/- 1 bin iff it is 0, the bins the scorer credits; 10.2 found flanks alone change little). `rts_repro` keeps, and ignores, its `flankBins` argument, and `RealtimeSearch.exe chimeric` drops `--flank`. Defaults are unchanged: -1 already followed `theoretical_fragment_ions`. This removes the last known way for native code to throw through the wrapper (item 11). T81. |
 | 2026-11-08 | review | Precursor charge limits (review item 10). The charge-range overload now intersects the requested range with 1..`MAX_PRECURSOR_CHARGE` before allocating, returning `false` when nothing is left: 10..12 used to return `true` with nothing searched, and 2..`INT_MAX` reserved about 2 billion candidates and aborted with `std::bad_alloc` through the wrapper. `PreprocessSingleSpectrumCore()` now rejects a charge outside `min_precursor_charge` / `max_precursor_charge`, so both RTS entry points honor them as batch does. They were ignored before, although the RealtimeSearch harnesses set `max_precursor_charge = 6`. HeLa has no 7+ spectra: the full-file plain RTS search (42,030 spectra, FI) is byte-identical. T77. |
@@ -718,7 +718,8 @@ candidate; 5,219 queries for the counts, 102 with full histograms):
 - Per-candidate tolerance callers (decision 15) -- the field exists; nothing sets it yet.
 - Precursor candidates from an in-process MS1 scan (RawFileReader) rather than `.ms2` `Z`
   lines (decision 10).
-- Returning runner-up rows per iteration (`topN > 1`), and any combined/paired scoring
+- Returning runner-up rows per iteration (a new parameter; the ignored `topN` was removed
+  2026-11-09), and any combined/paired scoring
   of the reported peptides.
 - ~~`use_NL_ions = 1` water/ammonia-loss peaks: scored by xcorr but not in the removal
   set~~ -- closed 2026-11-06: `AddChimericRemovalBins()` now also clears the ion - H2O and

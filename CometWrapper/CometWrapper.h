@@ -69,8 +69,7 @@ namespace CometWrapper {
         // where it was found. bIncomplete: the call stopped before its normal end -- true with
         // the rows found so far when max_index_runtime ran out; false with the complete earlier
         // iterations' rows when the search was cancelled or failed (CometInterfaces.h).
-        bool DoSingleSpectrumSearchChimeric(int topN,
-                                            cli::array<double>^ pdCandidateMZ,
+        bool DoSingleSpectrumSearchChimeric(cli::array<double>^ pdCandidateMZ,
                                             cli::array<int>^ piCandidateCharge,
                                             cli::array<double>^ pdCandidateToleranceMZ,
                                             double dPrecursorToleranceMZ,
@@ -85,8 +84,7 @@ namespace CometWrapper {
                                             [Out] List<ScoreWrapper^>^% score,
                                             [Out] bool% bIncomplete);
         // Charge-range form: one m/z across [iMinPrecursorCharge, iMaxPrecursorCharge].
-        bool DoSingleSpectrumSearchChimeric(int topN,
-                                            double dMZ,
+        bool DoSingleSpectrumSearchChimeric(double dMZ,
                                             int iMinPrecursorCharge,
                                             int iMaxPrecursorCharge,
                                             double dPrecursorToleranceMZ,

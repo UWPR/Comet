@@ -201,6 +201,104 @@ static void EmptySingleSpectrumOutputs(List<String^>^% szPeptide,
 }
 
 
+// The native calls of the two chimeric overloads, as function objects over the pinned peak
+// arrays (a lambda is not allowed inside a member function of a managed class, C3923).
+struct ChimericListCall
+{
+   ICometSearchManager* pMgr;
+   const std::vector<PrecursorCandidate>* pvPrecursors;
+   double dPrecursorToleranceMZ;
+   double dMaxExpect;
+   int iMaxPeptidesPerSpectrum;
+   double* pdMass;
+   double* pdInten;
+   int iNumPeaks;
+
+   bool operator()(std::vector<std::string>& vPep, std::vector<std::string>& vProt,
+                   std::vector<std::vector<Fragment>>& vFrag, std::vector<CometScores>& vScores,
+                   bool& bNativeIncomplete) const
+   {
+      return pMgr->DoSingleSpectrumSearchChimeric(*pvPrecursors, dPrecursorToleranceMZ, dMaxExpect,
+         iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks, vPep, vProt, vFrag, vScores, bNativeIncomplete);
+   }
+};
+
+struct ChimericRangeCall
+{
+   ICometSearchManager* pMgr;
+   double dMZ;
+   int iMinPrecursorCharge;
+   int iMaxPrecursorCharge;
+   double dPrecursorToleranceMZ;
+   double dMaxExpect;
+   int iMaxPeptidesPerSpectrum;
+   double* pdMass;
+   double* pdInten;
+   int iNumPeaks;
+
+   bool operator()(std::vector<std::string>& vPep, std::vector<std::string>& vProt,
+                   std::vector<std::vector<Fragment>>& vFrag, std::vector<CometScores>& vScores,
+                   bool& bNativeIncomplete) const
+   {
+      return pMgr->DoSingleSpectrumSearchChimeric(dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
+         dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks,
+         vPep, vProt, vFrag, vScores, bNativeIncomplete);
+   }
+};
+
+// The shared tail of both chimeric overloads: run the native search (fnSearch, one of the
+// function objects above), contain a native exception, and convert the rows. The rows
+// appended before an exception are complete iterations, so they are kept, as a cancelled call
+// keeps them (bIncomplete true, return false), unless an exception mid-row left the four
+// vectors misaligned. strError (nullptr on entry) receives the exception text; the caller
+// stores it for GetLastWrapperError().
+template <typename FnSearch>
+static bool RunChimericSearch(const FnSearch& fnSearch,
+   String^% strError,
+   List<String^>^% szPeptide,
+   List<String^>^% szProtein,
+   List<List<FragmentWrapper^>^>^% matchingFragments,
+   List<ScoreWrapper^>^% score,
+   bool% bIncomplete)
+{
+   std::vector<std::string> stdPeptides;
+   std::vector<std::string> stdProteins;
+   std::vector<CometScores> stdScores;
+   std::vector<std::vector<Fragment>> stdMatchedFrags;
+
+   bool ok = false;
+   bool bNativeIncomplete = false;
+   try
+   {
+      ok = fnSearch(stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
+   }
+   catch (const std::exception& e)
+   {
+      strError = "native exception: " + gcnew String(e.what());
+   }
+   catch (...)
+   {
+      strError = "unknown native exception";
+   }
+   if (strError != nullptr)
+   {
+      bIncomplete = true;
+      const size_t n = stdScores.size();
+      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
+         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+            szPeptide, szProtein, matchingFragments, score);
+      else
+         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+   bIncomplete = bNativeIncomplete;
+
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
+   return ok;
+}
+
+
 String^ CometSearchManagerWrapper::GetLastWrapperError()
 {
    return s_strLastWrapperError;
@@ -270,7 +368,6 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
 
 
 bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
-   int topN,
    cli::array<double>^ pdCandidateMZ,
    cli::array<int>^ piCandidateCharge,
    cli::array<double>^ pdCandidateToleranceMZ,
@@ -318,53 +415,18 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
 
    pin_ptr<double> ptrMasses = &pdMass[0];
    pin_ptr<double> ptrInten = &pdInten[0];
+   ChimericListCall call = { _pSearchMgr, &vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
+                             iMaxPeptidesPerSpectrum, ptrMasses, ptrInten, iNumPeaks };
 
-   std::vector<std::string> stdPeptides;
-   std::vector<std::string> stdProteins;
-   std::vector<CometScores> stdScores;
-   std::vector<std::vector<Fragment>> stdMatchedFrags;
-
-   bool ok = false;
-   bool bNativeIncomplete = false;
-   try
-   {
-      ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
-         topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
-         ptrMasses, ptrInten, iNumPeaks,
-         stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
-   }
-   catch (const std::exception& e)
-   {
-      s_strLastWrapperError = "native exception: " + gcnew String(e.what());
-   }
-   catch (...)
-   {
-      s_strLastWrapperError = "unknown native exception";
-   }
-   if (s_strLastWrapperError != nullptr)
-   {
-      // The rows appended before the exception are complete iterations -- keep them, as a
-      // cancelled call does, unless an exception mid-row left the four vectors misaligned.
-      bIncomplete = true;
-      const size_t n = stdScores.size();
-      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
-         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
-            szPeptide, szProtein, matchingFragments, score);
-      else
-         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
-      return false;
-   }
-   bIncomplete = bNativeIncomplete;
-
-   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
-      szPeptide, szProtein, matchingFragments, score);
-
+   String^ strError = nullptr;
+   const bool ok = RunChimericSearch(call,
+      strError, szPeptide, szProtein, matchingFragments, score, bIncomplete);
+   s_strLastWrapperError = strError;
    return ok;
 }
 
 
 bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
-   int topN,
    double dMZ,
    int iMinPrecursorCharge,
    int iMaxPrecursorCharge,
@@ -391,47 +453,14 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
 
    pin_ptr<double> ptrMasses = &pdMass[0];
    pin_ptr<double> ptrInten = &pdInten[0];
+   ChimericRangeCall call = { _pSearchMgr, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
+                              dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, ptrMasses, ptrInten,
+                              iNumPeaks };
 
-   std::vector<std::string> stdPeptides;
-   std::vector<std::string> stdProteins;
-   std::vector<CometScores> stdScores;
-   std::vector<std::vector<Fragment>> stdMatchedFrags;
-
-   bool ok = false;
-   bool bNativeIncomplete = false;
-   try
-   {
-      ok = _pSearchMgr->DoSingleSpectrumSearchChimeric(
-         topN, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge, dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum,
-         ptrMasses, ptrInten, iNumPeaks,
-         stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
-   }
-   catch (const std::exception& e)
-   {
-      s_strLastWrapperError = "native exception: " + gcnew String(e.what());
-   }
-   catch (...)
-   {
-      s_strLastWrapperError = "unknown native exception";
-   }
-   if (s_strLastWrapperError != nullptr)
-   {
-      // The rows appended before the exception are complete iterations -- keep them, as a
-      // cancelled call does, unless an exception mid-row left the four vectors misaligned.
-      bIncomplete = true;
-      const size_t n = stdScores.size();
-      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
-         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
-            szPeptide, szProtein, matchingFragments, score);
-      else
-         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
-      return false;
-   }
-   bIncomplete = bNativeIncomplete;
-
-   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
-      szPeptide, szProtein, matchingFragments, score);
-
+   String^ strError = nullptr;
+   const bool ok = RunChimericSearch(call,
+      strError, szPeptide, szProtein, matchingFragments, score, bIncomplete);
+   s_strLastWrapperError = strError;
    return ok;
 }
 

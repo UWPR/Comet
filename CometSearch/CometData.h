@@ -113,10 +113,10 @@ struct PrecursorCandidate
         dToleranceMZ(0.0)
     { }
 
-    PrecursorCandidate(double mz, int z, double tol = 0.0) :
-        dMZ(mz),
-        iCharge(z),
-        dToleranceMZ(tol)
+    PrecursorCandidate(double dMZIn, int iChargeIn, double dToleranceMZIn = 0.0) :
+        dMZ(dMZIn),
+        iCharge(iChargeIn),
+        dToleranceMZ(dToleranceMZIn)
     { }
 };
 
@@ -164,35 +164,9 @@ struct CometScores
         iIteration(0)
     { }
 
-    CometScores(const CometScores& a) :
-        xCorr(a.xCorr),
-        dSp(a.dSp),
-        dCn(a.dCn),
-        dExpect(a.dExpect),
-        dAScorePro(a.dAScorePro),
-        mass(a.mass),
-        matchedIons(a.matchedIons),
-        totalIons(a.totalIons),
-        sAScoreProSiteScores(a.sAScoreProSiteScores),
-        iCharge(a.iCharge),
-        iIteration(a.iIteration)
-    { }
-
-    CometScores& operator=(const CometScores& a)
-    {
-        xCorr = a.xCorr;
-        dSp = a.dSp;
-        dCn = a.dCn;
-        dExpect = a.dExpect;
-        dAScorePro = a.dAScorePro;
-        mass = a.mass;
-        matchedIons = a.matchedIons;
-        totalIons = a.totalIons;
-        sAScoreProSiteScores = a.sAScoreProSiteScores;
-        iCharge = a.iCharge;
-        iIteration = a.iIteration;
-        return *this;
-    }
+    // Copy and move are the compiler-generated memberwise ones (a hand-written copy
+    // constructor and assignment, removed 2026-11-09, did the same and suppressed moves,
+    // and every new field had to be added to both).
 };
 
 struct CometScoresMS1

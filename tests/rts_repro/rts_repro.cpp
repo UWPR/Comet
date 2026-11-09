@@ -485,7 +485,7 @@ int main(int argc, char** argv)
          bool bIncomplete = false;
          if (iChimeric == 1)
          {
-            ok = mgr->DoSingleSpectrumSearchChimeric(1, s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides,
+            ok = mgr->DoSingleSpectrumSearchChimeric(s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
                vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }
@@ -494,7 +494,7 @@ int main(int argc, char** argv)
             vector<PrecursorCandidate> vCand;
             for (size_t k : jobs[j])
                vCand.emplace_back(spectra[k].mz, spectra[k].charge, spectra[k].tolMZ);
-            ok = mgr->DoSingleSpectrumSearchChimeric(1, vCand, dTolMZ, dMaxExpect, iMaxPeptides,
+            ok = mgr->DoSingleSpectrumSearchChimeric(vCand, dTolMZ, dMaxExpect, iMaxPeptides,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
                vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }

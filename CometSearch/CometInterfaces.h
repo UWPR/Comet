@@ -66,8 +66,7 @@ public:
       //                             the complete iterations before that and are valid;
       //   false, bIncomplete false: invalid arguments; no rows.
       // Rows are appended to the four output vectors, one complete row per kept iteration.
-      virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                                  const std::vector<PrecursorCandidate>& vPrecursors,
+      virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
                                                   const double dPrecursorToleranceMZ,
                                                   const double dMaxExpect,
                                                   const int iMaxPeptidesPerSpectrum,
@@ -80,8 +79,7 @@ public:
                                                   vector<CometScores>& scores,
                                                   bool& bIncomplete) = 0;
       // Same, with one precursor m/z expanded across [iMinPrecursorCharge, iMaxPrecursorCharge].
-      virtual bool DoSingleSpectrumSearchChimeric(const int topN,
-                                                  const double dMZ,
+      virtual bool DoSingleSpectrumSearchChimeric(const double dMZ,
                                                   const int iMinPrecursorCharge,
                                                   const int iMaxPrecursorCharge,
                                                   const double dPrecursorToleranceMZ,

@@ -2840,9 +2840,9 @@ static void AddChimericBinsAround(std::vector<int>& vBins,
                                   const int iIsotopes,
                                   const ChimericObservedPeakMap& mObserved)
 {
-   for (int d = -iFlank; d <= iFlank; ++d)
+   for (int iOffset = -iFlank; iOffset <= iFlank; ++iOffset)
    {
-      const int iB = iBin + d;
+      const int iB = iBin + iOffset;
       if (iB < 0)
          continue;
       vBins.push_back(iB);
@@ -2855,10 +2855,10 @@ static void AddChimericBinsAround(std::vector<int>& vBins,
          for (int k = 1; k <= iIsotopes; ++k)
          {
             const int iIso = BIN(it->second.first + k * C13_DIFF / iIonCharge);
-            for (int dd = -iFlank; dd <= iFlank; ++dd)
+            for (int iOffsetIso = -iFlank; iOffsetIso <= iFlank; ++iOffsetIso)
             {
-               if (iIso + dd >= 0)
-                  vBins.push_back(iIso + dd);
+               if (iIso + iOffsetIso >= 0)
+                  vBins.push_back(iIso + iOffsetIso);
             }
          }
       }
@@ -3072,7 +3072,7 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
 
    // RTS_CHIMERIC_DEBUG >= 2 (chimeric callers only): how many real candidates this search
    // scored, i.e. the real entries in the E-value histogram before GenerateXcorrDecoys()
-   // pads it -- the quantity the re-search candidate floor acts on (plan section 10).
+   // pads it -- the quantity fragindex_histogram_fill raises (docs/20261106_FI_evalue_histogram_fill.md).
    if (pvRemovalBins != nullptr && ChimericDebugLevel() >= 2)
    {
       fprintf(stderr, "RTS_CHIMERIC_CAND z=%d scored=%d hist=%u\n",
@@ -3233,9 +3233,6 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
       if (tElapsedTime >= g_staticParams.options.iMaxIndexRunTime)
          goto cleanup_results;
    }
-
-   // (The per-query E-value fit and histogram dump that used to be here is now
-   // COMET_EVALUE_TRACE in CometPostAnalysis::CalculateEValue(), for every search path.)
 
    // Step 5: Open database file for protein name retrieval.
    // For indexed databases (FI_DB, PI_DB), names are served from the in-memory
@@ -3729,8 +3726,7 @@ static int ChimericDebugLevel()
 // candidate through SearchSingleSpectrumCore(), keeps the best rank-1 PSM (lowest
 // E-value, ties by xcorr), reports it if it passes dMaxExpect, removes its fragment bins
 // and goes again. Everything mutable is per call / per thread; g_staticParams is only read.
-bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
-                                                        const std::vector<PrecursorCandidate>& vPrecursors,
+bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
                                                         const double dPrecursorToleranceMZ,
                                                         const double dMaxExpect,
                                                         const int iMaxPeptidesPerSpectrum,
@@ -3743,8 +3739,6 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
                                                         vector<CometScores>& scores,
                                                         bool& bIncomplete)
 {
-   (void)topN;   // accepted for interface symmetry; one rank-1 row per iteration is reported (plan section 4.4)
-
    // bIncomplete (CometInterfaces.h): set when the call stops before its normal end -- the
    // max_index_runtime budget ran out (return true), or the search was cancelled / an index
    // search failed (return false). Rows already appended are complete iterations and are kept.
@@ -3775,18 +3769,18 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    // duplicate costs one extra search and cannot cause a duplicate row (one row per iteration).
    std::vector<PrecursorCandidate> vValid;
    vValid.reserve(vPrecursors.size());
-   for (const PrecursorCandidate& c : vPrecursors)
+   for (const PrecursorCandidate& cand : vPrecursors)
    {
       // Invalid candidates are dropped, not fatal: one bad entry from a mixed candidate source
       // must not sink the rest. A non-finite or non-positive m/z would otherwise reach
       // preprocessing (the mass gate below is NaN-safe too, and so is the preprocess core).
-      if (c.iCharge < 1 || !(std::isfinite(c.dMZ) && c.dMZ > 0.0))
+      if (cand.iCharge < 1 || !(std::isfinite(cand.dMZ) && cand.dMZ > 0.0))
          continue;
-      PrecursorCandidate v = c;
-      v.dToleranceMZ = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
-      if (!(v.dToleranceMZ > 0.0))
-         v.dToleranceMZ = 0.0;   // the configured tolerance (NaN / negative / -0.0 normalized)
-      vValid.push_back(v);
+      PrecursorCandidate candKept = cand;
+      candKept.dToleranceMZ = (cand.dToleranceMZ > 0.0) ? cand.dToleranceMZ : dPrecursorToleranceMZ;
+      if (!(candKept.dToleranceMZ > 0.0))
+         candKept.dToleranceMZ = 0.0;   // the configured tolerance (NaN / negative / -0.0 normalized)
+      vValid.push_back(candKept);
    }
 
    // Exact duplicates by sorting indices on (charge, m/z, tolerance), then (index) so the
@@ -3880,7 +3874,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
       if (iDebug >= 2)
          fprintf(stderr, "RTS_CHIMERIC_ITER %d\n", iIteration);
 
-      for (const PrecursorCandidate& c : vCand)
+      for (const PrecursorCandidate& cand : vCand)
       {
          if (BudgetExpired())
          {
@@ -3893,17 +3887,17 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          // above dPeptideMassHigh (decision 8). There is no lower bound: with an isotope error or
          // a wide m/z tolerance a precursor just below dPeptideMassLow can still match a peptide
          // inside the range, and one that cannot simply finds nothing.
-         const double dMH = c.dMZ * c.iCharge - (c.iCharge - 1.0) * PROTON_MASS;
+         const double dMH = cand.dMZ * cand.iCharge - (cand.iCharge - 1.0) * PROTON_MASS;
          if (!(dMH <= g_staticParams.options.dPeptideMassHigh))
             continue;   // decision 8: silently skipped (NaN-safe: a NaN mass fails the test)
 
-         const double dTol = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
+         const double dTol = (cand.dToleranceMZ > 0.0) ? cand.dToleranceMZ : dPrecursorToleranceMZ;
 
          vPep.clear();
          vProt.clear();
          vFrag.clear();
          vSc.clear();
-         const int iRows = SearchSingleSpectrumCore(1, c.iCharge, c.dMZ, dTol,
+         const int iRows = SearchSingleSpectrumCore(1, cand.iCharge, cand.dMZ, dTol,
             tl_vMass.data(), tl_vInten.data(), (int)tl_vMass.size(), tStart,
             vPep, vProt, vFrag, vSc, &vBins);
          ++iCandidatesSearched;
@@ -3964,9 +3958,9 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
          std::string sMatched;
          std::string sRemoved;
          char szBuf[32];
-         for (const Fragment& f : vBestFrag)
+         for (const Fragment& frag : vBestFrag)
          {
-            snprintf(szBuf, sizeof(szBuf), "%d,", BIN((f.mass + (f.charge - 1) * PROTON_MASS) / f.charge));
+            snprintf(szBuf, sizeof(szBuf), "%d,", BIN((frag.mass + (frag.charge - 1) * PROTON_MASS) / frag.charge));
             sMatched += szBuf;
          }
          for (int iBin : vBestBins)
@@ -4009,8 +4003,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
 
 // Convenience form: one precursor m/z across a charge range -> the list form above.
-bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
-                                                        const double dMZ,
+bool CometSearchManager::DoSingleSpectrumSearchChimeric(const double dMZ,
                                                         const int iMinPrecursorCharge,
                                                         const int iMaxPrecursorCharge,
                                                         const double dPrecursorToleranceMZ,
@@ -4047,7 +4040,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    for (int z = iZmin; z <= iZmax; ++z)
       vPrecursors.emplace_back(dMZ, z, 0.0);   // 0 = inherit the per-call tolerance
 
-   return DoSingleSpectrumSearchChimeric(topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
+   return DoSingleSpectrumSearchChimeric(vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
       iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks,
       strReturnPeptide, strReturnProtein, matchedFragments, scores, bIncomplete);
 }

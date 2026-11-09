@@ -27,7 +27,7 @@
 
 #define FRAGINDEX_MIN_IONS_SCORE    3        // min # of matched ions for peptide to register for E-value xcorr histogram
 #define FRAGINDEX_MIN_IONS_REPORT   3        // min # of matched ions for peptide to be reported
-#define FRAGINDEX_HISTOGRAM_FILL    100      // fragindex_histogram_fill default (= FRAGINDEX_MAX_NUMSCORED): FI E-values
+#define FRAGINDEX_HISTOGRAM_FILL    FRAGINDEX_MAX_NUMSCORED   // fragindex_histogram_fill default: FI E-values
                                              // then match PI's on the same PSMs (docs/20261106_FI_evalue_histogram_fill.md)
 #define FRAGINDEX_MIN_MASS          200.0    // minimum fragment ion mass used to generate fragment index
 #define FRAGINDEX_MAX_MASS          2000.0   // maximum fragment ion mass used to generate fragment index

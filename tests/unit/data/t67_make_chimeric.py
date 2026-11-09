@@ -33,39 +33,13 @@ import os
 import random
 import sys
 
-PROTON = 1.00727646688
-H2O = 18.0105647
-MONO = {
-    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
-    "T": 101.047679, "C": 103.009185, "L": 113.084064, "I": 113.084064, "N": 114.042927,
-    "D": 115.026943, "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485,
-    "H": 137.058912, "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
-}
+# The shared masses and b/y helpers live in tests/unit/fixture_peptides.py; "python -I" leaves
+# this script's directory off sys.path, so tests/unit/ is added here.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from fixture_peptides import PROTON, H2O, by_ions, mz, neutral_mass  # noqa: E402
+
 # residues used to build random tryptic peptides (no C/M/W to keep things plain, no K/R inside)
 POOL = "GASPVTLNDQEHFY"
-
-
-def neutral_mass(pep):
-    return sum(MONO[c] for c in pep) + H2O
-
-
-def mz(pep, z):
-    return (neutral_mass(pep) + z * PROTON) / z
-
-
-def by_ions(pep, max_frag_charge):
-    """(m/z, series) for every b and y ion at charges 1..max_frag_charge, as Comet enumerates them."""
-    out = []
-    n = len(pep)
-    b = PROTON
-    y = H2O + PROTON
-    for i in range(n - 1):
-        b += MONO[pep[i]]
-        y += MONO[pep[n - 1 - i]]
-        for z in range(1, max_frag_charge + 1):
-            out.append(((b + (z - 1) * PROTON) / z, "b"))
-            out.append(((y + (z - 1) * PROTON) / z, "y"))
-    return out
 
 
 def random_tryptic(rng, length):

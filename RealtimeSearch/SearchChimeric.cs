@@ -332,7 +332,7 @@ namespace RealTimeSearch
                            }
                            r.Candidates = n;
                            bool bInc = false;
-                           r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(1, mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                           r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
                               s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
                            r.Incomplete = bInc;
                         }
@@ -340,7 +340,7 @@ namespace RealTimeSearch
                         {
                            r.Candidates = o.ZMax - o.ZMin + 1;
                            bool bInc;
-                           r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(1, r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                           r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
                               s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
                            r.Incomplete = bInc;
                         }

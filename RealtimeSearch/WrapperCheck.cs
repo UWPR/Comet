@@ -170,7 +170,7 @@ namespace RealTimeSearch
                List<string> vProt;
                List<List<FragmentWrapper>> vFrag;
                List<ScoreWrapper> vScore;
-               bool b = mgr.DoSingleSpectrumSearchChimeric(1, new double[] { dMZ }, new int[] { iCharge }, null, 0.0, 0.01, 5,
+               bool b = mgr.DoSingleSpectrumSearchChimeric(new double[] { dMZ }, new int[] { iCharge }, null, 0.0, 0.01, 5,
                   m, i, n, out vPep, out vProt, out vFrag, out vScore, out _);
                iCount = (vPep == null || vProt == null || vFrag == null || vScore == null) ? -1 : vPep.Count + vProt.Count + vFrag.Count + vScore.Count;
                return b;
@@ -180,7 +180,7 @@ namespace RealTimeSearch
                List<string> vProt;
                List<List<FragmentWrapper>> vFrag;
                List<ScoreWrapper> vScore;
-               bool b = mgr.DoSingleSpectrumSearchChimeric(1, dMZ, iCharge, iCharge, 0.0, 0.01, 5,
+               bool b = mgr.DoSingleSpectrumSearchChimeric(dMZ, iCharge, iCharge, 0.0, 0.01, 5,
                   m, i, n, out vPep, out vProt, out vFrag, out vScore, out _);
                iCount = (vPep == null || vProt == null || vFrag == null || vScore == null) ? -1 : vPep.Count + vProt.Count + vFrag.Count + vScore.Count;
                return b;
@@ -222,7 +222,7 @@ namespace RealTimeSearch
                string sEx = null;
                try
                {
-                  b = mgr.DoSingleSpectrumSearchChimeric(1, new double[] { dMZ, dMZ + 1.0 }, new int[] { iCharge }, null, 0.0, 0.01, 5,
+                  b = mgr.DoSingleSpectrumSearchChimeric(new double[] { dMZ, dMZ + 1.0 }, new int[] { iCharge }, null, 0.0, 0.01, 5,
                      pdMass, pdInten, L, out vPep, out vProt, out vFrag, out vScore, out _);
                }
                catch (Exception ex)

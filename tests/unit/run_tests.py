@@ -38,6 +38,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import legacy_cases  # noqa: E402
+import fixture_peptides  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "rts_repro"))
 import ms2_to_fixture  # noqa: E402
@@ -1751,16 +1752,13 @@ def _test_rts_index_type(comet_exe, index_flag, label):
     return failures
 
 
-# Monoisotopic residue masses for synthesizing fixture spectra (b/y singly-charged
-# ladders), matching the constants the committed t19_ascore_fidb.ms2 was built from.
-_MONO_RESIDUE_MASS = {
-    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
-    "T": 101.047679, "C": 103.009185, "L": 113.084064, "I": 113.084064, "N": 114.042927,
-    "D": 115.026943, "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485,
-    "H": 137.058912, "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
-}
-_PROTON_MASS = 1.007276
-_H2O_MASS = 18.010565
+# Monoisotopic residue masses and proton / water masses for synthesizing fixture spectra
+# (b/y singly-charged ladders), from tests/unit/fixture_peptides.py -- one copy shared with the
+# fixture generators in tests/unit/data/ (2026-11-09; before, the proton here was 1.007276
+# and the water 18.010565, a few 1e-7 Da off the generators' values).
+_MONO_RESIDUE_MASS = fixture_peptides.MONO
+_PROTON_MASS = fixture_peptides.PROTON
+_H2O_MASS = fixture_peptides.H2O
 
 
 def _theoretical_fixture_lines(scan, peptide, mods, charge):
@@ -6490,13 +6488,12 @@ def test_t65_required_varmod_index(comet_exe):
 # The synthetic spectrum has b and y ions (1+) of SSDTAGELK(S2 phospho) including both protein-terminus mods.
 # ---------------------------------------------------------------------------
 
-_T66_MASS = {"S": 87.032028, "D": 115.026943, "T": 101.047679, "A": 71.037114, "G": 57.021464,
-             "E": 129.042593, "L": 113.084064, "K": 128.094963}
+_T66_MASS = fixture_peptides.MONO
 
 
 def _t66_write_ms2(path, pep, phospho_pos, nterm, cterm, phospho=79.966331):
     res = [_T66_MASS[c] + (phospho if i == phospho_pos else 0.0) for i, c in enumerate(pep)]
-    proton, h2o = 1.007276, 18.010565
+    proton, h2o = fixture_peptides.PROTON, fixture_peptides.H2O
     ions = []
     for i in range(1, len(pep)):
         ions.append(sum(res[:i]) + nterm + proton)             # b
@@ -7031,21 +7028,12 @@ def test_t71_rts_z1_ions(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 2 * _T71_H_MONO + 15.9949146196
-        b_ions, y_ions = [], []
-        bm, ym = _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            b_ions.append(bm)
-            y_ions.append(ym)
+        b_ions, y_ions = fixture_peptides.by_ladder(pep)
         z1_ions = [y - (_T71_N_MONO + 2 * _T71_H_MONO) + _T71_H_MONO for y in y_ions]
         peaks = sorted([(m, 60.0) for m in b_ions] + [(m, 100.0) for m in y_ions] + [(m, 80.0) for m in z1_ions])
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        mz2 = fixture_peptides.mz(pep, 2)
         fixture = tmp / "t71.txt"
-        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+        fixture.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, mz2, peaks)) + "\n")
 
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
                                             mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
@@ -7122,21 +7110,14 @@ def test_t72_chimeric_budget(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks = fixture_peptides.by_peaks(pep)
         # 15 weak noise peaks, so the spectrum keeps minimum_peaks (10) after the target's removal
         # and an unlimited call goes on to iteration 1
-        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks += fixture_peptides.weak_noise()
         peaks.sort()
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        mz2 = fixture_peptides.mz(pep, 2)
         # explicit-list form: every block of scan 1 is a candidate; the first block's peaks are searched
-        lines = [f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}"] + [f"{m:.5f} {i:.1f}" for m, i in peaks]
+        lines = fixture_peptides.spectrum_block(1, 2, mz2, peaks)
         for k in range(1, N_CAND):
             lines += [f"SPECTRUM 1 2 {300.0 + k * 1.0:.6f} 1", "500.00000 1.0"]
         fixture = tmp / "t72.txt"
@@ -7249,19 +7230,12 @@ def test_t73_rts_invalid_inputs(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        clean, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            clean += [(f"{bm:.5f}", "60.0"), (f"{ym:.5f}", "100.0")]
-        clean += [(f"{250.55 + k * 61.37:.5f}", "5.0") for k in range(15)]
+        clean = [(f"{mz:.5f}", f"{i:.1f}") for mz, i in fixture_peptides.by_peaks(pep)]
+        clean += [(f"{mz:.5f}", f"{i:.1f}") for mz, i in fixture_peptides.weak_noise()]
         clean.sort(key=lambda t: float(t[0]))
         bad = clean + [("nan", "100.0"), ("-50.0", "100.0"), ("-inf", "100.0"), ("inf", "100.0"),
                        ("700.12300", "nan"), ("650.32100", "inf")]
-        mz2 = f"{(sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2:.6f}"
+        mz2 = f"{fixture_peptides.mz(pep, 2):.6f}"
 
         def block(scan, mz, peaks):
             return [f"SPECTRUM {scan} 2 {mz} {len(peaks)}"] + [f"{m} {i}" for m, i in peaks]
@@ -7383,16 +7357,9 @@ def test_t74_minimum_peaks_counting(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        ions, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            ions += [(bm, 60.0), (ym, 100.0)]
+        ions = fixture_peptides.by_peaks(pep)
         ions.sort()
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        mz2 = fixture_peptides.mz(pep, 2)
         pad_mz = [233.51 + k * 97.13 for k in range(5)]
 
         # (scan, real peaks, padding intensity): odd scans 8 real peaks (must be skipped), even 12 (searched)
@@ -7494,17 +7461,10 @@ def test_t75_chimeric_exact_duplicates(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            peaks += [(bm, 60.0), (ym, 100.0)]
-        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks = fixture_peptides.by_peaks(pep)
+        peaks += fixture_peptides.weak_noise()
         peaks.sort()
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2   # 582.319
+        mz2 = fixture_peptides.mz(pep, 2)   # 582.319
 
         def fixture(name, cands):
             """cands: [(m/z string, tolerance)]; the first block carries the spectrum, the rest one dummy peak."""
@@ -7584,10 +7544,8 @@ def test_t76_rts_shared_bins(comet_exe):
     PHOS, NL = 79.966331, 97.976896
     pep = "LVSELTEFAK"
     sites = {2, 5}   # 0-based S and T
-    mono = {"L": 113.084064, "V": 99.068414, "S": 87.032028, "E": 129.042593, "T": 101.047679,
-            "F": 147.068414, "A": 71.037114, "K": 128.094963}
-    h2o = 18.0105647
-    res = [mono[c] + (PHOS if i in sites else 0.0) for i, c in enumerate(pep)]
+    h2o = fixture_peptides.H2O
+    res = fixture_peptides.residue_masses(pep, {s: PHOS for s in sites})
     n = len(pep)
     ions = []   # (1+ m/z, number of phospho sites in the fragment)
     bm, ym = _PROTON_MASS, h2o + _PROTON_MASS
@@ -7618,7 +7576,7 @@ def test_t76_rts_shared_bins(comet_exe):
 
         def fixture(name, pk):
             path = tmp / f"{name}.txt"
-            path.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(pk)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in pk))
+            path.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, mz2, pk)) + "\n")
             return path
 
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
@@ -7701,7 +7659,7 @@ def test_t76_rts_shared_bins(comet_exe):
                 ("phospho S + oxidized M", None, "i:scale_fragmentNL=0", 2),
             ]
             pm = tmp / "par_b.txt"
-            pm.write_text(f"SPECTRUM 1 2 {mmz2:.6f} {len(mpk)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in sorted(mpk)))
+            pm.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, mmz2, sorted(mpk))) + "\n")
             parity[1] = (parity[1][0], pm, parity[1][2], parity[1][3])
             if "-i" in built and "-j" in built:
                 for label, fx, extra, nmods in parity:
@@ -7752,18 +7710,11 @@ def test_t77_rts_charge_limits(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks = fixture_peptides.by_peaks(pep)
         peaks.sort()
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        mz2 = fixture_peptides.mz(pep, 2)
         fixture = tmp / "t77.txt"
-        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+        fixture.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, mz2, peaks)) + "\n")
 
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
                                             mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
@@ -7852,18 +7803,11 @@ def test_t78_wrappercheck(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks = fixture_peptides.by_peaks(pep)
         peaks.sort()
-        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        mz2 = fixture_peptides.mz(pep, 2)
         fixture = tmp / "t78.txt"
-        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+        fixture.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, mz2, peaks)) + "\n")
 
         fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
@@ -8236,24 +8180,16 @@ def test_t83_rts_trace_range_topn(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         pep = "LVNELTEFAK"
-        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
-                "F": 147.068414, "A": 71.037114, "K": 128.094963}
-        h2o = 18.0105647
-        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
-        for i in range(len(pep) - 1):
-            bm += mono[pep[i]]
-            ym += mono[pep[len(pep) - 1 - i]]
-            peaks += [(bm, 60.0), (ym, 100.0)]
-        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks = fixture_peptides.by_peaks(pep)
+        peaks += fixture_peptides.weak_noise()
         peaks.sort()
-        mh = sum(mono[c] for c in pep) + h2o + _PROTON_MASS    # 1163.631
+        mh = fixture_peptides.neutral_mass(pep) + fixture_peptides.PROTON    # 1163.631
         mz2 = (mh + _PROTON_MASS) / 2                            # 582.319
         low = 1163.0                                             # the index's MassRange starts just below P1
         below_mz = 581.80                                        # MH+ 1162.59: below the range, window +/- 1.0 m/z reaches P1
 
         def block(scan, mz, pk, tol=None):
-            head = f"SPECTRUM {scan} 2 {mz:.6f} {len(pk)}" + ("" if tol is None else f" {tol}")
-            return [head] + [f"{m:.5f} {i:.1f}" for m, i in pk]
+            return fixture_peptides.spectrum_block(scan, 2, mz, pk, tol)
 
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
                                             mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)

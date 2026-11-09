@@ -28,36 +28,16 @@ import os
 import random
 import sys
 
-PROTON = 1.00727646688
-H2O = 18.0105647
-MONO = {
-    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
-    "T": 101.047679, "C": 103.009185, "L": 113.084064, "I": 113.084064, "N": 114.042927,
-    "D": 115.026943, "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485,
-    "H": 137.058912, "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
-}
+# The shared masses and b/y helpers live in tests/unit/fixture_peptides.py; "python -I" leaves
+# this script's directory off sys.path, so tests/unit/ is added here.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from fixture_peptides import PROTON, by_ions_1plus, neutral_mass  # noqa: E402
+
 POOL = "GASPVTLNDQEHFY"
 BIN_WIDTH = 0.02
 FRAG_MIN, FRAG_MAX = 200.0, 2000.0
 TARGET = "LVNELTEFAK"
 N2, N1, N0 = 20, 30, 150
-
-
-def neutral_mass(pep):
-    return sum(MONO[c] for c in pep) + H2O
-
-
-def by_ions_1plus(pep):
-    out = []
-    b = PROTON
-    y = H2O + PROTON
-    n = len(pep)
-    for i in range(n - 1):
-        b += MONO[pep[i]]
-        y += MONO[pep[n - 1 - i]]
-        out.append(b)
-        out.append(y)
-    return out
 
 
 def bin_of(mz):

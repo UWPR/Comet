@@ -28,14 +28,11 @@ import os
 import random
 import sys
 
-PROTON = 1.00727646688
-H2O = 18.0105647
-MONO = {
-    "G": 57.021464, "A": 71.037114, "S": 87.032028, "P": 97.052764, "V": 99.068414,
-    "T": 101.047679, "L": 113.084064, "I": 113.084064, "N": 114.042927, "D": 115.026943,
-    "Q": 128.058578, "K": 128.094963, "E": 129.042593, "M": 131.040485, "H": 137.058912,
-    "F": 147.068414, "R": 156.101111, "Y": 163.063329, "W": 186.079313,
-}
+# The shared masses and b/y helpers live in tests/unit/fixture_peptides.py; "python -I" leaves
+# this script's directory off sys.path, so tests/unit/ is added here.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from fixture_peptides import H2O, MONO, PROTON, by_ions_1plus  # noqa: E402
+
 POOL = "GASPVTLNDQEHFYW"   # no C (no static mod needed), no K/R inside, no M (no oxidation question)
 INV_WIDTH = 50.0           # 1 / 0.02
 FRAG_MIN, FRAG_MAX = 200.0, 2000.0
@@ -46,16 +43,6 @@ def bin_pos(mass):
     """BIN(mass) = (int)(mass * 50 + 1.0) and the fractional position inside that bin."""
     x = mass * INV_WIDTH + 1.0
     return int(x), x - int(x)
-
-
-def by_ions_1plus(pep):
-    out, b, y, n = [], PROTON, H2O + PROTON, len(pep)
-    for i in range(n - 1):
-        b += MONO[pep[i]]
-        y += MONO[pep[n - 1 - i]]
-        out.append(b)
-        out.append(y)
-    return out
 
 
 def pick(pep):

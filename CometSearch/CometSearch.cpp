@@ -1943,10 +1943,12 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    // (2-hit, then 1-hit) are scored as well so the xcorr histogram the E-value regression
    // fits holds the real chance-sharing tail instead of only the winner plus synthetic
    // decoys. They sit after the floor-clearing candidates in vPeptides, in the same
-   // (hits desc, index asc) order, and the scoring loop below takes them only while
-   // uiNumScored < iHistogramFill. They only feed the histogram: XcorrScoreI() recognizes
-   // them by their hit count (below iMinIonsScore), never stores or reports them and leaves
-   // them out of the matched-peptide counts, so the fill changes E-values and nothing else.
+   // (hits desc, index asc) order. vFill is cut to the slots left below iHistogramFill
+   // before it is appended, so that cut is what limits them; the hit-count test in the
+   // scoring loop below is only a guard and never rejects one. They only feed the
+   // histogram: XcorrScoreI() recognizes them by their hit count (below iMinIonsScore),
+   // never stores or reports them and leaves them out of the matched-peptide counts, so
+   // the fill changes E-values and nothing else.
    // 0 = off, byte-identical to the pre-fill behaviour.
    const int iHistogramFill = g_staticParams.options.iFragIndexHistogramFill;
 
@@ -2014,6 +2016,7 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
             break;
       }
 
+      // Always true by construction (see the fill comment above): kept as a guard.
       if (ix->second >= iMinIonsScore || uiNumScored < (unsigned int)iHistogramFill)
       {
          int iFoundVariableMod = 0;

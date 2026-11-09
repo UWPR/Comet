@@ -56,21 +56,20 @@ substantially larger change than anything touched here.
 ```cpp
 // explicit candidate list
 bool DoSingleSpectrumSearchChimeric(
-    const int topN,
     const std::vector<PrecursorCandidate>& vPrecursors,   // {dMZ, iCharge, dToleranceMZ (0 = inherit)}
     const double dPrecursorToleranceMZ,                   // +/- m/z for candidates with dToleranceMZ 0; 0 = configured tolerance
     const double dMaxExpect,
     const int iMaxPeptidesPerSpectrum,
     double* dMass, double* dInten, const int iNumPeaks,
     vector<string>& strReturnPeptide, vector<string>& strReturnProtein,
-    vector<vector<Fragment>>& matchedFragments, vector<CometScores>& scores);
+    vector<vector<Fragment>>& matchedFragments, vector<CometScores>& scores,
+    bool& bIncomplete);
 // one m/z across a charge range (builds the list above with dToleranceMZ = 0)
 bool DoSingleSpectrumSearchChimeric(
-    const int topN,
     const double dMZ, const int iMinPrecursorCharge, const int iMaxPrecursorCharge,
     const double dPrecursorToleranceMZ, const double dMaxExpect, const int iMaxPeptidesPerSpectrum,
     double* dMass, double* dInten, const int iNumPeaks,
-    ... same four outputs ...);
+    ... same four outputs and bIncomplete ...);
 ```
 
 Finds more than one peptide in a spectrum (design and measurements:
@@ -85,7 +84,8 @@ peaks of ions that have an observed peak), and repeats on the reduced spectrum -
 threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime` budget
 (measured from the call's start, across every candidate and iteration) runs out.
 `CometScores::iCharge` / `iIteration` on each row say which candidate charge and which
-iteration produced it; `topN` is accepted but one row per iteration is reported. Rows are
+iteration produced it; one row per iteration is reported (there is no `topN`: it was accepted
+and ignored until 2026-11-09, when it was removed from both overloads). Rows are
 ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
 over a more intense one. Candidates whose MH+ lies above the index range (the same gate
 as `DoSingleSpectrumSearchMultiResults()`; there is no lower bound, so an isotope error
