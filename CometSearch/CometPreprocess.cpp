@@ -62,6 +62,59 @@ static inline int ComputeZeroBound(int iArraySize, double dExpPepMass)
       g_staticParams.iArraySizeGlobal);
 }
 
+// minimum_peaks counts only the peaks preprocessing actually scores (2026-11-08): a peak
+// counts when its m/z is a positive finite number and its intensity is finite, > 0 and at or
+// above the intensity cutoff. Before, every peak in the spectrum counted (only
+// clear_mz_range peaks were subtracted), so zero-intensity padding or peaks below
+// minimum_intensity / percentage_base_peak let a spectrum with too few real peaks through.
+// Batch (ApplySpectrumFilters(), the LoadAndPreprocessSpectra() read loop) and RTS
+// (PreprocessSingleSpectrumCore()) use these same helpers, so they cannot drift apart.
+
+// The intensity cutoff every preprocessing path applies: minimum_intensity, raised to
+// percentage_base_peak x the base peak when 0 < percentage_base_peak <= 1 (a value above 1
+// is ignored, as batch always did; RTS used to apply it, leaving no peaks).
+static double IntensityCutoff(double dBasePeakIntensity)
+{
+   double dCutoff = g_staticParams.options.dMinIntensity;
+   const double dPct = g_staticParams.options.dMinPercentageIntensity;
+
+   if (dPct > 0.0 && dPct <= 1.0)
+   {
+      double dPctCutoff = dPct * dBasePeakIntensity;
+      if (dPctCutoff > dCutoff)
+         dCutoff = dPctCutoff;
+   }
+   return dCutoff;
+}
+
+static inline bool PeakCountsTowardMinimum(double dMZ, double dIntensity, double dIntensityCutoff)
+{
+   return std::isfinite(dMZ) && dMZ > 0.0
+      && std::isfinite(dIntensity) && dIntensity > 0.0 && dIntensity >= dIntensityCutoff;
+}
+
+// Batch: the number of peaks of mstSpectrum (clear_mz_range intensities already zeroed)
+// that count toward minimum_peaks. The base peak is taken over every peak, as LoadIons() does.
+static int CountPeaksTowardMinimum(Spectrum& mstSpectrum)
+{
+   double dBasePeakIntensity = 0.0;
+   for (int i = 0; i < mstSpectrum.size(); ++i)
+   {
+      if (mstSpectrum.at(i).intensity > dBasePeakIntensity)
+         dBasePeakIntensity = mstSpectrum.at(i).intensity;
+   }
+
+   const double dCutoff = IntensityCutoff(dBasePeakIntensity);
+   int iCount = 0;
+   for (int i = 0; i < mstSpectrum.size(); ++i)
+   {
+      if (PeakCountsTowardMinimum(mstSpectrum.at(i).mz, mstSpectrum.at(i).intensity, dCutoff))
+         ++iCount;
+   }
+   return iCount;
+}
+
+
 // Shared by PreprocessSingleSpectrumCore() (RTS), PreprocessSpectrum() (batch), and
 // FusedSearchSpectrum(): computes the array size a Query needs for this precursor mass,
 // clamped to iArraySizeGlobal so an out-of-configured-range precursor (or the
@@ -321,8 +374,6 @@ struct BoundedSpectrumQueue
 // cannot drift apart on a future filter change.
 bool CometPreprocess::ApplySpectrumFilters(Spectrum& mstSpectrum)
 {
-   int iNumClearedPeaks = 0;
-
    if (g_staticParams.options.clearMzRange.dEnd > 0.0
          && g_staticParams.options.clearMzRange.dStart <= g_staticParams.options.clearMzRange.dEnd)
    {
@@ -335,13 +386,13 @@ bool CometPreprocess::ApplySpectrumFilters(Spectrum& mstSpectrum)
                && mstSpectrum.at(ip).mz <= g_staticParams.options.clearMzRange.dEnd)
          {
             mstSpectrum.at(ip).intensity = 0.0;
-            iNumClearedPeaks++;
          }
          ip++;
       }
    }
 
-   if (mstSpectrum.size() - iNumClearedPeaks < g_staticParams.options.iMinPeaks)
+   // Only peaks preprocessing scores count (cleared peaks now have intensity 0).
+   if (CountPeaksTowardMinimum(mstSpectrum) < g_staticParams.options.iMinPeaks)
       return false;
 
    if (!CometPreprocess::CheckActivationMethodFilter(mstSpectrum.getActivationMethod()))
@@ -929,7 +980,6 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
 
       if (iScanNumber != 0)
       {
-         int iNumClearedPeaks = 0;
 
          iTmpCount = iScanNumber;
 
@@ -963,14 +1013,14 @@ bool CometPreprocess::LoadAndPreprocessSpectra(MSReader &mstReader,
                       && mstSpectrum.at(i).mz <= g_staticParams.options.clearMzRange.dEnd)
                 {
                    mstSpectrum.at(i).intensity = 0.0;
-                   iNumClearedPeaks++;
                 }
 
                i++;
             }
          }
 
-         if (mstSpectrum.size() - iNumClearedPeaks >= g_staticParams.options.iMinPeaks)
+         // Only peaks preprocessing scores count (cleared peaks now have intensity 0).
+         if (CountPeaksTowardMinimum(mstSpectrum) >= g_staticParams.options.iMinPeaks)
          {
             if (iAnalysisType == AnalysisType_SpecificScanRange && iLastScan > 0 && iScanNumber > iLastScan)
             {
@@ -1760,14 +1810,26 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          || !std::isfinite(pdInten[i]);
    };
 
-   int iNumClearedPeaks = 0;   // clear_mz_range and invalid peaks, which do not count toward minimum_peaks
+   // Base-peak intensity and the intensity cutoff (minimum_intensity, percentage_base_peak).
+   // Peaks in clear_mz_range and invalid peaks are treated as zero-intensity, matching
+   // batch's in-place zeroing.
+   double dBasePeakIntensity = 0.0;
    for (int i = 0; i < iNumPeaks; ++i)
    {
-      if (bSkipPeak(i))
-         ++iNumClearedPeaks;
+      if (!bSkipPeak(i) && pdInten[i] > dBasePeakIntensity)
+         dBasePeakIntensity = pdInten[i];
+   }
+   const double dIntensityCutoff = IntensityCutoff(dBasePeakIntensity);
+
+   // minimum_peaks counts only the peaks preprocessing scores (see PeakCountsTowardMinimum()).
+   int iNumScoringPeaks = 0;
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      if (!bSkipPeak(i) && PeakCountsTowardMinimum(pdMass[i], pdInten[i], dIntensityCutoff))
+         ++iNumScoringPeaks;
    }
 
-   if (iNumPeaks - iNumClearedPeaks < g_staticParams.options.iMinPeaks)
+   if (iNumScoringPeaks < g_staticParams.options.iMinPeaks)
    {
       delete pScoring;
       return nullptr;
@@ -1888,24 +1950,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    // --- Inline LoadIons logic for raw arrays instead of Spectrum object ---
 
-   // Compute base-peak intensity so we can apply both absolute and percentage cutoffs.
-   // Peaks in clear_mz_range are treated as zero-intensity (see bInClearRange above),
-   // matching batch's in-place zeroing.
-   double dBasePeakIntensity = 0.0;
-   for (int i = 0; i < iNumPeaks; ++i)
-   {
-      if (!bSkipPeak(i) && pdInten[i] > dBasePeakIntensity)
-         dBasePeakIntensity = pdInten[i];
-   }
-   // Start with the configured absolute minimum intensity
-   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
-   // If a minimum percentage of the base-peak intensity is configured, apply it as well
-   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && dBasePeakIntensity > 0.0)
-   {
-      double dPctCutoff = dBasePeakIntensity * g_staticParams.options.dMinPercentageIntensity;
-      if (dPctCutoff > dIntensityCutoff)
-         dIntensityCutoff = dPctCutoff;
-   }
+   // (dIntensityCutoff was computed above, before the minimum_peaks check.)
 
    // Select the top iFragIndexNumSpectrumPeaks peaks BY INTENSITY for
    // vfRawFragmentPeakMass, matching LoadIons()'s explicit mstSpectrum.sortIntensity()
@@ -2930,24 +2975,15 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    double dIon,
           dIntensity;
 
-   // set dIntensityCutoff based on either minimum intensity or % of base peak
-   double dIntensityCutoff = g_staticParams.options.dMinIntensity;
-
-   if (g_staticParams.options.dMinPercentageIntensity > 0.0 && g_staticParams.options.dMinPercentageIntensity <= 1.0)
+   // set dIntensityCutoff based on either minimum intensity or % of base peak (shared with
+   // RTS and the minimum_peaks count: IntensityCutoff())
+   double dBasePeakIntensity = 0.0;
+   for (i = 0; i < mstSpectrum.size(); ++i)
    {
-      double dBasePeakIntensity = 0.0;
-
-      for (i = 0; i < mstSpectrum.size(); ++i)
-      {
-         if (mstSpectrum.at(i).intensity > dBasePeakIntensity)
-            dBasePeakIntensity = mstSpectrum.at(i).intensity;
-      }
-
-      dIntensityCutoff = g_staticParams.options.dMinPercentageIntensity * dBasePeakIntensity;
-
-      if (dIntensityCutoff < g_staticParams.options.dMinIntensity)
-         dIntensityCutoff = g_staticParams.options.dMinIntensity;
+      if (mstSpectrum.at(i).intensity > dBasePeakIntensity)
+         dBasePeakIntensity = mstSpectrum.at(i).intensity;
    }
+   const double dIntensityCutoff = IntensityCutoff(dBasePeakIntensity);
 
    int iNumFragmentPeaks = 0;
 

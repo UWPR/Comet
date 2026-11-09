@@ -1122,7 +1122,7 @@ mass_offsets =                         # one or more mass offsets to search (val
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10)\n");
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10); counts only peaks at or above the minimum_intensity/percentage_base_peak cutoff\n");
 
 fprintf(fp,
 "minimum_intensity = 0                 # minimum intensity value to read in\n\

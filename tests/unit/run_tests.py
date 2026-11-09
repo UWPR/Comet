@@ -7274,5 +7274,115 @@ def test_t73_rts_invalid_inputs(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T74 -- minimum_peaks counts only the peaks preprocessing scores: m/z positive and finite,
+# intensity finite, > 0 and at or above the intensity cutoff (minimum_intensity, raised to
+# percentage_base_peak x base peak). It used to count every peak except clear_mz_range ones, so
+# zero-intensity padding or sub-cutoff peaks let a spectrum with too few real peaks be searched.
+# Batch (comet.exe) and RTS (rts_repro mode 0) alike, FI_DB.
+# ---------------------------------------------------------------------------
+
+@register("t74_minimum_peaks_counting")
+def test_t74_minimum_peaks_counting(comet_exe):
+    """T74: a spectrum with 8 real peaks padded past minimum_peaks (10) with zero-intensity peaks, peaks below
+    minimum_intensity, or peaks below percentage_base_peak x base peak is not searched; the same spectrum with
+    12 real peaks is -- in batch and RTS."""
+    failures = []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    rts = not use_win and _ensure_rts_repro_built()
+    if not rts:
+        print("  NOTE: RTS half skipped (rts_repro is Linux-only or could not be built); batch half runs")
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        ions, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            ions += [(bm, 60.0), (ym, 100.0)]
+        ions.sort()
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        pad_mz = [233.51 + k * 97.13 for k in range(5)]
+
+        # (scan, real peaks, padding intensity): odd scans 8 real peaks (must be skipped), even 12 (searched)
+        scans = {1: (8, 0.0), 2: (12, 0.0), 3: (8, 2.0), 4: (12, 2.0), 5: (8, 1.0), 6: (12, 1.0)}
+        spectra = {s: sorted(ions[:n] + [(m, pad) for m in pad_mz]) for s, (n, pad) in scans.items()}
+        # setting -> (params, scan skipped, scan searched)
+        settings = {
+            "zero-intensity padding": ({}, 1, 2),
+            "minimum_intensity 10": ({"minimum_intensity": "10.0"}, 3, 4),
+            "percentage_base_peak 0.05": ({"percentage_base_peak": "0.05"}, 5, 6),
+        }
+
+        ms2 = tmp / "t74.ms2"
+        mh = mz2 * 2 - _PROTON_MASS
+        ms2.write_text("".join(f"S\t{s}\t{s}\t{mz2:.6f}\nZ\t2\t{mh:.6f}\n" + "".join(f"{m:.5f}\t{i:.1f}\n" for m, i in pk)
+                               for s, pk in spectra.items()))
+        fixture = tmp / "t74_rts_fixture.txt"   # not t74.txt: the batch search writes its results there
+        fixture.write_text("".join(f"SPECTRUM {s} 2 {mz2:.6f} {len(pk)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in pk)
+                                   for s, pk in spectra.items()))
+
+        base = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                          mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        pf = tmp / "t74.params"
+        pf.write_text(base)
+        idx = fasta.with_suffix(".fasta.idx")
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"], timeout=300)
+        if not check(rc == 0 and idx.exists(), f"fragment ion index builds (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        txt = ms2.with_suffix(".txt")
+        for name, (extra, s_skip, s_search) in settings.items():
+            # batch
+            pr = base.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}")
+            for k, v in extra.items():
+                pr = _set_param_line(pr, k, v)
+            pf.write_text(pr)
+            txt.unlink(missing_ok=True)
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", fmt(ms2)])
+            if check(rc == 0 and txt.exists(), f"batch {name}: search exits 0 (rc={rc})", failures):
+                lines = txt.read_text().splitlines()
+                header = lines[1].split("\t") if len(lines) > 1 else []
+                got = {int(d["scan"]): d.get("plain_peptide") for d in (dict(zip(header, l.split("\t"))) for l in lines[2:] if l.strip())}
+                check(s_skip not in got, f"batch {name}: scan {s_skip} (8 real peaks + 5 that do not count) is not searched "
+                      f"(got {got.get(s_skip)!r})", failures)
+                check(got.get(s_search) == pep, f"batch {name}: scan {s_search} (12 real peaks) is searched and finds {pep} "
+                      f"(got {got.get(s_search)!r})", failures)
+            else:
+                print(log[-1500:])
+
+            # RTS
+            if rts:
+                out = tmp / f"rts_{s_skip}.out"
+                env = {"RTS_REPRO_PARAMS": ";".join(f"d:{k}={v}" for k, v in extra.items())} if extra else None
+                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, env=env)
+                if check(rc == 0 and out.exists(), f"RTS {name}: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t73_mode0_rows(out)
+                    check(rows.get(s_skip, "absent") is None, f"RTS {name}: scan {s_skip} is not searched (NO_MATCH), "
+                          f"got {rows.get(s_skip, 'absent')}", failures)
+                    got = rows.get(s_search)
+                    check(got is not None and got[0] == pep, f"RTS {name}: scan {s_search} is searched and finds {pep} "
+                          f"(got {got})", failures)
+                else:
+                    print(log[-1500:])
+        idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()
