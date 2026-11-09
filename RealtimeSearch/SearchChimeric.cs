@@ -66,6 +66,7 @@ namespace RealTimeSearch
          public int Candidates;
          public bool Ok;
          public bool Incomplete;   // the call stopped early: budget (Ok) or cancelled / failed (!Ok); its rows are kept
+         public string Error;      // why an ERROR call failed: GetLastWrapperError(), or the exception this scan threw
          public double ElapsedMs;
          public List<string> Peptides;
          public List<string> Proteins;
@@ -157,35 +158,52 @@ namespace RealTimeSearch
          using (var reader = new StreamReader(path))
          {
             string line;
+            int iLine = 0;
             while ((line = reader.ReadLine()) != null)
             {
+               ++iLine;
                if (line.Length == 0)
                   continue;
                char c = line[0];
                if (c == 'H' || c == 'I' || c == 'D')
                   continue;
                string[] f = line.Split(sep, StringSplitOptions.RemoveEmptyEntries);
-               if (c == 'S')
+               try
                {
-                  flush();
-                  cur = new Ms2Scan();
-                  cur.ScanNumber = int.Parse(f[1], inv);
-                  cur.PrecursorMZ = f.Length >= 4 ? double.Parse(f[3], inv) : 0.0;
+                  if (c == 'S')
+                  {
+                     flush();
+                     cur = new Ms2Scan();
+                     cur.ScanNumber = int.Parse(f[1], inv);
+                     cur.PrecursorMZ = f.Length >= 4 ? double.Parse(f[3], inv) : 0.0;
+                  }
+                  else if (c == 'Z')
+                  {
+                     if (cur != null && f.Length >= 3)
+                        cur.ZLines.Add(new KeyValuePair<int, double>(int.Parse(f[1], inv), double.Parse(f[2], inv)));
+                  }
+                  else if (cur != null && f.Length >= 2 && (char.IsDigit(c) || c == '.'))
+                  {
+                     mass.Add(double.Parse(f[0], inv));
+                     inten.Add(double.Parse(f[1], inv));
+                  }
                }
-               else if (c == 'Z')
+               catch (Exception ex) when (ex is FormatException || ex is IndexOutOfRangeException || ex is OverflowException)
                {
-                  if (cur != null && f.Length >= 3)
-                     cur.ZLines.Add(new KeyValuePair<int, double>(int.Parse(f[1], inv), double.Parse(f[2], inv)));
-               }
-               else if (cur != null && f.Length >= 2 && (char.IsDigit(c) || c == '.'))
-               {
-                  mass.Add(double.Parse(f[0], inv));
-                  inten.Add(double.Parse(f[1], inv));
+                  throw new InvalidDataException(string.Format("{0} line {1}: cannot parse \"{2}\" ({3})", path, iLine, line, ex.Message));
                }
             }
             flush();
          }
          return scans;
+      }
+
+      // Tabs and line breaks would split an output row, so a free-text field is flattened.
+      private static string OneField(string s)
+      {
+         if (string.IsNullOrEmpty(s))
+            return "";
+         return s.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ');
       }
 
       private static double MzFromMH(double dMH, int z)
@@ -199,16 +217,19 @@ namespace RealTimeSearch
          if (!ParseOptions(args, o))
          {
             Usage();
+            Environment.ExitCode = 1;
             return;
          }
          if (!File.Exists(o.Ms2File))
          {
             Console.WriteLine(" Error: no .ms2 file at {0}", o.Ms2File);
+            Environment.ExitCode = 1;
             return;
          }
          if (!File.Exists(o.Database))
          {
             Console.WriteLine(" Error: no index database at {0}", o.Database);
+            Environment.ExitCode = 1;
             return;
          }
 
@@ -221,8 +242,32 @@ namespace RealTimeSearch
             o.Isotopes, o.MaxRuntimeMs);
          Console.WriteLine(" threads: {0}\n", o.Threads);
 
-         List<Ms2Scan> scans = ReadMs2(o.Ms2File);
+         List<Ms2Scan> scans;
+         try
+         {
+            scans = ReadMs2(o.Ms2File);
+         }
+         catch (Exception ex) when (ex is InvalidDataException || ex is IOException || ex is UnauthorizedAccessException)
+         {
+            Console.WriteLine(" Error reading spectra: {0}", ex.Message);
+            Environment.ExitCode = 1;
+            return;
+         }
          Console.WriteLine(" read {0} scans", scans.Count);
+
+         // Opened before the search, so a bad --out path fails at once rather than after it.
+         StreamWriter w;
+         try
+         {
+            w = new StreamWriter(o.OutputFile, false);
+         }
+         catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException
+                                    || ex is NotSupportedException)
+         {
+            Console.WriteLine(" Error: cannot write {0}: {1}", o.OutputFile, ex.Message);
+            Environment.ExitCode = 1;
+            return;
+         }
 
          using (var searchMgr = new CometSearchManagerWrapper())
          {
@@ -244,6 +289,8 @@ namespace RealTimeSearch
                string strStatusMsg = "";
                searchMgr.GetStatusMessage(ref strStatusMsg);
                Console.WriteLine(" Error initializing search index: " + strStatusMsg);
+               Environment.ExitCode = 1;
+               w.Dispose();
                return;
             }
             Console.WriteLine(" index mass range {0:0.0} - {1:0.0}\n", dPeptideMassLow, dPeptideMassHigh);
@@ -262,42 +309,58 @@ namespace RealTimeSearch
                   {
                      Ms2Scan s = scans[idx];
                      var r = new ScanOutcome { ScanNumber = s.ScanNumber, PrecursorMZ = s.PrecursorMZ };
-                     if (s.PrecursorMZ == 0.0 && s.ZLines.Count > 0)
-                        r.PrecursorMZ = MzFromMH(s.ZLines[0].Value, s.ZLines[0].Key);   // Mango-style file: S m/z is 0, Z lines carry MH+
+                     // One scan that throws is recorded as an ERROR row; it no longer ends the run in
+                     // Task.WaitAll, losing every result and skipping FinalizeSingleSpectrumSearch().
+                     try
+                     {
+                        if (s.PrecursorMZ == 0.0 && s.ZLines.Count > 0)
+                           r.PrecursorMZ = MzFromMH(s.ZLines[0].Value, s.ZLines[0].Key);   // Mango-style file: S m/z is 0, Z lines carry MH+
 
-                     var watch = Stopwatch.StartNew();
-                     List<string> vPeptide = null, vProtein = null;
-                     List<List<FragmentWrapper>> vFrag = null;
-                     List<ScoreWrapper> vScores = null;
-                     if (o.ZLines)
-                     {
-                        int n = s.ZLines.Count;
-                        var mz = new double[n];
-                        var z = new int[n];
-                        for (int k = 0; k < n; ++k)
+                        var watch = Stopwatch.StartNew();
+                        List<string> vPeptide = null, vProtein = null;
+                        List<List<FragmentWrapper>> vFrag = null;
+                        List<ScoreWrapper> vScores = null;
+                        if (o.ZLines)
                         {
-                           z[k] = s.ZLines[k].Key;
-                           mz[k] = MzFromMH(s.ZLines[k].Value, z[k]);
+                           int n = s.ZLines.Count;
+                           var mz = new double[n];
+                           var z = new int[n];
+                           for (int k = 0; k < n; ++k)
+                           {
+                              z[k] = s.ZLines[k].Key;
+                              mz[k] = MzFromMH(s.ZLines[k].Value, z[k]);
+                           }
+                           r.Candidates = n;
+                           bool bInc = false;
+                           r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(1, mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                              s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                           r.Incomplete = bInc;
                         }
-                        r.Candidates = n;
-                        bool bInc = false;
-                        r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(1, mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
-                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
-                        r.Incomplete = bInc;
+                        else
+                        {
+                           r.Candidates = o.ZMax - o.ZMin + 1;
+                           bool bInc;
+                           r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(1, r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                              s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                           r.Incomplete = bInc;
+                        }
+                        watch.Stop();
+                        r.ElapsedMs = watch.Elapsed.TotalMilliseconds;
+                        r.Peptides = vPeptide ?? new List<string>();
+                        r.Proteins = vProtein ?? new List<string>();
+                        r.Scores = vScores ?? new List<ScoreWrapper>();
+                        if (!r.Ok && !r.Incomplete)
+                           r.Error = searchMgr.GetLastWrapperError();   // thread-static: read on this thread
                      }
-                     else
+                     catch (Exception ex)
                      {
-                        r.Candidates = o.ZMax - o.ZMin + 1;
-                        bool bInc;
-                        r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(1, r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
-                           s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
-                        r.Incomplete = bInc;
+                        r.Ok = false;
+                        r.Incomplete = false;
+                        r.Error = ex.GetType().Name + ": " + ex.Message;
+                        r.Peptides = new List<string>();
+                        r.Proteins = new List<string>();
+                        r.Scores = new List<ScoreWrapper>();
                      }
-                     watch.Stop();
-                     r.ElapsedMs = watch.Elapsed.TotalMilliseconds;
-                     r.Peptides = vPeptide ?? new List<string>();
-                     r.Proteins = vProtein ?? new List<string>();
-                     r.Scores = vScores ?? new List<ScoreWrapper>();
                      outcomes.Add(r);
                   }
                });
@@ -314,7 +377,7 @@ namespace RealTimeSearch
             int rows = 0, rowsLater = 0, repeats = 0, errors = 0, incomplete = 0;
             double sumMs = 0.0;
 
-            using (var w = new StreamWriter(o.OutputFile, false))
+            using (w)
             {
                w.WriteLine("scan\titeration\tcharge\tprecursor_mz\tcandidates\tcalc_neutral_mass\tpeptide\tprotein\txcorr\tdeltacn\texpect\tions_matched\tions_total\telapsed_ms");
                foreach (ScanOutcome r in ordered)
@@ -326,7 +389,7 @@ namespace RealTimeSearch
                   if (!r.Ok && !r.Incomplete)
                   {
                      ++errors;
-                     w.WriteLine(string.Format(inv, "{0}\tERROR\t\t{1:0.0000}\t{2}", r.ScanNumber, r.PrecursorMZ, r.Candidates));
+                     w.WriteLine(string.Format(inv, "{0}\tERROR\t{1}\t{2:0.0000}\t{3}", r.ScanNumber, OneField(r.Error), r.PrecursorMZ, r.Candidates));
                      continue;
                   }
                   int n = r.Peptides.Count;

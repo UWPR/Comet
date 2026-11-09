@@ -31,7 +31,7 @@ bool DoSingleSpectrumSearchMultiResults(
     vector<CometScores>& scores);
 ```
 
-Returns up to `topN` hits. Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
+Returns up to `topN` hits; `topN < 1` returns `false` (since 2026-11-09; a negative value used to throw `std::length_error` and leak the call's `Query`). Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
 
 **Supported database types: FI_DB and PI_DB only -- `database_name` pointing at a plain
 FASTA (`FASTA_DB`) is not supported here, by design, and always fails.** `InitializeSingleSpectrumSearch()`
@@ -87,8 +87,10 @@ threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime`
 `CometScores::iCharge` / `iIteration` on each row say which candidate charge and which
 iteration produced it; `topN` is accepted but one row per iteration is reported. Rows are
 ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
-over a more intense one. Candidates whose mass falls outside the index range, or whose
-charge is outside `min_precursor_charge` / `max_precursor_charge`, are skipped silently.
+over a more intense one. Candidates whose MH+ lies above the index range (the same gate
+as `DoSingleSpectrumSearchMultiResults()`; there is no lower bound, so an isotope error
+can still reach an in-range peptide), or whose charge is outside `min_precursor_charge` /
+`max_precursor_charge`, are skipped silently.
 The charge-range form searches only charges up to `MAX_PRECURSOR_CHARGE` (9), and a range
 wholly above it returns `false`. A decoy winner is reported and removed like a target.
 Both RTS entry points honor `min_precursor_charge` / `max_precursor_charge` as batch does,
@@ -104,7 +106,10 @@ together say how the call ended:
 | `false` | `false` | Invalid arguments. There are no rows. |
 
 Rows are appended one complete row per kept iteration. The C# harness writes an `INCOMPLETE
-budget|stopped` line after the rows of a call that stopped early. Same thread-safety as the single-spectrum
+budget|stopped` line after the rows of a call that stopped early, and an `ERROR` line carrying
+`GetLastWrapperError()` (or the exception a scan threw) for a call that failed; a malformed `.ms2`
+line (reported with its line number), an unwritable `--out` path or bad usage stops it before the
+search with exit code 1 (2026-11-09). Same thread-safety as the single-spectrum
 call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
 is only read (the per-call tolerance is an argument, applied to the call's own `Query`). One knob, set through `SetParam` only: `chimeric_remove_isotopes` (default 2;
 clamped to 0..3 at init with a warning). The removal flank follows `theoretical_fragment_ions`

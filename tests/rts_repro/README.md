@@ -90,6 +90,8 @@ Two more environment variables, so a new knob needs no new positional argument:
 - `RTS_REPRO_CANCEL_RACE=<us>` runs a thread that, until the workers finish, sleeps a random
   0..us microseconds, calls `CancelSearch()`, and calls `ResetSearchStatus()` 20 us later, so
   chimeric calls are cancelled at arbitrary points (test T82).
+- `RTS_REPRO_TOPN=<n>` sets the `topN` mode 0 passes to `DoSingleSpectrumSearchMultiResults()`
+  (default 1). A value below 1 makes the call return false, printed as `NO_MATCH` (test T83).
 - Chimeric output: a call that stopped early (`bIncomplete`) keeps its rows and adds a line
   `MS2 <scan>\tINCOMPLETE budget` (`max_index_runtime` ran out, returned true) or `INCOMPLETE
   stopped` (cancelled or an index search failed, returned false). `ERROR` means false without

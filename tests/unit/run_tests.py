@@ -8203,6 +8203,215 @@ def test_t82_chimeric_cancel_keeps_rows(comet_exe):
     return failures
 
 
+# ---------------------------------------------------------------------------
+# T83 -- three small RTS contracts from the 2026-11-09 review follow-ups:
+#  (a) COMET_EVALUE_TRACE's tope is the rank-1 E-value Comet reports (it used to print the raw fit,
+#      ignoring the 999 cap and the "slope >= 0 -> 999" rule);
+#  (b) the chimeric search gates a candidate's mass the way DoSingleSpectrumSearchMultiResults()
+#      does, only above dPeptideMassHigh, so a precursor just below the index range whose window
+#      reaches an in-range peptide is searched (it used to be skipped);
+#  (c) DoSingleSpectrumSearchMultiResults() returns false for topN < 1 (a negative value used to
+#      throw std::length_error out of reserve()).
+# ---------------------------------------------------------------------------
+
+@register("t83_rts_trace_range_topn")
+def test_t83_rts_trace_range_topn(comet_exe):
+    """T83: COMET_EVALUE_TRACE's tope equals the reported rank-1 E-value, 999 included; a chimeric candidate just
+    below the index mass range is searched and finds the in-range peptide its window covers, in both forms;
+    topN < 1 makes DoSingleSpectrumSearchMultiResults() return false instead of throwing."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks.sort()
+        mh = sum(mono[c] for c in pep) + h2o + _PROTON_MASS    # 1163.631
+        mz2 = (mh + _PROTON_MASS) / 2                            # 582.319
+        low = 1163.0                                             # the index's MassRange starts just below P1
+        below_mz = 581.80                                        # MH+ 1162.59: below the range, window +/- 1.0 m/z reaches P1
+
+        def block(scan, mz, pk, tol=None):
+            head = f"SPECTRUM {scan} 2 {mz:.6f} {len(pk)}" + ("" if tol is None else f" {tol}")
+            return [head] + [f"{m:.5f} {i:.1f}" for m, i in pk]
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        check("digest_mass_range = 200.0 2000.0" in params, "params template carries digest_mass_range 200-2000", failures)
+        params = params.replace("digest_mass_range = 200.0 2000.0", f"digest_mass_range = {low} 2000.0")
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            # (a) trace vs reported E-value. P1's own spectrum reports a tiny E-value; random-noise spectra at
+            # P1's m/z, searched with a +/- 300 Da window and the FI floors at 1 so they match something,
+            # report weak hits whose raw fit exceeds 999 (the trace used to print those raw values).
+            # Every RTS query traces as scan=0, so each reported row is paired with a trace line by xcorr.
+            rng = random.Random(83)
+            lines = block(1, mz2, peaks)
+            for s in range(2, 30):
+                noise = sorted((rng.uniform(150.0, 1500.0), rng.uniform(1.0, 100.0)) for _ in range(60))
+                lines += block(s, mz2 + rng.uniform(-0.002, 0.002), noise)
+            fx = tmp / "t83_trace.txt"
+            fx.write_text("\n".join(lines) + "\n")
+            out = tmp / "t83_trace.out"
+            wide = ("d:peptide_mass_tolerance_upper=300;d:peptide_mass_tolerance_lower=-300;i:peptide_mass_units=0;"
+                    "i:fragindex_min_ions_score=1;i:fragindex_min_ions_report=1")
+            rc, log = _rts_run(idx, fx, 1, out, 0, 1, env={"COMET_EVALUE_TRACE": "1", "RTS_REPRO_PARAMS": wide})
+            if check(rc == 0 and out.exists(), f"trace run: rts_repro exits 0 (rc={rc})", failures):
+                reported = {}
+                for ln in out.read_text().splitlines():
+                    f = ln.split("\t")
+                    if len(f) >= 4 and f[0].startswith("MS2 ") and f[1] != "NO_MATCH":
+                        reported[int(f[0].split()[1])] = (_strip_flanks(f[1]), float(f[2]), float(f[3]))
+                traced = [(float(m.group(1)), float(m.group(2)))
+                          for m in re.finditer(r"^COMET_EVALUE scan=\S+ .* topx=(\S+) tope=(\S+)$", log, re.M)]
+                check(reported.get(1, ("",))[0] == pep and reported[1][2] < 1e-3,
+                      f"scan 1 reports {pep} with a small E-value ({reported.get(1)})", failures)
+                bad = []
+                for s, (_, x, e) in sorted(reported.items()):
+                    if not any(abs(tx - x) < 6e-4 and abs(te - e) <= 1e-3 * e for tx, te in traced):
+                        bad.append((s, x, e, [te for tx, te in traced if abs(tx - x) < 6e-4]))
+                check(not bad, f"tope equals the reported E-value on all {len(reported)} matched scans "
+                      f"(scan, xcorr, reported, traced: {bad[:4]})", failures)
+                n999 = sum(1 for _, _, e in reported.values() if e == 999.0)
+                check(n999 >= 5, f"at least 5 scans report E = 999, so the cap is exercised ({n999})", failures)
+
+            # (b) a candidate just below the index range, both chimeric forms, +/- 1.0 m/z
+            fx = tmp / "t83_below.txt"
+            fx.write_text("\n".join(block(1, below_mz, peaks, 1.0)) + "\n")
+            for mode, extra in (("explicit list", ["2", "2", "2", "0", "0.01", "5"]),
+                                ("charge range", ["1", "2", "2", "1.0", "0.01", "5"])):
+                out = tmp / f"t83_below_{mode[0]}.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, 1, extra_args=extra)
+                if not check(rc == 0 and out.exists(), f"below-range {mode}: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1200:])
+                    continue
+                got = [x.get("peptide") for x in _t67_rows(out).get(1, []) if "peptide" in x]
+                check(got[:1] == [pep], f"below-range {mode}: MH+ {below_mz * 2 - _PROTON_MASS:.2f} < {low} still "
+                      f"finds {pep} (got {got or 'nothing'})", failures)
+
+            # (c) topN < 1: false (printed NO_MATCH), not an exception; topN 1 still matches
+            fx = tmp / "t83_topn.txt"
+            fx.write_text("\n".join(block(1, mz2, peaks)) + "\n")
+            for topn, want in (("-1", "NO_MATCH"), ("0", "NO_MATCH"), ("1", pep)):
+                out = tmp / f"t83_topn{topn}.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, 1, env={"RTS_REPRO_TOPN": topn})
+                if not check(rc == 0 and out.exists(), f"topN {topn}: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-800:])
+                    continue
+                f = (out.read_text().splitlines() or [""])[0].split("\t")
+                got = _strip_flanks(f[1]) if len(f) > 1 and f[1] != "NO_MATCH" else (f[1] if len(f) > 1 else f)
+                check(got == want, f"topN {topn}: {want} (got {got})", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T84 -- RealtimeSearch.exe chimeric (SearchChimeric.cs) reports bad input instead of crashing: a
+# malformed .ms2 line is named by file and line number, an unwritable --out path fails before
+# the search runs, and each of these (and bad usage) exits 1. Before 2026-11-09 a parse error was
+# an unhandled FormatException with a stack trace and no line number, and the output file was
+# opened only after the whole search.
+# ---------------------------------------------------------------------------
+
+@register("t84_searchchimeric_errors")
+def test_t84_searchchimeric_errors(comet_exe):
+    """T84: RealtimeSearch.exe chimeric exits 0 and writes rows on valid input; a malformed .ms2 peak line is
+    reported with its line number, an unwritable --out path fails before the search, and bad usage is rejected --
+    each with exit code 1 and no unhandled exception (Windows build)."""
+    failures = []
+    if not REALTIMESEARCH_EXE.exists():
+        raise TestSkipped(f"{REALTIMESEARCH_EXE} not built (Windows solution)")
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        ms2 = tmp / "t67_chimeric.ms2"
+        fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        pf = tmp / "t84.params"
+        pf.write_text(params)
+        idx = fasta.with_suffix(".fasta.idx")
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"], timeout=300)
+        if not check(rc == 0 and idx.exists(), f"fragment ion index builds (rc={rc})", failures):
+            print(log[-1200:])
+            return failures
+
+        # the first peak line of the file (a line starting with a digit), corrupted
+        lines = ms2.read_text().splitlines()
+        bad_no = next(i for i, ln in enumerate(lines) if ln[:1].isdigit()) + 1
+        bad_line = lines[bad_no - 1].replace(".", ".x", 1)
+        lines[bad_no - 1] = bad_line
+        bad = tmp / "t84_bad.ms2"
+        bad.write_text("\n".join(lines) + "\n")
+        out_ok = tmp / "t84_ok.txt"
+
+        def run(args):
+            try:
+                res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric"] + args, capture_output=True, text=True,
+                                     timeout=300)
+            except OSError as e:
+                raise TestSkipped(f"cannot run {REALTIMESEARCH_EXE} here ({e})")
+            return res.returncode, res.stdout + res.stderr
+
+        rc, out = run([_to_win(ms2), _to_win(idx), "--threads", "2", "--out", _to_win(out_ok)])
+        check(rc == 0, f"valid input: exit 0 (rc={rc})", failures)
+        peps = [ln.split("\t")[6] for ln in (out_ok.read_text().splitlines()[1:] if out_ok.exists() else [])
+                if len(ln.split("\t")) > 6]
+        check(any(_strip_flanks(p) == "LVNELTEFAK" for p in peps), f"valid input: output has LVNELTEFAK ({peps[:4]})",
+              failures)
+
+        cases = (
+            ("malformed .ms2", [_to_win(bad), _to_win(idx)], [f"line {bad_no}:", bad_line], ["index mass range"]),
+            ("unwritable --out", [_to_win(ms2), _to_win(idx), "--out", _to_win(tmp / "no_such_dir" / "x.txt")],
+             ["cannot write"], ["index mass range"]),
+            ("bad usage", [_to_win(ms2)], ["USAGE"], []),
+        )
+        for name, args, want, never in cases:
+            rc, out = run(args)
+            check(rc == 1, f"{name}: exit 1 (rc={rc})", failures)
+            check("Unhandled Exception" not in out and not re.search(r"^\s+at [\w.`<>]+\(", out, re.M),
+                  f"{name}: no unhandled exception or stack trace", failures)
+            for w in want:
+                check(w in out, f"{name}: output says {w!r}", failures)
+            for n in never:
+                check(n not in out, f"{name}: stops before the search (no {n!r})", failures)
+            if rc != 1 or any(w not in out for w in want):
+                print(out[-1200:])
+    return failures
+
 
 if __name__ == "__main__":
     main()

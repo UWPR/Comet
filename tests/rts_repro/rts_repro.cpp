@@ -297,6 +297,7 @@ int main(int argc, char** argv)
                       "              last (e.g. \"i:use_Z1_ions=1\"); the type must be the one Comet reads it as\n"
                       "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n"
                       "              RTS_REPRO_CANCEL_RACE=<us> cancels/resets the search at random intervals (test T82)\n"
+                      "              RTS_REPRO_TOPN=<n> sets mode 0's topN (default 1; test T83)\n"
                       "  chimeric output: a call that stopped early keeps its rows and adds 'INCOMPLETE budget' (budget ran out)\n"
                       "              or 'INCOMPLETE stopped' (cancelled or a search failed); ERROR = invalid arguments\n", argv[0]);
       return 1;
@@ -402,6 +403,10 @@ int main(int argc, char** argv)
    if (!ApplyExtraParams(mgr))
       return 1;
 
+   // RTS_REPRO_TOPN=<n>: the topN mode 0 passes to DoSingleSpectrumSearchMultiResults (default 1).
+   // An invalid value (< 1) must make the call return false, printed as NO_MATCH (test T83).
+   const char* pszTopN = getenv("RTS_REPRO_TOPN");
+   const int iTopN = (pszTopN != nullptr && *pszTopN != '\0') ? atoi(pszTopN) : 1;
    const char* pszFrag = getenv("RTS_REPRO_FRAGMENTS");
    const bool bPrintFragments = (pszFrag != nullptr && atoi(pszFrag) != 0);
 
@@ -456,7 +461,7 @@ int main(int argc, char** argv)
 
          if (iChimeric == 0)
          {
-            bool ok = mgr->DoSingleSpectrumSearchMultiResults(1, s.charge, s.mz,
+            bool ok = mgr->DoSingleSpectrumSearchMultiResults(iTopN, s.charge, s.mz,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
                vPeptide, vProtein, vFrag, vScores);
 

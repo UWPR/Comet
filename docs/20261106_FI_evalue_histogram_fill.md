@@ -242,7 +242,9 @@ scored counts, `iMaxCorr` / `iNextCorr`, slope, intercept and the rank-1 xcorr /
 and `COMET_EVALUE_HIST` (after padding, the counts the regression fits), both as raw
 per-bin `bin:count` lists taken *before* `LinearRegression()` overwrites bins
 0..`iNextCorr` with the cumulative distribution. The chimeric path's own fit/histogram
-prints were removed in its favour.
+prints were removed in its favour. Since 2026-11-09 the `tope` field follows the reporting
+rules (999 when the slope is >= 0, capped at 999), so it is the rank-1 E-value Comet reports;
+before, it printed the raw fit, e.g. 1754 for a reported 999 (test T83).
 
 **Setup.** As `docs/20261105_RTSchimeric.md` section 10: the 42,030-scan HeLa fixture;
 FI (`-i`) and PI (`-j`) indexes of `human.canonical.target-decoy.fasta` with

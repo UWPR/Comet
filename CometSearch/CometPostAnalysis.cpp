@@ -1662,11 +1662,24 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
       const int iScan = pQuery->_spectrumInfoInternal.iScanNumber;
       const int iZ = pQuery->_spectrumInfoInternal.usiChargeState;
       const bool bHasTop = (pQuery->iMatchPeptideCount > 0);
-      // slope / intercept are the regression on log10(cumulative count) vs xcorr bin (0.1 units)
+      // slope / intercept are the regression on log10(cumulative count) vs xcorr bin (0.1 units).
+      // tope follows the reporting rules below (999 when the slope is >= 0, capped at 999), so it
+      // is the rank-1 E-value Comet actually reports.
+      double dTopE = 0.0;
+      if (bHasTop)
+      {
+         dTopE = 999.0;
+         if (dSlope < 0.0)
+         {
+            dTopE = std::exp((dSlope * 10.0 * pQuery->_pResults[0].fXcorr + dIntercept) * 2.302585092994046);
+            if (dTopE > 999.0)
+               dTopE = 999.0;
+         }
+      }
       fprintf(stderr, "COMET_EVALUE scan=%d z=%d scored=%d hist=%u maxcorr=%d nextcorr=%d slope=%.4f icpt=%.4f topx=%.4f tope=%.4g\n",
          iScan, iZ, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount, iMaxCorr, iNextCorr, dSlope, dIntercept,
          bHasTop ? pQuery->_pResults[0].fXcorr : 0.0f,
-         bHasTop ? std::exp((dSlope * 10.0 * pQuery->_pResults[0].fXcorr + dIntercept) * 2.302585092994046) : 0.0);
+         dTopE);
       if (iTrace >= 2)
       {
          fprintf(stderr, "COMET_EVALUE_HIST_REAL scan=%d z=%d %s\n", iScan, iZ, sHistReal.c_str());

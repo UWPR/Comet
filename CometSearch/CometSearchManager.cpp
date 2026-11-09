@@ -2800,7 +2800,10 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             vector<vector<Fragment>>& matchedFragments,
                                                             vector<CometScores>& scores)
 {
-   if (iNumPeaks <= 0)
+   // topN < 1 is an invalid argument: before 2026-11-09 a negative value reached
+   // reserve(size + topN) in SearchSingleSpectrumCore(), threw std::length_error and leaked
+   // the call's Query.
+   if (iNumPeaks <= 0 || topN < 1)
       return false;
 
    // Written so a NaN m/z fails it (a "> high" test lets NaN through); the preprocess core
@@ -3092,6 +3095,8 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
    takeSearchResultsN = takeN;
    if (takeSearchResultsN > iSize)
       takeSearchResultsN = iSize;
+   if (takeSearchResultsN < 0)
+      takeSearchResultsN = 0;   // defensive: the public entry points reject topN < 1
 
    if (g_staticParams.options.iMaxIndexRunTime > 0)
    {
@@ -3758,7 +3763,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    const bool bDebug = (iDebug >= 1);
 
    // Candidate list: drop invalid candidates and exact duplicates, keep everything else in
-   // the caller's order. Candidates whose mass falls outside the index's range are skipped
+   // the caller's order. Candidates whose mass lies above the index's range are skipped
    // per iteration below (decision 8) rather than here, so the trace can report them.
    //
    // Precursor merging is left to the caller (2026-11-08): only a candidate identical to an
@@ -3884,9 +3889,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
             break;
          }
 
-         // Protonated mass, the quantity DoSingleSpectrumSearchMultiResults() gates on.
+         // Protonated mass, gated exactly as DoSingleSpectrumSearchMultiResults() gates it: only
+         // above dPeptideMassHigh (decision 8). There is no lower bound: with an isotope error or
+         // a wide m/z tolerance a precursor just below dPeptideMassLow can still match a peptide
+         // inside the range, and one that cannot simply finds nothing.
          const double dMH = c.dMZ * c.iCharge - (c.iCharge - 1.0) * PROTON_MASS;
-         if (!(dMH >= g_staticParams.options.dPeptideMassLow && dMH <= g_staticParams.options.dPeptideMassHigh))
+         if (!(dMH <= g_staticParams.options.dPeptideMassHigh))
             continue;   // decision 8: silently skipped (NaN-safe: a NaN mass fails the test)
 
          const double dTol = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
@@ -4028,7 +4036,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    // searched, and a huge maximum reserved billions of candidates (std::bad_alloc through the
    // wrapper) and could overflow the loop counter. Charges outside the configured
    // min_precursor_charge / max_precursor_charge are skipped by preprocessing, like any
-   // candidate outside the index's mass range.
+   // candidate above the index's mass range.
    const int iZmin = iMinPrecursorCharge;
    const int iZmax = (iMaxPrecursorCharge > MAX_PRECURSOR_CHARGE) ? MAX_PRECURSOR_CHARGE : iMaxPrecursorCharge;
    if (iZmin > iZmax)

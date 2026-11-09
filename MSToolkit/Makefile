@@ -156,8 +156,17 @@ MSTOOLKIT_DSO = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%.lo, $(
 
 .PHONY : mstoolkit
 
-mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
-	ar rcs $(BUILD_DIR)/libmst.a $(MSTOOLKIT_DST)
+# Each archive below is a file target that depends on what goes into it, so a 'make all'
+# with nothing changed rewrites no library: the top-level comet.exe depends on
+# libmstoolkit.a / libmstoolkitextern.a and relinks only when one of them really changed.
+# (Before 2026-11-09 these were recipes of phony targets and re-ran on every make.)
+MSTOOLKIT_LIB = $(BUILD_DIR)/libmst.a
+
+mstoolkit : $(MSTOOLKIT_LIB) $(MSTOOLKIT_DSO)
+
+$(MSTOOLKIT_LIB) : $(MSTOOLKIT_DST)
+	rm -f $@
+	ar rcs $@ $(MSTOOLKIT_DST)
 
 # The expat/zlib headers these sources include (via mzParser.h) are installed into
 # include/ by the expat and zlib targets, so every object waits for both (order-only,
@@ -190,8 +199,13 @@ MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZP
 
 .PHONY : mzparser
 
-mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
-	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
+MZPARSER_LIB = $(BUILD_DIR)/libmzparser.a
+
+mzparser : $(MZPARSER_LIB) $(MZPARSER_DSO)
+
+$(MZPARSER_LIB) : $(MZPARSER_DST)
+	rm -f $@
+	ar rcs $@ $(MZPARSER_DST)
 	
 $(MZPARSER_DST) $(MZPARSER_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
 $(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp $(MZPARSER_DSTDIR)%.o.d
@@ -214,7 +228,9 @@ mzparser-realclean : mzparser-clean
 #
 .PHONY : lib
 
-lib : mstoolkit mzparser
+lib : mstoolkit mzparser libmstoolkit.a
+
+libmstoolkit.a : $(MSTOOLKIT_LIB) $(MZPARSER_LIB)
 	$(file >mstoolkit.mri,create libmstoolkit.a)
 	$(file >>mstoolkit.mri,addlib obj/libmst.a)
 	$(file >>mstoolkit.mri,addlib obj/libmzparser.a)
@@ -246,7 +262,9 @@ lib-realclean : lib-clean
 #
 .PHONY : libextern
 
-libextern : expat zlib
+libextern : expat zlib libmstoolkitextern.a
+
+libmstoolkitextern.a : $(EXPAT_STAMP) $(ZLIB_DST)
 	$(file >mstoolkitextern.mri,create libmstoolkitextern.a)
 	$(file >>mstoolkitextern.mri,addlib obj/libexpat.a)
 	$(file >>mstoolkitextern.mri,addlib obj/libz.a)

@@ -28,6 +28,7 @@ endif
 
 LIBCOMETSEARCH = $(COMETSEARCH)/libcometsearch.a
 LIBASCOREPRO = $(ASCOREPRO)/libascorepro.a
+LIBMSTOOLKIT = $(MSTOOLKIT)/libmstoolkit.a $(MSTOOLKIT)/libmstoolkitextern.a
 
 # Everything a sub-make's objects can depend on. A change to any of these makes the
 # library out of date *here*, so the sub-make is entered; the sub-make's own .d
@@ -45,7 +46,7 @@ ASCOREPRO_FILES = $(wildcard $(ASCOREPRO)/Makefile $(ASCOREPRO)/*.cpp $(ASCOREPR
 UNITTEST_BIN = tests/unit/test_comet_internal
 UNITTEST_SRC = tests/unit/TestCometSearchAndPreprocess.cpp tests/unit/TestModificationsPermuter.cpp
 
-comet.exe: $(OBJS) $(LIBCOMETSEARCH) $(LIBASCOREPRO)
+comet.exe: $(OBJS) $(LIBCOMETSEARCH) $(LIBASCOREPRO) $(LIBMSTOOLKIT)
 ifeq ($(UNAME_S),Darwin)
 	${CXX} $(OBJS) -headerpad_max_install_names -o ${EXECNAME} $(CXXFLAGS) $(LIBPATHS) $(LIBS)
 else
@@ -66,6 +67,14 @@ endif
 mstoolkit:
 	cd $(MSTOOLKIT) && $(MAKE) all
 
+# The MSToolkit libraries are built by the mstoolkit target above, whose own Makefile
+# decides what is out of date. They are prerequisites of comet.exe so that a change made
+# only in MSToolkit relinks it (before 2026-11-09 comet.exe kept the old MSToolkit code
+# until something else changed). The empty recipe means "mstoolkit has made this";
+# make then re-reads the library's timestamp, so comet.exe relinks only when the
+# sub-make actually rebuilt a library.
+$(LIBMSTOOLKIT): | mstoolkit ;
+
 $(LIBCOMETSEARCH): $(COMETSEARCH_FILES) | mstoolkit
 	cd $(COMETSEARCH) && $(MAKE)
 
@@ -85,7 +94,7 @@ Comet.o: Comet.cpp Comet.d | mstoolkit
 # Dependency-free unit tests (tests/unit/MiniTest.h -- no gtest, no CMake).
 # Builds a standalone binary linked directly against libcometsearch and
 # its dependencies, then runs it.
-unittest: $(LIBCOMETSEARCH) $(LIBASCOREPRO)
+unittest: $(LIBCOMETSEARCH) $(LIBASCOREPRO) $(LIBMSTOOLKIT)
 	${CXX} ${CXXFLAGS} $(UNITTEST_SRC) -o $(UNITTEST_BIN) $(LIBPATHS) $(LIBS)
 	$(UNITTEST_BIN)
 
