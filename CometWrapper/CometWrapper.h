@@ -131,8 +131,18 @@ namespace CometWrapper {
         bool ResetSearchStatus();
         String^ GetPeakMemory();
 
+        // Why the last RTS search call (DoSingleSpectrumSearchMultiResults,
+        // DoSingleSpectrumSearchChimeric, DoMS1SearchMultiResults) on the calling thread returned
+        // false for a reason the wrapper detected -- invalid peak arrays, or a native C++ exception
+        // it caught instead of letting it escape into the host -- or nullptr when it returned
+        // normally. Per thread, because RTS hosts call these concurrently.
+        String^ GetLastWrapperError();
+
     private:
         ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
+
+        [System::ThreadStaticAttribute]
+        static String^ s_strLastWrapperError;
     };
 }

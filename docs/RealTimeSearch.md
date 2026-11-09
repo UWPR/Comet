@@ -509,7 +509,27 @@ the marshaling below is shared.
 - Native `Fragment` -> managed `FragmentWrapper` via copy-constructor.
 - Native `string` <-> managed `String^` via `marshal_as<>`.
 
-No shared mutable state exists in the wrapper layer. Each managed call creates stack-local native containers for results.
+No shared mutable state exists in the wrapper layer. Each managed call creates stack-local native
+containers for results. The one static field, the last wrapper error, is `[ThreadStatic]`, so each
+calling thread has its own.
+
+**Input validation and native exceptions (2026-11-08).** Every RTS search call checks its peak
+arrays before pinning them: `DoSingleSpectrumSearchMultiResults`, both
+`DoSingleSpectrumSearchChimeric` forms and `DoMS1SearchMultiResults`.
+
+- Both arrays must be non-null, `iNumPeaks` must be greater than 0, and both arrays must be at
+  least `iNumPeaks` long. A longer array is accepted, because hosts reuse buffers.
+- Otherwise the call returns `false` with empty, non-null output lists. Before, a null array or a
+  count larger than either array let native code read past the pinned managed array, and an
+  empty array threw `IndexOutOfRangeException` at `&pdMass[0]`.
+- The chimeric list form also requires its candidate arrays to be non-empty and of equal length.
+- A native C++ exception thrown during a call (`std::bad_alloc`, ...) is caught. The call returns
+  `false` with empty outputs instead of the host receiving an `SEHException`.
+- `GetLastWrapperError()` returns the reason for the calling thread's last such `false`, or
+  `null` after a normal return. The reason is "invalid peak arrays: ...", "invalid candidate
+  arrays: ...", "native exception: ..." or "no search manager".
+- `RealtimeSearch.exe wrappercheck <database.idx> <fixture.txt> <expected_peptide>`
+  (`WrapperCheck.cs`, test T78) exercises all of this through the real wrapper.
 
 **Key wrapper types (`CometDataWrapper.h`):**
 
@@ -625,6 +645,10 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
    - Set `pQuery->tSearchStart` right after preprocessing, then call `CometSearch::RunSearch(pQuery)` (not `RunSearch(ThreadPool*)` or the pre-assigned-slot `RunSearch(Query*, int iSlot)` overload used by the fused batch path).
    - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
+   Check every array with `ValidPeakArrays()` (or the equivalent) **before** pinning it. Wrap the native
+   call in `try` / `catch (const std::exception&)` / `catch (...)`. On any failure, set
+   `s_strLastWrapperError` and return `false` with empty, non-null outputs, as the existing RTS
+   calls do.
 4. If new return types are needed, add wrapper structs to `CometDataWrapper.h` (and mirror in `CometData.h`).
 5. Call from `RealtimeSearch/SearchMS1MS2.cs`.
 

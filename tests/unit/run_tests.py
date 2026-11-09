@@ -7756,5 +7756,78 @@ def test_t77_rts_charge_limits(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T78 -- CometWrapper input validation and native-exception containment (branch code review
+# item 11). Runs "RealtimeSearch.exe wrappercheck" (RealtimeSearch/WrapperCheck.cs) from the
+# Windows build: every RTS entry point of the C++/CLI wrapper is given null, empty, over-long and
+# mismatched peak arrays and must return false with empty, non-null outputs and no exception
+# (before: an IndexOutOfRangeException, or a native read past the pinned managed array); valid
+# calls, including a reused buffer longer than iNumPeaks, must find the peptide.
+# ---------------------------------------------------------------------------
+
+REALTIMESEARCH_EXE = REPO_ROOT / "RealtimeSearch" / "bin" / "x64" / "Release" / "RealtimeSearch.exe"
+
+
+@register("t78_wrappercheck")
+def test_t78_wrappercheck(comet_exe):
+    """T78: CometWrapper's RTS calls reject invalid peak arrays (null, empty, iNumPeaks larger than either
+    array) with false and empty outputs instead of throwing or over-reading, and still search valid input
+    (including a buffer longer than iNumPeaks) -- RealtimeSearch.exe wrappercheck, Windows build."""
+    failures = []
+    if not REALTIMESEARCH_EXE.exists():
+        print(f"  SKIP: {REALTIMESEARCH_EXE} not built (Windows solution)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks.sort()
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        fixture = tmp / "t78.txt"
+        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+
+        fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        pf = tmp / "t78.params"
+        pf.write_text(params)
+        idx = fasta.with_suffix(".fasta.idx")
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"], timeout=300)
+        if not check(rc == 0 and idx.exists(), f"fragment ion index builds (rc={rc})", failures):
+            print(log[-1200:])
+            return failures
+        try:
+            res = subprocess.run([str(REALTIMESEARCH_EXE), "wrappercheck", _to_win(idx), _to_win(fixture), pep],
+                                 capture_output=True, text=True, timeout=300)
+        except OSError as e:
+            print(f"  SKIP: cannot run {REALTIMESEARCH_EXE} here ({e})")
+            return []
+        out = res.stdout + res.stderr
+        for line in out.splitlines():
+            if line.startswith("  FAIL:"):
+                failures.append("wrappercheck " + line.strip())
+        check(res.returncode == 0 and "WRAPPERCHECK PASSED" in out,
+              f"RealtimeSearch.exe wrappercheck exits 0 and reports PASSED (rc={res.returncode})", failures)
+        if res.returncode != 0:
+            print(out[-2500:])
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

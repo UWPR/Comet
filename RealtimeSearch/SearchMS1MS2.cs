@@ -69,6 +69,13 @@ namespace RealTimeSearch
             return;
          }
 
+         // "wrappercheck" runs the CometWrapper input-validation self-check (WrapperCheck.cs, test T78).
+         if (args.Length >= 1 && args[0] == "wrappercheck")
+         {
+            Environment.ExitCode = WrapperCheck.Run(args);
+            return;
+         }
+
          if (args.Length < 2)
          {
             Console.WriteLine(" RTS MS1/MS2\n");
