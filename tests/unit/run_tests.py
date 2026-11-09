@@ -7019,5 +7019,119 @@ def test_t71_rts_z1_ions(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T72 -- max_index_runtime ends the chimeric call. The budget covers the whole call; an
+# expired core search returns 0 rows, and the loop's only budget check used to sit after the
+# 0-row skip, so an exhausted budget never ended the loop (every candidate still searched, an
+# extra iteration run). One spectrum (LVNELTEFAK's 1+ b/y ions) with 400 explicit-list 2+
+# candidates, its own m/z first; preprocessing alone takes well over 1 ms for 400 candidates.
+# ---------------------------------------------------------------------------
+
+@register("t72_chimeric_budget")
+def test_t72_chimeric_budget(comet_exe):
+    """T72: an exhausted max_index_runtime ends DoSingleSpectrumSearchChimeric(): with a 1 ms budget and 400
+    candidates, iteration 0 stops before the last candidate, is marked budget-expired, and no further iteration
+    runs; without a budget all 400 candidates are searched and the call goes on to iteration 1."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    N_CAND = 400
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            peaks += [(bm, 60.0), (ym, 100.0)]
+        # 15 weak noise peaks, so the spectrum keeps minimum_peaks (10) after the target's removal
+        # and an unlimited call goes on to iteration 1
+        peaks += [(250.55 + k * 61.37, 5.0) for k in range(15)]
+        peaks.sort()
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        # explicit-list form: every block of scan 1 is a candidate; the first block's peaks are searched
+        lines = [f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}"] + [f"{m:.5f} {i:.1f}" for m, i in peaks]
+        for k in range(1, N_CAND):
+            lines += [f"SPECTRUM 1 2 {300.0 + k * 1.0:.6f} 1", "500.00000 1.0"]
+        fixture = tmp / "t72.txt"
+        fixture.write_text("\n".join(lines) + "\n")
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        list_args = ["2", "0", "0", "0", "0.01", "5"]   # explicit list, configured tolerance, E <= 0.01, max 5
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            def run(label, budget_ms):
+                env = {"RTS_CHIMERIC_DEBUG": "1"}
+                if budget_ms is not None:
+                    env["RTS_REPRO_PARAMS"] = f"i:max_index_runtime={budget_ms}"
+                out = tmp / f"{label}.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, extra_args=list_args, env=env)
+                ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures)
+                if not ok:
+                    print(log[-1500:])
+                    return None, None
+                check("ERROR" not in out.read_text(), f"{label}: the call returns true (no ERROR row)", failures)
+                iters = {int(m.group(1)): (int(m.group(2)), m.group(0))
+                         for m in re.finditer(r"^RTS_CHIMERIC iter=(\d+) candidates=(\d+) .*$", log, re.M)}
+                return iters, log
+
+            iters, _ = run("unlimited", None)
+            if iters is not None:
+                check(iters.get(0, (0,))[0] == N_CAND, f"unlimited: iteration 0 searched all {N_CAND} candidates "
+                      f"({iters.get(0, (None, 'no trace'))[1]})", failures)
+                check(1 in iters, "unlimited: the call went on to iteration 1 (the target was found and removed)", failures)
+
+            iters, log = run("budget_1ms", 1)
+            if iters is not None:
+                check("RTS_REPRO_PARAMS: max_index_runtime = 1" in log, "budget_1ms: RTS_REPRO_PARAMS applied max_index_runtime = 1", failures)
+                n0, line0 = iters.get(0, (None, "no trace"))
+                check(n0 is not None and n0 < N_CAND, f"budget_1ms: iteration 0 stopped before the last of {N_CAND} candidates ({line0})", failures)
+                check(line0.endswith("budget-expired"), f"budget_1ms: iteration 0 is marked budget-expired ({line0})", failures)
+                check(sorted(iters) == [0], f"budget_1ms: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
+
+            # A budget that runs out after the target is found (the first search carries one-time
+            # setup, ~15 ms here; then ~0.2 ms per candidate): the best PSM of the incomplete
+            # iteration is reported and the call ends. Timing-dependent, so the report check runs
+            # only when the trace shows exactly that case; the invariant is checked regardless.
+            iters, log = run("budget_40ms", 40)
+            if iters is not None:
+                n0, line0 = iters.get(0, (None, "no trace"))
+                if line0.endswith("budget-expired"):
+                    check(sorted(iters) == [0], f"budget_40ms: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
+                if " keep budget-expired" in line0:
+                    rows = _t67_rows(tmp / "budget_40ms.out").get(1, [])
+                    check([(x.get("peptide"), x.get("iter")) for x in rows] == [(pep, 0)],
+                          f"budget_40ms: the incomplete iteration's best, {pep}, is reported as iteration 0 and nothing else "
+                          f"(got {[(x.get('peptide'), x.get('iter')) for x in rows]})", failures)
+                else:
+                    print(f"  NOTE: budget_40ms did not expire after the target was found on this machine ({line0}); "
+                          f"report-on-expiry check not exercised")
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()

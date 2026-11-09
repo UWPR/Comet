@@ -3837,6 +3837,22 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    vector<CometScores> vSc;
    std::vector<int> vBins;
 
+   // max_index_runtime is one budget for the whole call, measured from tStart -- the same
+   // origin and clock the core's own checks use. An expired core search returns 0 rows,
+   // indistinguishable from "nothing scored", so the loop checks the budget itself: before
+   // each candidate (nothing is preprocessed after expiry) and after each core call, ahead
+   // of the 0-row skip. Before 2026-11-08 the only check sat after that skip, so an
+   // expired budget never ended the loop: every remaining candidate was still searched and
+   // a whole extra iteration ran.
+   auto BudgetExpired = [&]() -> bool
+   {
+      if (g_staticParams.options.iMaxIndexRunTime <= 0)
+         return false;
+      auto tElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+         std::chrono::high_resolution_clock::now() - tStart).count();
+      return tElapsed >= g_staticParams.options.iMaxIndexRunTime;
+   };
+
    for (int iIteration = 0; iIteration < iMaxPeptidesPerSpectrum; ++iIteration)
    {
       bool bHaveBest = false;
@@ -3853,6 +3869,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
       for (const PrecursorCandidate& c : vCand)
       {
+         if (BudgetExpired())
+         {
+            bBudgetExhausted = true;
+            break;
+         }
+
          // Protonated mass, the quantity DoSingleSpectrumSearchMultiResults() gates on.
          const double dMH = c.dMZ * c.iCharge - (c.iCharge - 1.0) * PROTON_MASS;
          if (dMH > g_staticParams.options.dPeptideMassHigh || dMH < g_staticParams.options.dPeptideMassLow)
@@ -3871,12 +3893,13 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
          if (iRows == -2)
             return false;              // index search failed / cancelled
-         if (iRows <= 0 || vPep[0].empty())
-            continue;                  // rejected input, nothing scored, or below minimum xcorr
 
-         if (!bHaveBest
-            || vSc[0].dExpect < scBest.dExpect
-            || (vSc[0].dExpect == scBest.dExpect && vSc[0].xCorr > scBest.xCorr))
+         // 0 rows: rejected input, nothing scored, below minimum xcorr -- or the budget ran
+         // out inside the core, which then discards the truncated search (plan 4.8).
+         if (iRows > 0 && !vPep[0].empty()
+            && (!bHaveBest
+               || vSc[0].dExpect < scBest.dExpect
+               || (vSc[0].dExpect == scBest.dExpect && vSc[0].xCorr > scBest.xCorr)))
          {
             bHaveBest = true;
             sBestPep = std::move(vPep[0]);
@@ -3886,15 +3909,10 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
             vBestBins.swap(vBins);
          }
 
-         if (g_staticParams.options.iMaxIndexRunTime > 0)
+         if (BudgetExpired())
          {
-            auto tElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::high_resolution_clock::now() - tStart).count();
-            if (tElapsed >= g_staticParams.options.iMaxIndexRunTime)
-            {
-               bBudgetExhausted = true;
-               break;
-            }
+            bBudgetExhausted = true;
+            break;
          }
       }
 
@@ -3903,11 +3921,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
       if (bDebug)
       {
-         fprintf(stderr, "RTS_CHIMERIC iter=%d candidates=%d peaks=%zu best=%s z=%d expect=%.4g xcorr=%.4f bins=%zu %s\n",
+         fprintf(stderr, "RTS_CHIMERIC iter=%d candidates=%d peaks=%zu best=%s z=%d expect=%.4g xcorr=%.4f bins=%zu %s%s\n",
             iIteration, iCandidatesSearched, tl_vMass.size(),
             bHaveBest ? sBestPep.c_str() : "-", bHaveBest ? scBest.iCharge : 0,
             bHaveBest ? scBest.dExpect : 0.0, bHaveBest ? scBest.xCorr : 0.0, vBestBins.size(),
-            (!bHaveBest) ? "stop:no-psm" : (scBest.dExpect > dMaxExpect) ? "stop:expect" : "keep");
+            (!bHaveBest) ? "stop:no-psm" : (scBest.dExpect > dMaxExpect) ? "stop:expect" : "keep",
+            bBudgetExhausted ? " budget-expired" : "");
       }
 
       if (!bHaveBest || scBest.dExpect > dMaxExpect)
@@ -3940,6 +3959,9 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
       matchedFragments.push_back(std::move(vBestFrag));
       scores.push_back(scBest);
 
+      // Budget ran out mid-iteration: the best PSM among the candidates searched so far
+      // was fully scored and passed dMaxExpect, so it is reported (it may not be the best
+      // over every candidate); then the call ends.
       if (bBudgetExhausted)
          break;
 
