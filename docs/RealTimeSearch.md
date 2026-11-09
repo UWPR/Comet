@@ -87,8 +87,13 @@ threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime`
 `CometScores::iCharge` / `iIteration` on each row say which candidate charge and which
 iteration produced it; `topN` is accepted but one row per iteration is reported. Rows are
 ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
-over a more intense one. Candidates whose mass falls outside the index range are skipped
-silently; a decoy winner is reported and removed like a target. Returns `true` on a normal
+over a more intense one. Candidates whose mass falls outside the index range, or whose
+charge is outside `min_precursor_charge` / `max_precursor_charge`, are skipped silently.
+The charge-range form searches only charges up to `MAX_PRECURSOR_CHARGE` (9), and a range
+wholly above it returns `false`. A decoy winner is reported and removed like a target.
+Both RTS entry points honor `min_precursor_charge` / `max_precursor_charge` as batch does,
+since 2026-11-08: `DoSingleSpectrumSearchMultiResults()` returns `false` for a spectrum
+whose charge is outside them. Returns `true` on a normal
 end (zero rows included), `false` on an error. Same thread-safety as the single-spectrum
 call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
 is only read (the per-call tolerance and the re-search candidate thresholds live on the

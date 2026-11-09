@@ -3984,9 +3984,22 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    if (iMinPrecursorCharge < 1 || iMaxPrecursorCharge < iMinPrecursorCharge)
       return false;
 
+   // Only charges 1..MAX_PRECURSOR_CHARGE can be searched (preprocessing rejects any other),
+   // so the range is intersected with that before anything is allocated; an empty
+   // intersection returns false, as the list form does when no valid candidate remains.
+   // Before 2026-11-08 the range was used as given: 10..12 returned true with nothing
+   // searched, and a huge maximum reserved billions of candidates (std::bad_alloc through the
+   // wrapper) and could overflow the loop counter. Charges outside the configured
+   // min_precursor_charge / max_precursor_charge are skipped by preprocessing, like any
+   // candidate outside the index's mass range.
+   const int iZmin = iMinPrecursorCharge;
+   const int iZmax = (iMaxPrecursorCharge > MAX_PRECURSOR_CHARGE) ? MAX_PRECURSOR_CHARGE : iMaxPrecursorCharge;
+   if (iZmin > iZmax)
+      return false;
+
    std::vector<PrecursorCandidate> vPrecursors;
-   vPrecursors.reserve(iMaxPrecursorCharge - iMinPrecursorCharge + 1);
-   for (int z = iMinPrecursorCharge; z <= iMaxPrecursorCharge; ++z)
+   vPrecursors.reserve(iZmax - iZmin + 1);
+   for (int z = iZmin; z <= iZmax; ++z)
       vPrecursors.emplace_back(dMZ, z, 0.0);   // 0 = inherit the per-call tolerance
 
    return DoSingleSpectrumSearchChimeric(topN, vPrecursors, dPrecursorToleranceMZ, dMaxExpect,

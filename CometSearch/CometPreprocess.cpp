@@ -1748,6 +1748,17 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    if (iPrecursorCharge < 1 || iPrecursorCharge > MAX_PRECURSOR_CHARGE)
       return nullptr;
 
+   // min_precursor_charge / max_precursor_charge apply to RTS as they do to batch (the
+   // charge-guessing loops in PreprocessSpectrum() and the fused path skip a charge outside
+   // [iMinPrecursorCharge, iMaxPrecursorCharge]). Until 2026-11-08 RTS ignored them although
+   // the RealtimeSearch harnesses set max_precursor_charge: a 7+ spectrum was searched under
+   // max_precursor_charge = 6. Both RTS entry points come through here.
+   if (iPrecursorCharge < g_staticParams.options.iMinPrecursorCharge
+         || iPrecursorCharge > g_staticParams.options.iMaxPrecursorCharge)
+   {
+      return nullptr;
+   }
+
    double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
 
    // The precursor mass sizes this query's arrays (ComputeClampedArraySize()): a NaN or

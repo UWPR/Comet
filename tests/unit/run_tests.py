@@ -7656,5 +7656,105 @@ def test_t76_rts_shared_bins(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T77 -- precursor charge limits in RTS. The chimeric charge-range overload used the requested
+# range as given: 10..12 returned true with nothing searched (preprocessing rejects charges
+# above MAX_PRECURSOR_CHARGE, 9), and a huge maximum reserved billions of candidates. And
+# neither RTS entry point honored min_precursor_charge / max_precursor_charge, which batch does.
+# ---------------------------------------------------------------------------
+
+@register("t77_rts_charge_limits")
+def test_t77_rts_charge_limits(comet_exe):
+    """T77: the chimeric charge-range overload searches only charges 1..MAX_PRECURSOR_CHARGE (a range wholly
+    above returns false; 2..12 and 2..INT_MAX search 2..9 without crashing), and RTS honors
+    min_precursor_charge / max_precursor_charge like batch, in the plain and the chimeric search."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        peaks, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            peaks += [(bm, 60.0), (ym, 100.0)]
+        peaks.sort()
+        mz2 = (sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2
+        fixture = tmp / "t77.txt"
+        fixture.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(peaks)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in peaks))
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            def chim(label, zmin, zmax, extra=None):
+                env = {"RTS_CHIMERIC_DEBUG": "1"}
+                if extra:
+                    env["RTS_REPRO_PARAMS"] = extra
+                out = tmp / "chim.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, extra_args=["1", str(zmin), str(zmax), "0", "0.01", "5"], env=env)
+                ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0, no crash (rc={rc})", failures)
+                if not ok:
+                    print(log[-1200:])
+                    return None, None
+                m = re.search(r"^RTS_CHIMERIC iter=0 candidates=(\d+) ", log, re.M)
+                return _t67_rows(out).get(1, []), (int(m.group(1)) if m else None)
+
+            rows, _ = chim("chimeric 10..12", 10, 12)
+            if rows is not None:
+                check(rows == [{"error": True}], f"chimeric 10..12: a range wholly above {9} returns false (ERROR row), got {rows}", failures)
+            for label, zmax in (("chimeric 2..12", 12), ("chimeric 2..INT_MAX", 2147483647)):
+                rows, ncand = chim(label, 2, zmax, "i:max_precursor_charge=9")
+                if rows is not None:
+                    got = [(x.get("peptide"), x.get("z")) for x in rows if "peptide" in x]
+                    check(got[:1] == [(pep, 2)], f"{label}: {pep} 2+ found (got {got or rows})", failures)
+                    check(ncand is not None and ncand <= 8, f"{label}: at most 8 candidates searched, charges 2..9 (got {ncand})", failures)
+            # the configured limits apply to chimeric candidates too: under min_precursor_charge 3 the
+            # 2+ candidate is not searched, so the 2+ peptide is not found (its 3+ and 4+ windows miss it)
+            rows, _ = chim("chimeric 2..4, min_precursor_charge 3", 2, 4, "i:min_precursor_charge=3")
+            if rows is not None:
+                got = [(x.get("peptide"), x.get("z")) for x in rows if "peptide" in x]
+                check(got == [], f"chimeric 2..4 under min_precursor_charge 3: the 2+ candidate is skipped, nothing "
+                      f"found (got {got or rows})", failures)
+
+            # plain RTS (DoSingleSpectrumSearchMultiResults) on the 2+ spectrum
+            for label, extra, want in (("plain, defaults", None, pep),
+                                       ("plain, min_precursor_charge 3", "i:min_precursor_charge=3", None),
+                                       ("plain, max_precursor_charge 1", "i:max_precursor_charge=1", None)):
+                out = tmp / "plain.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, env={"RTS_REPRO_PARAMS": extra} if extra else None)
+                if check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures):
+                    row = _t73_mode0_rows(out).get(1, "absent")
+                    if want:
+                        check(row not in (None, "absent") and row[0] == want, f"{label}: the 2+ spectrum finds {want} (got {row})", failures)
+                    else:
+                        check(row is None, f"{label}: the 2+ spectrum is not searched (NO_MATCH), got {row}", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()
