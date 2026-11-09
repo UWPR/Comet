@@ -1700,6 +1700,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
 
+   // The precursor mass sizes this query's arrays (ComputeClampedArraySize()): a NaN or
+   // infinite m/z cast to int is undefined (in practice INT_MIN) and a negative size reached
+   // memset -- a crash on any NaN m/z from an RTS caller. Both RTS entry points
+   // (DoSingleSpectrumSearchMultiResults(), DoSingleSpectrumSearchChimeric()) come through
+   // here, so the guard covers both; written so a NaN fails it.
+   if (!(std::isfinite(dMass) && dMass > 0.0))
+      return nullptr;
+
    Query *pScoring = new Query();
 
    pScoring->_pepMassInfo.dExpPepMass = dMass;
@@ -1739,14 +1747,24 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          && pdMass[i] <= g_staticParams.options.clearMzRange.dEnd;
    };
 
-   int iNumClearedPeaks = 0;
-   if (bClearMzRangeActive)
+   // A peak whose m/z is not a positive finite number, or whose intensity is not finite, is
+   // treated as absent, like a clear_mz_range peak. Before 2026-11-08 a negative m/z (or -inf)
+   // with a real intensity passed "dIon < dMassCutoff", got a negative bin from BIN() and was
+   // written below pdTmpRawData[0] (the bounds check tests the upper end only); a +inf
+   // intensity made the normalized spectrum infinite; a NaN intensity made dTotalIntensity
+   // NaN. NaN m/z values were already skipped by the comparisons, but only by accident.
+   auto bSkipPeak = [&bInClearRange, pdMass, pdInten](int i) -> bool
    {
-      for (int i = 0; i < iNumPeaks; ++i)
-      {
-         if (bInClearRange(i))
-            ++iNumClearedPeaks;
-      }
+      return bInClearRange(i)
+         || !(std::isfinite(pdMass[i]) && pdMass[i] > 0.0)
+         || !std::isfinite(pdInten[i]);
+   };
+
+   int iNumClearedPeaks = 0;   // clear_mz_range and invalid peaks, which do not count toward minimum_peaks
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      if (bSkipPeak(i))
+         ++iNumClearedPeaks;
    }
 
    if (iNumPeaks - iNumClearedPeaks < g_staticParams.options.iMinPeaks)
@@ -1876,7 +1894,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    double dBasePeakIntensity = 0.0;
    for (int i = 0; i < iNumPeaks; ++i)
    {
-      if (!bInClearRange(i) && pdInten[i] > dBasePeakIntensity)
+      if (!bSkipPeak(i) && pdInten[i] > dBasePeakIntensity)
          dBasePeakIntensity = pdInten[i];
    }
    // Start with the configured absolute minimum intensity
@@ -1913,7 +1931,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          // indexed fragment; matches the bound convention used when building the
          // fragment index in CometFragmentIndex.cpp. Peaks in clear_mz_range are
          // excluded, matching batch's in-place zeroing (see bInClearRange above).
-         if (!bInClearRange(i) && pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0
+         if (!bSkipPeak(i) && pdInten[i] >= dIntensityCutoff && pdInten[i] > 0.0
                && pdMass[i] > g_staticParams.options.dFragIndexMinMass && pdMass[i] < g_staticParams.options.dFragIndexMaxMass)
             viIntensityOrder.push_back(i);
       }
@@ -1967,7 +1985,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    for (int i = iNumPeaks - 1; i >= 0; --i)
    {
       double dIon = pdMass[i];
-      double dIntensity = bInClearRange(i) ? 0.0 : pdInten[i];
+      double dIntensity = bSkipPeak(i) ? 0.0 : pdInten[i];
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 

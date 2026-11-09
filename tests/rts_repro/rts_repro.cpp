@@ -57,6 +57,13 @@ struct FixtureSpectrum
    vector<double> inten;
 };
 
+// Numbers are read with strtod, not operator>>, so "nan", "inf" and "-inf" load as those
+// values: tests feed invalid m/z and peak values through the API on purpose (T73).
+static double ParseDouble(const string& tok)
+{
+   return strtod(tok.c_str(), nullptr);
+}
+
 static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
 {
    ifstream f(path);
@@ -71,9 +78,11 @@ static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
 
       istringstream iss(line);
       string tag;
+      string szMZ;
       FixtureSpectrum s;
       int numPeaks = 0;
-      iss >> tag >> s.scanNumber >> s.charge >> s.mz >> numPeaks;
+      iss >> tag >> s.scanNumber >> s.charge >> szMZ >> numPeaks;
+      s.mz = ParseDouble(szMZ);
 
       if (numPeaks <= 0)
          continue;
@@ -85,7 +94,11 @@ static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
          if (!getline(f, line))
             return false;
          istringstream piss(line);
-         piss >> s.mass[i] >> s.inten[i];
+         string szMass;
+         string szInten;
+         piss >> szMass >> szInten;
+         s.mass[i] = ParseDouble(szMass);
+         s.inten[i] = ParseDouble(szInten);
       }
       out.push_back(std::move(s));
    }

@@ -70,6 +70,9 @@ Two more environment variables, so a new knob needs no new positional argument:
   The type must be the one Comet reads the parameter as: `GetParamValue()` casts to the
   requested type and a mismatch dereferences null instead of failing cleanly. Each applied
   entry is echoed to stderr; a malformed one stops the run.
+- Fixture numbers (the SPECTRUM line's m/z and every peak's m/z and intensity) are read
+  with `strtod`, so `nan`, `inf` and `-inf` load as those values; T73 feeds invalid inputs
+  through the API this way.
 - `RTS_REPRO_FRAGMENTS=1` adds, after each result line, one `FRAG` line per matched fragment
   the API returned: `FRAG <scan>`, `row`, `type` (the `ION_SERIES_*` index: 0 a, 1 b, 2 c,
   3 x, 4 y, 5 z, 6 z+1), `num`, `z` (fragment charge), `mass` (the fragment's 1+ mass), `nl`

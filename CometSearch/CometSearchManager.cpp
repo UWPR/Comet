@@ -2780,10 +2780,12 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                                                             vector<vector<Fragment>>& matchedFragments,
                                                             vector<CometScores>& scores)
 {
-   if (iNumPeaks == 0)
+   if (iNumPeaks <= 0)
       return false;
 
-   if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
+   // Written so a NaN m/z fails it (a "> high" test lets NaN through); the preprocess core
+   // also rejects a non-finite or non-positive precursor mass.
+   if (!(dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS <= g_staticParams.options.dPeptideMassHigh))
       return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
@@ -3786,7 +3788,9 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 {
    (void)topN;   // accepted for interface symmetry; one rank-1 row per iteration is reported (plan section 4.4)
 
-   if (iNumPeaks <= 0 || vPrecursors.empty() || iMaxPeptidesPerSpectrum <= 0)
+   // A NaN dMaxExpect would pass every E-value (each "dExpect > dMaxExpect" is false), so it
+   // is rejected like the other invalid arguments; +inf is allowed and means no cutoff.
+   if (iNumPeaks <= 0 || vPrecursors.empty() || iMaxPeptidesPerSpectrum <= 0 || std::isnan(dMaxExpect))
       return false;
 
    if (!InitializeSingleSpectrumSearch())
@@ -3804,7 +3808,10 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
    vCand.reserve(vPrecursors.size());
    for (const PrecursorCandidate& c : vPrecursors)
    {
-      if (c.iCharge < 1)
+      // Invalid candidates are dropped, not fatal: one bad entry from a mixed candidate source
+      // must not sink the rest. A non-finite or non-positive m/z would otherwise reach
+      // preprocessing (the mass gate below is NaN-safe too, and so is the preprocess core).
+      if (c.iCharge < 1 || !(std::isfinite(c.dMZ) && c.dMZ > 0.0))
          continue;
       const double dTol = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
       const double dDupWindow = (dTol > 0.0) ? dTol : 1e-6;   // configured (ppm) tolerance: exact duplicates only
@@ -3825,10 +3832,24 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
    // Working copy of the peak list: the caller's arrays are never modified (the C# host
    // pins them). Thread-local so the buffers are reused across spectra on this thread.
+   // Peaks whose m/z is not a positive finite number, or whose intensity is not finite, are
+   // left out of the copy -- exactly the peaks preprocessing treats as absent -- so nothing in
+   // this path (the removal-bin map, RemovePeaksInBins()) converts a NaN or infinite mass to a
+   // bin. Zero-intensity peaks stay: they count toward minimum_peaks in preprocessing.
    thread_local std::vector<double> tl_vMass;
    thread_local std::vector<double> tl_vInten;
-   tl_vMass.assign(pdMass, pdMass + iNumPeaks);
-   tl_vInten.assign(pdInten, pdInten + iNumPeaks);
+   tl_vMass.clear();
+   tl_vInten.clear();
+   tl_vMass.reserve(iNumPeaks);
+   tl_vInten.reserve(iNumPeaks);
+   for (int i = 0; i < iNumPeaks; ++i)
+   {
+      if (std::isfinite(pdMass[i]) && pdMass[i] > 0.0 && std::isfinite(pdInten[i]))
+      {
+         tl_vMass.push_back(pdMass[i]);
+         tl_vInten.push_back(pdInten[i]);
+      }
+   }
 
    // Per-candidate outputs and the best-of-iteration they are moved into.
    vector<string> vPep;
@@ -3877,8 +3898,8 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
 
          // Protonated mass, the quantity DoSingleSpectrumSearchMultiResults() gates on.
          const double dMH = c.dMZ * c.iCharge - (c.iCharge - 1.0) * PROTON_MASS;
-         if (dMH > g_staticParams.options.dPeptideMassHigh || dMH < g_staticParams.options.dPeptideMassLow)
-            continue;   // decision 8: silently skipped
+         if (!(dMH >= g_staticParams.options.dPeptideMassLow && dMH <= g_staticParams.options.dPeptideMassHigh))
+            continue;   // decision 8: silently skipped (NaN-safe: a NaN mass fails the test)
 
          const double dTol = (c.dToleranceMZ > 0.0) ? c.dToleranceMZ : dPrecursorToleranceMZ;
 
@@ -3925,11 +3946,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const int topN,
             iIteration, iCandidatesSearched, tl_vMass.size(),
             bHaveBest ? sBestPep.c_str() : "-", bHaveBest ? scBest.iCharge : 0,
             bHaveBest ? scBest.dExpect : 0.0, bHaveBest ? scBest.xCorr : 0.0, vBestBins.size(),
-            (!bHaveBest) ? "stop:no-psm" : (scBest.dExpect > dMaxExpect) ? "stop:expect" : "keep",
+            (!bHaveBest) ? "stop:no-psm" : !(scBest.dExpect <= dMaxExpect) ? "stop:expect" : "keep",
             bBudgetExhausted ? " budget-expired" : "");
       }
 
-      if (!bHaveBest || scBest.dExpect > dMaxExpect)
+      // NaN-safe: a NaN E-value stops the loop instead of being reported.
+      if (!bHaveBest || !(scBest.dExpect <= dMaxExpect))
          break;
 
       if (iDebug >= 2)

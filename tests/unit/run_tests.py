@@ -7133,5 +7133,146 @@ def test_t72_chimeric_budget(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T73 -- non-finite and invalid RTS inputs. A NaN fails every comparison, so "reject if too
+# high" gates let a NaN precursor m/z through to preprocessing, where it sized the query's
+# arrays (int)NaN -> negative -> memset: a crash in both RTS entry points. A NaN dMaxExpect
+# passed every E-value. In the peak arrays a negative or -inf m/z was binned below the array
+# start, a +inf intensity made the spectrum infinite. rts_repro reads "nan"/"inf" with strtod.
+# ---------------------------------------------------------------------------
+
+def _t73_mode0_rows(path):
+    """{scan: (peptide, xcorr) or None} from rts_repro mode-0 output."""
+    rows = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split("\t")
+        scan = int(f[0].split()[1])
+        rows[scan] = None if f[1] in ("NO_MATCH", "ERROR") else (f[1].split(".")[1], float(f[2]))
+    return rows
+
+
+@register("t73_rts_invalid_inputs")
+def test_t73_rts_invalid_inputs(comet_exe):
+    """T73: NaN, infinite and negative precursor m/z values, invalid peak values and a NaN E-value cutoff never
+    crash an RTS search: invalid chimeric candidates are dropped and the valid one still found, a search given
+    only invalid precursors returns cleanly with no result, invalid peaks are ignored (same peptide and xcorr as
+    the clean spectrum), a NaN dMaxExpect is rejected and +inf means no cutoff -- on FI_DB and PI_DB."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        pep = "LVNELTEFAK"
+        mono = {"L": 113.084064, "V": 99.068414, "N": 114.042927, "E": 129.042593, "T": 101.047679,
+                "F": 147.068414, "A": 71.037114, "K": 128.094963}
+        h2o = 18.0105647
+        clean, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+        for i in range(len(pep) - 1):
+            bm += mono[pep[i]]
+            ym += mono[pep[len(pep) - 1 - i]]
+            clean += [(f"{bm:.5f}", "60.0"), (f"{ym:.5f}", "100.0")]
+        clean += [(f"{250.55 + k * 61.37:.5f}", "5.0") for k in range(15)]
+        clean.sort(key=lambda t: float(t[0]))
+        bad = clean + [("nan", "100.0"), ("-50.0", "100.0"), ("-inf", "100.0"), ("inf", "100.0"),
+                       ("700.12300", "nan"), ("650.32100", "inf")]
+        mz2 = f"{(sum(mono[c] for c in pep) + h2o + 2 * _PROTON_MASS) / 2:.6f}"
+
+        def block(scan, mz, peaks):
+            return [f"SPECTRUM {scan} 2 {mz} {len(peaks)}"] + [f"{m} {i}" for m, i in peaks]
+
+        def write(name, blocks):
+            path = tmp / name
+            path.write_text("\n".join(l for blk in blocks for l in blk) + "\n")
+            return path
+
+        one = [("500.00000", "1.0")]
+        # mode 0 (DoSingleSpectrumSearchMultiResults)
+        fx_plain = write("plain.txt", [block(1, mz2, clean), block(2, mz2, bad), block(3, "nan", clean),
+                                       block(4, "inf", clean), block(5, "-inf", clean), block(6, f"-{mz2}", clean)])
+        # mode 2 (explicit list): scan 1 = the valid candidate plus invalid ones; scan 2 = invalid peaks;
+        # scan 3 = invalid candidates only
+        fx_list = write("list.txt", [block(1, mz2, clean), block(1, "nan", one), block(1, "inf", one), block(1, f"-{mz2}", one),
+                                     block(2, mz2, bad), block(3, "nan", clean), block(3, "-inf", one)])
+        # mode 1 (charge range): scan 1 = invalid peaks, scan 2 = NaN m/z
+        fx_range = write("range.txt", [block(1, mz2, bad), block(2, "nan", clean)])
+        fx_clean = write("clean.txt", [block(1, mz2, clean)])
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                def run(name, fixture, extra):
+                    out = tmp / f"{label}_{name}.out"
+                    rc, log = _rts_run(idx, fixture, 1, out, 0, ist, extra_args=extra)
+                    ok = check(rc == 0 and out.exists(), f"{label} {name}: rts_repro exits 0, no crash (rc={rc})", failures)
+                    if not ok:
+                        print(log[-1200:])
+                    return out if ok else None
+
+                out = run("plain", fx_plain, [])
+                if out:
+                    rows = _t73_mode0_rows(out)
+                    ref = rows.get(1)
+                    check(ref is not None and ref[0] == pep, f"{label} plain: the clean spectrum finds {pep} (got {ref})", failures)
+                    check(rows.get(2) == ref, f"{label} plain: invalid peaks are ignored -- same peptide and xcorr as clean "
+                          f"({rows.get(2)} vs {ref})", failures)
+                    for scan, what in ((3, "nan"), (4, "inf"), (5, "-inf"), (6, "negative")):
+                        check(scan in rows and rows[scan] is None, f"{label} plain: a {what} precursor m/z returns no result "
+                              f"(got {rows.get(scan, 'no line')})", failures)
+
+                out = run("list", fx_list, ["2", "0", "0", "0", "0.01", "5"])
+                if out:
+                    rows = _t67_rows(out)
+                    got1 = [(x.get("peptide"), x.get("z")) for x in rows.get(1, [])]
+                    check(got1 == [(pep, 2)], f"{label} list: NaN, inf and negative candidates are dropped and {pep} 2+ "
+                          f"is still found once (got {got1})", failures)
+                    got2 = [(x.get("peptide"), x.get("z")) for x in rows.get(2, [])]
+                    check(got2 == [(pep, 2)], f"{label} list: invalid peaks are ignored, {pep} 2+ found (got {got2})", failures)
+                    check(rows.get(3) == [{"error": True}], f"{label} list: only invalid candidates -> the call returns "
+                          f"false (ERROR row), got {rows.get(3)}", failures)
+
+                out = run("range", fx_range, ["1", "2", "4", "2.0", "0.01", "5"])
+                if out:
+                    rows = _t67_rows(out)
+                    got1 = [(x.get("peptide"), x.get("z")) for x in rows.get(1, [])]
+                    check(got1 == [(pep, 2)], f"{label} range: invalid peaks are ignored, {pep} 2+ found (got {got1})", failures)
+                    check(rows.get(2) == [{"error": True}], f"{label} range: a NaN m/z -> the call returns false "
+                          f"(ERROR row), got {rows.get(2)}", failures)
+
+                out = run("expect_nan", fx_clean, ["1", "2", "4", "2.0", "nan", "5"])
+                if out:
+                    rows = _t67_rows(out)
+                    check(rows.get(1) == [{"error": True}], f"{label}: dMaxExpect = NaN is rejected (ERROR row), "
+                          f"got {[(x.get('peptide'), x.get('z')) for x in rows.get(1, []) if 'peptide' in x] or rows.get(1)}", failures)
+                out = run("expect_inf", fx_clean, ["1", "2", "4", "2.0", "inf", "5"])
+                if out:
+                    rows = _t67_rows(out).get(1, [])
+                    check(len(rows) >= 1 and rows[0].get("peptide") == pep and not rows[0].get("error"),
+                          f"{label}: dMaxExpect = +inf is accepted as no cutoff, iteration 0 is {pep} "
+                          f"(got {[(x.get('peptide'), x.get('z')) for x in rows if 'peptide' in x] or rows})", failures)
+            finally:
+                idx.unlink(missing_ok=True)
+    return failures
+
+
+
 if __name__ == "__main__":
     main()
