@@ -11,9 +11,18 @@ of 197 real spectra (`fixture_spectra.txt`, extracted once from `20250520_Hela_6
 see "Regenerating the fixture" below), from N worker threads pulling off a shared work queue --
 the same concurrency pattern the C# harness uses.
 
-Parameter setup mirrors `SearchSettings.ConfigureInputSettings()`'s "index already exists" branch
-exactly (RTS never reads `comet.params` -- see that C# method for the authoritative list of what it
-actually sets). If that method changes, update `rts_repro.cpp`'s param block to match.
+Parameter setup follows `SearchSettings.ConfigureInputSettings()`'s "index already exists" branch
+in `RealtimeSearch/SearchMS1MS2.cs` (RTS never reads `comet.params`). That harness is an example
+program whose settings change as RTS is tried in different configurations, so `rts_repro.cpp`'s
+defaults are a snapshot of it, last aligned on 2026-11-08 (`isotope_error` 2, `max_index_runtime`
+500 ms), not a contract:
+
+- To reproduce a particular harness run, set the values that differ with `RTS_REPRO_PARAMS`.
+- Test T80 compares the two parameter blocks and prints any differences as notes; it does not fail
+  on drift.
+- The unit tests never rely on these defaults: `run_tests.py` passes the parameters its RTS tests
+  depend on (`RTS_TEST_PARAMS`: `isotope_error` 2, `max_index_runtime` 0), and a test that needs
+  other values sets them itself.
 
 ## Build
 
@@ -57,7 +66,7 @@ and, per kept PSM, its matched and removed bins (2) on stderr; `COMET_EVALUE_TRA
 (any mode, any search path) adds each search's E-value fit and, at 2, its xcorr histogram
 before and after the synthetic padding (run single-threaded to keep one call's lines
 together; `docs/20261106_FI_evalue_histogram_fill.md`). `isotopeError`
-sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIonsScore`
+sets `isotope_error` in every mode (default 2); `globalMinIonsScore`
 > 0 sets `fragindex_min_ions_score` itself; `histogramFill` >= 0 sets
 `fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`; test T68);
 `useNLIons` >= 0 sets `use_NL_ions`. Run without arguments for the defaults.

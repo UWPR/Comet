@@ -1527,14 +1527,31 @@ def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
     return idx_path
 
 
+# Parameters every RTS test runs with unless it sets them itself. rts_repro's own defaults follow
+# RealtimeSearch/SearchMS1MS2.cs -- an example harness whose settings change as RTS is tried with
+# different configurations -- so the tests pin what they rely on here instead of inheriting them
+# (2026-11-08): isotope_error 2 (what RTS runs), max_index_runtime 0 (no wall-clock budget, so no
+# timing-dependent timeouts; T72 sets its own budget to test it).
+RTS_TEST_PARAMS = (("i", "isotope_error", "2"), ("i", "max_index_runtime", "0"))
+_RTS_ISOTOPE_ERROR_ARG = 8   # index of rts_repro's isotopeError argument within extra_args
+
+
 def _rts_run(idx_path, fixture_path, num_threads, output_path, ascorepro=0, index_search_type=1, extra_args=(),
              env=None):
     """extra_args: rts_repro's optional trailing arguments after index_search_type -- the chimeric
-    mode and its settings (see rts_repro.cpp's usage text); env: extra environment variables."""
-    run_env = None
-    if env:
-        run_env = dict(os.environ)
-        run_env.update(env)
+    mode and its settings (see rts_repro.cpp's usage text); env: extra environment variables.
+    RTS_TEST_PARAMS are passed through RTS_REPRO_PARAMS ahead of any entries the test sets there (a
+    key the test sets wins); isotope_error is left out when the test passes the isotopeError argument,
+    which RTS_REPRO_PARAMS (applied last) would otherwise override."""
+    env = dict(env or {})
+    own = [e for e in env.get("RTS_REPRO_PARAMS", "").split(";") if e]
+    own_keys = {e.split(":", 1)[1].split("=", 1)[0] for e in own if ":" in e and "=" in e}
+    if len(extra_args) > _RTS_ISOTOPE_ERROR_ARG:
+        own_keys.add("isotope_error")
+    base = [f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS if k not in own_keys]
+    env["RTS_REPRO_PARAMS"] = ";".join(base + own)
+    run_env = dict(os.environ)
+    run_env.update(env)
     result = subprocess.run(
         [str(RTS_REPRO_BIN), str(idx_path), str(fixture_path), str(num_threads), str(output_path),
          str(ascorepro), str(index_search_type)] + [str(a) for a in extra_args],
@@ -1604,28 +1621,33 @@ def _test_rts_index_type(comet_exe, index_flag, label):
     hs_idx = None
     try:
         hs_idx = _rts_build_index(comet_exe, small_fasta, hs_params_content, index_flag)
-        out1 = Path(tempfile.mktemp(suffix=".1thread.out", dir=str(DATA_DIR)))
-        out8 = Path(tempfile.mktemp(suffix=".8thread.out", dir=str(DATA_DIR)))
-        try:
-            rc1, log1 = _rts_run(hs_idx, RTS_FIXTURE, 1, out1, index_search_type=index_search_type)
-            if not check(rc1 == 0, f"{label}: rts_repro (1 thread) exits 0", failures):
-                print(log1)
-                return failures
-            rc8, log8 = _rts_run(hs_idx, RTS_FIXTURE, 8, out8, index_search_type=index_search_type)
-            if not check(rc8 == 0, f"{label}: rts_repro (8 threads) exits 0", failures):
-                print(log8)
-                return failures
+        # isotope_error 2 (what RTS runs; the FI search's general multi-window path) and 0 (the
+        # single-window fast path), so both stay covered whatever the example harness sets.
+        for iso in (2, 0):
+            tag = f"{label} isotope_error {iso}"
+            iso_env = {"RTS_REPRO_PARAMS": f"i:isotope_error={iso}"}
+            out1 = Path(tempfile.mktemp(suffix=".1thread.out", dir=str(DATA_DIR)))
+            out8 = Path(tempfile.mktemp(suffix=".8thread.out", dir=str(DATA_DIR)))
+            try:
+                rc1, log1 = _rts_run(hs_idx, RTS_FIXTURE, 1, out1, index_search_type=index_search_type, env=iso_env)
+                if not check(rc1 == 0, f"{tag}: rts_repro (1 thread) exits 0", failures):
+                    print(log1)
+                    return failures
+                rc8, log8 = _rts_run(hs_idx, RTS_FIXTURE, 8, out8, index_search_type=index_search_type, env=iso_env)
+                if not check(rc8 == 0, f"{tag}: rts_repro (8 threads) exits 0", failures):
+                    print(log8)
+                    return failures
 
-            lines1 = _rts_sorted_lines(out1)
-            lines8 = _rts_sorted_lines(out8)
-            check(len(lines1) == 197, f"{label}: 1-thread run covers all 197 fixture spectra, got {len(lines1)}", failures)
-            check(lines1 == lines8,
-                  f"{label}: 1-thread and 8-thread outputs are byte-identical after sorting by scan "
-                  f"({sum(a != b for a, b in zip(lines1, lines8))} differing lines out of {len(lines1)})",
-                  failures)
-        finally:
-            out1.unlink(missing_ok=True)
-            out8.unlink(missing_ok=True)
+                lines1 = _rts_sorted_lines(out1)
+                lines8 = _rts_sorted_lines(out8)
+                check(len(lines1) == 197, f"{tag}: 1-thread run covers all 197 fixture spectra, got {len(lines1)}", failures)
+                check(lines1 == lines8,
+                      f"{tag}: 1-thread and 8-thread outputs are byte-identical after sorting by scan "
+                      f"({sum(a != b for a, b in zip(lines1, lines8))} differing lines out of {len(lines1)})",
+                      failures)
+            finally:
+                out1.unlink(missing_ok=True)
+                out8.unlink(missing_ok=True)
     finally:
         if hs_idx and hs_idx.exists():
             hs_idx.unlink()
@@ -7926,6 +7948,39 @@ def test_t79_runner_accounting(comet_exe):
             rc, out = run_snippet(code_c)
             check("STATUS ok" in out and stale.stat().st_mtime > old + 60,
                   f"a library newer than rts_repro triggers a rebuild ({[l for l in out.splitlines() if l.startswith('STATUS')]})", failures)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T80 -- rts_repro vs the RealtimeSearch example harness: a drift REPORT, not a parity gate.
+# rts_repro.cpp's defaults follow RealtimeSearch/SearchMS1MS2.cs, but that harness is an example
+# program whose settings change as RTS is tried in different configurations, so drift is expected;
+# the RTS tests never rely on either set of defaults (they pass RTS_TEST_PARAMS). This prints the
+# differences (tests/rts_repro/harness_param_drift.py) and fails only when the comparison stops
+# finding parameters in either file, i.e. when its parser has gone stale.
+# ---------------------------------------------------------------------------
+
+@register("t80_rts_harness_drift")
+def test_t80_rts_harness_drift(comet_exe):
+    """T80: report (as notes, never as failures) where rts_repro's default search parameters differ from
+    RealtimeSearch/SearchMS1MS2.cs; fail only if either file's parameters can no longer be parsed."""
+    failures = []
+    sys.path.insert(0, str(RTS_REPRO_DIR))
+    try:
+        import harness_param_drift as drift
+    finally:
+        sys.path.pop(0)
+    cs, rr, differ, harness_only = drift.compare(REPO_ROOT)
+    check(len(cs) >= 15, f"the drift check parses SearchMS1MS2.cs's search parameters ({len(cs)} found)", failures)
+    check(len(rr) >= 15, f"the drift check parses rts_repro.cpp's search parameters ({len(rr)} found)", failures)
+    for k, a, v in differ:
+        print(f"  NOTE: rts_repro default differs from SearchMS1MS2.cs: {k} = {v} (harness {a}); "
+              f"set it with RTS_REPRO_PARAMS to reproduce a harness run")
+    for k, a in harness_only:
+        print(f"  NOTE: only the harness sets {k} = {a} (rts_repro leaves Comet's default)")
+    if not differ:
+        print("  no differing default values")
     return failures
 
 

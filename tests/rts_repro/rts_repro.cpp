@@ -25,10 +25,14 @@
 // No Thermo RawFileReader, no C++/CLI boundary -- buildable and runnable on
 // Linux, unlocking sub-second iteration and ThreadSanitizer.
 //
-// Parameter setup mirrors SearchMS1MS2.cs's ConfigureInputSettings()'s
-// "index already exists" branch exactly (see that function for the
-// authoritative list) -- RTS never reads comet.params, so this driver
-// doesn't either; every param is set here to match what RTS actually sets.
+// Parameter setup follows SearchMS1MS2.cs's ConfigureInputSettings() "index already
+// exists" branch -- RTS never reads comet.params, so this driver doesn't either. That
+// harness is an example program whose settings change as RTS is tried in different
+// configurations, so these defaults are a snapshot of it (last aligned 2026-11-08:
+// isotope_error 2, max_index_runtime 500), not a contract. Tests must not rely on them:
+// run_tests.py passes the parameters its RTS tests depend on (RTS_TEST_PARAMS), and
+// test T80 reports any drift from the harness as notes. To reproduce a specific harness
+// run, set the differing values with RTS_REPRO_PARAMS.
 
 #include "CometInterfaces.h"
 #include "CometData.h"
@@ -281,7 +285,7 @@ int main(int argc, char** argv)
                       "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.1, maxPeptides 5; chimeric modes set\n"
                       "  max_index_runtime = 0 (unlimited) since one call runs many searches\n"
                       "  flankBins/isotopes: the chimeric_remove_flank_bins (-1) and chimeric_remove_isotopes (2) params\n"
-                      "  isotopeError: the isotope_error param, every mode (default 0, matching RealtimeSearch)\n"
+                      "  isotopeError: the isotope_error param, every mode (default 2, SearchMS1MS2.cs's value on 2026-11-08)\n"
                       "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
                       "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n"
                       "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n"
@@ -307,7 +311,7 @@ int main(int argc, char** argv)
    int iMaxPeptides = (argc > 12) ? atoi(argv[12]) : 5;
    int iFlankBins = (argc > 13) ? atoi(argv[13]) : -1;
    int iIsotopes = (argc > 14) ? atoi(argv[14]) : 2;
-   int iIsotopeError = (argc > 15) ? atoi(argv[15]) : 0;
+   int iIsotopeError = (argc > 15) ? atoi(argv[15]) : 2;   // SearchMS1MS2.cs's value on 2026-11-08
    int iGlobalMinIonsScore = (argc > 16) ? atoi(argv[16]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
    int iHistogramFill = (argc > 17) ? atoi(argv[17]) : -1;      // >= 0 sets fragindex_histogram_fill (every mode); -1 = not sent
    int iUseNLIons = (argc > 18) ? atoi(argv[18]) : -1;          // >= 0 sets use_NL_ions (every mode); -1 = not sent
@@ -325,7 +329,8 @@ int main(int argc, char** argv)
 
    ICometSearchManager* mgr = GetCometSearchManager();
 
-   // Mirror SearchMS1MS2.cs's ConfigureInputSettings(), "index already exists" path.
+   // Follow SearchMS1MS2.cs's ConfigureInputSettings(), "index already exists" path (a snapshot;
+   // see the header comment).
    SetStringParam(mgr, "spectral_library_name", szDB);  // unused for MS2-only PI_DB search; kept for parity
    SetStringParam(mgr, "database_name", szDB);
 
@@ -337,7 +342,6 @@ int main(int argc, char** argv)
       DoubleRange r(0.0, 2000.0);
       mgr->SetParam("ms1_mass_range", "0 2000", r);
    }
-   SetIntParam(mgr, "max_index_runtime", 100);
    SetIntParam(mgr, "num_threads", numThreads);
    SetDoubleParam(mgr, "fragment_bin_tol", 0.02);
    SetDoubleParam(mgr, "fragment_bin_offset", 0.0);
@@ -346,14 +350,14 @@ int main(int argc, char** argv)
    SetDoubleParam(mgr, "peptide_mass_tolerance_lower", -20.0);
    SetIntParam(mgr, "peptide_mass_units", 2);
    SetIntParam(mgr, "precursor_tolerance_type", 1);
-   SetIntParam(mgr, "isotope_error", iIsotopeError);   // 0 unless given: RealtimeSearch's own setting
+   SetIntParam(mgr, "isotope_error", iIsotopeError);   // 2 unless given
    if (iGlobalMinIonsScore > 0)
       SetIntParam(mgr, "fragindex_min_ions_score", iGlobalMinIonsScore);
    if (iHistogramFill >= 0)
       SetIntParam(mgr, "fragindex_histogram_fill", iHistogramFill);
    if (iUseNLIons >= 0)
       SetIntParam(mgr, "use_NL_ions", iUseNLIons);
-   SetIntParam(mgr, "max_index_runtime", 200);  // overwrites the 100 above -- matches RTS's actual (duplicate) call
+   SetIntParam(mgr, "max_index_runtime", 500);  // SearchMS1MS2.cs's value on 2026-11-08 (it was 100, then 200, before #119)
    if (iChimeric != 0)
    {
       SetIntParam(mgr, "max_index_runtime", 0);  // the chimeric call's budget spans every candidate x iteration
