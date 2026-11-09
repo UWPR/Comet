@@ -7985,5 +7985,91 @@ def test_t80_rts_harness_drift(comet_exe):
 
 
 
+# ---------------------------------------------------------------------------
+# T81 -- chimeric removal knobs (branch code review item 14). chimeric_remove_isotopes is clamped
+# at init to 0..3 with a warning: it is a loop bound in the removal, and INT_MAX looped ~2 billion
+# times per observed peak. The removal flank has no knob since 2026-11-08: it follows
+# theoretical_fragment_ions (the scorer credits +/- 1 bin only when it is 0), so a
+# chimeric_remove_flank_bins set through SetParam, or rts_repro's flankBins argument, changes
+# nothing (the knob used to be a loop bound too: 1000 lost the next peptide, 100000 threw).
+# ---------------------------------------------------------------------------
+
+@register("t81_chimeric_knob_clamps")
+def test_t81_chimeric_knob_clamps(comet_exe):
+    """T81: chimeric_remove_isotopes outside 0..3 is clamped with a warning (the output equals the clamped value's;
+    INT_MAX finishes); the removal flank follows theoretical_fragment_ions -- chimeric_remove_flank_bins and
+    rts_repro's flankBins argument are ignored -- and the defaults print no warning."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta, fx = tmp / "t67_chimeric.fasta", tmp / "t67_chimeric_range.txt"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+        try:
+            def run(label, flank_arg, isotopes, extra_params=None):
+                out = tmp / f"{label}.out"
+                env = {"RTS_CHIMERIC_DEBUG": "2"}   # RTS_CHIMERIC_DETAIL lists every removed bin
+                if extra_params:
+                    env["RTS_REPRO_PARAMS"] = extra_params
+                rc, log = _rts_run(idx, fx, 1, out, 0, 1, extra_args=["1", "2", "4", "2.0", "0.01", "5", str(flank_arg), str(isotopes)],
+                                   env=env)
+                ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures)
+                if not ok:
+                    print(log[-1200:])
+                    return None, log
+                return _rts_sorted_lines(out), log
+
+            def removed_bins(log):
+                # the flank always adds bins (peak or not), so these lists tell flank 0 from 1
+                return [m.group(1) for m in re.finditer(r"^RTS_CHIMERIC_DETAIL .* removed=([\d,]*)$", log, re.M)]
+
+            ref, log = run("defaults", -1, 2)
+            ref_bins = removed_bins(log)
+            check(len(ref_bins) > 0, f"defaults: the removal trace lists removed bins ({len(ref_bins)} kept PSMs)", failures)
+            if ref is not None:
+                check("Warning - chimeric_remove" not in log and "flankBins" not in log,
+                      "defaults: no clamp warning, no flankBins note", failures)
+
+            # isotopes clamp
+            for iso, ciso in ((2147483647, 3), (-5, 0)):
+                got, log = run(f"isotopes_{iso}", -1, iso)
+                want, _ = run(f"isotopes_{ciso}", -1, ciso)
+                if got is None or want is None:
+                    continue
+                check(got == want, f"isotopes {iso}: output identical to the clamped isotopes {ciso}", failures)
+                check("Warning - chimeric_remove_isotopes = " in log, f"isotopes {iso}: clamp warning printed", failures)
+
+            # the flank follows theoretical_fragment_ions: the old knob and the argument change nothing
+            for label, flank_arg, extra in (("knob_0", -1, "i:chimeric_remove_flank_bins=0"),
+                                            ("knob_1000", -1, "i:chimeric_remove_flank_bins=1000"),
+                                            ("arg_0", 0, None), ("arg_1000", 1000, None)):
+                got, log = run(label, flank_arg, 2, extra)
+                if got is None or ref is None:
+                    continue
+                check(got == ref, f"{label}: output identical to the defaults (the flank follows theoretical_fragment_ions)", failures)
+                check(removed_bins(log) == ref_bins, f"{label}: the same bins are removed as with the defaults", failures)
+                if flank_arg != -1:
+                    check("flankBins" in log and "ignored" in log, f"{label}: rts_repro notes that flankBins is ignored", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
 if __name__ == "__main__":
     main()

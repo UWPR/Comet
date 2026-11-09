@@ -1109,9 +1109,29 @@ bool CometSearchManager::InitializeStaticParams()
    if (g_staticParams.options.iFragIndexHistogramFill > FRAGINDEX_MAX_NUMSCORED)
       g_staticParams.options.iFragIndexHistogramFill = FRAGINDEX_MAX_NUMSCORED;
 
-   // RTS chimeric search knobs (docs/20261105_RTSchimeric.md sections 4.5-4.6)
-   GetParamValue("chimeric_remove_flank_bins", g_staticParams.options.iChimericRemoveFlankBins);
+   // RTS chimeric search knob (docs/20261105_RTSchimeric.md sections 4.5-4.6), clamped to 0..3
+   // (2026-11-08): the number of 13C isotope peaks of each observed fragment peak the removal also
+   // clears (2, the default, is what the removal validation found matters; a fragment's +4 and
+   // beyond are negligible). It is a loop bound in AddChimericBinsAround(): INT_MAX looped ~2
+   // billion times per observed peak (bad_alloc on Linux, hours on Windows, an int overflow in the
+   // isotope m/z). The removal flank has no knob: it follows theoretical_fragment_ions (see
+   // SearchSingleSpectrumCore(); a chimeric_remove_flank_bins knob existed until 2026-11-08).
    GetParamValue("chimeric_remove_isotopes", g_staticParams.options.iChimericRemoveIsotopes);
+   {
+      const int iIsotopesIn = g_staticParams.options.iChimericRemoveIsotopes;
+      if (iIsotopesIn < 0)
+         g_staticParams.options.iChimericRemoveIsotopes = 0;
+      else if (iIsotopesIn > 3)
+         g_staticParams.options.iChimericRemoveIsotopes = 3;
+
+      if (g_staticParams.options.iChimericRemoveIsotopes != iIsotopesIn)
+      {
+         char szMsg[256];
+         snprintf(szMsg, sizeof(szMsg), " Warning - chimeric_remove_isotopes = %d is outside 0..3; using %d.\n",
+               iIsotopesIn, g_staticParams.options.iChimericRemoveIsotopes);
+         logout(szMsg);
+      }
+   }
    GetParamValue("fragindex_skipreadprecursors", g_staticParams.options.iFragIndexSkipReadPrecursors);
 
    GetParamValue("num_enzyme_termini", g_staticParams.options.iEnzymeTermini);
@@ -3265,9 +3285,10 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
    thread_local ChimericObservedPeakMap tl_mBinObservedMz;   // bin -> (m/z, intensity)
    if (pvRemovalBins != nullptr)
    {
-      iRemoveFlank = g_staticParams.options.iChimericRemoveFlankBins;
-      if (iRemoveFlank < 0)
-         iRemoveFlank = (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0) ? 1 : 0;
+      // Remove what the scorer credited: with theoretical_fragment_ions = 0 the xcorr array gives
+      // each bin half the signal of its two neighbours (CometPreprocess's flanking-peaks step), so
+      // a matched ion is also credited for peaks one bin either side; with 1 it is not.
+      iRemoveFlank = (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0) ? 1 : 0;
       iRemoveIsotopes = g_staticParams.options.iChimericRemoveIsotopes;
 
       tl_mBinObservedMz.clear();

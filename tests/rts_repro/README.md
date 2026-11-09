@@ -55,6 +55,9 @@ cp /mnt/c/Work/Comet-master/data/comet_phospho.params comet.params
 Args: `<database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]`,
 then optionally the chimeric-search settings (`docs/20261105_RTSchimeric.md`):
 `[chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides] [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill] [useNLIons]`.
+`flankBins` is ignored, with a note on stderr when it is not -1: since 2026-11-08 the removal
+flank follows `theoretical_fragment_ions`. The slot stays so the later arguments keep their
+positions. `isotopes` sets `chimeric_remove_isotopes` (default 2, clamped to 0..3).
 `chimeric` 1 searches every `SPECTRUM` block at charges `zmin..zmax` with a +/- `tolMZ` window
 (`DoSingleSpectrumSearchChimeric`'s charge-range form); 2 treats every block sharing a scan
 number as one `(m/z, charge)` candidate of a single spectrum (the explicit-list form); 0 is

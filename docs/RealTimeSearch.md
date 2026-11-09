@@ -97,8 +97,10 @@ whose charge is outside them. Returns `true` on a normal
 end (zero rows included), `false` on an error. Same thread-safety as the single-spectrum
 call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
 is only read (the per-call tolerance and the re-search candidate thresholds live on the
-`Query`). Knobs, set through `SetParam` only: `chimeric_remove_flank_bins` (-1 = follow
-`theoretical_fragment_ions`), `chimeric_remove_isotopes` (2),
+`Query`). One knob, set through `SetParam` only: `chimeric_remove_isotopes` (default 2;
+clamped to 0..3 at init with a warning). The removal flank follows `theoretical_fragment_ions`
+(+/- 1 bin when it is 0, else none), the bins the scorer credits; a
+`chimeric_remove_flank_bins` knob existed until 2026-11-08.
 (a `chimeric_fragindex_min_ions_score` re-search floor existed until `fragindex_histogram_fill`
 -- `docs/20261106_FI_evalue_histogram_fill.md`, default 100 -- made FI E-values honest on
 every query and the floor a no-op). With calibrated E-values the harnesses default

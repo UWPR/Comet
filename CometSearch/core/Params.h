@@ -89,8 +89,9 @@ struct Options
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
    // RTS chimeric search only (DoSingleSpectrumSearchChimeric, docs/20261105_RTSchimeric.md
    // sections 4.5-4.6); set through SetParam, not read from comet.params.
-   int iChimericRemoveFlankBins;         // bins removed on each side of a matched fragment's bin:
-                                         // -1 = follow theoretical_fragment_ions (1 iff it is 0), else 0/1
+   // (The flank -- bins removed on each side of a matched fragment's bin -- always follows
+   // theoretical_fragment_ions: 1 when it is 0, else 0. A chimeric_remove_flank_bins knob existed
+   // until 2026-11-08; docs/20261105_RTSchimeric.md section 4.5.)
    int iChimericRemoveIsotopes;          // also remove the +1..+N 13C peaks of fragments that have a peak; 0 = off
                                          // (a chimeric_fragindex_min_ions_score re-search floor existed until
                                          // fragindex_histogram_fill made it a no-op; docs/20261106_FI_evalue_histogram_fill.md)
@@ -435,7 +436,6 @@ struct StaticParams
       options.iFragIndexHistogramFill = FRAGINDEX_HISTOGRAM_FILL;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
-      options.iChimericRemoveFlankBins = -1;
       options.iChimericRemoveIsotopes = 2;
 
       options.dMS1MinMass = MS1_MIN_MASS;

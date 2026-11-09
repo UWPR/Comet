@@ -284,7 +284,9 @@ int main(int argc, char** argv)
                       "              a scan number are the (m/z, charge) candidates of one spectrum (first block's peaks)\n"
                       "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.1, maxPeptides 5; chimeric modes set\n"
                       "  max_index_runtime = 0 (unlimited) since one call runs many searches\n"
-                      "  flankBins/isotopes: the chimeric_remove_flank_bins (-1) and chimeric_remove_isotopes (2) params\n"
+                      "  flankBins: ignored (kept so later arguments keep their positions); the removal flank follows\n"
+                      "             theoretical_fragment_ions since 2026-11-08\n"
+                      "  isotopes: the chimeric_remove_isotopes param (default 2; clamped to 0..3)\n"
                       "  isotopeError: the isotope_error param, every mode (default 2, SearchMS1MS2.cs's value on 2026-11-08)\n"
                       "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
                       "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n"
@@ -309,7 +311,7 @@ int main(int argc, char** argv)
    double dTolMZ = (argc > 10) ? atof(argv[10]) : 0.0;
    double dMaxExpect = (argc > 11) ? atof(argv[11]) : 0.1;   // 0.1 since fragindex_histogram_fill calibrated the E-values
    int iMaxPeptides = (argc > 12) ? atoi(argv[12]) : 5;
-   int iFlankBins = (argc > 13) ? atoi(argv[13]) : -1;
+   int iFlankBins = (argc > 13) ? atoi(argv[13]) : -1;          // ignored: the removal flank follows theoretical_fragment_ions
    int iIsotopes = (argc > 14) ? atoi(argv[14]) : 2;
    int iIsotopeError = (argc > 15) ? atoi(argv[15]) : 2;   // SearchMS1MS2.cs's value on 2026-11-08
    int iGlobalMinIonsScore = (argc > 16) ? atoi(argv[16]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
@@ -361,7 +363,8 @@ int main(int argc, char** argv)
    if (iChimeric != 0)
    {
       SetIntParam(mgr, "max_index_runtime", 0);  // the chimeric call's budget spans every candidate x iteration
-      SetIntParam(mgr, "chimeric_remove_flank_bins", iFlankBins);
+      if (iFlankBins != -1)
+         fprintf(stderr, "Note: flankBins %d ignored -- the chimeric removal flank follows theoretical_fragment_ions\n", iFlankBins);
       SetIntParam(mgr, "chimeric_remove_isotopes", iIsotopes);
    }
    SetIntParam(mgr, "minimum_peaks", 10);

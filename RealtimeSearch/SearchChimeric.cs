@@ -54,7 +54,6 @@ namespace RealTimeSearch
          public int MaxPeptides = 5;
          public int Threads = Environment.ProcessorCount;
          public bool AScorePro = false;
-         public int FlankBins = -1;
          public int Isotopes = 2;
          public int MaxRuntimeMs = 0;
          public string OutputFile = null;
@@ -84,8 +83,7 @@ namespace RealTimeSearch
          Console.WriteLine("    --max-peptides N      at most N peptides per spectrum [5]");
          Console.WriteLine("    --threads T           search threads [processor count]");
          Console.WriteLine("    --ascorepro 0|1       AScorePro localization [0]");
-         Console.WriteLine("    --flank -1|0|1        chimeric_remove_flank_bins: -1 = follow theoretical_fragment_ions [-1]");
-         Console.WriteLine("    --isotopes N          chimeric_remove_isotopes: +1..+N 13C peaks of matched ions [2]");
+         Console.WriteLine("    --isotopes N          chimeric_remove_isotopes: +1..+N 13C peaks of matched ions, 0-3 [2]");
          Console.WriteLine("    --max-runtime ms      max_index_runtime budget for one whole chimeric call; 0 = unlimited [0]");
          Console.WriteLine("    --out file            output file [<spectra>.chimeric.txt]\n");
       }
@@ -111,7 +109,6 @@ namespace RealTimeSearch
                   case "--max-peptides": o.MaxPeptides = int.Parse(args[++i], inv); break;
                   case "--threads": o.Threads = Math.Max(1, int.Parse(args[++i], inv)); break;
                   case "--ascorepro": o.AScorePro = int.Parse(args[++i], inv) != 0; break;
-                  case "--flank": o.FlankBins = int.Parse(args[++i], inv); break;
                   case "--isotopes": o.Isotopes = int.Parse(args[++i], inv); break;
                   case "--max-runtime": o.MaxRuntimeMs = int.Parse(args[++i], inv); break;
                   case "--out": o.OutputFile = args[++i]; break;
@@ -219,8 +216,8 @@ namespace RealTimeSearch
          Console.WriteLine(" index:   {0}", o.Database);
          Console.WriteLine(" form:    {0}", o.ZLines ? "explicit list (one candidate per Z line)" : string.Format("charge range {0}..{1}", o.ZMin, o.ZMax));
          Console.WriteLine(" tol:     {0} (m/z; 0 = configured ppm)   max E-value: {1}   max peptides: {2}", o.TolMZ, o.MaxExpect, o.MaxPeptides);
-         Console.WriteLine(" removal: flank {0}, isotopes {1}; max_index_runtime {2} ms",
-            o.FlankBins, o.Isotopes, o.MaxRuntimeMs);
+         Console.WriteLine(" removal: flank follows theoretical_fragment_ions, isotopes {0}; max_index_runtime {1} ms",
+            o.Isotopes, o.MaxRuntimeMs);
          Console.WriteLine(" threads: {0}\n", o.Threads);
 
          List<Ms2Scan> scans = ReadMs2(o.Ms2File);
@@ -239,7 +236,6 @@ namespace RealTimeSearch
             // One chimeric call runs (candidates x iterations) searches, so the per-call budget the
             // MS1/MS2 harness sets (500 ms) is replaced by the caller's choice (0 = unlimited).
             searchMgr.SetParam("max_index_runtime", o.MaxRuntimeMs.ToString(), o.MaxRuntimeMs);
-            searchMgr.SetParam("chimeric_remove_flank_bins", o.FlankBins.ToString(), o.FlankBins);
             searchMgr.SetParam("chimeric_remove_isotopes", o.Isotopes.ToString(), o.Isotopes);
 
             if (!searchMgr.InitializeSingleSpectrumSearch())
