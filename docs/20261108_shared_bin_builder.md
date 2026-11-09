@@ -87,3 +87,59 @@ Verification against the previous commit:
 - **Wall time (one run each, batch, 20 threads):** FI 25.4 s / 22.9 s, PI 34.5 s / 34.7 s, FI
   decoy settings 40.2 s / 40.1 s, PI decoy settings 19.7 s / 21.1 s. Within noise.
 - **Tests:** unit 94 passed; T22 (4 variants) passed.
+
+## 4. Step 2: RTS result extraction uses the builder (commit 2)
+
+`SearchSingleSpectrumCore()` no longer keeps its own copy. For each reported result it
+rebuilds the result's ladder and bins with `BuildIonLadder()` / `BuildBinnedIons()`. It uses
+the rules of the index that scored the result: `FragmentIndex` on FI_DB, `PeptideIndex` on
+PI_DB, the only two types RTS searches. The input is the stored peptide, `piVarModSites`
+(including the two terminal slots), the flanks and `dPepMass`. A visitor (`VisitResultIon()`)
+handles every stored bin:
+
+- If the bin holds an observed peak, it becomes a matched `Fragment`. Its mass is the 1+ mass
+  after any loss, and `neutralLossMass` is the total loss.
+- For result 0 of a chimeric call, every bin adds its removal bins through
+  `AddChimericRemovalBins()`: the flanks, the observed 13C isotopes, and the water/ammonia
+  positions on PI_DB 1+ a/b/y ions under `use_NL_ions`. Precursor neutral-loss peaks are
+  removed too.
+
+Two removal rules stay outside the arrays because the scorer folds them into its matrices
+rather than storing them as bins: the flanking bins and the water/ammonia losses. Isotope
+removal stays as well; it was never a scoring rule.
+
+The b/y conversion table (`ionMassesRelative`) and its neutral-loss loop are gone, 189 lines.
+
+### 4.1 Behaviour changes
+
+- **Chimeric removal now covers every credited bin:**
+  - the `scale_fragmentNL` k x loss peaks of fragments with k loss-bearing mods;
+  - the `precursor_NL_ions` peaks;
+  - on PI_DB only, the loss peaks of the first loss-bearing mod, which are the only ones PI
+    scores. The old loop also removed loss peaks of a second, uncredited mod type.
+- **Matched fragments:**
+  - listed in builder order (fragment charge, then ion series, then position), where the old
+    order was position, then charge, then series;
+  - each credited bin is listed once, so two ions sharing a bin give one entry;
+  - k x loss fragments now appear with their true loss.
+- On the HeLa benchmark (phospho params: `scale_fragmentNL` off, no precursor losses, one loss
+  mod) nothing changed. The chimeric FI run on 3,000 scans (charges 1-4, +/- 1 m/z) gave 3,091
+  rows, byte-identical. A plain RTS run gave the same 3,000 PSM lines and the same 8,376
+  matched fragments as a set.
+
+A correction to the review discussion: the "FI considers only `FRAGINDEX_VMODS` mods"
+difference cannot surface in removal. An FI_DB winner never carries a mod beyond the first
+`FRAGINDEX_VMODS`, because the index holds only those.
+
+### 4.2 Tests
+
+- **T76:** `LVS[80]ELT[80]EFAK`. On FI_DB with `scale_fragmentNL`, removal takes 30 of 30
+  peaks (24 before). With precursor losses it takes 32 of 32 (24 before). On PI_DB it takes
+  30 of 30. Matched fragments list the 2x-loss ions at ion - 2 x loss (none before).
+- **Existing tests:** T67 (including the `use_NL_ions` 36/18 removal counts), T71, T72, T73
+  and T75 unchanged.
+- `rts_repro`'s `RTS_REPRO_PARAMS` gained a `v` type, comma-separated doubles, for
+  `vector<double>` parameters such as `precursor_NL_ions`.
+- The test parsers no longer split peptide strings on `.`, which broke on modified peptides:
+  `_strip_flanks()`.
+- **Results:** unit 95 passed; T22 (4 variants) passed.

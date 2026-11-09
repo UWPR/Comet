@@ -6520,6 +6520,13 @@ def test_t66_ascore_protein_term_static(comet_exe):
 T67_GENERATOR = DATA_DIR / "t67_make_chimeric.py"
 
 
+def _strip_flanks(peptide):
+    """"R.PEP[79.9663]TIDE.A" -> "PEP[79.9663]TIDE": drop the flanking residues without splitting on the
+    decimal point of a modification mass (a plain split(".") breaks on modified peptides)."""
+    m = re.match(r"^[^.\[]?\.(.*)\.[^.\]]?$", peptide)
+    return m.group(1) if m else peptide
+
+
 def _t67_rows(path):
     """{scan: [row...]} from rts_repro's chimeric output (one line per reported peptide, in
     iteration order); a NO_MATCH scan maps to [], an ERROR scan to [{"error": True}]."""
@@ -6532,7 +6539,7 @@ def _t67_rows(path):
             if f[1] == "ERROR":
                 rows[scan].append({"error": True})
             continue
-        d = {"iter": int(f[1].split()[1]), "z": int(f[2].split()[1]), "peptide": f[3].split(".")[1]}
+        d = {"iter": int(f[1].split()[1]), "z": int(f[2].split()[1]), "peptide": _strip_flanks(f[3])}
         for tok in f[4:]:
             k, _, v = tok.partition(" ")
             d[k] = v
@@ -6738,7 +6745,7 @@ def test_t68_histogram_fill(comet_exe):
             check(txt_none == txt_100, "fill not sent (default 100) and fill 100 give byte-identical output", failures)
             check(txt_none != txt_0, "fill not sent (default 100) differs from fill 0 (the E-value moved)", failures)
             for label, row, tr in (("fill 0", row_0, tr_0), ("fill 100", row_100, tr_100), ("fill 25", row_25, tr_25)):
-                check(len(row) > 3 and row[1].split(".")[1] == target, f"{label}: rank-1 is the target {target}, got {row[1] if len(row) > 1 else row!r}", failures)
+                check(len(row) > 3 and _strip_flanks(row[1]) == target, f"{label}: rank-1 is the target {target}, got {row[1] if len(row) > 1 else row!r}", failures)
                 check(int(tr["scored"]) == 1, f"{label}: exactly 1 candidate stored (scored={tr['scored']})", failures)
             check(int(tr_0["hist"]) == 1, f"fill 0: the histogram holds the target alone (hist={tr_0['hist']})", failures)
             check(int(tr_100["hist"]) == 1 + n_sub, f"fill 100: the histogram holds the target plus all {n_sub} sub-floor fillers (hist={tr_100['hist']})", failures)
@@ -7147,7 +7154,7 @@ def _t73_mode0_rows(path):
     for line in Path(path).read_text().splitlines():
         f = line.split("\t")
         scan = int(f[0].split()[1])
-        rows[scan] = None if f[1] in ("NO_MATCH", "ERROR") else (f[1].split(".")[1], float(f[2]))
+        rows[scan] = None if f[1] in ("NO_MATCH", "ERROR") else (_strip_flanks(f[1]), float(f[2]))
     return rows
 
 
@@ -7480,6 +7487,124 @@ def test_t75_chimeric_exact_duplicates(comet_exe):
                           f"({m.group(0) if m else 'no trace'})", failures)
         finally:
             idx.unlink(missing_ok=True)
+    return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T76 -- the RTS result extraction (matched fragments, chimeric removal bins) uses the shared bin
+# builder (docs/20261108_shared_bin_builder.md), so it covers exactly the bins XcorrScoreI()
+# credits. Its old hand-maintained loop subtracted one fragment neutral loss even when
+# scale_fragmentNL scores k losses for a fragment with k loss-bearing mods, and never touched the
+# precursor_NL_ions peaks. LVS[80]ELT[80]EFAK (phospho on S3 and T6, loss 97.976896), 2+.
+# ---------------------------------------------------------------------------
+
+@register("t76_rts_shared_bins")
+def test_t76_rts_shared_bins(comet_exe):
+    """T76: chimeric removal and RTS matched fragments cover every bin the scorer credits: on FI_DB with
+    scale_fragmentNL the doubly-phosphorylated fragments' 2x-loss peaks are removed (all 30 peaks) and listed
+    with a 2x loss; precursor_NL_ions peaks are removed (32 of 32); on PI_DB (unscaled losses) all 30 peaks."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
+        return []
+    if not _ensure_rts_repro_built():
+        print("  SKIP: tests/rts_repro/rts_repro could not be built (g++ missing or build failed)")
+        return []
+
+    PHOS, NL = 79.966331, 97.976896
+    pep = "LVSELTEFAK"
+    sites = {2, 5}   # 0-based S and T
+    mono = {"L": 113.084064, "V": 99.068414, "S": 87.032028, "E": 129.042593, "T": 101.047679,
+            "F": 147.068414, "A": 71.037114, "K": 128.094963}
+    h2o = 18.0105647
+    res = [mono[c] + (PHOS if i in sites else 0.0) for i, c in enumerate(pep)]
+    n = len(pep)
+    ions = []   # (1+ m/z, number of phospho sites in the fragment)
+    bm, ym = _PROTON_MASS, h2o + _PROTON_MASS
+    for i in range(n - 1):
+        bm += res[i]
+        ym += res[n - 1 - i]
+        ions.append((bm, sum(1 for s in sites if s <= i)))
+        ions.append((ym, sum(1 for s in sites if s >= n - 1 - i)))
+    M = sum(res) + h2o
+    mz2 = (M + 2 * _PROTON_MASS) / 2
+    prec_nl = [(M - NL + 2 * _PROTON_MASS) / 2, M - NL + _PROTON_MASS]   # z = 2, 1
+
+    def spectrum(scaled, with_prec_nl):
+        pk = [(m, 100.0) for m, k in ions]
+        pk += [(m - (k if scaled else 1) * NL, 50.0) for m, k in ions if k >= 1]
+        if with_prec_nl:
+            pk += [(m, 40.0) for m in prec_nl]
+        return sorted(pk)
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        rng = random.Random(76)
+        fasta = tmp / "t76.fasta"
+        fillers = ["".join(rng.choice("GAPVLNDQEHFY") for _ in range(rng.randint(8, 14))) + rng.choice("KR") for _ in range(40)]
+        fasta.write_text(f">target\nMAR{pep}AGAR\n" + "".join(f">filler_{i}\nMAR{f}AGAR\n" for i, f in enumerate(fillers)))
+
+        def fixture(name, pk):
+            path = tmp / f"{name}.txt"
+            path.write_text(f"SPECTRUM 1 2 {mz2:.6f} {len(pk)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in pk))
+            return path
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1=f"{PHOS} ST 0 3 -1 0 0 {NL}", decoy_search=0, len_min=7, len_max=20)
+        params = _set_param_line(params, "max_variable_mods_in_peptide", 3)   # the template caps it at 1
+        chim_args = ["1", "2", "2", "0", "0.01", "5"]   # charge-range form, 2+ only, configured tolerance
+        cases = [
+            # (label, index flag, search type, spectrum, extra params)
+            ("FI scale_fragmentNL", "-i", 1, spectrum(True, False), "i:scale_fragmentNL=1"),
+            ("FI scale_fragmentNL + precursor_NL_ions", "-i", 1, spectrum(True, True),
+             f"i:scale_fragmentNL=1;v:precursor_NL_ions={NL}"),
+            ("PI (unscaled losses)", "-j", 0, spectrum(False, False), "i:scale_fragmentNL=1"),
+        ]
+        built = {}
+        try:
+            for label, flag, ist, pk, extra in cases:
+                if flag not in built:
+                    try:
+                        built[flag] = _rts_build_index(comet_exe, fasta, params, flag)
+                    except RuntimeError as e:
+                        failures.append(f"{label}: {e}")
+                        continue
+                    built[flag] = built[flag].rename(tmp / f"t76{flag}.idx")
+                idx = built[flag]
+                fx = fixture(label.split()[0] + str(len(pk)), pk)
+                out = tmp / "chim.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=chim_args,
+                                   env={"RTS_CHIMERIC_DEBUG": "1", "RTS_REPRO_PARAMS": extra})
+                if not check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1200:])
+                    continue
+                rows = _t67_rows(out).get(1, [])
+                got = rows[0].get("peptide", "") if rows else ""
+                check(re.sub(r"\[[^]]*\]", "", got) == pep and got.count("[") == 2,
+                      f"{label}: iteration 0 is the doubly-phosphorylated {pep} (got {[x.get('peptide') for x in rows]})", failures)
+                m = re.search(r"RTS_CHIMERIC iter=0 removed (\d+) of (\d+) peaks", log)
+                check(m is not None and int(m.group(1)) == len(pk) == int(m.group(2)),
+                      f"{label}: iteration 0 removed all {len(pk)} credited peaks ({m.group(0) if m else 'no trace'})", failures)
+
+            # matched fragments, FI with scale_fragmentNL: the 2x-loss ions listed with a 2x loss
+            if "-i" in built:
+                fx = fixture("frag", spectrum(True, False))
+                out = tmp / "frag.out"
+                rc, log = _rts_run(built["-i"], fx, 1, out, 0, 1,
+                                   env={"RTS_REPRO_FRAGMENTS": "1", "RTS_REPRO_PARAMS": "i:scale_fragmentNL=1"})
+                if check(rc == 0 and out.exists(), f"FI fragments: rts_repro exits 0 (rc={rc})", failures):
+                    # FRAG lines carry each neutral-loss fragment's 1+ mass after the loss
+                    nl = [f for f in _t71_frag_rows(out) if f["row"] == 0 and f["nl"] == 1]
+                    n2 = sum(1 for f in nl if any(abs(f["mass"] - (m - 2 * NL)) < 0.01 for m, k in ions if k == 2))
+                    n1 = sum(1 for f in nl if any(abs(f["mass"] - (m - NL)) < 0.01 for m, k in ions if k == 1))
+                    want2 = sum(1 for m, k in ions if k == 2)
+                    want1 = sum(1 for m, k in ions if k == 1)
+                    check(n2 == want2, f"FI fragments: all {want2} doubly-phosphorylated ions listed at ion - 2 x {NL} (got {n2})", failures)
+                    check(n1 == want1, f"FI fragments: all {want1} singly-phosphorylated ions listed at ion - {NL} (got {n1})", failures)
+        finally:
+            for p in built.values():
+                p.unlink(missing_ok=True)
     return failures
 
 

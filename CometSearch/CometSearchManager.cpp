@@ -2877,6 +2877,63 @@ static void AddChimericRemovalBins(std::vector<int>& vBins,
 }
 
 
+// Result extraction (SearchSingleSpectrumCore()): CometSearch::BuildBinnedIons() calls this
+// for every bin XcorrScoreI() credits for the result -- the same ladder, rules and dedup the
+// scorer used (docs/20261108_shared_bin_builder.md step 2), so the reported matched fragments
+// and the chimeric removal bins cannot drift from the scored ions. A fragment-ion bin with an
+// observed peak becomes a matched Fragment; with pvRemovalBins set (the chimeric winner) every
+// bin, fragment ions, their neutral losses and the precursor neutral-loss peaks alike, adds
+// its removal bins (flanks, observed 13C isotopes, and the water/ammonia-loss positions
+// XcorrScoreI() credits through ppfSparseFastXcorrDataNL on PI_DB).
+struct ResultIonVisitContext
+{
+   vector<Fragment>* pvFragments;
+   const double* pdTmpSpectrum;
+   std::vector<int>* pvRemovalBins;       // nullptr: matched fragments only
+   int iRemoveFlank;
+   int iRemoveIsotopes;
+   const ChimericObservedPeakMap* pmObserved;
+};
+
+static void VisitResultIon(void* pContext,
+                           int iCharge,
+                           int iWhichIonSeries,
+                           int iLen,
+                           int iBin,
+                           double dMZ,
+                           double dNeutralLoss)
+{
+   ResultIonVisitContext* pCtx = static_cast<ResultIonVisitContext*>(pContext);
+
+   if (pCtx->pvRemovalBins != nullptr)
+   {
+      // The water/ammonia-loss matrix is used only on PI_DB, for 1+ a/b/y ions (not their
+      // mod neutral losses), when use_NL_ions is on.
+      const bool bWaterAmmoniaNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+         && g_staticParams.iDbType == DbType::PI_DB
+         && iCharge == 1
+         && dNeutralLoss == 0.0
+         && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_Y);
+      AddChimericRemovalBins(*pCtx->pvRemovalBins, dMZ, iCharge, pCtx->iRemoveFlank, pCtx->iRemoveIsotopes,
+         *pCtx->pmObserved, bWaterAmmoniaNL);
+   }
+
+   // Precursor neutral-loss peaks (iWhichIonSeries -1) have no Fragment representation.
+   if (iWhichIonSeries >= 0 && iBin < g_staticParams.iArraySizeGlobal && pCtx->pdTmpSpectrum[iBin] > 0.0)
+   {
+      Fragment frag;
+      frag.intensity = pCtx->pdTmpSpectrum[iBin];
+      frag.mass = dMZ * iCharge - (iCharge - 1) * PROTON_MASS;   // the fragment's 1+ mass (after any loss)
+      frag.type = iWhichIonSeries;
+      frag.number = iLen + 1;
+      frag.charge = iCharge;
+      frag.neutralLoss = (dNeutralLoss != 0.0);
+      frag.neutralLossMass = dNeutralLoss;
+      pCtx->pvFragments->push_back(frag);
+   }
+}
+
+
 // One (spectrum, precursor m/z, charge) search on the thread-local RTS path: the
 // body of DoSingleSpectrumSearchMultiResults() before the chimeric search was added.
 // Appends up to takeN rows (peptide, protein, matched fragments, scores -- one row per
@@ -3463,194 +3520,67 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
          score.dAScorePro = pOutput[iWhichResult].fAScorePro;
          score.sAScoreProSiteScores = pOutput[iWhichResult].sAScoreProSiteScores;
 
-         // Conversion table from b/y ions to the other types (a,c,x,z,z+1). It must place
-         // every ion exactly where the scorer does -- the matched fragments reported here and
-         // the chimeric removal bins both come from it -- so it uses the same constants as
-         // CometMassSpecUtils::GetFragmentIonMass(): g_staticParams.massUtility follows
-         // mass_type_fragment (mono or average), and z+1 is z plus one hydrogen. z is the
-         // z-dot ion (y - NH2), z+1 the z' ion (y - NH2 + H). Until 2026-11-08 this table held
-         // hardcoded monoisotopic values and z+1 = y - NH3, 2.016 Da below the scored z+1, so
-         // with use_Z1_ions the winner's z+1 peaks were never removed by the chimeric search
-         // and RTS matched fragments listed z+1 matches at the wrong m/z.
-         const double ionMassesRelative[NUM_ION_SERIES] =
+         // Matched fragments and (result 0 of a chimeric call) the removal bins come from the
+         // shared builder: the result's ladder and credited bins are rebuilt exactly as the
+         // index path that scored it built them (docs/20261108_shared_bin_builder.md step 2).
+         // This replaced a hand-maintained b/y conversion table and neutral-loss loop that had
+         // drifted from the scorer: no scale_fragmentNL multi-loss peaks, no precursor
+         // neutral-loss peaks, and earlier the z+1 offset and the use_NL_ions peaks.
          {
-            // N term relative
-            -g_staticParams.massUtility.dCO,                    // a (CO difference from b)
-            0.0,                                                // b
-            g_staticParams.massUtility.dNH3,                    // c (NH3 difference from b)
+            const Results& res = pOutput[iWhichResult];
+            const int iLenPeptide = res.usiLenPeptide;
+            const CometSearch::IonRules eRules = (g_staticParams.iDbType == DbType::FI_DB)
+               ? CometSearch::IonRules::FragmentIndex : CometSearch::IonRules::PeptideIndex;
 
-            // C Term relative
-            g_staticParams.massUtility.dCOminusH2,              // x (CO-2H difference from y)
-            0.0,                                                // y
-            -g_staticParams.massUtility.dNH2,                   // z, z-dot (NH2 difference from y)
-            -g_staticParams.massUtility.dNH2 + Hydrogen_Mono    // z+1, z' (z plus H)
-         };
+            double pdAAforward[MAX_PEPTIDE_LEN];
+            double pdAAreverse[MAX_PEPTIDE_LEN];
+            int piPositionNLB[VMODS];
+            int piPositionNLY[VMODS];
+            int piCountNLB[FRAGINDEX_VMODS][MAX_PEPTIDE_LEN];
+            int piCountNLY[FRAGINDEX_VMODS][MAX_PEPTIDE_LEN];
+            int piSites[MAX_PEPTIDE_LEN_P2];
+            for (int i = 0; i < iLenPeptide + 2; ++i)
+               piSites[i] = g_staticParams.variableModParameters.bVarModSearch ? res.piVarModSites[i] : 0;
 
-         // now deal with calculating b- and y-ions and returning most intense matches
-         double dBion = g_staticParams.precalcMasses.dNtermProton;
-         double dYion = g_staticParams.precalcMasses.dCtermOH2Proton;
+            // Static protein-terminal masses follow the stored flanks: FI_DB and a PI_DB decoy
+            // always added them, a PI_DB target on PI_DB -- the only PI type RTS searches.
+            int iFoundVariableMod = CometSearch::BuildIonLadder(eRules, res.szPeptide, iLenPeptide, piSites,
+               res.cPrevAA == '-', res.cNextAA == '-', pdAAforward, pdAAreverse,
+               piPositionNLB, piPositionNLY, piCountNLB, piCountNLY, 0);
 
-         if (pQuery->_pResults[iWhichResult].cPrevAA == '-')
-         {
-            dBion += g_staticParams.staticModifications.dAddNterminusProtein;
-         }
-         if (pQuery->_pResults[iWhichResult].cNextAA == '-')
-         {
-            dYion += g_staticParams.staticModifications.dAddCterminusProtein;
-         }
-
-         // mods at peptide length +1 and +2 are for n- and c-terminus
-         if (g_staticParams.variableModParameters.bVarModSearch
-            && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] != 0))
-         {
-            dBion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide] - 1].dVarModMass;
-         }
-
-         if (g_staticParams.variableModParameters.bVarModSearch
-            && (pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] != 0))
-         {
-            dYion += g_staticParams.variableModParameters.varModList[pQuery->_pResults[iWhichResult].piVarModSites[pQuery->_pResults[iWhichResult].usiLenPeptide + 1] - 1].dVarModMass;
-         }
-
-         int iTmp;
-         bool bAddNtermFragmentNeutralLoss[VMODS];
-         bool bAddCtermFragmentNeutralLoss[VMODS];
-
-         for (int iMod = 0; iMod < VMODS; ++iMod)
-         {
-            bAddNtermFragmentNeutralLoss[iMod] = false;
-            bAddCtermFragmentNeutralLoss[iMod] = false;
-         }
-
-         // Upper bound on matched fragments (ignoring neutral losses, which are
-         // comparatively rare) -- avoids repeated push_back() reallocation growth
-         // for longer peptides / higher charge states / multiple ion series enabled.
-         eachMatchedFragments.reserve((size_t)(pQuery->_pResults[iWhichResult].usiLenPeptide - 1)
-            * pQuery->_spectrumInfoInternal.usiMaxFragCharge
-            * g_staticParams.ionInformation.iNumIonSeriesUsed);
-
-         // Generate pdAAforward for pQuery->_pResults[iWhichResult].szPeptide.
-         for (int i = 0; i < pQuery->_pResults[iWhichResult].usiLenPeptide - 1; ++i)
-         {
-            int iPos = pQuery->_pResults[iWhichResult].usiLenPeptide - i - 1;
-
-            dBion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[i]];
-            dYion += g_staticParams.massUtility.pdAAMassFragment[(int)pQuery->_pResults[iWhichResult].szPeptide[iPos]];
-
-            if (g_staticParams.variableModParameters.bVarModSearch)
+            // Thread-local scratch: the binned arrays (as XcorrScoreI() reads them) and the
+            // dedup buffer, sized like the search's own pools.
+            thread_local std::vector<unsigned int> tl_vBinnedIons;
+            thread_local std::vector<unsigned int> tl_vBinnedPrecursorNL;
+            thread_local std::unique_ptr<bool[]> tl_pbDuplFragment;
+            thread_local size_t tl_uiDuplFragmentSize = 0;
+            tl_vBinnedIons.resize((size_t)(MAX_FRAGMENT_CHARGE + 1) * NUM_ION_SERIES * MAX_PEPTIDE_LEN * (VMODS + 2));
+            tl_vBinnedPrecursorNL.resize((size_t)MAX_PRECURSOR_NL_SIZE * (MAX_PRECURSOR_CHARGE + 1));
+            if (tl_uiDuplFragmentSize < (size_t)g_staticParams.iArraySizeGlobal)
             {
-               if (pQuery->_pResults[iWhichResult].piVarModSites[i] != 0)
-                  dBion += pQuery->_pResults[iWhichResult].pdVarModSites[i];
-
-               if (pQuery->_pResults[iWhichResult].piVarModSites[iPos] != 0)
-                  dYion += pQuery->_pResults[iWhichResult].pdVarModSites[iPos];
+               tl_pbDuplFragment.reset(new bool[(size_t)g_staticParams.iArraySizeGlobal]());
+               tl_uiDuplFragmentSize = (size_t)g_staticParams.iArraySizeGlobal;
             }
 
-            for (int ctCharge = 1; ctCharge <= pQuery->_spectrumInfoInternal.usiMaxFragCharge; ++ctCharge)
-            {
-               // calculate every ion series the user specified
-               for (int ionSeries = 0; ionSeries < NUM_ION_SERIES; ++ionSeries)
-               {
-                  // skip ion series that are not enabled.
-                  if (!g_staticParams.ionInformation.iIonVal[ionSeries])
-                  {
-                     continue;
-                  }
+            auto puiBinnedIons = reinterpret_cast<unsigned int(*)[NUM_ION_SERIES][MAX_PEPTIDE_LEN][VMODS + 2]>(tl_vBinnedIons.data());
+            auto puiBinnedPrecursorNL = reinterpret_cast<unsigned int(*)[MAX_PRECURSOR_CHARGE + 1]>(tl_vBinnedPrecursorNL.data());
 
-                  bool isNTerm = (ionSeries <= ION_SERIES_C);
+            eachMatchedFragments.reserve((size_t)(iLenPeptide - 1)
+               * pQuery->_spectrumInfoInternal.usiMaxFragCharge
+               * g_staticParams.ionInformation.iNumIonSeriesUsed);
 
-                  // get the fragment mass if it is n- or c-terminus
-                  double mass = (isNTerm) ? dBion : dYion;
-                  int fragNumber = i + 1;
+            ResultIonVisitContext ctx;
+            ctx.pvFragments = &eachMatchedFragments;
+            ctx.pdTmpSpectrum = pdTmpSpectrum;
+            ctx.pvRemovalBins = (pvRemovalBins != nullptr && iWhichResult == 0) ? pvRemovalBins : nullptr;
+            ctx.iRemoveFlank = iRemoveFlank;
+            ctx.iRemoveIsotopes = iRemoveIsotopes;
+            ctx.pmObserved = &tl_mBinObservedMz;
 
-                  // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
-                  mass += ionMassesRelative[ionSeries];
-
-                  double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
-                  if (pvRemovalBins != nullptr && iWhichResult == 0)
-                  {
-                     // Mirror XcorrScoreI(): the water/ammonia-loss matrix is used only on
-                     // PI_DB, for 1+ a/b/y ions, when use_NL_ions is on.
-                     const bool bWaterAmmoniaNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-                        && g_staticParams.iDbType == DbType::PI_DB
-                        && ctCharge == 1
-                        && (ionSeries == ION_SERIES_A || ionSeries == ION_SERIES_B || ionSeries == ION_SERIES_Y);
-                     AddChimericRemovalBins(*pvRemovalBins, mz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz, bWaterAmmoniaNL);
-                  }
-                  iTmp = BIN(mz);
-                  if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
-                  {
-                     Fragment frag;
-                     frag.intensity = pdTmpSpectrum[iTmp];
-                     frag.mass = mass;
-                     frag.type = ionSeries;
-                     frag.number = fragNumber;
-                     frag.charge = ctCharge;
-                     frag.neutralLoss = false;
-                     frag.neutralLossMass = 0.0;
-                     eachMatchedFragments.push_back(frag);
-                  }
-
-                  if (g_staticParams.variableModParameters.bUseFragmentNeutralLoss)
-                  {
-                     for (int iMod = 0; iMod < VMODS; ++iMod)
-                     {
-                        for (int iWhichNL = 0; iWhichNL < 2; ++iWhichNL)
-                        {
-                           double dNLmass;
-
-                           if (iWhichNL == 0)
-                              dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss;
-                           else
-                              dNLmass = g_staticParams.variableModParameters.varModList[iMod].dNeutralLoss2;
-
-                           if (dNLmass == 0.0 || g_staticParams.variableModParameters.varModList[iMod].dVarModMass == 0.0)
-                           {
-                              continue;
-                           }
-
-                           if (isNTerm)
-                           {
-                              if (!bAddNtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[i] == iMod + 1)
-                              {
-                                 bAddNtermFragmentNeutralLoss[iMod] = true;
-                              }
-                           }
-                           else
-                           {
-                              if (!bAddCtermFragmentNeutralLoss[iMod] && pOutput[iWhichResult].piVarModSites[iPos] == iMod + 1)
-                              {
-                                 bAddCtermFragmentNeutralLoss[iMod] = true;
-                              }
-                           }
-
-                           if ((isNTerm && !bAddNtermFragmentNeutralLoss[iMod])
-                              || (!isNTerm && !bAddCtermFragmentNeutralLoss[iMod]))
-                           {
-                              continue;
-                           }
-
-                           double dNLfragMz = mz - (dNLmass / ctCharge);
-                           if (pvRemovalBins != nullptr && iWhichResult == 0)
-                              AddChimericRemovalBins(*pvRemovalBins, dNLfragMz, ctCharge, iRemoveFlank, iRemoveIsotopes, tl_mBinObservedMz, false);
-                           iTmp = BIN(dNLfragMz);
-                           if (iTmp < g_staticParams.iArraySizeGlobal && iTmp >= 0 && pdTmpSpectrum[iTmp] > 0.0)
-                           {
-                              Fragment frag;
-                              frag.intensity = pdTmpSpectrum[iTmp];
-                              frag.mass = mass - dNLmass;
-                              frag.type = ionSeries;
-                              frag.number = fragNumber;
-                              frag.charge = ctCharge;
-                              frag.neutralLoss = true;
-                              frag.neutralLossMass = dNLmass;
-                              eachMatchedFragments.push_back(frag);
-                           }
-                        }
-                     }
-                  }
-               }
-            }
+            CometSearch::BuildBinnedIons(eRules, pQuery, iLenPeptide, pdAAforward, pdAAreverse,
+               piPositionNLB, piPositionNLY, piCountNLB, piCountNLY, res.dPepMass,
+               tl_pbDuplFragment.get(), puiBinnedIons, puiBinnedPrecursorNL,
+               iFoundVariableMod, VisitResultIon, &ctx);
          }
       }
       else

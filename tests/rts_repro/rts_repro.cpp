@@ -141,7 +141,8 @@ static void WriteFragments(ostream& out, int iScan, size_t iRow, const vector<ve
 
 // RTS_REPRO_PARAMS: extra parameters for tests and experiments, so a new knob needs no new
 // positional argument. Entries are separated by ';', each "<type>:<name>=<value>" with type
-// i (int), d (double) or s (string), e.g. "i:use_Z1_ions=1;d:fragment_bin_tol=1.0005".
+// i (int), d (double), s (string) or v (comma-separated doubles, a vector<double> parameter
+// such as precursor_NL_ions), e.g. "i:use_Z1_ions=1;d:fragment_bin_tol=1.0005".
 // The type must be the one Comet reads the parameter as: GetParamValue() casts to the
 // requested type, and a mismatch is a null dereference, not an error. Applied after every
 // built-in setting (so an entry overrides it) and before InitializeSingleSpectrumSearch().
@@ -191,9 +192,26 @@ static bool ApplyExtraParams(ICometSearchManager* mgr)
       }
       else if (cType == 's')
          SetStringParam(mgr, name, value);
+      else if (cType == 'v')
+      {
+         vector<double> vVal;
+         stringstream vs(value);
+         string tok;
+         while (getline(vs, tok, ','))
+         {
+            double dVal = strtod(tok.c_str(), &pEnd);
+            if (tok.empty() || *pEnd != '\0')
+            {
+               fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not a number\n", name.c_str(), tok.c_str());
+               return false;
+            }
+            vVal.push_back(dVal);
+         }
+         mgr->SetParam(name, value, vVal);
+      }
       else
       {
-         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\": type must be i, d or s\n", entry.c_str());
+         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\": type must be i, d, s or v\n", entry.c_str());
          return false;
       }
       fprintf(stderr, "RTS_REPRO_PARAMS: %s = %s\n", name.c_str(), value.c_str());
@@ -267,7 +285,7 @@ int main(int argc, char** argv)
                       "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
                       "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n"
                       "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n"
-                      "  environment: RTS_REPRO_PARAMS=\"<i|d|s>:<name>=<value>;...\" sets any further parameter, applied\n"
+                      "  environment: RTS_REPRO_PARAMS=\"<i|d|s|v>:<name>=<value>;...\" sets any further parameter, applied\n"
                       "              last (e.g. \"i:use_Z1_ions=1\"); the type must be the one Comet reads it as\n"
                       "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n", argv[0]);
       return 1;

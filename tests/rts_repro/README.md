@@ -64,9 +64,11 @@ sets `isotope_error` in every mode (default 0, as RealtimeSearch); `globalMinIon
 
 Two more environment variables, so a new knob needs no new positional argument:
 
-- `RTS_REPRO_PARAMS="<i|d|s>:<name>=<value>;..."` sets any further parameter, as an int,
-  double or string, after every built-in setting (so it can override one) and before
-  `InitializeSingleSpectrumSearch()`, e.g. `RTS_REPRO_PARAMS="i:use_Z1_ions=1"` (test T71).
+- `RTS_REPRO_PARAMS="<i|d|s|v>:<name>=<value>;..."` sets any further parameter, as an int,
+  double, string or comma-separated double list (`v`, a `vector<double>` parameter such as
+  `precursor_NL_ions`), after every built-in setting (so it can override one) and before
+  `InitializeSingleSpectrumSearch()`, e.g. `RTS_REPRO_PARAMS="i:use_Z1_ions=1"` (test T71) or
+  `"i:scale_fragmentNL=1;v:precursor_NL_ions=97.976896"` (test T76).
   The type must be the one Comet reads the parameter as: `GetParamValue()` casts to the
   requested type and a mismatch dereferences null instead of failing cleanly. Each applied
   entry is echoed to stderr; a malformed one stops the run.
