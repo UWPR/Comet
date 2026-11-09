@@ -113,6 +113,15 @@ table and `comet.params` output next to `fragindex_min_ions_score`, copied in
 `InitializeStaticParams()`, read-only after init like the rest of `g_staticParams`;
 settable through `SetParam` for RTS.
 
+A batch search none of whose outputs reports E-values (`Options::OutputsNeedEValues()`
+false: `print_expect_score = 0` and no pepXML, `.txt`, Percolator or mzIdentML output, i.e.
+SQT-only with the Sp column) never collects the histogram, so `DoSearch()` runs it with the
+fill at 0 (2026-11-09): the fill would be pure cost there (+11-17% per FI query single-
+threaded) and the output is unchanged. The RTS entry points always compute E-values and keep
+the configured fill. The same helper replaced four hand-written copies of the "does an output
+need E-values?" test, which had all omitted mzIdentML: an mzIdentML-only search with
+`print_expect_score = 0` wrote E = 9.99E+02 for every PSM (pre-existing on master; test T85).
+
 Why a count and not a lower `fragindex_min_ions_score`: the floor also decides which
 candidates compete for the result slots in `_pResults` -- with the 1-hit candidates
 admitted the sort cap would fill with junk before the real 3-hit candidates on busy

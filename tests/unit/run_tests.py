@@ -8349,5 +8349,106 @@ def test_t84_searchchimeric_errors(comet_exe):
     return failures
 
 
+# ---------------------------------------------------------------------------
+# T85 -- which outputs make a batch search compute E-values (Options::OutputsNeedEValues()).
+# mzIdentML writes an E-value for every PSM but was missing from the four hand-written copies
+# of the "does any output need E-values?" test, so an mzIdentML-only search with
+# print_expect_score = 0 wrote E = 9.99E+02 for every PSM (pre-existing on master). The same
+# test now also turns the FI histogram fill off for a batch search no output needs E-values
+# for; the fill only feeds the E-value histogram, so that must leave the output unchanged.
+# The T68 fixture (one target spectrum, 50 sub-floor fillers) makes the fill observable: with
+# fill 100 the target's E-value is larger than with fill 0 (T69).
+# ---------------------------------------------------------------------------
+
+@register("t85_evalue_outputs")
+def test_t85_evalue_outputs(comet_exe):
+    """T85: an mzIdentML-only batch FI_DB search with print_expect_score = 0 reports the same real E-values as with
+    print_expect_score = 1 (it used to write 999 for every PSM), the histogram fill still runs for it, and an
+    SQT-only search with print_expect_score = 0 -- no output needs E-values, so the fill is skipped -- writes the
+    same SQT with the fill at 0 and at 100."""
+    failures = []
+    if not T68_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T68_GENERATOR}")
+        return failures
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T68_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta, idx = tmp / "t68_histfill.fasta", tmp / "t68_histfill.fasta.idx"
+        lines = (tmp / "t68_histfill.txt").read_text().splitlines()
+        _, scan, z, mz, _n = lines[0].split()
+        mh = float(mz) * int(z) - (int(z) - 1) * _PROTON_MASS
+        ms2 = tmp / "t85.ms2"
+        ms2.write_text(f"S\t{scan}\t{scan}\t{float(mz):.6f}\nZ\t{z}\t{mh:.6f}\n"
+                       + "".join(l.replace(" ", "\t") + "\n" for l in lines[1:]))
+
+        base = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+                                          mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        pf = tmp / "t85.params"
+        pf.write_text(base)
+        rc, log = _run_t19_step(comet_exe, ["-i", f"-P{fmt(pf)}"], timeout=300)
+        if not check(rc == 0 and idx.exists(), f"fragment ion index builds (rc={rc})", failures):
+            print(log[-1500:])
+            return failures
+
+        outputs = ("output_pepxmlfile", "output_txtfile", "output_sqtfile", "output_mzidentmlfile", "output_percolatorfile")
+
+        def search(name, fmt_on, print_expect, fill):
+            """One batch search with only output format fmt_on; returns that output file's text or None."""
+            pr = base.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}")
+            for key in outputs:
+                pr = _set_param_line(pr, key, 1 if key == fmt_on else 0)
+            for key, val in (("print_expect_score", print_expect), ("fragindex_histogram_fill", fill),
+                             ("num_output_lines", 5)):
+                pr = _set_param_line(pr, key, val)
+            pf.write_text(pr)
+            ext = {"output_mzidentmlfile": ".mzid", "output_sqtfile": ".sqt"}[fmt_on]
+            out = tmp / f"{name}{ext}"
+            out.unlink(missing_ok=True)
+            rc, log = _run_t19_step(comet_exe, [f"-P{fmt(pf)}", f"-N{fmt(tmp / name)}", fmt(ms2)])
+            if not check(rc == 0 and out.exists(), f"{name}: search exits 0 and writes {out.name} (rc={rc})", failures):
+                print(log[-1500:])
+                return None
+            return out.read_text()
+
+        def mzid_expects(text):
+            return [float(v) for v in re.findall(r'name="Comet:expectation value" value="([^"]+)"', text)]
+
+        # (a) mzIdentML only: print_expect_score 0 must still compute E-values, with the fill
+        m1 = search("mzid_pe1_f100", "output_mzidentmlfile", 1, 100)
+        m0 = search("mzid_pe0_f100", "output_mzidentmlfile", 0, 100)
+        mf0 = search("mzid_pe1_f0", "output_mzidentmlfile", 1, 0)
+        if m1 is not None and m0 is not None and mf0 is not None:
+            e1, e0, ef0 = mzid_expects(m1), mzid_expects(m0), mzid_expects(mf0)
+            check(bool(e1) and e0 == e1, f"mzIdentML only: print_expect_score 0 writes the same E-values as 1 ({e0} vs {e1})",
+                  failures)
+            check(bool(e0) and all(e < 999.0 for e in e0[:1]), f"mzIdentML only, print_expect_score 0: the target's E-value is "
+                  f"real, not 999 ({e0[:1]})", failures)
+            check(bool(e1) and bool(ef0) and e1[0] > ef0[0], f"mzIdentML only: the histogram fill ran (fill 100 E {e1[:1]} > "
+                  f"fill 0 E {ef0[:1]})", failures)
+
+        # (b) SQT only with print_expect_score 0: no output needs E-values, the fill is skipped, the SQT is unchanged
+        def sqt_body(text):
+            return [l for l in text.splitlines() if not l.startswith("H")]
+        s100 = search("sqt_pe0_f100", "output_sqtfile", 0, 100)
+        s0 = search("sqt_pe0_f0", "output_sqtfile", 0, 0)
+        if s100 is not None and s0 is not None:
+            b100, b0 = sqt_body(s100), sqt_body(s0)
+            check(any(l.startswith("M") for l in b0), "SQT only: the target is reported", failures)
+            check(b100 == b0, f"SQT only, print_expect_score 0: identical SQT with the fill at 100 and 0 "
+                  f"({len(b100)} vs {len(b0)} lines)", failures)
+        # with print_expect_score 1 the SQT carries E-values, so the fill must still run and move them
+        e100 = search("sqt_pe1_f100", "output_sqtfile", 1, 100)
+        e0s = search("sqt_pe1_f0", "output_sqtfile", 1, 0)
+        if e100 is not None and e0s is not None:
+            check(sqt_body(e100) != sqt_body(e0s), "SQT with print_expect_score 1: the fill still runs and changes the "
+                  "reported E-value", failures)
+    return failures
+
+
 if __name__ == "__main__":
     main()

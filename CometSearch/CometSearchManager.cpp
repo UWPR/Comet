@@ -2264,6 +2264,14 @@ bool CometSearchManager::DoSearch()
    if (!ValidateOutputFormat())
       return false;
 
+   // The FI histogram fill (fragindex_histogram_fill) scores extra sub-floor candidates only to
+   // fill the xcorr histogram the E-value fit uses. A batch search whose outputs report no
+   // E-values never collects that histogram, so the fill would be pure cost (+11-17% per FI
+   // query single-threaded): run it at 0. Output is unchanged -- fill candidates are never
+   // stored, reported or counted. Batch only: the RTS entry points always compute E-values.
+   if (!g_staticParams.options.OutputsNeedEValues())
+      g_staticParams.options.iFragIndexHistogramFill = 0;
+
    if (strlen(g_staticParams.databaseInfo.szDatabase) == 0 || !ValidateSequenceDatabaseFile())
       g_bPerformDatabaseSearch = false;
    else

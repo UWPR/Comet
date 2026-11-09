@@ -112,6 +112,23 @@ struct Options
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
    string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
+
+   // True when some output reports E-values, so a batch search must collect the xcorr
+   // histogram and compute them: print_expect_score (SQT prints the E-value in place of Sp),
+   // pepXML, Percolator, .txt or mzIdentML. The one test for every place that decides this
+   // (the histogram accumulation in the scorers, the E-value calls in post-analysis and the
+   // fused batch path, and whether the FI histogram fill is worth running). mzIdentML was
+   // missing from the four hand-written copies of this test until 2026-11-09, so an
+   // mzIdentML-only search with print_expect_score = 0 wrote E = 999 for every PSM.
+   // The RTS path always computes E-values; this is about batch output.
+   bool OutputsNeedEValues() const
+   {
+      return bPrintExpectScore
+         || bOutputPepXMLFile
+         || bOutputPercolatorFile
+         || bOutputTxtFile
+         || iOutputMzIdentMLFile != 0;
+   }
 };
 
 // The minimum and maximum mass range of all peptides to consider

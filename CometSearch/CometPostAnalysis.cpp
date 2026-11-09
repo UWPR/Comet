@@ -245,13 +245,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    AnalyzeSP(pQuery);
 
-   // Calculate E-values if necessary.
-   // Only time to not calculate E-values is for .out/.sqt output only and
-   // user decides to not replace Sp score with E-values
-   if (g_staticParams.options.bPrintExpectScore
-         || g_staticParams.options.bOutputPepXMLFile
-         || g_staticParams.options.bOutputPercolatorFile
-         || g_staticParams.options.bOutputTxtFile)
+   // Calculate E-values if some output reports them (Options::OutputsNeedEValues()).
+   if (g_staticParams.options.OutputsNeedEValues())
    {
       if (pQuery->iMatchPeptideCount > 0 || pQuery->iDecoyMatchPeptideCount > 0)
          CalculateEValue(pQuery, false);

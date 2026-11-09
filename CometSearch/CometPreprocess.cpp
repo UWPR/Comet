@@ -3753,10 +3753,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
             // Batch post-analysis sequence (matches PostAnalysisThreadProc).
             CometPostAnalysis::AnalyzeSP(pScoring);
 
-            if (g_staticParams.options.bPrintExpectScore
-                  || g_staticParams.options.bOutputPepXMLFile
-                  || g_staticParams.options.bOutputPercolatorFile
-                  || g_staticParams.options.bOutputTxtFile)
+            if (g_staticParams.options.OutputsNeedEValues())
             {
                if (pScoring->iMatchPeptideCount > 0 || pScoring->iDecoyMatchPeptideCount > 0)
                   CometPostAnalysis::CalculateEValue(pScoring, false);

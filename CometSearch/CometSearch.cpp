@@ -4835,10 +4835,7 @@ void CometSearch::XcorrScore(char* szProteinSeq,
    else
       pQuery->_uliNumMatchedPeptides++;
 
-   if (g_staticParams.options.bPrintExpectScore
-      || g_staticParams.options.bOutputPepXMLFile
-      || g_staticParams.options.bOutputPercolatorFile
-      || g_staticParams.options.bOutputTxtFile)
+   if (g_staticParams.options.OutputsNeedEValues())
    {
       int iTmp;
 
@@ -8360,10 +8357,7 @@ void CometSearch::XcorrScoreI(char* szProteinSeq,
          pQuery->_uliNumMatchedPeptides++;
    }
 
-   if (g_staticParams.options.bPrintExpectScore
-      || g_staticParams.options.bOutputPepXMLFile
-      || g_staticParams.options.bOutputPercolatorFile
-      || g_staticParams.options.bOutputTxtFile)
+   if (g_staticParams.options.OutputsNeedEValues())
    {
       int iTmp;
 
