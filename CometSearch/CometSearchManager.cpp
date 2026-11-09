@@ -3536,8 +3536,8 @@ int CometSearchManager::SearchSingleSpectrumCore(const int takeN,
             double pdAAreverse[MAX_PEPTIDE_LEN];
             int piPositionNLB[VMODS];
             int piPositionNLY[VMODS];
-            int piCountNLB[FRAGINDEX_VMODS][MAX_PEPTIDE_LEN];
-            int piCountNLY[FRAGINDEX_VMODS][MAX_PEPTIDE_LEN];
+            int piCountNLB[VMODS][MAX_PEPTIDE_LEN];   // VMODS rows: PeptideIndex rules consider every mod
+            int piCountNLY[VMODS][MAX_PEPTIDE_LEN];
             int piSites[MAX_PEPTIDE_LEN_P2];
             for (int i = 0; i < iLenPeptide + 2; ++i)
                piSites[i] = g_staticParams.variableModParameters.bVarModSearch ? res.piVarModSites[i] : 0;

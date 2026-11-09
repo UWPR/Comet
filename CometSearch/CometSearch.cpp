@@ -2398,8 +2398,8 @@ int CometSearch::BuildIonLadder(IonRules eRules,
                                 int (*piCountNLY)[MAX_PEPTIDE_LEN],
                                 int iFoundVariableModIn)
 {
-   const bool bFI = (eRules == IonRules::FragmentIndex);
    const bool bNL = g_staticParams.variableModParameters.bUseFragmentNeutralLoss;
+   const int iNumNLMods = (eRules == IonRules::FragmentIndex) ? FRAGINDEX_VMODS : VMODS;
    const VarMods* pVarMods = g_staticParams.variableModParameters.varModList;
    const int iLenMinus1 = iLenPeptide - 1;
    int iFoundVariableMod = iFoundVariableModIn;
@@ -2425,42 +2425,13 @@ int CometSearch::BuildIonLadder(IonRules eRules,
 
    if (bNL)
    {
-      if (bFI)
-      {
-         memset(piCountNLB, 0, sizeof(int) * FRAGINDEX_VMODS * MAX_PEPTIDE_LEN);
-         memset(piCountNLY, 0, sizeof(int) * FRAGINDEX_VMODS * MAX_PEPTIDE_LEN);
+      memset(piCountNLB, 0, sizeof(int) * iNumNLMods * MAX_PEPTIDE_LEN);
+      memset(piCountNLY, 0, sizeof(int) * iNumNLMods * MAX_PEPTIDE_LEN);
 
-         for (int i = 0; i < FRAGINDEX_VMODS; ++i)
-         {
-            piPositionNLB[i] = 999;    // default to greater than last residue position
-            piPositionNLY[i] = -1;     // default to less that first residue position
-         }
-      }
-      else
+      for (int i = 0; i < iNumNLMods; ++i)
       {
-         for (int i = 0; i < VMODS; ++i)
-         {
-            piPositionNLB[i] = 999;
-            piPositionNLY[i] = -1;
-         }
-
-         // PeptideIndex rule: only the first loss-bearing mod from each end gets a position
-         for (int i = 0; i < iLenMinus1; ++i)
-         {
-            if (piVarModSites[i] > 0 && pVarMods[piVarModSites[i] - 1].dNeutralLoss != 0.0)
-            {
-               piPositionNLB[piVarModSites[i] - 1] = i;
-               break;
-            }
-         }
-         for (int i = iLenMinus1; i >= 0; --i)
-         {
-            if (piVarModSites[i] > 0 && pVarMods[piVarModSites[i] - 1].dNeutralLoss != 0.0)
-            {
-               piPositionNLY[piVarModSites[i] - 1] = i;
-               break;
-            }
-         }
+         piPositionNLB[i] = 999;    // default to greater than last residue position
+         piPositionNLY[i] = -1;     // default to less that first residue position
       }
    }
 
@@ -2469,9 +2440,9 @@ int CometSearch::BuildIonLadder(IonRules eRules,
       const int iPosForward = i;
       const int iPosReverse = iLenMinus1 - i;
 
-      if (bNL && bFI && i > 0)
+      if (bNL && i > 0)
       {
-         for (int x = 0; x < FRAGINDEX_VMODS; ++x)
+         for (int x = 0; x < iNumNLMods; ++x)
          {
             piCountNLB[x][iPosForward] = piCountNLB[x][iPosForward - 1];
             piCountNLY[x][iPosForward] = piCountNLY[x][iPosForward - 1];
@@ -2490,7 +2461,7 @@ int CometSearch::BuildIonLadder(IonRules eRules,
          {
             iFoundVariableMod = 2;
 
-            if (bFI && iMod < FRAGINDEX_VMODS)
+            if (iMod < iNumNLMods)
             {
                if (piPositionNLB[iMod] == 999)
                   piPositionNLB[iMod] = iPosForward;
@@ -2515,7 +2486,7 @@ int CometSearch::BuildIonLadder(IonRules eRules,
          {
             iFoundVariableMod = 2;
 
-            if (bFI && iMod < FRAGINDEX_VMODS)
+            if (iMod < iNumNLMods)
             {
                if (piPositionNLY[iMod] == -1)
                   piPositionNLY[iMod] = iPosReverse;
@@ -2557,9 +2528,8 @@ void CometSearch::BuildBinnedIons(IonRules eRules,
                                   BinnedIonVisitor pfnVisit,
                                   void* pVisitContext)
 {
-   const bool bFI = (eRules == IonRules::FragmentIndex);
    const bool bNL = g_staticParams.variableModParameters.bUseFragmentNeutralLoss;
-   const int iNumNLMods = bFI ? FRAGINDEX_VMODS : VMODS;
+   const int iNumNLMods = (eRules == IonRules::FragmentIndex) ? FRAGINDEX_VMODS : VMODS;
    const VarMods* pVarMods = g_staticParams.variableModParameters.varModList;
    const int iLenMinus1 = iLenPeptide - 1;
    const int iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
@@ -2568,7 +2538,8 @@ void CometSearch::BuildBinnedIons(IonRules eRules,
    const int iArraySize = g_staticParams.iArraySizeGlobal;
 
    // m/z of neutral-loss slot (x, iWhichNL) of an ion, or false when that slot does not
-   // apply. FragmentIndex scales the loss by the per-position count; PeptideIndex does not.
+   // apply: the loss times the number of that mod's residues in the fragment (1 unless
+   // scale_fragmentNL is on).
    auto NeutralLossMZ = [&](int iWhichIonSeries, int ctLen, int ctCharge, double dFragMass, int x, int iWhichNL,
                             double& dNewMass, double& dLoss) -> bool
    {
@@ -2582,17 +2553,10 @@ void CometSearch::BuildBinnedIons(IonRules eRules,
          return false;
       }
 
-      if (bFI)
-      {
-         const int iScaleFactor = (iWhichIonSeries <= 2) ? piCountNLB[x][ctLen] : piCountNLY[x][ctLen];
-         dNewMass = dFragMass - (iScaleFactor * dNL / ctCharge);
-         dLoss = iScaleFactor * dNL;
-         return dNewMass >= 0.0;
-      }
-
-      dNewMass = dFragMass - dNL / ctCharge;
-      dLoss = dNL;
-      return true;
+      const int iScaleFactor = (iWhichIonSeries <= 2) ? piCountNLB[x][ctLen] : piCountNLY[x][ctLen];
+      dNewMass = dFragMass - (iScaleFactor * dNL / ctCharge);
+      dLoss = iScaleFactor * dNL;
+      return dNewMass >= 0.0;
    };
 
    for (int ctCharge = 1; ctCharge <= iMaxFragCharge; ++ctCharge)
@@ -2815,14 +2779,16 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
    // static protein-terminal masses apply to the target ladder on PI_DB only, as before.
    int iPositionNLB[VMODS];
    int iPositionNLY[VMODS];
+   int iCountNLB[VMODS][MAX_PEPTIDE_LEN];
+   int iCountNLY[VMODS][MAX_PEPTIDE_LEN];
    const bool bProtTermStatics = (g_staticParams.iDbType == DbType::PI_DB);
 
    iFoundVariableMod = BuildIonLadder(IonRules::PeptideIndex, sDBI.sPeptide, iLenPeptide, piVarModSites,
       bProtTermStatics && sDBI.cPrevAA == '-', bProtTermStatics && sDBI.cNextAA == '-',
-      pdAAforward, pdAAreverse, iPositionNLB, iPositionNLY, nullptr, nullptr, iFoundVariableMod);
+      pdAAforward, pdAAreverse, iPositionNLB, iPositionNLY, iCountNLB, iCountNLY, iFoundVariableMod);
 
    BuildBinnedIons(IonRules::PeptideIndex, pQuery, iLenPeptide, pdAAforward, pdAAreverse,
-      iPositionNLB, iPositionNLY, nullptr, nullptr, sDBI.dPepMass, pbDuplFragment,
+      iPositionNLB, iPositionNLY, iCountNLB, iCountNLY, sDBI.dPepMass, pbDuplFragment,
       uiBinnedIonMasses, uiBinnedPrecursorNL, iFoundVariableMod);
 
    XcorrScoreI(szProtein, iStartPos, iEndPos, iFoundVariableMod, sDBI.dPepMass, bDecoyPep,
@@ -2847,13 +2813,15 @@ void CometSearch::AnalyzePeptideIndex(Query* pQuery,
       // rules; the static protein-terminal masses follow the target's flanks unconditionally.
       int iPositionNLBDecoy[VMODS];
       int iPositionNLYDecoy[VMODS];
+      int iCountNLBDecoy[VMODS][MAX_PEPTIDE_LEN];
+      int iCountNLYDecoy[VMODS][MAX_PEPTIDE_LEN];
 
       iFoundVariableModDecoy = BuildIonLadder(IonRules::PeptideIndex, szDecoyPeptide, iLenPeptide, piVarModSitesDecoy,
          sDBI.cPrevAA == '-', sDBI.cNextAA == '-', pdAAforwardDecoy, pdAAreverseDecoy,
-         iPositionNLBDecoy, iPositionNLYDecoy, nullptr, nullptr, iFoundVariableModDecoy);
+         iPositionNLBDecoy, iPositionNLYDecoy, iCountNLBDecoy, iCountNLYDecoy, iFoundVariableModDecoy);
 
       BuildBinnedIons(IonRules::PeptideIndex, pQuery, iLenPeptide, pdAAforwardDecoy, pdAAreverseDecoy,
-         iPositionNLBDecoy, iPositionNLYDecoy, nullptr, nullptr, sDBI.dPepMass, pbDuplFragment,
+         iPositionNLBDecoy, iPositionNLYDecoy, iCountNLBDecoy, iCountNLYDecoy, sDBI.dPepMass, pbDuplFragment,
          uiBinnedIonMassesDecoy, uiBinnedPrecursorNLDecoy, iFoundVariableModDecoy);
 
       char szDecoyProtein[MAX_PEPTIDE_LEN_P2 + 1];

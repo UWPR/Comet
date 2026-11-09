@@ -160,14 +160,14 @@ public:
    // and the RTS result extraction (matched fragments and chimeric removal bins), so the
    // reported/removed ions cannot drift from the scored ones.
    //
-   // The two index paths follow different fragment neutral-loss rules, kept distinct so both
-   // stay byte-identical:
-   //   FragmentIndex: the first position of every loss-bearing mod is tracked, the loss is
-   //                  scaled by the number of such mods in the fragment when scale_fragmentNL
-   //                  is on, and only the first FRAGINDEX_VMODS mods are considered (the batch
-   //                  FASTA path, CalcVarModIons(), follows the same rules over all VMODS).
-   //   PeptideIndex:  only the first loss-bearing mod (from either end) gets a position, the
-   //                  loss is never scaled, and all VMODS mods are considered.
+   // Fragment neutral losses follow the batch FASTA rules (CalcVarModIons()) on both index
+   // paths: every loss-bearing mod type present in a fragment adds its own loss peak (types are
+   // never combined), and the loss is multiplied by the number of that type's residues in the
+   // fragment when scale_fragmentNL is on. The rules differ only in which mods are considered:
+   //   FragmentIndex: the first FRAGINDEX_VMODS (all the fragment index holds);
+   //   PeptideIndex:  all VMODS.
+   // Until 2026-11-08 PI_DB gave a loss position only to the first loss-bearing mod from each
+   // end and never scaled (docs/20261108_shared_bin_builder.md section 5).
    enum class IonRules
    {
       FragmentIndex,
@@ -178,9 +178,9 @@ public:
    // szPeptide[0..iLenPeptide) with piVarModSites[0..iLenPeptide+2) (peptide N-/C-terminal
    // variable mods in the last two slots), adding the static protein-terminal masses when
    // bAddProteinNterm/bAddProteinCterm. With use_fragment neutral losses on it also fills the
-   // per-mod loss positions (piPositionNLB/Y, VMODS entries) and, for FragmentIndex, the
-   // cumulative per-position loss counts (piCountNLB/Y, FRAGINDEX_VMODS rows; may be nullptr
-   // for PeptideIndex). Returns iFoundVariableMod updated from iFoundVariableModIn: 1 for any
+   // per-mod loss positions (piPositionNLB/Y) and the cumulative per-position loss counts
+   // (piCountNLB/Y): FRAGINDEX_VMODS entries/rows for FragmentIndex, VMODS for PeptideIndex.
+   // Returns iFoundVariableMod updated from iFoundVariableModIn: 1 for any
    // variable mod, 2 for a mod carrying a fragment neutral loss (last one seen wins, as in the
    // code this replaced).
    static int BuildIonLadder(IonRules eRules,

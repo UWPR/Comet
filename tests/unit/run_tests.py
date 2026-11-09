@@ -7503,7 +7503,9 @@ def test_t75_chimeric_exact_duplicates(comet_exe):
 def test_t76_rts_shared_bins(comet_exe):
     """T76: chimeric removal and RTS matched fragments cover every bin the scorer credits: on FI_DB with
     scale_fragmentNL the doubly-phosphorylated fragments' 2x-loss peaks are removed (all 30 peaks) and listed
-    with a 2x loss; precursor_NL_ions peaks are removed (32 of 32); on PI_DB (unscaled losses) all 30 peaks."""
+    with a 2x loss; precursor_NL_ions peaks are removed (32 of 32); on PI_DB all 30 peaks. PI_DB scores fragment
+    neutral losses by the FI/FASTA rules: the same xcorr as FI_DB for the doubly-phosphorylated peptide with
+    scale_fragmentNL, and for a peptide with two different loss-bearing mods (phospho S, oxidized M)."""
     failures = []
     if _binary_uses_win_paths(comet_exe):
         print("  SKIP: rts_repro is Linux-only; --comet is a Windows binary")
@@ -7543,7 +7545,9 @@ def test_t76_rts_shared_bins(comet_exe):
         rng = random.Random(76)
         fasta = tmp / "t76.fasta"
         fillers = ["".join(rng.choice("GAPVLNDQEHFY") for _ in range(rng.randint(8, 14))) + rng.choice("KR") for _ in range(40)]
-        fasta.write_text(f">target\nMAR{pep}AGAR\n" + "".join(f">filler_{i}\nMAR{f}AGAR\n" for i, f in enumerate(fillers)))
+        pep_mixed = "LVSEGLEMAK"   # phospho S3 (loss 97.976896) and oxidized M8 (loss 63.998285)
+        fasta.write_text(f">target\nMAR{pep}AGAR\n>target_mixed\nMAR{pep_mixed}AGAR\n"
+                         + "".join(f">filler_{i}\nMAR{f}AGAR\n" for i, f in enumerate(fillers)))
 
         def fixture(name, pk):
             path = tmp / f"{name}.txt"
@@ -7553,13 +7557,15 @@ def test_t76_rts_shared_bins(comet_exe):
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
                                             mod1=f"{PHOS} ST 0 3 -1 0 0 {NL}", decoy_search=0, len_min=7, len_max=20)
         params = _set_param_line(params, "max_variable_mods_in_peptide", 3)   # the template caps it at 1
+        OX, OXNL = 15.9949146, 63.998285
+        params = _set_param_line(params, "variable_mod02", f"{OX} M 0 3 -1 0 0 {OXNL}")
         chim_args = ["1", "2", "2", "0", "0.01", "5"]   # charge-range form, 2+ only, configured tolerance
         cases = [
             # (label, index flag, search type, spectrum, extra params)
             ("FI scale_fragmentNL", "-i", 1, spectrum(True, False), "i:scale_fragmentNL=1"),
             ("FI scale_fragmentNL + precursor_NL_ions", "-i", 1, spectrum(True, True),
              f"i:scale_fragmentNL=1;v:precursor_NL_ions={NL}"),
-            ("PI (unscaled losses)", "-j", 0, spectrum(False, False), "i:scale_fragmentNL=1"),
+            ("PI scale_fragmentNL", "-j", 0, spectrum(True, False), "i:scale_fragmentNL=1"),
         ]
         built = {}
         try:
@@ -7602,6 +7608,47 @@ def test_t76_rts_shared_bins(comet_exe):
                     want1 = sum(1 for m, k in ions if k == 1)
                     check(n2 == want2, f"FI fragments: all {want2} doubly-phosphorylated ions listed at ion - 2 x {NL} (got {n2})", failures)
                     check(n1 == want1, f"FI fragments: all {want1} singly-phosphorylated ions listed at ion - {NL} (got {n1})", failures)
+
+            # PI/FI parity: PI_DB scores fragment neutral losses by the FI/FASTA rules. Until
+            # 2026-11-08 PI never scaled, and gave a loss position only to the first loss-bearing
+            # mod from each end, so the mixed peptide's b ions lost the oxidation loss and its y
+            # ions the phospho loss.
+            mres = [mono_m + (PHOS if i == 2 else OX if i == 7 else 0.0)
+                    for i, mono_m in enumerate([{"L": 113.084064, "V": 99.068414, "S": 87.032028, "E": 129.042593,
+                                                 "G": 57.021464, "M": 131.040485, "A": 71.037114,
+                                                 "K": 128.094963}[c] for c in pep_mixed])]
+            mpk, bm, ym = [], _PROTON_MASS, h2o + _PROTON_MASS
+            nm = len(pep_mixed)
+            for i in range(nm - 1):
+                bm += mres[i]
+                ym += mres[nm - 1 - i]
+                for mass, lo, hi in ((bm, 0, i), (ym, nm - 1 - i, nm - 1)):   # residues the fragment spans
+                    mpk.append((mass, 100.0))
+                    if lo <= 2 <= hi:
+                        mpk.append((mass - NL, 50.0))     # phospho loss (one site)
+                    if lo <= 7 <= hi:
+                        mpk.append((mass - OXNL, 50.0))   # oxidation loss, its own peak
+            mmz2 = (sum(mres) + h2o + 2 * _PROTON_MASS) / 2
+            parity = [
+                ("doubly-phosphorylated, scale_fragmentNL", fixture("par_a", spectrum(True, False)), "i:scale_fragmentNL=1", 2),
+                ("phospho S + oxidized M", None, "i:scale_fragmentNL=0", 2),
+            ]
+            pm = tmp / "par_b.txt"
+            pm.write_text(f"SPECTRUM 1 2 {mmz2:.6f} {len(mpk)}\n" + "".join(f"{m:.5f} {i:.1f}\n" for m, i in sorted(mpk)))
+            parity[1] = (parity[1][0], pm, parity[1][2], parity[1][3])
+            if "-i" in built and "-j" in built:
+                for label, fx, extra, nmods in parity:
+                    xc = {}
+                    for flag, ist in (("-i", 1), ("-j", 0)):
+                        out = tmp / f"par{flag}.out"
+                        rc, log = _rts_run(built[flag], fx, 1, out, 0, ist, env={"RTS_REPRO_PARAMS": extra})
+                        row = _t73_mode0_rows(out).get(1) if rc == 0 and out.exists() else None
+                        xc[flag] = row
+                    fi, pi = xc["-i"], xc["-j"]
+                    check(fi is not None and pi is not None and fi[0].count("[") == nmods and pi[0] == fi[0],
+                          f"parity {label}: FI_DB and PI_DB report the same modified peptide (FI {fi}, PI {pi})", failures)
+                    check(fi is not None and pi is not None and abs(fi[1] - pi[1]) < 1e-6,
+                          f"parity {label}: PI_DB xcorr equals FI_DB xcorr (FI {fi and fi[1]}, PI {pi and pi[1]})", failures)
         finally:
             for p in built.values():
                 p.unlink(missing_ok=True)

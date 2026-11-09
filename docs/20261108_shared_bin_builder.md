@@ -51,8 +51,7 @@ paths stay byte-identical:
 The batch FASTA path (`CalcVarModIons()`, not touched here) follows the fragment-index rules
 over all `VMODS`. So PI_DB departs from batch FASTA in two ways that look like
 pre-existing PI scoring bugs: it ignores `scale_fragmentNL`, and it gives losses only to the
-first loss-bearing mod. Changing either changes PI results and is left for a separate
-decision.
+first loss-bearing mod. Changing either changes PI results; both were changed later the same day (section 5).
 
 ### 2.2 iFoundVariableMod
 
@@ -143,3 +142,75 @@ difference cannot surface in removal. An FI_DB winner never carries a mod beyond
 - The test parsers no longer split peptide strings on `.`, which broke on modified peptides:
   `_strip_flanks()`.
 - **Results:** unit 95 passed; T22 (4 variants) passed.
+
+## 5. PI_DB follows the FI / batch FASTA neutral-loss rules (2026-11-08)
+
+Section 2.1 recorded two places where PI_DB departed from FI_DB and batch FASTA. PI_DB now
+follows the FI/FASTA rules. Every loss-bearing mod type present in a fragment adds its own
+loss peak; types are never combined into one peak. With `scale_fragmentNL` on, that loss is
+multiplied by the number of that type's residues in the fragment, and only that k x loss peak
+is added. `IonRules` now differs only in which mods are considered: `FragmentIndex` considers
+the first `FRAGINDEX_VMODS` (all the index holds) and `PeptideIndex` considers all `VMODS`.
+
+The old PI rule was not "one loss per fragment". It was direction-dependent. For a peptide with
+a phospho-S near the N-terminus and an oxidized M near the C-terminus:
+
+- b ions got only the phospho loss, from the first loss-bearing mod scanning from the N-terminus;
+- y ions got only the oxidation loss, from the first one scanning from the C-terminus;
+- so b ions containing both mods lacked the oxidation loss, and y ions containing both lacked
+  the phospho loss.
+
+The code was labelled "matches batch path", and its `break` looks like an unintended
+truncation of the per-mod-type scan.
+
+### 5.1 Measurement
+
+HeLa, batch, 20 threads, full file. "Before" is the previous commit; FI_DB is unchanged by this
+change. "Parity" counts the spectra where PI_DB and FI_DB report the same rank-1 peptide and
+asks how many have equal xcorr. Parity is measured with `print_ascorepro_score = 0`, because
+AScorePro rewrites the reported modification sites (see below); the FDR counts are the same
+with it on or off.
+
+| Configuration | PI rows changed | Parity before | Parity after | PI 1% FDR, xcorr | PI 1% FDR, E-value |
+|---|---|---|---|---|---|
+| A: phospho defaults (one loss mod, no scaling) | none (byte-identical) | -- | -- | -- | -- |
+| B: phospho, `scale_fragmentNL = 1` | 5,054 | 97.55% of 19,613 | **100% of 19,815** | 11,035 -> 11,026 | 12,969 -> 12,957 |
+| C: phospho + oxidized M with loss 63.998285 | 3,954 | 98.09% of 19,489 | **100% of 19,441** | 11,005 -> 10,657 | 13,042 -> 13,026 |
+
+FI_DB in the same configurations gives, by xcorr / E-value: B 11,423 / 13,068 and
+C 11,306 / 13,148. Wall times are unchanged, about 35 s for PI and 24 s for FI.
+
+A first measurement with AScorePro on (the `comet_phospho.params` default) seemed to leave
+about 0.25% of spectra unmatched, and about 0.28% even at the phospho defaults. Those numbers
+were an artifact: AScorePro rewrites the reported site. On scan 5476, PI scored
+`TNDGKIT[79.9663]YPPGVK` at 0.797, while FI's index prefilter never scored that isoform (it does
+not reach `fragindex_min_ions_score` 3; with the floor at 1 FI finds it, at 0.797). FI's best was
+therefore `T[79.9663]NDGKITYPPGVK` at 0.676. AScorePro relocalized both outputs to that string,
+so the two rows looked like the same peptide with different scores. With AScorePro off, PI and FI
+agree on every spectrum where they report the same scored peptide: 19,777 of 19,777 at the
+phospho defaults, and all of them in B and C after this change. There is no remaining PI/FI
+scoring difference.
+
+In C, the xcorr-ranked count drops by 3.2% while the E-value count barely moves. Crediting the
+oxidation loss on every fragment that holds an oxidized M raises the xcorr of M-containing
+targets and decoys alike. A global xcorr ranking mixes those with everything else, while the
+per-spectrum E-value does not. B moves by less than 0.1%.
+
+### 5.2 Tests
+
+- **T76:** the PI removal case uses the scaled spectrum and removes 30 of 30 peaks (24 with
+  the old rules).
+- **T76 parity, doubly-phosphorylated peptide with `scale_fragmentNL`:** PI_DB and FI_DB give
+  the same xcorr, 6.795 (old PI: 5.59).
+- **T76 parity, `LVS[80]EGLEM[16]AK` (phospho S3, oxidized M8 with a loss):** the same xcorr,
+  7.984 (old PI: 7.144).
+- **Results:** unit 95 passed; T22 (4 variants) passed.
+
+### 5.3 Release note
+
+*"Peptide-index searches now score fragment neutral losses like fragment-ion-index and FASTA
+searches: every loss-bearing modification in a fragment contributes its own neutral-loss peak,
+and `scale_fragmentNL` is honored. Previously a peptide-index search ignored
+`scale_fragmentNL`, and when a peptide carried two different loss-bearing modifications it
+credited only one of them on each ion series. Results change only for searches with
+`scale_fragmentNL = 1` or with more than one variable modification that has a neutral loss."*
