@@ -8748,28 +8748,39 @@ def test_t87_decoygen_verify(comet_exe):
                 if "scatter" in outs and "gather" in outs and "" in outs:
                     check(outs["scatter"] == outs["gather"] == outs[""],
                           f"rts {label}: scatter, gather and the default give identical results", failures)
+                for m in ("verify", "verify-selftest"):
+                    if m in outs and "" in outs:
+                        check(outs[m] == outs[""], f"rts {label}: {m} mode leaves the results unchanged", failures)
 
             # batch, FI_DB
             pr = params.replace(f"database_name = {fasta}", f"database_name = {idx}")
             pf = tmp / "t87_batch.params"
             pf.write_text(pr)
             txts = {}
-            for mode in ("scatter", "gather", "verify"):
-                name = tmp / f"t87_batch_{mode}"
+            for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
+                name = tmp / f"t87_batch_{mode or 'unset'}"
                 res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
                                      timeout=300, env=env_with(mode))
                 log = res.stdout + res.stderr
                 txt = Path(str(name) + ".txt")
-                if not check(res.returncode == 0 and txt.exists(), f"batch FI_DB, {mode}: comet.exe exits 0 (rc={res.returncode})", failures):
+                tag = f"batch FI_DB, {mode or 'unset'}"
+                if not check(res.returncode == 0 and txt.exists(), f"{tag}: comet.exe exits 0 (rc={res.returncode})", failures):
                     print(log[-1200:])
                     continue
                 txts[mode] = txt.read_text().splitlines()[1:]
-                if mode == "verify":
-                    summary = _t87_summary(log)
+                summary = _t87_summary(log)
+                if mode in ("", "scatter", "gather"):
+                    check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
+                elif mode == "verify":
                     check(summary is not None and summary[0] > 0 and summary[1] == 0,
-                          f"batch FI_DB, verify: gather == scatter on every decoy set ({summary})", failures)
-            if "scatter" in txts and "gather" in txts:
-                check(txts["scatter"] == txts["gather"], "batch FI_DB: scatter and gather give identical results", failures)
+                          f"{tag}: gather == scatter on every decoy set ({summary})", failures)
+                else:
+                    check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                          f"{tag}: the self-test flags every comparison ({summary})", failures)
+            if "scatter" in txts:
+                for m in ("", "gather", "verify", "verify-selftest"):
+                    if m in txts:
+                        check(txts[m] == txts["scatter"], f"batch FI_DB: {m or 'default'} gives the scatter's results", failures)
         finally:
             idx.unlink(missing_ok=True)
     return failures

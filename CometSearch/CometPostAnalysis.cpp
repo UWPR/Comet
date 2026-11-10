@@ -1870,8 +1870,12 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
       memset(tl_decoyScoresScatter, 0, iLoopMax * sizeof(float));
       DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScoresScatter);
       DecoyScoresGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
+      // The self-test perturbs the scatter copy, which is only compared and then discarded (the
+      // histogram below bins the gather's scores, so the search output is unchanged), at its last
+      // element, so a comparator that checked too short a range would miss it. The amount is large
+      // so that, were the perturbed copy ever the one binned, the output would visibly change.
       if (mode == DecoyGenMode::VerifySelfTest && iLoopMax > 0)
-         tl_decoyScores[0] += 1.0f;
+         tl_decoyScoresScatter[iLoopMax - 1] += 1000.0f;
       g_decoyGenVerifyStats.ullCompared++;
       if (memcmp(tl_decoyScoresScatter, tl_decoyScores, iLoopMax * sizeof(float)) != 0)
       {
