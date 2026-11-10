@@ -137,3 +137,35 @@ tables.
 - **Tests (2026-11-10).** T87 covers both chimeric forms, every charge-limit table (a 4+ and a 5+ scan are added
   to T67's fixtures), batch FASTA, FI_DB and PI_DB, the auto choice, and a Windows `--comet`; T88 re-initializes in
   one process (`tests/unit/reinit_driver.cpp`, built with AddressSanitizer on the decoy code) -- see `tests/tests.md`.
+
+## 6. Early stop (2026-11-10, code review)
+
+A lane of the gather table is sorted by bin and padded with the highest bin, so the lowest bin of a
+row (stored per row, `s_gatherRowMin`) never decreases down a group. For a query, the rows from the
+first one whose lowest bin reaches its `iArraySize` hold only zeros (the dense copy has none at or
+above it), so the kernel stops there: exact, since the skipped terms are `+0.0f`. Each group's stop
+is a binary search, computed once per query (`GetGatherStops()`) and shared by the auto rule -- whose
+gather estimate is now the entries of the rows actually processed, so the 0.4 factor keeps its meaning
+-- and the kernel. The per-row minimum adds ~12% to the gather tables; the cumulative-entries array
+is gone.
+
+Verify (zero mismatches): `rts_repro` on the 5,000 HeLa scans, 8 threads -- plain (2,796 decoy sets),
+chimeric (15,012), low resolution (4,404), low-resolution chimeric (16,208), NL ions (2,796); batch
+FI_DB on the full file at 0.02 Da (27,813) and 1.0005 Da (38,516). Output identical to the previous
+build in every RTS run and in the 1-thread batch runs.
+
+Search time, 1 thread, 5,000 scans, before / after (two alternating runs; low-resolution chimeric one):
+
+| run | before | after |
+|---|---|---|
+| plain | 1,272 / 1,278 ms | 1,139 / 1,138 (-10.5%) |
+| NL ions | 1,755 / 1,694 | 1,572 / 1,577 (-9%) |
+| chimeric | 18,289 / 17,964 | 17,584 / 17,424 (-3.5%) |
+| low resolution | 2,334 / 2,355 | 2,274 / 2,338 (-1.5%) |
+| low-resolution chimeric | 87,437 | 88,661 (+1.4%, one run) |
+
+The decoy step is a slice of a search, so these are far below the per-call gain. The auto factor was
+re-checked against the cheaper gather (high resolution, two rounds): plain scatter 1,278 / 1,308,
+gather 1,135 / 1,119, auto 1,103 / 1,128; chimeric scatter 17,720 / 17,723, gather 18,275 / 18,220,
+auto 17,322 / 17,303 ms. Auto beats both forced paths, and forced gather is still slower than
+scatter for the chimeric run, so the factor stays at 0.4.

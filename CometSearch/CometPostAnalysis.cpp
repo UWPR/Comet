@@ -123,7 +123,11 @@ static const int s_iGatherLanes = 8;   // DecoyScoresGather() hard-codes eight a
 static std::vector<std::vector<int>> s_gatherStart;   // [c][group]
 static std::vector<std::vector<int>> s_gatherLen;     // [c][group]
 static std::vector<std::vector<int>> s_gatherBin;     // [c][...]
-static std::vector<std::vector<long long>> s_gatherCum;   // [c][g]: table entries of groups 0 .. g-1
+// [c][row]: the lowest bin in each row of the table (all lanes; rows are numbered across the groups, a
+// group's rows are s_gatherStart[c][g] / 8 .. + s_gatherLen[c][g]). A lane is sorted by bin and padded with
+// the highest bin, so within a group this never decreases: the rows from the first one whose lowest bin
+// reaches a query's iArraySize on hold only zeros for that query and are skipped (exactly: they add 0.0f).
+static std::vector<std::vector<int>> s_gatherRowMin;
 static int s_iGatherPadBin = 0;
 
 static bool DecoyGatherTablesNeeded();
@@ -148,12 +152,11 @@ static void BuildGatherTables()
       }
       std::sort(vDecoyIons[i].begin(), vDecoyIons[i].end());
    }
-   s_gatherCum.assign(s_pdMaxCharge + 1, std::vector<long long>());
+   s_gatherRowMin.assign(s_pdMaxCharge + 1, std::vector<int>());
    for (int c = 1; c <= s_pdMaxCharge; ++c)
    {
       s_gatherStart[c].resize(iGroups);
       s_gatherLen[c].resize(iGroups);
-      s_gatherCum[c].assign(iGroups + 1, 0);
       std::vector<int> vLane[s_iGatherLanes];
       for (int g = 0; g < iGroups; ++g)
       {
@@ -174,11 +177,16 @@ static void BuildGatherTables()
          }
          s_gatherStart[c][g] = (int)s_gatherBin[c].size();
          s_gatherLen[c][g] = iLen;
-         s_gatherCum[c][g + 1] = s_gatherCum[c][g] + (long long)iLen * s_iGatherLanes;
          for (int t = 0; t < iLen; ++t)
          {
+            int iRowMin = s_iGatherPadBin;
             for (int j = 0; j < s_iGatherLanes; ++j)
-               s_gatherBin[c].push_back(t < (int)vLane[j].size() ? vLane[j][t] : s_iGatherPadBin);
+            {
+               const int b = t < (int)vLane[j].size() ? vLane[j][t] : s_iGatherPadBin;
+               s_gatherBin[c].push_back(b);
+               iRowMin = std::min(iRowMin, b);
+            }
+            s_gatherRowMin[c].push_back(iRowMin);
          }
       }
    }
@@ -402,11 +410,47 @@ static long long ScatterWorkEstimate(const Query* pQuery, int iArraySize)
    return ll;
 }
 
-static long long GatherWorkEstimate(int iLoopMax, int iMaxFragCharge)
+// The gather's rows that can add a nonzero value for this query (see s_gatherRowMin), per group, and
+// the table entries they hold. Computed once per query: the auto rule's estimate and the kernel use the
+// same stops, cached per thread by the arguments.
+struct GatherStops
 {
-   int c = std::max(1, std::min(iMaxFragCharge, s_pdMaxCharge));
+   int iArraySize = -1;
+   int iLoopMax = -1;
+   int c = -1;
+   long long llEntries = 0;
+   int piStop[(EXPECT_DECOY_SIZE + s_iGatherLanes - 1) / s_iGatherLanes];
+};
+
+static const GatherStops& GetGatherStops(int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   static thread_local GatherStops tl_stops;
+   const int c = std::max(1, std::min(iMaxFragCharge, s_pdMaxCharge));
+   if (tl_stops.iArraySize == iArraySize && tl_stops.iLoopMax == iLoopMax && tl_stops.c == c)
+      return tl_stops;
+
    const int iGroups = (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
-   return s_gatherCum[c][iGroups];
+   const int* piRowMin = s_gatherRowMin[c].data();
+   const int* piStart = s_gatherStart[c].data();
+   const int* piLen = s_gatherLen[c].data();
+   long long llRows = 0;
+   for (int g = 0; g < iGroups; ++g)
+   {
+      const int* pFirst = piRowMin + piStart[g] / s_iGatherLanes;
+      const int iStop = (int)(std::lower_bound(pFirst, pFirst + piLen[g], iArraySize) - pFirst);
+      tl_stops.piStop[g] = iStop;
+      llRows += iStop;
+   }
+   tl_stops.iArraySize = iArraySize;
+   tl_stops.iLoopMax = iLoopMax;
+   tl_stops.c = c;
+   tl_stops.llEntries = llRows * s_iGatherLanes;
+   return tl_stops;
+}
+
+static long long GatherWorkEstimate(int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   return GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).llEntries;
 }
 
 // The two kernels below must add the same floats in the same order: the gather's scores are
@@ -420,7 +464,7 @@ static long long GatherWorkEstimate(int iLoopMax, int iMaxFragCharge)
 // put the best switch at a scatter estimate of ~0.3-0.5x the gather's.
 static bool AutoPrefersGather(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge)
 {
-   return (double)ScatterWorkEstimate(pQuery, iArraySize) > 0.4 * (double)GatherWorkEstimate(iLoopMax, iMaxFragCharge);
+   return (double)ScatterWorkEstimate(pQuery, iArraySize) > 0.4 * (double)GatherWorkEstimate(iArraySize, iLoopMax, iMaxFragCharge);
 }
 
 #ifdef _MSC_VER
@@ -523,13 +567,13 @@ static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax,
       c = 1;
    const int* piBin = s_gatherBin[c].data();
    const int* piStart = s_gatherStart[c].data();
-   const int* piLen = s_gatherLen[c].data();
 
+   const int* piStop = GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).piStop;
    const int iGroups = (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
    for (int g = 0; g < iGroups; ++g)
    {
       const int* p = piBin + piStart[g];
-      const int iLen = piLen[g];
+      const int iLen = piStop[g];   // the rows past it read only zeros for this query
       float f0 = 0.0f, f1 = 0.0f, f2 = 0.0f, f3 = 0.0f, f4 = 0.0f, f5 = 0.0f, f6 = 0.0f, f7 = 0.0f;
       for (int t = 0; t < iLen; ++t, p += s_iGatherLanes)
       {
