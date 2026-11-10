@@ -41,8 +41,8 @@ unchanged.
 at a time with per-lane bounds and charge checks; it was slower than the scatter (607 vs 443 us
 per call at 1.0005 Da) -- three dependent loads and selects per element. The kept version
 precomputes, once per process, one table per fragment-charge limit `c` (ions with charge <= `c`
-only), lane-interleaved in groups of eight decoys, short lanes padded with a bin index
-(`iArraySizeGlobal`) that the dense spectrum copy keeps at zero. The inner loop is then one
+only), lane-interleaved in groups of eight decoys, short lanes padded with a bin index (the pad
+bin: one past the highest decoy ion bin) that the dense spectrum copy keeps at zero. The inner loop is then one
 index load, one value load and one add per lane, with eight independent accumulators. The dense
 copy is allocated once per thread; only the rows the previous query copied are cleared.
 
@@ -102,3 +102,25 @@ Memory: the gather tables add one lane-interleaved copy of the decoy ions per fr
 limit `c` (the table for `c` holds the ions of charges 1 .. `c`, ~240,000 per charge, as 4-byte
 bins): roughly 6-7 MB for `max_fragment_charge` 3, built once per process with the existing
 tables.
+
+## 5. Table bound, build time, and re-init (2026-11-10, code review)
+
+- **Tables independent of `iArraySizeGlobal`.** The inverted index and the gather tables used to
+  be cut at the first session's `iArraySizeGlobal` (the pad bin equalled it), and the gather's
+  per-thread dense buffer was sized from that. A same-process re-init with a larger mass range
+  (a higher `digest_mass_range` ceiling or a wider tolerance) left the buffer too small for the
+  bigger queries' rows: `memcpy` wrote past it (AddressSanitizer: heap-buffer-overflow on the
+  review's two-session driver, gather forced; the scatter stayed in bounds through
+  `b >= iInvIdxBins`). The bound is now one past the highest decoy bin (`s_iGatherPadBin`),
+  whatever the session's array size, and the dense copy takes only bins below
+  `min(iArraySize, s_iGatherPadBin)`: no decoy ion lies above, so scores are unchanged, and the
+  same pair of sessions is clean under AddressSanitizer with E-values equal to a fresh process
+  and to the scatter. Each row is also recorded before it is copied, so a failed allocation
+  cannot leave a dirty row unrecorded.
+- **Build at session start.** `CometPostAnalysis::PrepareDecoyTables()` (the `call_once` build
+  plus the stale-parameter check) is called at the end of `InitializeSingleSpectrumSearch()`;
+  `GenerateXcorrDecoys()` calls it too, so batch still builds on first use. The first RTS
+  spectrum no longer pays for the build against `max_index_runtime` (it takes tens of ms with
+  many ion series or a high fragment-charge limit), and a same-process re-init with different
+  ion parameters now fails at init rather than on the first spectrum.
+- **Scatter mode builds no gather tables** (`COMET_DECOYGEN=scatter`).

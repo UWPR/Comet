@@ -2708,6 +2708,11 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
 
    // --- End: peptide index initialization for iDbType == 2 ---
 
+   // Build the E-value decoy tables now, so the first spectrum's max_index_runtime budget does
+   // not pay for it (and a same-process re-init with different params fails here, not mid-search).
+   if (!CometPostAnalysis::PrepareDecoyTables())
+      return false;
+
    // Release-store ensures all initialization writes above are visible to any
    // thread that subsequently observes this flag as true.
    singleSearchInitializationComplete.store(true, std::memory_order_release);
