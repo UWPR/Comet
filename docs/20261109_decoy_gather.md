@@ -70,7 +70,8 @@ of both paths (scratch build, the 5,000 HeLa scans, one thread) set the factor:
 
 **Switch.** `COMET_DECOYGEN` (environment, read once; not a parameter): unset / `auto`,
 `scatter`, `gather`, `verify` (both paths on every decoy generation, scores compared bit for
-bit, first mismatches and a summary on stderr; the histogram uses the gather's scores), and
+bit, first mismatches and a summary on stderr -- which also counts the sets auto would give each path and the
+sets per fragment-charge limit; the histogram uses the gather's scores), and
 `verify-selftest` (as verify, the last score of the discarded scatter copy perturbed, so every comparison must fail while the search output stays unchanged).
 
 ## 3. Verification
@@ -124,3 +125,9 @@ tables.
   many ion series or a high fragment-charge limit), and a same-process re-init with different
   ion parameters now fails at init rather than on the first spectrum.
 - **Scatter mode builds no gather tables** (`COMET_DECOYGEN=scatter`).
+- **Batch searches prepare the tables at the start of `DoSearch()`** (when an output needs E-values), as RTS
+  does at init, so a same-process re-init with different ion parameters is refused whether or not any query in
+  the run happens to need decoys (a search that finds no candidates never reached the check).
+- **Tests (2026-11-10).** T87 covers both chimeric forms, every charge-limit table (a 4+ and a 5+ scan are added
+  to T67's fixtures), batch FASTA, FI_DB and PI_DB, the auto choice, and a Windows `--comet`; T88 re-initializes in
+  one process (`tests/unit/reinit_driver.cpp`, built with AddressSanitizer on the decoy code) -- see `tests/tests.md`.

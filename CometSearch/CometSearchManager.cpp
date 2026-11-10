@@ -2467,6 +2467,12 @@ bool CometSearchManager::DoSearch()
    if (g_staticParams.options.bOutputSqtFile || g_staticParams.options.bOutputSqtStream)
       vWriters.push_back(std::make_unique<SqtWriter>());
 
+   // Build the E-value decoy tables (once per process) and check them against these parameters now, so a
+   // same-process re-initialization with different ion parameters fails here whether or not any query in
+   // this run happens to need decoys.
+   if (g_staticParams.options.OutputsNeedEValues() && !CometPostAnalysis::PrepareDecoyTables())
+      return false;
+
    Pipeline pipeline(std::move(pStrategy), std::move(vWriters), this);
    bSucceeded = pipeline.run(session, g_pvInputFiles, *tp);
 

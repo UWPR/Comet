@@ -1508,6 +1508,9 @@ def _require_rts_repro(failures):
 
 
 def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
+    use_win = _binary_uses_win_paths(comet_exe)
+    if use_win:   # a Windows binary needs Windows-format paths (the index lands next to the FASTA either way)
+        params_content = _localize_params_for(comet_exe, params_content)
     idx_path = Path(fasta_path).with_suffix(".fasta.idx")
     if idx_path.exists():
         idx_path.unlink()
@@ -1518,7 +1521,7 @@ def _rts_build_index(comet_exe, fasta_path, params_content, index_flag):
         params_file = Path(pf.name)
     try:
         result = subprocess.run(
-            [str(comet_exe), index_flag, f"-P{params_file}"],
+            [str(comet_exe), index_flag, f"-P{_to_win(params_file) if use_win else params_file}"],
             capture_output=True, text=True, timeout=300,
         )
         if result.returncode != 0 or not idx_path.exists():
@@ -8470,12 +8473,13 @@ def _t86_verify_summary(log):
 def test_t86_preprocess_verify(comet_exe):
     """T86: COMET_PREPROCESS=verify compares every preprocessed spectrum against a second, heap-allocated
     build with zero mismatches and leaves results unchanged (rts_repro at high resolution, low resolution and with
-    neutral-loss ions; batch comet.exe on FASTA and FI_DB); verify-selftest reports a mismatch for every
-    comparison; with the variable unset nothing is printed."""
+    neutral-loss ions; batch comet.exe on FASTA and FI_DB, FASTA also with 4 threads); verify-selftest reports a
+    mismatch for every comparison; with the variable unset nothing is printed. A Windows --comet runs the batch
+    parts only (the variable reaches it through WSLENV; rts_repro is a Linux tool)."""
     failures = []
-    if _binary_uses_win_paths(comet_exe):
-        raise TestSkipped("COMET_PREPROCESS is read from the environment; a Windows --comet does not see it from WSL")
-    if not _require_rts_repro(failures):
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    if not use_win and not _require_rts_repro(failures):
         return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
@@ -8502,36 +8506,122 @@ def test_t86_preprocess_verify(comet_exe):
             env.pop("COMET_PREPROCESS", None)
             if mode:
                 env["COMET_PREPROCESS"] = mode
+            if use_win:   # a Windows binary sees only the variables WSLENV names
+                env["WSLENV"] = "COMET_PREPROCESS" + (":" + env["WSLENV"] if env.get("WSLENV") else "")
             return env
 
         try:
-            # --- RTS: rts_repro, three settings, both chimeric forms and the plain search
-            settings = {
-                "high-res": "",
-                "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
-                "NL ions": "i:use_NL_ions=1",
-            }
-            for label, extra in settings.items():
-                for form, fixture, args in (("plain", "t67_chimeric_range.txt", []),
-                                            ("chimeric list", "t67_chimeric_list.txt", ["2", "2", "4", "0", "0.01", "5"])):
+            if not use_win:
+                # --- RTS: rts_repro, three settings, both chimeric forms and the plain search
+                settings = {
+                    "high-res": "",
+                    "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
+                    "NL ions": "i:use_NL_ions=1",
+                }
+                for label, extra in settings.items():
+                    for form, fixture, args in (("plain", "t67_chimeric_range.txt", []),
+                                                ("chimeric list", "t67_chimeric_list.txt", ["2", "2", "4", "0", "0.01", "5"])):
+                        outs = {}
+                        for mode in ("", "dense", "verify", "verify-selftest"):
+                            out = tmp / f"t86_{label}_{form}_{mode or 'unset'}.out".replace(" ", "_")
+                            envx = {"RTS_REPRO_PARAMS": extra} if extra else {}
+                            run_env = env_with(mode)
+                            run_env.update(envx)
+                            own = [e for e in run_env.get("RTS_REPRO_PARAMS", "").split(";") if e]
+                            base = [f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS
+                                    if k not in {e.split(":", 1)[1].split("=", 1)[0] for e in own}]
+                            run_env["RTS_REPRO_PARAMS"] = ";".join(base + own)
+                            res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / fixture), "2", str(out), "0", "1"] + args,
+                                                 capture_output=True, text=True, timeout=300, env=run_env)
+                            log = res.stdout + res.stderr
+                            tag = f"rts {label}, {form}, {mode or 'unset'}"
+                            if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
+                                print(log[-1200:])
+                                continue
+                            outs[mode] = sorted(out.read_text().splitlines())   # 2 threads: line order varies
+                            summary = _t86_verify_summary(log)
+                            if mode in ("", "dense"):
+                                check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed", failures)
+                            elif mode == "verify":
+                                check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                                      f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
+                            else:
+                                check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                                      f"{tag}: the self-test flags every comparison ({summary})", failures)
+                        if "" in outs and "verify" in outs:
+                            check(outs["verify"] == outs[""], f"rts {label}, {form}: verify mode leaves the results unchanged",
+                                  failures)
+                        if "" in outs and "dense" in outs:
+                            check(outs["dense"] == outs[""], f"rts {label}, {form}: the default (auto) gives the dense build's results",
+                                  failures)
+
+                # --- RTS sparse build edge cases (phase 1: verify = sparse primary vs dense shadow). Synthetic
+                # spectra aimed at each place the sparse build must reproduce the dense operation order:
+                # a peak in the precursor-mass cutoff gap (bin >= iArraySize, still moves iHighestIon and so
+                # the normalization windows), peaks below bin 75 (where iMinXcorrHisto's maximum starts),
+                # isolated bands and one dense overlapping cluster, peaks below the 5% normalization cut, two
+                # peaks in one bin, peaks at the precursor m/z and its neutral-loss m/z values (for
+                # remove_precursor_peak 1-4), a precursor near the top of the mass range, and a 3+ precursor.
+                pep = "LVNELTEFAK"
+                mh = fixture_peptides.neutral_mass(pep) + fixture_peptides.PROTON
+                mz2 = (mh + fixture_peptides.PROTON) / 2
+                ladder = fixture_peptides.by_peaks(pep)
+                edge = {
+                    1: (2, mz2, ladder + [(mh + 20.0, 40.0), (0.8, 30.0), (1.2, 25.0), (300.123, 2.0), (400.456, 1.5),
+                                          (500.001, 50.0), (500.009, 55.0), (mz2, 80.0), ((mh - 18.010565 + fixture_peptides.PROTON) / 2, 70.0),
+                                          ((mh - 79.9799 + fixture_peptides.PROTON) / 2, 60.0)]),
+                    2: (2, mz2, [(200.0 + 37.0 * k, 50.0 + k) for k in range(14)]),          # isolated bands, 37 Da apart
+                    3: (2, mz2, [(600.0 + 0.137 * k, 20.0 + 3 * k) for k in range(16)]),     # one overlapping cluster
+                    4: (1, 1990.5, [(150.0 + 123.4 * k, 10.0 + k) for k in range(15)]),       # near the top of the range
+                    5: (3, (mh + 2 * fixture_peptides.PROTON) / 3, ladder + [(mz2, 90.0)]),
+                }
+                lines = []
+                for scan, (z, pmz, pk) in edge.items():
+                    lines += fixture_peptides.spectrum_block(scan, z, pmz, sorted(pk))
+                efx = tmp / "t86_edge.txt"
+                efx.write_text("\n".join(lines) + "\n")
+                edge_settings = [("high-res", ""), ("theoretical_fragment_ions 1", "i:theoretical_fragment_ions=1"),
+                                 ("NL ions", "i:use_NL_ions=1"), ("NL ions, no flank", "i:use_NL_ions=1;i:theoretical_fragment_ions=1"),
+                                 ("low-res", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1"),
+                                 ("low-res flank", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=0")]
+                edge_settings += [(f"remove_precursor_peak {m}", f"i:remove_precursor_peak={m}") for m in (1, 2, 3, 4)]
+                for label, extra in edge_settings:
+                    run_env = env_with("verify")
+                    run_env["RTS_REPRO_PARAMS"] = ";".join([f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS] + ([extra] if extra else []))
+                    out = tmp / "t86_edge.out"
+                    res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(efx), "1", str(out), "0", "1"], capture_output=True,
+                                         text=True, timeout=300, env=run_env)
+                    log = res.stdout + res.stderr
+                    summary = _t86_verify_summary(log)
+                    if not check(res.returncode == 0, f"rts edge cases, {label}: rts_repro exits 0 (rc={res.returncode})", failures):
+                        print(log[-1200:])
+                        continue
+                    check(summary is not None and summary[0] == len(edge) and summary[1] == 0,
+                          f"rts edge cases, {label}: sparse == dense on all {len(edge)} spectra ({summary})", failures)
+                    if summary is None or summary[1] != 0:
+                        print("\n".join(l for l in log.splitlines() if "COMET_PREPROCESS" in l)[:1500])
+
+            elif REALTIMESEARCH_EXE.exists():
+                # --- the Windows RTS path: RealtimeSearch.exe chimeric -> CometWrapper.dll -> the same native
+                # code rts_repro drives on Linux (default settings only; the C# command line sets no others)
+                for form, form_args in (("charge range", ["--zrange", "2", "4"]), ("explicit list", ["--zlines"])):
                     outs = {}
                     for mode in ("", "dense", "verify", "verify-selftest"):
-                        out = tmp / f"t86_{label}_{form}_{mode or 'unset'}.out".replace(" ", "_")
-                        envx = {"RTS_REPRO_PARAMS": extra} if extra else {}
-                        run_env = env_with(mode)
-                        run_env.update(envx)
-                        own = [e for e in run_env.get("RTS_REPRO_PARAMS", "").split(";") if e]
-                        base = [f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS
-                                if k not in {e.split(":", 1)[1].split("=", 1)[0] for e in own}]
-                        run_env["RTS_REPRO_PARAMS"] = ";".join(base + own)
-                        res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / fixture), "2", str(out), "0", "1"] + args,
-                                             capture_output=True, text=True, timeout=300, env=run_env)
+                        out = tmp / f"t86_win_{form.replace(' ', '_')}_{mode or 'unset'}.txt"
+                        try:
+                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric", _to_win(ms2), _to_win(idx), "--threads", "2",
+                                                  "--out", _to_win(out)] + form_args,
+                                                 capture_output=True, text=True, timeout=300, env=env_with(mode))
+                        except OSError as e:
+                            print(f"  note: cannot run {REALTIMESEARCH_EXE} here ({e}); the Windows RTS part is skipped")
+                            break
                         log = res.stdout + res.stderr
-                        tag = f"rts {label}, {form}, {mode or 'unset'}"
-                        if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
+                        tag = f"windows rts {form}, {mode or 'unset'}"
+                        if not check(res.returncode == 0 and out.exists(), f"{tag}: RealtimeSearch.exe exits 0 (rc={res.returncode})", failures):
                             print(log[-1200:])
                             continue
-                        outs[mode] = sorted(out.read_text().splitlines())   # 2 threads: line order varies
+                        # two threads reorder the lines; the last column (elapsed_ms) varies run to run
+                        outs[mode] = sorted(ln.rsplit("\t", 1)[0] for ln in out.read_text().splitlines())
                         summary = _t86_verify_summary(log)
                         if mode in ("", "dense"):
                             check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed", failures)
@@ -8541,68 +8631,19 @@ def test_t86_preprocess_verify(comet_exe):
                         else:
                             check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                                   f"{tag}: the self-test flags every comparison ({summary})", failures)
-                    if "" in outs and "verify" in outs:
-                        check(outs["verify"] == outs[""], f"rts {label}, {form}: verify mode leaves the results unchanged",
-                              failures)
-                    if "" in outs and "dense" in outs:
-                        check(outs["dense"] == outs[""], f"rts {label}, {form}: the default (auto) gives the dense build's results",
-                              failures)
-
-            # --- RTS sparse build edge cases (phase 1: verify = sparse primary vs dense shadow). Synthetic
-            # spectra aimed at each place the sparse build must reproduce the dense operation order:
-            # a peak in the precursor-mass cutoff gap (bin >= iArraySize, still moves iHighestIon and so
-            # the normalization windows), peaks below bin 75 (where iMinXcorrHisto's maximum starts),
-            # isolated bands and one dense overlapping cluster, peaks below the 5% normalization cut, two
-            # peaks in one bin, peaks at the precursor m/z and its neutral-loss m/z values (for
-            # remove_precursor_peak 1-4), a precursor near the top of the mass range, and a 3+ precursor.
-            pep = "LVNELTEFAK"
-            mh = fixture_peptides.neutral_mass(pep) + fixture_peptides.PROTON
-            mz2 = (mh + fixture_peptides.PROTON) / 2
-            ladder = fixture_peptides.by_peaks(pep)
-            edge = {
-                1: (2, mz2, ladder + [(mh + 20.0, 40.0), (0.8, 30.0), (1.2, 25.0), (300.123, 2.0), (400.456, 1.5),
-                                      (500.001, 50.0), (500.009, 55.0), (mz2, 80.0), ((mh - 18.010565 + fixture_peptides.PROTON) / 2, 70.0),
-                                      ((mh - 79.9799 + fixture_peptides.PROTON) / 2, 60.0)]),
-                2: (2, mz2, [(200.0 + 37.0 * k, 50.0 + k) for k in range(14)]),          # isolated bands, 37 Da apart
-                3: (2, mz2, [(600.0 + 0.137 * k, 20.0 + 3 * k) for k in range(16)]),     # one overlapping cluster
-                4: (1, 1990.5, [(150.0 + 123.4 * k, 10.0 + k) for k in range(15)]),       # near the top of the range
-                5: (3, (mh + 2 * fixture_peptides.PROTON) / 3, ladder + [(mz2, 90.0)]),
-            }
-            lines = []
-            for scan, (z, pmz, pk) in edge.items():
-                lines += fixture_peptides.spectrum_block(scan, z, pmz, sorted(pk))
-            efx = tmp / "t86_edge.txt"
-            efx.write_text("\n".join(lines) + "\n")
-            edge_settings = [("high-res", ""), ("theoretical_fragment_ions 1", "i:theoretical_fragment_ions=1"),
-                             ("NL ions", "i:use_NL_ions=1"), ("NL ions, no flank", "i:use_NL_ions=1;i:theoretical_fragment_ions=1"),
-                             ("low-res", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1"),
-                             ("low-res flank", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=0")]
-            edge_settings += [(f"remove_precursor_peak {m}", f"i:remove_precursor_peak={m}") for m in (1, 2, 3, 4)]
-            for label, extra in edge_settings:
-                run_env = env_with("verify")
-                run_env["RTS_REPRO_PARAMS"] = ";".join([f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS] + ([extra] if extra else []))
-                out = tmp / "t86_edge.out"
-                res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(efx), "1", str(out), "0", "1"], capture_output=True,
-                                     text=True, timeout=300, env=run_env)
-                log = res.stdout + res.stderr
-                summary = _t86_verify_summary(log)
-                if not check(res.returncode == 0, f"rts edge cases, {label}: rts_repro exits 0 (rc={res.returncode})", failures):
-                    print(log[-1200:])
-                    continue
-                check(summary is not None and summary[0] == len(edge) and summary[1] == 0,
-                      f"rts edge cases, {label}: sparse == dense on all {len(edge)} spectra ({summary})", failures)
-                if summary is None or summary[1] != 0:
-                    print("\n".join(l for l in log.splitlines() if "COMET_PREPROCESS" in l)[:1500])
+                    for m in ("dense", "verify", "verify-selftest"):
+                        if m in outs and "" in outs:
+                            check(outs[m] == outs[""], f"windows rts {form}: {m} gives the default's results", failures)
 
             # --- batch: comet.exe on the FASTA and on the FI index (the fused batch path)
             for label, db in (("FASTA", fasta), ("FI_DB", idx)):
-                pr = params.replace(f"database_name = {fasta}", f"database_name = {db}")
+                pr = _localize_params_for(comet_exe, params.replace(f"database_name = {fasta}", f"database_name = {db}"))
                 pf = tmp / "t86_batch.params"
                 pf.write_text(pr)
                 txts = {}
                 for mode in ("", "dense", "verify", "verify-selftest"):
                     name = tmp / f"t86_{label}_{mode or 'unset'}"
-                    res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
+                    res = subprocess.run([str(comet_exe), f"-P{fmt(pf)}", f"-N{fmt(name)}", fmt(ms2)], capture_output=True, text=True,
                                          timeout=300, env=env_with(mode))
                     log = res.stdout + res.stderr
                     tag = f"batch {label}, {mode or 'unset'}"
@@ -8644,12 +8685,12 @@ def test_t86_preprocess_verify(comet_exe):
             pt = tmp / "t86_threads.params"
             pt_text = re.sub(r"(?m)^num_threads\s*=.*$", "num_threads = 4", params)
             check("num_threads = 4" in pt_text, "batch FASTA threads: the params set 4 threads", failures)
-            pt.write_text(pt_text)
+            pt.write_text(_localize_params_for(comet_exe, pt_text))
             outs = {}
             for mode in ("dense", "", "", "verify"):
                 key = mode or "auto"
                 name = tmp / f"t86_threads_{key}_{len(outs)}"
-                res = subprocess.run([str(comet_exe), f"-P{pt}", f"-N{name}", str(ms2_many)], capture_output=True, text=True,
+                res = subprocess.run([str(comet_exe), f"-P{fmt(pt)}", f"-N{fmt(name)}", fmt(ms2_many)], capture_output=True, text=True,
                                      timeout=600, env=env_with(mode))
                 log = res.stdout + res.stderr
                 txt = Path(str(name) + ".txt")
@@ -8679,19 +8720,26 @@ def test_t86_preprocess_verify(comet_exe):
 # ---------------------------------------------------------------------------
 
 def _t87_summary(log):
-    m = re.search(r"^COMET_DECOYGEN verify: (\d+) decoy sets compared, (\d+) mismatches$", log, re.M)
-    return (int(m.group(1)), int(m.group(2))) if m else None
+    """(sets compared, mismatches, sets auto would give the gather, sets auto would give the scatter,
+    then the sets with fragment-charge limit 1, 2, 3, 4, 5)."""
+    m = re.search(r"^COMET_DECOYGEN verify: (\d+) decoy sets compared, (\d+) mismatches \(auto: (\d+) gather, (\d+) scatter; "
+                  r"charge limits 1-5: (\d+) (\d+) (\d+) (\d+) (\d+)\)$", log, re.M)
+    return tuple(int(g) for g in m.groups()) if m else None
 
 
 @register("t87_decoygen_verify")
 def test_t87_decoygen_verify(comet_exe):
-    """T87: COMET_DECOYGEN=verify finds the gather and scatter decoy scores bit-identical (rts_repro at high
-    resolution, low resolution and with NL ions; batch comet.exe on FI_DB); verify-selftest flags every comparison;
-    scatter and gather give identical search results; nothing is printed with the variable unset."""
+    """T87: COMET_DECOYGEN=verify finds the gather and scatter decoy scores bit-identical. Linux build: rts_repro
+    (plain search and both chimeric forms, so fragment-charge limits up to 3, at high resolution, low resolution
+    and with a/b/y ions and max_fragment_charge 4) and batch comet.exe on the FASTA, an FI_DB index and a PI_DB
+    index. A Windows --comet runs the batch FASTA part (the variable reaches it through WSLENV). verify-selftest
+    flags every comparison and leaves the results unchanged; scatter, gather and the default give identical
+    results; nothing is printed with the variable unset; verify's summary says which path auto would take, and
+    auto takes the gather for the low-resolution sets (the fixture's high-resolution sets are a mix)."""
     failures = []
-    if _binary_uses_win_paths(comet_exe):
-        raise TestSkipped("COMET_DECOYGEN is read from the environment; a Windows --comet does not see it from WSL")
-    if not _require_rts_repro(failures):
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    if not use_win and not _require_rts_repro(failures):
         return failures
     if not T67_GENERATOR.exists():
         failures.append(f"fixture generator missing: {T67_GENERATOR}")
@@ -8703,86 +8751,376 @@ def test_t87_decoygen_verify(comet_exe):
         if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
-        ms2 = tmp / "t67_chimeric.ms2"
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
                                             mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
-        try:
-            idx = _rts_build_index(comet_exe, fasta, params, "-i")
-        except RuntimeError as e:
-            failures.append(str(e))
-            return failures
+
+        # T67's fixtures plus two more scans: the first scan's peptide (MH+ 1163.63, 2+ there) relabelled 4+ and 5+,
+        # so those queries find that peptide and generate decoys at fragment-charge limits 3 and 4 (the fixture's
+        # 2+ and 3+ scans reach limits 1 and 2; a 4+ candidate in the chimeric range form finds nothing in this
+        # small database, so the extra scans are what read the upper tables).
+        extra_z = ((4, 100), (5, 101))
+        for src, dst in (("t67_chimeric_range.txt", "t87_range.txt"), ("t67_chimeric_list.txt", "t87_list.txt")):
+            text = (tmp / src).read_text()
+            first = re.match(r"(?s)(SPECTRUM [^\n]*\n.*?)(?=^SPECTRUM |\Z)", text, re.M).group(1)
+            head, body = first.split("\n", 1)
+            n_peaks = head.split()[-1]
+            for z, scan in extra_z:
+                text += f"SPECTRUM {scan} {z} {(1163.630666 + (z - 1) * 1.00727646688) / z:.6f} {n_peaks}\n" + body
+            (tmp / dst).write_text(text)
+        ms2_text = (tmp / "t67_chimeric.ms2").read_text()
+        blocks = re.split(r"(?m)^(?=S\t)", ms2_text)
+        for z, scan in extra_z:
+            first = blocks[1].split("\n")
+            first[0] = f"S\t{scan}\t{scan}\t{(1163.630666 + (z - 1) * 1.00727646688) / z:.6f}"
+            first[1] = f"Z\t{z}\t1163.630666"
+            ms2_text += "\n".join(first)
+        ms2 = tmp / "t87.ms2"
+        ms2.write_text(ms2_text)
 
         def env_with(mode, extra=""):
             env = dict(os.environ)
             env.pop("COMET_DECOYGEN", None)
             if mode:
                 env["COMET_DECOYGEN"] = mode
+            if use_win:   # a Windows binary sees only the variables WSLENV names
+                env["WSLENV"] = "COMET_DECOYGEN" + (":" + env["WSLENV"] if env.get("WSLENV") else "")
             env["RTS_REPRO_PARAMS"] = ";".join([f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS] + ([extra] if extra else []))
             return env
 
-        try:
-            settings = {"high-res": "",
-                        "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
-                        "NL ions": "i:use_NL_ions=1"}
-            for label, extra in settings.items():
-                outs = {}
-                for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
-                    out = tmp / f"t87_{label.replace(' ', '_')}_{mode or 'unset'}.out"
-                    res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / "t67_chimeric_range.txt"), "1", str(out), "0", "1"],
-                                         capture_output=True, text=True, timeout=300, env=env_with(mode, extra))
-                    log = res.stdout + res.stderr
-                    tag = f"rts {label}, {mode or 'unset'}"
-                    if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
-                        print(log[-1200:])
-                        continue
-                    outs[mode] = out.read_text()
-                    summary = _t87_summary(log)
-                    if mode in ("", "scatter", "gather"):
-                        check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
-                    elif mode == "verify":
-                        check(summary is not None and summary[0] > 0 and summary[1] == 0,
-                              f"{tag}: gather == scatter on every decoy set ({summary})", failures)
-                    else:
-                        check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
-                              f"{tag}: the self-test flags every comparison ({summary})", failures)
-                if "scatter" in outs and "gather" in outs and "" in outs:
-                    check(outs["scatter"] == outs["gather"] == outs[""],
-                          f"rts {label}: scatter, gather and the default give identical results", failures)
-                for m in ("verify", "verify-selftest"):
-                    if m in outs and "" in outs:
-                        check(outs[m] == outs[""], f"rts {label}: {m} mode leaves the results unchanged", failures)
-
-            # batch, FI_DB
-            pr = params.replace(f"database_name = {fasta}", f"database_name = {idx}")
-            pf = tmp / "t87_batch.params"
+        def run_batch(label, database, modes, expect_auto=None):
+            """Batch comet.exe on `database` in each COMET_DECOYGEN mode; checks printing, verify and
+            self-test summaries and that every mode's results equal the scatter's."""
+            pr = _localize_params_for(comet_exe, params.replace(f"database_name = {fasta}", f"database_name = {database}"))
+            pf = tmp / f"t87_batch_{label}.params"
             pf.write_text(pr)
             txts = {}
-            for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
-                name = tmp / f"t87_batch_{mode or 'unset'}"
-                res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
+            for mode in modes:
+                name = tmp / f"t87_batch_{label}_{mode or 'unset'}"
+                res = subprocess.run([str(comet_exe), f"-P{fmt(pf)}", f"-N{fmt(name)}", fmt(ms2)], capture_output=True, text=True,
                                      timeout=300, env=env_with(mode))
                 log = res.stdout + res.stderr
                 txt = Path(str(name) + ".txt")
-                tag = f"batch FI_DB, {mode or 'unset'}"
+                tag = f"batch {label}, {mode or 'unset'}"
                 if not check(res.returncode == 0 and txt.exists(), f"{tag}: comet.exe exits 0 (rc={res.returncode})", failures):
                     print(log[-1200:])
                     continue
-                txts[mode] = txt.read_text().splitlines()[1:]
+                txts[mode] = txt.read_text().splitlines()[1:]   # line 0 holds the run's date
                 summary = _t87_summary(log)
                 if mode in ("", "scatter", "gather"):
                     check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
                 elif mode == "verify":
                     check(summary is not None and summary[0] > 0 and summary[1] == 0,
                           f"{tag}: gather == scatter on every decoy set ({summary})", failures)
+                    if expect_auto and summary is not None:
+                        check(expect_auto(summary), f"{tag}: auto's choice per decoy set is as expected ({summary[2:]})", failures)
                 else:
                     check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                           f"{tag}: the self-test flags every comparison ({summary})", failures)
             if "scatter" in txts:
                 for m in ("", "gather", "verify", "verify-selftest"):
                     if m in txts:
-                        check(txts[m] == txts["scatter"], f"batch FI_DB: {m or 'default'} gives the scatter's results", failures)
+                        check(txts[m] == txts["scatter"], f"batch {label}: {m or 'default'} gives the scatter's results", failures)
+
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+
+        try:
+            if not use_win:
+                # --- RTS: rts_repro (a Linux tool, so not with a Windows --comet). Fixture forms: plain (the range fixture's blocks), chimeric charge-range
+                # (every block searched at 2+..5+) and chimeric list.
+                settings = {"high-res": "",
+                            "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
+                            "a/b/y ions, fragment charge 4": "i:use_A_ions=1;i:max_fragment_charge=4"}
+                forms = (("plain", "t87_range.txt", []),
+                         ("chimeric range", "t87_range.txt", ["1", "2", "5", "0", "0.01", "5"]),
+                         ("chimeric list", "t87_list.txt", ["2", "2", "4", "0", "0.01", "5"]))
+                for label, extra in settings.items():
+                    for form, fixture, args in forms:
+                        outs = {}
+                        autos = None
+                        for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
+                            out = tmp / f"t87_{label}_{form}_{mode or 'unset'}.out".replace(" ", "_").replace("/", "")
+                            res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / fixture), "1", str(out), "0", "1"] + args,
+                                                 capture_output=True, text=True, timeout=300, env=env_with(mode, extra))
+                            log = res.stdout + res.stderr
+                            tag = f"rts {label}, {form}, {mode or 'unset'}"
+                            if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
+                                print(log[-1200:])
+                                continue
+                            outs[mode] = out.read_text()
+                            summary = _t87_summary(log)
+                            if mode in ("", "scatter", "gather"):
+                                check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
+                            elif mode == "verify":
+                                autos = summary
+                                check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                                      f"{tag}: gather == scatter on every decoy set ({summary})", failures)
+                            else:
+                                check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                                      f"{tag}: the self-test flags every comparison ({summary})", failures)
+                        if "scatter" in outs and "gather" in outs and "" in outs:
+                            check(outs["scatter"] == outs["gather"] == outs[""],
+                                  f"rts {label}, {form}: scatter, gather and the default give identical results", failures)
+                        for m in ("verify", "verify-selftest"):
+                            if m in outs and "" in outs:
+                                check(outs[m] == outs[""], f"rts {label}, {form}: {m} mode leaves the results unchanged", failures)
+                        if autos is not None:
+                            # fragment-charge limit = min(precursor charge - 1, max_fragment_charge): limits 1 (2+), 3 (4+) and,
+                            # with max_fragment_charge 4, 4 (5+) in every form; limit 2 (3+) only in the list form
+                            want = [autos[4] > 0, autos[6] > 0] + ([autos[7] > 0] if "fragment charge 4" in label else [])
+                            if form == "chimeric list":
+                                want.append(autos[5] > 0)
+                            check(all(want), f"rts {label}, {form}: every expected charge-limit table is read ({autos[4:]})", failures)
+                        if autos is not None and label == "low-res":
+                            check(autos[2] > autos[3], f"rts {label}, {form}: auto takes the gather for most decoy sets ({autos[2:]})", failures)
+
+            elif REALTIMESEARCH_EXE.exists():
+                # --- the Windows RTS path: RealtimeSearch.exe chimeric -> CometWrapper.dll -> the same native code
+                # rts_repro drives on Linux (default settings only; the C# command line sets no others)
+                for form, form_args in (("charge range", ["--zrange", "2", "5"]), ("explicit list", ["--zlines"])):
+                    outs = {}
+                    autos = None
+                    for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
+                        out = tmp / f"t87_win_{form.replace(' ', '_')}_{mode or 'unset'}.txt"
+                        try:
+                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric", _to_win(ms2), _to_win(idx), "--threads", "1",
+                                                  "--out", _to_win(out)] + form_args,
+                                                 capture_output=True, text=True, timeout=300, env=env_with(mode))
+                        except OSError as e:
+                            print(f"  note: cannot run {REALTIMESEARCH_EXE} here ({e}); the Windows RTS part is skipped")
+                            break
+                        log = res.stdout + res.stderr
+                        tag = f"windows rts {form}, {mode or 'unset'}"
+                        if not check(res.returncode == 0 and out.exists(), f"{tag}: RealtimeSearch.exe exits 0 (rc={res.returncode})", failures):
+                            print(log[-1200:])
+                            continue
+                        outs[mode] = [ln.rsplit("\t", 1)[0] for ln in out.read_text().splitlines()]   # elapsed_ms varies
+                        summary = _t87_summary(log)
+                        if mode in ("", "scatter", "gather"):
+                            check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
+                        elif mode == "verify":
+                            autos = summary
+                            check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                                  f"{tag}: gather == scatter on every decoy set ({summary})", failures)
+                        else:
+                            check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                                  f"{tag}: the self-test flags every comparison ({summary})", failures)
+                    if "scatter" in outs:
+                        for m in ("", "gather", "verify", "verify-selftest"):
+                            if m in outs:
+                                check(outs[m] == outs["scatter"], f"windows rts {form}: {m or 'default'} gives the scatter's results", failures)
+                    if autos is not None:
+                        want = [autos[4] > 0, autos[6] > 0] + ([autos[5] > 0] if form == "explicit list" else [])
+                        check(all(want), f"windows rts {form}: every expected charge-limit table is read ({autos[4:]})", failures)
+
+            # --- batch comet.exe: FASTA, FI_DB (the index built above), then PI_DB (rebuilt over it)
+            run_batch("FASTA", fasta, ("", "scatter", "gather", "verify", "verify-selftest"))
+            run_batch("FI_DB", idx, ("", "scatter", "gather", "verify", "verify-selftest"))
+            idx.unlink(missing_ok=True)
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, "-j")
+            except RuntimeError as e:
+                failures.append(str(e))
+                return failures
+            run_batch("PI_DB", idx, ("", "scatter", "gather", "verify", "verify-selftest"))
         finally:
             idx.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T88 -- same-process re-initialization (2026-11-10, code review of the decoy gather).
+# The E-value decoy tables (CometPostAnalysis.cpp) are built once per process, so an embedding host that
+# re-creates the search manager with different parameters meets tables built for the first session.
+# tests/unit/reinit_driver.cpp runs several batch searches in one process; this test builds it from the
+# sources (Comet.cpp with main renamed, plus CometPostAnalysis.cpp under AddressSanitizer when the
+# toolchain has it, so an out-of-bounds write in the decoy code aborts the run) and checks what a
+# second session does: the same parameters work, an ion-series, fragment-mass-type, fragment-charge or
+# bin-width change is refused with the stale-table error, and a larger mass range (which once overran
+# the gather's dense buffer) searches correctly.
+# ---------------------------------------------------------------------------
+
+REINIT_DRIVER_SRC = REPO_ROOT / "tests" / "unit" / "reinit_driver.cpp"
+REINIT_DRIVER_BIN = REPO_ROOT / "tests" / "unit" / "reinit_driver"
+_REINIT_DRIVER_STATUS = None   # cached for the run: ("ok", asan: bool) / ("no-toolchain", reason) / ("failed", output)
+
+
+def _reinit_driver_status():
+    """Build tests/unit/reinit_driver if it is missing or older than its sources or the libraries it links,
+    once per run. CometPostAnalysis.cpp is compiled into it directly (with -fsanitize=address when that
+    works) ahead of libcometsearch.a, so the library's copy is not pulled in."""
+    global _REINIT_DRIVER_STATUS
+    if _REINIT_DRIVER_STATUS is not None:
+        return _REINIT_DRIVER_STATUS
+    sources = (REINIT_DRIVER_SRC, REPO_ROOT / "Comet.cpp", REPO_ROOT / "CometSearch" / "CometPostAnalysis.cpp",
+               REPO_ROOT / "CometSearch" / "CometPostAnalysis.h") + RTS_REPRO_LIBS
+    asan_marker = Path(str(REINIT_DRIVER_BIN) + ".asan")
+    if REINIT_DRIVER_BIN.exists():
+        newest = max(p.stat().st_mtime for p in sources if p.exists())
+        if REINIT_DRIVER_BIN.stat().st_mtime >= newest:
+            _REINIT_DRIVER_STATUS = ("ok", asan_marker.exists())
+            return _REINIT_DRIVER_STATUS
+    if shutil.which("g++") is None:
+        _REINIT_DRIVER_STATUS = ("no-toolchain", "g++ not found: cannot build tests/unit/reinit_driver")
+        return _REINIT_DRIVER_STATUS
+    flags = ["-std=c++17", "-fpermissive", "-w", "-D_LARGEFILE_SOURCE", "-D_FILE_OFFSET_BITS=64", "-D__LINUX__", "-D_NOSQLITE",
+             f"-I{REPO_ROOT / 'CometSearch'}", f"-I{REPO_ROOT / 'MSToolkit' / 'include'}",
+             f"-I{REPO_ROOT / 'MSToolkit' / 'extern' / 'expat-2.2.9' / 'lib'}",
+             f"-I{REPO_ROOT / 'MSToolkit' / 'extern' / 'zlib-1.2.11'}", f"-I{REPO_ROOT / 'AScorePro' / 'include'}"]
+    libs = [f"-L{REPO_ROOT / 'MSToolkit'}", f"-L{REPO_ROOT / 'CometSearch'}", f"-L{REPO_ROOT / 'AScorePro'}",
+            "-lcometsearch", "-lmstoolkit", "-lmstoolkitextern", "-lascorepro", "-lm", "-lpthread"]
+
+    def compile_one(src, obj, extra):
+        return subprocess.run(["g++", "-O2"] + extra + flags + ["-c", str(src), "-o", str(obj)], capture_output=True, text=True,
+                              cwd=str(REPO_ROOT))
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        log = ""
+        for src, obj, extra in ((REPO_ROOT / "Comet.cpp", td / "comet_main.o", ["-Dmain=comet_main"]),
+                                (REINIT_DRIVER_SRC, td / "driver.o", [])):
+            r = compile_one(src, obj, extra)
+            if r.returncode != 0:
+                _REINIT_DRIVER_STATUS = ("failed", f"compiling {src.name}:\n" + "\n".join((r.stdout + r.stderr).strip().splitlines()[-25:]))
+                return _REINIT_DRIVER_STATUS
+        pa_src = REPO_ROOT / "CometSearch" / "CometPostAnalysis.cpp"
+        built_asan = False
+        for asan in (True, False):
+            r = compile_one(pa_src, td / "pa.o", ["-fsanitize=address", "-fno-omit-frame-pointer", "-g"] if asan else [])
+            if r.returncode != 0:
+                log += (r.stdout + r.stderr)
+                continue
+            link = subprocess.run(["g++"] + (["-fsanitize=address"] if asan else []) +
+                                  [str(td / "driver.o"), str(td / "comet_main.o"), str(td / "pa.o"), "-o", str(REINIT_DRIVER_BIN)] + libs,
+                                  capture_output=True, text=True, cwd=str(REPO_ROOT))
+            if link.returncode == 0:
+                built_asan = asan
+                break
+            log += (link.stdout + link.stderr)
+        else:
+            _REINIT_DRIVER_STATUS = ("failed", "\n".join(log.strip().splitlines()[-25:]))
+            return _REINIT_DRIVER_STATUS
+    if built_asan:
+        asan_marker.write_text("built with -fsanitize=address\n")
+    else:
+        asan_marker.unlink(missing_ok=True)
+    _REINIT_DRIVER_STATUS = ("ok", built_asan)
+    return _REINIT_DRIVER_STATUS
+
+
+def _set_param_line(text, key, value):
+    """Set `key = value` in a params blob: replace the line, or insert it after decoy_search."""
+    line = f"{key} = {value}"
+    new, n = re.subn(rf"(?m)^{re.escape(key)}\s*=.*$", line, text)
+    if n:
+        return new
+    return re.sub(r"(?m)^(decoy_search\s*=.*)$", lambda m: m.group(1) + "\n" + line, text, count=1)
+
+
+@register("t88_reinit_decoy_tables")
+def test_t88_reinit_decoy_tables(comet_exe):
+    """T88: two batch searches in one process (the way an embedding host re-initializes). The same parameters twice
+    give identical results; a change of ion series, fragment mass type, max_fragment_charge or fragment_bin_tol is
+    refused with the stale-table error (the first session's output is written, the second's is not); a second
+    session with a larger digest_mass_range (a 3377 Da peptide, above the arrays the first session sized), searched with the
+    gather forced, completes and equals a fresh process
+    (the decoy code runs under AddressSanitizer when available: the gather's dense buffer was once sized from the
+    first session and overrun by the second's larger queries). Independent of --comet: the driver links the sources."""
+    failures = []
+    state, detail = _reinit_driver_status()
+    if state == "no-toolchain":
+        raise TestSkipped(detail)
+    if state == "failed":
+        failures.append("tests/unit/reinit_driver failed to build (a build failure is a failure, not a skip):\n" + detail)
+        return failures
+    asan = detail
+    if not asan:
+        print("  note: no AddressSanitizer in this toolchain; the larger-mass-range case checks results only")
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        ms2 = tmp / "t67_chimeric.ms2"
+        # One more protein and scan for the larger-mass-range case: a 30-residue peptide (MH+ 3377, above the 3000
+        # the first session's arrays are sized for, since ms1_mass_range defaults to 3000) and its 3+ scan.
+        long_pep = "GASPVTLNDQEHFYGASPVTLNDQEHFYLK"
+        with open(fasta, "a") as fh:
+            fh.write(f">LONG\nMAR{long_pep}AGAR\n")
+        rng = random.Random(88)
+        long_peaks = sorted([(m, 100.0 if s == "y" else 60.0) for m, s in fixture_peptides.by_ions(long_pep, 2)] +
+                            [(rng.uniform(150.0, 3300.0), rng.uniform(5.0, 15.0)) for _ in range(60)])
+        long_mh = fixture_peptides.neutral_mass(long_pep) + fixture_peptides.PROTON
+        ms2_big = tmp / "t88_big.ms2"
+        ms2_big.write_text(ms2.read_text() + f"S\t50\t50\t{fixture_peptides.mz(long_pep, 3):.6f}\nZ\t3\t{long_mh:.6f}\n" +
+                           "".join(f"{m:.5f} {i:.3f}\n" for m, i in long_peaks))
+        base = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                          mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=30)
+        base = _set_param_line(base, "num_threads", "1")
+        base = _set_param_line(base, "digest_mass_range", "200.0 2000.0")
+
+        def write_params(name, **edits):
+            text = base
+            for key, value in edits.items():
+                text = _set_param_line(text, key, value)
+            path = tmp / f"{name}.params"
+            path.write_text(text)
+            return path
+
+        def drive(prefix, params_files, decoygen=None, input_file=ms2):
+            env = dict(os.environ)
+            env.pop("COMET_DECOYGEN", None)
+            if decoygen:
+                env["COMET_DECOYGEN"] = decoygen
+            env["ASAN_OPTIONS"] = "detect_leaks=0"
+            res = subprocess.run([str(REINIT_DRIVER_BIN), str(tmp / prefix), str(input_file)] + [str(p) for p in params_files],
+                                 capture_output=True, text=True, timeout=600, env=env)
+            return res.returncode, res.stdout + res.stderr
+
+        def result_lines(prefix, session):
+            path = tmp / f"{prefix}_s{session}.txt"
+            return path.read_text().splitlines()[1:] if path.exists() else None   # line 0 holds the run's date
+
+        same = write_params("t88_base")
+        rc, log = drive("same", [same, same])
+        check(rc == 0 and "stale" not in log, f"same parameters twice: both sessions complete (rc={rc})", failures)
+        s1, s2 = result_lines("same", 1), result_lines("same", 2)
+        check(s1 is not None and s1 == s2 and len(s1) > 1, "same parameters twice: the two sessions' results are identical", failures)
+
+        # a changed ion series (same count, so the old count-only check passed it), fragment mass type, fragment
+        # charge limit or bin width: refused
+        for label, edits in (("ion series b+y -> c+z", dict(use_B_ions="0", use_Y_ions="0", use_C_ions="1", use_Z_ions="1")),
+                             ("fragment mass type mono -> average", dict(mass_type_fragment="0")),
+                             ("max_fragment_charge 3 -> 4", dict(max_fragment_charge="4")),
+                             ("fragment_bin_tol 0.02 -> 1.0005", dict(fragment_bin_tol="1.0005", fragment_bin_offset="0.4"))):
+            changed = write_params("t88_changed", **edits)
+            prefix = "chg_" + re.sub(r"\W+", "_", label)
+            rc, log = drive(prefix, [same, changed])
+            check(rc != 0 and "precomputed decoy-bin table is stale" in log,
+                  f"{label}: the second session is refused with the stale-table error (rc={rc})", failures)
+            check(result_lines(prefix, 1) is not None and result_lines(prefix, 2) is None,
+                  f"{label}: the first session's output is written and the second's is not", failures)
+
+        # a larger mass range in the second session, gather forced so every query takes the dense-copy path
+        large = write_params("t88_large", digest_mass_range="200.0 5000.0")
+        rc, log = drive("grow", [same, large], decoygen="gather", input_file=ms2_big)
+        check(rc == 0 and "stale" not in log and "AddressSanitizer" not in log,
+              f"digest_mass_range 2000 -> 5000, gather forced: both sessions complete{' under AddressSanitizer' if asan else ''} (rc={rc})", failures)
+        if rc != 0:
+            print(log[-1500:])
+        rc, log = drive("fresh", [large], decoygen="scatter", input_file=ms2_big)
+        check(rc == 0, f"digest_mass_range 5000 in a fresh process completes (rc={rc})", failures)
+        grown, fresh = result_lines("grow", 2), result_lines("fresh", 1)
+        check(grown is not None and grown == fresh and any("LONG" in line for line in fresh),
+              "digest_mass_range 2000 -> 5000: the second session finds the long peptide and equals a fresh process (scatter)", failures)
     return failures
 
 

@@ -366,12 +366,17 @@ struct DecoyGenVerifyStats
 {
    std::atomic<unsigned long long> ullCompared{0};
    std::atomic<unsigned long long> ullMismatches{0};
+   std::atomic<unsigned long long> ullAutoGather{0};    // sets for which auto would take the gather
+   std::atomic<unsigned long long> ullAutoScatter{0};   // ... and the scatter
+   std::atomic<unsigned long long> ullByCharge[6]{};    // sets by the query's fragment-charge limit (1 .. 5; 0 = other)
 
    ~DecoyGenVerifyStats()
    {
       if (GetDecoyGenMode() == DecoyGenMode::Verify || GetDecoyGenMode() == DecoyGenMode::VerifySelfTest)
-         fprintf(stderr, "COMET_DECOYGEN verify: %llu decoy sets compared, %llu mismatches\n",
-            ullCompared.load(), ullMismatches.load());
+         fprintf(stderr, "COMET_DECOYGEN verify: %llu decoy sets compared, %llu mismatches (auto: %llu gather, %llu scatter; "
+            "charge limits 1-5: %llu %llu %llu %llu %llu)\n",
+            ullCompared.load(), ullMismatches.load(), ullAutoGather.load(), ullAutoScatter.load(),
+            ullByCharge[1].load(), ullByCharge[2].load(), ullByCharge[3].load(), ullByCharge[4].load(), ullByCharge[5].load());
    }
 };
 static DecoyGenVerifyStats g_decoyGenVerifyStats;
@@ -410,6 +415,14 @@ static long long GatherWorkEstimate(int iLoopMax, int iMaxFragCharge)
 // build with /fp:fast, which lets the compiler reassociate the gather's eight accumulators, so
 // pin precise semantics here (the pragma is at file scope, as MSVC requires). The Makefile
 // builds without -ffast-math. COMET_DECOYGEN=verify checks the result on any build.
+// auto: the gather costs ~0.15-0.4 ns per table entry, the scatter ~1 ns per visited entry;
+// per-query timings of both on the HeLa benchmark (plain and chimeric, 0.02 and 1.0005 Da bins)
+// put the best switch at a scatter estimate of ~0.3-0.5x the gather's.
+static bool AutoPrefersGather(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   return (double)ScatterWorkEstimate(pQuery, iArraySize) > 0.4 * (double)GatherWorkEstimate(iLoopMax, iMaxFragCharge);
+}
+
 #ifdef _MSC_VER
 #pragma float_control(precise, on, push)
 #endif
@@ -1895,6 +1908,11 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
       if (mode == DecoyGenMode::VerifySelfTest && iLoopMax > 0)
          tl_decoyScoresScatter[iLoopMax - 1] += 1000.0f;
       g_decoyGenVerifyStats.ullCompared++;
+      g_decoyGenVerifyStats.ullByCharge[iMaxFragCharge >= 1 && iMaxFragCharge <= 5 ? iMaxFragCharge : 0]++;
+      if (AutoPrefersGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge))
+         g_decoyGenVerifyStats.ullAutoGather++;
+      else
+         g_decoyGenVerifyStats.ullAutoScatter++;
       if (memcmp(tl_decoyScoresScatter, tl_decoyScores, iLoopMax * sizeof(float)) != 0)
       {
          int iFirst = 0;
@@ -1912,10 +1930,8 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
       DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
    else
    {
-      // auto: the gather costs ~0.15-0.4 ns per table entry, the scatter ~1 ns per visited
-      // entry; per-query timings of both on the HeLa benchmark (plain and chimeric, 0.02 and
-      // 1.0005 Da bins) put the best switch at a scatter estimate of ~0.3-0.5x the gather's.
-      if ((double)ScatterWorkEstimate(pQuery, iArraySize) > 0.4 * (double)GatherWorkEstimate(iLoopMax, iMaxFragCharge))
+      // auto: per query, whichever AutoPrefersGather() says is cheaper
+      if (AutoPrefersGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge))
          DecoyScoresGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
       else
          DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
