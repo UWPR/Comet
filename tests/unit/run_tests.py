@@ -8630,5 +8630,111 @@ def test_t86_preprocess_verify(comet_exe):
     return failures
 
 
+# ---------------------------------------------------------------------------
+# T87 -- the two decoy-score paths of GenerateXcorrDecoys() (CometPostAnalysis.cpp, 2026-11-09).
+# The scatter (inverted index over the spectrum's nonzero bins) and the gather (each decoy's
+# ions, lane-interleaved, from a dense copy of the spectrum) must produce bit-identical decoy
+# scores: the gather adds the same floats in each decoy's scatter order. COMET_DECOYGEN=verify
+# runs both on every query that generates decoys and compares the scores bit for bit;
+# verify-selftest perturbs one gather score so every comparison must fail.
+# ---------------------------------------------------------------------------
+
+def _t87_summary(log):
+    m = re.search(r"^COMET_DECOYGEN verify: (\d+) decoy sets compared, (\d+) mismatches$", log, re.M)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+@register("t87_decoygen_verify")
+def test_t87_decoygen_verify(comet_exe):
+    """T87: COMET_DECOYGEN=verify finds the gather and scatter decoy scores bit-identical (rts_repro at high
+    resolution, low resolution and with NL ions; batch comet.exe on FI_DB); verify-selftest flags every comparison;
+    scatter and gather give identical search results; nothing is printed with the variable unset."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("COMET_DECOYGEN is read from the environment; a Windows --comet does not see it from WSL")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        ms2 = tmp / "t67_chimeric.ms2"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+
+        def env_with(mode, extra=""):
+            env = dict(os.environ)
+            env.pop("COMET_DECOYGEN", None)
+            if mode:
+                env["COMET_DECOYGEN"] = mode
+            env["RTS_REPRO_PARAMS"] = ";".join([f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS] + ([extra] if extra else []))
+            return env
+
+        try:
+            settings = {"high-res": "",
+                        "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
+                        "NL ions": "i:use_NL_ions=1"}
+            for label, extra in settings.items():
+                outs = {}
+                for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
+                    out = tmp / f"t87_{label.replace(' ', '_')}_{mode or 'unset'}.out"
+                    res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / "t67_chimeric_range.txt"), "1", str(out), "0", "1"],
+                                         capture_output=True, text=True, timeout=300, env=env_with(mode, extra))
+                    log = res.stdout + res.stderr
+                    tag = f"rts {label}, {mode or 'unset'}"
+                    if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
+                        print(log[-1200:])
+                        continue
+                    outs[mode] = out.read_text()
+                    summary = _t87_summary(log)
+                    if mode in ("", "scatter", "gather"):
+                        check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
+                    elif mode == "verify":
+                        check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                              f"{tag}: gather == scatter on every decoy set ({summary})", failures)
+                    else:
+                        check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                              f"{tag}: the self-test flags every comparison ({summary})", failures)
+                if "scatter" in outs and "gather" in outs and "" in outs:
+                    check(outs["scatter"] == outs["gather"] == outs[""],
+                          f"rts {label}: scatter, gather and the default give identical results", failures)
+
+            # batch, FI_DB
+            pr = params.replace(f"database_name = {fasta}", f"database_name = {idx}")
+            pf = tmp / "t87_batch.params"
+            pf.write_text(pr)
+            txts = {}
+            for mode in ("scatter", "gather", "verify"):
+                name = tmp / f"t87_batch_{mode}"
+                res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
+                                     timeout=300, env=env_with(mode))
+                log = res.stdout + res.stderr
+                txt = Path(str(name) + ".txt")
+                if not check(res.returncode == 0 and txt.exists(), f"batch FI_DB, {mode}: comet.exe exits 0 (rc={res.returncode})", failures):
+                    print(log[-1200:])
+                    continue
+                txts[mode] = txt.read_text().splitlines()[1:]
+                if mode == "verify":
+                    summary = _t87_summary(log)
+                    check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                          f"batch FI_DB, verify: gather == scatter on every decoy set ({summary})", failures)
+            if "scatter" in txts and "gather" in txts:
+                check(txts["scatter"] == txts["gather"], "batch FI_DB: scatter and gather give identical results", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
 if __name__ == "__main__":
     main()

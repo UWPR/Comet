@@ -2585,8 +2585,13 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    else
    {
       pdTmpRawData         = pdTmpSpectrum;          // reuse caller-provided buffer
-      pdTmpFastXcorrData   = new double[iGlobalBytes]();
-      pdTmpCorrelationData = new double[iGlobalBytes]();
+      // The fast-xcorr pass reads pdTmpCorrelationData up to iArraySize + iXcorrOffset, so the
+      // doubles get the same iXcorrOffset padding the thread-local pool and the batch arrays
+      // have: unpadded, a precursor whose iArraySize is clamped to iArraySizeGlobal read past
+      // the allocation (found 2026-11-09 through the COMET_PREPROCESS verify shadow, the only
+      // caller of this heap path). pdTmpSpectrum must hold as many (the RTS verify wrapper's).
+      pdTmpFastXcorrData   = new double[iGlobalBytes + iXcorrOffset]();
+      pdTmpCorrelationData = new double[iGlobalBytes + iXcorrOffset]();
       pfFastXcorrData      = new float[iGlobalBytes]();
       pfFastXcorrDataNL    = new float[iGlobalBytes]();
       pfSpScoreData        = new float[iGlobalBytes]();
