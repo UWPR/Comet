@@ -119,7 +119,7 @@ static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
 // padded with the bin s_iGatherPadBin (one past the highest decoy ion bin), which the gather's dense
 // spectrum copy keeps at zero -- as it does every bin >= the query's iArraySize, so ions past
 // the precursor need no cut-off either.
-static const int s_iGatherLanes = 8;
+static const int s_iGatherLanes = 8;   // DecoyScoresGather() hard-codes eight accumulators (checked there)
 static std::vector<std::vector<int>> s_gatherStart;   // [c][group]
 static std::vector<std::vector<int>> s_gatherLen;     // [c][group]
 static std::vector<std::vector<int>> s_gatherBin;     // [c][...]
@@ -457,6 +457,10 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
       }
    }
 }
+
+// The kernel below unrolls exactly eight lanes (f0 .. f7, p[0] .. p[7]); the tables are laid
+// out by s_iGatherLanes. A different value would compile and zero-fill the missing lanes.
+static_assert(s_iGatherLanes == 8, "DecoyScoresGather() is written for eight lanes");
 
 // Gather: decoy i's score is its ions' spectrum values summed in (bin, flat) order -- the
 // scatter's order for that decoy -- over the ions with charge <= iMaxFragCharge. Bins at or
