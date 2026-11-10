@@ -300,6 +300,7 @@ static void VerifyPreprocessShadow(const Query* pPrimary, Query* pShadow, const 
 // Drops the sparse-build state of a raw buffer that is being freed (a later allocation may reuse
 // the address); defined with the state, below.
 static void ForgetRawBufferState(const double* pdRaw);
+static void NoteDenseRawClear(double* pdRaw, size_t uiCleared);
 static void ResetRawBufferStates();
 
 struct RtsScratch
@@ -1395,6 +1396,12 @@ void CometPreprocess::PreprocessThreadProcMS1(PreprocessThreadData* pPreprocessT
    size_t iTmp = (size_t)(g_staticParams.iArraySizeGlobal * sizeof(double));
    memset(pdTmpRawData, 0, iTmp);
    memset(pdTmpFastXcorrData, 0, iTmp);
+
+   // This function writes the pool's raw buffer at the library peaks' bins and leaves them there.
+   // The sparse build records the bins it sets and assumes everything else is zero, so tell it this
+   // buffer is dirty over its whole length: its next sparse spectrum then clears it first
+   // (docs/20261109_sparse_preprocessing.md section 4.9).
+   NoteDenseRawClear(pdTmpRawData, (size_t)g_staticParams.iArraySizeGlobal);
 
    // take pPreprocessThreadData->mstSpectrum and store in g_vSpecLib
 
