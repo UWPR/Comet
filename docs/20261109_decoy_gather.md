@@ -81,8 +81,14 @@ sets per fragment-charge limit; the histogram uses the gather's scores), and
   (16,208), NL ions (2,796); batch `comet.exe` FI_DB on the full file at 0.02 Da (27,813) and
   1.0005 Da (38,516).
 - Search output identical between `scatter` and the default in every timing run below.
-- T87: verify, verify-selftest, and identical results for all modes on T67's fixture (RTS at
-  high and low resolution and with NL ions; batch FI_DB).
+- T87 (T67's fixtures plus a 4+ and a 5+ scan): zero mismatches under verify, every
+  fragment-charge-limit table read (1-4), and identical results from scatter, gather, the default,
+  verify and verify-selftest, for `rts_repro` (plain search, both chimeric forms; high resolution, low
+  resolution, a/b/y ions at `max_fragment_charge` 4) and batch `comet.exe` on the FASTA, an FI_DB index
+  and a PI_DB index. At low resolution auto takes the gather for most sets. A Windows `Comet.exe` runs
+  the batch parts and the RTS path through `RealtimeSearch.exe chimeric`, with the same counts and
+  choices as Linux. T88 covers same-process re-initialization (section 5). Per-test detail:
+  `tests/tests.md`.
 
 ## 4. Results
 
