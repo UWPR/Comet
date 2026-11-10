@@ -132,62 +132,70 @@ static int s_iGatherPadBin = 0;
 
 static bool DecoyGatherTablesNeeded();
 
-// Per decoy the ions sorted by (bin, flat), filtered by charge <= c, lane-interleaved in
-// groups of eight decoys (see s_gatherBin). Built from s_preDecoyBins; s_iGatherPadBin is set.
+// Per decoy the ions sorted by bin, filtered by charge <= c, lane-interleaved in groups of eight
+// decoys (see s_gatherBin). Built from the inverted index (s_invIdx_*, which must be built first):
+// walking its bins in ascending order visits each decoy's ions in ascending bin order, so the
+// tables are filled by transposition -- no per-decoy lists and no sort. (Ions of one decoy in one
+// bin are in the scatter's order there, but the tables hold only bins, so the order within a bin
+// does not show.) s_iGatherPadBin is set.
 static void BuildGatherTables()
 {
    const int iGroups = (EXPECT_DECOY_SIZE + s_iGatherLanes - 1) / s_iGatherLanes;
+   const int iBins = (int)s_invIdx_start.size() - 2;   // == s_iGatherPadBin
    s_gatherStart.assign(s_pdMaxCharge + 1, std::vector<int>());
    s_gatherLen.assign(s_pdMaxCharge + 1, std::vector<int>());
    s_gatherBin.assign(s_pdMaxCharge + 1, std::vector<int>());
-   std::vector<std::vector<std::pair<int, int>>> vDecoyIons(EXPECT_DECOY_SIZE);   // (bin, flat)
-   for (int i = 0; i < EXPECT_DECOY_SIZE; ++i)
-   {
-      const int iBase = i * s_pdNPerDecoy;
-      for (int flat = 0; flat < s_pdNPerDecoy; ++flat)
-      {
-         const int b = s_preDecoyBins[iBase + flat];
-         if (b >= 0 && b < s_iGatherPadBin)
-            vDecoyIons[i].emplace_back(b, flat);
-      }
-      std::sort(vDecoyIons[i].begin(), vDecoyIons[i].end());
-   }
    s_gatherRowMin.assign(s_pdMaxCharge + 1, std::vector<int>());
+
+   std::vector<int> vCount(EXPECT_DECOY_SIZE);
+   std::vector<int> vCursor(EXPECT_DECOY_SIZE);
    for (int c = 1; c <= s_pdMaxCharge; ++c)
    {
+      // ions of each decoy with charge <= c, then each group's length (its longest lane) and start
+      std::fill(vCount.begin(), vCount.end(), 0);
+      for (const uint32_t entry : s_invIdx_data)
+      {
+         if ((int)(entry >> 16) <= c)
+            ++vCount[(uint16_t)(entry & 0xFFFF)];
+      }
       s_gatherStart[c].resize(iGroups);
       s_gatherLen[c].resize(iGroups);
-      std::vector<int> vLane[s_iGatherLanes];
+      size_t uiRows = 0;
       for (int g = 0; g < iGroups; ++g)
       {
          int iLen = 0;
          for (int j = 0; j < s_iGatherLanes; ++j)
-         {
-            vLane[j].clear();
-            const int i = g * s_iGatherLanes + j;
-            if (i < EXPECT_DECOY_SIZE)
-            {
-               for (const auto& ion : vDecoyIons[i])
-               {
-                  if (ion.second % s_pdMaxCharge + 1 <= c)
-                     vLane[j].push_back(ion.first);
-               }
-            }
-            iLen = std::max(iLen, (int)vLane[j].size());
-         }
-         s_gatherStart[c][g] = (int)s_gatherBin[c].size();
+            iLen = std::max(iLen, vCount[g * s_iGatherLanes + j]);
+         s_gatherStart[c][g] = (int)(uiRows * s_iGatherLanes);
          s_gatherLen[c][g] = iLen;
-         for (int t = 0; t < iLen; ++t)
+         uiRows += iLen;
+      }
+
+      // short lanes keep the pad bin; the others are filled in ascending bin order
+      std::vector<int>& vBin = s_gatherBin[c];
+      vBin.assign(uiRows * s_iGatherLanes, s_iGatherPadBin);
+      std::fill(vCursor.begin(), vCursor.end(), 0);
+      for (int b = 0; b < iBins; ++b)
+      {
+         for (int k = s_invIdx_start[b]; k < s_invIdx_start[b + 1]; ++k)
          {
-            int iRowMin = s_iGatherPadBin;
-            for (int j = 0; j < s_iGatherLanes; ++j)
-            {
-               const int b = t < (int)vLane[j].size() ? vLane[j][t] : s_iGatherPadBin;
-               s_gatherBin[c].push_back(b);
-               iRowMin = std::min(iRowMin, b);
-            }
-            s_gatherRowMin[c].push_back(iRowMin);
+            const uint32_t entry = s_invIdx_data[k];
+            if ((int)(entry >> 16) > c)
+               continue;
+            const int i = (uint16_t)(entry & 0xFFFF);
+            const int g = i / s_iGatherLanes;
+            vBin[(size_t)s_gatherStart[c][g] + (size_t)vCursor[i]++ * s_iGatherLanes + (i % s_iGatherLanes)] = b;
          }
+      }
+
+      // the lowest bin of each row (see s_gatherRowMin)
+      s_gatherRowMin[c].resize(uiRows);
+      for (size_t r = 0; r < uiRows; ++r)
+      {
+         int iRowMin = s_iGatherPadBin;
+         for (int j = 0; j < s_iGatherLanes; ++j)
+            iRowMin = std::min(iRowMin, vBin[r * s_iGatherLanes + j]);
+         s_gatherRowMin[c][r] = iRowMin;
       }
    }
 }

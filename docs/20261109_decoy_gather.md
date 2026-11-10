@@ -106,9 +106,10 @@ scans, one thread; batch: the full file, one thread.
 | batch FI_DB, 0.02 Da | 2,132 spectra/s | 2,172 (+2%) |
 
 Memory: the gather tables add one lane-interleaved copy of the decoy ions per fragment-charge
-limit `c` (the table for `c` holds the ions of charges 1 .. `c`, ~240,000 per charge, as 4-byte
-bins): roughly 6-7 MB for `max_fragment_charge` 3, built once per process with the existing
-tables.
+limit `c` (the table for `c` holds the ions of charges 1 .. `c`, ~203,000 per charge for b/y, as
+4-byte bins) plus one int per row (the row minimums, section 6). Measured (section 7): 4.9 MB + 0.6 MB
+for b/y at `max_fragment_charge` 3, on top of 6.1 MB for the bin table and the inverted index; built
+once per process.
 
 ## 5. Table bound, build time, and re-init (2026-11-10, code review)
 
@@ -169,3 +170,30 @@ re-checked against the cheaper gather (high resolution, two rounds): plain scatt
 gather 1,135 / 1,119, auto 1,103 / 1,128; chimeric scatter 17,720 / 17,723, gather 18,275 / 18,220,
 auto 17,322 / 17,303 ms. Auto beats both forced paths, and forced gather is still slower than
 scatter for the chimeric run, so the factor stays at 0.4.
+
+## 7. Table size and build time (2026-11-10, code review)
+
+Measured with temporary instrumentation (not kept) on the decoy tables, one build per process (the
+b/y, 1 row's bin table and inverted index follow from the charge-3 row: the bin table and the entries
+scale with the charge limit, the index's start array does not):
+
+| ions, `max_fragment_charge` | bin table | inverted index | gather tables (+ row minimums) | gather build before -> after |
+|---|---|---|---|---|
+| b/y, 1 | 1.0 MB | 1.6 MB | 0.8 MB (+0.1) | 4.7 -> 1.3 ms |
+| b/y, 3 | 2.9 MB | 3.2 MB | 4.9 MB (+0.6) | 21.0 -> 8.1 ms |
+| b/y, 5 | 4.8 MB | 4.9 MB | 12.2 MB (+1.5) | 45.8 -> 19.8 ms |
+| a-z, 3 | 8.6 MB | 8.1 MB | 14.7 MB (+1.8) | 75.2 -> 22.7 ms |
+| a-z + z1, 5 | 16.8 MB | 15.0 MB | 42.7 MB (+5.3) | 181.9 -> 59.3 ms |
+
+The table for limit `c` repeats the ions of every lower charge, so the gather tables grow as
+about C(C+1)/2 times the ions per charge. The build used to collect each decoy's ions in per-decoy
+vectors (~28 MB transient for the last row) and sort 3,000 of them. It now fills the tables from the
+inverted index: walking its bins in ascending order visits each decoy's ions in ascending bin order,
+so the lanes are filled by transposition with no per-decoy lists and no sort. The tables are
+byte-identical to the old build's (hash of all four table arrays, five configurations above) and the
+build is 2.6-3.1 times faster.
+
+Not done: building the tables for limits above 3 lazily, or serving those queries (5+ precursors, ~1%
+of the HeLa queries) from the scatter, would cut the memory of heavy configurations by up to 60%
+(`max_fragment_charge` 5), but changes nothing for the default of 3 and the largest case is 43 MB
+against a multi-GB index, so the tables stay eager.
