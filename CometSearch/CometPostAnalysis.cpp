@@ -1919,8 +1919,12 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
          while (iFirst < iLoopMax && memcmp(&tl_decoyScoresScatter[iFirst], &tl_decoyScores[iFirst], sizeof(float)) == 0)
             ++iFirst;
          if (++g_decoyGenVerifyStats.ullMismatches <= 10)
-            fprintf(stderr, "COMET_DECOYGEN verify mismatch (scan %d, z %d): decoy %d scatter %.9g gather %.9g\n",
+            // every RTS Query has scan number 0, so the precursor and the sizes identify the query
+            fprintf(stderr, "COMET_DECOYGEN verify mismatch (scan %d, z %d, MH+ %.4f, iArraySize %d, iLoopMax %d, charge limit %d):"
+               " decoy %d scatter %.9g gather %.9g\n",
                pQuery->_spectrumInfoInternal.iScanNumber, (int)pQuery->_spectrumInfoInternal.usiChargeState,
+               pQuery->_pepMassInfo.dExpPepMass,   // MH+
+               iArraySize, iLoopMax, iMaxFragCharge,
                iFirst, tl_decoyScoresScatter[iFirst], tl_decoyScores[iFirst]);
       }
    }

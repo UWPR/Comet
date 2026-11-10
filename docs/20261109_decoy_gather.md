@@ -70,7 +70,7 @@ of both paths (scratch build, the 5,000 HeLa scans, one thread) set the factor:
 
 **Switch.** `COMET_DECOYGEN` (environment, read once; not a parameter): unset / `auto`,
 `scatter`, `gather`, `verify` (both paths on every decoy generation, scores compared bit for
-bit, first mismatches and a summary on stderr -- which also counts the sets auto would give each path and the
+bit, the first ten mismatches (scan, charge, precursor MH+, array size, decoy count and charge limit, since RTS scans are all 0) and a summary on stderr -- which also counts the sets auto would give each path and the
 sets per fragment-charge limit; the histogram uses the gather's scores), and
 `verify-selftest` (as verify, the last score of the discarded scatter copy perturbed, so every comparison must fail while the search output stays unchanged).
 

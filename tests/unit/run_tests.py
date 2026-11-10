@@ -8727,6 +8727,16 @@ def _t87_summary(log):
     return tuple(int(g) for g in m.groups()) if m else None
 
 
+def _t87_mismatch_lines_identify(log):
+    """True when the verify mismatch lines (at most ten are printed) name the query: a precursor MH+, the array
+    size, the number of decoys and the fragment-charge limit, not only the scan number (0 on every RTS query)."""
+    lines = [ln for ln in log.splitlines() if ln.startswith("COMET_DECOYGEN verify mismatch")]
+    pattern = re.compile(r"^COMET_DECOYGEN verify mismatch \(scan -?\d+, z \d+, MH\+ (\d+\.\d+), iArraySize (\d+), "
+                         r"iLoopMax (\d+), charge limit ([1-5])\): decoy \d+ scatter \S+ gather \S+$")
+    matches = [pattern.match(ln) for ln in lines]
+    return bool(lines) and all(m and float(m.group(1)) > 0 and int(m.group(2)) > 0 and 0 < int(m.group(3)) <= 3000 for m in matches)
+
+
 @register("t87_decoygen_verify")
 def test_t87_decoygen_verify(comet_exe):
     """T87: COMET_DECOYGEN=verify finds the gather and scatter decoy scores bit-identical. Linux build: rts_repro
@@ -8816,6 +8826,7 @@ def test_t87_decoygen_verify(comet_exe):
                 else:
                     check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                           f"{tag}: the self-test flags every comparison ({summary})", failures)
+                    check(_t87_mismatch_lines_identify(log), f"{tag}: the mismatch lines name the query (MH+, sizes, charge limit)", failures)
             if "scatter" in txts:
                 for m in ("", "gather", "verify", "verify-selftest"):
                     if m in txts:
@@ -8861,6 +8872,7 @@ def test_t87_decoygen_verify(comet_exe):
                             else:
                                 check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                                       f"{tag}: the self-test flags every comparison ({summary})", failures)
+                                check(_t87_mismatch_lines_identify(log), f"{tag}: the mismatch lines name the query (MH+, sizes, charge limit)", failures)
                         if "scatter" in outs and "gather" in outs and "" in outs:
                             check(outs["scatter"] == outs["gather"] == outs[""],
                                   f"rts {label}, {form}: scatter, gather and the default give identical results", failures)
@@ -8908,6 +8920,7 @@ def test_t87_decoygen_verify(comet_exe):
                         else:
                             check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                                   f"{tag}: the self-test flags every comparison ({summary})", failures)
+                            check(_t87_mismatch_lines_identify(log), f"{tag}: the mismatch lines name the query (MH+, sizes, charge limit)", failures)
                     if "scatter" in outs:
                         for m in ("", "gather", "verify", "verify-selftest"):
                             if m in outs:
