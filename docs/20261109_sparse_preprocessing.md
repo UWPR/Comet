@@ -1,6 +1,6 @@
 # Sparse spectrum preprocessing (design, 2026-11-09)
 
-Status: phase 0 done (section 9); phases 1-3 not started. Branch `RTSchimeric`.
+Status: phases 0-1 done (section 9); phases 2-3 not started. Branch `RTSchimeric`.
 
 ## 1. Problem
 
@@ -195,6 +195,52 @@ per-index evaluation are thread-local vectors sized by the peak count. So it nee
 dense path is untouched: the dense path still clears exactly what it reads before it reads it.
 A thread that alternates dense and sparse spectra is therefore safe in both directions.
 
+### 4.9 The raw-intensity buffer the RTS result extraction reads
+
+`SearchSingleSpectrumCore()` passes the thread-local raw buffer (`GetRtsRawDataBuffer()`,
+`g_rtsScratch.pdTmpRawData`) to `VisitResultIon()`, which reads `raw[bin]` to attach an
+intensity to every matched fragment it reports. So on the RTS path `raw` is an output of
+preprocessing, not only scratch: the sparse path still writes each peak's `sqrt` intensity
+into it, at the peak bins only, and records the bins it wrote. Instead of the dense path's
+up-front `memset`, the buffer is kept clean incrementally: a sparse spectrum zeroes the bins
+the previous sparse spectrum recorded and, after a dense spectrum, the range that spectrum
+cleared and wrote (`iZeroBound + off`), once. A dense spectrum clears its own range as today.
+
+### 4.10 Prior art: Telescope (reviewed 2026-11-09)
+
+Telescope (github.com/SchweppeLab/Telescope, MIT licence, commit 559f865) is a fragment-ion-
+index search engine from the Schweppe lab built for RTS, whose `src/FastXCorr.cpp` reimplements
+Comet's xcorr preprocessing (via Kojak) in two forms:
+
+- `XCorr()`, the dense form, with two differences from Comet: the sweep stops at the highest
+  peak's bin + 75 (`iMax = iHighestIon + 75`) instead of running to the precursor-sized array
+  end, and the flanking-peak term is computed with a rolling three-value register (`dTmp0`,
+  `dTmp1`, `dTmp2`) instead of re-reading `fast[k-1]` and `fast[k+1]`. The output is a flat
+  (bin, value) list, not Comet's 100-bin block matrix.
+- `UltraXCorr()`, the sparse form, selected by a parameter and documented as "a fast
+  approximation": peaks (sorted by bin) are grouped into runs whose +/- 76-bin windows overlap,
+  and each run gets its own running sum, restarted from zero at the run's start. Normalization
+  windows are taken from the peak list, as in 4.3. It still `memset`s the correlation array up
+  to the highest peak + 75, and it divides by a constant `0.0066666667` (Comet computes
+  `1/150`).
+
+What this design takes from it, and what it does not:
+
+- **Confirmation of the approach.** Grouping peaks into overlapping +/- 76-bin bands and
+  computing only inside them is what 4.1-4.4 do; Telescope runs it as its fast mode.
+- **Not the per-band restart.** Restarting the sum per band drops the rounding residue the
+  dense sum carries from earlier bands, so values differ from Comet's in the last bits --
+  acceptable for Telescope, not here (section 2). 4.4 carries one sum across all bands instead.
+  Its normalize-to-100-first step and the `0.0066666667` constant would also break bit
+  identity.
+- **No `memset` at all** (4.8), where `UltraXCorr()` still clears a dense range.
+- **The rolling register** for the flank term is a worthwhile micro-optimization inside the
+  band loop (one `fast` evaluation per bin instead of three); adopted.
+- **Stopping the dense sweep at the highest peak + offset** (+ the NL shift when NL ions are on)
+  is an exact speed-up for the dense path too (beyond it every value is residue, as in 4.4), useful for the dense fallback on
+  peak-rich high-resolution spectra. Not part of phase 1; a phase 3 candidate, measured first.
+- NL ions and the Sp matrix are not handled by Telescope; nothing to borrow there.
+
 ## 5. Verification
 
 - **Internal switch** `COMET_PREPROCESS=dense|sparse|verify` (read once per process, like
@@ -256,3 +302,4 @@ Same 5,000-scan harness as section 1, before and after:
 | date | phase | result |
 |---|---|---|
 | 2026-11-09 | 0 | `COMET_PREPROCESS` (`auto` / `dense` / `sparse` / `verify` / `verify-selftest`) and the comparator in `CometPreprocess.cpp` (`GetPreprocessMode()`, `PreprocessedQueriesEqual()`, `VerifyPreprocessShadow()`). Verify rebuilds every preprocessed Query into a heap shadow -- RTS: `PreprocessSingleSpectrumThreadLocal()` re-runs the core on its heap path, which leaves the thread-local pool untouched; batch: `Preprocess()` re-runs itself on a shadow Query without arenas -- and compares the three sparse matrices bit for bit, the block-allocation pattern, the matrix sizes and `iMinXcorrHisto`. `sparse` is accepted but still runs dense (with a one-line notice). Dense vs dense on real data (HeLa, the section 1 index): RTS plain 4,732 / chimeric 20,190 / low resolution 4,732 spectra compared, batch FI_DB full file 40,287 -- zero mismatches everywhere; `verify-selftest` flags every comparison. With the variable unset the plain search time is unchanged (2.60-2.72 s against 2.81 s before, single runs) and the output identical. Test T86. |
+| 2026-11-09 | 1 | `BuildSparseMatricesFromPeaks()` (`CometPreprocess.cpp`) on the RTS thread-local-pool path, taken when `COMET_PREPROCESS` is `sparse`, `verify` or `verify-selftest`; the default (`auto`) stays dense until phase 3 sets the switch point. The peak loop records each raw bin it sets; normalization, the event-replayed running sum (one sum carried across all bands), the flank and NL terms (a rolling register for the flank, as in Telescope's `FastXCorr`) and Sp are computed from the list; the raw buffer is kept clean incrementally (4.9) instead of `memset`; a gap-residue failure falls back to the dense build. Verify, sparse vs dense, on the 5,000 HeLa scans at 8 threads: plain search (4,732 spectra) with flanking peaks on and off, NL ions on with flanks on and off; chimeric (20,190) with and without NL ions; low resolution 1.0005 / 0.4 forced sparse with flanking peaks on and off; `remove_precursor_peak` 1-4 -- zero mismatches and zero gap-residue fallbacks everywhere; chimeric output with `sparse` identical to `dense`. T86 adds five synthetic edge-case spectra under ten settings, all identical. **Mutation test** (each planted in the builder, then T86 run): Telescope's `0.0066666667` constant for `1/150` -- caught (16 failed checks); the k-1 flank term dropped -- caught (15); the NL-shifted bands not evaluated -- caught (4, the NL settings); Telescope's per-band restart of the running sum (dropping the carried residue) -- **not** caught, by T86 or by 4,732 HeLa spectra in verify mode: the residue is ~1e-15 against values ~1 and disappears in the float conversion, so on this data the restart stores the same floats. The carried sum is kept (it costs nothing and keeps identity guaranteed rather than observed). Preliminary single-thread timing, 5,000 scans (phase 3 measures properly): plain search 2.55 s dense -> 1.28 s sparse (-50%); chimeric 24.8 s -> 17.6 s (-29%); outputs identical. |

@@ -8462,7 +8462,7 @@ def test_t85_evalue_outputs(comet_exe):
 
 def _t86_verify_summary(log):
     """(compared, mismatches) from the COMET_PREPROCESS verify summary line, or None."""
-    m = re.search(r"^COMET_PREPROCESS verify: (\d+) spectra compared, (\d+) mismatches$", log, re.M)
+    m = re.search(r"^COMET_PREPROCESS verify: (\d+) spectra compared, (\d+) mismatches, \d+ sparse fallbacks$", log, re.M)
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
@@ -8544,6 +8544,52 @@ def test_t86_preprocess_verify(comet_exe):
                     if "" in outs and "verify" in outs:
                         check(outs["verify"] == outs[""], f"rts {label}, {form}: verify mode leaves the results unchanged",
                               failures)
+
+            # --- RTS sparse build edge cases (phase 1: verify = sparse primary vs dense shadow). Synthetic
+            # spectra aimed at each place the sparse build must reproduce the dense operation order:
+            # a peak in the precursor-mass cutoff gap (bin >= iArraySize, still moves iHighestIon and so
+            # the normalization windows), peaks below bin 75 (where iMinXcorrHisto's maximum starts),
+            # isolated bands and one dense overlapping cluster, peaks below the 5% normalization cut, two
+            # peaks in one bin, peaks at the precursor m/z and its neutral-loss m/z values (for
+            # remove_precursor_peak 1-4), a precursor near the top of the mass range, and a 3+ precursor.
+            pep = "LVNELTEFAK"
+            mh = fixture_peptides.neutral_mass(pep) + fixture_peptides.PROTON
+            mz2 = (mh + fixture_peptides.PROTON) / 2
+            ladder = fixture_peptides.by_peaks(pep)
+            edge = {
+                1: (2, mz2, ladder + [(mh + 20.0, 40.0), (0.8, 30.0), (1.2, 25.0), (300.123, 2.0), (400.456, 1.5),
+                                      (500.001, 50.0), (500.009, 55.0), (mz2, 80.0), ((mh - 18.010565 + fixture_peptides.PROTON) / 2, 70.0),
+                                      ((mh - 79.9799 + fixture_peptides.PROTON) / 2, 60.0)]),
+                2: (2, mz2, [(200.0 + 37.0 * k, 50.0 + k) for k in range(14)]),          # isolated bands, 37 Da apart
+                3: (2, mz2, [(600.0 + 0.137 * k, 20.0 + 3 * k) for k in range(16)]),     # one overlapping cluster
+                4: (1, 1990.5, [(150.0 + 123.4 * k, 10.0 + k) for k in range(15)]),       # near the top of the range
+                5: (3, (mh + 2 * fixture_peptides.PROTON) / 3, ladder + [(mz2, 90.0)]),
+            }
+            lines = []
+            for scan, (z, pmz, pk) in edge.items():
+                lines += fixture_peptides.spectrum_block(scan, z, pmz, sorted(pk))
+            efx = tmp / "t86_edge.txt"
+            efx.write_text("\n".join(lines) + "\n")
+            edge_settings = [("high-res", ""), ("theoretical_fragment_ions 1", "i:theoretical_fragment_ions=1"),
+                             ("NL ions", "i:use_NL_ions=1"), ("NL ions, no flank", "i:use_NL_ions=1;i:theoretical_fragment_ions=1"),
+                             ("low-res", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1"),
+                             ("low-res flank", "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=0")]
+            edge_settings += [(f"remove_precursor_peak {m}", f"i:remove_precursor_peak={m}") for m in (1, 2, 3, 4)]
+            for label, extra in edge_settings:
+                run_env = env_with("verify")
+                run_env["RTS_REPRO_PARAMS"] = ";".join([f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS] + ([extra] if extra else []))
+                out = tmp / "t86_edge.out"
+                res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(efx), "1", str(out), "0", "1"], capture_output=True,
+                                     text=True, timeout=300, env=run_env)
+                log = res.stdout + res.stderr
+                summary = _t86_verify_summary(log)
+                if not check(res.returncode == 0, f"rts edge cases, {label}: rts_repro exits 0 (rc={res.returncode})", failures):
+                    print(log[-1200:])
+                    continue
+                check(summary is not None and summary[0] == len(edge) and summary[1] == 0,
+                      f"rts edge cases, {label}: sparse == dense on all {len(edge)} spectra ({summary})", failures)
+                if summary is None or summary[1] != 0:
+                    print("\n".join(l for l in log.splitlines() if "COMET_PREPROCESS" in l)[:1500])
 
             # --- batch: comet.exe on the FASTA and on the FI index (the fused batch path)
             for label, db in (("FASTA", fasta), ("FI_DB", idx)):

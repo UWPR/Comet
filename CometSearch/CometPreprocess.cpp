@@ -22,6 +22,7 @@
 #include "CometPostAnalysis.h"
 #include <string.h>
 #include <algorithm>
+#include <climits>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -136,17 +137,18 @@ static inline int ComputeClampedArraySize(double dExpPepMass)
 // Preprocessing build path and its verifier (docs/20261109_sparse_preprocessing.md
 // section 5). COMET_PREPROCESS, read once per process -- a testing switch, not a
 // parameter:
-//   unset / "auto"   the default choice (phase 0: always the dense build)
+//   unset / "auto"   the default choice (phase 1: always the dense build; the switch point is
+//                    set from measurements in phase 3)
 //   "dense"          force the dense build
-//   "sparse"         force the sparse build (phase 0: not implemented yet; dense is used)
+//   "sparse"         force the sparse build where it exists (phase 1: the RTS path)
 //   "verify"         after every successful preprocess, build the same Query a second time
 //                    (a heap-allocated shadow) and compare the three sparse matrices, their
 //                    sizes and iMinXcorrHisto bit for bit; mismatches go to stderr and a
 //                    summary line is printed at exit
 //   "verify-selftest" as verify, but perturb one stored shadow value first, so every
 //                    comparison must report a mismatch (tests the comparator itself)
-// Phase 0 compares the dense build against itself (RTS: thread-local pool vs heap; batch:
-// arena vs heap), which must always match. Later phases compare dense against sparse.
+// RTS (phase 1): the primary is the sparse build, the heap shadow the dense one. Batch (until
+// phase 2): both are the dense build (arena vs heap), which must always match.
 // ---------------------------------------------------------------------------
 enum class PreprocessMode { Auto, Dense, Sparse, Verify, VerifySelfTest };
 
@@ -160,10 +162,7 @@ static PreprocessMode GetPreprocessMode()
       if (strcmp(psz, "dense") == 0)
          return PreprocessMode::Dense;
       if (strcmp(psz, "sparse") == 0)
-      {
-         fprintf(stderr, " COMET_PREPROCESS=sparse: the sparse build is not implemented yet; the dense build is used\n");
          return PreprocessMode::Sparse;
-      }
       if (strcmp(psz, "verify") == 0)
          return PreprocessMode::Verify;
       if (strcmp(psz, "verify-selftest") == 0)
@@ -185,12 +184,13 @@ struct PreprocessVerifyStats
 {
    std::atomic<unsigned long long> ullCompared{0};
    std::atomic<unsigned long long> ullMismatches{0};
+   std::atomic<unsigned long long> ullSparseFallbacks{0};   // sparse builds the gap-residue guard sent to dense
 
    ~PreprocessVerifyStats()
    {
       if (PreprocessVerifyOn())
-         fprintf(stderr, "COMET_PREPROCESS verify: %llu spectra compared, %llu mismatches\n",
-            ullCompared.load(), ullMismatches.load());
+         fprintf(stderr, "COMET_PREPROCESS verify: %llu spectra compared, %llu mismatches, %llu sparse fallbacks\n",
+            ullCompared.load(), ullMismatches.load(), ullSparseFallbacks.load());
    }
 };
 static PreprocessVerifyStats g_preprocessVerifyStats;
@@ -1903,6 +1903,276 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    return true;
 }
 
+// ---------------------------------------------------------------------------
+// Sparse preprocessing build (docs/20261109_sparse_preprocessing.md section 4), RTS
+// thread-local-pool path. Builds the same three sparse matrices and iMinXcorrHisto the dense
+// code builds, bit for bit, from the peak bins alone.
+// ---------------------------------------------------------------------------
+
+// The RTS raw-intensity buffer (g_rtsScratch.pdTmpRawData) is an output too: the result
+// extraction reads it for matched-fragment intensities (VisitResultIon()). The dense build
+// clears [0, iZeroBound + offset) up front; the sparse build instead keeps it clean
+// incrementally (section 4.9): the bins it wrote are recorded here, and the range a dense
+// build wrote is remembered, so the next sparse build clears exactly those.
+static thread_local std::vector<int> tl_vRawSparseBins;   // bins the last sparse build set (unsorted until the build sorts them)
+static thread_local size_t tl_uiRawDenseDirty = 0;        // doubles a dense build may have left nonzero, from bin 0
+
+// Whether this RTS spectrum takes the sparse build. Phase 1: only when COMET_PREPROCESS forces
+// it (sparse) or verifies it (verify, verify-selftest: the primary is sparse, the shadow dense);
+// the default stays dense until phase 3 has measured the switch point (section 4.6).
+static bool UseSparseBuild(int /*iNumPeaks*/, int /*iArraySize*/)
+{
+   const PreprocessMode mode = GetPreprocessMode();
+   return mode == PreprocessMode::Sparse || mode == PreprocessMode::Verify || mode == PreprocessMode::VerifySelfTest;
+}
+
+// Set while a verify shadow is built, so the shadow takes the dense build (set by the RTS
+// verify wrapper; the heap path never takes the sparse build anyway).
+static thread_local bool tl_bForceDenseBuild = false;
+
+// Builds pScoring's sparse matrices from the peak bins vBins (each set once in pdRaw, the
+// dense raw buffer; any order -- sorted here) with the dense code's exact operation order.
+// Returns 1 when built; 0 when the gap-residue guard (section 4.4) cannot prove that skipped
+// bins hold no storable value -- the caller then runs the dense build; -1 on allocation
+// failure (nothing to free: pointer arrays are released by ~Query()).
+static int BuildSparseMatricesFromPeaks(Query* pScoring,
+                                        std::vector<int>& vBins,
+                                        const double* pdRaw,
+                                        int iHighestIon,
+                                        double dHighestIntensity,
+                                        int iArraySize)
+{
+   const int iOff = g_staticParams.iXcorrProcessingOffset;
+   const int iRange = 2 * iOff + 1;
+   const double dTmp = 1.0 / (iRange - 1.0);      // same expression as the dense pass
+   const bool bFlank = (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0);
+   const bool bNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+      && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+   const int iM17 = g_staticParams.precalcMasses.iMinus17;
+   const int iM18 = g_staticParams.precalcMasses.iMinus18;
+   const int N = iArraySize;
+
+   std::sort(vBins.begin(), vBins.end());
+
+   // --- 4.3: MakeCorrData() from the list. Window maxima over the listed bins (all < N <=
+   // iArraySizeGlobal and <= iHighestIon), then corr = raw * (50 / max) above 5% of the base peak.
+   const int iNumWindows = 10;
+   const int iWindowSize = (int)((iHighestIon) / iNumWindows) + 1;
+   double dMaxWindowInten[10] = { 0.0 };
+   for (int b : vBins)
+   {
+      const int w = b / iWindowSize;
+      if (pdRaw[b] > dMaxWindowInten[w])
+         dMaxWindowInten[w] = pdRaw[b];
+   }
+
+   static thread_local std::vector<int> tl_vCorrBin;
+   static thread_local std::vector<double> tl_vCorrVal;
+   tl_vCorrBin.clear();
+   tl_vCorrVal.clear();
+   const double dCut = 0.05 * dHighestIntensity;
+   for (int b : vBins)
+   {
+      const int w = b / iWindowSize;
+      if (dMaxWindowInten[w] > 0.0 && pdRaw[b] > dCut)
+      {
+         const double dTmp1 = 50.0 / dMaxWindowInten[w];
+         tl_vCorrBin.push_back(b);
+         tl_vCorrVal.push_back(pdRaw[b] * dTmp1);
+      }
+   }
+   const size_t nCorr = tl_vCorrBin.size();
+
+   // iMinXcorrHisto: the dense pass takes the maximum corr over bins [iOff, N + iOff).
+   double dMinXcorrInten = 0.0;
+   for (size_t c = 0; c < nCorr; ++c)
+   {
+      if (tl_vCorrBin[c] >= iOff && dMinXcorrInten < tl_vCorrVal[c])
+         dMinXcorrInten = tl_vCorrVal[c];
+   }
+   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
+
+   // --- 4.4: the running sum, replayed at its events. The dense pass starts with the sum of
+   // corr[0 .. iOff-1], then at step i (iOff .. N+iOff-1) adds corr[i] (i < N) and subtracts
+   // corr[i - iRange]; adding or subtracting 0.0 leaves a double unchanged, so the sum only
+   // changes at a listed bin's add step (i = b) or subtract step (i = b + iRange). Checkpoint k
+   // holds the sum after every event at step tl_vCkStep[k].
+   static thread_local std::vector<int> tl_vCkStep;
+   static thread_local std::vector<double> tl_vCkSum;
+   tl_vCkStep.clear();
+   tl_vCkSum.clear();
+
+   double dSum = 0.0;
+   int iActive = 0;                 // listed bins inside the current window
+   size_t iAdd = 0;
+   while (iAdd < nCorr && tl_vCorrBin[iAdd] < iOff)
+   {
+      dSum += tl_vCorrVal[iAdd++];
+      ++iActive;
+   }
+   const double dInitSum = dSum;
+
+   // gap-residue guard: wherever the window is empty the sum is pure rounding residue, and
+   // every dense value there is at most |sum| * dTmp * 2.4 (pf + both flanks + both NL terms)
+   const double dResidueLimit = FLOAT_ZERO * 0.5 / (dTmp * 2.4);
+   const int iLastStep = N + iOff - 1;
+   size_t iSub = 0;
+   while (iAdd < nCorr || iSub < nCorr)
+   {
+      const int iAddStep = (iAdd < nCorr) ? tl_vCorrBin[iAdd] : INT_MAX;
+      const int iSubStep = (iSub < nCorr) ? tl_vCorrBin[iSub] + iRange : INT_MAX;
+      const int iStep = (iAddStep < iSubStep) ? iAddStep : iSubStep;
+      if (iStep > iLastStep)
+         break;
+      if (iAddStep == iStep)           // the dense loop adds before it subtracts
+      {
+         dSum += tl_vCorrVal[iAdd++];
+         ++iActive;
+      }
+      if (iSubStep == iStep)
+      {
+         dSum -= tl_vCorrVal[iSub++];
+         --iActive;
+      }
+      tl_vCkStep.push_back(iStep);
+      tl_vCkSum.push_back(dSum);
+      if (iActive == 0 && !(fabs(dSum) < dResidueLimit))
+         return 0;
+   }
+   const size_t nCk = tl_vCkStep.size();
+
+   // v(j) = corr[j] - fast[j], fast[j] = (sum at step j + iOff - corr[j]) * dTmp: the dense
+   // expressions, evaluated at non-decreasing j per cursor.
+   struct VCursor
+   {
+      size_t iCk = 0;
+      size_t iC = 0;
+      double dSumHere = 0.0;
+   };
+   auto V = [&](VCursor& cur, int j) -> double
+   {
+      const int iStep = j + iOff;
+      while (cur.iCk < nCk && tl_vCkStep[cur.iCk] <= iStep)
+         cur.dSumHere = tl_vCkSum[cur.iCk++];
+      while (cur.iC < nCorr && tl_vCorrBin[cur.iC] < j)
+         ++cur.iC;
+      const double dCorr = (cur.iC < nCorr && tl_vCorrBin[cur.iC] == j) ? tl_vCorrVal[cur.iC] : 0.0;
+      const double dFast = (cur.dSumHere - dCorr) * dTmp;
+      return dCorr - dFast;
+   };
+
+   // --- 4.1: the bins to evaluate, [1, N-1] intersected with the bands around the corr bins
+   // (+/- iOff, +1 with flanking peaks) and, with NL ions, those bands' v-support shifted by
+   // iMinus17 / iMinus18. Merged into sorted disjoint intervals.
+   static thread_local std::vector<std::pair<int, int>> tl_vRanges;
+   tl_vRanges.clear();
+   const int iF = bFlank ? 1 : 0;
+   for (size_t c = 0; c < nCorr; ++c)
+   {
+      const int b = tl_vCorrBin[c];
+      tl_vRanges.emplace_back(b - iOff - iF, b + iOff + iF);
+      if (bNL)
+      {
+         tl_vRanges.emplace_back(b - iOff + iM17, b + iOff + iM17);
+         tl_vRanges.emplace_back(b - iOff + iM18, b + iOff + iM18);
+      }
+   }
+   if (bNL)
+      std::sort(tl_vRanges.begin(), tl_vRanges.end());   // the non-NL list is already in order
+   size_t nRanges = 0;
+   for (size_t r = 0; r < tl_vRanges.size(); ++r)
+   {
+      int lo = tl_vRanges[r].first < 1 ? 1 : tl_vRanges[r].first;
+      int hi = tl_vRanges[r].second > N - 1 ? N - 1 : tl_vRanges[r].second;
+      if (lo > hi)
+         continue;
+      if (nRanges > 0 && lo <= tl_vRanges[nRanges - 1].second + 1)
+      {
+         if (hi > tl_vRanges[nRanges - 1].second)
+            tl_vRanges[nRanges - 1].second = hi;
+      }
+      else
+         tl_vRanges[nRanges++] = std::make_pair(lo, hi);
+   }
+
+   // --- the matrices: the dense code's allocation pattern (pointer arrays of N/100 + 1, a
+   // block allocated on the first value stored in it), filled in increasing bin order.
+   pScoring->iFastXcorrDataSize = (iArraySize / SPARSE_MATRIX_SIZE) + 1;
+   pScoring->iSpScoreData = iArraySize / SPARSE_MATRIX_SIZE + 1;
+   try
+   {
+      if (bNL)
+         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
+      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+   }
+   catch (std::bad_alloc&)
+   {
+      return -1;
+   }
+
+   auto Store = [](float** ppfMatrix, int k, float fValue)
+   {
+      const int x = k / SPARSE_MATRIX_SIZE;
+      if (ppfMatrix[x] == NULL)
+         ppfMatrix[x] = g_rtsScratch.AllocSparseChild();
+      ppfMatrix[x][k - x * SPARSE_MATRIX_SIZE] = fValue;
+   };
+
+   VCursor curMain, cur17, cur18;
+   curMain.dSumHere = cur17.dSumHere = cur18.dSumHere = dInitSum;
+   for (size_t r = 0; r < nRanges; ++r)
+   {
+      const int lo = tl_vRanges[r].first;
+      const int hi = tl_vRanges[r].second;
+
+      // rolling register (as in Telescope's FastXCorr): v at k-1, k, k+1, one evaluation per bin
+      double vPrev = V(curMain, lo - 1);   // lo >= 1
+      double vHere = V(curMain, lo);
+      for (int k = lo; k <= hi; ++k)
+      {
+         const double vNext = (k + 1 < N) ? V(curMain, k + 1) : 0.0;
+
+         float fPf = (float)vHere;
+         if (bFlank)
+         {
+            fPf += (float)(vPrev * 0.5);
+            if (k + 1 < N)
+               fPf += (float)(vNext * 0.5);
+         }
+         if (fPf > FLOAT_ZERO || fPf < -FLOAT_ZERO)
+            Store(pScoring->ppfSparseFastXcorrData, k, fPf);
+
+         if (bNL)
+         {
+            float fNl = fPf;
+            if (k - iM17 >= 0)
+               fNl += (float)(V(cur17, k - iM17) * 0.2);
+            if (k - iM18 >= 0)
+               fNl += (float)(V(cur18, k - iM18) * 0.2);
+            if (fNl > FLOAT_ZERO || fNl < -FLOAT_ZERO)
+               Store(pScoring->ppfSparseFastXcorrDataNL, k, fNl);
+         }
+
+         vPrev = vHere;
+         vHere = vNext;
+      }
+   }
+
+   // --- 4.5: Sp from the raw bins
+   for (int b : vBins)
+   {
+      const float fSp = (float)(100.0 * pdRaw[b] / dHighestIntensity);
+      if (fSp > FLOAT_ZERO)
+         Store(pScoring->ppfSparseSpScoreData, b, fSp);
+   }
+
+   return 1;
+}
+
+
 // Shared core: builds a fully preprocessed Query* from the input spectrum data.
 // Does NOT push the Query* into g_pvQuery.  Returns nullptr on failure.
 //
@@ -2097,6 +2367,10 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    float  *pfFastXcorrDataNL;
    float  *pfSpScoreData;
 
+   // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6). The sparse build
+   // is RTS thread-local-pool only in phase 1; a verify shadow always takes the dense one.
+   const bool bSparseBuild = bUseThreadLocalPool && !tl_bForceDenseBuild && UseSparseBuild(iNumPeaks, iArraySize);
+
    if (bUseThreadLocalPool)
    {
       g_rtsScratch.EnsureInitialized();
@@ -2111,19 +2385,37 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       pScoring->bSparseFromPool = true;
 
-      // Zero only the region that will be accessed. pdTmpCorrelationData and
-      // pdTmpFastXcorrData are read up to iZeroBound + iXcorrOffset by
-      // MakeCorrData()/the sliding-window loop (see iZeroBound comment above);
-      // pfFastXcorrData/pfFastXcorrDataNL/pfSpScoreData are only ever indexed
-      // up to iArraySize, so they don't need the wider bound.
-      const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
-      const size_t nF = (size_t)iArraySize;
-      memset(pdTmpRawData,         0, nD * sizeof(double));
-      memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
-      memset(pdTmpCorrelationData, 0, nD * sizeof(double));
-      memset(pfFastXcorrData,      0, nF * sizeof(float));
-      memset(pfFastXcorrDataNL,    0, nF * sizeof(float));
-      memset(pfSpScoreData,        0, nF * sizeof(float));
+      if (bSparseBuild)
+      {
+         // The sparse build touches only the raw buffer, at the peak bins (section 4.9):
+         // clear what earlier builds on this thread may have left there, nothing else.
+         if (tl_uiRawDenseDirty > 0)
+         {
+            memset(pdTmpRawData, 0, tl_uiRawDenseDirty * sizeof(double));
+            tl_uiRawDenseDirty = 0;
+         }
+         for (int b : tl_vRawSparseBins)
+            pdTmpRawData[b] = 0.0;
+         tl_vRawSparseBins.clear();
+      }
+      else
+      {
+         // Zero only the region that will be accessed. pdTmpCorrelationData and
+         // pdTmpFastXcorrData are read up to iZeroBound + iXcorrOffset by
+         // MakeCorrData()/the sliding-window loop (see iZeroBound comment above);
+         // pfFastXcorrData/pfFastXcorrDataNL/pfSpScoreData are only ever indexed
+         // up to iArraySize, so they don't need the wider bound.
+         const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
+         const size_t nF = (size_t)iArraySize;
+         memset(pdTmpRawData,         0, nD * sizeof(double));
+         memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
+         memset(pdTmpCorrelationData, 0, nD * sizeof(double));
+         memset(pfFastXcorrData,      0, nF * sizeof(float));
+         memset(pfFastXcorrDataNL,    0, nF * sizeof(float));
+         memset(pfSpScoreData,        0, nF * sizeof(float));
+         if (nD > tl_uiRawDenseDirty)
+            tl_uiRawDenseDirty = nD;   // this build writes raw only inside [0, nD)
+      }
    }
    else
    {
@@ -2226,6 +2518,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       dMZ3_mode4 = (dExpPepMass - 63.997737 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
    }
 
+   // the sparse build records each bin the first time it is set (the buffer starts clean)
+   auto SetRawBin = [&](int iBin, double dValue)
+   {
+      if (bSparseBuild && pdTmpRawData[iBin] == 0.0)
+         tl_vRawSparseBins.push_back(iBin);
+      pdTmpRawData[iBin] = dValue;
+   };
+
    for (int i = iNumPeaks - 1; i >= 0; --i)
    {
       double dIon = pdMass[i];
@@ -2255,7 +2555,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                {
                   if (fabs(dIon - dPrecMZ_mode1) > dRemTol)
                   {
-                     pdTmpRawData[iBinIon] = dSqrtInten;
+                     SetRawBin(iBinIon, dSqrtInten);
                      if (dSqrtInten > pPre.dHighestIntensity)
                         pPre.dHighestIntensity = dSqrtInten;
                   }
@@ -2274,7 +2574,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                   }
                   if (bNotPrec)
                   {
-                     pdTmpRawData[iBinIon] = dSqrtInten;
+                     SetRawBin(iBinIon, dSqrtInten);
                      if (dSqrtInten > pPre.dHighestIntensity)
                         pPre.dHighestIntensity = dSqrtInten;
                   }
@@ -2283,7 +2583,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                {
                   if (fabs(dIon - dMZ1_mode3) > dRemTol && fabs(dIon - dMZ2_mode3) > dRemTol)
                   {
-                     pdTmpRawData[iBinIon] = dSqrtInten;
+                     SetRawBin(iBinIon, dSqrtInten);
                      if (dSqrtInten > pPre.dHighestIntensity)
                         pPre.dHighestIntensity = dSqrtInten;
                   }
@@ -2294,14 +2594,14 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                         && fabs(dIon - dMZ2_mode4) > dRemTol
                         && fabs(dIon - dMZ3_mode4) > dRemTol)
                   {
-                     pdTmpRawData[iBinIon] = dSqrtInten;
+                     SetRawBin(iBinIon, dSqrtInten);
                      if (dSqrtInten > pPre.dHighestIntensity)
                         pPre.dHighestIntensity = dSqrtInten;
                   }
                }
                else // iRemovePrecursor==0
                {
-                  pdTmpRawData[iBinIon] = dSqrtInten;
+                  SetRawBin(iBinIon, dSqrtInten);
                   if (dSqrtInten > pPre.dHighestIntensity)
                      pPre.dHighestIntensity = dSqrtInten;
                }
@@ -2345,90 +2645,156 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // genuinely different XCorr/E-value results for real spectra with a peak in the
    // dExpPepMass+cushion..dExpPepMass+50 gap (see docs/20260714_EvalueJitter.md and
    // the iZeroBound comment above for the full history).
-   // --- MakeCorrData: normalize to 100, windowed ---
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
-
-#ifdef RTS_TIMING
-   if (bUseThreadLocalPool)
-      tP3 = hrc::now();
-#endif
-
-   // --- Make fast xcorr spectrum ---
-   int i;
-   double dSum = 0.0;
-   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (iTmpRange - 1.0);
-   double dMinXcorrInten = 0.0;
-
-   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
-      dSum += pdTmpCorrelationData[i];
-   for (i = iXcorrOffset; i < iArraySize + iXcorrOffset; ++i)
+   // Sparse build (section 4); on the gap-residue guard it falls back to the dense build,
+   // which then needs the correlation and fast-xcorr scratch cleared as the dense setup does.
+   bool bMatricesBuilt = false;
+   if (bSparseBuild)
    {
-      if (dMinXcorrInten < pdTmpCorrelationData[i])
-         dMinXcorrInten = pdTmpCorrelationData[i];
-
-      if (i < iArraySize)
-         dSum += pdTmpCorrelationData[i];
-      if (i >= iTmpRange)
-         dSum -= pdTmpCorrelationData[i - iTmpRange];
-      pdTmpFastXcorrData[i - iXcorrOffset] = (dSum - pdTmpCorrelationData[i - iXcorrOffset]) * dTmp;
+      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_vRawSparseBins, pdTmpRawData,
+         pPre.iHighestIon, pPre.dHighestIntensity, iArraySize);
+      if (iSparse < 0)
+      {
+         delete pScoring;
+         return nullptr;
+      }
+      if (iSparse > 0)
+         bMatricesBuilt = true;
+      else
+      {
+         g_preprocessVerifyStats.ullSparseFallbacks++;
+         const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
+         memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
+         memset(pdTmpCorrelationData, 0, nD * sizeof(double));
+      }
+#ifdef RTS_TIMING
+      // the PREPROCESS columns: the sparse build is reported as "sparsebuild"
+      tP3 = tP2;
+      tP4 = tP2;
+#endif
    }
 
-   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
-
-   pfFastXcorrData[0] = 0.0;
-   for (i = 1; i < iArraySize; ++i)
+   if (!bMatricesBuilt)
    {
-      double dVal = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
+      // --- MakeCorrData: normalize to 100, windowed ---
+      MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
 
-      pfFastXcorrData[i] = (float)dVal;
+   #ifdef RTS_TIMING
+      if (bUseThreadLocalPool)
+         tP3 = hrc::now();
+   #endif
 
-      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+      // --- Make fast xcorr spectrum ---
+      int i;
+      double dSum = 0.0;
+      int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
+      double dTmp = 1.0 / (iTmpRange - 1.0);
+      double dMinXcorrInten = 0.0;
+
+      for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+         dSum += pdTmpCorrelationData[i];
+      for (i = iXcorrOffset; i < iArraySize + iXcorrOffset; ++i)
       {
-         int iTmpIdx;
-         iTmpIdx = i - 1;
-         pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
-         iTmpIdx = i + 1;
-         if (iTmpIdx < iArraySize)
-            pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
+         if (dMinXcorrInten < pdTmpCorrelationData[i])
+            dMinXcorrInten = pdTmpCorrelationData[i];
+
+         if (i < iArraySize)
+            dSum += pdTmpCorrelationData[i];
+         if (i >= iTmpRange)
+            dSum -= pdTmpCorrelationData[i - iTmpRange];
+         pdTmpFastXcorrData[i - iXcorrOffset] = (dSum - pdTmpCorrelationData[i - iXcorrOffset]) * dTmp;
       }
 
+      pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
+
+      pfFastXcorrData[0] = 0.0;
+      for (i = 1; i < iArraySize; ++i)
+      {
+         double dVal = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
+
+         pfFastXcorrData[i] = (float)dVal;
+
+         if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+         {
+            int iTmpIdx;
+            iTmpIdx = i - 1;
+            pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
+            iTmpIdx = i + 1;
+            if (iTmpIdx < iArraySize)
+               pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
+         }
+
+         if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+         {
+            int iTmpIdx;
+            pfFastXcorrDataNL[i] = pfFastXcorrData[i];
+
+            iTmpIdx = i - g_staticParams.precalcMasses.iMinus17;
+            if (iTmpIdx >= 0)
+               pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
+
+            iTmpIdx = i - g_staticParams.precalcMasses.iMinus18;
+            if (iTmpIdx >= 0)
+               pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
+         }
+      }
+
+   #ifdef RTS_TIMING
+      if (bUseThreadLocalPool)
+         tP4 = hrc::now();
+   #endif
+
+      // --- Build sparse matrices on the Query ---
+      int x, y;
+      pScoring->iFastXcorrDataSize = (iArraySize / SPARSE_MATRIX_SIZE) + 1;
+
+      // Sparse NL matrix
       if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
             && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
                || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
       {
-         int iTmpIdx;
-         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
+         try
+         {
+            pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+         }
+         catch (std::bad_alloc&)
+         {
+            if (!bUseThreadLocalPool)
+            {
+               delete[] pdTmpFastXcorrData;
+               delete[] pdTmpCorrelationData;
+               delete[] pfFastXcorrData;
+               delete[] pfFastXcorrDataNL;
+               delete[] pfSpScoreData;
+            }
+            delete pScoring;
+            return nullptr;
+         }
 
-         iTmpIdx = i - g_staticParams.precalcMasses.iMinus17;
-         if (iTmpIdx >= 0)
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
-
-         iTmpIdx = i - g_staticParams.precalcMasses.iMinus18;
-         if (iTmpIdx >= 0)
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.2);
+         for (i = 1; i < iArraySize; ++i)
+         {
+            if (pfFastXcorrDataNL[i] > FLOAT_ZERO || pfFastXcorrDataNL[i] < -FLOAT_ZERO)
+            {
+               x = i / SPARSE_MATRIX_SIZE;
+               if (pScoring->ppfSparseFastXcorrDataNL[x] == NULL)
+               {
+                  pScoring->ppfSparseFastXcorrDataNL[x] = bUseThreadLocalPool
+                     ? g_rtsScratch.AllocSparseChild()
+                     : new float[SPARSE_MATRIX_SIZE]();
+               }
+               y = i - (x * SPARSE_MATRIX_SIZE);
+               pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
+            }
+         }
       }
-   }
 
-#ifdef RTS_TIMING
-   if (bUseThreadLocalPool)
-      tP4 = hrc::now();
-#endif
-
-   // --- Build sparse matrices on the Query ---
-   int x, y;
-   pScoring->iFastXcorrDataSize = (iArraySize / SPARSE_MATRIX_SIZE) + 1;
-
-   // Sparse NL matrix
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
+      // Sparse fast xcorr matrix
       try
       {
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+         pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
       }
       catch (std::bad_alloc&)
       {
@@ -2446,95 +2812,60 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
       for (i = 1; i < iArraySize; ++i)
       {
-         if (pfFastXcorrDataNL[i] > FLOAT_ZERO || pfFastXcorrDataNL[i] < -FLOAT_ZERO)
+         if (pfFastXcorrData[i] > FLOAT_ZERO || pfFastXcorrData[i] < -FLOAT_ZERO)
          {
             x = i / SPARSE_MATRIX_SIZE;
-            if (pScoring->ppfSparseFastXcorrDataNL[x] == NULL)
+            if (pScoring->ppfSparseFastXcorrData[x] == NULL)
             {
-               pScoring->ppfSparseFastXcorrDataNL[x] = bUseThreadLocalPool
+               pScoring->ppfSparseFastXcorrData[x] = bUseThreadLocalPool
                   ? g_rtsScratch.AllocSparseChild()
                   : new float[SPARSE_MATRIX_SIZE]();
             }
             y = i - (x * SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
+            pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
          }
       }
-   }
 
-   // Sparse fast xcorr matrix
-   try
-   {
-      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
-   }
-   catch (std::bad_alloc&)
-   {
-      if (!bUseThreadLocalPool)
+      // Sparse Sp score matrix
+      pScoring->iSpScoreData = iArraySize / SPARSE_MATRIX_SIZE + 1;
+
+      try
       {
-         delete[] pdTmpFastXcorrData;
-         delete[] pdTmpCorrelationData;
-         delete[] pfFastXcorrData;
-         delete[] pfFastXcorrDataNL;
-         delete[] pfSpScoreData;
+         pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
       }
-      delete pScoring;
-      return nullptr;
-   }
-
-   for (i = 1; i < iArraySize; ++i)
-   {
-      if (pfFastXcorrData[i] > FLOAT_ZERO || pfFastXcorrData[i] < -FLOAT_ZERO)
+      catch (std::bad_alloc&)
       {
-         x = i / SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseFastXcorrData[x] == NULL)
+         if (!bUseThreadLocalPool)
          {
-            pScoring->ppfSparseFastXcorrData[x] = bUseThreadLocalPool
-               ? g_rtsScratch.AllocSparseChild()
-               : new float[SPARSE_MATRIX_SIZE]();
+            delete[] pdTmpFastXcorrData;
+            delete[] pdTmpCorrelationData;
+            delete[] pfFastXcorrData;
+            delete[] pfFastXcorrDataNL;
+            delete[] pfSpScoreData;
          }
-         y = i - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
+         delete pScoring;
+         return nullptr;
       }
-   }
 
-   // Sparse Sp score matrix
-   pScoring->iSpScoreData = iArraySize / SPARSE_MATRIX_SIZE + 1;
-
-   try
-   {
-      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
-   }
-   catch (std::bad_alloc&)
-   {
-      if (!bUseThreadLocalPool)
+      for (i = 0; i < iArraySize; ++i)
       {
-         delete[] pdTmpFastXcorrData;
-         delete[] pdTmpCorrelationData;
-         delete[] pfFastXcorrData;
-         delete[] pfFastXcorrDataNL;
-         delete[] pfSpScoreData;
+         pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
       }
-      delete pScoring;
-      return nullptr;
-   }
 
-   for (i = 0; i < iArraySize; ++i)
-   {
-      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
-   }
-
-   for (i = 0; i < iArraySize; ++i)
-   {
-      if (pfSpScoreData[i] > FLOAT_ZERO)
+      for (i = 0; i < iArraySize; ++i)
       {
-         x = i / SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseSpScoreData[x] == NULL)
+         if (pfSpScoreData[i] > FLOAT_ZERO)
          {
-            pScoring->ppfSparseSpScoreData[x] = bUseThreadLocalPool
-               ? g_rtsScratch.AllocSparseChild()
-               : new float[SPARSE_MATRIX_SIZE]();
+            x = i / SPARSE_MATRIX_SIZE;
+            if (pScoring->ppfSparseSpScoreData[x] == NULL)
+            {
+               pScoring->ppfSparseSpScoreData[x] = bUseThreadLocalPool
+                  ? g_rtsScratch.AllocSparseChild()
+                  : new float[SPARSE_MATRIX_SIZE]();
+            }
+            y = i - (x * SPARSE_MATRIX_SIZE);
+            pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
          }
-         y = i - (x * SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
       }
    }
 
