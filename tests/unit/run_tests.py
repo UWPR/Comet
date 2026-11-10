@@ -8515,7 +8515,7 @@ def test_t86_preprocess_verify(comet_exe):
                 for form, fixture, args in (("plain", "t67_chimeric_range.txt", []),
                                             ("chimeric list", "t67_chimeric_list.txt", ["2", "2", "4", "0", "0.01", "5"])):
                     outs = {}
-                    for mode in ("", "verify", "verify-selftest"):
+                    for mode in ("", "dense", "verify", "verify-selftest"):
                         out = tmp / f"t86_{label}_{form}_{mode or 'unset'}.out".replace(" ", "_")
                         envx = {"RTS_REPRO_PARAMS": extra} if extra else {}
                         run_env = env_with(mode)
@@ -8533,8 +8533,8 @@ def test_t86_preprocess_verify(comet_exe):
                             continue
                         outs[mode] = sorted(out.read_text().splitlines())   # 2 threads: line order varies
                         summary = _t86_verify_summary(log)
-                        if mode == "":
-                            check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed with the variable unset", failures)
+                        if mode in ("", "dense"):
+                            check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed", failures)
                         elif mode == "verify":
                             check(summary is not None and summary[0] > 0 and summary[1] == 0,
                                   f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
@@ -8543,6 +8543,9 @@ def test_t86_preprocess_verify(comet_exe):
                                   f"{tag}: the self-test flags every comparison ({summary})", failures)
                     if "" in outs and "verify" in outs:
                         check(outs["verify"] == outs[""], f"rts {label}, {form}: verify mode leaves the results unchanged",
+                              failures)
+                    if "" in outs and "dense" in outs:
+                        check(outs["dense"] == outs[""], f"rts {label}, {form}: the default (auto) gives the dense build's results",
                               failures)
 
             # --- RTS sparse build edge cases (phase 1: verify = sparse primary vs dense shadow). Synthetic
@@ -8597,7 +8600,7 @@ def test_t86_preprocess_verify(comet_exe):
                 pf = tmp / "t86_batch.params"
                 pf.write_text(pr)
                 txts = {}
-                for mode in ("", "verify", "verify-selftest"):
+                for mode in ("", "dense", "verify", "verify-selftest"):
                     name = tmp / f"t86_{label}_{mode or 'unset'}"
                     res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
                                          timeout=300, env=env_with(mode))
@@ -8610,8 +8613,8 @@ def test_t86_preprocess_verify(comet_exe):
                         continue
                     txts[mode] = [l for l in txt.read_text().splitlines()[1:]]   # line 0 holds the run's date
                     summary = _t86_verify_summary(log)
-                    if mode == "":
-                        check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed with the variable unset", failures)
+                    if mode in ("", "dense"):
+                        check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed", failures)
                     elif mode == "verify":
                         check(summary is not None and summary[0] > 0 and summary[1] == 0,
                               f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
@@ -8620,6 +8623,8 @@ def test_t86_preprocess_verify(comet_exe):
                               f"{tag}: the self-test flags every comparison ({summary})", failures)
                 if "" in txts and "verify" in txts:
                     check(txts["verify"] == txts[""], f"batch {label}: verify mode leaves the results unchanged", failures)
+                if "" in txts and "dense" in txts:
+                    check(txts["dense"] == txts[""], f"batch {label}: the default (auto) gives the dense build's results", failures)
         finally:
             idx.unlink(missing_ok=True)
     return failures

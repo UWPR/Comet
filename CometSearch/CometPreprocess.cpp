@@ -137,8 +137,8 @@ static inline int ComputeClampedArraySize(double dExpPepMass)
 // Preprocessing build path and its verifier (docs/20261109_sparse_preprocessing.md
 // section 5). COMET_PREPROCESS, read once per process -- a testing switch, not a
 // parameter:
-//   unset / "auto"   the default choice (until phase 3: always the dense build; the switch point is
-//                    set from measurements in phase 3)
+//   unset / "auto"   the default: sparse where an O(1) bound says it is cheaper (UseSparseBuild()),
+//                    dense otherwise (nearly always dense at low resolution)
 //   "dense"          force the dense build
 //   "sparse"         force the sparse build (RTS and batch)
 //   "verify"         after every successful preprocess, build the same Query a second time
@@ -1597,13 +1597,32 @@ struct SparseMatrixAllocator
    }
 };
 
-// Whether this spectrum takes the sparse build. Until phase 3: only when COMET_PREPROCESS forces
-// it (sparse) or verifies it (verify, verify-selftest: the primary is sparse, the shadow dense);
-// the default stays dense until phase 3 has measured the switch point (section 4.6).
-static bool UseSparseBuild(int /*iNumPeaks*/, int /*iArraySize*/)
+// Whether this spectrum takes the sparse build (docs/20261109_sparse_preprocessing.md section
+// 4.6). COMET_PREPROCESS=sparse forces it, =verify / =verify-selftest too (the primary is sparse,
+// the shadow dense), =dense never. By default (auto) an O(1) bound on the bins the sparse build
+// can touch -- every input peak's band, 2 * offset + 1 bins (+2 with flanking peaks), three
+// times over with NL ions -- is compared with the binned array: sparse only when the bound is
+// below the array size. Measured (phase 3, section 9): without NL ions the sparse build wins at
+// every peak count tried, up to bands covering 9x the array; with NL ions it breaks even near
+// 2x. At low resolution (1.0005 Da bins, ~1,300 bins at 1,300 Da) the bound keeps nearly every
+// spectrum dense; it sends sparse only large precursors with very few peaks and no NL ions (at
+// 2,600 Da, 17 peaks or fewer), where the sparse build measured faster (6-8 vs 10 us).
+static bool UseSparseBuild(int iNumPeaks, int iArraySize)
 {
    const PreprocessMode mode = GetPreprocessMode();
-   return mode == PreprocessMode::Sparse || mode == PreprocessMode::Verify || mode == PreprocessMode::VerifySelfTest;
+   if (mode == PreprocessMode::Sparse || mode == PreprocessMode::Verify || mode == PreprocessMode::VerifySelfTest)
+      return true;
+   if (mode == PreprocessMode::Dense)
+      return false;
+
+   const bool bNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+      && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+   const long long llBand = 2LL * g_staticParams.iXcorrProcessingOffset + 1
+      + (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0 ? 2 : 0);
+   const long long llBound = (long long)iNumPeaks * llBand * (bNL ? 3 : 1);
+   return llBound < (long long)iArraySize;
 }
 
 // Builds pScoring's sparse matrices from the peak bins vBins (each set once in pdRaw, the

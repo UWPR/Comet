@@ -1,6 +1,6 @@
 # Sparse spectrum preprocessing (design, 2026-11-09)
 
-Status: phases 0-2 done (section 9); phase 3 not started. Branch `RTSchimeric`.
+Status: phases 0-3 done (section 9); the sparse build is the default where the section 4.6 bound picks it. Branch `RTSchimeric`.
 
 ## 1. Problem
 
@@ -149,24 +149,32 @@ expression; stored where `> FLOAT_ZERO`. Identical by construction.
 
 ### 4.6 Choosing sparse or dense (the low-resolution guard)
 
-Before any work, an O(1) bound on the support size:
+Before any work, an O(1) bound on the bins the sparse build can touch (`UseSparseBuild()`):
 
 ```
 support_bound = iNumPeaks * (2*off + 2*f + 1) * (NL on ? 3 : 1)
-use sparse   = support_bound < N * kSparseFraction
+use sparse   = support_bound < N
 ```
 
 `iNumPeaks` is the input peak count (an upper bound on `|P|`), so the test needs nothing from
-the peak loop. With `kSparseFraction` around 0.5 (to be set by measurement, section 6):
+the peak loop. The threshold (1 x `N`) was set from the phase 3 sweep (section 9): synthetic
+spectra of 10 to 4,000 random peaks at MH+ 1,300 (z 2, ~65,000 bins) and 2,600 (z 3, ~130,000),
+dense and sparse preprocessing time per call compared:
 
-- `fragment_bin_tol` 1.0005: `N` ~1,300 for a 1,300 Da precursor; 40 peaks already bound to
-  ~6,000 > 650. **Always dense**, at the cost of one multiply and compare.
-- 0.02 Da, median spectrum: 43 x 151 = ~6,500 against ~65,000 x 0.5. **Sparse.**
-- 0.02 Da, very peak-rich spectra (several hundred peaks, or NL on with many peaks): the bound
-  exceeds the threshold and the dense path runs, as today.
+- **Without NL ions** the sparse build was faster at every peak count tried -- 0.02-0.15x the
+  dense time up to 80 peaks, 0.93x at 4,000 peaks, where the bound is ~9x `N`.
+- **With NL ions** it breaks even near a bound of ~2x `N` (300 peaks at 1,300 Da, 600 at
+  2,600 Da) and is up to 1.6x slower beyond. A threshold of 1x `N` keeps margin there (at 150
+  peaks, 1,300 Da, NL on: 0.70x) while covering typical spectra (median 43 peaks) everywhere.
+- **Low resolution** (`fragment_bin_tol` 1.0005, offset 0.4): `N` is ~1,300 at 1,300 Da, so 10
+  peaks already bound to 1,510 and the dense build runs; at 2,600 Da (~2,600 bins) spectra of 17
+  or fewer peaks without NL ions go sparse, and there the sparse build measured faster (6-8 vs
+  10 us). With NL ions everything at low resolution stays dense (where sparse measured slower
+  from ~15 peaks). Preprocessing at low resolution costs 3-40 us per call either way.
+- 0.02 Da, very peak-rich spectra or NL with many peaks: the bound exceeds `N` and the dense
+  build runs, as before.
 
-The threshold is set so that the sparse path is no slower than the dense one at the switch
-point, measured (section 6); being an upper bound, the test errs toward dense.
+Being an upper bound on the touched bins, the test errs toward dense.
 
 ### 4.7 One implementation for RTS and batch
 
@@ -304,3 +312,4 @@ Same 5,000-scan harness as section 1, before and after:
 | 2026-11-09 | 0 | `COMET_PREPROCESS` (`auto` / `dense` / `sparse` / `verify` / `verify-selftest`) and the comparator in `CometPreprocess.cpp` (`GetPreprocessMode()`, `PreprocessedQueriesEqual()`, `VerifyPreprocessShadow()`). Verify rebuilds every preprocessed Query into a heap shadow -- RTS: `PreprocessSingleSpectrumThreadLocal()` re-runs the core on its heap path, which leaves the thread-local pool untouched; batch: `Preprocess()` re-runs itself on a shadow Query without arenas -- and compares the three sparse matrices bit for bit, the block-allocation pattern, the matrix sizes and `iMinXcorrHisto`. `sparse` is accepted but still runs dense (with a one-line notice). Dense vs dense on real data (HeLa, the section 1 index): RTS plain 4,732 / chimeric 20,190 / low resolution 4,732 spectra compared, batch FI_DB full file 40,287 -- zero mismatches everywhere; `verify-selftest` flags every comparison. With the variable unset the plain search time is unchanged (2.60-2.72 s against 2.81 s before, single runs) and the output identical. Test T86. |
 | 2026-11-09 | 1 | `BuildSparseMatricesFromPeaks()` (`CometPreprocess.cpp`) on the RTS thread-local-pool path, taken when `COMET_PREPROCESS` is `sparse`, `verify` or `verify-selftest`; the default (`auto`) stays dense until phase 3 sets the switch point. The peak loop records each raw bin it sets; normalization, the event-replayed running sum (one sum carried across all bands), the flank and NL terms (a rolling register for the flank, as in Telescope's `FastXCorr`) and Sp are computed from the list; the raw buffer is kept clean incrementally (4.9) instead of `memset`; a gap-residue failure falls back to the dense build. Verify, sparse vs dense, on the 5,000 HeLa scans at 8 threads: plain search (4,732 spectra) with flanking peaks on and off, NL ions on with flanks on and off; chimeric (20,190) with and without NL ions; low resolution 1.0005 / 0.4 forced sparse with flanking peaks on and off; `remove_precursor_peak` 1-4 -- zero mismatches and zero gap-residue fallbacks everywhere; chimeric output with `sparse` identical to `dense`. T86 adds five synthetic edge-case spectra under ten settings, all identical. **Mutation test** (each planted in the builder, then T86 run): Telescope's `0.0066666667` constant for `1/150` -- caught (16 failed checks); the k-1 flank term dropped -- caught (15); the NL-shifted bands not evaluated -- caught (4, the NL settings); Telescope's per-band restart of the running sum (dropping the carried residue) -- **not** caught, by T86 or by 4,732 HeLa spectra in verify mode: the residue is ~1e-15 against values ~1 and disappears in the float conversion, so on this data the restart stores the same floats. The carried sum is kept (it costs nothing and keeps identity guaranteed rather than observed). Preliminary single-thread timing, 5,000 scans (phase 3 measures properly): plain search 2.55 s dense -> 1.28 s sparse (-50%); chimeric 24.8 s -> 17.6 s (-29%); outputs identical. |
 | 2026-11-09 | 2 | Batch `Preprocess()` takes the same builder (`COMET_PREPROCESS=sparse`/`verify`; the verify shadow is a dense re-run without arenas). The builder moved ahead of `Preprocess()` and gained `SparseMatrixAllocator` (the RTS pool's child blocks; the fused path's `FusedSparseArena` / `FusedPointerArena`, each optional, setting `bSparseFromPool` / `bSparsePointerArraysFromPool` as the dense code does; otherwise `new[]`). `LoadIons()` records the raw bins it sets (`SetRawBinRecorded()`), and the raw-buffer state (4.9) is now per buffer (`RawBufferState`: the RTS/fused pool and the classic per-thread arrays are different buffers). **Bug found and fixed:** the first batch verify run (FI_DB, full HeLa file) reported 6 mismatches in 40,287 spectra, and a sparse-only run's output differed from dense on many scans. Cause: the RTS/fused scratch pool allocates the raw buffer uninitialized (`new double[...]`, harmless for the dense build, which clears before every use); `PrepareRawForSparse()` cleared only the current spectrum's range on first use, so a later, larger spectrum read leftover heap contents. Phase 1's RTS runs had passed only because fresh pages from the OS are zero. Fix: a buffer seen for the first time on a thread is cleared over its whole length (`iArraySizeGlobal + iXcorrProcessingOffset`). To keep verify from being fooled that way again, `COMET_PREPROCESS=verify` now poisons the scratch buffers with 7.0 when they are allocated; with the fix reverted, T86 then fails 26 checks. After the fix, verify on HeLa: batch FI_DB full file (40,287 spectra) at default settings, NL ions with `theoretical_fragment_ions` 1, and low resolution; PI_DB scans 1-8,000 (2,672 spectra); FASTA scans 1-3,000 (182, the classic non-fused path); RTS plain, NL, chimeric (20,190), low resolution, `remove_precursor_peak` 2 -- zero mismatches and zero fallbacks everywhere; batch FI output with `sparse` identical to `dense`. Preliminary batch FI throughput at 8 threads: 8,995 -> 13,200 spectra/s (one run each). |
+| 2026-11-09 | 3 | **Switch point.** Synthetic sweep, single thread, `RTS_TIMING` preprocessing time per call (median of 150 spectra per point), 10-4,000 random peaks at MH+ 1,300 z 2 and 2,600 z 3: without NL ions the sparse build is faster at every point (e.g. 1,300 Da: 236 vs 5 us at 10 peaks, 265 vs 67 at 150, 553 vs 515 at 4,000); with NL ions it breaks even near a support bound of ~2x `N` (1,300 Da: 380 vs 362 us at 300 peaks; 2,600 Da: 796 vs 771 at 600). Low resolution (1.0005 / 0.4, 300 spectra per point): no NL, sparse faster or equal up to ~40-80 peaks (1,300 Da: 5 vs 3 us at 10 peaks, 13 vs 13 at 150); NL, slower from ~15 peaks. `UseSparseBuild()` now implements 4.6 with a threshold of 1x `N` and is the default (`auto`). On the 5,000 HeLa scans it routes, at 0.02 Da, every spectrum sparse without NL ions and 4,330 with; at 1.0005 Da, 433 (no NL) and 55 (NL), all large precursors with very few peaks. **End to end** (5,000 HeLa scans for RTS, single thread; the full file for batch; output identical to `dense` in every row): RTS plain 2.46 / 2.57 s -> 1.27 / 1.30 s (two runs); chimeric 24.3 -> 17.4 s; NL ions 2.90 -> 1.73 s; batch FI_DB 1 thread 1,246 -> 2,147 spectra/s, 8 threads 8,656 -> 14,337; batch PI_DB (scans 1-8,000) 8 threads 1,695 -> 1,815; batch FI_DB low resolution 936 -> 935; RTS low resolution 4.08 -> 4.20 s and with NL 4.22 -> 4.43 s in the first pass, then alternating repeats 4.24 / 4.16 / 4.68 (auto) vs 4.15 / 4.16 / 4.33 (dense), and with NL 4.43 / 4.35 / 4.52 vs 4.49 / 4.41 / 4.44 (means 4.44 vs 4.45 s): run-to-run scatter of +/-6%, and preprocessing is ~2% of a low-resolution search (18 of ~880 us per call), so no measurable change at low resolution, as intended. Not done: the dense-sweep trim from Telescope (4.10) -- the dense build now runs mostly at low resolution, where it costs 3-20 us per call. |

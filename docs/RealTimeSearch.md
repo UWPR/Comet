@@ -361,7 +361,11 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |
   +- CometPreprocess::PreprocessSingleSpectrumThreadLocal(charge, mz, masses, intensities, nPeaks, pdTmpSpectrum)
   |     -> allocates caller-owned Query* on the heap
-  |     -> fills it with binned spectrum data
+  |     -> fills it with binned spectrum data: the xcorr / Sp sparse matrices, built from the
+  |        peak bins alone when an O(1) bound says that is cheaper (high resolution), else by
+  |        the dense per-bin sweep (low resolution); identical output either way
+  |        (docs/20261109_sparse_preprocessing.md; COMET_PREPROCESS=dense|sparse|verify for testing)
+  |     -> writes the raw sqrt intensities into pdTmpSpectrum, read back for matched fragments
   |     -> does NOT touch SearchSession::queries
   |     -> returns nullptr on failure (caller checks and returns false)
   |
