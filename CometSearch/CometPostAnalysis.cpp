@@ -104,7 +104,7 @@ static bool DecoyTableMatchesParams()
 // loop order -- enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
 // Storing charge allows GenerateXcorrDecoys to honour the per-query usiMaxFragCharge limit.
 static std::vector<int>      s_invIdx_start;   // size: s_iGatherPadBin + 2
-static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
+static std::vector<uint32_t> s_invIdx_data;    // ~200K entries per fragment charge for b/y (~610K at 3)
 
 // The same entries grouped by decoy for the gather path (GenerateXcorrDecoys()): each
 // decoy's ions sorted by (bin, flat index) -- exactly the order in which the scatter path adds
@@ -548,8 +548,8 @@ static_assert(s_iGatherLanes == 8, "DecoyScoresGather() is written for eight lan
 // in order.
 static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge, float* pfScores)
 {
-   // Dense copy of the spectrum's fast-xcorr values over [0, iArraySizeGlobal]: zero except
-   // the query's nonzero rows. Allocated (zeroed) once per thread; the rows the previous query
+   // Dense copy of the spectrum's fast-xcorr values below min(iArraySize, s_iGatherPadBin): zero
+   // except the query's nonzero rows. Allocated (zeroed) once per thread; the rows the previous query
    // copied are cleared before this one's are copied in, so the cost follows the spectrum's
    // nonzero rows rather than the array length.
    static thread_local std::vector<float> tl_vDense;
@@ -1892,16 +1892,6 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
 }
 
 
-// Make synthetic decoy spectra to fill out correlation histogram.
-//
-// Inverted-index approach: instead of iterating over 3000 decoys and for each
-// decoy ion looking up a bin in the spectrum (~480K spectrum lookups), we scan
-// the spectrum once and for each non-zero bin scatter the value to all decoys
-// that have an ion there.  For a sparse spectrum with N non-zero bins this costs
-// N * (avg decoys per bin) operations.  With ~480K total entries spread over
-// ~iArraySize bins, the average is ~160 entries/bin; a typical spectrum with
-// 100-300 non-zero bins therefore requires only 16K-48K operations instead of
-// 480K -- a 10-30x reduction.
 // Builds the decoy tables (once per process) and checks they match the current params. RTS
 // calls this at session init so the build (tens of ms with many ion series or a high
 // fragment charge limit) is not charged to the first spectrum's max_index_runtime budget;
@@ -1932,7 +1922,23 @@ bool CometPostAnalysis::PrepareDecoyTables()
    return true;
 }
 
-
+// Make synthetic decoy spectra to fill out the correlation histogram. A query that scored fewer
+// than EXPECT_DECOY_SIZE candidates scores the remaining decoys (synthetic peptides, CometDecoys.h)
+// against its spectrum and adds their xcorr scores to the histogram, so the E-value fit has enough
+// points. A decoy's score is the sum of the spectrum's fast-xcorr values at the bins of its ions,
+// computed by one of two paths that give bit-identical scores (docs/20261109_decoy_gather.md):
+//
+//  - scatter: scan the spectrum's nonzero bins and add each value to every decoy with an ion in
+//    that bin, through an inverted index (bin -> decoys). The cost follows the spectrum's nonzero
+//    bins: on HeLa data at 0.02 Da (14% of ~65,000 bins nonzero) it visits ~78,000 of ~399,000
+//    index entries, but at 1.0005 Da (73% of ~1,400 bins) ~345,000 of ~407,000 -- nearly every
+//    decoy ion.
+//  - gather: for each decoy, sum its own ions' values from a dense copy of the spectrum, eight
+//    decoys at a time from lane-interleaved tables. The cost follows the table, not the spectrum,
+//    and the rows past the precursor are skipped.
+//
+// "auto" (the default) picks per query from two work estimates; COMET_DECOYGEN forces a path or
+// verifies that both agree.
 bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
 {
    if (!PrepareDecoyTables())
