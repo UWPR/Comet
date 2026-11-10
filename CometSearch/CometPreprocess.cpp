@@ -133,6 +133,170 @@ static inline int ComputeClampedArraySize(double dExpPepMass)
 
 
 // ---------------------------------------------------------------------------
+// Preprocessing build path and its verifier (docs/20261109_sparse_preprocessing.md
+// section 5). COMET_PREPROCESS, read once per process -- a testing switch, not a
+// parameter:
+//   unset / "auto"   the default choice (phase 0: always the dense build)
+//   "dense"          force the dense build
+//   "sparse"         force the sparse build (phase 0: not implemented yet; dense is used)
+//   "verify"         after every successful preprocess, build the same Query a second time
+//                    (a heap-allocated shadow) and compare the three sparse matrices, their
+//                    sizes and iMinXcorrHisto bit for bit; mismatches go to stderr and a
+//                    summary line is printed at exit
+//   "verify-selftest" as verify, but perturb one stored shadow value first, so every
+//                    comparison must report a mismatch (tests the comparator itself)
+// Phase 0 compares the dense build against itself (RTS: thread-local pool vs heap; batch:
+// arena vs heap), which must always match. Later phases compare dense against sparse.
+// ---------------------------------------------------------------------------
+enum class PreprocessMode { Auto, Dense, Sparse, Verify, VerifySelfTest };
+
+static PreprocessMode GetPreprocessMode()
+{
+   static const PreprocessMode mode = []()
+   {
+      const char* psz = getenv("COMET_PREPROCESS");
+      if (psz == nullptr || *psz == '\0' || strcmp(psz, "auto") == 0)
+         return PreprocessMode::Auto;
+      if (strcmp(psz, "dense") == 0)
+         return PreprocessMode::Dense;
+      if (strcmp(psz, "sparse") == 0)
+      {
+         fprintf(stderr, " COMET_PREPROCESS=sparse: the sparse build is not implemented yet; the dense build is used\n");
+         return PreprocessMode::Sparse;
+      }
+      if (strcmp(psz, "verify") == 0)
+         return PreprocessMode::Verify;
+      if (strcmp(psz, "verify-selftest") == 0)
+         return PreprocessMode::VerifySelfTest;
+      fprintf(stderr, " COMET_PREPROCESS=%s not recognized (auto, dense, sparse, verify, verify-selftest); using auto\n", psz);
+      return PreprocessMode::Auto;
+   }();
+   return mode;
+}
+
+static bool PreprocessVerifyOn()
+{
+   const PreprocessMode mode = GetPreprocessMode();
+   return mode == PreprocessMode::Verify || mode == PreprocessMode::VerifySelfTest;
+}
+
+// Counts for the verify summary; the destructor prints it once at process exit.
+struct PreprocessVerifyStats
+{
+   std::atomic<unsigned long long> ullCompared{0};
+   std::atomic<unsigned long long> ullMismatches{0};
+
+   ~PreprocessVerifyStats()
+   {
+      if (PreprocessVerifyOn())
+         fprintf(stderr, "COMET_PREPROCESS verify: %llu spectra compared, %llu mismatches\n",
+            ullCompared.load(), ullMismatches.load());
+   }
+};
+static PreprocessVerifyStats g_preprocessVerifyStats;
+
+// Set while the shadow build runs, so the shadow call does not verify itself.
+static thread_local bool tl_bInPreprocessShadow = false;
+
+// Bitwise comparison of one sparse matrix (an array of iBlocks pointers to
+// SPARSE_MATRIX_SIZE-float blocks, NULL = all zero). The block-allocation pattern must
+// match too: the dense build allocates a block exactly when it stores a value in it.
+static bool SparseMatrixEqual(float** ppA, float** ppB, int iBlocks, const char* szName, std::string& sDiff)
+{
+   if ((ppA == NULL) != (ppB == NULL))
+   {
+      sDiff = std::string(szName) + ": present in one build only";
+      return false;
+   }
+   if (ppA == NULL)
+      return true;
+
+   for (int x = 0; x < iBlocks; ++x)
+   {
+      if ((ppA[x] == NULL) != (ppB[x] == NULL))
+      {
+         sDiff = std::string(szName) + ": block " + std::to_string(x) + " allocated in one build only";
+         return false;
+      }
+      if (ppA[x] != NULL && memcmp(ppA[x], ppB[x], SPARSE_MATRIX_SIZE * sizeof(float)) != 0)
+      {
+         for (int y = 0; y < SPARSE_MATRIX_SIZE; ++y)
+         {
+            if (memcmp(&ppA[x][y], &ppB[x][y], sizeof(float)) != 0)
+            {
+               char szBuf[192];
+               snprintf(szBuf, sizeof(szBuf), "%s: bin %d differs (%.9g vs %.9g)",
+                  szName, x * SPARSE_MATRIX_SIZE + y, ppA[x][y], ppB[x][y]);
+               sDiff = szBuf;
+               return false;
+            }
+         }
+      }
+   }
+   return true;
+}
+
+static bool PreprocessedQueriesEqual(const Query* pA, const Query* pB, std::string& sDiff)
+{
+   if (pA->iFastXcorrDataSize != pB->iFastXcorrDataSize || pA->iSpScoreData != pB->iSpScoreData)
+   {
+      sDiff = "matrix sizes differ (" + std::to_string(pA->iFastXcorrDataSize) + "/" + std::to_string(pA->iSpScoreData)
+         + " vs " + std::to_string(pB->iFastXcorrDataSize) + "/" + std::to_string(pB->iSpScoreData) + ")";
+      return false;
+   }
+   if (pA->iMinXcorrHisto != pB->iMinXcorrHisto)
+   {
+      sDiff = "iMinXcorrHisto differs (" + std::to_string(pA->iMinXcorrHisto) + " vs " + std::to_string(pB->iMinXcorrHisto) + ")";
+      return false;
+   }
+   return SparseMatrixEqual(pA->ppfSparseFastXcorrData, pB->ppfSparseFastXcorrData, pA->iFastXcorrDataSize, "fast xcorr", sDiff)
+      && SparseMatrixEqual(pA->ppfSparseFastXcorrDataNL, pB->ppfSparseFastXcorrDataNL, pA->iFastXcorrDataSize, "fast xcorr NL", sDiff)
+      && SparseMatrixEqual(pA->ppfSparseSpScoreData, pB->ppfSparseSpScoreData, pA->iSpScoreData, "Sp", sDiff);
+}
+
+// Compares a primary build with its shadow and records the result; deletes the shadow.
+// A shadow that failed to build where the primary succeeded is a mismatch.
+static void VerifyPreprocessShadow(const Query* pPrimary, Query* pShadow, const char* szPath)
+{
+   std::string sDiff;
+   bool bEqual;
+
+   if (pShadow == nullptr)
+   {
+      sDiff = "shadow build failed";
+      bEqual = false;
+   }
+   else
+   {
+      if (GetPreprocessMode() == PreprocessMode::VerifySelfTest)
+      {
+         // perturb the first stored fast-xcorr value, so the comparison must fail
+         for (int x = 0; pShadow->ppfSparseFastXcorrData != NULL && x < pShadow->iFastXcorrDataSize; ++x)
+         {
+            if (pShadow->ppfSparseFastXcorrData[x] != NULL)
+            {
+               pShadow->ppfSparseFastXcorrData[x][0] += 1.0f;
+               break;
+            }
+         }
+      }
+      bEqual = PreprocessedQueriesEqual(pPrimary, pShadow, sDiff);
+   }
+
+   g_preprocessVerifyStats.ullCompared++;
+   if (!bEqual)
+   {
+      const unsigned long long ullNth = ++g_preprocessVerifyStats.ullMismatches;
+      if (ullNth <= 10)
+         fprintf(stderr, "COMET_PREPROCESS verify mismatch (%s, z %d, MH+ %.4f): %s\n", szPath,
+            (int)pPrimary->_spectrumInfoInternal.usiChargeState, pPrimary->_pepMassInfo.dExpPepMass,   // dExpPepMass is MH+
+            sDiff.c_str());
+   }
+   delete pShadow;
+}
+
+
+// ---------------------------------------------------------------------------
 // Per-thread scratch pool for PreprocessSingleSpectrumThreadLocal.
 //
 // Eliminates per-spectrum heap traffic by pre-allocating:
@@ -1712,6 +1876,30 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       }
    }
 
+   // COMET_PREPROCESS=verify: rebuild into a heap-allocated shadow from the same spectrum
+   // and compare (section 5 of docs/20261109_sparse_preprocessing.md). The scratch buffers
+   // are reused: this build is finished with them, and Preprocess() clears them first.
+   if (PreprocessVerifyOn() && !tl_bInPreprocessShadow)
+   {
+      Query* pShadow = new Query();
+      pShadow->_pepMassInfo.dExpPepMass = pScoring->_pepMassInfo.dExpPepMass;
+      pShadow->_spectrumInfoInternal.iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
+      pShadow->_spectrumInfoInternal.usiChargeState = pScoring->_spectrumInfoInternal.usiChargeState;
+      pShadow->_spectrumInfoInternal.usiMaxFragCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
+
+      tl_bInPreprocessShadow = true;
+      const bool bShadowOk = Preprocess(pShadow, mstSpectrum, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData,
+         pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData, nullptr, nullptr);
+      tl_bInPreprocessShadow = false;
+
+      if (!bShadowOk)
+      {
+         delete pShadow;
+         pShadow = nullptr;
+      }
+      VerifyPreprocessShadow(pScoring, pShadow, "batch");
+   }
+
    return true;
 }
 
@@ -2440,8 +2628,24 @@ Query* CometPreprocess::PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge
    // pdTmpSpectrum is ignored: the thread-local g_rtsScratch.pdTmpRawData is used
    // instead, and the caller should obtain that pointer via GetRtsRawDataBuffer()
    // before calling this function.
-   return PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
-                                       nullptr, /*bUseThreadLocalPool=*/true, dToleranceMZ);
+   Query* pQuery = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
+                                                nullptr, /*bUseThreadLocalPool=*/true, dToleranceMZ);
+
+   // COMET_PREPROCESS=verify: rebuild on the heap path (its own scratch buffers, heap sparse
+   // blocks), which leaves the thread-local pool and so pQuery untouched, and compare.
+   if (pQuery != nullptr && PreprocessVerifyOn() && !tl_bInPreprocessShadow)
+   {
+      static thread_local std::vector<double> tl_vShadowRaw;
+      tl_vShadowRaw.assign((size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset + 1, 0.0);
+
+      tl_bInPreprocessShadow = true;
+      Query* pShadow = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
+                                                    tl_vShadowRaw.data(), /*bUseThreadLocalPool=*/false, dToleranceMZ);
+      tl_bInPreprocessShadow = false;
+      VerifyPreprocessShadow(pQuery, pShadow, "rts");
+   }
+
+   return pQuery;
 }
 
 

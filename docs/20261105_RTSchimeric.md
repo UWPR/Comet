@@ -487,6 +487,7 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome: the wrapper's removal model confirmed (isotope removal is what matters); `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (+34% confident later IDs, decoy rate halved); the +/- 1 m/z window, not the charge range, is what finds chimeras (2,914 vs 445 confident later IDs); `isotope_error = 2` is worth +42% on the plain RTS search and is recommended for `SearchMS1MS2.cs` independently; cost 7.0 ms/spectrum/thread vs 0.63 for the plain search. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
 | 2026-11-06 | 4b | Review of the re-search floor (section 10.7): `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's real-candidate count (`RTS_CHIMERIC_CAND`); the E-value fit and raw histogram dump became `COMET_EVALUE_TRACE` in `CalculateEValue()` for every search path (the histogram-fill project's Phase 0); `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
 | 2026-11-06 | 6 | `chimeric_fragindex_min_ions_score` and `Query::iFragIndexMinIonsScoreOverride` removed: `fragindex_histogram_fill` (default 100, the histogram-fill project's Phase 3) makes FI E-values honest on every query and the chimeric floor a byte-for-byte no-op. Harness `dMaxExpect` defaults 0.05 -> 0.1; `rts_repro` and `SearchChimeric.cs` lose their min-ions arguments. At the new defaults (fill 100, no floor, gate 0.1) the full-file chimeric run reports 22,930 confident PSMs vs 22,453 for the best Phase 4 configuration. |
+| 2026-11-09 | cost | Per-stage cost breakdown on 5,000 HeLa scans (section 10.8): index search and preprocessing are nearly all of the time; preprocessing is dense-array work over mostly-zero bins. Of the review's eight speed items, only the batch fill skip was done; the losing-candidate tail, per-candidate re-sort and map rebuild, and a multi-window `isotope_error` fast path were measured and dropped. Sparse preprocessing designed separately (`docs/20261109_sparse_preprocessing.md`). |
 | 2026-11-09 | review | Lower-severity review items. The candidate mass gate is now the one `DoSingleSpectrumSearchMultiResults()` uses, only above `dPeptideMassHigh` (decision 8): a precursor just below the range whose window or isotope offset reaches an in-range peptide used to be skipped. Outside the chimeric loop: `DoSingleSpectrumSearchMultiResults()` returns false for `topN < 1`, `COMET_EVALUE_TRACE`'s `tope` follows the 999 reporting rules, `SearchChimeric.cs` reports bad input with exit code 1 instead of an unhandled exception, and the top-level Makefile relinks `comet.exe` after an MSToolkit-only change. Tests T83, T84. Cleanup: `topN` removed from both chimeric overloads (native and wrapper; it was accepted and ignored), the wrapper overloads share one search-and-convert helper, and the synthetic-spectrum helpers moved into `tests/unit/fixture_peptides.py`. |
 | 2026-11-08 | review | Calls that stop early keep their rows, flagged (review item 15). Both `DoSingleSpectrumSearchChimeric()` overloads, native and wrapper, gain a `bIncomplete` output. With the budget out, the call returns `true` with `bIncomplete` and the rows found so far. When cancelled or when a search fails (core -2), it returns `false` with `bIncomplete` and keeps the completed iterations' rows. Invalid arguments give `false` with no rows. A separate output, not a per-row flag, so a call that stops before keeping any PSM is still marked. The wrapper also keeps the rows on a caught native exception when the four vectors are aligned. `SearchChimeric.cs` and `rts_repro` write the rows and then an `INCOMPLETE budget|stopped` line; `RealtimeSearch.exe chimeric --max-runtime 1` showed it end to end. T82 is a cancel race through `rts_repro`'s `RTS_REPRO_CANCEL_RACE`: 600 calls, about 440 cancelled, over 100 of those returning rows. Every cancelled call kept a prefix of its uncancelled result, every completed call matched it exactly, and no call returned `false` without the flag. T72 checks the budget marker. |
 | 2026-11-08 | review | Removal knobs (review item 14). `chimeric_remove_flank_bins` and `chimeric_remove_isotopes` were loop bounds with no range check. A flank of 1000 stripped nearly every peak, so T67's second peptides were lost; 100,000 threw `std::bad_alloc`. An isotope count of `INT_MAX` looped about 2 billion times per observed peak: hours on Windows, `bad_alloc` or a test timeout on Linux, and an int overflow in the isotope m/z. `chimeric_remove_isotopes` is now clamped at init to 0..3, with a warning when a value changes. `chimeric_remove_flank_bins` is removed: the flank always follows `theoretical_fragment_ions` (+/- 1 bin iff it is 0, the bins the scorer credits; 10.2 found flanks alone change little). `rts_repro` keeps, and ignores, its `flankBins` argument, and `RealtimeSearch.exe chimeric` drops `--flank`. Defaults are unchanged: -1 already followed `theoretical_fragment_ions`. This removes the last known way for native code to throw through the wrapper (item 11). T81. |
@@ -711,6 +712,83 @@ candidate; 5,219 queries for the counts, 102 with full histograms):
   optimistic in every xcorr decile, entirely through the fitted slope -- so the null is
   wrong for every FI query, not just stripped ones. Its own project, with the Phase 0
   baseline tables: `docs/20261106_FI_evalue_histogram_fill.md`.
+
+### 10.8 Where the time goes (2026-11-09)
+
+The branch code review listed eight speed items for the chimeric and FI paths. Before acting on
+any of them, a per-stage breakdown on real data (this section) decided which were worth it.
+
+**Setup.** The first 5,000 MS2 scans of `20170103_HelaQC_01.mzXML` (`mzxml_to_fixture.py
+--max 5000`) against the section 10.1 human canonical target-decoy FI index with
+`data/comet_phospho.params` (rebuilt with the branch `comet.exe -i`); `tests/rts_repro/rts_repro`,
+one thread, `max_index_runtime` 0, `isotope_error` 2 unless stated. Chimeric runs: charge-range
+form, charges 2-4, +/- 1.0 m/z, `dMaxExpect` 0.1, up to 5 peptides. The per-stage times come from
+the existing `RTS_TIMING` build (`TIMING` and `PREPROCESS` lines from
+`SearchSingleSpectrumCore()` / `PreprocessSingleSpectrumCore()`), built from an export of the
+branch into a scratch directory; search times exclude the 65 s single-thread index load.
+Single run per configuration; an instrumented and an uninstrumented build agreed within ~2%, so
+differences under ~5% are noise.
+
+| stage | plain search | chimeric |
+|---|---|---|
+| search time, 5,000 scans | 2.81 s (0.56 ms/spectrum) | 25.7 s (5.1 ms/spectrum) |
+| index search (`RunSearch()`, includes scoring) | 33% (195 us/call) | 64% (850 us/call) |
+| preprocessing | 52% (308 us/call) | 28% (368 us/call) |
+| E-value | 13% | 6.5% |
+| AScorePro (when enabled) | -- | 2.6% |
+| result extraction (strings, proteins, matched ions, removal bins) | 0.5% | 0.9% |
+| chimeric loop outside the core (peak removal, bookkeeping) | -- | < 1% |
+
+Preprocessing, by sub-stage (the `PREPROCESS` columns), is the same in both modes:
+
+| sub-stage | share of preprocessing |
+|---|---|
+| fast-xcorr pass (running sum over the whole binned array) | 40% |
+| sparse-matrix build (scans every bin for nonzeros) | 23% |
+| `MakeCorrData()` windowed normalization | 15-20% |
+| scratch-buffer clearing (`memset`) | 15-18% |
+| everything driven by the peak count (peak loop, top-N selection) | < 1% |
+
+At 0.02 Da bins the binned array is (precursor mass + cushion) / 0.02 bins -- about 65,000 at
+this file's median precursor (1,281 Da) -- while the median spectrum has 43 peaks (mean 60), and
+each peak touches at most the +/- 75 bins of the xcorr offset: ~10% of the array. Preprocessing
+cost is dense-array work over zeros, not peak work. That is the one large lever these
+measurements found; its design is `docs/20261109_sparse_preprocessing.md`.
+
+**The review's items, measured:**
+
+| item | measured | verdict |
+|---|---|---|
+| chimeric: AScorePro and result extraction run for every candidate, only the winner is kept | 3.5% of a chimeric call; ~90% of the calls are losers, so at most ~3% to gain | dropped: not worth keeping per-candidate state alive until the winner is known |
+| chimeric: the candidate's peak list is re-sorted per candidate | ~1 us/call (the peak-count-driven sub-stage above) | dropped |
+| chimeric: the observed-peak map for the removal bins is rebuilt per candidate | inside result extraction, ~12 us/call | dropped |
+| the FI histogram fill (`fragindex_histogram_fill`) costs time | +17% on the plain search (2.48 vs 2.12 s), +5% chimeric (25.7 vs 24.3 s); RTS always needs the E-values | kept for RTS; batch runs with no E-value output now skip it (2026-11-09, `docs/20261106_FI_evalue_histogram_fill.md` 3.2) |
+| `isotope_error = 2` leaves the FI precursor-window fast path | plain: index search 127 -> 178 us/call; chimeric 615 -> 753 us/call | dropped (below) |
+
+**`isotope_error = 2` and the FI precursor-window walk.** With `isotope_error = 0` and no
+`mass_offsets` the walk decides each posting entry with two integer compares
+(`bSimpleWindow`, `CometSearch.cpp`); otherwise it walks one key bracket from the lowest isotope
+window to the highest and calls `CheckMassMatch()` per entry. Counters added to the scratch
+build (entries walked / accepted, `CheckMassMatch()` calls, walk time per query):
+
+| run | walked | accepted | `CheckMassMatch()` | walk | index search |
+|---|---|---|---|---|---|
+| plain, `isotope_error` 0 | 249 | 177 (71%) | 2 | 56.6 us | 127 us |
+| plain, `isotope_error` 2 | 1,555 | 492 (32%) | 2,486 | 85.1 us | 178 us |
+| chimeric, `isotope_error` 0 | 7,989 | 7,889 (99%) | 2 | 302 us | 615 us |
+| chimeric, `isotope_error` 2 | 10,286 | 10,144 (99%) | 10,233 | 389 us | 753 us |
+
+Of the plain search's +51 us index-search cost, 28 us is the walk and the rest is scoring the
+extra candidates the isotope windows admit; within the walk, the accepted entries nearly
+triple (177 -> 492), which is real work. Skipping the gaps between windows perfectly would save
+at most ~15-20 us per query, ~3-5% of a plain search. At the chimeric +/- 1 m/z window the
+isotope windows overlap (99% of walked entries are accepted at either setting), so there is
+nothing to skip. And skipping is not free: the ~1,060 rejected entries per query are spread
+over every probed fragment bin, ~10-20 per bin, which the current walk reads sequentially with
+prefetching; a binary search per window per bin costs about as many random reads as it saves.
+The `CheckMassMatch()` calls themselves are cheap (a few us per query in total). A multi-window
+fast path could be slower than today and was not built. The `isotope_error = 2` cost is
+mostly the extra candidates it exists to find (section 10.4: +42% confident PSMs).
 
 ## 11. Out of scope / later
 

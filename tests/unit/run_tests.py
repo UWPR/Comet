@@ -8450,5 +8450,134 @@ def test_t85_evalue_outputs(comet_exe):
     return failures
 
 
+# ---------------------------------------------------------------------------
+# T86 -- the COMET_PREPROCESS verify harness (docs/20261109_sparse_preprocessing.md section 5,
+# phase 0). COMET_PREPROCESS=verify rebuilds every preprocessed Query into a heap-allocated
+# shadow and compares the three sparse matrices, their sizes and iMinXcorrHisto bit for bit;
+# in phase 0 both builds are the dense code (RTS: thread-local pool vs heap; batch: fused-path
+# arena vs heap), so every comparison must match, and verify mode must not change any result.
+# verify-selftest perturbs one shadow value, so every comparison must report a mismatch -- the
+# check that the comparator can fail at all. Later phases put the sparse build on one side.
+# ---------------------------------------------------------------------------
+
+def _t86_verify_summary(log):
+    """(compared, mismatches) from the COMET_PREPROCESS verify summary line, or None."""
+    m = re.search(r"^COMET_PREPROCESS verify: (\d+) spectra compared, (\d+) mismatches$", log, re.M)
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+@register("t86_preprocess_verify")
+def test_t86_preprocess_verify(comet_exe):
+    """T86: COMET_PREPROCESS=verify compares every preprocessed spectrum against a second, heap-allocated
+    build with zero mismatches and leaves results unchanged (rts_repro at high resolution, low resolution and with
+    neutral-loss ions; batch comet.exe on FASTA and FI_DB); verify-selftest reports a mismatch for every
+    comparison; with the variable unset nothing is printed."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("COMET_PREPROCESS is read from the environment; a Windows --comet does not see it from WSL")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"T67 fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        ms2 = tmp / "t67_chimeric.ms2"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        try:
+            idx = _rts_build_index(comet_exe, fasta, params, "-i")
+        except RuntimeError as e:
+            failures.append(str(e))
+            return failures
+
+        def env_with(mode):
+            env = dict(os.environ)
+            env.pop("COMET_PREPROCESS", None)
+            if mode:
+                env["COMET_PREPROCESS"] = mode
+            return env
+
+        try:
+            # --- RTS: rts_repro, three settings, both chimeric forms and the plain search
+            settings = {
+                "high-res": "",
+                "low-res": "d:fragment_bin_tol=1.0005;d:fragment_bin_offset=0.4;i:theoretical_fragment_ions=1",
+                "NL ions": "i:use_NL_ions=1",
+            }
+            for label, extra in settings.items():
+                for form, fixture, args in (("plain", "t67_chimeric_range.txt", []),
+                                            ("chimeric list", "t67_chimeric_list.txt", ["2", "2", "4", "0", "0.01", "5"])):
+                    outs = {}
+                    for mode in ("", "verify", "verify-selftest"):
+                        out = tmp / f"t86_{label}_{form}_{mode or 'unset'}.out".replace(" ", "_")
+                        envx = {"RTS_REPRO_PARAMS": extra} if extra else {}
+                        run_env = env_with(mode)
+                        run_env.update(envx)
+                        own = [e for e in run_env.get("RTS_REPRO_PARAMS", "").split(";") if e]
+                        base = [f"{t}:{k}={v}" for t, k, v in RTS_TEST_PARAMS
+                                if k not in {e.split(":", 1)[1].split("=", 1)[0] for e in own}]
+                        run_env["RTS_REPRO_PARAMS"] = ";".join(base + own)
+                        res = subprocess.run([str(RTS_REPRO_BIN), str(idx), str(tmp / fixture), "2", str(out), "0", "1"] + args,
+                                             capture_output=True, text=True, timeout=300, env=run_env)
+                        log = res.stdout + res.stderr
+                        tag = f"rts {label}, {form}, {mode or 'unset'}"
+                        if not check(res.returncode == 0 and out.exists(), f"{tag}: rts_repro exits 0 (rc={res.returncode})", failures):
+                            print(log[-1200:])
+                            continue
+                        outs[mode] = sorted(out.read_text().splitlines())   # 2 threads: line order varies
+                        summary = _t86_verify_summary(log)
+                        if mode == "":
+                            check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed with the variable unset", failures)
+                        elif mode == "verify":
+                            check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                                  f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
+                        else:
+                            check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                                  f"{tag}: the self-test flags every comparison ({summary})", failures)
+                    if "" in outs and "verify" in outs:
+                        check(outs["verify"] == outs[""], f"rts {label}, {form}: verify mode leaves the results unchanged",
+                              failures)
+
+            # --- batch: comet.exe on the FASTA and on the FI index (the fused batch path)
+            for label, db in (("FASTA", fasta), ("FI_DB", idx)):
+                pr = params.replace(f"database_name = {fasta}", f"database_name = {db}")
+                pf = tmp / "t86_batch.params"
+                pf.write_text(pr)
+                txts = {}
+                for mode in ("", "verify", "verify-selftest"):
+                    name = tmp / f"t86_{label}_{mode or 'unset'}"
+                    res = subprocess.run([str(comet_exe), f"-P{pf}", f"-N{name}", str(ms2)], capture_output=True, text=True,
+                                         timeout=300, env=env_with(mode))
+                    log = res.stdout + res.stderr
+                    tag = f"batch {label}, {mode or 'unset'}"
+                    txt = Path(str(name) + ".txt")
+                    if not check(res.returncode == 0 and txt.exists(), f"{tag}: comet.exe exits 0 and writes .txt (rc={res.returncode})",
+                                 failures):
+                        print(log[-1200:])
+                        continue
+                    txts[mode] = [l for l in txt.read_text().splitlines()[1:]]   # line 0 holds the run's date
+                    summary = _t86_verify_summary(log)
+                    if mode == "":
+                        check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed with the variable unset", failures)
+                    elif mode == "verify":
+                        check(summary is not None and summary[0] > 0 and summary[1] == 0,
+                              f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
+                    else:
+                        check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
+                              f"{tag}: the self-test flags every comparison ({summary})", failures)
+                if "" in txts and "verify" in txts:
+                    check(txts["verify"] == txts[""], f"batch {label}: verify mode leaves the results unchanged", failures)
+        finally:
+            idx.unlink(missing_ok=True)
+    return failures
+
+
 if __name__ == "__main__":
     main()
