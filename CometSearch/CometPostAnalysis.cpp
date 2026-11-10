@@ -59,6 +59,43 @@ static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
 // this check has to live outside it.
 static double s_dFingerprintInvBW  = 0.0;
 static double s_dFingerprintBinOff = 0.0;
+// Which ion series, in which order (the table's layout follows it), and the fragment mass
+// constants the series masses are built from (these follow mass_type_fragment): a count of
+// series alone would let b+y and c+z, or a mono/average switch, reuse each other's bins.
+static int    s_iFingerprintSeries[NUM_ION_SERIES] = {};
+static double s_dFingerprintMass[4] = {};
+
+static void DecoyFingerprintMass(double* pdMass)
+{
+   pdMass[0] = g_staticParams.massUtility.dCO;
+   pdMass[1] = g_staticParams.massUtility.dNH3;
+   pdMass[2] = g_staticParams.massUtility.dNH2;
+   pdMass[3] = g_staticParams.massUtility.dCOminusH2;
+}
+
+// True if the table was built from the current ion series, fragment masses, bin width and
+// offset, and fragment charge limit.
+static bool DecoyTableMatchesParams()
+{
+   if (s_pdNIonSeries != g_staticParams.ionInformation.iNumIonSeriesUsed
+      || s_pdMaxCharge != std::max(g_staticParams.options.iMaxFragmentCharge, 1)
+      || !isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
+      || !isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset))
+      return false;
+   for (int ii = 0; ii < s_pdNIonSeries; ++ii)
+   {
+      if (s_iFingerprintSeries[ii] != g_staticParams.ionInformation.piSelectedIonSeries[ii])
+         return false;
+   }
+   double pdMass[4];
+   DecoyFingerprintMass(pdMass);
+   for (int i = 0; i < 4; ++i)
+   {
+      if (s_dFingerprintMass[i] != pdMass[i])
+         return false;
+   }
+   return true;
+}
 
 // Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
@@ -257,6 +294,9 @@ static void InitPrecomputedDecoyBins()
    // (rather than silently score against) a later param change in the same process.
    s_dFingerprintInvBW  = dInvBW;
    s_dFingerprintBinOff = dBinOff;
+   for (int ii = 0; ii < s_pdNIonSeries; ++ii)
+      s_iFingerprintSeries[ii] = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+   DecoyFingerprintMass(s_dFingerprintMass);
 }
 
 
@@ -1753,13 +1793,10 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    // abort() an embedding RTS host outright, and would compile to nothing in any
    // NDEBUG build -- leaving the silent-wrong-E-value hazard undetected in exactly the
    // binaries users run.
-   if (!(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
-      && s_pdMaxCharge == std::max(g_staticParams.options.iMaxFragmentCharge, 1)
-      && isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
-      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)))
+   if (!DecoyTableMatchesParams())
    {
-      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/max"
-         " fragment charge/bin width changed since it was first built in this process."
+      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/fragment"
+         " mass type/max fragment charge/bin width changed since it was first built in this process."
          " Decoy E-values would silently use the wrong bins -- restart the process"
          " instead of re-initializing with different search params.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
