@@ -30,6 +30,7 @@
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 Mutex CometPreprocess::_maxChargeMutex;
@@ -308,6 +309,11 @@ static void VerifyPreprocessShadow(const Query* pPrimary, Query* pShadow, const 
 // The pool is only used by the RTS (single-spectrum) search path.
 // The batch-search path continues to allocate normally.
 // ---------------------------------------------------------------------------
+// Drops the sparse-build state of a raw buffer that is being freed (a later allocation may reuse
+// the address); defined with the state, below.
+static void ForgetRawBufferState(const double* pdRaw);
+static void ResetRawBufferStates();
+
 struct RtsScratch
 {
    double* pdTmpRawData;           // binned raw sqrt-intensity; also returned to caller for fragment matching
@@ -351,6 +357,7 @@ struct RtsScratch
 
    ~RtsScratch()
    {
+      ForgetRawBufferState(pdTmpRawData);
       delete[] pdTmpRawData;
       delete[] pdTmpFastXcorrData;
       delete[] pdTmpCorrelationData;
@@ -371,6 +378,7 @@ struct RtsScratch
       if (iSize == iAllocSize)
          return;
 
+      ForgetRawBufferState(pdTmpRawData);
       delete[] pdTmpRawData;
       delete[] pdTmpFastXcorrData;
       delete[] pdTmpCorrelationData;
@@ -1507,53 +1515,99 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 // buffer: a thread that switches buffers (a different scratch pool) clears the new one once.
 struct RawBufferState
 {
-   const double* pBuf = nullptr;   // the buffer this state describes
+   bool bSeen = false;             // a sparse or dense build has already used this buffer
    std::vector<int> vBins;         // bins the last sparse build set (unsorted until the build sorts them)
    size_t uiDenseDirty = 0;        // doubles a dense build may have left nonzero, from bin 0
 };
-static thread_local RawBufferState tl_rawState;
+
+// The state is keyed by the buffer, not by the thread: the batch pool (ppdTmpRawDataArr) hands
+// a slot to whichever thread is free, so one buffer is used by different threads over time and
+// a per-thread record would miss the bins another thread left in it. A buffer is held by one
+// task at a time, so its state needs no lock once looked up; the map (node-based, so state
+// addresses are stable) is locked only for the lookup, and each thread caches its last buffer.
+// ResetRawBufferStates() drops every state when the pool is freed (a later allocation may reuse
+// an address) and bumps the generation so cached pointers are not reused.
+static std::mutex s_rawStateMutex;
+static std::unordered_map<const double*, RawBufferState> s_rawStates;
+static std::atomic<unsigned> s_rawStateGeneration(0);
+static thread_local RawBufferState* tl_pRawState = nullptr;
+static thread_local const double* tl_pRawStateBuf = nullptr;
+static thread_local unsigned tl_rawStateGeneration = 0;
+
+static RawBufferState& RawStateFor(const double* pdRaw)
+{
+   const unsigned uiGen = s_rawStateGeneration.load();
+   if (tl_pRawStateBuf != pdRaw || tl_rawStateGeneration != uiGen)
+   {
+      std::lock_guard<std::mutex> lock(s_rawStateMutex);
+      tl_pRawState = &s_rawStates[pdRaw];
+      tl_pRawStateBuf = pdRaw;
+      tl_rawStateGeneration = s_rawStateGeneration.load();
+   }
+   return *tl_pRawState;
+}
+
+static void ResetRawBufferStates()
+{
+   std::lock_guard<std::mutex> lock(s_rawStateMutex);
+   s_rawStates.clear();
+   ++s_rawStateGeneration;
+}
+
+static void ForgetRawBufferState(const double* pdRaw)
+{
+   if (pdRaw == nullptr)
+      return;
+   std::lock_guard<std::mutex> lock(s_rawStateMutex);
+   if (s_rawStates.erase(pdRaw) > 0)
+      ++s_rawStateGeneration;
+}
 
 // Before a sparse build: make pdRaw zero wherever this build can write, clearing only what is
-// known to be dirty. A buffer seen for the first time on this thread is cleared over its whole
-// length (iArraySizeGlobal + iXcorrProcessingOffset, what both the RTS/fused pool and the batch
+// known to be dirty. A buffer seen for the first time is cleared over its whole length
+// (iArraySizeGlobal + iXcorrProcessingOffset, what both the RTS/fused pool and the batch
 // per-thread arrays allocate): the pool allocates it uninitialized (the dense build never needed
 // more, since it clears before every use), and a later, larger spectrum reads further into it.
-static void PrepareRawForSparse(double* pdRaw)
+// Returns the buffer's state (its vBins is where this build records the bins it sets).
+static RawBufferState& PrepareRawForSparse(double* pdRaw)
 {
-   if (tl_rawState.pBuf != pdRaw)
+   RawBufferState& st = RawStateFor(pdRaw);
+   if (!st.bSeen)
    {
       memset(pdRaw, 0, ((size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset) * sizeof(double));
-      tl_rawState.pBuf = pdRaw;
-      tl_rawState.vBins.clear();
-      tl_rawState.uiDenseDirty = 0;
-      return;
+      st.bSeen = true;
+      st.vBins.clear();
+      st.uiDenseDirty = 0;
+      return st;
    }
-   if (tl_rawState.uiDenseDirty > 0)
+   if (st.uiDenseDirty > 0)
    {
-      memset(pdRaw, 0, tl_rawState.uiDenseDirty * sizeof(double));
-      tl_rawState.uiDenseDirty = 0;
+      memset(pdRaw, 0, st.uiDenseDirty * sizeof(double));
+      st.uiDenseDirty = 0;
    }
-   for (int b : tl_rawState.vBins)
+   for (int b : st.vBins)
       pdRaw[b] = 0.0;
-   tl_rawState.vBins.clear();
+   st.vBins.clear();
+   return st;
 }
 
 // After a dense build cleared [0, uiCleared) of pdRaw (and before it writes inside that range).
 static void NoteDenseRawClear(const double* pdRaw, size_t uiCleared)
 {
-   if (tl_rawState.pBuf != pdRaw)
+   RawBufferState& st = RawStateFor(pdRaw);
+   if (!st.bSeen)
    {
-      tl_rawState.pBuf = pdRaw;
-      tl_rawState.vBins.clear();
-      tl_rawState.uiDenseDirty = uiCleared;
+      st.bSeen = true;
+      st.vBins.clear();
+      st.uiDenseDirty = uiCleared;
       return;
    }
-   if (uiCleared > tl_rawState.uiDenseDirty)
-      tl_rawState.uiDenseDirty = uiCleared;
+   if (uiCleared > st.uiDenseDirty)
+      st.uiDenseDirty = uiCleared;
 }
 
 // Set while a sparse build loads its peaks: LoadIons() (batch) records each raw bin it sets
-// for the first time here; the RTS peak loop records into tl_rawState.vBins directly.
+// for the first time here; the RTS peak loop records into the buffer's state directly.
 static thread_local std::vector<int>* tl_pvRecordRawBins = nullptr;
 
 static inline void SetRawBinRecorded(double* pdRaw, int iBin, double dValue)
@@ -1911,8 +1965,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6); a verify shadow
    // always takes the dense one. The sparse build touches only the raw buffer, at the peak bins.
    const bool bSparseBuild = !tl_bInPreprocessShadow && UseSparseBuild((int)mstSpectrum.size(), iArraySize);
+   std::vector<int>* pvRawBins = nullptr;
    if (bSparseBuild)
-      PrepareRawForSparse(pdTmpRawData);
+      pvRawBins = &PrepareRawForSparse(pdTmpRawData).vBins;
    else
    {
       memset(pdTmpRawData, 0, iTmp);
@@ -1922,7 +1977,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    }
 
    // pdTmpRawData is a binned array holding raw data; a sparse build records the bins set
-   tl_pvRecordRawBins = bSparseBuild ? &tl_rawState.vBins : nullptr;
+   tl_pvRecordRawBins = pvRawBins;
    const bool bLoaded = LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre);
    tl_pvRecordRawBins = nullptr;
    if (!bLoaded)
@@ -1945,7 +2000,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       SparseMatrixAllocator alloc;
       alloc.pArena = pArena;
       alloc.pPtrArena = pPtrArena;
-      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_rawState.vBins, pdTmpRawData,
+      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, *pvRawBins, pdTmpRawData,
          pPre.iHighestIon, pPre.dHighestIntensity, iArraySize, alloc);
       if (iSparse < 0)
       {
@@ -2543,6 +2598,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6). The sparse build
    // takes the thread-local pool here (the heap path, a verify shadow, is always dense).
    const bool bSparseBuild = bUseThreadLocalPool && UseSparseBuild(iNumPeaks, iArraySize);
+   std::vector<int>* pvRtsRawBins = nullptr;   // the pool buffer's record of the bins a sparse build sets
 
    if (bUseThreadLocalPool)
    {
@@ -2562,7 +2618,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       {
          // The sparse build touches only the raw buffer, at the peak bins (section 4.9):
          // clear what earlier builds on this thread may have left there, nothing else.
-         PrepareRawForSparse(pdTmpRawData);
+         pvRtsRawBins = &PrepareRawForSparse(pdTmpRawData).vBins;
       }
       else
       {
@@ -2692,7 +2748,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    auto SetRawBin = [&](int iBin, double dValue)
    {
       if (bSparseBuild && pdTmpRawData[iBin] == 0.0)
-         tl_rawState.vBins.push_back(iBin);
+         pvRtsRawBins->push_back(iBin);
       pdTmpRawData[iBin] = dValue;
    };
 
@@ -2822,7 +2878,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    {
       SparseMatrixAllocator alloc;
       alloc.bRtsPool = true;
-      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_rawState.vBins, pdTmpRawData,
+      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, *pvRtsRawBins, pdTmpRawData,
          pPre.iHighestIon, pPre.dHighestIntensity, iArraySize, alloc);
       if (iSparse < 0)
       {
@@ -4102,6 +4158,7 @@ bool CometPreprocess::DeallocateMemory(int maxNumThreads)
 
    delete[] pbMemoryPool;
 
+   ResetRawBufferStates();
    for (i = 0; i < maxNumThreads; ++i)
    {
       delete[] ppdTmpRawDataArr[i];

@@ -8625,6 +8625,45 @@ def test_t86_preprocess_verify(comet_exe):
                     check(txts["verify"] == txts[""], f"batch {label}: verify mode leaves the results unchanged", failures)
                 if "" in txts and "dense" in txts:
                     check(txts["dense"] == txts[""], f"batch {label}: the default (auto) gives the dense build's results", failures)
+
+            # --- batch FASTA, several threads: the pool hands a raw-intensity buffer to whichever thread
+            # is free, so the sparse build's record of the bins it set must follow the buffer, not the
+            # thread (a per-thread record left another thread's bins in the buffer, 2026-11-10). The
+            # fixture's spectra repeated with fresh scan numbers give every slot many threads' turns.
+            blocks = re.split(r"(?m)^(?=S\t)", ms2.read_text())
+            header, spectra = blocks[0], blocks[1:]
+            many = [header]
+            n = 0
+            for _ in range(80):
+                for blk in spectra:
+                    n += 1
+                    fields = blk.split("\n", 1)[0].split("\t")
+                    many.append(blk.replace("\t".join(fields[:3]), f"S\t{n}\t{n}", 1))
+            ms2_many = tmp / "t86_many.ms2"
+            ms2_many.write_text("".join(many))
+            pt = tmp / "t86_threads.params"
+            pt_text = re.sub(r"(?m)^num_threads\s*=.*$", "num_threads = 4", params)
+            check("num_threads = 4" in pt_text, "batch FASTA threads: the params set 4 threads", failures)
+            pt.write_text(pt_text)
+            outs = {}
+            for mode in ("dense", "", "", "verify"):
+                key = mode or "auto"
+                name = tmp / f"t86_threads_{key}_{len(outs)}"
+                res = subprocess.run([str(comet_exe), f"-P{pt}", f"-N{name}", str(ms2_many)], capture_output=True, text=True,
+                                     timeout=600, env=env_with(mode))
+                log = res.stdout + res.stderr
+                txt = Path(str(name) + ".txt")
+                if not check(res.returncode == 0 and txt.exists(), f"batch FASTA threads, {key}: comet.exe exits 0 (rc={res.returncode})", failures):
+                    print(log[-1200:])
+                    continue
+                outs[len(outs)] = (key, sorted(txt.read_text().splitlines()[1:]))
+                if mode == "verify":
+                    summary = _t86_verify_summary(log)
+                    check(summary is not None and summary[0] >= n and summary[1] == 0,
+                          f"batch FASTA threads, verify: every spectrum compared, zero mismatches ({summary})", failures)
+            if len(outs) == 4:
+                check(outs[1][1] == outs[0][1] and outs[2][1] == outs[0][1] and outs[3][1] == outs[0][1],
+                      "batch FASTA, 4 threads: the default build (twice) and verify mode give the dense build's results", failures)
         finally:
             idx.unlink(missing_ok=True)
     return failures
