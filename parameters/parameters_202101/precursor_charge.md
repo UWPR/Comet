@@ -1,26 +1,24 @@
 ### Comet parameter: precursor_charge
 
-- This parameter specifies the precursor charge range to search.
+- This parameter specifies a precursor charge range.
 - This parameter expects two integer values as input.
-- If the first input value is 0 then this parameter is ignored and all charge
-states are searched
-- Only in the case where a spectrum does not have a precursor charge will all charges
-in the specified charge range be searched.
-- If the first input value is not 0 then all charge states between (and inclusive of)
-the first and second input values are searched.  Again, only for those spectra with no
-specified precursor charge state. NOTE: one exception is that if there are no peaks
-above the acquisition precursor m/z then the charge state will return 1+.
-Set "[override_charge](override_charge.html) = 1" to ignore this exception.
-- If a precursor charge is present for a particular spectrum, this parameter will
-not override that charge state and that spectrum will always be searched.
-- With the default "0 0" values and a spectrum with no precursor charge, Comet will
-either search the spectrum as a 1+ or a 2+/3+.
+- If the first input value is 0 then this parameter is ignored, as is
+"[override_charge](override_charge.html)". A spectrum with a precursor charge is searched at that charge
+state. A spectrum with no precursor charge is searched as 1+ if more than 95% of the spectrum's total peak intensity is below the precursor m/z (or the spectrum has no peaks), or as both 2+ and 3+ otherwise.
+- If the first input value is not 0, then with the default
+"[override_charge](override_charge.html) = 0":
+  - A spectrum with a precursor charge is searched at that charge state; this
+parameter does not override it.
+  - A spectrum with no precursor charge is searched at all charge states between (and
+inclusive of) the first and second input values.
+- See "[override_charge](override_charge.html)" for how the range is applied with other settings.
+- Any charge state above [max_precursor_charge](max_precursor_charge.html) is not searched.
 - The default value is "0 0" if this parameter is missing.
 
 Example:
 ```
 precursor_charge = 0 0
-precursor_charge = 0 2 (will search all charge ranges because the first entry is 0)
+precursor_charge = 0 2 (parameter is ignored because the first entry is 0)
 precursor_charge = 2 6
 precursor_charge = 3 3
 ```
