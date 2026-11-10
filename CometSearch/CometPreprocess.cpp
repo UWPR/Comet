@@ -137,18 +137,18 @@ static inline int ComputeClampedArraySize(double dExpPepMass)
 // Preprocessing build path and its verifier (docs/20261109_sparse_preprocessing.md
 // section 5). COMET_PREPROCESS, read once per process -- a testing switch, not a
 // parameter:
-//   unset / "auto"   the default choice (phase 1: always the dense build; the switch point is
+//   unset / "auto"   the default choice (until phase 3: always the dense build; the switch point is
 //                    set from measurements in phase 3)
 //   "dense"          force the dense build
-//   "sparse"         force the sparse build where it exists (phase 1: the RTS path)
+//   "sparse"         force the sparse build (RTS and batch)
 //   "verify"         after every successful preprocess, build the same Query a second time
 //                    (a heap-allocated shadow) and compare the three sparse matrices, their
 //                    sizes and iMinXcorrHisto bit for bit; mismatches go to stderr and a
 //                    summary line is printed at exit
 //   "verify-selftest" as verify, but perturb one stored shadow value first, so every
 //                    comparison must report a mismatch (tests the comparator itself)
-// RTS (phase 1): the primary is the sparse build, the heap shadow the dense one. Batch (until
-// phase 2): both are the dense build (arena vs heap), which must always match.
+// The primary is the sparse build, the shadow the dense one: RTS rebuilds on its heap path,
+// batch re-runs Preprocess() without arenas.
 // ---------------------------------------------------------------------------
 enum class PreprocessMode { Auto, Dense, Sparse, Verify, VerifySelfTest };
 
@@ -288,8 +288,9 @@ static void VerifyPreprocessShadow(const Query* pPrimary, Query* pShadow, const 
    {
       const unsigned long long ullNth = ++g_preprocessVerifyStats.ullMismatches;
       if (ullNth <= 10)
-         fprintf(stderr, "COMET_PREPROCESS verify mismatch (%s, z %d, MH+ %.4f): %s\n", szPath,
-            (int)pPrimary->_spectrumInfoInternal.usiChargeState, pPrimary->_pepMassInfo.dExpPepMass,   // dExpPepMass is MH+
+         fprintf(stderr, "COMET_PREPROCESS verify mismatch (%s, scan %d, z %d, MH+ %.4f): %s\n", szPath,
+            pPrimary->_spectrumInfoInternal.iScanNumber, (int)pPrimary->_spectrumInfoInternal.usiChargeState,
+            pPrimary->_pepMassInfo.dExpPepMass,   // dExpPepMass is MH+
             sDiff.c_str());
    }
    delete pShadow;
@@ -388,6 +389,19 @@ struct RtsScratch
       pfFastXcorrData      = new float[iSize];
       pfFastXcorrDataNL    = new float[iSize];
       pfSpScoreData        = new float[iSize];
+
+      // COMET_PREPROCESS=verify poisons the (uninitialized) scratch buffers, so a build that
+      // relied on memory it never cleared shows up as a mismatch instead of passing whenever
+      // the allocator happens to hand back zeroed pages. The dense build clears before use.
+      if (PreprocessVerifyOn())
+      {
+         std::fill(pdTmpRawData, pdTmpRawData + iSize + iXcorrPad, 7.0);
+         std::fill(pdTmpFastXcorrData, pdTmpFastXcorrData + iSize + iXcorrPad, 7.0);
+         std::fill(pdTmpCorrelationData, pdTmpCorrelationData + iSize + iXcorrPad, 7.0);
+         std::fill(pfFastXcorrData, pfFastXcorrData + iSize, 7.0f);
+         std::fill(pfFastXcorrDataNL, pfFastXcorrDataNL + iSize, 7.0f);
+         std::fill(pfSpScoreData, pfSpScoreData + iSize, 7.0f);
+      }
 
       // Each spectrum uses at most (iSize/SPARSE_MATRIX_SIZE + 1) child blocks per
       // sparse matrix; there are 3 matrices.  A 2x margin covers dense spectra.
@@ -1478,446 +1492,112 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 }
 
 
-bool CometPreprocess::Preprocess(struct Query *pScoring,
-                                 Spectrum& mstSpectrum,
-                                 double *pdTmpRawData,
-                                 double *pdTmpFastXcorrData,
-                                 double *pdTmpCorrelationData,
-                                 float *pfFastXcorrData,
-                                 float *pfFastXcorrDataNL,
-                                 float *pfSpScoreData,
-                                 FusedSparseArena *pArena,
-                                 FusedPointerArena *pPtrArena)
+// ---------------------------------------------------------------------------
+// Sparse preprocessing build (docs/20261109_sparse_preprocessing.md section 4), shared by the
+// RTS thread-local-pool path (PreprocessSingleSpectrumCore()) and batch (Preprocess()). Builds
+// the same three sparse matrices and iMinXcorrHisto the dense code builds, bit for bit, from
+// the peak bins alone.
+// ---------------------------------------------------------------------------
+
+// The raw-intensity scratch buffer. On the RTS path it is an output too: the result extraction
+// reads it for matched-fragment intensities (VisitResultIon()). The dense build clears
+// [0, iZeroBound + offset) up front; the sparse build instead keeps it clean incrementally
+// (section 4.9): the bins it set are recorded, and the range a dense build cleared and wrote
+// is remembered, so the next sparse build clears exactly those. The state belongs to one
+// buffer: a thread that switches buffers (a different scratch pool) clears the new one once.
+struct RawBufferState
 {
-   int i;
-   int x;
-   int y;
-   struct PreprocessStruct pPre;
+   const double* pBuf = nullptr;   // the buffer this state describes
+   std::vector<int> vBins;         // bins the last sparse build set (unsorted until the build sorts them)
+   size_t uiDenseDirty = 0;        // doubles a dense build may have left nonzero, from bin 0
+};
+static thread_local RawBufferState tl_rawState;
 
-   pPre.iHighestIon = 0;
-   pPre.dHighestIntensity = 0;
-
-   // P9: only zero the region MakeCorrData()/the xcorr-building loop below can actually
-   // read or write, not the full iArraySizeGlobal -- these buffers are a per-thread batch
-   // scratch pool reused across many spectra, so under-zeroing risks the exact stale-data
-   // bug docs/20260714_EvalueJitter.md Phase 3 already found and fixed for the RTS
-   // thread-local-pool path (PreprocessSingleSpectrumCore's iZeroBound): MakeCorrData()
-   // reads/writes up to pPre.iHighestIon, which the peak-loading loop below can push past
-   // iArraySize for any peak below dExpPepMass+50 -- not yet known at this point in the
-   // function, so this mirrors iZeroBound's formula directly from dExpPepMass+50 rather
-   // than depending on a value computed later.
-   const int iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
-   const int iZeroBound = ComputeZeroBound(iArraySize, pScoring->_pepMassInfo.dExpPepMass);
-   size_t iTmp = (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset) * sizeof(double);
-   memset(pdTmpRawData, 0, iTmp);
-   memset(pdTmpFastXcorrData, 0, iTmp);
-   memset(pdTmpCorrelationData, 0, iTmp);
-
-   // pdTmpRawData is a binned array holding raw data
-   if (!LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre))
+// Before a sparse build: make pdRaw zero wherever this build can write, clearing only what is
+// known to be dirty. A buffer seen for the first time on this thread is cleared over its whole
+// length (iArraySizeGlobal + iXcorrProcessingOffset, what both the RTS/fused pool and the batch
+// per-thread arrays allocate): the pool allocates it uninitialized (the dense build never needed
+// more, since it clears before every use), and a later, larger spectrum reads further into it.
+static void PrepareRawForSparse(double* pdRaw)
+{
+   if (tl_rawState.pBuf != pdRaw)
    {
-      return false;
+      memset(pdRaw, 0, ((size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset) * sizeof(double));
+      tl_rawState.pBuf = pdRaw;
+      tl_rawState.vBins.clear();
+      tl_rawState.uiDenseDirty = 0;
+      return;
    }
-
-   // get mzML nativeID
-   char szNativeID[SIZE_NATIVEID];
-   if (mstSpectrum.getNativeID(szNativeID, SIZE_NATIVEID))
-      strcpy(pScoring->_spectrumInfoInternal.szNativeID, szNativeID);
-   else
-      pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
-
-   // Create data for correlation analysis.
-   // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
-   MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
-
-   // Make fast xcorr spectrum.
-   double dSum = 0.0;
-   int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
-   double dTmp = 1.0 / (iTmpRange - 1.0);
-   double dMinXcorrInten = 0.0;
-
-   dSum = 0.0;
-   for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
-      dSum += pdTmpCorrelationData[i];
-   for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
+   if (tl_rawState.uiDenseDirty > 0)
    {
-      if (dMinXcorrInten < pdTmpCorrelationData[i])
-         dMinXcorrInten = pdTmpCorrelationData[i];
-
-      if (i < pScoring->_spectrumInfoInternal.iArraySize)
-         dSum += pdTmpCorrelationData[i];
-      if (i >= iTmpRange)
-         dSum -= pdTmpCorrelationData[i - iTmpRange];
-      pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
+      memset(pdRaw, 0, tl_rawState.uiDenseDirty * sizeof(double));
+      tl_rawState.uiDenseDirty = 0;
    }
-
-   pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
-
-   pfFastXcorrData[0] = 0.0;
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
-
-      pfFastXcorrData[i] = (float)dTmp;
-
-      // Add flanking peaks if used
-      if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
-      {
-         int iTmp;
-
-         iTmp = i-1;
-         pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
-
-         iTmp = i+1;
-         if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
-            pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
-      }
-
-      // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-      {
-         int iTmp;
-
-         pfFastXcorrDataNL[i] = pfFastXcorrData[i];
-
-         iTmp = i-g_staticParams.precalcMasses.iMinus17;
-         if (iTmp>= 0)
-         {
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
-         }
-
-         iTmp = i-g_staticParams.precalcMasses.iMinus18;
-         if (iTmp>= 0)
-         {
-            pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
-         }
-      }
-   }
-
-   pScoring->iFastXcorrDataSize = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
-
-   // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
-   // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-   if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-         && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-            || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
-   {
-
-      if (pPtrArena != nullptr)
-      {
-         try
-         {
-            pScoring->ppfSparseFastXcorrDataNL = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
-            pScoring->bSparsePointerArraysFromPool = true;
-         }
-         catch (std::bad_alloc& ba)
-         {
-            string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrDataNL["
-               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-               + "parameters to address mitigate memory use.\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
-      }
-      else
-      {
-         try
-         {
-            pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
-         }
-         catch (std::bad_alloc& ba)
-         {
-            string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
-               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-               + "parameters to address mitigate memory use.\n";
-            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-            logerr(strErrorMsg);
-            return false;
-         }
-      }
-
-      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-      {
-         if (pfFastXcorrDataNL[i]>FLOAT_ZERO || pfFastXcorrDataNL[i]<-FLOAT_ZERO)
-         {
-            x=i/SPARSE_MATRIX_SIZE;
-            if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
-            {
-               if (pArena != nullptr)
-               {
-                  try
-                  {
-                     pScoring->ppfSparseFastXcorrDataNL[x] = pArena->AllocBlock();
-                     pScoring->bSparseFromPool = true;
-                  }
-                  catch (std::bad_alloc& ba)
-                  {
-                     string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrDataNL["
-                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                        + "parameters to address mitigate memory use.\n";
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr(strErrorMsg);
-                     return false;
-                  }
-               }
-               else
-               {
-                  try
-                  {
-                     pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
-                  }
-                  catch (std::bad_alloc& ba)
-                  {
-                     string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
-                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                        + "parameters to address mitigate memory use.\n";
-                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                     logerr(strErrorMsg);
-                     return false;
-                  }
-                  for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
-                     pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
-               }
-            }
-            y=i-(x*SPARSE_MATRIX_SIZE);
-            pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
-         }
-      }
-   }
-
-   //MH: Fill sparse matrix
-   if (pPtrArena != nullptr)
-   {
-      try
-      {
-         pScoring->ppfSparseFastXcorrData = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
-         pScoring->bSparsePointerArraysFromPool = true;
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrData["
-            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-   }
-   else
-   {
-      try
-      {
-         pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
-            + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-   }
-
-   for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      if (pfFastXcorrData[i]>FLOAT_ZERO || pfFastXcorrData[i]<-FLOAT_ZERO)
-      {
-         x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseFastXcorrData[x]==NULL)
-         {
-            if (pArena != nullptr)
-            {
-               try
-               {
-                  pScoring->ppfSparseFastXcorrData[x] = pArena->AllocBlock();
-                  pScoring->bSparseFromPool = true;
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrData["
-                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                     + "parameters to address mitigate memory use.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  return false;
-               }
-            }
-            else
-            {
-               try
-               {
-                  pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
-                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                     + "parameters to address mitigate memory use.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  return false;
-               }
-               for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
-                  pScoring->ppfSparseFastXcorrData[x][y]=0;
-            }
-         }
-         y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
-      }
-   }
-
-   // Create data for sp scoring which is just the binned peaks normalized to max inten 100
-   for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
-   }
-
-   // MH: Fill sparse matrix for SpScore
-   pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
-
-   if (pPtrArena != nullptr)
-   {
-      try
-      {
-         pScoring->ppfSparseSpScoreData = pPtrArena->AllocSpan(pScoring->iSpScoreData);
-         pScoring->bSparsePointerArraysFromPool = true;
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseSpScoreData["
-            + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-   }
-   else
-   {
-      try
-      {
-         pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
-      }
-      catch (std::bad_alloc& ba)
-      {
-         string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
-            + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-            + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-            + "parameters to address mitigate memory use.\n";
-         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-         logerr(strErrorMsg);
-         return false;
-      }
-   }
-
-   for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
-   {
-      if (pfSpScoreData[i] > FLOAT_ZERO)
-      {
-         x=i/SPARSE_MATRIX_SIZE;
-         if (pScoring->ppfSparseSpScoreData[x]==NULL)
-         {
-            if (pArena != nullptr)
-            {
-               try
-               {
-                  pScoring->ppfSparseSpScoreData[x] = pArena->AllocBlock();
-                  pScoring->bSparseFromPool = true;
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseSpScoreData["
-                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                     + "parameters to address mitigate memory use.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  return false;
-               }
-            }
-            else
-            {
-               try
-               {
-                  pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
-               }
-               catch (std::bad_alloc& ba)
-               {
-                  string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
-                     + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
-                     + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
-                     + "parameters to address mitigate memory use.\n";
-                  g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
-                  logerr(strErrorMsg);
-                  return false;
-               }
-               for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
-                  pScoring->ppfSparseSpScoreData[x][y]=0;
-            }
-         }
-         y=i-(x*SPARSE_MATRIX_SIZE);
-         pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
-      }
-   }
-
-   // COMET_PREPROCESS=verify: rebuild into a heap-allocated shadow from the same spectrum
-   // and compare (section 5 of docs/20261109_sparse_preprocessing.md). The scratch buffers
-   // are reused: this build is finished with them, and Preprocess() clears them first.
-   if (PreprocessVerifyOn() && !tl_bInPreprocessShadow)
-   {
-      Query* pShadow = new Query();
-      pShadow->_pepMassInfo.dExpPepMass = pScoring->_pepMassInfo.dExpPepMass;
-      pShadow->_spectrumInfoInternal.iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
-      pShadow->_spectrumInfoInternal.usiChargeState = pScoring->_spectrumInfoInternal.usiChargeState;
-      pShadow->_spectrumInfoInternal.usiMaxFragCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
-
-      tl_bInPreprocessShadow = true;
-      const bool bShadowOk = Preprocess(pShadow, mstSpectrum, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData,
-         pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData, nullptr, nullptr);
-      tl_bInPreprocessShadow = false;
-
-      if (!bShadowOk)
-      {
-         delete pShadow;
-         pShadow = nullptr;
-      }
-      VerifyPreprocessShadow(pScoring, pShadow, "batch");
-   }
-
-   return true;
+   for (int b : tl_rawState.vBins)
+      pdRaw[b] = 0.0;
+   tl_rawState.vBins.clear();
 }
 
-// ---------------------------------------------------------------------------
-// Sparse preprocessing build (docs/20261109_sparse_preprocessing.md section 4), RTS
-// thread-local-pool path. Builds the same three sparse matrices and iMinXcorrHisto the dense
-// code builds, bit for bit, from the peak bins alone.
-// ---------------------------------------------------------------------------
+// After a dense build cleared [0, uiCleared) of pdRaw (and before it writes inside that range).
+static void NoteDenseRawClear(const double* pdRaw, size_t uiCleared)
+{
+   if (tl_rawState.pBuf != pdRaw)
+   {
+      tl_rawState.pBuf = pdRaw;
+      tl_rawState.vBins.clear();
+      tl_rawState.uiDenseDirty = uiCleared;
+      return;
+   }
+   if (uiCleared > tl_rawState.uiDenseDirty)
+      tl_rawState.uiDenseDirty = uiCleared;
+}
 
-// The RTS raw-intensity buffer (g_rtsScratch.pdTmpRawData) is an output too: the result
-// extraction reads it for matched-fragment intensities (VisitResultIon()). The dense build
-// clears [0, iZeroBound + offset) up front; the sparse build instead keeps it clean
-// incrementally (section 4.9): the bins it wrote are recorded here, and the range a dense
-// build wrote is remembered, so the next sparse build clears exactly those.
-static thread_local std::vector<int> tl_vRawSparseBins;   // bins the last sparse build set (unsorted until the build sorts them)
-static thread_local size_t tl_uiRawDenseDirty = 0;        // doubles a dense build may have left nonzero, from bin 0
+// Set while a sparse build loads its peaks: LoadIons() (batch) records each raw bin it sets
+// for the first time here; the RTS peak loop records into tl_rawState.vBins directly.
+static thread_local std::vector<int>* tl_pvRecordRawBins = nullptr;
 
-// Whether this RTS spectrum takes the sparse build. Phase 1: only when COMET_PREPROCESS forces
+static inline void SetRawBinRecorded(double* pdRaw, int iBin, double dValue)
+{
+   if (tl_pvRecordRawBins != nullptr && pdRaw[iBin] == 0.0)
+      tl_pvRecordRawBins->push_back(iBin);
+   pdRaw[iBin] = dValue;
+}
+
+// Where the sparse matrices' memory comes from -- each path's existing scheme: the RTS
+// thread-local pool's child blocks (pointer arrays from new[]); the fused batch path's arenas
+// (each optional); otherwise new[]. Sets the Query's pool flags the way the dense code does.
+struct SparseMatrixAllocator
+{
+   bool bRtsPool = false;
+   FusedSparseArena* pArena = nullptr;
+   FusedPointerArena* pPtrArena = nullptr;
+
+   float** PointerArray(Query* pScoring, int iSize) const
+   {
+      if (pPtrArena != nullptr)
+      {
+         float** pp = pPtrArena->AllocSpan(iSize);
+         pScoring->bSparsePointerArraysFromPool = true;
+         return pp;
+      }
+      return new float*[iSize]();
+   }
+
+   float* Block(Query* pScoring) const
+   {
+      if (bRtsPool)
+         return g_rtsScratch.AllocSparseChild();
+      if (pArena != nullptr)
+      {
+         float* p = pArena->AllocBlock();
+         pScoring->bSparseFromPool = true;
+         return p;
+      }
+      return new float[SPARSE_MATRIX_SIZE]();
+   }
+};
+
+// Whether this spectrum takes the sparse build. Until phase 3: only when COMET_PREPROCESS forces
 // it (sparse) or verifies it (verify, verify-selftest: the primary is sparse, the shadow dense);
 // the default stays dense until phase 3 has measured the switch point (section 4.6).
 static bool UseSparseBuild(int /*iNumPeaks*/, int /*iArraySize*/)
@@ -1926,21 +1606,18 @@ static bool UseSparseBuild(int /*iNumPeaks*/, int /*iArraySize*/)
    return mode == PreprocessMode::Sparse || mode == PreprocessMode::Verify || mode == PreprocessMode::VerifySelfTest;
 }
 
-// Set while a verify shadow is built, so the shadow takes the dense build (set by the RTS
-// verify wrapper; the heap path never takes the sparse build anyway).
-static thread_local bool tl_bForceDenseBuild = false;
-
 // Builds pScoring's sparse matrices from the peak bins vBins (each set once in pdRaw, the
 // dense raw buffer; any order -- sorted here) with the dense code's exact operation order.
 // Returns 1 when built; 0 when the gap-residue guard (section 4.4) cannot prove that skipped
 // bins hold no storable value -- the caller then runs the dense build; -1 on allocation
-// failure (nothing to free: pointer arrays are released by ~Query()).
+// failure (nothing to free: whatever was allocated is released by ~Query()).
 static int BuildSparseMatricesFromPeaks(Query* pScoring,
                                         std::vector<int>& vBins,
                                         const double* pdRaw,
                                         int iHighestIon,
                                         double dHighestIntensity,
-                                        int iArraySize)
+                                        int iArraySize,
+                                        const SparseMatrixAllocator& alloc)
 {
    const int iOff = g_staticParams.iXcorrProcessingOffset;
    const int iRange = 2 * iOff + 1;
@@ -2104,74 +1781,551 @@ static int BuildSparseMatricesFromPeaks(Query* pScoring,
    try
    {
       if (bNL)
-         pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
-      pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
-      pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+         pScoring->ppfSparseFastXcorrDataNL = alloc.PointerArray(pScoring, pScoring->iFastXcorrDataSize);
+      pScoring->ppfSparseFastXcorrData = alloc.PointerArray(pScoring, pScoring->iFastXcorrDataSize);
+      pScoring->ppfSparseSpScoreData = alloc.PointerArray(pScoring, pScoring->iSpScoreData);
    }
    catch (std::bad_alloc&)
    {
       return -1;
    }
 
-   auto Store = [](float** ppfMatrix, int k, float fValue)
+   auto Store = [&alloc, pScoring](float** ppfMatrix, int k, float fValue)
    {
       const int x = k / SPARSE_MATRIX_SIZE;
       if (ppfMatrix[x] == NULL)
-         ppfMatrix[x] = g_rtsScratch.AllocSparseChild();
+         ppfMatrix[x] = alloc.Block(pScoring);   // may throw std::bad_alloc
       ppfMatrix[x][k - x * SPARSE_MATRIX_SIZE] = fValue;
    };
 
-   VCursor curMain, cur17, cur18;
-   curMain.dSumHere = cur17.dSumHere = cur18.dSumHere = dInitSum;
-   for (size_t r = 0; r < nRanges; ++r)
+   try
    {
-      const int lo = tl_vRanges[r].first;
-      const int hi = tl_vRanges[r].second;
-
-      // rolling register (as in Telescope's FastXCorr): v at k-1, k, k+1, one evaluation per bin
-      double vPrev = V(curMain, lo - 1);   // lo >= 1
-      double vHere = V(curMain, lo);
-      for (int k = lo; k <= hi; ++k)
+      VCursor curMain, cur17, cur18;
+      curMain.dSumHere = cur17.dSumHere = cur18.dSumHere = dInitSum;
+      for (size_t r = 0; r < nRanges; ++r)
       {
-         const double vNext = (k + 1 < N) ? V(curMain, k + 1) : 0.0;
+         const int lo = tl_vRanges[r].first;
+         const int hi = tl_vRanges[r].second;
 
-         float fPf = (float)vHere;
-         if (bFlank)
+         // rolling register (as in Telescope's FastXCorr): v at k-1, k, k+1, one evaluation per bin
+         double vPrev = V(curMain, lo - 1);   // lo >= 1
+         double vHere = V(curMain, lo);
+         for (int k = lo; k <= hi; ++k)
          {
-            fPf += (float)(vPrev * 0.5);
-            if (k + 1 < N)
-               fPf += (float)(vNext * 0.5);
-         }
-         if (fPf > FLOAT_ZERO || fPf < -FLOAT_ZERO)
-            Store(pScoring->ppfSparseFastXcorrData, k, fPf);
+            const double vNext = (k + 1 < N) ? V(curMain, k + 1) : 0.0;
 
-         if (bNL)
-         {
-            float fNl = fPf;
-            if (k - iM17 >= 0)
-               fNl += (float)(V(cur17, k - iM17) * 0.2);
-            if (k - iM18 >= 0)
-               fNl += (float)(V(cur18, k - iM18) * 0.2);
-            if (fNl > FLOAT_ZERO || fNl < -FLOAT_ZERO)
-               Store(pScoring->ppfSparseFastXcorrDataNL, k, fNl);
-         }
+            float fPf = (float)vHere;
+            if (bFlank)
+            {
+               fPf += (float)(vPrev * 0.5);
+               if (k + 1 < N)
+                  fPf += (float)(vNext * 0.5);
+            }
+            if (fPf > FLOAT_ZERO || fPf < -FLOAT_ZERO)
+               Store(pScoring->ppfSparseFastXcorrData, k, fPf);
 
-         vPrev = vHere;
-         vHere = vNext;
+            if (bNL)
+            {
+               float fNl = fPf;
+               if (k - iM17 >= 0)
+                  fNl += (float)(V(cur17, k - iM17) * 0.2);
+               if (k - iM18 >= 0)
+                  fNl += (float)(V(cur18, k - iM18) * 0.2);
+               if (fNl > FLOAT_ZERO || fNl < -FLOAT_ZERO)
+                  Store(pScoring->ppfSparseFastXcorrDataNL, k, fNl);
+            }
+
+            vPrev = vHere;
+            vHere = vNext;
+         }
+      }
+
+      // --- 4.5: Sp from the raw bins
+      for (int b : vBins)
+      {
+         const float fSp = (float)(100.0 * pdRaw[b] / dHighestIntensity);
+         if (fSp > FLOAT_ZERO)
+            Store(pScoring->ppfSparseSpScoreData, b, fSp);
       }
    }
-
-   // --- 4.5: Sp from the raw bins
-   for (int b : vBins)
+   catch (std::bad_alloc&)
    {
-      const float fSp = (float)(100.0 * pdRaw[b] / dHighestIntensity);
-      if (fSp > FLOAT_ZERO)
-         Store(pScoring->ppfSparseSpScoreData, b, fSp);
+      return -1;
    }
 
    return 1;
 }
 
+
+bool CometPreprocess::Preprocess(struct Query *pScoring,
+                                 Spectrum& mstSpectrum,
+                                 double *pdTmpRawData,
+                                 double *pdTmpFastXcorrData,
+                                 double *pdTmpCorrelationData,
+                                 float *pfFastXcorrData,
+                                 float *pfFastXcorrDataNL,
+                                 float *pfSpScoreData,
+                                 FusedSparseArena *pArena,
+                                 FusedPointerArena *pPtrArena)
+{
+   int i;
+   int x;
+   int y;
+   struct PreprocessStruct pPre;
+
+   pPre.iHighestIon = 0;
+   pPre.dHighestIntensity = 0;
+
+   // P9: only zero the region MakeCorrData()/the xcorr-building loop below can actually
+   // read or write, not the full iArraySizeGlobal -- these buffers are a per-thread batch
+   // scratch pool reused across many spectra, so under-zeroing risks the exact stale-data
+   // bug docs/20260714_EvalueJitter.md Phase 3 already found and fixed for the RTS
+   // thread-local-pool path (PreprocessSingleSpectrumCore's iZeroBound): MakeCorrData()
+   // reads/writes up to pPre.iHighestIon, which the peak-loading loop below can push past
+   // iArraySize for any peak below dExpPepMass+50 -- not yet known at this point in the
+   // function, so this mirrors iZeroBound's formula directly from dExpPepMass+50 rather
+   // than depending on a value computed later.
+   const int iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
+   const int iZeroBound = ComputeZeroBound(iArraySize, pScoring->_pepMassInfo.dExpPepMass);
+   size_t iTmp = (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset) * sizeof(double);
+
+   // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6); a verify shadow
+   // always takes the dense one. The sparse build touches only the raw buffer, at the peak bins.
+   const bool bSparseBuild = !tl_bInPreprocessShadow && UseSparseBuild((int)mstSpectrum.size(), iArraySize);
+   if (bSparseBuild)
+      PrepareRawForSparse(pdTmpRawData);
+   else
+   {
+      memset(pdTmpRawData, 0, iTmp);
+      memset(pdTmpFastXcorrData, 0, iTmp);
+      memset(pdTmpCorrelationData, 0, iTmp);
+      NoteDenseRawClear(pdTmpRawData, (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset));
+   }
+
+   // pdTmpRawData is a binned array holding raw data; a sparse build records the bins set
+   tl_pvRecordRawBins = bSparseBuild ? &tl_rawState.vBins : nullptr;
+   const bool bLoaded = LoadIons(pScoring, pdTmpRawData, mstSpectrum, &pPre);
+   tl_pvRecordRawBins = nullptr;
+   if (!bLoaded)
+   {
+      return false;
+   }
+
+   // get mzML nativeID
+   char szNativeID[SIZE_NATIVEID];
+   if (mstSpectrum.getNativeID(szNativeID, SIZE_NATIVEID))
+      strcpy(pScoring->_spectrumInfoInternal.szNativeID, szNativeID);
+   else
+      pScoring->_spectrumInfoInternal.szNativeID[0]='\0';
+
+   // Sparse build (section 4), with this path's allocators; on the gap-residue guard it falls
+   // back to the dense build, which then needs the correlation and fast-xcorr scratch cleared.
+   bool bMatricesBuilt = false;
+   if (bSparseBuild)
+   {
+      SparseMatrixAllocator alloc;
+      alloc.pArena = pArena;
+      alloc.pPtrArena = pPtrArena;
+      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_rawState.vBins, pdTmpRawData,
+         pPre.iHighestIon, pPre.dHighestIntensity, iArraySize, alloc);
+      if (iSparse < 0)
+      {
+         string strErrorMsg = " Error - allocating the sparse spectrum matrices (bad_alloc).\n"
+            "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+            "parameters to address mitigate memory use.\n";
+         g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+         logerr(strErrorMsg);
+         return false;
+      }
+      if (iSparse > 0)
+         bMatricesBuilt = true;
+      else
+      {
+         g_preprocessVerifyStats.ullSparseFallbacks++;
+         memset(pdTmpFastXcorrData, 0, iTmp);
+         memset(pdTmpCorrelationData, 0, iTmp);
+      }
+   }
+
+   if (!bMatricesBuilt)
+   {
+      // Create data for correlation analysis.
+      // pdTmpRawData intensities are normalized to 100; pdTmpCorrelationData is windowed
+      MakeCorrData(pdTmpRawData, pdTmpCorrelationData, pPre.iHighestIon, pPre.dHighestIntensity);
+
+      // Make fast xcorr spectrum.
+      double dSum = 0.0;
+      int iTmpRange = 2 * g_staticParams.iXcorrProcessingOffset + 1;
+      double dTmp = 1.0 / (iTmpRange - 1.0);
+      double dMinXcorrInten = 0.0;
+
+      dSum = 0.0;
+      for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+         dSum += pdTmpCorrelationData[i];
+      for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
+      {
+         if (dMinXcorrInten < pdTmpCorrelationData[i])
+            dMinXcorrInten = pdTmpCorrelationData[i];
+
+         if (i < pScoring->_spectrumInfoInternal.iArraySize)
+            dSum += pdTmpCorrelationData[i];
+         if (i >= iTmpRange)
+            dSum -= pdTmpCorrelationData[i - iTmpRange];
+         pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
+      }
+
+      pScoring->iMinXcorrHisto = (int)(dMinXcorrInten * 10.0 * 0.005 + 0.5);
+
+      pfFastXcorrData[0] = 0.0;
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
+      {
+         double dTmp = pdTmpCorrelationData[i] - pdTmpFastXcorrData[i];
+
+         pfFastXcorrData[i] = (float)dTmp;
+
+         // Add flanking peaks if used
+         if (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0)
+         {
+            int iTmp;
+
+            iTmp = i-1;
+            pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+
+            iTmp = i+1;
+            if (iTmp < pScoring->_spectrumInfoInternal.iArraySize)
+               pfFastXcorrData[i] += (float) ((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp])*0.5);
+         }
+
+         // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
+         if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+         {
+            int iTmp;
+
+            pfFastXcorrDataNL[i] = pfFastXcorrData[i];
+
+            iTmp = i-g_staticParams.precalcMasses.iMinus17;
+            if (iTmp>= 0)
+            {
+               pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            }
+
+            iTmp = i-g_staticParams.precalcMasses.iMinus18;
+            if (iTmp>= 0)
+            {
+               pfFastXcorrDataNL[i] += (float)((pdTmpCorrelationData[iTmp] - pdTmpFastXcorrData[iTmp]) * 0.2);
+            }
+         }
+      }
+
+      pScoring->iFastXcorrDataSize = (pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE) + 1;
+
+      // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
+      // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
+      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      {
+
+         if (pPtrArena != nullptr)
+         {
+            try
+            {
+               pScoring->ppfSparseFastXcorrDataNL = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+               pScoring->bSparsePointerArraysFromPool = true;
+            }
+            catch (std::bad_alloc& ba)
+            {
+               string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrDataNL["
+                  + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                  + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                  + "parameters to address mitigate memory use.\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               return false;
+            }
+         }
+         else
+         {
+            try
+            {
+               pScoring->ppfSparseFastXcorrDataNL = new float*[pScoring->iFastXcorrDataSize]();
+            }
+            catch (std::bad_alloc& ba)
+            {
+               string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
+                  + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                  + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                  + "parameters to address mitigate memory use.\n";
+               g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+               logerr(strErrorMsg);
+               return false;
+            }
+         }
+
+         for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
+         {
+            if (pfFastXcorrDataNL[i]>FLOAT_ZERO || pfFastXcorrDataNL[i]<-FLOAT_ZERO)
+            {
+               x=i/SPARSE_MATRIX_SIZE;
+               if (pScoring->ppfSparseFastXcorrDataNL[x]==NULL)
+               {
+                  if (pArena != nullptr)
+                  {
+                     try
+                     {
+                        pScoring->ppfSparseFastXcorrDataNL[x] = pArena->AllocBlock();
+                        pScoring->bSparseFromPool = true;
+                     }
+                     catch (std::bad_alloc& ba)
+                     {
+                        string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrDataNL["
+                           + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                           + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                           + "parameters to address mitigate memory use.\n";
+                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                        logerr(strErrorMsg);
+                        return false;
+                     }
+                  }
+                  else
+                  {
+                     try
+                     {
+                        pScoring->ppfSparseFastXcorrDataNL[x] = new float[SPARSE_MATRIX_SIZE]();
+                     }
+                     catch (std::bad_alloc& ba)
+                     {
+                        string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrDataNL["
+                           + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                           + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                           + "parameters to address mitigate memory use.\n";
+                        g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                        logerr(strErrorMsg);
+                        return false;
+                     }
+                     for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
+                        pScoring->ppfSparseFastXcorrDataNL[x][y]=0;
+                  }
+               }
+               y=i-(x*SPARSE_MATRIX_SIZE);
+               pScoring->ppfSparseFastXcorrDataNL[x][y] = pfFastXcorrDataNL[i];
+            }
+         }
+      }
+
+      //MH: Fill sparse matrix
+      if (pPtrArena != nullptr)
+      {
+         try
+         {
+            pScoring->ppfSparseFastXcorrData = pPtrArena->AllocSpan(pScoring->iFastXcorrDataSize);
+            pScoring->bSparsePointerArraysFromPool = true;
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseFastXcorrData["
+               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+      else
+      {
+         try
+         {
+            pScoring->ppfSparseFastXcorrData = new float*[pScoring->iFastXcorrDataSize]();
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
+               + std::to_string(pScoring->iFastXcorrDataSize) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+
+      for (i=1; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
+      {
+         if (pfFastXcorrData[i]>FLOAT_ZERO || pfFastXcorrData[i]<-FLOAT_ZERO)
+         {
+            x=i/SPARSE_MATRIX_SIZE;
+            if (pScoring->ppfSparseFastXcorrData[x]==NULL)
+            {
+               if (pArena != nullptr)
+               {
+                  try
+                  {
+                     pScoring->ppfSparseFastXcorrData[x] = pArena->AllocBlock();
+                     pScoring->bSparseFromPool = true;
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseFastXcorrData["
+                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                        + "parameters to address mitigate memory use.\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     return false;
+                  }
+               }
+               else
+               {
+                  try
+                  {
+                     pScoring->ppfSparseFastXcorrData[x] = new float[SPARSE_MATRIX_SIZE]();
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg =" Error - new(pScoring->ppfSparseFastXcorrData["
+                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                        + "parameters to address mitigate memory use.\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     return false;
+                  }
+                  for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
+                     pScoring->ppfSparseFastXcorrData[x][y]=0;
+               }
+            }
+            y=i-(x*SPARSE_MATRIX_SIZE);
+            pScoring->ppfSparseFastXcorrData[x][y] = pfFastXcorrData[i];
+         }
+      }
+
+      // Create data for sp scoring which is just the binned peaks normalized to max inten 100
+      for (i = 0; i < pScoring->_spectrumInfoInternal.iArraySize; ++i)
+      {
+         pfSpScoreData[i] = (float)(100.0 * pdTmpRawData[i] / pPre.dHighestIntensity);
+      }
+
+      // MH: Fill sparse matrix for SpScore
+      pScoring->iSpScoreData = pScoring->_spectrumInfoInternal.iArraySize / SPARSE_MATRIX_SIZE + 1;
+
+      if (pPtrArena != nullptr)
+      {
+         try
+         {
+            pScoring->ppfSparseSpScoreData = pPtrArena->AllocSpan(pScoring->iSpScoreData);
+            pScoring->bSparsePointerArraysFromPool = true;
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - AllocSpan(pScoring->ppfSparseSpScoreData["
+               + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+      else
+      {
+         try
+         {
+            pScoring->ppfSparseSpScoreData = new float*[pScoring->iSpScoreData]();
+         }
+         catch (std::bad_alloc& ba)
+         {
+            string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
+               + std::to_string(pScoring->iSpScoreData) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+               + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+               + "parameters to address mitigate memory use.\n";
+            g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+            logerr(strErrorMsg);
+            return false;
+         }
+      }
+
+      for (i=0; i<pScoring->_spectrumInfoInternal.iArraySize; ++i)
+      {
+         if (pfSpScoreData[i] > FLOAT_ZERO)
+         {
+            x=i/SPARSE_MATRIX_SIZE;
+            if (pScoring->ppfSparseSpScoreData[x]==NULL)
+            {
+               if (pArena != nullptr)
+               {
+                  try
+                  {
+                     pScoring->ppfSparseSpScoreData[x] = pArena->AllocBlock();
+                     pScoring->bSparseFromPool = true;
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg =" Error - AllocBlock(pScoring->ppfSparseSpScoreData["
+                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                        + "parameters to address mitigate memory use.\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     return false;
+                  }
+               }
+               else
+               {
+                  try
+                  {
+                     pScoring->ppfSparseSpScoreData[x] = new float[SPARSE_MATRIX_SIZE]();
+                  }
+                  catch (std::bad_alloc& ba)
+                  {
+                     string strErrorMsg =" Error - new(pScoring->ppfSparseSpScoreData["
+                        + std::to_string(x) + "][" + std::to_string(SPARSE_MATRIX_SIZE) + "]). bad_alloc: " + std::string(ba.what()) + ".\n"
+                        + "Comet ran out of memory. Look into \"spectrum_batch_size\"\n"
+                        + "parameters to address mitigate memory use.\n";
+                     g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+                     logerr(strErrorMsg);
+                     return false;
+                  }
+                  for (y=0; y<SPARSE_MATRIX_SIZE; ++y)
+                     pScoring->ppfSparseSpScoreData[x][y]=0;
+               }
+            }
+            y=i-(x*SPARSE_MATRIX_SIZE);
+            pScoring->ppfSparseSpScoreData[x][y] = pfSpScoreData[i];
+         }
+      }
+   }
+
+   // COMET_PREPROCESS=verify: rebuild into a heap-allocated shadow from the same spectrum
+   // and compare (section 5 of docs/20261109_sparse_preprocessing.md). The scratch buffers
+   // are reused: this build is finished with them, and Preprocess() clears them first.
+   if (PreprocessVerifyOn() && !tl_bInPreprocessShadow)
+   {
+      Query* pShadow = new Query();
+      pShadow->_pepMassInfo.dExpPepMass = pScoring->_pepMassInfo.dExpPepMass;
+      pShadow->_spectrumInfoInternal.iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
+      pShadow->_spectrumInfoInternal.usiChargeState = pScoring->_spectrumInfoInternal.usiChargeState;
+      pShadow->_spectrumInfoInternal.usiMaxFragCharge = pScoring->_spectrumInfoInternal.usiMaxFragCharge;
+
+      tl_bInPreprocessShadow = true;
+      const bool bShadowOk = Preprocess(pShadow, mstSpectrum, pdTmpRawData, pdTmpFastXcorrData, pdTmpCorrelationData,
+         pfFastXcorrData, pfFastXcorrDataNL, pfSpScoreData, nullptr, nullptr);
+      tl_bInPreprocessShadow = false;
+
+      if (!bShadowOk)
+      {
+         delete pShadow;
+         pShadow = nullptr;
+      }
+      VerifyPreprocessShadow(pScoring, pShadow, "batch");
+   }
+
+   return true;
+}
 
 // Shared core: builds a fully preprocessed Query* from the input spectrum data.
 // Does NOT push the Query* into g_pvQuery.  Returns nullptr on failure.
@@ -2368,8 +2522,8 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    float  *pfSpScoreData;
 
    // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6). The sparse build
-   // is RTS thread-local-pool only in phase 1; a verify shadow always takes the dense one.
-   const bool bSparseBuild = bUseThreadLocalPool && !tl_bForceDenseBuild && UseSparseBuild(iNumPeaks, iArraySize);
+   // takes the thread-local pool here (the heap path, a verify shadow, is always dense).
+   const bool bSparseBuild = bUseThreadLocalPool && UseSparseBuild(iNumPeaks, iArraySize);
 
    if (bUseThreadLocalPool)
    {
@@ -2389,14 +2543,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       {
          // The sparse build touches only the raw buffer, at the peak bins (section 4.9):
          // clear what earlier builds on this thread may have left there, nothing else.
-         if (tl_uiRawDenseDirty > 0)
-         {
-            memset(pdTmpRawData, 0, tl_uiRawDenseDirty * sizeof(double));
-            tl_uiRawDenseDirty = 0;
-         }
-         for (int b : tl_vRawSparseBins)
-            pdTmpRawData[b] = 0.0;
-         tl_vRawSparseBins.clear();
+         PrepareRawForSparse(pdTmpRawData);
       }
       else
       {
@@ -2413,8 +2560,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          memset(pfFastXcorrData,      0, nF * sizeof(float));
          memset(pfFastXcorrDataNL,    0, nF * sizeof(float));
          memset(pfSpScoreData,        0, nF * sizeof(float));
-         if (nD > tl_uiRawDenseDirty)
-            tl_uiRawDenseDirty = nD;   // this build writes raw only inside [0, nD)
+         NoteDenseRawClear(pdTmpRawData, nD);   // this build writes raw only inside [0, nD)
       }
    }
    else
@@ -2522,7 +2668,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    auto SetRawBin = [&](int iBin, double dValue)
    {
       if (bSparseBuild && pdTmpRawData[iBin] == 0.0)
-         tl_vRawSparseBins.push_back(iBin);
+         tl_rawState.vBins.push_back(iBin);
       pdTmpRawData[iBin] = dValue;
    };
 
@@ -2650,8 +2796,10 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    bool bMatricesBuilt = false;
    if (bSparseBuild)
    {
-      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_vRawSparseBins, pdTmpRawData,
-         pPre.iHighestIon, pPre.dHighestIntensity, iArraySize);
+      SparseMatrixAllocator alloc;
+      alloc.bRtsPool = true;
+      const int iSparse = BuildSparseMatricesFromPeaks(pScoring, tl_rawState.vBins, pdTmpRawData,
+         pPre.iHighestIon, pPre.dHighestIntensity, iArraySize, alloc);
       if (iSparse < 0)
       {
          delete pScoring;
@@ -3621,7 +3769,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
-                        pdTmpRawData[iBinIon] = dIntensity;
+                        SetRawBinRecorded(pdTmpRawData, iBinIon, dIntensity);
 
                      if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
@@ -3646,7 +3794,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   if (bNotPrec)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
-                        pdTmpRawData[iBinIon] = dIntensity;
+                        SetRawBinRecorded(pdTmpRawData, iBinIon, dIntensity);
 
                      if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
@@ -3665,7 +3813,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
-                        pdTmpRawData[iBinIon] = dIntensity;
+                        SetRawBinRecorded(pdTmpRawData, iBinIon, dIntensity);
 
                      if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
@@ -3690,7 +3838,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                         && fabs(dIon - dMZ3) > g_staticParams.options.dRemovePrecursorTol)
                   {
                      if (dIntensity > pdTmpRawData[iBinIon])
-                        pdTmpRawData[iBinIon] = dIntensity;
+                        SetRawBinRecorded(pdTmpRawData, iBinIon, dIntensity);
 
                      if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
                         pPre->dHighestIntensity = pdTmpRawData[iBinIon];
@@ -3699,7 +3847,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                else // iRemovePrecursor==0
                {
                   if (dIntensity > pdTmpRawData[iBinIon])
-                     pdTmpRawData[iBinIon] = dIntensity;
+                     SetRawBinRecorded(pdTmpRawData, iBinIon, dIntensity);
 
                   if (pdTmpRawData[iBinIon] > pPre->dHighestIntensity)
                      pPre->dHighestIntensity = pdTmpRawData[iBinIon];
@@ -3800,6 +3948,8 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
       try
       {
          ppdTmpRawDataArr[i] = new double[iArraySizePadded]();
+         if (PreprocessVerifyOn())   // poisoned as the RTS/fused pool is (RtsScratch)
+            std::fill(ppdTmpRawDataArr[i], ppdTmpRawDataArr[i] + iArraySizePadded, 7.0);
       }
       catch (std::bad_alloc& ba)
       {
