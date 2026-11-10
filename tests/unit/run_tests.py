@@ -9016,7 +9016,8 @@ def _reinit_driver_status():
     if _REINIT_DRIVER_STATUS is not None:
         return _REINIT_DRIVER_STATUS
     sources = (REINIT_DRIVER_SRC, REPO_ROOT / "Comet.cpp", REPO_ROOT / "CometSearch" / "CometPostAnalysis.cpp",
-               REPO_ROOT / "CometSearch" / "CometPostAnalysis.h") + RTS_REPRO_LIBS
+               REPO_ROOT / "CometSearch" / "CometPostAnalysis.h", REPO_ROOT / "CometSearch" / "CometPreprocess.cpp",
+               REPO_ROOT / "CometSearch" / "CometPreprocess.h") + RTS_REPRO_LIBS
     asan_marker = Path(str(REINIT_DRIVER_BIN) + ".asan")
     if REINIT_DRIVER_BIN.exists():
         newest = max(p.stat().st_mtime for p in sources if p.exists())
@@ -9046,15 +9047,22 @@ def _reinit_driver_status():
             if r.returncode != 0:
                 _REINIT_DRIVER_STATUS = ("failed", f"compiling {src.name}:\n" + "\n".join((r.stdout + r.stderr).strip().splitlines()[-25:]))
                 return _REINIT_DRIVER_STATUS
+        # the decoy code and the preprocessing code (whose scratch arrays the fast-xcorr loop reads) are compiled
+        # into the driver ahead of the library, with AddressSanitizer when it works
         pa_src = REPO_ROOT / "CometSearch" / "CometPostAnalysis.cpp"
+        pp_src = REPO_ROOT / "CometSearch" / "CometPreprocess.cpp"
         built_asan = False
         for asan in (True, False):
-            r = compile_one(pa_src, td / "pa.o", ["-fsanitize=address", "-fno-omit-frame-pointer", "-g"] if asan else [])
+            extra = ["-fsanitize=address", "-fno-omit-frame-pointer", "-g"] if asan else []
+            r = compile_one(pa_src, td / "pa.o", extra)
+            if r.returncode == 0:
+                r = compile_one(pp_src, td / "pp.o", extra)
             if r.returncode != 0:
                 log += (r.stdout + r.stderr)
                 continue
             link = subprocess.run(["g++"] + (["-fsanitize=address"] if asan else []) +
-                                  [str(td / "driver.o"), str(td / "comet_main.o"), str(td / "pa.o"), "-o", str(REINIT_DRIVER_BIN)] + libs,
+                                  [str(td / "driver.o"), str(td / "comet_main.o"), str(td / "pa.o"), str(td / "pp.o"),
+                                   "-o", str(REINIT_DRIVER_BIN)] + libs,
                                   capture_output=True, text=True, cwd=str(REPO_ROOT))
             if link.returncode == 0:
                 built_asan = asan
@@ -9181,6 +9189,21 @@ def test_t88_reinit_decoy_tables(comet_exe):
         grown, fresh = result_lines("grow", 2), result_lines("fresh", 1)
         check(grown is not None and grown == fresh and any("LONG" in line for line in fresh),
               "digest_mass_range 2000 -> 5000: the second session finds the long peptide and equals a fresh process (scatter)", failures)
+
+        # Low resolution, a 3377 Da precursor under a 3400 Da ceiling: the query's array ends 23 bins below the
+        # global one, closer than xcorr_processing_offset (75). The fast-xcorr loop's max over the correlation
+        # data once ran 75 bins past the end of the query's array, which the scratch arrays' padding covered;
+        # it now stops at the array's end and nothing is padded, so the run must stay in bounds.
+        edge = write_params("t88_edge", fragment_bin_tol="1.0005", fragment_bin_offset="0.4", theoretical_fragment_ions="1",
+                            digest_mass_range="200.0 3400.0")
+        rc, log = drive("edge", [edge], input_file=ms2_big)
+        check(rc == 0 and "AddressSanitizer" not in log,
+              f"low resolution, precursor 23 bins below the global array end: stays in bounds{' under AddressSanitizer' if asan else ''} (rc={rc})", failures)
+        if rc != 0:
+            print(log[-1500:])
+        edge_rows = result_lines("edge", 1)
+        check(edge_rows is not None and any("LONG" in line for line in edge_rows),
+              "low resolution, precursor 23 bins below the global array end: the long peptide is found", failures)
     return failures
 
 

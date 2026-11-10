@@ -390,10 +390,9 @@ struct RtsScratch
          delete[] p;
       vFallbackSparseChildren.clear();
 
-      const int iXcorrPad = g_staticParams.iXcorrProcessingOffset;
-      pdTmpRawData         = new double[iSize + iXcorrPad];
-      pdTmpFastXcorrData   = new double[iSize + iXcorrPad];
-      pdTmpCorrelationData = new double[iSize + iXcorrPad];
+      pdTmpRawData         = new double[iSize];
+      pdTmpFastXcorrData   = new double[iSize];
+      pdTmpCorrelationData = new double[iSize];
       pfFastXcorrData      = new float[iSize];
       pfFastXcorrDataNL    = new float[iSize];
       pfSpScoreData        = new float[iSize];
@@ -403,9 +402,9 @@ struct RtsScratch
       // the allocator happens to hand back zeroed pages. The dense build clears before use.
       if (PreprocessVerifyOn())
       {
-         std::fill(pdTmpRawData, pdTmpRawData + iSize + iXcorrPad, 7.0);
-         std::fill(pdTmpFastXcorrData, pdTmpFastXcorrData + iSize + iXcorrPad, 7.0);
-         std::fill(pdTmpCorrelationData, pdTmpCorrelationData + iSize + iXcorrPad, 7.0);
+         std::fill(pdTmpRawData, pdTmpRawData + iSize, 7.0);
+         std::fill(pdTmpFastXcorrData, pdTmpFastXcorrData + iSize, 7.0);
+         std::fill(pdTmpCorrelationData, pdTmpCorrelationData + iSize, 7.0);
          std::fill(pfFastXcorrData, pfFastXcorrData + iSize, 7.0f);
          std::fill(pfFastXcorrDataNL, pfFastXcorrDataNL + iSize, 7.0f);
          std::fill(pfSpScoreData, pfSpScoreData + iSize, 7.0f);
@@ -1509,7 +1508,7 @@ bool CometPreprocess::DoneProcessingAllSpectra()
 
 // The raw-intensity scratch buffer. On the RTS path it is an output too: the result extraction
 // reads it for matched-fragment intensities (VisitResultIon()). The dense build clears
-// [0, iZeroBound + offset) up front; the sparse build instead keeps it clean incrementally
+// [0, iZeroBound) up front; the sparse build instead keeps it clean incrementally
 // (section 4.9): the bins it set are recorded, and the range a dense build cleared and wrote
 // is remembered, so the next sparse build clears exactly those. The state belongs to one
 // buffer: a thread that switches buffers (a different scratch pool) clears the new one once.
@@ -1565,16 +1564,16 @@ static void ForgetRawBufferState(const double* pdRaw)
 
 // Before a sparse build: make pdRaw zero wherever this build can write, clearing only what is
 // known to be dirty. A buffer seen for the first time is cleared over its whole length
-// (iArraySizeGlobal + iXcorrProcessingOffset, what both the RTS/fused pool and the batch
-// per-thread arrays allocate): the pool allocates it uninitialized (the dense build never needed
-// more, since it clears before every use), and a later, larger spectrum reads further into it.
+// (iArraySizeGlobal, what both the RTS/fused pool and the batch per-thread arrays allocate): the
+// pool allocates it uninitialized (the dense build never needed more, since it clears before every
+// use), and a later, larger spectrum reads further into it.
 // Returns the buffer's state (its vBins is where this build records the bins it sets).
 static RawBufferState& PrepareRawForSparse(double* pdRaw)
 {
    RawBufferState& st = RawStateFor(pdRaw);
    if (!st.bSeen)
    {
-      memset(pdRaw, 0, ((size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset) * sizeof(double));
+      memset(pdRaw, 0, (size_t)g_staticParams.iArraySizeGlobal * sizeof(double));
       st.bSeen = true;
       st.vBins.clear();
       st.uiDenseDirty = 0;
@@ -1601,7 +1600,7 @@ static void NoteDenseRawClear(double* pdRaw, size_t uiCleared)
       // scratch is allocated uninitialized, and a later sparse spectrum assumes everything it does
       // not clear is zero (PrepareRawForSparse() clears the whole buffer on first sight for the
       // same reason). Zero the rest once.
-      const size_t uiTotal = (size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset;
+      const size_t uiTotal = (size_t)g_staticParams.iArraySizeGlobal;
       if (uiTotal > uiCleared)
          memset(pdRaw + uiCleared, 0, (uiTotal - uiCleared) * sizeof(double));
       st.bSeen = true;
@@ -1967,7 +1966,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
    // than depending on a value computed later.
    const int iArraySize = pScoring->_spectrumInfoInternal.iArraySize;
    const int iZeroBound = ComputeZeroBound(iArraySize, pScoring->_pepMassInfo.dExpPepMass);
-   size_t iTmp = (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset) * sizeof(double);
+   size_t iTmp = (size_t)iZeroBound * sizeof(double);
 
    // Sparse or dense build (docs/20261109_sparse_preprocessing.md section 4.6); a verify shadow
    // always takes the dense one. The sparse build touches only the raw buffer, at the peak bins.
@@ -1980,7 +1979,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       memset(pdTmpRawData, 0, iTmp);
       memset(pdTmpFastXcorrData, 0, iTmp);
       memset(pdTmpCorrelationData, 0, iTmp);
-      NoteDenseRawClear(pdTmpRawData, (size_t)(iZeroBound + g_staticParams.iXcorrProcessingOffset));
+      NoteDenseRawClear(pdTmpRawData, (size_t)iZeroBound);
    }
 
    // pdTmpRawData is a binned array holding raw data; a sparse build records the bins set
@@ -2045,11 +2044,15 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          dSum += pdTmpCorrelationData[i];
       for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
       {
-         if (dMinXcorrInten < pdTmpCorrelationData[i])
-            dMinXcorrInten = pdTmpCorrelationData[i];
-
+         // Bins at or above iArraySize hold only zeros (raw is never written there and the setup clears
+         // them), so the max over i < iArraySize is the same value, and the loop reads nothing past
+         // iArraySize: the scratch arrays need no iXcorrProcessingOffset padding.
          if (i < pScoring->_spectrumInfoInternal.iArraySize)
+         {
+            if (dMinXcorrInten < pdTmpCorrelationData[i])
+               dMinXcorrInten = pdTmpCorrelationData[i];
             dSum += pdTmpCorrelationData[i];
+         }
          if (i >= iTmpRange)
             dSum -= pdTmpCorrelationData[i - iTmpRange];
          pdTmpFastXcorrData[i - g_staticParams.iXcorrProcessingOffset] = (dSum - pdTmpCorrelationData[i - g_staticParams.iXcorrProcessingOffset]) * dTmp;
@@ -2416,7 +2419,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 //     of being heap-allocated, eliminating 5 new[]/delete[] pairs per spectrum.
 //   - pdTmpSpectrum is ignored; g_rtsScratch.pdTmpRawData is used instead.
 //   - Sparse matrix child arrays come from the pool (Query::bSparseFromPool=true).
-//   - Only the region [0, iArraySize + iXcorrOffset) is zeroed rather than
+//   - Only the region [0, iZeroBound) (at least iArraySize) is zeroed rather than
 //     the full iArraySizeGlobal, saving significant memset time.
 Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                                                      double dMZ,
@@ -2565,8 +2568,8 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    // --- Scratch buffer setup ---
    //
    // RTS path  (bUseThreadLocalPool=true): use pre-allocated per-thread buffers.
-   //   - Zero only [0, iZeroBound + iXcorrProcessingOffset) -- the region actually
-   //     read/written -- instead of the full iArraySizeGlobal.
+   //   - Zero only [0, iZeroBound) -- the region actually read/written -- instead of the
+   //     full iArraySizeGlobal.
    //
    // Batch path (bUseThreadLocalPool=false): allocate on heap as before.
 
@@ -2629,12 +2632,12 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       }
       else
       {
-         // Zero only the region that will be accessed. pdTmpCorrelationData and
-         // pdTmpFastXcorrData are read up to iZeroBound + iXcorrOffset by
-         // MakeCorrData()/the sliding-window loop (see iZeroBound comment above);
-         // pfFastXcorrData/pfFastXcorrDataNL/pfSpScoreData are only ever indexed
-         // up to iArraySize, so they don't need the wider bound.
-         const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
+         // Zero only the region that will be accessed. pdTmpRawData and pdTmpCorrelationData
+         // are read up to iZeroBound by MakeCorrData() (see iZeroBound comment above) and
+         // only up to iArraySize by the sliding-window loop; pfFastXcorrData/
+         // pfFastXcorrDataNL/pfSpScoreData are only ever indexed up to iArraySize, so they
+         // don't need the wider bound.
+         const size_t nD = (size_t)iZeroBound;
          const size_t nF = (size_t)iArraySize;
          memset(pdTmpRawData,         0, nD * sizeof(double));
          memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
@@ -2648,13 +2651,11 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    else
    {
       pdTmpRawData         = pdTmpSpectrum;          // reuse caller-provided buffer
-      // The fast-xcorr pass reads pdTmpCorrelationData up to iArraySize + iXcorrOffset, so the
-      // doubles get the same iXcorrOffset padding the thread-local pool and the batch arrays
-      // have: unpadded, a precursor whose iArraySize is clamped to iArraySizeGlobal read past
-      // the allocation (found 2026-11-09 through the COMET_PREPROCESS verify shadow, the only
-      // caller of this heap path). pdTmpSpectrum must hold as many (the RTS verify wrapper's).
-      pdTmpFastXcorrData   = new double[iGlobalBytes + iXcorrOffset]();
-      pdTmpCorrelationData = new double[iGlobalBytes + iXcorrOffset]();
+      // pdTmpSpectrum must hold iArraySizeGlobal doubles (the RTS verify wrapper's does). The
+      // fast-xcorr pass reads nothing at or above iArraySize (<= iArraySizeGlobal), so none of
+      // these arrays is padded.
+      pdTmpFastXcorrData   = new double[iGlobalBytes]();
+      pdTmpCorrelationData = new double[iGlobalBytes]();
       pfFastXcorrData      = new float[iGlobalBytes]();
       pfFastXcorrDataNL    = new float[iGlobalBytes]();
       pfSpScoreData        = new float[iGlobalBytes]();
@@ -2897,7 +2898,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       else
       {
          g_preprocessVerifyStats.ullSparseFallbacks++;
-         const size_t nD = (size_t)(iZeroBound + iXcorrOffset);
+         const size_t nD = (size_t)iZeroBound;
          memset(pdTmpFastXcorrData,   0, nD * sizeof(double));
          memset(pdTmpCorrelationData, 0, nD * sizeof(double));
       }
@@ -2929,11 +2930,13 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
          dSum += pdTmpCorrelationData[i];
       for (i = iXcorrOffset; i < iArraySize + iXcorrOffset; ++i)
       {
-         if (dMinXcorrInten < pdTmpCorrelationData[i])
-            dMinXcorrInten = pdTmpCorrelationData[i];
-
+         // (see the same loop in Preprocess(): bins at or above iArraySize hold only zeros)
          if (i < iArraySize)
+         {
+            if (dMinXcorrInten < pdTmpCorrelationData[i])
+               dMinXcorrInten = pdTmpCorrelationData[i];
             dSum += pdTmpCorrelationData[i];
+         }
          if (i >= iTmpRange)
             dSum -= pdTmpCorrelationData[i - iTmpRange];
          pdTmpFastXcorrData[i - iXcorrOffset] = (dSum - pdTmpCorrelationData[i - iXcorrOffset]) * dTmp;
@@ -3202,7 +3205,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge
    if (pQuery != nullptr && PreprocessVerifyOn() && !tl_bInPreprocessShadow)
    {
       static thread_local std::vector<double> tl_vShadowRaw;
-      tl_vShadowRaw.assign((size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset + 1, 0.0);
+      tl_vShadowRaw.assign((size_t)g_staticParams.iArraySizeGlobal, 0.0);
 
       tl_bInPreprocessShadow = true;
       Query* pShadow = PreprocessSingleSpectrumCore(iPrecursorCharge, dMZ, pdMass, pdInten, iNumPeaks,
@@ -4020,13 +4023,11 @@ bool CometPreprocess::AllocateMemory(int maxNumThreads)
    }
 
    // Preprocess()'s sliding-window XCorr loop reads pdTmpRawData/pdTmpFastXcorrData/
-   // pdTmpCorrelationData up to iArraySize + iXcorrProcessingOffset - 1 (default offset 75),
-   // but iArraySize can equal iArraySizeGlobal for a precursor at peptide_mass_high -- so
-   // these three pool arrays need the same "+ iXcorrProcessingOffset" pad the RTS thread-local
-   // pool already uses for the identical reason (CometPreprocess.cpp's RtsScratch::
-   // EnsureInitialized(), iXcorrPad), or any such precursor reads past the end of the heap
-   // allocation.
-   const int iArraySizePadded = g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset;
+   // pdTmpCorrelationData only below iArraySize, which is at most iArraySizeGlobal (it equals it
+   // for a precursor at peptide_mass_high). The loop's max over the correlation data once ran to
+   // iArraySize + iXcorrProcessingOffset - 1 and these arrays carried that much padding; the max
+   // is now taken over i < iArraySize (the extra bins were always zero), so none is needed.
+   const int iArraySizePadded = g_staticParams.iArraySizeGlobal;
 
    //MH: Allocate arrays
    ppdTmpRawDataArr = new double* [maxNumThreads]();
