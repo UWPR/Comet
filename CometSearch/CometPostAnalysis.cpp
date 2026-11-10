@@ -404,6 +404,16 @@ static long long GatherWorkEstimate(int iLoopMax, int iMaxFragCharge)
    return s_gatherCum[c][iGroups];
 }
 
+// The two kernels below must add the same floats in the same order: the gather's scores are
+// bit-identical to the scatter's only under strict IEEE evaluation, and which of them runs is a
+// per-query choice, so a reordered sum would make E-values depend on it. The Windows projects
+// build with /fp:fast, which lets the compiler reassociate the gather's eight accumulators, so
+// pin precise semantics here (the pragma is at file scope, as MSVC requires). The Makefile
+// builds without -ffast-math. COMET_DECOYGEN=verify checks the result on any build.
+#ifdef _MSC_VER
+#pragma float_control(precise, on, push)
+#endif
+
 // Scatter: the original loop. pfScores[0 .. iLoopMax) must be zero on entry.
 static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge, float* pfScores)
 {
@@ -521,6 +531,10 @@ static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax,
          pfScores[i0 + j] = fAcc[j];
    }
 }
+
+#ifdef _MSC_VER
+#pragma float_control(pop)
+#endif
 
 
 CometPostAnalysis::CometPostAnalysis()
