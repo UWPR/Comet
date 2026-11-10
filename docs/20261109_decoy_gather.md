@@ -49,12 +49,14 @@ copy is allocated once per thread; only the rows the previous query copied are c
 **Choosing per query (auto, the default).** The gather's cost follows its table size, the
 scatter's the spectrum's nonzero bins, so neither wins everywhere: at 0.02 Da the chimeric
 search's 3+/4+ candidates (charge limit 3, a three-times larger table) and its stripped spectra
-favour the scatter. Two O(1)-ish estimates, in table entries:
+favour the scatter. Two cheap estimates, in table entries:
 
 - `ScatterWorkEstimate()`: the inverted-index entries under the spectrum's nonempty 100-bin
   rows, from the index offsets (one step per row: ~650 at 0.02 Da, ~14 at 1.0005 Da);
-- `GatherWorkEstimate()`: the gather table entries of the groups covering the decoys needed at
-  the query's charge limit (a prefix sum per table).
+- `GatherWorkEstimate()`: the gather table entries of the rows the kernel will process -- for the
+  groups covering the decoys needed at the query's charge limit, the rows before the early stop of
+  section 6 (one binary search per group, shared with the kernel). (Before 2026-11-10 it was a
+  prefix sum over whole groups.)
 
 The gather runs when the scatter estimate exceeds 0.4x the gather estimate. Per-query timings
 of both paths (scratch build, the 5,000 HeLa scans, one thread) set the factor:
@@ -197,3 +199,16 @@ Not done: building the tables for limits above 3 lazily, or serving those querie
 of the HeLa queries) from the scatter, would cut the memory of heavy configurations by up to 60%
 (`max_fragment_charge` 5), but changes nothing for the default of 3 and the largest case is 43 MB
 against a multi-GB index, so the tables stay eager.
+
+## 8. Table bookkeeping (2026-11-10, code review)
+
+Each per-charge table now has one row-offsets vector (`s_gatherRowOff[c]`, one entry per group plus
+a sentinel holding the total) where it had a start and a length per group (and, until section 6, a
+cumulative-entries array): a group's rows are the range between two consecutive offsets, a row's
+bins are `s_gatherBin[c][row * 8 ..]`, and the row minimums are indexed by row. The group count
+(`GatherGroups()`) and the query's charge limit (`DecoyChargeLimit()`) are computed in one place each.
+The scatter takes its charge limit from the same helper, so the two paths agree for any input; the
+limit is a query's `usiMaxFragCharge`, 1 .. `max_fragment_charge`, so the clamp inside it never acts
+on real queries (it is a guard: a limit below 1 used to give the scatter no ions and the gather
+charge-1 ions). Scores are unchanged: the 5,000-scan HeLa outputs equal the previous build's and
+verify reports zero mismatches.

@@ -114,21 +114,35 @@ static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
 //
 // Stored lane-interleaved for the gather loop, one table per fragment-charge limit c
 // (1 .. s_pdMaxCharge; a query uses c = its usiMaxFragCharge): decoys are taken eight at a
-// time (a group), group g's ions with charge <= c are s_gatherBin[c][s_gatherStart[c][g] +
-// t * 8 + lane] for t < s_gatherLen[c][g], and a lane shorter than the group's longest is
-// padded with the bin s_iGatherPadBin (one past the highest decoy ion bin), which the gather's dense
+// time (a group), group g's ions with charge <= c fill the rows s_gatherRowOff[c][g] ..
+// s_gatherRowOff[c][g + 1] - 1, row r being the eight lanes s_gatherBin[c][r * 8 .. r * 8 + 7], and a
+// lane shorter than the group's longest is padded with the bin s_iGatherPadBin (one past the highest
+// decoy ion bin), which the gather's dense
 // spectrum copy keeps at zero -- as it does every bin >= the query's iArraySize, so ions past
 // the precursor need no cut-off either.
 static const int s_iGatherLanes = 8;   // DecoyScoresGather() hard-codes eight accumulators (checked there)
-static std::vector<std::vector<int>> s_gatherStart;   // [c][group]
-static std::vector<std::vector<int>> s_gatherLen;     // [c][group]
-static std::vector<std::vector<int>> s_gatherBin;     // [c][...]
+static std::vector<std::vector<int>> s_gatherRowOff;  // [c][group]: the group's first row; [c][groups] = the rows in all
+static std::vector<std::vector<int>> s_gatherBin;     // [c][row * 8 + lane]
 // [c][row]: the lowest bin in each row of the table (all lanes; rows are numbered across the groups, a
-// group's rows are s_gatherStart[c][g] / 8 .. + s_gatherLen[c][g]). A lane is sorted by bin and padded with
+// group's rows are s_gatherRowOff[c][g] .. s_gatherRowOff[c][g + 1] - 1). A lane is sorted by bin and padded with
 // the highest bin, so within a group this never decreases: the rows from the first one whose lowest bin
 // reaches a query's iArraySize on hold only zeros for that query and are skipped (exactly: they add 0.0f).
 static std::vector<std::vector<int>> s_gatherRowMin;
 static int s_iGatherPadBin = 0;
+
+// The number of eight-decoy groups that cover iLoopMax decoys.
+static inline int GatherGroups(int iLoopMax)
+{
+   return (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
+}
+
+// The fragment-charge limit the decoy scoring applies for a query: its usiMaxFragCharge, which is
+// 1 .. max_fragment_charge (the limit the tables are built for; a different one is refused as stale).
+// Both scoring paths take it from here, so they agree for any input.
+static inline int DecoyChargeLimit(int iMaxFragCharge)
+{
+   return std::min(std::max(iMaxFragCharge, 1), s_pdMaxCharge);
+}
 
 static bool DecoyGatherTablesNeeded();
 
@@ -140,10 +154,9 @@ static bool DecoyGatherTablesNeeded();
 // does not show.) s_iGatherPadBin is set.
 static void BuildGatherTables()
 {
-   const int iGroups = (EXPECT_DECOY_SIZE + s_iGatherLanes - 1) / s_iGatherLanes;
+   const int iGroups = GatherGroups(EXPECT_DECOY_SIZE);
    const int iBins = (int)s_invIdx_start.size() - 2;   // == s_iGatherPadBin
-   s_gatherStart.assign(s_pdMaxCharge + 1, std::vector<int>());
-   s_gatherLen.assign(s_pdMaxCharge + 1, std::vector<int>());
+   s_gatherRowOff.assign(s_pdMaxCharge + 1, std::vector<int>());
    s_gatherBin.assign(s_pdMaxCharge + 1, std::vector<int>());
    s_gatherRowMin.assign(s_pdMaxCharge + 1, std::vector<int>());
 
@@ -151,25 +164,25 @@ static void BuildGatherTables()
    std::vector<int> vCursor(EXPECT_DECOY_SIZE);
    for (int c = 1; c <= s_pdMaxCharge; ++c)
    {
-      // ions of each decoy with charge <= c, then each group's length (its longest lane) and start
+      // ions of each decoy with charge <= c, then each group's first row (its length is its longest lane)
       std::fill(vCount.begin(), vCount.end(), 0);
       for (const uint32_t entry : s_invIdx_data)
       {
          if ((int)(entry >> 16) <= c)
             ++vCount[(uint16_t)(entry & 0xFFFF)];
       }
-      s_gatherStart[c].resize(iGroups);
-      s_gatherLen[c].resize(iGroups);
+      std::vector<int>& vOff = s_gatherRowOff[c];
+      vOff.resize(iGroups + 1);
       size_t uiRows = 0;
       for (int g = 0; g < iGroups; ++g)
       {
          int iLen = 0;
          for (int j = 0; j < s_iGatherLanes; ++j)
             iLen = std::max(iLen, vCount[g * s_iGatherLanes + j]);
-         s_gatherStart[c][g] = (int)(uiRows * s_iGatherLanes);
-         s_gatherLen[c][g] = iLen;
+         vOff[g] = (int)uiRows;
          uiRows += iLen;
       }
+      vOff[iGroups] = (int)uiRows;
 
       // short lanes keep the pad bin; the others are filled in ascending bin order
       std::vector<int>& vBin = s_gatherBin[c];
@@ -184,7 +197,7 @@ static void BuildGatherTables()
                continue;
             const int i = (uint16_t)(entry & 0xFFFF);
             const int g = i / s_iGatherLanes;
-            vBin[(size_t)s_gatherStart[c][g] + (size_t)vCursor[i]++ * s_iGatherLanes + (i % s_iGatherLanes)] = b;
+            vBin[((size_t)vOff[g] + (size_t)vCursor[i]++) * s_iGatherLanes + (i % s_iGatherLanes)] = b;
          }
       }
 
@@ -433,19 +446,18 @@ struct GatherStops
 static const GatherStops& GetGatherStops(int iArraySize, int iLoopMax, int iMaxFragCharge)
 {
    static thread_local GatherStops tl_stops;
-   const int c = std::max(1, std::min(iMaxFragCharge, s_pdMaxCharge));
+   const int c = DecoyChargeLimit(iMaxFragCharge);
    if (tl_stops.iArraySize == iArraySize && tl_stops.iLoopMax == iLoopMax && tl_stops.c == c)
       return tl_stops;
 
-   const int iGroups = (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
+   const int iGroups = GatherGroups(iLoopMax);
    const int* piRowMin = s_gatherRowMin[c].data();
-   const int* piStart = s_gatherStart[c].data();
-   const int* piLen = s_gatherLen[c].data();
+   const int* piOff = s_gatherRowOff[c].data();
    long long llRows = 0;
    for (int g = 0; g < iGroups; ++g)
    {
-      const int* pFirst = piRowMin + piStart[g] / s_iGatherLanes;
-      const int iStop = (int)(std::lower_bound(pFirst, pFirst + piLen[g], iArraySize) - pFirst);
+      const int* pFirst = piRowMin + piOff[g];
+      const int iStop = (int)(std::lower_bound(pFirst, pFirst + (piOff[g + 1] - piOff[g]), iArraySize) - pFirst);
       tl_stops.piStop[g] = iStop;
       llRows += iStop;
    }
@@ -484,6 +496,7 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
 {
    const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
    const int iInvIdxBins = (int)s_invIdx_start.size() - 1;  // s_iGatherPadBin + 1
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
 
    for (int x = 0; x < iSparseRows; ++x)
    {
@@ -503,7 +516,7 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
          if (b >= iArraySize || b >= iInvIdxBins)
             break;
 
-         // Scatter v to decoys that have an ion at bin b with charge <= iMaxFragCharge.
+         // Scatter v to decoys that have an ion at bin b with charge <= the query's charge limit.
          // Entries are ordered by decoy_i (low 16 bits) ascending; break when decoy_i
          // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
          // out-of-range charges since later entries may have the same decoy_i at a
@@ -516,7 +529,7 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
             if (decoy_i >= (uint16_t)iLoopMax)
                break;
             const int ctCharge = (int)(entry >> 16);
-            if (ctCharge <= iMaxFragCharge)
+            if (ctCharge <= iChargeLimit)
                pfScores[decoy_i] += v;
          }
       }
@@ -568,19 +581,15 @@ static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax,
       memcpy(pfDense + bBase, row, (size_t)n * sizeof(float));
    }
 
-   int c = iMaxFragCharge;
-   if (c > s_pdMaxCharge)
-      c = s_pdMaxCharge;
-   if (c < 1)
-      c = 1;
+   const int c = DecoyChargeLimit(iMaxFragCharge);
    const int* piBin = s_gatherBin[c].data();
-   const int* piStart = s_gatherStart[c].data();
+   const int* piOff = s_gatherRowOff[c].data();
 
    const int* piStop = GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).piStop;
-   const int iGroups = (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
+   const int iGroups = GatherGroups(iLoopMax);
    for (int g = 0; g < iGroups; ++g)
    {
-      const int* p = piBin + piStart[g];
+      const int* p = piBin + (size_t)piOff[g] * s_iGatherLanes;
       const int iLen = piStop[g];   // the rows past it read only zeros for this query
       float f0 = 0.0f, f1 = 0.0f, f2 = 0.0f, f3 = 0.0f, f4 = 0.0f, f5 = 0.0f, f6 = 0.0f, f7 = 0.0f;
       for (int t = 0; t < iLen; ++t, p += s_iGatherLanes)
