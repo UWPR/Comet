@@ -8647,7 +8647,7 @@ def test_t86_preprocess_verify(comet_exe):
                 pf = tmp / "t86_batch.params"
                 pf.write_text(pr)
                 txts = {}
-                for mode in ("", "dense", "verify", "verify-selftest"):
+                for mode in ("", "dense", "verify", "verify-selftest", "bogus"):
                     name = tmp / f"t86_{label}_{mode or 'unset'}"
                     res = subprocess.run([str(comet_exe), f"-P{fmt(pf)}", f"-N{fmt(name)}", fmt(ms2)], capture_output=True, text=True,
                                          timeout=300, env=env_with(mode))
@@ -8665,9 +8665,14 @@ def test_t86_preprocess_verify(comet_exe):
                     elif mode == "verify":
                         check(summary is not None and summary[0] > 0 and summary[1] == 0,
                               f"{tag}: every spectrum compared, zero mismatches ({summary})", failures)
+                    elif mode == "bogus":
+                        check("COMET_PREPROCESS=bogus not recognized (auto, dense, sparse, verify, verify-selftest); using auto" in log,
+                              f"{tag}: an unrecognized value is reported", failures)
                     else:
                         check(summary is not None and summary[0] > 0 and summary[1] == summary[0],
                               f"{tag}: the self-test flags every comparison ({summary})", failures)
+                if "" in txts and "bogus" in txts:
+                    check(txts["bogus"] == txts[""], f"batch {label}: an unrecognized value gives the default's results", failures)
                 if "" in txts and "verify" in txts:
                     check(txts["verify"] == txts[""], f"batch {label}: verify mode leaves the results unchanged", failures)
                 if "" in txts and "dense" in txts:
@@ -8865,6 +8870,9 @@ def test_t87_decoygen_verify(comet_exe):
                 summary = _t87_summary(log)
                 if mode in ("", "scatter", "gather"):
                     check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)
+                elif mode == "bogus":
+                    check("COMET_DECOYGEN=bogus not recognized (auto, scatter, gather, verify, verify-selftest); using auto" in log,
+                          f"{tag}: an unrecognized value is reported", failures)
                 elif mode == "verify":
                     check(summary is not None and summary[0] > 0 and summary[1] == 0,
                           f"{tag}: gather == scatter on every decoy set ({summary})", failures)
@@ -8875,7 +8883,7 @@ def test_t87_decoygen_verify(comet_exe):
                           f"{tag}: the self-test flags every comparison ({summary})", failures)
                     check(_t87_mismatch_lines_identify(log), f"{tag}: the mismatch lines name the query (MH+, sizes, charge limit)", failures)
             if "scatter" in txts:
-                for m in ("", "gather", "verify", "verify-selftest"):
+                for m in ("", "gather", "verify", "verify-selftest", "bogus"):
                     if m in txts:
                         check(txts[m] == txts["scatter"], f"batch {label}: {m or 'default'} gives the scatter's results", failures)
 
@@ -8977,7 +8985,7 @@ def test_t87_decoygen_verify(comet_exe):
                         check(all(want), f"windows rts {form}: every expected charge-limit table is read ({autos[4:]})", failures)
 
             # --- batch comet.exe: FASTA, FI_DB (the index built above), then PI_DB (rebuilt over it)
-            run_batch("FASTA", fasta, ("", "scatter", "gather", "verify", "verify-selftest"))
+            run_batch("FASTA", fasta, ("", "scatter", "gather", "verify", "verify-selftest", "bogus"))
             run_batch("FI_DB", idx, ("", "scatter", "gather", "verify", "verify-selftest"))
             idx.unlink(missing_ok=True)
             try:

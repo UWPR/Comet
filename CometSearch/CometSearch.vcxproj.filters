@@ -102,6 +102,9 @@
     <ClInclude Include="core\Constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="core\EnvSwitch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="core\Types.h">
       <Filter>Header Files</Filter>
     </ClInclude>

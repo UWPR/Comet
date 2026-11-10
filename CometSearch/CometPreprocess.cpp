@@ -20,6 +20,7 @@
 #include "CometMassSpecUtils.h"
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
+#include "core/EnvSwitch.h"
 #include <string.h>
 #include <algorithm>
 #include <climits>
@@ -155,22 +156,9 @@ enum class PreprocessMode { Auto, Dense, Sparse, Verify, VerifySelfTest };
 
 static PreprocessMode GetPreprocessMode()
 {
-   static const PreprocessMode mode = []()
-   {
-      const char* psz = getenv("COMET_PREPROCESS");
-      if (psz == nullptr || *psz == '\0' || strcmp(psz, "auto") == 0)
-         return PreprocessMode::Auto;
-      if (strcmp(psz, "dense") == 0)
-         return PreprocessMode::Dense;
-      if (strcmp(psz, "sparse") == 0)
-         return PreprocessMode::Sparse;
-      if (strcmp(psz, "verify") == 0)
-         return PreprocessMode::Verify;
-      if (strcmp(psz, "verify-selftest") == 0)
-         return PreprocessMode::VerifySelfTest;
-      fprintf(stderr, " COMET_PREPROCESS=%s not recognized (auto, dense, sparse, verify, verify-selftest); using auto\n", psz);
-      return PreprocessMode::Auto;
-   }();
+   // in the order of PreprocessMode
+   static const char* const pszNames[] = { "auto", "dense", "sparse", "verify", "verify-selftest" };
+   static const PreprocessMode mode = (PreprocessMode)ReadEnvSwitch("COMET_PREPROCESS", pszNames, 5);
    return mode;
 }
 

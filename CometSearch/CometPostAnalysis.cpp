@@ -16,6 +16,7 @@
 #include "Common.h"
 #include "ThreadPool.h"
 #include "CometPostAnalysis.h"
+#include "core/EnvSwitch.h"
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
 
@@ -162,16 +163,16 @@ static void BuildGatherTables()
 
    std::vector<int> vCount(EXPECT_DECOY_SIZE);
    std::vector<int> vCursor(EXPECT_DECOY_SIZE);
-   for (int c = 1; c <= s_pdMaxCharge; ++c)
+   for (int iChargeLimit = 1; iChargeLimit <= s_pdMaxCharge; ++iChargeLimit)
    {
       // ions of each decoy with charge <= c, then each group's first row (its length is its longest lane)
       std::fill(vCount.begin(), vCount.end(), 0);
-      for (const uint32_t entry : s_invIdx_data)
+      for (const uint32_t uiEntry : s_invIdx_data)
       {
-         if ((int)(entry >> 16) <= c)
-            ++vCount[(uint16_t)(entry & 0xFFFF)];
+         if ((int)(uiEntry >> 16) <= iChargeLimit)
+            ++vCount[(uint16_t)(uiEntry & 0xFFFF)];
       }
-      std::vector<int>& vOff = s_gatherRowOff[c];
+      std::vector<int>& vOff = s_gatherRowOff[iChargeLimit];
       vOff.resize(iGroups + 1);
       size_t uiRows = 0;
       for (int g = 0; g < iGroups; ++g)
@@ -185,30 +186,30 @@ static void BuildGatherTables()
       vOff[iGroups] = (int)uiRows;
 
       // short lanes keep the pad bin; the others are filled in ascending bin order
-      std::vector<int>& vBin = s_gatherBin[c];
+      std::vector<int>& vBin = s_gatherBin[iChargeLimit];
       vBin.assign(uiRows * s_iGatherLanes, s_iGatherPadBin);
       std::fill(vCursor.begin(), vCursor.end(), 0);
-      for (int b = 0; b < iBins; ++b)
+      for (int iBin = 0; iBin < iBins; ++iBin)
       {
-         for (int k = s_invIdx_start[b]; k < s_invIdx_start[b + 1]; ++k)
+         for (int k = s_invIdx_start[iBin]; k < s_invIdx_start[iBin + 1]; ++k)
          {
-            const uint32_t entry = s_invIdx_data[k];
-            if ((int)(entry >> 16) > c)
+            const uint32_t uiEntry = s_invIdx_data[k];
+            if ((int)(uiEntry >> 16) > iChargeLimit)
                continue;
-            const int i = (uint16_t)(entry & 0xFFFF);
+            const int i = (uint16_t)(uiEntry & 0xFFFF);
             const int g = i / s_iGatherLanes;
-            vBin[((size_t)vOff[g] + (size_t)vCursor[i]++) * s_iGatherLanes + (i % s_iGatherLanes)] = b;
+            vBin[((size_t)vOff[g] + (size_t)vCursor[i]++) * s_iGatherLanes + (i % s_iGatherLanes)] = iBin;
          }
       }
 
       // the lowest bin of each row (see s_gatherRowMin)
-      s_gatherRowMin[c].resize(uiRows);
+      s_gatherRowMin[iChargeLimit].resize(uiRows);
       for (size_t r = 0; r < uiRows; ++r)
       {
          int iRowMin = s_iGatherPadBin;
          for (int j = 0; j < s_iGatherLanes; ++j)
             iRowMin = std::min(iRowMin, vBin[r * s_iGatherLanes + j]);
-         s_gatherRowMin[c][r] = iRowMin;
+         s_gatherRowMin[iChargeLimit][r] = iRowMin;
       }
    }
 }
@@ -367,23 +368,16 @@ enum class DecoyGenMode { Auto, Scatter, Gather, Verify, VerifySelfTest };
 
 static DecoyGenMode GetDecoyGenMode()
 {
-   static const DecoyGenMode mode = []()
-   {
-      const char* psz = getenv("COMET_DECOYGEN");
-      if (psz == nullptr || *psz == '\0' || strcmp(psz, "auto") == 0)
-         return DecoyGenMode::Auto;
-      if (strcmp(psz, "scatter") == 0)
-         return DecoyGenMode::Scatter;
-      if (strcmp(psz, "gather") == 0)
-         return DecoyGenMode::Gather;
-      if (strcmp(psz, "verify") == 0)
-         return DecoyGenMode::Verify;
-      if (strcmp(psz, "verify-selftest") == 0)
-         return DecoyGenMode::VerifySelfTest;
-      fprintf(stderr, " COMET_DECOYGEN=%s not recognized (auto, scatter, gather, verify, verify-selftest); using auto\n", psz);
-      return DecoyGenMode::Auto;
-   }();
+   // in the order of DecoyGenMode
+   static const char* const pszNames[] = { "auto", "scatter", "gather", "verify", "verify-selftest" };
+   static const DecoyGenMode mode = (DecoyGenMode)ReadEnvSwitch("COMET_DECOYGEN", pszNames, 5);
    return mode;
+}
+
+static bool DecoyGenVerifyOn()
+{
+   const DecoyGenMode mode = GetDecoyGenMode();
+   return mode == DecoyGenMode::Verify || mode == DecoyGenMode::VerifySelfTest;
 }
 
 static bool DecoyGatherTablesNeeded()
@@ -401,7 +395,7 @@ struct DecoyGenVerifyStats
 
    ~DecoyGenVerifyStats()
    {
-      if (GetDecoyGenMode() == DecoyGenMode::Verify || GetDecoyGenMode() == DecoyGenMode::VerifySelfTest)
+      if (DecoyGenVerifyOn())
          fprintf(stderr, "COMET_DECOYGEN verify: %llu decoy sets compared, %llu mismatches (auto: %llu gather, %llu scatter; "
             "charge limits 1-5: %llu %llu %llu %llu %llu)\n",
             ullCompared.load(), ullMismatches.load(), ullAutoGather.load(), ullAutoScatter.load(),
@@ -418,17 +412,17 @@ static long long ScatterWorkEstimate(const Query* pQuery, int iArraySize)
 {
    const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
    const int iInvIdxBins = (int)s_invIdx_start.size() - 1;
-   long long ll = 0;
+   long long llEntries = 0;
    for (int x = 0; x < iSparseRows; ++x)
    {
       if (pQuery->ppfSparseFastXcorrData[x] == nullptr)
          continue;
-      const int b0 = x * SPARSE_MATRIX_SIZE;
-      const int b1 = std::min(std::min(b0 + SPARSE_MATRIX_SIZE, iArraySize), iInvIdxBins);
-      if (b1 > b0)
-         ll += s_invIdx_start[b1] - s_invIdx_start[b0];
+      const int iBin0 = x * SPARSE_MATRIX_SIZE;
+      const int iBin1 = std::min(std::min(iBin0 + SPARSE_MATRIX_SIZE, iArraySize), iInvIdxBins);
+      if (iBin1 > iBin0)
+         llEntries += s_invIdx_start[iBin1] - s_invIdx_start[iBin0];
    }
-   return ll;
+   return llEntries;
 }
 
 // The gather's rows that can add a nonzero value for this query (see s_gatherRowMin), per group, and
@@ -438,7 +432,7 @@ struct GatherStops
 {
    int iArraySize = -1;
    int iLoopMax = -1;
-   int c = -1;
+   int iChargeLimit = -1;
    long long llEntries = 0;
    int piStop[(EXPECT_DECOY_SIZE + s_iGatherLanes - 1) / s_iGatherLanes];
 };
@@ -446,13 +440,13 @@ struct GatherStops
 static const GatherStops& GetGatherStops(int iArraySize, int iLoopMax, int iMaxFragCharge)
 {
    static thread_local GatherStops tl_stops;
-   const int c = DecoyChargeLimit(iMaxFragCharge);
-   if (tl_stops.iArraySize == iArraySize && tl_stops.iLoopMax == iLoopMax && tl_stops.c == c)
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
+   if (tl_stops.iArraySize == iArraySize && tl_stops.iLoopMax == iLoopMax && tl_stops.iChargeLimit == iChargeLimit)
       return tl_stops;
 
    const int iGroups = GatherGroups(iLoopMax);
-   const int* piRowMin = s_gatherRowMin[c].data();
-   const int* piOff = s_gatherRowOff[c].data();
+   const int* piRowMin = s_gatherRowMin[iChargeLimit].data();
+   const int* piOff = s_gatherRowOff[iChargeLimit].data();
    long long llRows = 0;
    for (int g = 0; g < iGroups; ++g)
    {
@@ -463,7 +457,7 @@ static const GatherStops& GetGatherStops(int iArraySize, int iLoopMax, int iMaxF
    }
    tl_stops.iArraySize = iArraySize;
    tl_stops.iLoopMax = iLoopMax;
-   tl_stops.c = c;
+   tl_stops.iChargeLimit = iChargeLimit;
    tl_stops.llEntries = llRows * s_iGatherLanes;
    return tl_stops;
 }
@@ -500,20 +494,20 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
 
    for (int x = 0; x < iSparseRows; ++x)
    {
-      const float* row = pQuery->ppfSparseFastXcorrData[x];
-      if (row == nullptr)
+      const float* pfRow = pQuery->ppfSparseFastXcorrData[x];
+      if (pfRow == nullptr)
          continue;
 
-      const int bBase = x * SPARSE_MATRIX_SIZE;
+      const int iBinBase = x * SPARSE_MATRIX_SIZE;
 
       for (int y = 0; y < SPARSE_MATRIX_SIZE; ++y)
       {
-         const float v = row[y];
-         if (v == 0.0f)
+         const float fValue = pfRow[y];
+         if (fValue == 0.0f)
             continue;
 
-         const int b = bBase + y;
-         if (b >= iArraySize || b >= iInvIdxBins)
+         const int iBin = iBinBase + y;
+         if (iBin >= iArraySize || iBin >= iInvIdxBins)
             break;
 
          // Scatter v to decoys that have an ion at bin b with charge <= the query's charge limit.
@@ -521,16 +515,16 @@ static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax
          // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
          // out-of-range charges since later entries may have the same decoy_i at a
          // lower charge.
-         const int kEnd = s_invIdx_start[b + 1];
-         for (int k = s_invIdx_start[b]; k < kEnd; ++k)
+         const int iEnd = s_invIdx_start[iBin + 1];
+         for (int k = s_invIdx_start[iBin]; k < iEnd; ++k)
          {
-            const uint32_t entry   = s_invIdx_data[k];
-            const uint16_t decoy_i = (uint16_t)(entry & 0xFFFF);
-            if (decoy_i >= (uint16_t)iLoopMax)
+            const uint32_t uiEntry = s_invIdx_data[k];
+            const uint16_t usDecoy = (uint16_t)(uiEntry & 0xFFFF);
+            if (usDecoy >= (uint16_t)iLoopMax)
                break;
-            const int ctCharge = (int)(entry >> 16);
+            const int ctCharge = (int)(uiEntry >> 16);
             if (ctCharge <= iChargeLimit)
-               pfScores[decoy_i] += v;
+               pfScores[usDecoy] += fValue;
          }
       }
    }
@@ -572,36 +566,36 @@ static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax,
    const int iSparseRows = (iCopyBins + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
    for (int x = 0; x < iSparseRows; ++x)
    {
-      const float* row = pQuery->ppfSparseFastXcorrData[x];
-      if (row == nullptr)
+      const float* pfRow = pQuery->ppfSparseFastXcorrData[x];
+      if (pfRow == nullptr)
          continue;
-      const int bBase = x * SPARSE_MATRIX_SIZE;
-      const int n = std::min(SPARSE_MATRIX_SIZE, iCopyBins - bBase);
+      const int iBinBase = x * SPARSE_MATRIX_SIZE;
+      const int iNumBins = std::min(SPARSE_MATRIX_SIZE, iCopyBins - iBinBase);
       tl_vDenseRows.push_back(x);   // recorded first, so a throw here cannot leave a dirty row unrecorded
-      memcpy(pfDense + bBase, row, (size_t)n * sizeof(float));
+      memcpy(pfDense + iBinBase, pfRow, (size_t)iNumBins * sizeof(float));
    }
 
-   const int c = DecoyChargeLimit(iMaxFragCharge);
-   const int* piBin = s_gatherBin[c].data();
-   const int* piOff = s_gatherRowOff[c].data();
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
+   const int* piBin = s_gatherBin[iChargeLimit].data();
+   const int* piOff = s_gatherRowOff[iChargeLimit].data();
 
    const int* piStop = GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).piStop;
    const int iGroups = GatherGroups(iLoopMax);
    for (int g = 0; g < iGroups; ++g)
    {
-      const int* p = piBin + (size_t)piOff[g] * s_iGatherLanes;
+      const int* piRow = piBin + (size_t)piOff[g] * s_iGatherLanes;
       const int iLen = piStop[g];   // the rows past it read only zeros for this query
       float f0 = 0.0f, f1 = 0.0f, f2 = 0.0f, f3 = 0.0f, f4 = 0.0f, f5 = 0.0f, f6 = 0.0f, f7 = 0.0f;
-      for (int t = 0; t < iLen; ++t, p += s_iGatherLanes)
+      for (int t = 0; t < iLen; ++t, piRow += s_iGatherLanes)
       {
-         f0 += pfDense[p[0]];
-         f1 += pfDense[p[1]];
-         f2 += pfDense[p[2]];
-         f3 += pfDense[p[3]];
-         f4 += pfDense[p[4]];
-         f5 += pfDense[p[5]];
-         f6 += pfDense[p[6]];
-         f7 += pfDense[p[7]];
+         f0 += pfDense[piRow[0]];
+         f1 += pfDense[piRow[1]];
+         f2 += pfDense[piRow[2]];
+         f3 += pfDense[piRow[3]];
+         f4 += pfDense[piRow[4]];
+         f5 += pfDense[piRow[5]];
+         f6 += pfDense[piRow[6]];
+         f7 += pfDense[piRow[7]];
       }
       const float fAcc[s_iGatherLanes] = { f0, f1, f2, f3, f4, f5, f6, f7 };
       const int i0 = g * s_iGatherLanes;
@@ -1962,7 +1956,7 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    // Scatter (inverted index over the nonzero bins) or gather (each decoy's own ions):
    // identical scores; see the COMET_DECOYGEN comment above DecoyScoresScatter().
    const DecoyGenMode mode = GetDecoyGenMode();
-   if (mode == DecoyGenMode::Verify || mode == DecoyGenMode::VerifySelfTest)
+   if (DecoyGenVerifyOn())
    {
       thread_local static float tl_decoyScoresScatter[EXPECT_DECOY_SIZE];
       memset(tl_decoyScoresScatter, 0, iLoopMax * sizeof(float));
