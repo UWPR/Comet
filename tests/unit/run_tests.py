@@ -8474,7 +8474,8 @@ def test_t86_preprocess_verify(comet_exe):
     """T86: COMET_PREPROCESS=verify compares every preprocessed spectrum against a second, heap-allocated
     build with zero mismatches and leaves results unchanged (rts_repro at high resolution, low resolution and with
     neutral-loss ions; batch comet.exe on FASTA and FI_DB, FASTA also with 4 threads); verify-selftest reports a
-    mismatch for every comparison; with the variable unset nothing is printed. A Windows --comet runs the batch
+    mismatch for every comparison; with the variable unset nothing is printed. A low-resolution FI_DB batch run on a
+    pre-filled heap (MALLOC_PERTURB_) checks that a sparse spectrum never reads leftovers a dense one did not clear. A Windows --comet runs the batch
     parts only (the variable reaches it through WSLENV; rts_repro is a Linux tool)."""
     failures = []
     use_win = _binary_uses_win_paths(comet_exe)
@@ -8493,8 +8494,13 @@ def test_t86_preprocess_verify(comet_exe):
             return failures
         fasta = tmp / "t67_chimeric.fasta"
         ms2 = tmp / "t67_chimeric.ms2"
+        # plus a 30-residue peptide (MH+ 3377) for the low-resolution case below, whose scans are sparse there
+        long_pep = "GASPVTLNDQEHFYGASPVTLNDQEHFYLK"
+        with open(fasta, "a") as fh:
+            fh.write(f">LONG\nMAR{long_pep}AGAR\n")
         params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
-                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=30)
+        params = _set_param_line(params, "digest_mass_range", "200.0 5000.0")
         try:
             idx = _rts_build_index(comet_exe, fasta, params, "-i")
         except RuntimeError as e:
@@ -8666,6 +8672,47 @@ def test_t86_preprocess_verify(comet_exe):
                     check(txts["verify"] == txts[""], f"batch {label}: verify mode leaves the results unchanged", failures)
                 if "" in txts and "dense" in txts:
                     check(txts["dense"] == txts[""], f"batch {label}: the default (auto) gives the dense build's results", failures)
+
+            # --- batch FI_DB at low resolution on a heap that starts nonzero. The RTS/fused scratch buffers are
+            # allocated uninitialized and the sparse build assumes what it does not clear is zero; a buffer
+            # first used by a DENSE spectrum was cleared only over that spectrum's range, so a later sparse one
+            # (few peaks, large precursor) read leftover heap contents (2026-11-10: 8-thread low-resolution
+            # batch runs differed from run to run). MALLOC_PERTURB_ fills fresh allocations with a pattern, so
+            # the leftovers are there every time; the fixture's dense scans come first, then sparse ones.
+            if not use_win:
+                # 12 peaks: eight y ions (enough to find the peptide) and four at m/z 2100-2550, beyond any range
+                # the dense scans before them cleared (their precursors are 1163 and 1744 Da)
+                long_y = [m for m, s in fixture_peptides.by_ions(long_pep, 1) if s == "y"][:8]
+                high = [2100.0 + 150.0 * i + 0.37 * i for i in range(4)]
+                long_mh = fixture_peptides.neutral_mass(long_pep) + fixture_peptides.PROTON
+                sparse_scans = "".join(
+                    f"S\t{200 + k}\t{200 + k}\t{fixture_peptides.mz(long_pep, 3):.6f}\nZ\t3\t{long_mh:.6f}\n" +
+                    "".join(f"{m:.5f} {100.0 - i:.3f}\n" for i, m in enumerate(long_y + high)) for k in range(24))
+                ms2_lr = tmp / "t86_lr.ms2"
+                ms2_lr.write_text(ms2.read_text() + sparse_scans)
+                lr_text = params.replace(f"database_name = {fasta}", f"database_name = {idx}")
+                for key, value in (("fragment_bin_tol", "1.0005"), ("fragment_bin_offset", "0.4"),
+                                   ("theoretical_fragment_ions", "1"), ("num_threads", "2")):
+                    lr_text = _set_param_line(lr_text, key, value)
+                pf_lr = tmp / "t86_lr.params"
+                pf_lr.write_text(lr_text)
+                lr_outs = {}
+                for mode in ("dense", ""):
+                    env = env_with(mode)
+                    env["MALLOC_PERTURB_"] = "165"
+                    name = tmp / f"t86_lr_{mode or 'auto'}"
+                    res = subprocess.run([str(comet_exe), f"-P{pf_lr}", f"-N{name}", str(ms2_lr)], capture_output=True, text=True,
+                                         timeout=300, env=env)
+                    txt = Path(str(name) + ".txt")
+                    if not check(res.returncode == 0 and txt.exists(), f"batch FI_DB low resolution, {mode or 'auto'}: comet.exe exits 0 (rc={res.returncode})", failures):
+                        print((res.stdout + res.stderr)[-1200:])
+                        continue
+                    lr_outs[mode] = sorted(txt.read_text().splitlines()[1:])
+                if len(lr_outs) == 2:
+                    check(any("LONG" in ln or long_pep in ln for ln in lr_outs[""]),
+                          "batch FI_DB low resolution: the long peptide is found", failures)
+                    check(lr_outs[""] == lr_outs["dense"],
+                          "batch FI_DB low resolution, heap pre-filled: the default build gives the dense build's results", failures)
 
             # --- batch FASTA, several threads: the pool hands a raw-intensity buffer to whichever thread
             # is free, so the sparse build's record of the bins it set must follow the buffer, not the

@@ -1592,11 +1592,18 @@ static RawBufferState& PrepareRawForSparse(double* pdRaw)
 }
 
 // After a dense build cleared [0, uiCleared) of pdRaw (and before it writes inside that range).
-static void NoteDenseRawClear(const double* pdRaw, size_t uiCleared)
+static void NoteDenseRawClear(double* pdRaw, size_t uiCleared)
 {
    RawBufferState& st = RawStateFor(pdRaw);
    if (!st.bSeen)
    {
+      // A buffer first seen by a dense build: it cleared [0, uiCleared) itself, but the RTS/fused
+      // scratch is allocated uninitialized, and a later sparse spectrum assumes everything it does
+      // not clear is zero (PrepareRawForSparse() clears the whole buffer on first sight for the
+      // same reason). Zero the rest once.
+      const size_t uiTotal = (size_t)g_staticParams.iArraySizeGlobal + g_staticParams.iXcorrProcessingOffset;
+      if (uiTotal > uiCleared)
+         memset(pdRaw + uiCleared, 0, (uiTotal - uiCleared) * sizeof(double));
       st.bSeen = true;
       st.vBins.clear();
       st.uiDenseDirty = uiCleared;
