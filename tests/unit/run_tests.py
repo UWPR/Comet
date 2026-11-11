@@ -7168,24 +7168,30 @@ def test_t72_chimeric_budget(comet_exe):
                       f"budget_1ms: bIncomplete is set and the call returned true (INCOMPLETE budget), got {_rts_incomplete(tmp / 'budget_1ms.out')}", failures)
 
             # A budget that runs out after the target is found (the first search carries one-time
-            # setup, ~15 ms here; then ~0.2 ms per candidate): the best PSM of the incomplete
-            # iteration is reported and the call ends. Timing-dependent, so the report check runs
-            # only when the trace shows exactly that case; the invariant is checked regardless.
-            iters, log = run("budget_40ms", 40)
-            if iters is not None:
+            # setup; then a fraction of a millisecond per candidate): the best PSM of the incomplete
+            # iteration is reported and the call ends. Whether a given budget lands in that window
+            # depends on the machine, so sweep budgets and require that at least one does; the
+            # expiry invariants are checked for every budget in the sweep.
+            exercised = False
+            for budget in (3, 5, 8, 12, 20, 40, 80, 160):
+                label = f"budget_{budget}ms"
+                iters, log = run(label, budget)
+                if iters is None:
+                    continue
                 n0, line0 = iters.get(0, (None, "no trace"))
                 if line0.endswith("budget-expired"):
-                    check(sorted(iters) == [0], f"budget_40ms: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
-                    check(_rts_incomplete(tmp / "budget_40ms.out") == {1: "budget"},
-                          "budget_40ms: the kept row is followed by INCOMPLETE budget (bIncomplete, returned true)", failures)
+                    check(sorted(iters) == [0], f"{label}: no iteration after the budget ran out (iterations traced: {sorted(iters)})", failures)
+                    check(_rts_incomplete(tmp / f"{label}.out") == {1: "budget"},
+                          f"{label}: the call is followed by INCOMPLETE budget (bIncomplete, returned true)", failures)
                 if " keep budget-expired" in line0:
-                    rows = _t67_rows(tmp / "budget_40ms.out").get(1, [])
+                    exercised = True
+                    rows = _t67_rows(tmp / f"{label}.out").get(1, [])
                     check([(x.get("peptide"), x.get("iter")) for x in rows] == [(pep, 0)],
-                          f"budget_40ms: the incomplete iteration's best, {pep}, is reported as iteration 0 and nothing else "
+                          f"{label}: the incomplete iteration's best, {pep}, is reported as iteration 0 and nothing else "
                           f"(got {[(x.get('peptide'), x.get('iter')) for x in rows]})", failures)
-                else:
-                    print(f"  NOTE: budget_40ms did not expire after the target was found on this machine ({line0}); "
-                          f"report-on-expiry check not exercised")
+                    break
+            check(exercised, "a budget expiring after the target was found was exercised (the best PSM of the "
+                  "incomplete iteration is reported); no budget in the sweep 3..160 ms landed in that window", failures)
         finally:
             idx.unlink(missing_ok=True)
     return failures
@@ -7727,12 +7733,12 @@ def test_t77_rts_charge_limits(comet_exe):
             failures.append(str(e))
             return failures
         try:
-            def chim(label, zmin, zmax, extra=None):
+            def chim(label, zmin, zmax, extra=None, fx=None):
                 env = {"RTS_CHIMERIC_DEBUG": "1"}
                 if extra:
                     env["RTS_REPRO_PARAMS"] = extra
                 out = tmp / "chim.out"
-                rc, log = _rts_run(idx, fixture, 1, out, 0, 1, extra_args=["1", str(zmin), str(zmax), "0", "0.01", "5"], env=env)
+                rc, log = _rts_run(idx, fx or fixture, 1, out, 0, 1, extra_args=["1", str(zmin), str(zmax), "0", "0.01", "5"], env=env)
                 ok = check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0, no crash (rc={rc})", failures)
                 if not ok:
                     print(log[-1200:])
@@ -7748,7 +7754,15 @@ def test_t77_rts_charge_limits(comet_exe):
                 if rows is not None:
                     got = [(x.get("peptide"), x.get("z")) for x in rows if "peptide" in x]
                     check(got[:1] == [(pep, 2)], f"{label}: {pep} 2+ found (got {got or rows})", failures)
-                    check(ncand is not None and ncand <= 8, f"{label}: at most 8 candidates searched, charges 2..9 (got {ncand})", failures)
+            # The count check needs a precursor whose every charge 2..10 passes the index's mass gate
+            # (digest_mass_range 200-2000): at the peptide's own m/z 582.3 charges >= 4 are gated out
+            # before they are counted, so the clamp at MAX_PRECURSOR_CHARGE would go untested. At m/z
+            # 200.0 (MH+ 399 at 2+, 1991 at 10+) removing the clamp searches 2..10 (9), not 2..9 (8).
+            fixture_lowmz = tmp / "t77_lowmz.txt"
+            fixture_lowmz.write_text("\n".join(fixture_peptides.spectrum_block(1, 2, 200.0, peaks)) + "\n")
+            for label, zmax in (("chimeric 2..12 at m/z 200", 12), ("chimeric 2..INT_MAX at m/z 200", 2147483647)):
+                _, ncand = chim(label, 2, zmax, "i:max_precursor_charge=9", fx=fixture_lowmz)
+                check(ncand == 8, f"{label}: exactly 8 candidates searched, charges 2..9 (got {ncand})", failures)
             # the configured limits apply to chimeric candidates too: under min_precursor_charge 3 the
             # 2+ candidate is not searched, so the 2+ peptide is not found (its 3+ and 4+ windows miss it)
             rows, _ = chim("chimeric 2..4, min_precursor_charge 3", 2, 4, "i:min_precursor_charge=3")
@@ -7875,6 +7889,8 @@ def test_t79_runner_accounting(comet_exe):
     check("skipped zz_skip_probe: probe reason" in out, "the summary lists the skipped test with its reason", failures)
 
     if shutil.which("g++") is None:
+        if failures:    # check (a) already failed: report that, don't let a skip mask it
+            return failures
         raise TestSkipped("g++ not found: the rts_repro build checks need it")
 
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
@@ -7887,14 +7903,16 @@ def test_t79_runner_accounting(comet_exe):
             "from pathlib import Path\n"
             "import run_tests as rt\n"
             "rt.RTS_REPRO_CPP = Path(%r); rt.RTS_REPRO_BIN = Path(%r)\n"
-            "f = rt.test_t67_chimeric(Path(%r))\n"
-            "print('RESULT', repr(f[:1])[:400])\n" % (unit, str(broken), str(tmp / "rts_repro_broken"), str(comet_exe)))
+            "f = []\n"
+            "rt._require_rts_repro(f)\n"    # the build gate every RTS test starts with; platform independent
+            "print('RESULT', repr(f[:1])[:400])\n" % (unit, str(broken), str(tmp / "rts_repro_broken")))
         rc, out = run_snippet(code_b)
         res = next((l for l in out.splitlines() if l.startswith("RESULT")), "")
         check("failed to build" in res and "error" in res.lower(),
               f"a failed rts_repro build makes an RTS test fail with the compiler output, not skip ({res[:200]!r})", failures)
 
         # (c) staleness: a linked library newer than the binary triggers a rebuild
+        _require_rts_repro(failures)     # make sure the real binary exists (builds it on a fresh checkout)
         if RTS_REPRO_BIN.exists():
             stale = tmp / "rts_repro_copy"
             shutil.copy2(RTS_REPRO_BIN, stale)
@@ -8578,7 +8596,7 @@ def test_t86_preprocess_verify(comet_exe):
                                           ((mh - 79.9799 + fixture_peptides.PROTON) / 2, 60.0)]),
                     2: (2, mz2, [(200.0 + 37.0 * k, 50.0 + k) for k in range(14)]),          # isolated bands, 37 Da apart
                     3: (2, mz2, [(600.0 + 0.137 * k, 20.0 + 3 * k) for k in range(16)]),     # one overlapping cluster
-                    4: (1, 1990.5, [(150.0 + 123.4 * k, 10.0 + k) for k in range(15)]),       # near the top of the range
+                    4: (1, 4990.5, [(150.0 + 123.4 * k, 10.0 + k) for k in range(40)]),       # near the top of digest_mass_range (5000)
                     5: (3, (mh + 2 * fixture_peptides.PROTON) / 3, ladder + [(mz2, 90.0)]),
                 }
                 lines = []
@@ -9085,15 +9103,6 @@ def _reinit_driver_status():
         asan_marker.unlink(missing_ok=True)
     _REINIT_DRIVER_STATUS = ("ok", built_asan)
     return _REINIT_DRIVER_STATUS
-
-
-def _set_param_line(text, key, value):
-    """Set `key = value` in a params blob: replace the line, or insert it after decoy_search."""
-    line = f"{key} = {value}"
-    new, n = re.subn(rf"(?m)^{re.escape(key)}\s*=.*$", line, text)
-    if n:
-        return new
-    return re.sub(r"(?m)^(decoy_search\s*=.*)$", lambda m: m.group(1) + "\n" + line, text, count=1)
 
 
 @register("t88_reinit_decoy_tables")

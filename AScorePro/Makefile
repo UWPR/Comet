@@ -14,7 +14,10 @@ DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 # missing .d by doing nothing.
 DEPFLAGS = -MMD -MP -MF $@.d
 
-SRC_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+# Relative to the directory make runs in (the top Makefile runs this one as `cd dir && make`),
+# not abspath: the .d files record the object paths as written here, so absolute ones went
+# stale when a built tree was copied or renamed and no header change rebuilt anything there.
+SRC_DIR  := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
 BUILD_SRC = $(SRC_DIR)
 BUILD_DIR = $(SRC_DIR)/obj
 

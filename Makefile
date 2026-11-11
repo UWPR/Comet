@@ -40,7 +40,7 @@ LIBMSTOOLKIT = $(MSTOOLKIT)/libmstoolkit.a $(MSTOOLKIT)/libmstoolkitextern.a
 COMETSEARCH_FILES = $(wildcard $(COMETSEARCH)/Makefile \
                                $(COMETSEARCH)/*.cpp $(COMETSEARCH)/*.h $(COMETSEARCH)/*.hpp \
                                $(COMETSEARCH)/*/*.cpp $(COMETSEARCH)/*/*.h $(COMETSEARCH)/*/*.hpp \
-                               $(ASCOREPRO)/include/*.h $(MSTOOLKIT)/include/*.h)
+                               $(ASCOREPRO)/include/*.h $(MSTOOLKIT)/include/*.h $(MSTOOLKIT)/include/*.hpp)
 ASCOREPRO_FILES = $(wildcard $(ASCOREPRO)/Makefile $(ASCOREPRO)/*.cpp $(ASCOREPRO)/include/*.h)
 
 UNITTEST_BIN = tests/unit/test_comet_internal
@@ -70,10 +70,12 @@ mstoolkit:
 # The MSToolkit libraries are built by the mstoolkit target above, whose own Makefile
 # decides what is out of date. They are prerequisites of comet.exe so that a change made
 # only in MSToolkit relinks it (before 2026-11-09 comet.exe kept the old MSToolkit code
-# until something else changed). The empty recipe means "mstoolkit has made this";
+# until something else changed). A normal (not order-only) prerequisite: under 'make -jN' the
+# order-only form let make stat the libraries before the sub-make rewrote them and skip the
+# relink. The empty recipe means "mstoolkit has made this";
 # make then re-reads the library's timestamp, so comet.exe relinks only when the
 # sub-make actually rebuilt a library.
-$(LIBMSTOOLKIT): | mstoolkit ;
+$(LIBMSTOOLKIT): mstoolkit ;
 
 $(LIBCOMETSEARCH): $(COMETSEARCH_FILES) | mstoolkit
 	cd $(COMETSEARCH) && $(MAKE)

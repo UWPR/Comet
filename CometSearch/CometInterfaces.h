@@ -57,8 +57,9 @@ public:
       // every candidate whose own dToleranceMZ is 0; 0 = peptide_mass_tolerance as configured.
       // Return value and bIncomplete (2026-11-08):
       //   true,  bIncomplete false: a normal end -- no PSM left, the best failed dMaxExpect,
-      //                             iMaxPeptidesPerSpectrum rows, or too few peaks remain
-      //                             (zero rows included);
+      //                             iMaxPeptidesPerSpectrum rows, too few peaks remain, or the
+      //                             reported PSM explained no observed peak (nothing to remove, so
+      //                             the next iteration would repeat it) (zero rows included);
       //   true,  bIncomplete true:  the max_index_runtime budget ran out; the rows are the
       //                             PSMs found so far (the spectrum may hold more);
       //   false, bIncomplete true:  the call stopped early because the search was cancelled

@@ -354,6 +354,7 @@ remain safe for the same reason the existing function is.
 | Best PSM is a decoy | Reported and removed like a target (decision 4). |
 | Same peptide wins twice | Possible only if removal left enough of its ions to re-score under `dMaxExpect`; reported both times. The diagnostics in 7.3 count this, since it is the clearest symptom of insufficient removal. |
 | Spectrum drops below `minimum_peaks` | Loop ends; rows found so far are returned. |
+| Winner matched no observed peak (removal removes 0 peaks) | Loop ends after reporting it: the core search is deterministic for a given peak list, so the next iteration would repeat the identical PSM until the iteration cap or the time budget (reachable only with a negative `minimum_xcorr` and `dMaxExpect` >= 999; review 2026-11-10). |
 | `max_index_runtime` exceeded mid-iteration | The current candidate's result is discarded (an expired core search returns no rows), no further candidate is searched, and the call ends with `true`. The best PSM among the candidates searched so far in that iteration is reported if it passes `dMaxExpect` -- it was fully scored, but it may not be the best over every candidate -- after the rows of earlier iterations. The loop checks the budget itself, before each candidate and after each core call (2026-11-08). `bIncomplete` is set (2026-11-08). |
 | `g_cometStatus.IsCancel()`, or an index search fails (core returns -2) | `false` with `bIncomplete` set. The rows of the iterations completed before it are kept: they are fully scored and valid, and the call just stopped early (2026-11-08). Before, the call returned `false` with those rows and nothing saying they were usable, so every caller dropped them. |
 | Candidate m/z NaN, infinite, zero or negative | Dropped at call entry like a charge < 1; the rest of the list is searched. If no valid candidate remains, `false`. The mass gate and the preprocess core are NaN-safe as well (2026-11-08). |
@@ -388,7 +389,7 @@ the `.ms2` file, the `.idx`, and the chimeric parameters.
   (`(MH+ + (z-1) * PROTON) / z`, charge z). Multi-`Z`-line `.ms2` -- the format
   `mango_search_wrapper.py` consumes and writes -- is the only source for now
   (decision 10).
-- Common: `--max-expect E --max-peptides N --topn 1 --threads T`, same `ConcurrentQueue`
+- Common: `--max-expect E --max-peptides N --threads T`, same `ConcurrentQueue`
   work-stealing structure as `SearchMS1MS2.cs`.
 - Output: one tab-delimited row per reported PSM -- `scan, iteration, charge, mz, neutral
   mass, peptide, protein, xcorr, dCn, expect, matched/total ions, elapsed ms (whole call)`

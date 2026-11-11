@@ -118,6 +118,20 @@ static int CountPeaksTowardMinimum(Spectrum& mstSpectrum)
 }
 
 
+// True when the -17/-18 (water/ammonia loss) matrix must be built: use_NL_ions with an a, b or
+// y series, on a database whose scorer reads it. Only XcorrScore() (FASTA_DB) and XcorrScoreI()
+// on PI_DB read that matrix; the FI_DB scorer never does, so building it there is dead work
+// (and, in the sparse build, triples UseSparseBuild()'s bound). The one test for every build site.
+static inline bool NeedWaterAmmoniaLossMatrix()
+{
+   return g_staticParams.ionInformation.bUseWaterAmmoniaLoss
+      && g_staticParams.iDbType != DbType::FI_DB
+      && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
+         || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+}
+
+
 // Shared by PreprocessSingleSpectrumCore() (RTS), PreprocessSpectrum() (batch), and
 // FusedSearchSpectrum(): computes the array size a Query needs for this precursor mass,
 // clamped to iArraySizeGlobal so an out-of-configured-range precursor (or the
@@ -1670,10 +1684,7 @@ static bool UseSparseBuild(int iNumPeaks, int iArraySize)
    if (mode == PreprocessMode::Dense)
       return false;
 
-   const bool bNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-      && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-         || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-         || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+   const bool bNL = NeedWaterAmmoniaLossMatrix();
    const long long llBand = 2LL * g_staticParams.iXcorrProcessingOffset + 1
       + (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0 ? 2 : 0);
    const long long llBound = (long long)iNumPeaks * llBand * (bNL ? 3 : 1);
@@ -1697,10 +1708,7 @@ static int BuildSparseMatricesFromPeaks(Query* pScoring,
    const int iRange = 2 * iOff + 1;
    const double dTmp = 1.0 / (iRange - 1.0);      // same expression as the dense pass
    const bool bFlank = (g_staticParams.ionInformation.iTheoreticalFragmentIons == 0);
-   const bool bNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-      && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-         || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-         || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]);
+   const bool bNL = NeedWaterAmmoniaLossMatrix();
    const int iM17 = g_staticParams.precalcMasses.iMinus17;
    const int iM18 = g_staticParams.precalcMasses.iMinus18;
    const int N = iArraySize;
@@ -1789,7 +1797,7 @@ static int BuildSparseMatricesFromPeaks(Query* pScoring,
       }
       tl_vCkStep.push_back(iStep);
       tl_vCkSum.push_back(dSum);
-      if (iActive == 0 && !(fabs(dSum) < dResidueLimit))
+      if (iActive == 0 && (std::isnan(dSum) || fabs(dSum) >= dResidueLimit))   // explicit isnan: /fp:fast folds !(a < b)
          return 0;
    }
    const size_t nCk = tl_vCkStep.size();
@@ -2035,7 +2043,9 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
       double dMinXcorrInten = 0.0;
 
       dSum = 0.0;
-      for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+      // Only [0, iZeroBound) of the scratch is cleared, so a (hidden, unvalidated) offset larger
+      // than that must not prime from beyond it; bins past iArraySize are zeros anyway.
+      for (i = 0; i < std::min(g_staticParams.iXcorrProcessingOffset, iZeroBound); ++i)
          dSum += pdTmpCorrelationData[i];
       for (i = g_staticParams.iXcorrProcessingOffset; i < pScoring->_spectrumInfoInternal.iArraySize + g_staticParams.iXcorrProcessingOffset; ++i)
       {
@@ -2076,10 +2086,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
          }
 
          // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL
-         if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+         if (NeedWaterAmmoniaLossMatrix())
          {
             int iTmp;
 
@@ -2103,10 +2110,7 @@ bool CometPreprocess::Preprocess(struct Query *pScoring,
 
       // Using sparse matrix which means we free pScoring->pfFastXcorrData, ->pfFastXcorrDataNL here
       // If A, B or Y ions and their neutral loss selected, roll in -17/-18 contributions to pfFastXcorrDataNL.
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      if (NeedWaterAmmoniaLossMatrix())
       {
 
          if (pPtrArena != nullptr)
@@ -2921,7 +2925,9 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       double dTmp = 1.0 / (iTmpRange - 1.0);
       double dMinXcorrInten = 0.0;
 
-      for (i = 0; i < g_staticParams.iXcorrProcessingOffset; ++i)
+      // Only [0, iZeroBound) of the scratch is cleared, so a (hidden, unvalidated) offset larger
+      // than that must not prime from beyond it; bins past iArraySize are zeros anyway.
+      for (i = 0; i < std::min(g_staticParams.iXcorrProcessingOffset, iZeroBound); ++i)
          dSum += pdTmpCorrelationData[i];
       for (i = iXcorrOffset; i < iArraySize + iXcorrOffset; ++i)
       {
@@ -2956,10 +2962,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                pfFastXcorrData[i] += (float)((pdTmpCorrelationData[iTmpIdx] - pdTmpFastXcorrData[iTmpIdx]) * 0.5);
          }
 
-         if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-               && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-                  || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+         if (NeedWaterAmmoniaLossMatrix())
          {
             int iTmpIdx;
             pfFastXcorrDataNL[i] = pfFastXcorrData[i];
@@ -2984,10 +2987,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       pScoring->iFastXcorrDataSize = (iArraySize / SPARSE_MATRIX_SIZE) + 1;
 
       // Sparse NL matrix
-      if (g_staticParams.ionInformation.bUseWaterAmmoniaLoss
-            && (g_staticParams.ionInformation.iIonVal[ION_SERIES_A]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_B]
-               || g_staticParams.ionInformation.iIonVal[ION_SERIES_Y]))
+      if (NeedWaterAmmoniaLossMatrix())
       {
          try
          {
@@ -3801,7 +3801,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    {
       for (i = (int)mstSpectrum.size() - 1; i >= 0; --i)
       {
-         if (mstSpectrum.at(i).intensity >= dIntensityCutoff && mstSpectrum.at(i).intensity > 0.0)
+         if (mstSpectrum.at(i).mz > 0.0 && mstSpectrum.at(i).intensity >= dIntensityCutoff && mstSpectrum.at(i).intensity > 0.0)
             pScoring->vRawFragmentPeakMassIntensity.emplace_back(mstSpectrum.at(i).mz, mstSpectrum.at(i).intensity);
       }
    }
@@ -3812,6 +3812,12 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
    {
       dIon = pSpec->at(i).mz;
       dIntensity = pSpec->at(i).intensity;
+
+      // A peak with a non-positive (or NaN) m/z is invalid: ignore it entirely. Its negative
+      // bin would otherwise index the raw/Sp arrays and the sparse build's window maxima
+      // below zero.
+      if (!(dIon > 0.0))
+         continue;
 
       pScoring->_spectrumInfoInternal.dTotalIntensity += dIntensity;
 

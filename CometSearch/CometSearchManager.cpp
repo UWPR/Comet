@@ -1091,18 +1091,8 @@ bool CometSearchManager::InitializeStaticParams()
    GetParamValue("fragindex_num_spectrumpeaks", g_staticParams.options.iFragIndexNumSpectrumPeaks);
    GetParamValue("fragindex_min_ions_score", g_staticParams.options.iFragIndexMinIonsScore);
    GetParamValue("fragindex_min_ions_report", g_staticParams.options.iFragIndexMinIonsReport);
-   // Only candidates that clear the score floor can be reported (a candidate scored only to
-   // fill the E-value histogram is never stored; XcorrScoreI()), so a report floor below the
-   // score floor has no effect. The value is left as set; this says so.
-   if (g_staticParams.options.iFragIndexMinIonsReport < g_staticParams.options.iFragIndexMinIonsScore)
-   {
-      char szMsg[256];
-      snprintf(szMsg, sizeof(szMsg), " Warning - fragindex_min_ions_report = %d is below fragindex_min_ions_score = %d;"
-            " fragment ion index searches report only candidates with at least %d matched fragment ions.\n",
-            g_staticParams.options.iFragIndexMinIonsReport, g_staticParams.options.iFragIndexMinIonsScore,
-            g_staticParams.options.iFragIndexMinIonsScore);
-      logout(szMsg);
-   }
+   // (The warning for a report floor below the score floor is issued once the database type is
+   // known, further down: it is meaningless for FASTA_DB and PI_DB searches.)
    GetParamValue("fragindex_histogram_fill", g_staticParams.options.iFragIndexHistogramFill);
    if (g_staticParams.options.iFragIndexHistogramFill < 0)
       g_staticParams.options.iFragIndexHistogramFill = 0;
@@ -1129,7 +1119,11 @@ bool CometSearchManager::InitializeStaticParams()
          char szMsg[256];
          snprintf(szMsg, sizeof(szMsg), " Warning - chimeric_remove_isotopes = %d is outside 0..3; using %d.\n",
                iIsotopesIn, g_staticParams.options.iChimericRemoveIsotopes);
-         logout(szMsg);
+         // stdout carries the SQT stream when output_sqtstream is on: warn on stderr then
+         if (g_staticParams.options.bOutputSqtStream)
+            logerr(szMsg);
+         else
+            logout(szMsg);
       }
    }
    GetParamValue("fragindex_skipreadprecursors", g_staticParams.options.iFragIndexSkipReadPrecursors);
@@ -1836,6 +1830,24 @@ bool CometSearchManager::InitializeStaticParams()
       return false;
    }
 
+   // Only candidates that clear the score floor can be reported (a candidate scored only to
+   // fill the E-value histogram is never stored; XcorrScoreI()), so a report floor below the
+   // score floor has no effect. The value is left as set; this says so. Fragment ion index
+   // searches only; on stderr when stdout carries the SQT stream.
+   if ((g_staticParams.iDbType == DbType::FI_DB || g_staticParams.options.bCreateFragmentIndex)
+         && g_staticParams.options.iFragIndexMinIonsReport < g_staticParams.options.iFragIndexMinIonsScore)
+   {
+      char szMsg[256];
+      snprintf(szMsg, sizeof(szMsg), " Warning - fragindex_min_ions_report = %d is below fragindex_min_ions_score = %d;"
+            " fragment ion index searches report only candidates with at least %d matched fragment ions.\n",
+            g_staticParams.options.iFragIndexMinIonsReport, g_staticParams.options.iFragIndexMinIonsScore,
+            g_staticParams.options.iFragIndexMinIonsScore);
+      if (g_staticParams.options.bOutputSqtStream)
+         logerr(szMsg);
+      else
+         logout(szMsg);
+   }
+
    if (g_staticParams.iDbType == DbType::FI_DB)
    {
       if (!AllocateIndexPrecursors())
@@ -2268,7 +2280,8 @@ bool CometSearchManager::DoSearch()
    // fill the xcorr histogram the E-value fit uses. A batch search whose outputs report no
    // E-values never collects that histogram, so the fill would be pure cost (+11-17% per FI
    // query single-threaded): run it at 0. Output is unchanged -- fill candidates are never
-   // stored, reported or counted. Batch only: the RTS entry points always compute E-values.
+   // stored, reported or counted. RTS is unaffected: InitializeSingleSpectrumSearch() forces
+   // bPrintExpectScore on, so OutputsNeedEValues() is always true there.
    if (!g_staticParams.options.OutputsNeedEValues())
       g_staticParams.options.iFragIndexHistogramFill = 0;
 
@@ -2507,6 +2520,12 @@ bool CometSearchManager::InitializeSingleSpectrumSearch()
    // Initialization code (no manual unlock needed!)
    if (!InitializeStaticParams())
       return false;
+
+   // The RTS entry points always compute E-values (and the chimeric loop ranks and cuts on
+   // them), but the scorers fill the xcorr histogram, and the FI histogram fill runs, only
+   // when OutputsNeedEValues(). An RTS host that switched every file output off would get
+   // decoy-only, ~100x too optimistic E-values (review 2026-11-10), so make the predicate true.
+   g_staticParams.options.bPrintExpectScore = true;
 
    if (!ValidateSequenceDatabaseFile())
       return false;
@@ -2825,9 +2844,12 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iNumPeaks <= 0 || topN < 1)
       return false;
 
-   // Written so a NaN m/z fails it (a "> high" test lets NaN through); the preprocess core
-   // also rejects a non-finite or non-positive precursor mass.
-   if (!(dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS <= g_staticParams.options.dPeptideMassHigh))
+   // Explicit isnan: the Release projects build with /fp:fast, where MSVC folds "!(x <= y)" into
+   // "x > y" and lets a NaN through, so the negated-comparison idiom is not NaN-safe there.
+   // A NaN m/z is rejected here; the preprocess core also rejects a non-finite or non-positive
+   // precursor mass.
+   const double dMHGate = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
+   if (std::isnan(dMHGate) || dMHGate > g_staticParams.options.dPeptideMassHigh)
       return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
@@ -2949,12 +2971,12 @@ static void VisitResultIon(void* pContext,
 
    if (pCtx->pvRemovalBins != nullptr)
    {
-      // The water/ammonia-loss matrix is used only on PI_DB, for 1+ a/b/y ions (not their
-      // mod neutral losses), when use_NL_ions is on.
+      // The water/ammonia-loss matrix is used only on PI_DB, for 1+ a/b/y ions, when use_NL_ions
+      // is on. A mod-neutral-loss ion reads the same matrix (XcorrScoreI() credits its bin as
+      // base + the -H2O/-NH3 positions), so those positions are removed for it too.
       const bool bWaterAmmoniaNL = g_staticParams.ionInformation.bUseWaterAmmoniaLoss
          && g_staticParams.iDbType == DbType::PI_DB
          && iCharge == 1
-         && dNeutralLoss == 0.0
          && (iWhichIonSeries == ION_SERIES_A || iWhichIonSeries == ION_SERIES_B || iWhichIonSeries == ION_SERIES_Y);
       AddChimericRemovalBins(*pCtx->pvRemovalBins, dMZ, iCharge, pCtx->iRemoveFlank, pCtx->iRemoveIsotopes,
          *pCtx->pmObserved, bWaterAmmoniaNL);
@@ -3907,8 +3929,8 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
          // a wide m/z tolerance a precursor just below dPeptideMassLow can still match a peptide
          // inside the range, and one that cannot simply finds nothing.
          const double dMH = cand.dMZ * cand.iCharge - (cand.iCharge - 1.0) * PROTON_MASS;
-         if (!(dMH <= g_staticParams.options.dPeptideMassHigh))
-            continue;   // decision 8: silently skipped (NaN-safe: a NaN mass fails the test)
+         if (std::isnan(dMH) || dMH > g_staticParams.options.dPeptideMassHigh)
+            continue;   // decision 8: silently skipped (a NaN mass too; explicit isnan, see 2849)
 
          const double dTol = (cand.dToleranceMZ > 0.0) ? cand.dToleranceMZ : dPrecursorToleranceMZ;
 
@@ -3930,6 +3952,7 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
          // 0 rows: rejected input, nothing scored, below minimum xcorr -- or the budget ran
          // out inside the core, which then discards the truncated search (plan 4.8).
          if (iRows > 0 && !vPep[0].empty()
+            && !std::isnan(vSc[0].dExpect)
             && (!bHaveBest
                || vSc[0].dExpect < scBest.dExpect
                || (vSc[0].dExpect == scBest.dExpect && vSc[0].xCorr > scBest.xCorr)))
@@ -3962,12 +3985,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
             iIteration, iCandidatesSearched, tl_vMass.size(),
             bHaveBest ? sBestPep.c_str() : "-", bHaveBest ? scBest.iCharge : 0,
             bHaveBest ? scBest.dExpect : 0.0, bHaveBest ? scBest.xCorr : 0.0, vBestBins.size(),
-            (!bHaveBest) ? "stop:no-psm" : !(scBest.dExpect <= dMaxExpect) ? "stop:expect" : "keep",
+            (!bHaveBest) ? "stop:no-psm" : (std::isnan(scBest.dExpect) || scBest.dExpect > dMaxExpect) ? "stop:expect" : "keep",
             bBudgetExhausted ? " budget-expired" : "");
       }
 
       // NaN-safe: a NaN E-value stops the loop instead of being reported.
-      if (!bHaveBest || !(scBest.dExpect <= dMaxExpect))
+      if (!bHaveBest || std::isnan(scBest.dExpect) || scBest.dExpect > dMaxExpect)
          break;
 
       if (iDebug >= 2)
@@ -4010,6 +4033,12 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
       RemovePeaksInBins(tl_vMass, tl_vInten, vBestBins);
       if (bDebug)
          fprintf(stderr, "RTS_CHIMERIC iter=%d removed %zu of %zu peaks\n", iIteration, uiPeaksBefore - tl_vMass.size(), uiPeaksBefore);
+
+      // No-progress guard: the core search is deterministic for a given peak list, so a winner
+      // that removed nothing (it matched no observed peak) would be found again, unchanged,
+      // every remaining iteration. Its row is already reported; stop.
+      if (tl_vMass.size() == uiPeaksBefore)
+         break;
 
       // Cheap pre-check; preprocessing applies the same minimum_peaks gate and would
       // return no Query (iRows == -1) for every candidate anyway.

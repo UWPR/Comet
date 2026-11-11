@@ -54,7 +54,7 @@ Notation: `raw[b]`, `corr[b]`, `fast[b]` are the double scratch arrays `pdTmpRaw
 `pfFastXcorrData`, `pfFastXcorrDataNL`, `pfSpScoreData`; `N = iArraySize`, `off = 75`,
 `R = 2*off + 1 = 151`, `dTmp = 1/(R-1)`.
 
-1. **Clear** `raw`, `corr`, `fast` up to `iZeroBound + off` and (RTS) `pf`, `nl`, `sp` up to
+1. **Clear** `raw`, `corr`, `fast` up to `iZeroBound` (no `+ off` padding; the priming sums of the fast-xcorr pass are bounded by `min(off, iZeroBound)`) and (RTS) `pf`, `nl`, `sp` up to
    `N` (`ComputeZeroBound()`; the bound covers peaks up to 50 Da past the precursor mass, the
    `docs/20260714_EvalueJitter.md` stale-buffer fix).
 2. **Load peaks** (RTS: the inline loop; batch: `LoadIons()`). Each accepted peak below

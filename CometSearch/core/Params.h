@@ -83,7 +83,7 @@ struct Options
    int iFragIndexHistogramFill;  // FI_DB: when fewer than this many candidates clear fragindex_min_ions_score, keep
                                  // scoring the ranked sub-floor candidates (2-hit, then 1-hit) into the E-value
                                  // histogram up to this count (clamped to FRAGINDEX_MAX_NUMSCORED); they are
-                                 // stored/reported only under the same floors as any candidate. 0 = off.
+                                 // histogram-only: never stored or reported. 0 = off.
                                  // docs/20261106_FI_evalue_histogram_fill.md
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
@@ -120,7 +120,8 @@ struct Options
    // fused batch path, and whether the FI histogram fill is worth running). mzIdentML was
    // missing from the four hand-written copies of this test until 2026-11-09, so an
    // mzIdentML-only search with print_expect_score = 0 wrote E = 999 for every PSM.
-   // The RTS path always computes E-values; this is about batch output.
+   // The RTS path always computes E-values: InitializeSingleSpectrumSearch() forces
+   // bPrintExpectScore on so this is true there whatever the output flags say.
    bool OutputsNeedEValues() const
    {
       return bPrintExpectScore

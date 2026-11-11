@@ -44,7 +44,12 @@ endif
 SOVER = 2
 RELVER = $(SOVER).0.0
 
-SRC_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+# Relative to the directory make runs in (the top Makefile runs this one as `cd dir && make`),
+# not abspath: the .d files record the object paths as written here, so absolute ones went
+# stale when a built tree was copied or renamed and no header change rebuilt anything there.
+# ABS_DIR is for the configure steps below, which run from another directory and need absolute prefixes.
+SRC_DIR  := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+ABS_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD_SRC = $(SRC_DIR)/src
 BUILD_EXT = $(SRC_DIR)/extern
 BUILD_DIR = $(SRC_DIR)/obj
@@ -93,11 +98,11 @@ $(EXPAT_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq $(EXPAT_ZIP)
 
 $(EXPAT_STAMP) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
-	cd $(EXPAT_SRC); ./configure --prefix=$(BUILD_DIR) \
+	cd $(EXPAT_SRC); ./configure --prefix=$(ABS_DIR)/obj \
 	   --enable-shared=yes --enable-static=yes \
 	   --without-xmlwf --without-examples --without-tests \
 	   --with-aix-soname=both \
-	   --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
+	   --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(EXPAT_SRC) install
 	touch $(EXPAT_STAMP)
 
@@ -131,7 +136,7 @@ $(ZLIB_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 
 $(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
-	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
+	cd $(ZLIB_SRC); ./configure --prefix=$(ABS_DIR)/obj --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(ZLIB_SRC) install
 
 zlib-clean :

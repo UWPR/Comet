@@ -1979,7 +1979,9 @@ void CometSearch::SearchFragmentIndex(Query* pQuery,
    };
    sort(vPeptides.begin(), vPeptides.end(), byHitsThenIndex);
 
-   if (!vFill.empty() && vPeptides.size() < (size_t)iHistogramFill)
+   // No qualified candidate: the query stores no PSM and never computes an E-value, so the
+   // histogram-only fill would be wasted work.
+   if (!vFill.empty() && !vPeptides.empty() && vPeptides.size() < (size_t)iHistogramFill)
    {
       // Only the first (iHistogramFill - already-qualified) sub-floor candidates can ever be
       // scored, so order just that prefix (the 1-hit bucket can be large).

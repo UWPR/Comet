@@ -125,6 +125,28 @@ namespace RealTimeSearch
             Console.WriteLine(" Error: bad option value ({0})", ex.Message);
             return false;
          }
+         // The native entry rejects these (every scan would then be an ERROR row after the whole
+         // index had loaded), so refuse them up front.
+         if (o.ZMin < 1 || o.ZMax < o.ZMin)
+         {
+            Console.WriteLine(" Error: --zrange needs 1 <= zmin <= zmax (got {0} {1})", o.ZMin, o.ZMax);
+            return false;
+         }
+         if (o.MaxPeptides < 1)
+         {
+            Console.WriteLine(" Error: --max-peptides must be at least 1 (got {0})", o.MaxPeptides);
+            return false;
+         }
+         if (double.IsNaN(o.MaxExpect))
+         {
+            Console.WriteLine(" Error: --max-expect must be a number");
+            return false;
+         }
+         if (double.IsNaN(o.TolMZ) || double.IsInfinity(o.TolMZ) || o.TolMZ < 0.0)
+         {
+            Console.WriteLine(" Error: --tol must be a finite number >= 0 (got {0})", o.TolMZ);
+            return false;
+         }
          if (o.OutputFile == null)
             o.OutputFile = Path.ChangeExtension(o.Ms2File, null) + ".chimeric.txt";
          return true;
@@ -162,6 +184,7 @@ namespace RealTimeSearch
             while ((line = reader.ReadLine()) != null)
             {
                ++iLine;
+               line = line.Trim();   // a padded peak line ("  500.1  12.0") must not be dropped as "not a digit"
                if (line.Length == 0)
                   continue;
                char c = line[0];
@@ -332,8 +355,11 @@ namespace RealTimeSearch
                            }
                            r.Candidates = n;
                            bool bInc = false;
-                           r.Ok = n > 0 && searchMgr.DoSingleSpectrumSearchChimeric(mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
-                              s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                           if (n == 0)
+                              r.Error = "scan has no Z lines";    // never reaches the wrapper: no stale thread-static message
+                           else
+                              r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                                 s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
                            r.Incomplete = bInc;
                         }
                         else
@@ -349,8 +375,10 @@ namespace RealTimeSearch
                         r.Peptides = vPeptide ?? new List<string>();
                         r.Proteins = vProtein ?? new List<string>();
                         r.Scores = vScores ?? new List<ScoreWrapper>();
-                        if (!r.Ok && !r.Incomplete)
-                           r.Error = searchMgr.GetLastWrapperError();   // thread-static: read on this thread
+                        // thread-static: read on this thread, whenever the wrapper itself failed (an incomplete
+                        // failure -- a contained native exception -- carries its reason too)
+                        if (!r.Ok && string.IsNullOrEmpty(r.Error))
+                           r.Error = searchMgr.GetLastWrapperError();
                      }
                      catch (Exception ex)
                      {
@@ -415,7 +443,8 @@ namespace RealTimeSearch
                         sc.xCorr, sc.dCn, sc.dExpect, sc.MatchedIons, sc.TotalIons, r.ElapsedMs));
                   }
                   if (r.Incomplete)
-                     w.WriteLine(string.Format(inv, "{0}\tINCOMPLETE\t{1}\t{2:0.0000}\t{3}", r.ScanNumber, r.Ok ? "budget" : "stopped", r.PrecursorMZ, r.Candidates));
+                     w.WriteLine(string.Format(inv, "{0}\tINCOMPLETE\t{1}\t{2:0.0000}\t{3}{4}", r.ScanNumber, r.Ok ? "budget" : "stopped", r.PrecursorMZ, r.Candidates,
+                        (!r.Ok && !string.IsNullOrEmpty(r.Error)) ? "\t" + OneField(r.Error) : ""));
                }
             }
 
@@ -430,6 +459,11 @@ namespace RealTimeSearch
                Console.WriteLine(" calls that returned an error:     {0}", errors);
             if (incomplete > 0)
                Console.WriteLine(" calls that stopped early:         {0} (rows kept; budget or cancel)", incomplete);
+            if (nScans > 0 && errors == nScans)
+            {
+               Console.WriteLine(" Error: every scan failed (see the ERROR rows)");
+               Environment.ExitCode = 1;
+            }
             string sPeakMem = searchMgr.GetPeakMemory();
             Console.WriteLine("{0} Done.{1}{2}", Environment.NewLine, string.IsNullOrEmpty(sPeakMem) ? "" : " (" + sPeakMem + ")", Environment.NewLine);
          }

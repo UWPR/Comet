@@ -118,7 +118,9 @@ false: `print_expect_score = 0` and no pepXML, `.txt`, Percolator or mzIdentML o
 SQT-only with the Sp column) never collects the histogram, so `DoSearch()` runs it with the
 fill at 0 (2026-11-09): the fill would be pure cost there (+11-17% per FI query single-
 threaded) and the output is unchanged. The RTS entry points always compute E-values and keep
-the configured fill. The same helper replaced four hand-written copies of the "does an output
+the configured fill: `InitializeSingleSpectrumSearch()` forces `bPrintExpectScore` on so the
+predicate is true there whatever the output flags say (2026-11-10; before, an RTS session with
+every file output off got decoy-only E-values ~100x too optimistic). The same helper replaced four hand-written copies of the "does an output
 need E-values?" test, which had all omitted mzIdentML: an mzIdentML-only search with
 `print_expect_score = 0` wrote E = 9.99E+02 for every PSM (pre-existing on master; test T85).
 
@@ -235,7 +237,7 @@ fill, on FI vs PI. A calibrated FI should match PI.
 | Question | Decision |
 |---|---|
 | Default fill | 100 (= `FRAGINDEX_MAX_NUMSCORED`): "always score the 100 best-supported candidates". 2-hit candidates alone reach the cap on 59% of re-search queries; the plain search with a global 2-hit floor cost nothing measurable (43.2 vs 42.9 s at 8 threads). Kept an integer so 25 / 50 can be measured. |
-| 1-hit candidates | Included: they fill the ~12% of queries where 2-hit candidates run out -- the sparse spectra where calibration matters most -- and a single shared ion at 0.02 Da is chance-level, the null wanted. `mPeptides` is a `std::map` keyed by peptide index, so one walk into count buckets (>= 3, 2, 1) gives each bucket in index order: no sort of the large 1-hit bucket, and the tie order matches T63. |
+| 1-hit candidates | Included: they fill the ~12% of queries where 2-hit candidates run out -- the sparse spectra where calibration matters most -- and a single shared ion at 0.02 Da is chance-level, the null wanted. `mPeptides` is a `std::unordered_map` keyed by peptide index: one pass splits it into the qualified candidates and the sub-floor ones, only the prefix of the sub-floor bucket that can still be scored is ordered (`std::partial_sort` by hits, then peptide index, so the tie order matches T63), and the large 1-hit bucket is never fully sorted. |
 | Batch FI E-values change | Acceptable: only weak-hit E-values move, upward, toward PI/FASTA; xcorr, ranking and peptides do not. `fragindex_histogram_fill = 0` reproduces today's values; release note and T23/T24 expectations updated. |
 | Unchanged | `fragindex_min_ions_score` 3, `fragindex_min_ions_report` 3 (who may win / be reported), `FRAGINDEX_MAX_NUMSCORED` 100, `EXPECT_DECOY_SIZE` 3,000, the `iMinXcorrHisto` lumping (a cheap pseudo-random spread of half the zero scores into one low bin; it applies to fill candidates like everything else). |
 | Scope | Applied uniformly: plain RTS, chimeric iteration 0, batch FI. |
@@ -405,3 +407,7 @@ carried out in Phase 3 together with the knob retirement and the chimeric gate c
    be large; the ranked order means they are only reached when nothing better exists.
 3. Batch FI output changes for weak PSMs. Acceptable for the next release, with a note in
    the release notes and the T23/T24 baseline expectation updated?
+
+**2026-11-10 note.** A query with no candidate at or above `fragindex_min_ions_score` stores no PSM and never
+computes an E-value, so the fill is skipped for it (`SearchFragmentIndex()`); the output is byte-identical and the
+single-threaded cost drops below the +11% quoted above (the review measured 11-15% of FI search time saved).
