@@ -8328,6 +8328,7 @@ def test_t84_searchchimeric_errors(comet_exe):
 
         # the first peak line of the file (a line starting with a digit), corrupted
         lines = ms2.read_text().splitlines()
+        lines_orig = list(lines)
         bad_no = next(i for i, ln in enumerate(lines) if ln[:1].isdigit()) + 1
         bad_line = lines[bad_no - 1].replace(".", ".x", 1)
         lines[bad_no - 1] = bad_line
@@ -8349,6 +8350,35 @@ def test_t84_searchchimeric_errors(comet_exe):
                 if len(ln.split("\t")) > 6]
         check(any(_strip_flanks(p) == "LVNELTEFAK" for p in peps), f"valid input: output has LVNELTEFAK ({peps[:4]})",
               failures)
+
+        # options the native entry would reject are refused up front, before the index loads
+        for name, args, want in (("--zrange 4 2", ["--zrange", "4", "2"], "--zrange"),
+                                 ("--zrange 0 3", ["--zrange", "0", "3"], "--zrange"),
+                                 ("--max-peptides 0", ["--max-peptides", "0"], "--max-peptides"),
+                                 ("--max-expect NaN", ["--max-expect", "NaN"], "--max-expect"),
+                                 ("--tol -1", ["--tol", "-1"], "--tol")):
+            rc, out = run([_to_win(ms2), _to_win(idx)] + args)
+            check(rc == 1 and want in out and "index mass range" not in out,
+                  f"{name}: refused with exit 1 before the search (rc={rc}, {out.strip()[:120]!r})", failures)
+
+        # padded peak lines (leading blanks) are peaks, not dropped
+        padded = tmp / "t84_padded.ms2"
+        padded.write_text("\n".join(("  " + ln) if ln[:1].isdigit() else ln for ln in lines_orig) + "\n")
+        out_pad = tmp / "t84_padded.txt"
+        rc, out = run([_to_win(padded), _to_win(idx), "--threads", "1", "--out", _to_win(out_pad)])
+        peps_pad = [ln.split("\t")[6] for ln in (out_pad.read_text().splitlines()[1:] if out_pad.exists() else [])
+                    if len(ln.split("\t")) > 6]
+        check(rc == 0 and any(_strip_flanks(p) == "LVNELTEFAK" for p in peps_pad),
+              f"padded peak lines: exit 0 and LVNELTEFAK found (rc={rc}, {peps_pad[:3]})", failures)
+
+        # --zlines with a scan that has no Z lines: an ERROR row with its own reason; every scan failed -> exit 1
+        noz = tmp / "t84_noz.ms2"
+        noz.write_text("S\t1\t1\t500.000000\n500.00000 10.0\n600.00000 12.0\n")
+        out_noz = tmp / "t84_noz.txt"
+        rc, out = run([_to_win(noz), _to_win(idx), "--zlines", "--threads", "1", "--out", _to_win(out_noz)])
+        rows_noz = out_noz.read_text().splitlines()[1:] if out_noz.exists() else []
+        check(rc == 1 and any("\tERROR\tscan has no Z lines" in r for r in rows_noz),
+              f"--zlines, scan without Z lines: ERROR row with the reason and exit 1 (rc={rc}, {rows_noz[:1]})", failures)
 
         cases = (
             ("malformed .ms2", [_to_win(bad), _to_win(idx)], [f"line {bad_no}:", bad_line], ["index mass range"]),
