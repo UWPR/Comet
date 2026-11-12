@@ -1,0 +1,5 @@
+--- a/zlib-1.2.11/zutil.h
++++ b/zlib-1.2.11/zutil.h
+@@ -139,1 +139,1 @@
+-#      ifndef fdopen
++#      if !defined(fdopen) && !defined(__APPLE__)

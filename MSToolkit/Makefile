@@ -127,6 +127,7 @@ ZLIB_SRC := $(BUILD_EXT)/$(ZLIB_VER)
 ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
 ZLIB_DST := $(BUILD_DIR)/libz.a
 ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
+ZLIB_PATCH := $(BUILD_EXT)/zlib-1.2.11-apple-fdopen.patch
 
 .PHONY : zlib zlib-clean zlib-realclean
 
@@ -135,7 +136,10 @@ zlib : $(ZLIB_DST)
 $(ZLIB_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 
-$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+$(ZLIB_DST) : $(ZLIB_PATCH) | $(BUILD_DIR)/ $(ZLIB_SRC)/
+	if ! grep -Fq '#      if !defined(fdopen) && !defined(__APPLE__)' $(ZLIB_SRC)/zutil.h; then \
+		patch -d $(BUILD_EXT) -p1 < $(ZLIB_PATCH); \
+	fi
 	cd $(ZLIB_SRC); ./configure --prefix=$(ABS_DIR)/obj --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(ZLIB_SRC) install
 
