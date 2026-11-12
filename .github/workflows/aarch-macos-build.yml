@@ -1,4 +1,4 @@
-name: Build on MacOS 14
+name: Build on MacOS 15
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v5
  
