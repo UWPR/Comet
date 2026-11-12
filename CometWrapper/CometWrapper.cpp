@@ -404,16 +404,33 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    }
 
    // The native candidate list is the only per-candidate allocation; the peak arrays are pinned.
+   // Built inside a try block like the search itself: an allocation failure here (a huge candidate
+   // array) must not escape the managed boundary with the outputs uninitialized.
    std::vector<PrecursorCandidate> vPrecursors;
-   vPrecursors.reserve(pdCandidateMZ->Length);
-   for (int i = 0; i < pdCandidateMZ->Length; ++i)
+   try
    {
-      // Copy out first: a managed array element cannot bind to the native references
-      // emplace_back's forwarding would deduce (C2664).
-      const double dCandMZ = pdCandidateMZ[i];
-      const int iCandCharge = piCandidateCharge[i];
-      const double dCandTol = (pdCandidateToleranceMZ != nullptr) ? pdCandidateToleranceMZ[i] : 0.0;
-      vPrecursors.push_back(PrecursorCandidate(dCandMZ, iCandCharge, dCandTol));
+      vPrecursors.reserve(pdCandidateMZ->Length);
+      for (int i = 0; i < pdCandidateMZ->Length; ++i)
+      {
+         // Copy out first: a managed array element cannot bind to the native references
+         // emplace_back's forwarding would deduce (C2664).
+         const double dCandMZ = pdCandidateMZ[i];
+         const int iCandCharge = piCandidateCharge[i];
+         const double dCandTol = (pdCandidateToleranceMZ != nullptr) ? pdCandidateToleranceMZ[i] : 0.0;
+         vPrecursors.push_back(PrecursorCandidate(dCandMZ, iCandCharge, dCandTol));
+      }
+   }
+   catch (const std::exception& e)
+   {
+      s_strLastWrapperError = "native exception building the candidate list: " + gcnew String(e.what());
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+   catch (...)
+   {
+      s_strLastWrapperError = "unknown native exception building the candidate list";
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
    }
 
    pin_ptr<double> ptrMasses = &pdMass[0];

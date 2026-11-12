@@ -50,14 +50,18 @@ public:
       // Chimeric-spectrum search (docs/20261105_RTSchimeric.md): search the spectrum once
       // per precursor candidate, keep the best PSM (lowest E-value, ties by xcorr), and if
       // its E-value is <= dMaxExpect report it, remove the fragment peaks it explains and
-      // repeat on the reduced spectrum, up to iMaxPeptidesPerSpectrum rows. One row per
-      // reported peptide (its iteration's rank 1, with that iteration's delta-Cn); the
-      // charge it was found at and its iteration are in CometScores::iCharge / iIteration.
+      // repeat on the reduced spectrum, up to iMaxPeptidesPerSpectrum iterations. Each
+      // iteration reports its winning candidate's rank-0 PSM (with that iteration's delta-Cn)
+      // and, when iTopN > 1, up to iTopN - 1 ranked runner-ups from the same search (a
+      // runner-up past the stored candidates is absent; one at or below minimum_xcorr is the
+      // empty placeholder row DoSingleSpectrumSearchMultiResults() also returns). The charge a
+      // row was found at, its iteration and its rank are in CometScores::iCharge / iIteration
+      // / iRank. The E-value cutoff, the peak removal and the stop conditions use rank 0 only.
       // dPrecursorToleranceMZ > 0 replaces the configured precursor tolerance (+/- m/z) for
       // every candidate whose own dToleranceMZ is 0; 0 = peptide_mass_tolerance as configured.
       // Return value and bIncomplete (2026-11-08):
       //   true,  bIncomplete false: a normal end -- no PSM left, the best failed dMaxExpect,
-      //                             iMaxPeptidesPerSpectrum rows, too few peaks remain, or the
+      //                             iMaxPeptidesPerSpectrum iterations, too few peaks remain, or the
       //                             reported PSM explained no observed peak (nothing to remove, so
       //                             the next iteration would repeat it) (zero rows included);
       //   true,  bIncomplete true:  the max_index_runtime budget ran out; the rows are the

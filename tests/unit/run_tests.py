@@ -8583,6 +8583,31 @@ def test_t84_searchchimeric_errors(comet_exe):
             check(rc == 1 and want in out and "index mass range" not in out,
                   f"{name}: refused with exit 1 before the search (rc={rc}, {out.strip()[:120]!r})", failures)
 
+        # --topn 3: each iteration reports its winner's top 3 rows. The iteration-1 peptide of scan 2 (P2 under
+        # P1) must still be written whatever empty runner-up rows sit between the iterations' rows, the output
+        # ends in a rank column, and the histogram counts iteration winners, not ranked rows.
+        out_topn, out_top1 = tmp / "t84_topn.txt", tmp / "t84_top1.txt"
+        common = ["--threads", "1", "--tol", "2.0", "--max-expect", "0.01"]   # +/- 2 m/z reaches P2 (3+) from P1's m/z
+        rc1, out1 = run([_to_win(ms2), _to_win(idx)] + common + ["--topn", "1", "--out", _to_win(out_top1)])
+        rc, out = run([_to_win(ms2), _to_win(idx)] + common + ["--topn", "3", "--out", _to_win(out_topn)])
+        rows_topn = [ln.split("\t") for ln in (out_topn.read_text().splitlines() if out_topn.exists() else [])]
+        scan2 = [r for r in rows_topn[1:] if r[0] == "2" and len(r) > 14]
+        check(rc == 0 and rows_topn and rows_topn[0][-1] == "rank",
+              f"--topn 3: exit 0 and the output has a rank column (rc={rc})", failures)
+        check({_strip_flanks(r[6]) for r in scan2 if r[1] == "0"} and
+              any(r[1] == "1" and r[14] == "0" for r in scan2),
+              f"--topn 3: scan 2 still reports its iteration-1 peptide ({[(r[1], r[6], r[14]) for r in scan2]})", failures)
+        hist = lambda text: [l.strip() for l in text.splitlines() if "spectra with" in l]
+        check(rc1 == 0 and hist(out) and hist(out) == hist(out1),
+              f"--topn 3: the histogram counts iteration winners, as at --topn 1 ({hist(out)} vs {hist(out1)})", failures)
+
+        # a huge --zrange maximum is clamped like the native search clamps it (charges up to 9): no overflow
+        out_z = tmp / "t84_zhuge.txt"
+        rc, out = run([_to_win(ms2), _to_win(idx), "--threads", "1", "--zrange", "2", "2147483647", "--out", _to_win(out_z)])
+        rows_z = [ln.split("\t") for ln in (out_z.read_text().splitlines()[1:] if out_z.exists() else [])]
+        check(rc == 0 and rows_z and all(r[4] == "8" for r in rows_z if len(r) > 4 and r[1] != "ERROR"),
+              f"--zrange 2 2147483647: exit 0 and 8 candidate charges (2..9) per scan (rc={rc}, {rows_z[:1]})", failures)
+
         # padded peak lines (leading blanks) are peaks, not dropped
         padded = tmp / "t84_padded.ms2"
         padded.write_text("\n".join(("  " + ln) if ln[:1].isdigit() else ln for ln in lines_orig) + "\n")

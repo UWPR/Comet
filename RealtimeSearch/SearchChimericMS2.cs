@@ -32,6 +32,7 @@ namespace RealTimeSearch
    internal static class SearchChimericMS2
    {
       private const double ProtonMass = 1.00727646688;
+      private const int MaxPrecursorCharge = 9;   // native MAX_PRECURSOR_CHARGE: the charge range is clamped to it
 
       private class Ms2Scan
       {
@@ -372,7 +373,7 @@ namespace RealTimeSearch
                         }
                         else
                         {
-                           r.Candidates = o.ZMax - o.ZMin + 1;
+                           r.Candidates = Math.Max(0, Math.Min(o.ZMax, MaxPrecursorCharge) - o.ZMin + 1);
                            bool bInc;
                            r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides, o.TopN,
                               s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
@@ -428,8 +429,17 @@ namespace RealTimeSearch
                      w.WriteLine(string.Format(inv, "{0}\tERROR\t{1}\t{2:0.0000}\t{3}", r.ScanNumber, OneField(r.Error), r.PrecursorMZ, r.Candidates));
                      continue;
                   }
-                  int n = r.Peptides.Count(p => !string.IsNullOrEmpty(p));   // a row past rank 0 may be an empty placeholder
-                  histogram[Math.Min(n, 3)] += 1;
+                  // A row past rank 0 may be an empty placeholder, and placeholders can sit between iterations'
+                  // rows, so rows are walked by index and empty ones skipped. The histogram counts iteration
+                  // winners (rank 0): with --topn > 1 one peptide's runner-ups are not further peptides.
+                  int n = r.Peptides.Count(p => !string.IsNullOrEmpty(p));
+                  int nWinners = 0;
+                  for (int i = 0; i < r.Peptides.Count; ++i)
+                  {
+                     if (!string.IsNullOrEmpty(r.Peptides[i]) && r.Scores[i].Rank == 0)
+                        ++nWinners;
+                  }
+                  histogram[Math.Min(nWinners, 3)] += 1;
                   rows += n;
                   if (r.Incomplete)
                      ++incomplete;
@@ -439,7 +449,7 @@ namespace RealTimeSearch
                      continue;
                   }
                   var seen = new HashSet<string>();
-                  for (int i = 0; i < n; ++i)
+                  for (int i = 0; i < r.Peptides.Count; ++i)
                   {
                      if (string.IsNullOrEmpty(r.Peptides[i]))
                         continue;

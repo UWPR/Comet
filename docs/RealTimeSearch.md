@@ -85,9 +85,14 @@ peaks of ions that have an observed peak), and repeats on the reduced spectrum -
 `iMaxPeptidesPerSpectrum` rows, or until no candidate scores, the best fails the
 threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime` budget
 (measured from the call's start, across every candidate and iteration) runs out.
-`CometScores::iCharge` / `iIteration` on each row say which candidate charge and which
-iteration produced it; one row per iteration is reported (there is no `topN`: it was accepted
-and ignored until 2026-11-09, when it was removed from both overloads). Rows are
+`CometScores::iCharge` / `iIteration` / `iRank` on each row say which candidate charge,
+which iteration and which rank within that iteration's search produced it. `iMaxPeptidesPerSpectrum` limits the
+iterations; `iTopN` (>= 1) is the rows reported per iteration: the winner's rank-0 PSM plus up to `iTopN - 1`
+ranked runner-ups from the same search, as `DoSingleSpectrumSearchMultiResults(topN)` returns them (a runner-up
+at or below `minimum_xcorr` is an empty placeholder row; one past the stored candidates is absent). The E-value
+cutoff, the peak removal and the stop conditions use rank 0 only, so with `iTopN` 1 there is one row per iteration.
+With one candidate, `iMaxPeptidesPerSpectrum` 1 and `dMaxExpect` +inf the call returns the plain search's rows
+(`DoSingleSpectrumSearchMultiResults()` is implemented on it; test T89). Rows are
 ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
 over a more intense one. Candidates whose MH+ lies above the index range (the same gate
 as `DoSingleSpectrumSearchMultiResults()`; there is no lower bound, so an isotope error
@@ -102,12 +107,12 @@ together say how the call ended:
 
 | Return | `bIncomplete` | Meaning |
 |---|---|---|
-| `true` | `false` | Normal end: no PSM left, the best failed `dMaxExpect`, `iMaxPeptidesPerSpectrum` rows, or too few peaks remain. Zero rows is included. |
+| `true` | `false` | Normal end: no PSM left, the best failed `dMaxExpect`, `iMaxPeptidesPerSpectrum` iterations, or too few peaks remain. Zero rows is included. |
 | `true` | `true` | The `max_index_runtime` budget ran out. The rows are the PSMs found so far, and the spectrum may hold more. |
 | `false` | `true` | The call stopped early because the search was cancelled (`IsCancelSearch()`) or an index search failed. The rows are the complete iterations before that, and they are valid. |
 | `false` | `false` | Invalid arguments. There are no rows. |
 
-Rows are appended one complete row per kept iteration. The C# harness writes an `INCOMPLETE
+Rows are appended per kept iteration: the winner's `iTopN` rows (one with `iTopN` 1). The C# harness writes an `INCOMPLETE
 budget|stopped` line after the rows of a call that stopped early, and an `ERROR` line carrying
 `GetLastWrapperError()` (or the exception a scan threw) for a call that failed; a malformed `.ms2`
 line (reported with its line number), an unwritable `--out` path or bad usage stops it before the

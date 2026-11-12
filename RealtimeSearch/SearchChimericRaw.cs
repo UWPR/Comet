@@ -34,6 +34,7 @@ namespace RealTimeSearch
    internal static class SearchChimericRaw
    {
       private const double ProtonMass = 1.00727646688;
+      private const int MaxPrecursorCharge = 9;   // native MAX_PRECURSOR_CHARGE: the charge range is clamped to it
 
       private class Options
       {
@@ -434,13 +435,13 @@ namespace RealTimeSearch
          // ---- output: one row per reported peptide, scans in file order ----
          var ordered = outcomes.OrderBy(x => x.Scan.ScanNumber).ToList();
          int[] histogram = new int[4];   // spectra with 0 / 1 / 2 / 3+ peptides
-         int[] byCharge = new int[Math.Max(o.ZMax, 9) + 1];
+         int[] byCharge = new int[MaxPrecursorCharge + 1];
          int rows = 0, rowsLater = 0, errors = 0, incomplete = 0, decoyRows = 0;
          double sumMs = 0.0;
          using (w)
          {
             w.WriteLine("scan\titeration\tcharge\tprecursor_mz\tcandidates\tcalc_neutral_mass\tpeptide\tprotein\txcorr\tdeltacn\texpect\tions_matched\tions_total\telapsed_ms\trt_sec\tinstrument_charge\trank");
-            int nCand = o.ZMax - o.ZMin + 1;
+            int nCand = Math.Max(0, Math.Min(o.ZMax, MaxPrecursorCharge) - o.ZMin + 1);
             foreach (ScanOutcome r in ordered)
             {
                ScanItem s = r.Scan;
@@ -452,8 +453,17 @@ namespace RealTimeSearch
                   w.WriteLine(string.Format(inv, "{0}\tERROR\t{1}\t{2:0.0000}\t{3}", s.ScanNumber, OneField(r.Error), s.PrecursorMZ, nCand));
                   continue;
                }
-               int n = r.Peptides.Count(p => !string.IsNullOrEmpty(p));   // a row past rank 0 may be an empty placeholder
-               histogram[Math.Min(n, 3)] += 1;
+               // A row past rank 0 may be an empty placeholder, and placeholders can sit between iterations'
+               // rows, so rows are walked by index and empty ones skipped. The histogram counts iteration
+               // winners (rank 0): with --topn > 1 one peptide's runner-ups are not further peptides.
+               int n = r.Peptides.Count(p => !string.IsNullOrEmpty(p));
+               int nWinners = 0;
+               for (int i = 0; i < r.Peptides.Count; ++i)
+               {
+                  if (!string.IsNullOrEmpty(r.Peptides[i]) && r.Scores[i].Rank == 0)
+                     ++nWinners;
+               }
+               histogram[Math.Min(nWinners, 3)] += 1;
                rows += n;
                if (r.Incomplete)
                   ++incomplete;
@@ -463,7 +473,7 @@ namespace RealTimeSearch
                      s.ScanNumber, s.PrecursorMZ, nCand, r.ElapsedMs, tail));
                   continue;
                }
-               for (int i = 0; i < n; ++i)
+               for (int i = 0; i < r.Peptides.Count; ++i)
                {
                   if (string.IsNullOrEmpty(r.Peptides[i]))
                      continue;
@@ -491,7 +501,7 @@ namespace RealTimeSearch
          Console.WriteLine(" spectra with 0 / 1 / 2 / 3+ peptides: {0} / {1} / {2} / {3}", histogram[0], histogram[1], histogram[2], histogram[3]);
          Console.WriteLine(" peptide rows:                     {0} ({1} at iteration >= 1; {2} decoy)", rows, rowsLater, decoyRows);
          Console.Write(" rows by charge found at:         ");
-         for (int z = o.ZMin; z <= o.ZMax && z < byCharge.Length; ++z)
+         for (int z = o.ZMin; z <= Math.Min(o.ZMax, MaxPrecursorCharge); ++z)
             Console.Write(" {0}+:{1}", z, byCharge[z]);
          Console.WriteLine();
          if (errors > 0)

@@ -471,15 +471,20 @@ int main(int argc, char** argv)
                out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
                    << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
                    << "\tprot '" << vProtein[0] << "'\n";
-               // topN > 1 (RTS_REPRO_TOPN): the further ranks, one line each, with the same fields the
-               // chimeric modes print, so a plain call and a one-iteration chimeric call can be compared
+               if (bPrintFragments)
+                  WriteFragments(out, s.scanNumber, 0, vFrag);
+               // topN > 1 (RTS_REPRO_TOPN): the further ranks, one line each (followed by its own fragments)
+               // with the same fields the chimeric modes print, so a plain call and a one-iteration chimeric
+               // call can be compared
                for (size_t r = 1; r < vPeptide.size(); ++r)
+               {
                   out << "MS2 " << s.scanNumber << "\trank " << vScores[r].iRank << "\t" << vPeptide[r]
                       << "\txcorr " << vScores[r].xCorr << "\tdcn " << vScores[r].dCn
                       << "\texpect " << vScores[r].dExpect << "\tions " << vScores[r].matchedIons << "/"
                       << vScores[r].totalIons << "\n";
-               if (bPrintFragments)
-                  WriteFragments(out, s.scanNumber, 0, vFrag);
+                  if (bPrintFragments)
+                     WriteFragments(out, s.scanNumber, r, vFrag);
+               }
             }
             else
             {

@@ -65,10 +65,12 @@ namespace CometWrapper {
         // contract). Explicit-list form: the candidates are three parallel arrays -- m/z, charge
         // and per-candidate +/- tolerance in m/z (0 = inherit dPrecursorToleranceMZ; the array
         // may be nullptr) -- rather than a managed candidate type, so a call allocates nothing
-        // per candidate. One row per reported peptide; ScoreWrapper::Charge / Iteration say
-        // where it was found. bIncomplete: the call stopped before its normal end -- true with
-        // the rows found so far when max_index_runtime ran out; false with the complete earlier
-        // iterations' rows when the search was cancelled or failed (CometInterfaces.h).
+        // per candidate. Rows per reported peptide: its rank-0 PSM, plus up to iTopN - 1 ranked
+        // runner-ups from the same search (ScoreWrapper::Rank; a runner-up may be an empty
+        // placeholder row); ScoreWrapper::Charge / Iteration say where it was found. bIncomplete is
+        // true when the call stopped before its normal end, with the rows already found kept: the
+        // return value is true when max_index_runtime ran out, and false when the search was
+        // cancelled or failed (CometInterfaces.h).
         bool DoSingleSpectrumSearchChimeric(cli::array<double>^ pdCandidateMZ,
                                             cli::array<int>^ piCandidateCharge,
                                             cli::array<double>^ pdCandidateToleranceMZ,
