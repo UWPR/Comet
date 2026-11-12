@@ -8566,6 +8566,10 @@ def test_t84_searchchimeric_errors(comet_exe):
                 raise TestSkipped(f"cannot run {REALTIMESEARCH_EXE} here ({e})")
             return res.returncode, res.stdout + res.stderr
 
+        def run_raw(args):
+            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimericraw"] + args, capture_output=True, text=True, timeout=300)
+            return res.returncode, res.stdout + res.stderr
+
         rc, out = run([_to_win(ms2), _to_win(idx), "--threads", "2", "--out", _to_win(out_ok)])
         check(rc == 0, f"valid input: exit 0 (rc={rc})", failures)
         peps = [ln.split("\t")[6] for ln in (out_ok.read_text().splitlines()[1:] if out_ok.exists() else [])
@@ -8607,6 +8611,17 @@ def test_t84_searchchimeric_errors(comet_exe):
         rows_z = [ln.split("\t") for ln in (out_z.read_text().splitlines()[1:] if out_z.exists() else [])]
         check(rc == 0 and rows_z and all(r[4] == "8" for r in rows_z if len(r) > 4 and r[1] != "ERROR"),
               f"--zrange 2 2147483647: exit 0 and 8 candidate charges (2..9) per scan (rc={rc}, {rows_z[:1]})", failures)
+
+        # chimericraw: two inputs that would write the same output file (same basename under --outdir) are refused
+        # before anything is searched; the RAW files need only exist for this check (it runs before they are opened)
+        for sub in ("a", "b"):
+            (tmp / sub).mkdir(exist_ok=True)
+            (tmp / sub / "dup.raw").write_bytes(b"")
+        outdir = tmp / "t84_rawout"
+        outdir.mkdir(exist_ok=True)
+        rc, out = run_raw([_to_win(idx), _to_win(tmp / "a" / "dup.raw"), _to_win(tmp / "b" / "dup.raw"), "--outdir", _to_win(outdir)])
+        check(rc == 1 and "would both write" in out and not list(outdir.iterdir()),
+              f"chimericraw: two RAW files with one output name are refused before any output is written (rc={rc}, {out.strip()[:140]!r})", failures)
 
         # padded peak lines (leading blanks) are peaks, not dropped
         padded = tmp / "t84_padded.ms2"

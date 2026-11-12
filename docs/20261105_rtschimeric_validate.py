@@ -25,6 +25,8 @@ def read_baseline(path):
     for line in open(path):
         f = line.rstrip("\n").split("\t")
         scan = int(f[0].split()[1])
+        if len(f) > 1 and f[1].startswith("rank "):
+            continue   # RTS_REPRO_TOPN > 1: a runner-up line; only rank 0 is the search's result
         if len(f) < 3:
             rows[scan] = None
             continue
@@ -45,6 +47,10 @@ def read_chimeric(path):
         for tok in f[4:]:
             k, _, v = tok.partition(" ")
             d[k] = v
+        # RTS_REPRO_TOPN > 1 adds ranked runner-ups (and empty placeholder rows) to each iteration; only the
+        # non-empty rank-0 row is an iteration's winner and drives the peak removal
+        if d.get("rank", "0") != "0" or not d["pep"]:
+            continue
         d["xcorr"] = float(d["xcorr"])
         d["expect"] = float(d["expect"])
         d["prot"] = d["prot"][1:-1]

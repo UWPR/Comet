@@ -175,6 +175,13 @@ namespace RealTimeSearch
          return true;
       }
 
+      /// <summary>The output file of one RAW file: --outdir, or next to the RAW file, as &lt;rawname&gt;.chimeric.txt.</summary>
+      private static string OutputPathFor(Options o, string rawPath)
+      {
+         return Path.Combine(o.OutputDir ?? Path.GetDirectoryName(Path.GetFullPath(rawPath)),
+            Path.GetFileNameWithoutExtension(rawPath) + ".chimeric.txt");
+      }
+
       private static string OneField(string s)
       {
          if (string.IsNullOrEmpty(s))
@@ -256,6 +263,22 @@ namespace RealTimeSearch
             Environment.ExitCode = 1;
             return;
          }
+         // Two inputs that resolve to one output file (same basename, e.g. a/sample.raw and b/sample.raw
+         // with --outdir, or a file named twice) would overwrite each other's results: refuse before
+         // anything is searched or written.
+         var outputOwner = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+         foreach (string f in o.RawFiles)
+         {
+            string outPath = Path.GetFullPath(OutputPathFor(o, f));
+            string earlier;
+            if (outputOwner.TryGetValue(outPath, out earlier))
+            {
+               Console.WriteLine(" Error: {0} and {1} would both write {2}", earlier, f, outPath);
+               Environment.ExitCode = 1;
+               return;
+            }
+            outputOwner[outPath] = f;
+         }
 
          Console.WriteLine("\n RTS chimeric-spectrum search over RAW files\n");
          Console.WriteLine(" index:    {0}", o.Database);
@@ -306,8 +329,7 @@ namespace RealTimeSearch
       private static bool SearchOneFile(CometSearchManagerWrapper searchMgr, Options o, string rawPath)
       {
          var inv = CultureInfo.InvariantCulture;
-         string outFile = Path.Combine(o.OutputDir ?? Path.GetDirectoryName(Path.GetFullPath(rawPath)),
-            Path.GetFileNameWithoutExtension(rawPath) + ".chimeric.txt");
+         string outFile = OutputPathFor(o, rawPath);
 
          Console.WriteLine(" file: {0}", rawPath);
 
