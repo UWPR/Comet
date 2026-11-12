@@ -142,7 +142,7 @@ python3 tests/rts_repro/mzxml_to_fixture.py 20170103_HelaQC_01.mzXML > hela.txt
 ## Using this from tests/unit/run_tests.py
 
 `tests/unit/run_tests.py` drives this reproducer from the T22 variants (integration tests,
-`--integration`) and from the regular unit tests T67, T68, T71-T77, T79, T81-T83, T86, T87 and T89 (see
+`--integration`) and from the regular unit tests T67, T68, T71-T77, T79, T81-T83, T86, T87, T89 and T90 (see
 `tests/tests.md`). It builds `rts_repro` once per run (the same `g++` invocation as above)
 when the binary is missing or older than `rts_repro.cpp` or any library it links; a failed
 build fails those tests rather than skipping them. T22 runs two checks per index type

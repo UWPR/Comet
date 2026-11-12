@@ -8407,6 +8407,110 @@ def test_t89_plain_chimeric_equivalence(comet_exe):
 
 
 # ---------------------------------------------------------------------------
+# T90 -- chimeric search on graded-intensity spectra. T67's fixtures give a peptide's fragments two
+# intensities (b 60, y 100) and the second peptide 1/3 of the first. Here the fragments of every peptide are
+# log-uniform over a 30-fold range, peaks under a detection limit (0.5% of the strong base peak) are not recorded,
+# there is a 300-peak noise floor, and the second peptide runs at 1:1, 3:1, 10:1, 30:1 and 100:1 below the first
+# (tests/unit/data/t90_make_graded.py). P2 is a 3+ of a different mass, P3 a 2+ of the same mass as P1.
+# ---------------------------------------------------------------------------
+
+T90_GENERATOR = DATA_DIR / "t90_make_graded.py"
+
+
+@register("t90_graded_chimeric")
+def test_t90_graded_chimeric(comet_exe):
+    """T90: with graded fragment intensities, a detection limit and a 300-peak noise floor, the chimeric search
+    (charges 2-4, +/- 2 m/z) reports the strong peptide alone, nothing for noise, both peptides at weak:strong ratios
+    1, 3, 10 and 30:1 (P2 at 3+ and the same-mass P3 at 2+), only the strong one at 100:1, where the weak peptide
+    alone is not identifiable either; in every scan the weak peptide is reported if and only if it is found
+    when searched alone, on FI_DB and PI_DB (Linux only: rts_repro)."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    for gen in (T67_GENERATOR, T90_GENERATOR):
+        if not gen.exists():
+            failures.append(f"fixture generator missing: {gen}")
+            return failures
+
+    MAX_EXPECT = 0.01
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        for gen in (T67_GENERATOR, T90_GENERATOR):    # T90 builds on T67's FASTA and peptide choice
+            r = subprocess.run([sys.executable, "-I", str(gen), str(tmp)], capture_output=True, text=True, timeout=300)
+            if not check(r.returncode == 0, f"{gen.name} exits 0 (rc={r.returncode})", failures):
+                print(r.stdout[-1500:], r.stderr[-1500:])
+                return failures
+        meta = json.loads((tmp / "t90_graded.json").read_text())
+        P1, P2, P3 = meta["P1"], meta["P2"], meta["P3"]
+        ratios = meta["ratios"]
+        sc = meta["scans"]
+        fasta = tmp / "t67_chimeric.fasta"
+        fixture = tmp / "t90_graded.txt"
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        args = ["1", "2", "4", "2.0", str(MAX_EXPECT), "5"]
+
+        results = {}
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                out = tmp / f"{label}.out"
+                rc, log = _rts_run(idx, fixture, 1, out, 0, ist, extra_args=args)
+                if not check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures):
+                    print(log[-1500:])
+                    continue
+                rows = _t67_rows(out)
+            finally:
+                idx.unlink(missing_ok=True)
+            results[label] = rows
+
+            def found(scan):
+                return {(x["peptide"], x["z"]) for x in rows.get(scan, [])}
+
+            check(not any(x.get("error") for v in rows.values() for x in v), f"{label}: no scan has an ERROR row", failures)
+            check(all(x["expect"] <= MAX_EXPECT for v in rows.values() for x in v),
+                  f"{label}: every reported row passes E-value <= {MAX_EXPECT}", failures)
+            check(found(sc["P1_alone"]) == {(P1, 2)} and len(rows[sc["P1_alone"]]) == 1,
+                  f"{label}: the strong peptide alone gives exactly {P1}/2+ ({sorted(found(sc['P1_alone']))})", failures)
+            check(rows.get(sc["noise"]) == [], f"{label}: noise only reports nothing", failures)
+
+            table = []
+            for partner, pep, z, mixed, alone in (("P2", P2, 3, sc["P1_P2"], sc["P2_alone"]),
+                                                  ("P3", P3, 2, sc["P1_P3"], sc["P3_alone"])):
+                for k, ratio in enumerate(ratios):
+                    mix_rows, alone_rows = rows.get(mixed + k, []), rows.get(alone + k, [])
+                    in_mix = (pep, z) in found(mixed + k)
+                    in_alone = (pep, z) in found(alone + k)
+                    table.append(f"{partner} {ratio:>3}:1 mixed {'found' if in_mix else '-    '} alone {'found' if in_alone else '-'}")
+                    check((P1, 2) in found(mixed + k), f"{label}: {partner} 1:{ratio}: the strong peptide {P1}/2+ is reported", failures)
+                    check(in_mix == in_alone,
+                          f"{label}: {partner} 1:{ratio}: the weak peptide is reported in the mixture iff it is found alone "
+                          f"(mixture {in_mix}, alone {in_alone})", failures)
+                    if ratio <= 30:
+                        check(in_mix and len(mix_rows) == 2,
+                              f"{label}: {partner} 1:{ratio}: both peptides reported ({sorted(found(mixed + k))})", failures)
+                    else:   # 100:1
+                        check(not in_mix and len(mix_rows) == 1,
+                              f"{label}: {partner} 1:{ratio}: only the strong peptide is reported ({sorted(found(mixed + k))})", failures)
+                    if ratio >= 30:
+                        check(mix_rows and mix_rows[0]["peptide"] == P1,
+                              f"{label}: {partner} 1:{ratio}: the strong peptide is iteration 0", failures)
+            print(f"  NOTE {label}: weak peptide in the mixture vs alone: " + "; ".join(table))
+
+        if len(results) == 2:
+            check({k: [(x["peptide"], x["z"], x["iter"]) for x in v] for k, v in results["FI_DB"].items()} ==
+                  {k: [(x["peptide"], x["z"], x["iter"]) for x in v] for k, v in results["PI_DB"].items()},
+                  "FI_DB and PI_DB report the same peptides, charges and iterations in every scan", failures)
+    return failures
+
+
+# ---------------------------------------------------------------------------
 # T84 -- RealtimeSearch.exe chimericms2 (SearchChimericMS2.cs) reports bad input instead of crashing: a
 # malformed .ms2 line is named by file and line number, an unwritable --out path fails before
 # the search runs, and each of these (and bad usage) exits 1. Before 2026-11-09 a parse error was
