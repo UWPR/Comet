@@ -18,6 +18,14 @@ INCLUDE = -I./include
 INCLUDE_EXT = -I./include/extern
 DFLAGS = -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DGCC
 DFLAGS_EXT = -DHAVE_EXPAT_CONFIG_H
+# Automatic header dependencies: each compile writes <object>.d (the .o and the .lo
+# of one source get separate files, so -j builds of both never race on one name);
+# included at the bottom so a header change recompiles the objects that include it.
+# Each object also depends on its own .d file, so an object with no .d (a deleted
+# .d, or one built by a Makefile that did not pass -MMD) recompiles instead of being
+# kept with no header prerequisites; the empty rule at the bottom "remakes" a
+# missing .d by doing nothing.
+DEPFLAGS = -MMD -MP -MF $@.d
 
 UNAME_S := $(shell uname -s)
 ifneq ($(UNAME_S),Darwin)
@@ -36,7 +44,12 @@ endif
 SOVER = 2
 RELVER = $(SOVER).0.0
 
-SRC_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+# Relative to the directory make runs in (the top Makefile runs this one as `cd dir && make`),
+# not abspath: the .d files record the object paths as written here, so absolute ones went
+# stale when a built tree was copied or renamed and no header change rebuilt anything there.
+# ABS_DIR is for the configure steps below, which run from another directory and need absolute prefixes.
+SRC_DIR  := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
+ABS_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 BUILD_SRC = $(SRC_DIR)/src
 BUILD_EXT = $(SRC_DIR)/extern
 BUILD_DIR = $(SRC_DIR)/obj
@@ -85,11 +98,11 @@ $(EXPAT_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq $(EXPAT_ZIP)
 
 $(EXPAT_STAMP) : | $(BUILD_DIR)/ $(EXPAT_SRC)/
-	cd $(EXPAT_SRC); ./configure --prefix=$(BUILD_DIR) \
+	cd $(EXPAT_SRC); ./configure --prefix=$(ABS_DIR)/obj \
 	   --enable-shared=yes --enable-static=yes \
 	   --without-xmlwf --without-examples --without-tests \
 	   --with-aix-soname=both \
-	   --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
+	   --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(EXPAT_SRC) install
 	touch $(EXPAT_STAMP)
 
@@ -115,6 +128,14 @@ ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
 ZLIB_DST := $(BUILD_DIR)/libz.a
 ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
 
+# zlib 1.2.11's zutil.h defines fdopen(fd,mode) as NULL on Apple platforms, which collides with the
+# macOS SDK's own fdopen prototype and stops the build. Defining fdopen as itself makes zutil.h's
+# "#ifndef fdopen" skip that definition. This replaces patching zutil.h (a CRLF patch file did not apply
+# with macOS's BSD patch): it needs no extra tool and leaves the extracted source untouched.
+ifeq ($(UNAME_S),Darwin)
+ZLIB_ENV := CFLAGS="-O3 -Dfdopen=fdopen"
+endif
+
 .PHONY : zlib zlib-clean zlib-realclean
 
 zlib : $(ZLIB_DST)
@@ -123,7 +144,7 @@ $(ZLIB_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 
 $(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
-	cd $(ZLIB_SRC); ./configure --prefix=$(BUILD_DIR) --includedir $(SRC_DIR)/include --libdir $(BUILD_DIR)
+	cd $(ZLIB_SRC); $(ZLIB_ENV) ./configure --prefix=$(ABS_DIR)/obj --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(ZLIB_SRC) install
 
 zlib-clean :
@@ -148,18 +169,31 @@ MSTOOLKIT_DSO = $(patsubst ${MSTOOLKIT_SRCDIR}%.cpp, ${MSTOOLKIT_DSTDIR}%.lo, $(
 
 .PHONY : mstoolkit
 
-mstoolkit : $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
-	ar rcs $(BUILD_DIR)/libmst.a $(MSTOOLKIT_DST)
+# Each archive below is a file target that depends on what goes into it, so a 'make all'
+# with nothing changed rewrites no library: the top-level comet.exe depends on
+# libmstoolkit.a / libmstoolkitextern.a and relinks only when one of them really changed.
+# (Before 2026-11-09 these were recipes of phony targets and re-ran on every make.)
+MSTOOLKIT_LIB = $(BUILD_DIR)/libmst.a
 
-$(MSTOOLKIT_DST) : | $(BUILD_DIR)/
-$(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
+mstoolkit : $(MSTOOLKIT_LIB) $(MSTOOLKIT_DSO)
 
-$(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $< -c -o $@
-	
+$(MSTOOLKIT_LIB) : $(MSTOOLKIT_DST)
+	rm -f $@
+	ar rcs $@ $(MSTOOLKIT_DST)
+
+# The expat/zlib headers these sources include (via mzParser.h) are installed into
+# include/ by the expat and zlib targets, so every object waits for both (order-only,
+# so a rebuilt library never by itself forces a recompile) -- otherwise 'make -j'
+# can start compiling before expat.h exists.
+$(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
+$(MSTOOLKIT_DST) : $(MSTOOLKIT_DSTDIR)%.o : $(MSTOOLKIT_SRCDIR)%.cpp $(MSTOOLKIT_DSTDIR)%.o.d
+	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
+$(MSTOOLKIT_DSO) : $(MSTOOLKIT_DSTDIR)%.lo : $(MSTOOLKIT_SRCDIR)%.cpp $(MSTOOLKIT_DSTDIR)%.lo.d
+	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
 mstoolkit-clean :
-	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO)
+	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO))
 
 mstoolkit-realclean : mstoolkit-clean
 	rm -rf $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(BUILD_DIR)/libmst.a 
@@ -178,18 +212,23 @@ MZPARSER_DSO = $(patsubst ${MZPARSER_SRCDIR}%.cpp, ${MZPARSER_DSTDIR}%.lo, $(MZP
 
 .PHONY : mzparser
 
-mzparser : $(MZPARSER_DST) $(MZPARSER_DSO)
-	ar rcs $(BUILD_DIR)/libmzparser.a $(MZPARSER_DST)
+MZPARSER_LIB = $(BUILD_DIR)/libmzparser.a
+
+mzparser : $(MZPARSER_LIB) $(MZPARSER_DSO)
+
+$(MZPARSER_LIB) : $(MZPARSER_DST)
+	rm -f $@
+	ar rcs $@ $(MZPARSER_DST)
 	
-$(MZPARSER_DST) : | $(BUILD_DIR)/
-$(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $< -c -o $@
-	
-$(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp
-	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS)  $< -c -o $@
-	
+$(MZPARSER_DST) $(MZPARSER_DSO) : | $(BUILD_DIR)/ $(EXPAT_STAMP) $(ZLIB_DST)
+$(MZPARSER_DST) : $(MZPARSER_DSTDIR)%.o : $(MZPARSER_SRCDIR)%.cpp $(MZPARSER_DSTDIR)%.o.d
+	$(CC) $(CFLAGS) -static $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
+$(MZPARSER_DSO) : $(MZPARSER_DSTDIR)%.lo : $(MZPARSER_SRCDIR)%.cpp $(MZPARSER_DSTDIR)%.lo.d
+	$(CC) $(CFLAGS) $(SLFLAGS) $(INCLUDE) $(DFLAGS) $(DEPFLAGS) $< -c -o $@
+
 mzparser-clean :
-	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO)
+	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(addsuffix .d, $(MZPARSER_DST) $(MZPARSER_DSO))
 
 mzparser-realclean : mzparser-clean
 	rm -rf $(MZPARSER_DST) $(MZPARSER_DSO) $(BUILD_DIR)/libmzparser.a
@@ -202,7 +241,9 @@ mzparser-realclean : mzparser-clean
 #
 .PHONY : lib
 
-lib : mstoolkit mzparser
+lib : mstoolkit mzparser libmstoolkit.a
+
+libmstoolkit.a : $(MSTOOLKIT_LIB) $(MZPARSER_LIB)
 	$(file >mstoolkit.mri,create libmstoolkit.a)
 	$(file >>mstoolkit.mri,addlib obj/libmst.a)
 	$(file >>mstoolkit.mri,addlib obj/libmzparser.a)
@@ -234,7 +275,9 @@ lib-realclean : lib-clean
 #
 .PHONY : libextern
 
-libextern : expat zlib
+libextern : expat zlib libmstoolkitextern.a
+
+libmstoolkitextern.a : $(EXPAT_STAMP) $(ZLIB_DST)
 	$(file >mstoolkitextern.mri,create libmstoolkitextern.a)
 	$(file >>mstoolkitextern.mri,addlib obj/libexpat.a)
 	$(file >>mstoolkitextern.mri,addlib obj/libz.a)
@@ -265,3 +308,8 @@ libextern-realclean : libextern-clean
 
 rc:
 	rm -rf $(BUILD_DIR) $(BUILD_LIC) mstoolkitlite.mri
+
+MSTOOLKIT_DEP = $(addsuffix .d, $(MSTOOLKIT_DST) $(MSTOOLKIT_DSO) $(MZPARSER_DST) $(MZPARSER_DSO))
+$(MSTOOLKIT_DEP) : ;
+.PRECIOUS : $(MSTOOLKIT_DEP)
+-include $(MSTOOLKIT_DEP)

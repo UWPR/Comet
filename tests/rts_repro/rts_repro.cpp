@@ -25,20 +25,27 @@
 // No Thermo RawFileReader, no C++/CLI boundary -- buildable and runnable on
 // Linux, unlocking sub-second iteration and ThreadSanitizer.
 //
-// Parameter setup mirrors SearchMS1MS2.cs's ConfigureInputSettings()'s
-// "index already exists" branch exactly (see that function for the
-// authoritative list) -- RTS never reads comet.params, so this driver
-// doesn't either; every param is set here to match what RTS actually sets.
+// Parameter setup follows SearchMS1MS2.cs's ConfigureInputSettings() "index already
+// exists" branch -- RTS never reads comet.params, so this driver doesn't either. That
+// harness is an example program whose settings change as RTS is tried in different
+// configurations, so these defaults are a snapshot of it (last aligned 2026-11-08:
+// isotope_error 2, max_index_runtime 500), not a contract. Tests must not rely on them:
+// run_tests.py passes the parameters its RTS tests depend on (RTS_TEST_PARAMS), and
+// test T80 reports any drift from the harness as notes. To reproduce a specific harness
+// run, set the differing values with RTS_REPRO_PARAMS.
 
 #include "CometInterfaces.h"
 #include "CometData.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <map>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -52,9 +59,17 @@ struct FixtureSpectrum
    int scanNumber = 0;
    int charge = 0;
    double mz = 0.0;
+   double tolMZ = 0.0;   // optional 6th SPECTRUM field: this candidate's own tolerance (chimeric mode 2)
    vector<double> mass;
    vector<double> inten;
 };
+
+// Numbers are read with strtod, not operator>>, so "nan", "inf" and "-inf" load as those
+// values: tests feed invalid m/z and peak values through the API on purpose (T73).
+static double ParseDouble(const string& tok)
+{
+   return strtod(tok.c_str(), nullptr);
+}
 
 static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
 {
@@ -70,9 +85,14 @@ static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
 
       istringstream iss(line);
       string tag;
+      string szMZ;
       FixtureSpectrum s;
       int numPeaks = 0;
-      iss >> tag >> s.scanNumber >> s.charge >> s.mz >> numPeaks;
+      iss >> tag >> s.scanNumber >> s.charge >> szMZ >> numPeaks;
+      s.mz = ParseDouble(szMZ);
+      string szTol;
+      if (iss >> szTol)
+         s.tolMZ = ParseDouble(szTol);   // optional: per-candidate tolerance in m/z (0 = the per-call value)
 
       if (numPeaks <= 0)
          continue;
@@ -84,7 +104,11 @@ static bool LoadFixtures(const string& path, vector<FixtureSpectrum>& out)
          if (!getline(f, line))
             return false;
          istringstream piss(line);
-         piss >> s.mass[i] >> s.inten[i];
+         string szMass;
+         string szInten;
+         piss >> szMass >> szInten;
+         s.mass[i] = ParseDouble(szMass);
+         s.inten[i] = ParseDouble(szInten);
       }
       out.push_back(std::move(s));
    }
@@ -104,6 +128,101 @@ static void SetDoubleParam(ICometSearchManager* mgr, const string& name, double 
 static void SetStringParam(ICometSearchManager* mgr, const string& name, const string& val)
 {
    mgr->SetParam(name, val, val);
+}
+
+// RTS_REPRO_FRAGMENTS=1: one FRAG line per matched fragment of result row iRow, as the API
+// returns them (type = ION_SERIES_* index, mass = the fragment's 1+ mass, z = its charge).
+static void WriteFragments(ostream& out, int iScan, size_t iRow, const vector<vector<Fragment>>& vFrag)
+{
+   if (iRow >= vFrag.size())
+      return;
+   for (const Fragment& f : vFrag[iRow])
+   {
+      char szFrag[256];
+      snprintf(szFrag, sizeof(szFrag), "FRAG %d\trow %zu\ttype %d\tnum %d\tz %d\tmass %.5f\tnl %d\tinten %.3f\n",
+         iScan, iRow, f.type, f.number, f.charge, f.mass, f.neutralLoss ? 1 : 0, f.intensity);
+      out << szFrag;
+   }
+}
+
+// RTS_REPRO_PARAMS: extra parameters for tests and experiments, so a new knob needs no new
+// positional argument. Entries are separated by ';', each "<type>:<name>=<value>" with type
+// i (int), d (double), s (string) or v (comma-separated doubles, a vector<double> parameter
+// such as precursor_NL_ions), e.g. "i:use_Z1_ions=1;d:fragment_bin_tol=1.0005".
+// The type must be the one Comet reads the parameter as: GetParamValue() casts to the
+// requested type, and a mismatch is a null dereference, not an error. Applied after every
+// built-in setting (so an entry overrides it) and before InitializeSingleSpectrumSearch().
+// Returns false, after printing why, on a malformed entry.
+static bool ApplyExtraParams(ICometSearchManager* mgr)
+{
+   const char* pszEnv = getenv("RTS_REPRO_PARAMS");
+   if (pszEnv == nullptr || *pszEnv == '\0')
+      return true;
+
+   stringstream ss(pszEnv);
+   string entry;
+   while (getline(ss, entry, ';'))
+   {
+      if (entry.empty())
+         continue;
+      size_t iColon = entry.find(':');
+      size_t iEq = entry.find('=');
+      if (iColon != 1 || iEq == string::npos || iEq <= iColon + 1)
+      {
+         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\" is not <i|d|s>:<name>=<value>\n", entry.c_str());
+         return false;
+      }
+      char cType = entry[0];
+      string name = entry.substr(iColon + 1, iEq - iColon - 1);
+      string value = entry.substr(iEq + 1);
+      char* pEnd = nullptr;
+      if (cType == 'i')
+      {
+         long lVal = strtol(value.c_str(), &pEnd, 10);
+         if (value.empty() || *pEnd != '\0')
+         {
+            fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not an int\n", name.c_str(), value.c_str());
+            return false;
+         }
+         SetIntParam(mgr, name, (int)lVal);
+      }
+      else if (cType == 'd')
+      {
+         double dVal = strtod(value.c_str(), &pEnd);
+         if (value.empty() || *pEnd != '\0')
+         {
+            fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not a number\n", name.c_str(), value.c_str());
+            return false;
+         }
+         SetDoubleParam(mgr, name, dVal);
+      }
+      else if (cType == 's')
+         SetStringParam(mgr, name, value);
+      else if (cType == 'v')
+      {
+         vector<double> vVal;
+         stringstream vs(value);
+         string tok;
+         while (getline(vs, tok, ','))
+         {
+            double dVal = strtod(tok.c_str(), &pEnd);
+            if (tok.empty() || *pEnd != '\0')
+            {
+               fprintf(stderr, "Error: RTS_REPRO_PARAMS %s: \"%s\" is not a number\n", name.c_str(), tok.c_str());
+               return false;
+            }
+            vVal.push_back(dVal);
+         }
+         mgr->SetParam(name, value, vVal);
+      }
+      else
+      {
+         fprintf(stderr, "Error: RTS_REPRO_PARAMS entry \"%s\": type must be i, d, s or v\n", entry.c_str());
+         return false;
+      }
+      fprintf(stderr, "RTS_REPRO_PARAMS: %s = %s\n", name.c_str(), value.c_str());
+   }
+   return true;
 }
 
 // Reads MassRange:/LengthRange: from the .idx header, mirroring the
@@ -157,7 +276,30 @@ int main(int argc, char** argv)
 {
    if (argc < 5)
    {
-      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n", argv[0]);
+      fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n"
+                      "          [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
+                      "          [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill] [useNLIons]\n"
+                      "  chimeric 0 (default): DoSingleSpectrumSearchMultiResults, one line per SPECTRUM block\n"
+                      "  chimeric 1: DoSingleSpectrumSearchChimeric charge-range form -- each SPECTRUM block searched at\n"
+                      "              charges zmin..zmax with +/- tolMZ (m/z units; 0 = configured tolerance)\n"
+                      "  chimeric 2: DoSingleSpectrumSearchChimeric explicit-list form -- all SPECTRUM blocks that share\n"
+                      "              a scan number are the (m/z, charge) candidates of one spectrum (first block's peaks)\n"
+                      "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.1, maxPeptides 5; chimeric modes set\n"
+                      "  max_index_runtime = 0 (unlimited) since one call runs many searches\n"
+                      "  flankBins: ignored (kept so later arguments keep their positions); the removal flank follows\n"
+                      "             theoretical_fragment_ions since 2026-11-08\n"
+                      "  isotopes: the chimeric_remove_isotopes param (default 2; clamped to 0..3)\n"
+                      "  isotopeError: the isotope_error param, every mode (default 2, SearchMS1MS2.cs's value on 2026-11-08)\n"
+                      "  globalMinIonsScore: > 0 sets fragindex_min_ions_score itself, every mode (default: not sent, 3)\n"
+                      "  histogramFill: >= 0 sets fragindex_histogram_fill, every mode (default: not sent)\n"
+                      "  useNLIons: >= 0 sets use_NL_ions, every mode (default: not sent, 0)\n"
+                      "  environment: RTS_REPRO_PARAMS=\"<i|d|s|v>:<name>=<value>;...\" sets any further parameter, applied\n"
+                      "              last (e.g. \"i:use_Z1_ions=1\"); the type must be the one Comet reads it as\n"
+                      "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n"
+                      "              RTS_REPRO_CANCEL_RACE=<us> cancels/resets the search at random intervals (test T82)\n"
+                      "              RTS_REPRO_TOPN=<n> sets mode 0's topN (default 1; test T83)\n"
+                      "  chimeric output: a call that stopped early keeps its rows and adds 'INCOMPLETE budget' (budget ran out)\n"
+                      "              or 'INCOMPLETE stopped' (cancelled or a search failed); ERROR = invalid arguments\n", argv[0]);
       return 1;
    }
 
@@ -167,6 +309,20 @@ int main(int argc, char** argv)
    string szOutput = argv[4];
    bool bEnableAScorePro = (argc > 5) && (atoi(argv[5]) != 0);
    int iIndexSearchType = (argc > 6) ? atoi(argv[6]) : -1;  // -1 = not given: not sent, matching RealtimeSearch
+
+   // Chimeric-search mode (docs/20261105_RTSchimeric.md); 0 keeps this driver's original behaviour
+   int iChimeric = (argc > 7) ? atoi(argv[7]) : 0;
+   int iZmin = (argc > 8) ? atoi(argv[8]) : 2;
+   int iZmax = (argc > 9) ? atoi(argv[9]) : 4;
+   double dTolMZ = (argc > 10) ? atof(argv[10]) : 0.0;
+   double dMaxExpect = (argc > 11) ? atof(argv[11]) : 0.1;   // 0.1 since fragindex_histogram_fill calibrated the E-values
+   int iMaxPeptides = (argc > 12) ? atoi(argv[12]) : 5;
+   int iFlankBins = (argc > 13) ? atoi(argv[13]) : -1;          // ignored: the removal flank follows theoretical_fragment_ions
+   int iIsotopes = (argc > 14) ? atoi(argv[14]) : 2;
+   int iIsotopeError = (argc > 15) ? atoi(argv[15]) : 2;   // SearchMS1MS2.cs's value on 2026-11-08
+   int iGlobalMinIonsScore = (argc > 16) ? atoi(argv[16]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
+   int iHistogramFill = (argc > 17) ? atoi(argv[17]) : -1;      // >= 0 sets fragindex_histogram_fill (every mode); -1 = not sent
+   int iUseNLIons = (argc > 18) ? atoi(argv[18]) : -1;          // >= 0 sets use_NL_ions (every mode); -1 = not sent
 
    if (numThreads < 1)
       numThreads = 1;
@@ -181,7 +337,8 @@ int main(int argc, char** argv)
 
    ICometSearchManager* mgr = GetCometSearchManager();
 
-   // Mirror SearchMS1MS2.cs's ConfigureInputSettings(), "index already exists" path.
+   // Follow SearchMS1MS2.cs's ConfigureInputSettings(), "index already exists" path (a snapshot;
+   // see the header comment).
    SetStringParam(mgr, "spectral_library_name", szDB);  // unused for MS2-only PI_DB search; kept for parity
    SetStringParam(mgr, "database_name", szDB);
 
@@ -193,7 +350,6 @@ int main(int argc, char** argv)
       DoubleRange r(0.0, 2000.0);
       mgr->SetParam("ms1_mass_range", "0 2000", r);
    }
-   SetIntParam(mgr, "max_index_runtime", 100);
    SetIntParam(mgr, "num_threads", numThreads);
    SetDoubleParam(mgr, "fragment_bin_tol", 0.02);
    SetDoubleParam(mgr, "fragment_bin_offset", 0.0);
@@ -202,8 +358,21 @@ int main(int argc, char** argv)
    SetDoubleParam(mgr, "peptide_mass_tolerance_lower", -20.0);
    SetIntParam(mgr, "peptide_mass_units", 2);
    SetIntParam(mgr, "precursor_tolerance_type", 1);
-   SetIntParam(mgr, "isotope_error", 0);
-   SetIntParam(mgr, "max_index_runtime", 200);  // overwrites the 100 above -- matches RTS's actual (duplicate) call
+   SetIntParam(mgr, "isotope_error", iIsotopeError);   // 2 unless given
+   if (iGlobalMinIonsScore > 0)
+      SetIntParam(mgr, "fragindex_min_ions_score", iGlobalMinIonsScore);
+   if (iHistogramFill >= 0)
+      SetIntParam(mgr, "fragindex_histogram_fill", iHistogramFill);
+   if (iUseNLIons >= 0)
+      SetIntParam(mgr, "use_NL_ions", iUseNLIons);
+   SetIntParam(mgr, "max_index_runtime", 500);  // SearchMS1MS2.cs's value on 2026-11-08 (it was 100, then 200, before #119)
+   if (iChimeric != 0)
+   {
+      SetIntParam(mgr, "max_index_runtime", 0);  // the chimeric call's budget spans every candidate x iteration
+      if (iFlankBins != -1)
+         fprintf(stderr, "Note: flankBins %d ignored -- the chimeric removal flank follows theoretical_fragment_ions\n", iFlankBins);
+      SetIntParam(mgr, "chimeric_remove_isotopes", iIsotopes);
+   }
    SetIntParam(mgr, "minimum_peaks", 10);
    SetIntParam(mgr, "max_fragment_charge", 3);
    SetIntParam(mgr, "max_precursor_charge", 6);
@@ -231,6 +400,16 @@ int main(int argc, char** argv)
       return 1;
    }
 
+   if (!ApplyExtraParams(mgr))
+      return 1;
+
+   // RTS_REPRO_TOPN=<n>: the topN mode 0 passes to DoSingleSpectrumSearchMultiResults (default 1).
+   // An invalid value (< 1) must make the call return false, printed as NO_MATCH (test T83).
+   const char* pszTopN = getenv("RTS_REPRO_TOPN");
+   const int iTopN = (pszTopN != nullptr && *pszTopN != '\0') ? atoi(pszTopN) : 1;
+   const char* pszFrag = getenv("RTS_REPRO_FRAGMENTS");
+   const bool bPrintFragments = (pszFrag != nullptr && atoi(pszFrag) != 0);
+
    if (!mgr->InitializeSingleSpectrumSearch())
    {
       string msg;
@@ -246,33 +425,148 @@ int main(int argc, char** argv)
    std::mutex outMutex;
    ofstream out(szOutput);
 
+   // Work items: one per SPECTRUM block, except chimeric mode 2 where every block sharing a
+   // scan number is one candidate of a single spectrum (the first block's peaks are searched).
+   vector<vector<size_t>> jobs;
+   if (iChimeric == 2)
+   {
+      std::map<int, size_t> scanToJob;
+      for (size_t i = 0; i < spectra.size(); ++i)
+      {
+         auto it = scanToJob.find(spectra[i].scanNumber);
+         if (it == scanToJob.end())
+         {
+            scanToJob[spectra[i].scanNumber] = jobs.size();
+            jobs.push_back(vector<size_t>{i});
+         }
+         else
+            jobs[it->second].push_back(i);
+      }
+   }
+   else
+   {
+      for (size_t i = 0; i < spectra.size(); ++i)
+         jobs.push_back(vector<size_t>{i});
+   }
+
    auto worker = [&]()
    {
-      size_t i;
-      while ((i = nextIndex.fetch_add(1)) < spectra.size())
+      size_t j;
+      while ((j = nextIndex.fetch_add(1)) < jobs.size())
       {
-         const FixtureSpectrum& s = spectra[i];
+         const FixtureSpectrum& s = spectra[jobs[j][0]];
          vector<string> vPeptide, vProtein;
          vector<vector<Fragment>> vFrag;
          vector<CometScores> vScores;
 
-         bool ok = mgr->DoSingleSpectrumSearchMultiResults(1, s.charge, s.mz,
-            const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
-            vPeptide, vProtein, vFrag, vScores);
-
-         std::lock_guard<std::mutex> lk(outMutex);
-         if (ok && !vPeptide.empty() && !vPeptide[0].empty())
+         if (iChimeric == 0)
          {
-            out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
-                << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
-                << "\tprot '" << vProtein[0] << "'\n";
+            bool ok = mgr->DoSingleSpectrumSearchMultiResults(iTopN, s.charge, s.mz,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores);
+
+            std::lock_guard<std::mutex> lk(outMutex);
+            if (ok && !vPeptide.empty() && !vPeptide[0].empty())
+            {
+               out << "MS2 " << s.scanNumber << "\t" << vPeptide[0] << "\t"
+                   << vScores[0].xCorr << "\t" << vScores[0].dExpect << "\tz " << s.charge
+                   << "\tprot '" << vProtein[0] << "'\n";
+               if (bPrintFragments)
+                  WriteFragments(out, s.scanNumber, 0, vFrag);
+               // topN > 1 (RTS_REPRO_TOPN): the further ranks, one line each (followed by its own fragments)
+               // with the same fields the chimeric modes print, so a plain call and a one-iteration chimeric
+               // call can be compared
+               for (size_t r = 1; r < vPeptide.size(); ++r)
+               {
+                  out << "MS2 " << s.scanNumber << "\trank " << vScores[r].iRank << "\t" << vPeptide[r]
+                      << "\txcorr " << vScores[r].xCorr << "\tdcn " << vScores[r].dCn
+                      << "\texpect " << vScores[r].dExpect << "\tions " << vScores[r].matchedIons << "/"
+                      << vScores[r].totalIons << "\n";
+                  if (bPrintFragments)
+                     WriteFragments(out, s.scanNumber, r, vFrag);
+               }
+            }
+            else
+            {
+               out << "MS2 " << s.scanNumber << "\tNO_MATCH\n";
+            }
+            continue;
+         }
+
+         bool ok;
+         bool bIncomplete = false;
+         if (iChimeric == 1)
+         {
+            ok = mgr->DoSingleSpectrumSearchChimeric(s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides, iTopN,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }
          else
          {
+            vector<PrecursorCandidate> vCand;
+            for (size_t k : jobs[j])
+               vCand.emplace_back(spectra[k].mz, spectra[k].charge, spectra[k].tolMZ);
+            ok = mgr->DoSingleSpectrumSearchChimeric(vCand, dTolMZ, dMaxExpect, iMaxPeptides, iTopN,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores, bIncomplete);
+         }
+
+         // One line per reported peptide, in iteration order, so a scan-sorted diff keeps them adjacent.
+         // A call that stopped early (bIncomplete) keeps its rows and adds a marker line after them:
+         // "INCOMPLETE budget" (max_index_runtime ran out, returned true) or "INCOMPLETE stopped"
+         // (cancelled or an index search failed, returned false). ERROR = false without
+         // bIncomplete (invalid arguments).
+         std::lock_guard<std::mutex> lk(outMutex);
+         if (!ok && !bIncomplete)
+         {
+            out << "MS2 " << s.scanNumber << "\tERROR\n";
+         }
+         else if (vPeptide.empty() && !bIncomplete)
+         {
             out << "MS2 " << s.scanNumber << "\tNO_MATCH\n";
+         }
+         else
+         {
+            for (size_t r = 0; r < vPeptide.size(); ++r)
+            {
+               out << "MS2 " << s.scanNumber << "\titer " << vScores[r].iIteration << "\tz " << vScores[r].iCharge
+                   << "\t" << vPeptide[r] << "\txcorr " << vScores[r].xCorr << "\tdcn " << vScores[r].dCn
+                   << "\texpect " << vScores[r].dExpect << "\tmass " << vScores[r].mass
+                   << "\tions " << vScores[r].matchedIons << "/" << vScores[r].totalIons
+                   << "\trank " << vScores[r].iRank
+                   << "\tprot '" << vProtein[r] << "'\n";
+               if (bPrintFragments)
+                  WriteFragments(out, s.scanNumber, r, vFrag);
+            }
+            if (bIncomplete)
+               out << "MS2 " << s.scanNumber << "\tINCOMPLETE " << (ok ? "budget" : "stopped") << "\n";
          }
       }
    };
+
+   // RTS_REPRO_CANCEL_RACE=<us>: a thread that, until the workers finish, sleeps a random 0..us
+   // microseconds, calls CancelSearch() and ResetSearchStatus() 20 us later -- so chimeric calls are
+   // cancelled at arbitrary points (test T82: a cancelled call returns false with bIncomplete and
+   // keeps its complete earlier iterations).
+   std::atomic<bool> bWorkersDone{false};
+   std::thread cancelThread;
+   const char* pszRace = getenv("RTS_REPRO_CANCEL_RACE");
+   if (pszRace != nullptr && atoi(pszRace) > 0)
+   {
+      const int iMaxUs = atoi(pszRace);
+      cancelThread = std::thread([&bWorkersDone, mgr, iMaxUs]()
+      {
+         std::mt19937 rng(82);
+         std::uniform_int_distribution<int> dist(0, iMaxUs);
+         while (!bWorkersDone.load())
+         {
+            std::this_thread::sleep_for(std::chrono::microseconds(dist(rng)));
+            mgr->CancelSearch();
+            std::this_thread::sleep_for(std::chrono::microseconds(20));
+            mgr->ResetSearchStatus();
+         }
+      });
+   }
 
    vector<std::thread> threads;
    threads.reserve(numThreads);
@@ -280,6 +574,9 @@ int main(int argc, char** argv)
       threads.emplace_back(worker);
    for (auto& th : threads)
       th.join();
+   bWorkersDone = true;
+   if (cancelThread.joinable())
+      cancelThread.join();
 
    mgr->FinalizeSingleSpectrumSearch();
    ReleaseCometSearchManager();

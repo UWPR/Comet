@@ -42,6 +42,21 @@ RealtimeSearch.exe <query.raw> <ms1_reference.raw> <database.idx> <num_threads>
 
 Output is written to `rts.out` in the working directory.
 
+### Chimeric-spectrum RTS (more than one peptide per spectrum)
+
+```bash
+RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [--zrange zmin zmax | --zlines] [--tol mz]
+                   [--max-expect E] [--max-peptides N] [--threads T] [--out file] ...
+```
+
+Run it with no options for the full list. `--zrange` searches each scan's `S`-line m/z
+across the charge range with a +/- `--tol` m/z window (the isolation-window use case);
+`--zlines` makes every `Z` line of the scan one `(m/z, charge)` candidate (multi-Z-line
+`.ms2`, the Mango wrapper's format). One tab-delimited row per reported peptide (scan,
+iteration, charge, ..., E-value) plus a run summary. Reads `.ms2` only (no `.raw`). Design,
+defaults and the HeLa measurements: `docs/20261105_RTSchimeric.md`; the Linux equivalent is
+`tests/rts_repro/rts_repro` with its chimeric arguments.
+
 ## Output file format (rts.out)
 
 Each identified MS2 scan:
@@ -82,6 +97,9 @@ Output also includes:
 - `num_threads` — overridden by RTS command-line argument
 - `num_results` — hits to report per spectrum
 - `minimum_xcorr` — score cutoff
+- `fragindex_min_ions_score` / `fragindex_min_ions_report` (3 / 3) — fragment-ion-index candidate and reporting floors (index hits among the top `fragindex_num_spectrumpeaks` peaks); don't lower them to "rescue" weak hits, the 2-hit winners are junk
+- `fragindex_histogram_fill` (100; 0 = off) — FI searches also score their best-supported sub-floor candidates into the E-value histogram so FI E-values match PI/FASTA E-values; changes E-values of weak hits only, never xcorr, ranking, reported PSMs or `num_matched_peptides`: fill candidates are histogram-only. A `fragindex_min_ions_report` below `fragindex_min_ions_score` has no effect and prints a warning (`docs/20261106_FI_evalue_histogram_fill.md`)
+- `isotope_error` — on the HeLa benchmark file `2` gave +42% confident PSMs over `0` in the RTS example harness (`docs/20261105_RTSchimeric.md` 10.4)
 
 ## g_pvProteinNameCache (indexed DB)
 

@@ -16,6 +16,7 @@
 #include "Common.h"
 #include "ThreadPool.h"
 #include "CometPostAnalysis.h"
+#include "core/EnvSwitch.h"
 #include "CometMassSpecUtils.h"
 #include "CometStatus.h"
 
@@ -33,6 +34,8 @@
 #include <mutex>    // std::once_flag, std::call_once
 #include <cassert>
 #include <algorithm>  // std::max
+#include <atomic>
+#include <cstring>
 
 // --- Pre-computed decoy fragment-ion bin table ---
 // Built once per process after g_staticParams is fully initialised.
@@ -57,6 +60,43 @@ static int s_pdNPerDecoy  = 0;   // MAX_DECOY_PEP_LEN * s_pdNPerPos
 // this check has to live outside it.
 static double s_dFingerprintInvBW  = 0.0;
 static double s_dFingerprintBinOff = 0.0;
+// Which ion series, in which order (the table's layout follows it), and the fragment mass
+// constants the series masses are built from (these follow mass_type_fragment): a count of
+// series alone would let b+y and c+z, or a mono/average switch, reuse each other's bins.
+static int    s_iFingerprintSeries[NUM_ION_SERIES] = {};
+static double s_dFingerprintMass[4] = {};
+
+static void DecoyFingerprintMass(double* pdMass)
+{
+   pdMass[0] = g_staticParams.massUtility.dCO;
+   pdMass[1] = g_staticParams.massUtility.dNH3;
+   pdMass[2] = g_staticParams.massUtility.dNH2;
+   pdMass[3] = g_staticParams.massUtility.dCOminusH2;
+}
+
+// True if the table was built from the current ion series, fragment masses, bin width and
+// offset, and fragment charge limit.
+static bool DecoyTableMatchesParams()
+{
+   if (s_pdNIonSeries != g_staticParams.ionInformation.iNumIonSeriesUsed
+      || s_pdMaxCharge != std::max(g_staticParams.options.iMaxFragmentCharge, 1)
+      || !isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
+      || !isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset))
+      return false;
+   for (int ii = 0; ii < s_pdNIonSeries; ++ii)
+   {
+      if (s_iFingerprintSeries[ii] != g_staticParams.ionInformation.piSelectedIonSeries[ii])
+         return false;
+   }
+   double pdMass[4];
+   DecoyFingerprintMass(pdMass);
+   for (int i = 0; i < 4; ++i)
+   {
+      if (s_dFingerprintMass[i] != pdMass[i])
+         return false;
+   }
+   return true;
+}
 
 // Inverted index: bin -> list of (ctCharge, decoy_i) pairs for ions at that bin.
 // CSR format: s_invIdx_start[b]..s_invIdx_start[b+1] is the range in s_invIdx_data.
@@ -64,8 +104,115 @@ static double s_dFingerprintBinOff = 0.0;
 // Entries within each bin are ordered by decoy index (ascending) -- filled in outer-decoy-
 // loop order -- enabling early-exit when iLoopMax < EXPECT_DECOY_SIZE.
 // Storing charge allows GenerateXcorrDecoys to honour the per-query usiMaxFragCharge limit.
-static std::vector<int>      s_invIdx_start;   // size: iArraySizeGlobal + 2
-static std::vector<uint32_t> s_invIdx_data;    // ~480K entries typical
+static std::vector<int>      s_invIdx_start;   // size: s_iGatherPadBin + 2
+static std::vector<uint32_t> s_invIdx_data;    // ~200K entries per fragment charge for b/y (~610K at 3)
+
+// The same entries grouped by decoy for the gather path (GenerateXcorrDecoys()): each
+// decoy's ions sorted by (bin, flat index) -- exactly the order in which the scatter path adds
+// a bin's value to that decoy (bins ascending; within a bin, the inverted index's per-decoy
+// flat order). The gather therefore adds the same floats in the same order and produces
+// bit-identical decoy scores.
+//
+// Stored lane-interleaved for the gather loop, one table per fragment-charge limit c
+// (1 .. s_pdMaxCharge; a query uses c = its usiMaxFragCharge): decoys are taken eight at a
+// time (a group), group g's ions with charge <= c fill the rows s_gatherRowOff[c][g] ..
+// s_gatherRowOff[c][g + 1] - 1, row r being the eight lanes s_gatherBin[c][r * 8 .. r * 8 + 7], and a
+// lane shorter than the group's longest is padded with the bin s_iGatherPadBin (one past the highest
+// decoy ion bin), which the gather's dense
+// spectrum copy keeps at zero -- as it does every bin >= the query's iArraySize, so ions past
+// the precursor need no cut-off either.
+static const int s_iGatherLanes = 8;   // DecoyScoresGather() hard-codes eight accumulators (checked there)
+static std::vector<std::vector<int>> s_gatherRowOff;  // [c][group]: the group's first row; [c][groups] = the rows in all
+static std::vector<std::vector<int>> s_gatherBin;     // [c][row * 8 + lane]
+// [c][row]: the lowest bin in each row of the table (all lanes; rows are numbered across the groups, a
+// group's rows are s_gatherRowOff[c][g] .. s_gatherRowOff[c][g + 1] - 1). A lane is sorted by bin and padded with
+// the highest bin, so within a group this never decreases: the rows from the first one whose lowest bin
+// reaches a query's iArraySize on hold only zeros for that query and are skipped (exactly: they add 0.0f).
+static std::vector<std::vector<int>> s_gatherRowMin;
+static int s_iGatherPadBin = 0;
+
+// The number of eight-decoy groups that cover iLoopMax decoys.
+static inline int GatherGroups(int iLoopMax)
+{
+   return (iLoopMax + s_iGatherLanes - 1) / s_iGatherLanes;
+}
+
+// The fragment-charge limit the decoy scoring applies for a query: its usiMaxFragCharge, which is
+// 1 .. max_fragment_charge (the limit the tables are built for; a different one is refused as stale).
+// Both scoring paths take it from here, so they agree for any input.
+static inline int DecoyChargeLimit(int iMaxFragCharge)
+{
+   return std::min(std::max(iMaxFragCharge, 1), s_pdMaxCharge);
+}
+
+static bool DecoyGatherTablesNeeded();
+
+// Per decoy the ions sorted by bin, filtered by charge <= c, lane-interleaved in groups of eight
+// decoys (see s_gatherBin). Built from the inverted index (s_invIdx_*, which must be built first):
+// walking its bins in ascending order visits each decoy's ions in ascending bin order, so the
+// tables are filled by transposition -- no per-decoy lists and no sort. (Ions of one decoy in one
+// bin are in the scatter's order there, but the tables hold only bins, so the order within a bin
+// does not show.) s_iGatherPadBin is set.
+static void BuildGatherTables()
+{
+   const int iGroups = GatherGroups(EXPECT_DECOY_SIZE);
+   const int iBins = (int)s_invIdx_start.size() - 2;   // == s_iGatherPadBin
+   s_gatherRowOff.assign(s_pdMaxCharge + 1, std::vector<int>());
+   s_gatherBin.assign(s_pdMaxCharge + 1, std::vector<int>());
+   s_gatherRowMin.assign(s_pdMaxCharge + 1, std::vector<int>());
+
+   std::vector<int> vCount(EXPECT_DECOY_SIZE);
+   std::vector<int> vCursor(EXPECT_DECOY_SIZE);
+   for (int iChargeLimit = 1; iChargeLimit <= s_pdMaxCharge; ++iChargeLimit)
+   {
+      // ions of each decoy with charge <= c, then each group's first row (its length is its longest lane)
+      std::fill(vCount.begin(), vCount.end(), 0);
+      for (const uint32_t uiEntry : s_invIdx_data)
+      {
+         if ((int)(uiEntry >> 16) <= iChargeLimit)
+            ++vCount[(uint16_t)(uiEntry & 0xFFFF)];
+      }
+      std::vector<int>& vOff = s_gatherRowOff[iChargeLimit];
+      vOff.resize(iGroups + 1);
+      size_t uiRows = 0;
+      for (int g = 0; g < iGroups; ++g)
+      {
+         int iLen = 0;
+         for (int j = 0; j < s_iGatherLanes; ++j)
+            iLen = std::max(iLen, vCount[g * s_iGatherLanes + j]);
+         vOff[g] = (int)uiRows;
+         uiRows += iLen;
+      }
+      vOff[iGroups] = (int)uiRows;
+
+      // short lanes keep the pad bin; the others are filled in ascending bin order
+      std::vector<int>& vBin = s_gatherBin[iChargeLimit];
+      vBin.assign(uiRows * s_iGatherLanes, s_iGatherPadBin);
+      std::fill(vCursor.begin(), vCursor.end(), 0);
+      for (int iBin = 0; iBin < iBins; ++iBin)
+      {
+         for (int k = s_invIdx_start[iBin]; k < s_invIdx_start[iBin + 1]; ++k)
+         {
+            const uint32_t uiEntry = s_invIdx_data[k];
+            if ((int)(uiEntry >> 16) > iChargeLimit)
+               continue;
+            const int i = (uint16_t)(uiEntry & 0xFFFF);
+            const int g = i / s_iGatherLanes;
+            vBin[((size_t)vOff[g] + (size_t)vCursor[i]++) * s_iGatherLanes + (i % s_iGatherLanes)] = iBin;
+         }
+      }
+
+      // the lowest bin of each row (see s_gatherRowMin)
+      s_gatherRowMin[iChargeLimit].resize(uiRows);
+      for (size_t r = 0; r < uiRows; ++r)
+      {
+         int iRowMin = s_iGatherPadBin;
+         for (int j = 0; j < s_iGatherLanes; ++j)
+            iRowMin = std::min(iRowMin, vBin[r * s_iGatherLanes + j]);
+         s_gatherRowMin[iChargeLimit][r] = iRowMin;
+      }
+   }
+}
 
 static void InitPrecomputedDecoyBins()
 {
@@ -132,8 +279,18 @@ static void InitPrecomputedDecoyBins()
    // The decoy-i outer loop above fills s_preDecoyBins in ascending decoy order, so
    // entries land in the data array already sorted by decoy index within each bin.
    //
-   // Any bin >= iArraySizeGlobal is unreachable by any query and is excluded.
-   const int iMaxBin = g_staticParams.iArraySizeGlobal;
+   // The tables cover every decoy ion: iMaxBin is one past the highest decoy bin, whatever
+   // iArraySizeGlobal is. (They used to be cut at iArraySizeGlobal, so a re-init with a larger
+   // mass range found a table sized for the first session's, and the gather's dense copy,
+   // sized from it, was overrun by a bigger query.) A query's own iArraySize bounds what it
+   // reads: the scatter skips bins at or above it, and the gather copies only bins below
+   // min(iArraySize, iMaxBin) and reads zeros elsewhere, so scores are unchanged.
+   int iMaxBin = 1;
+   for (const int b : s_preDecoyBins)
+   {
+      if (b >= iMaxBin)
+         iMaxBin = b + 1;
+   }
 
    // Pass 1: count how many entries each bin has.
    std::vector<int> binCount(iMaxBin, 0);
@@ -177,11 +334,279 @@ static void InitPrecomputedDecoyBins()
       }
    }
 
+   // Gather tables, unless COMET_DECOYGEN forces the scatter (build time and memory for
+   // tables nothing would read).
+   s_iGatherPadBin = iMaxBin;
+   if (DecoyGatherTablesNeeded())
+      BuildGatherTables();
+
    // Record what this table was actually built from, so GenerateXcorrDecoys() can catch
    // (rather than silently score against) a later param change in the same process.
    s_dFingerprintInvBW  = dInvBW;
    s_dFingerprintBinOff = dBinOff;
+   for (int ii = 0; ii < s_pdNIonSeries; ++ii)
+      s_iFingerprintSeries[ii] = g_staticParams.ionInformation.piSelectedIonSeries[ii];
+   DecoyFingerprintMass(s_dFingerprintMass);
 }
+
+
+// ---------------------------------------------------------------------------
+// Decoy-score path in GenerateXcorrDecoys(). The scatter walks the spectrum's nonzero bins
+// and adds each to every decoy with an ion there (inverted index): cheap when few bins are
+// nonzero (high resolution), but at low resolution the peak bands cover most of the array and
+// it visits nearly every decoy ion with a random write per entry. The gather sums each
+// decoy's own ions from a dense copy of the spectrum, eight decoys at a time so the float
+// additions run in parallel; same values, same order per decoy, bit-identical scores.
+// COMET_DECOYGEN (read once; a testing switch, not a parameter): unset / "auto" -- the
+// default, per query the path with the smaller work estimate (ScatterWorkEstimate(),
+// GatherWorkEstimate()); "scatter"; "gather"; "verify" -- compute both,
+// compare every decoy score bit for bit, report mismatches on stderr and a summary at exit
+// (the histogram uses the gather's scores); "verify-selftest" -- as verify, but one gather
+// score is perturbed first, so every comparison must report a mismatch.
+// ---------------------------------------------------------------------------
+enum class DecoyGenMode { Auto, Scatter, Gather, Verify, VerifySelfTest };
+
+static DecoyGenMode GetDecoyGenMode()
+{
+   // in the order of DecoyGenMode
+   static const char* const pszNames[] = { "auto", "scatter", "gather", "verify", "verify-selftest" };
+   static const DecoyGenMode mode = (DecoyGenMode)ReadEnvSwitch("COMET_DECOYGEN", pszNames, 5);
+   return mode;
+}
+
+static bool DecoyGenVerifyOn()
+{
+   const DecoyGenMode mode = GetDecoyGenMode();
+   return mode == DecoyGenMode::Verify || mode == DecoyGenMode::VerifySelfTest;
+}
+
+static bool DecoyGatherTablesNeeded()
+{
+   return GetDecoyGenMode() != DecoyGenMode::Scatter;
+}
+
+struct DecoyGenVerifyStats
+{
+   std::atomic<unsigned long long> ullCompared{0};
+   std::atomic<unsigned long long> ullMismatches{0};
+   std::atomic<unsigned long long> ullAutoGather{0};    // sets for which auto would take the gather
+   std::atomic<unsigned long long> ullAutoScatter{0};   // ... and the scatter
+   std::atomic<unsigned long long> ullByCharge[6]{};    // sets by the query's fragment-charge limit (1 .. 5; 0 = other)
+
+   ~DecoyGenVerifyStats()
+   {
+      if (DecoyGenVerifyOn())
+         fprintf(stderr, "COMET_DECOYGEN verify: %llu decoy sets compared, %llu mismatches (auto: %llu gather, %llu scatter; "
+            "charge limits 1-5: %llu %llu %llu %llu %llu)\n",
+            ullCompared.load(), ullMismatches.load(), ullAutoGather.load(), ullAutoScatter.load(),
+            ullByCharge[1].load(), ullByCharge[2].load(), ullByCharge[3].load(), ullByCharge[4].load(), ullByCharge[5].load());
+   }
+};
+static DecoyGenVerifyStats g_decoyGenVerifyStats;
+
+// Work estimates for the auto choice, in table entries. Scatter: the inverted-index entries
+// under the spectrum's nonempty 100-bin rows (an upper bound on the entries it visits: it
+// skips the zero bins inside a row), from the index's offsets, one step per row. Gather: the
+// lane-interleaved table entries of the groups covering iLoopMax decoys at this charge limit.
+static long long ScatterWorkEstimate(const Query* pQuery, int iArraySize)
+{
+   const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
+   const int iInvIdxBins = (int)s_invIdx_start.size() - 1;
+   long long llEntries = 0;
+   for (int x = 0; x < iSparseRows; ++x)
+   {
+      if (pQuery->ppfSparseFastXcorrData[x] == nullptr)
+         continue;
+      const int iBin0 = x * SPARSE_MATRIX_SIZE;
+      const int iBin1 = std::min(std::min(iBin0 + SPARSE_MATRIX_SIZE, iArraySize), iInvIdxBins);
+      if (iBin1 > iBin0)
+         llEntries += s_invIdx_start[iBin1] - s_invIdx_start[iBin0];
+   }
+   return llEntries;
+}
+
+// The gather's rows that can add a nonzero value for this query (see s_gatherRowMin), per group, and
+// the table entries they hold. Computed once per query: the auto rule's estimate and the kernel use the
+// same stops, cached per thread by the arguments.
+struct GatherStops
+{
+   int iArraySize = -1;
+   int iLoopMax = -1;
+   int iChargeLimit = -1;
+   long long llEntries = 0;
+   int piStop[(EXPECT_DECOY_SIZE + s_iGatherLanes - 1) / s_iGatherLanes];
+};
+
+static const GatherStops& GetGatherStops(int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   static thread_local GatherStops tl_stops;
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
+   if (tl_stops.iArraySize == iArraySize && tl_stops.iLoopMax == iLoopMax && tl_stops.iChargeLimit == iChargeLimit)
+      return tl_stops;
+
+   const int iGroups = GatherGroups(iLoopMax);
+   const int* piRowMin = s_gatherRowMin[iChargeLimit].data();
+   const int* piOff = s_gatherRowOff[iChargeLimit].data();
+   long long llRows = 0;
+   for (int g = 0; g < iGroups; ++g)
+   {
+      const int* pFirst = piRowMin + piOff[g];
+      const int iStop = (int)(std::lower_bound(pFirst, pFirst + (piOff[g + 1] - piOff[g]), iArraySize) - pFirst);
+      tl_stops.piStop[g] = iStop;
+      llRows += iStop;
+   }
+   tl_stops.iArraySize = iArraySize;
+   tl_stops.iLoopMax = iLoopMax;
+   tl_stops.iChargeLimit = iChargeLimit;
+   tl_stops.llEntries = llRows * s_iGatherLanes;
+   return tl_stops;
+}
+
+static long long GatherWorkEstimate(int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   return GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).llEntries;
+}
+
+// The two kernels below must add the same floats in the same order: the gather's scores are
+// bit-identical to the scatter's only under strict IEEE evaluation, and which of them runs is a
+// per-query choice, so a reordered sum would make E-values depend on it. The Windows projects
+// build with /fp:fast, which lets the compiler reassociate the gather's eight accumulators, so
+// pin precise semantics here (the pragma is at file scope, as MSVC requires). The Makefile
+// builds without -ffast-math. COMET_DECOYGEN=verify checks the result on any build.
+// auto: the gather costs ~0.15-0.4 ns per table entry, the scatter ~1 ns per visited entry;
+// per-query timings of both on the HeLa benchmark (plain and chimeric, 0.02 and 1.0005 Da bins)
+// put the best switch at a scatter estimate of ~0.3-0.5x the gather's.
+static bool AutoPrefersGather(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge)
+{
+   return (double)ScatterWorkEstimate(pQuery, iArraySize) > 0.4 * (double)GatherWorkEstimate(iArraySize, iLoopMax, iMaxFragCharge);
+}
+
+#ifdef _MSC_VER
+#pragma float_control(precise, on, push)
+#endif
+
+// Scatter: the original loop. pfScores[0 .. iLoopMax) must be zero on entry.
+static void DecoyScoresScatter(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge, float* pfScores)
+{
+   const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
+   const int iInvIdxBins = (int)s_invIdx_start.size() - 1;  // s_iGatherPadBin + 1
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
+
+   for (int x = 0; x < iSparseRows; ++x)
+   {
+      const float* pfRow = pQuery->ppfSparseFastXcorrData[x];
+      if (pfRow == nullptr)
+         continue;
+
+      const int iBinBase = x * SPARSE_MATRIX_SIZE;
+
+      for (int y = 0; y < SPARSE_MATRIX_SIZE; ++y)
+      {
+         const float fValue = pfRow[y];
+         if (fValue == 0.0f)
+            continue;
+
+         const int iBin = iBinBase + y;
+         if (iBin >= iArraySize || iBin >= iInvIdxBins)
+            break;
+
+         // Scatter v to decoys that have an ion at bin b with charge <= the query's charge limit.
+         // Entries are ordered by decoy_i (low 16 bits) ascending; break when decoy_i
+         // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
+         // out-of-range charges since later entries may have the same decoy_i at a
+         // lower charge.
+         const int iEnd = s_invIdx_start[iBin + 1];
+         for (int k = s_invIdx_start[iBin]; k < iEnd; ++k)
+         {
+            const uint32_t uiEntry = s_invIdx_data[k];
+            const uint16_t usDecoy = (uint16_t)(uiEntry & 0xFFFF);
+            if (usDecoy >= (uint16_t)iLoopMax)
+               break;
+            const int ctCharge = (int)(uiEntry >> 16);
+            if (ctCharge <= iChargeLimit)
+               pfScores[usDecoy] += fValue;
+         }
+      }
+   }
+}
+
+// The kernel below unrolls exactly eight lanes (f0 .. f7, p[0] .. p[7]); the tables are laid
+// out by s_iGatherLanes. A different value would compile and zero-fill the missing lanes.
+static_assert(s_iGatherLanes == 8, "DecoyScoresGather() is written for eight lanes");
+
+// Gather: decoy i's score is its ions' spectrum values summed in (bin, flat) order -- the
+// scatter's order for that decoy -- over the ions with charge <= iMaxFragCharge. Bins at or
+// above iArraySize, and the lane padding, read zeros from the dense copy; adding 0.0f leaves
+// a float sum unchanged (the scatter skips those), so the scores are bit-identical. Eight
+// decoys are summed at a time in independent accumulators; each decoy's own additions stay
+// in order.
+static void DecoyScoresGather(const Query* pQuery, int iArraySize, int iLoopMax, int iMaxFragCharge, float* pfScores)
+{
+   // Dense copy of the spectrum's fast-xcorr values below min(iArraySize, s_iGatherPadBin): zero
+   // except the query's nonzero rows. Allocated (zeroed) once per thread; the rows the previous query
+   // copied are cleared before this one's are copied in, so the cost follows the spectrum's
+   // nonzero rows rather than the array length.
+   static thread_local std::vector<float> tl_vDense;
+   static thread_local std::vector<int> tl_vDenseRows;
+   // whole rows (a row cleared below is always SPARSE_MATRIX_SIZE floats), past the pad bin
+   const size_t uiDenseSize = ((size_t)s_iGatherPadBin / SPARSE_MATRIX_SIZE + 1) * SPARSE_MATRIX_SIZE + 1;
+   if (tl_vDense.size() < uiDenseSize)
+   {
+      tl_vDense.assign(uiDenseSize, 0.0f);
+      tl_vDenseRows.clear();
+   }
+   float* pfDense = tl_vDense.data();
+   for (int x : tl_vDenseRows)
+      memset(pfDense + (size_t)x * SPARSE_MATRIX_SIZE, 0, SPARSE_MATRIX_SIZE * sizeof(float));
+   tl_vDenseRows.clear();
+   // Only bins below the pad bin are copied: no decoy ion lies at or above it, the pad bin
+   // itself must stay zero, and the buffer ends a row past it. A query with a larger
+   // iArraySize (a later session's bigger mass range) loses nothing.
+   const int iCopyBins = std::min(iArraySize, s_iGatherPadBin);
+   const int iSparseRows = (iCopyBins + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
+   for (int x = 0; x < iSparseRows; ++x)
+   {
+      const float* pfRow = pQuery->ppfSparseFastXcorrData[x];
+      if (pfRow == nullptr)
+         continue;
+      const int iBinBase = x * SPARSE_MATRIX_SIZE;
+      const int iNumBins = std::min(SPARSE_MATRIX_SIZE, iCopyBins - iBinBase);
+      tl_vDenseRows.push_back(x);   // recorded first, so a throw here cannot leave a dirty row unrecorded
+      memcpy(pfDense + iBinBase, pfRow, (size_t)iNumBins * sizeof(float));
+   }
+
+   const int iChargeLimit = DecoyChargeLimit(iMaxFragCharge);
+   const int* piBin = s_gatherBin[iChargeLimit].data();
+   const int* piOff = s_gatherRowOff[iChargeLimit].data();
+
+   const int* piStop = GetGatherStops(iArraySize, iLoopMax, iMaxFragCharge).piStop;
+   const int iGroups = GatherGroups(iLoopMax);
+   for (int g = 0; g < iGroups; ++g)
+   {
+      const int* piRow = piBin + (size_t)piOff[g] * s_iGatherLanes;
+      const int iLen = piStop[g];   // the rows past it read only zeros for this query
+      float f0 = 0.0f, f1 = 0.0f, f2 = 0.0f, f3 = 0.0f, f4 = 0.0f, f5 = 0.0f, f6 = 0.0f, f7 = 0.0f;
+      for (int t = 0; t < iLen; ++t, piRow += s_iGatherLanes)
+      {
+         f0 += pfDense[piRow[0]];
+         f1 += pfDense[piRow[1]];
+         f2 += pfDense[piRow[2]];
+         f3 += pfDense[piRow[3]];
+         f4 += pfDense[piRow[4]];
+         f5 += pfDense[piRow[5]];
+         f6 += pfDense[piRow[6]];
+         f7 += pfDense[piRow[7]];
+      }
+      const float fAcc[s_iGatherLanes] = { f0, f1, f2, f3, f4, f5, f6, f7 };
+      const int i0 = g * s_iGatherLanes;
+      for (int j = 0; j < s_iGatherLanes && i0 + j < iLoopMax; ++j)
+         pfScores[i0 + j] = fAcc[j];
+   }
+}
+
+#ifdef _MSC_VER
+#pragma float_control(pop)
+#endif
 
 
 CometPostAnalysis::CometPostAnalysis()
@@ -245,13 +670,8 @@ void CometPostAnalysis::PostAnalysisThreadProc(PostAnalysisThreadData *pThreadDa
 
    AnalyzeSP(pQuery);
 
-   // Calculate E-values if necessary.
-   // Only time to not calculate E-values is for .out/.sqt output only and
-   // user decides to not replace Sp score with E-values
-   if (g_staticParams.options.bPrintExpectScore
-         || g_staticParams.options.bOutputPepXMLFile
-         || g_staticParams.options.bOutputPercolatorFile
-         || g_staticParams.options.bOutputTxtFile)
+   // Calculate E-values if some output reports them (Options::OutputsNeedEValues()).
+   if (g_staticParams.options.OutputsNeedEValues())
    {
       if (pQuery->iMatchPeptideCount > 0 || pQuery->iDecoyMatchPeptideCount > 0)
          CalculateEValue(pQuery, false);
@@ -1466,17 +1886,11 @@ void CometPostAnalysis::LinearRegression(int* piHistogram,
 }
 
 
-// Make synthetic decoy spectra to fill out correlation histogram.
-//
-// Inverted-index approach: instead of iterating over 3000 decoys and for each
-// decoy ion looking up a bin in the spectrum (~480K spectrum lookups), we scan
-// the spectrum once and for each non-zero bin scatter the value to all decoys
-// that have an ion there.  For a sparse spectrum with N non-zero bins this costs
-// N * (avg decoys per bin) operations.  With ~480K total entries spread over
-// ~iArraySize bins, the average is ~160 entries/bin; a typical spectrum with
-// 100-300 non-zero bins therefore requires only 16K-48K operations instead of
-// 480K -- a 10-30x reduction.
-bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
+// Builds the decoy tables (once per process) and checks they match the current params. RTS
+// calls this at session init so the build (tens of ms with many ion series or a high
+// fragment charge limit) is not charged to the first spectrum's max_index_runtime budget;
+// GenerateXcorrDecoys() calls it too, so batch builds on first use.
+bool CometPostAnalysis::PrepareDecoyTables()
 {
    std::call_once(s_preDecoyOnce, InitPrecomputedDecoyBins);
 
@@ -1488,19 +1902,41 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    // abort() an embedding RTS host outright, and would compile to nothing in any
    // NDEBUG build -- leaving the silent-wrong-E-value hazard undetected in exactly the
    // binaries users run.
-   if (!(s_pdNIonSeries == g_staticParams.ionInformation.iNumIonSeriesUsed
-      && s_pdMaxCharge == std::max(g_staticParams.options.iMaxFragmentCharge, 1)
-      && isEqual(s_dFingerprintInvBW, g_staticParams.dInverseBinWidth)
-      && isEqual(s_dFingerprintBinOff, g_staticParams.dOneMinusBinOffset)))
+   if (!DecoyTableMatchesParams())
    {
-      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/max"
-         " fragment charge/bin width changed since it was first built in this process."
+      string strErrorMsg = " Error - precomputed decoy-bin table is stale: ion series/fragment"
+         " mass type/max fragment charge/bin width changed since it was first built in this process."
          " Decoy E-values would silently use the wrong bins -- restart the process"
          " instead of re-initializing with different search params.\n";
       g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
       logerr(strErrorMsg);
       return false;
    }
+
+   return true;
+}
+
+// Make synthetic decoy spectra to fill out the correlation histogram. A query that scored fewer
+// than EXPECT_DECOY_SIZE candidates scores the remaining decoys (synthetic peptides, CometDecoys.h)
+// against its spectrum and adds their xcorr scores to the histogram, so the E-value fit has enough
+// points. A decoy's score is the sum of the spectrum's fast-xcorr values at the bins of its ions,
+// computed by one of two paths that give bit-identical scores (docs/20261109_decoy_gather.md):
+//
+//  - scatter: scan the spectrum's nonzero bins and add each value to every decoy with an ion in
+//    that bin, through an inverted index (bin -> decoys). The cost follows the spectrum's nonzero
+//    bins: on HeLa data at 0.02 Da (14% of ~65,000 bins nonzero) it visits ~78,000 of ~399,000
+//    index entries, but at 1.0005 Da (73% of ~1,400 bins) ~345,000 of ~407,000 -- nearly every
+//    decoy ion.
+//  - gather: for each decoy, sum its own ions' values from a dense copy of the spectrum, eight
+//    decoys at a time from lane-interleaved tables. The cost follows the table, not the spectrum,
+//    and the rows past the precursor are skipped.
+//
+// "auto" (the default) picks per query from two work estimates; COMET_DECOYGEN forces a path or
+// verifies that both agree.
+bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
+{
+   if (!PrepareDecoyTables())
+      return false;
 
    int *piHistogram = pQuery->iXcorrHistogram;
    const int iArraySize = pQuery->_spectrumInfoInternal.iArraySize;
@@ -1517,47 +1953,53 @@ bool CometPostAnalysis::GenerateXcorrDecoys(Query* pQuery)
    // Use the per-query charge limit, not the global max, to match real xcorr scoring.
    const int iMaxFragCharge = pQuery->_spectrumInfoInternal.usiMaxFragCharge;
 
-   // Scan the spectrum's sparse matrix.  For each non-zero bin, scatter its
-   // value to every decoy that has a fragment ion at that bin for a charge
-   // <= iMaxFragCharge (matching what the real xcorr scorer uses).
-   const int iSparseRows = (iArraySize + SPARSE_MATRIX_SIZE - 1) / SPARSE_MATRIX_SIZE;
-   const int iInvIdxBins = (int)s_invIdx_start.size() - 1;  // == iArraySizeGlobal
-
-   for (int x = 0; x < iSparseRows; ++x)
+   // Scatter (inverted index over the nonzero bins) or gather (each decoy's own ions):
+   // identical scores; see the COMET_DECOYGEN comment above DecoyScoresScatter().
+   const DecoyGenMode mode = GetDecoyGenMode();
+   if (DecoyGenVerifyOn())
    {
-      const float* row = pQuery->ppfSparseFastXcorrData[x];
-      if (row == nullptr)
-         continue;
-
-      const int bBase = x * SPARSE_MATRIX_SIZE;
-
-      for (int y = 0; y < SPARSE_MATRIX_SIZE; ++y)
+      thread_local static float tl_decoyScoresScatter[EXPECT_DECOY_SIZE];
+      memset(tl_decoyScoresScatter, 0, iLoopMax * sizeof(float));
+      DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScoresScatter);
+      DecoyScoresGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
+      // The self-test perturbs the scatter copy, which is only compared and then discarded (the
+      // histogram below bins the gather's scores, so the search output is unchanged), at its last
+      // element, so a comparator that checked too short a range would miss it. The amount is large
+      // so that, were the perturbed copy ever the one binned, the output would visibly change.
+      if (mode == DecoyGenMode::VerifySelfTest && iLoopMax > 0)
+         tl_decoyScoresScatter[iLoopMax - 1] += 1000.0f;
+      g_decoyGenVerifyStats.ullCompared++;
+      g_decoyGenVerifyStats.ullByCharge[iMaxFragCharge >= 1 && iMaxFragCharge <= 5 ? iMaxFragCharge : 0]++;
+      if (AutoPrefersGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge))
+         g_decoyGenVerifyStats.ullAutoGather++;
+      else
+         g_decoyGenVerifyStats.ullAutoScatter++;
+      if (memcmp(tl_decoyScoresScatter, tl_decoyScores, iLoopMax * sizeof(float)) != 0)
       {
-         const float v = row[y];
-         if (v == 0.0f)
-            continue;
-
-         const int b = bBase + y;
-         if (b >= iArraySize || b >= iInvIdxBins)
-            break;
-
-         // Scatter v to decoys that have an ion at bin b with charge <= iMaxFragCharge.
-         // Entries are ordered by decoy_i (low 16 bits) ascending; break when decoy_i
-         // reaches iLoopMax.  Charge is in the high 16 bits; skip but don't break on
-         // out-of-range charges since later entries may have the same decoy_i at a
-         // lower charge.
-         const int kEnd = s_invIdx_start[b + 1];
-         for (int k = s_invIdx_start[b]; k < kEnd; ++k)
-         {
-            const uint32_t entry   = s_invIdx_data[k];
-            const uint16_t decoy_i = (uint16_t)(entry & 0xFFFF);
-            if (decoy_i >= (uint16_t)iLoopMax)
-               break;
-            const int ctCharge = (int)(entry >> 16);
-            if (ctCharge <= iMaxFragCharge)
-               tl_decoyScores[decoy_i] += v;
-         }
+         int iFirst = 0;
+         while (iFirst < iLoopMax && memcmp(&tl_decoyScoresScatter[iFirst], &tl_decoyScores[iFirst], sizeof(float)) == 0)
+            ++iFirst;
+         if (++g_decoyGenVerifyStats.ullMismatches <= 10)
+            // every RTS Query has scan number 0, so the precursor and the sizes identify the query
+            fprintf(stderr, "COMET_DECOYGEN verify mismatch (scan %d, z %d, MH+ %.4f, iArraySize %d, iLoopMax %d, charge limit %d):"
+               " decoy %d scatter %.9g gather %.9g\n",
+               pQuery->_spectrumInfoInternal.iScanNumber, (int)pQuery->_spectrumInfoInternal.usiChargeState,
+               pQuery->_pepMassInfo.dExpPepMass,   // MH+
+               iArraySize, iLoopMax, iMaxFragCharge,
+               iFirst, tl_decoyScoresScatter[iFirst], tl_decoyScores[iFirst]);
       }
+   }
+   else if (mode == DecoyGenMode::Gather)
+      DecoyScoresGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
+   else if (mode == DecoyGenMode::Scatter)
+      DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
+   else
+   {
+      // auto: per query, whichever AutoPrefersGather() says is cheaper
+      if (AutoPrefersGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge))
+         DecoyScoresGather(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
+      else
+         DecoyScoresScatter(pQuery, iArraySize, iLoopMax, iMaxFragCharge, tl_decoyScores);
    }
 
    // Histogram-bin all decoy scores.
@@ -1596,6 +2038,35 @@ float CometPostAnalysis::FindSpScore(Query *pQuery,
 }
 
 
+// Opt-in E-value trace on stderr, every search path (batch legacy, fused batch, RTS,
+// chimeric): COMET_EVALUE_TRACE=1 prints one COMET_EVALUE line per query with the real
+// candidate count, the regression window (iMaxCorr / iNextCorr, 0.1-xcorr bins), slope and
+// intercept, and the rank-1 xcorr / E-value; =2 adds the xcorr histogram twice as "bin:count"
+// lists -- COMET_EVALUE_HIST_REAL (the scored candidates only, before GenerateXcorrDecoys()
+// pads it) and COMET_EVALUE_HIST (after padding, the counts LinearRegression() fits). Both
+// are raw per-bin counts: LinearRegression() overwrites bins 0..iNextCorr with the
+// cumulative distribution in place, so a dump taken after it is not a histogram. Read once
+// per process. docs/20261106_FI_evalue_histogram_fill.md.
+static int EValueTraceLevel()
+{
+   static const int iLevel = (getenv("COMET_EVALUE_TRACE") != nullptr) ? atoi(getenv("COMET_EVALUE_TRACE")) : 0;
+   return iLevel;
+}
+
+static void AppendHistogramBins(const int* piHistogram, std::string& sOut)
+{
+   char szBuf[32];
+   for (int iBin = 0; iBin < HISTO_SIZE; ++iBin)
+   {
+      if (piHistogram[iBin] != 0)
+      {
+         snprintf(szBuf, sizeof(szBuf), "%d:%d,", iBin, piHistogram[iBin]);
+         sOut += szBuf;
+      }
+   }
+}
+
+
 bool CometPostAnalysis::CalculateEValue(Query* pQuery,
                                         bool bTopHitOnly)
 {
@@ -1609,6 +2080,12 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
 
    piHistogram = pQuery->iXcorrHistogram;
 
+   const int iTrace = EValueTraceLevel();
+   std::string sHistReal;
+   std::string sHistPadded;
+   if (iTrace >= 2)
+      AppendHistogramBins(piHistogram, sHistReal);
+
    if (pQuery->uiHistogramCount < EXPECT_DECOY_SIZE)
    {
       if (!GenerateXcorrDecoys(pQuery))
@@ -1617,7 +2094,40 @@ bool CometPostAnalysis::CalculateEValue(Query* pQuery,
       }
    }
 
+   if (iTrace >= 2)
+      AppendHistogramBins(piHistogram, sHistPadded);
+
    LinearRegression(piHistogram, &dSlope, &dIntercept, &iMaxCorr, &iStartCorr, &iNextCorr);
+
+   if (iTrace >= 1)
+   {
+      const int iScan = pQuery->_spectrumInfoInternal.iScanNumber;
+      const int iZ = pQuery->_spectrumInfoInternal.usiChargeState;
+      const bool bHasTop = (pQuery->iMatchPeptideCount > 0);
+      // slope / intercept are the regression on log10(cumulative count) vs xcorr bin (0.1 units).
+      // tope follows the reporting rules below (999 when the slope is >= 0, capped at 999), so it
+      // is the rank-1 E-value Comet actually reports.
+      double dTopE = 0.0;
+      if (bHasTop)
+      {
+         dTopE = 999.0;
+         if (dSlope < 0.0)
+         {
+            dTopE = std::exp((dSlope * 10.0 * pQuery->_pResults[0].fXcorr + dIntercept) * 2.302585092994046);
+            if (dTopE > 999.0)
+               dTopE = 999.0;
+         }
+      }
+      fprintf(stderr, "COMET_EVALUE scan=%d z=%d scored=%d hist=%u maxcorr=%d nextcorr=%d slope=%.4f icpt=%.4f topx=%.4f tope=%.4g\n",
+         iScan, iZ, pQuery->iMatchPeptideCount, pQuery->uiHistogramCount, iMaxCorr, iNextCorr, dSlope, dIntercept,
+         bHasTop ? pQuery->_pResults[0].fXcorr : 0.0f,
+         dTopE);
+      if (iTrace >= 2)
+      {
+         fprintf(stderr, "COMET_EVALUE_HIST_REAL scan=%d z=%d %s\n", iScan, iZ, sHistReal.c_str());
+         fprintf(stderr, "COMET_EVALUE_HIST scan=%d z=%d %s\n", iScan, iZ, sHistPadded.c_str());
+      }
+   }
 
    pQuery->fPar[0] = (float)dIntercept;  // b
    pQuery->fPar[1] = (float)dSlope    ;  // m

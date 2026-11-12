@@ -31,7 +31,7 @@ bool DoSingleSpectrumSearchMultiResults(
     vector<CometScores>& scores);
 ```
 
-Returns up to `topN` hits. Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
+Returns up to `topN` hits; `topN < 1` returns `false` (since 2026-11-09; a negative value used to throw `std::length_error` and leak the call's `Query`). Safe for concurrent calls from multiple threads against the same `ICometSearchManager` instance.
 
 **Supported database types: FI_DB and PI_DB only -- `database_name` pointing at a plain
 FASTA (`FASTA_DB`) is not supported here, by design, and always fails.** `InitializeSingleSpectrumSearch()`
@@ -50,6 +50,93 @@ per-call digestion; on-the-fly FASTA digestion is what the batch `CometSearch::D
 path is for. If FASTA_DB RTS support is ever genuinely wanted, `RunSearch(Query*)` needs a
 third branch that does the on-the-fly digestion equivalent of `DoSearch()`, which is a
 substantially larger change than anything touched here.
+
+### Chimeric-spectrum search (`DoSingleSpectrumSearchChimeric`)
+
+```cpp
+// explicit candidate list
+bool DoSingleSpectrumSearchChimeric(
+    const std::vector<PrecursorCandidate>& vPrecursors,   // {dMZ, iCharge, dToleranceMZ (0 = inherit)}
+    const double dPrecursorToleranceMZ,                   // +/- m/z for candidates with dToleranceMZ 0; 0 = configured tolerance
+    const double dMaxExpect,
+    const int iMaxPeptidesPerSpectrum,
+    const int iTopN,                                      // rows per iteration: the winner's ranks 0..iTopN-1
+    double* dMass, double* dInten, const int iNumPeaks,
+    vector<string>& strReturnPeptide, vector<string>& strReturnProtein,
+    vector<vector<Fragment>>& matchedFragments, vector<CometScores>& scores,
+    bool& bIncomplete);
+// one m/z across a charge range (builds the list above with dToleranceMZ = 0)
+bool DoSingleSpectrumSearchChimeric(
+    const double dMZ, const int iMinPrecursorCharge, const int iMaxPrecursorCharge,
+    const double dPrecursorToleranceMZ, const double dMaxExpect, const int iMaxPeptidesPerSpectrum,
+    const int iTopN,
+    double* dMass, double* dInten, const int iNumPeaks,
+    ... same four outputs and bIncomplete ...);
+```
+
+Finds more than one peptide in a spectrum (design and measurements:
+`docs/20261105_RTSchimeric.md`). Each iteration searches the current peak list once per
+candidate through the same per-search core as `DoSingleSpectrumSearchMultiResults()`
+(`SearchSingleSpectrumCore()`: preprocess, index search, post-analysis, extraction), keeps
+the rank-1 PSM with the lowest E-value (ties by xcorr), and if that passes `dMaxExpect`
+appends it as one output row, removes the fragment peaks it explains (every theoretical
+ion of the PSM, +/- flank bins when `theoretical_fragment_ions = 0`, and the +1..+N 13C
+peaks of ions that have an observed peak), and repeats on the reduced spectrum -- up to
+`iMaxPeptidesPerSpectrum` rows, or until no candidate scores, the best fails the
+threshold, the peak list drops below `minimum_peaks`, or the `max_index_runtime` budget
+(measured from the call's start, across every candidate and iteration) runs out.
+`CometScores::iCharge` / `iIteration` / `iRank` on each row say which candidate charge,
+which iteration and which rank within that iteration's search produced it. `iMaxPeptidesPerSpectrum` limits the
+iterations; `iTopN` (>= 1) is the rows reported per iteration: the winner's rank-0 PSM plus up to `iTopN - 1`
+ranked runner-ups from the same search, as `DoSingleSpectrumSearchMultiResults(topN)` returns them (a runner-up
+at or below `minimum_xcorr` is an empty placeholder row; one past the stored candidates is absent). The E-value
+cutoff, the peak removal and the stop conditions use rank 0 only, so with `iTopN` 1 there is one row per iteration.
+With one candidate, `iMaxPeptidesPerSpectrum` 1 and `dMaxExpect` +inf the call returns the plain search's rows
+(`DoSingleSpectrumSearchMultiResults()` is implemented on it; test T89). Rows are
+ordered by evidence, not abundance: a precursor with more matched ions can win iteration 0
+over a more intense one. Candidates whose MH+ lies above the index range (the same gate
+as `DoSingleSpectrumSearchMultiResults()`; there is no lower bound, so an isotope error
+can still reach an in-range peptide), or whose charge is outside `min_precursor_charge` /
+`max_precursor_charge`, are skipped silently.
+The charge-range form searches only charges up to `MAX_PRECURSOR_CHARGE` (9), and a range
+wholly above it returns `false`. A decoy winner is reported and removed like a target.
+Both RTS entry points honor `min_precursor_charge` / `max_precursor_charge` as batch does,
+since 2026-11-08: `DoSingleSpectrumSearchMultiResults()` returns `false` for a spectrum
+whose charge is outside them. The return value and the `bIncomplete` output (2026-11-08)
+together say how the call ended:
+
+| Return | `bIncomplete` | Meaning |
+|---|---|---|
+| `true` | `false` | Normal end: no PSM left, the best failed `dMaxExpect`, `iMaxPeptidesPerSpectrum` iterations, or too few peaks remain. Zero rows is included. |
+| `true` | `true` | The `max_index_runtime` budget ran out. The rows are the PSMs found so far, and the spectrum may hold more. |
+| `false` | `true` | The call stopped early because the search was cancelled (`IsCancelSearch()`) or an index search failed. The rows are the complete iterations before that, and they are valid. |
+| `false` | `false` | Invalid arguments. There are no rows. |
+
+Rows are appended per kept iteration: the winner's `iTopN` rows (one with `iTopN` 1). The C# harness writes an `INCOMPLETE
+budget|stopped` line after the rows of a call that stopped early, and an `ERROR` line carrying
+`GetLastWrapperError()` (or the exception a scan threw) for a call that failed; a malformed `.ms2`
+line (reported with its line number), an unwritable `--out` path or bad usage stops it before the
+search with exit code 1 (2026-11-09). Same thread-safety as the single-spectrum
+call: the caller's arrays are copied, every working buffer is per thread, `g_staticParams`
+is only read (the per-call tolerance is an argument, applied to the call's own `Query`). One knob, set through `SetParam` only: `chimeric_remove_isotopes` (default 2;
+clamped to 0..3 at init with a warning). The removal flank follows `theoretical_fragment_ions`
+(+/- 1 bin when it is 0, else none), the bins the scorer credits; a
+`chimeric_remove_flank_bins` knob existed until 2026-11-08.
+(a `chimeric_fragindex_min_ions_score` re-search floor existed until `fragindex_histogram_fill`
+-- `docs/20261106_FI_evalue_histogram_fill.md`, default 100 -- made FI E-values honest on
+every query and the floor a no-op). With calibrated E-values the harnesses default
+`dMaxExpect` to 0.1. Also measured in `docs/20261105_RTSchimeric.md`: the plain RTS
+search gains 42% confident PSMs on the HeLa benchmark file from `isotope_error = 2`, which
+`SearchMS1MS2.cs` has set since 2026-11-06.
+`RTS_CHIMERIC_DEBUG=1` in the environment traces every iteration on stderr.
+
+C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes
+parallel `double[]` m/z, `int[]` charge and optional `double[]` tolerance arrays), driven by
+`RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [options]`
+(`RealtimeSearch/SearchChimericMS2.cs`; run it without options for the list). The driver reads
+a multi-`Z`-line `.ms2`: `--zrange zmin zmax` searches each scan's `S`-line m/z across the
+range, `--zlines` turns every `Z` line into one candidate. `tests/rts_repro/rts_repro`'s
+chimeric modes are the Linux equivalent (test T67).
 
 ### MS1 spectral library search
 
@@ -281,7 +368,11 @@ DoSingleSpectrumSearchMultiResults(topN, charge, mz, masses, intensities, nPeaks
   |
   +- CometPreprocess::PreprocessSingleSpectrumThreadLocal(charge, mz, masses, intensities, nPeaks, pdTmpSpectrum)
   |     -> allocates caller-owned Query* on the heap
-  |     -> fills it with binned spectrum data
+  |     -> fills it with binned spectrum data: the xcorr / Sp sparse matrices, built from the
+  |        peak bins alone when an O(1) bound says that is cheaper (high resolution), else by
+  |        the dense per-bin sweep (low resolution); identical output either way
+  |        (docs/20261109_sparse_preprocessing.md; COMET_PREPROCESS=dense|sparse|verify for testing)
+  |     -> writes the raw sqrt intensities into pdTmpSpectrum, read back for matched fragments
   |     -> does NOT touch SearchSession::queries
   |     -> returns nullptr on failure (caller checks and returns false)
   |
@@ -445,7 +536,29 @@ the marshaling below is shared.
 - Native `Fragment` -> managed `FragmentWrapper` via copy-constructor.
 - Native `string` <-> managed `String^` via `marshal_as<>`.
 
-No shared mutable state exists in the wrapper layer. Each managed call creates stack-local native containers for results.
+No shared mutable state exists in the wrapper layer. Each managed call creates stack-local native
+containers for results. The one static field, the last wrapper error, is `[ThreadStatic]`, so each
+calling thread has its own.
+
+**Input validation and native exceptions (2026-11-08).** Every RTS search call checks its peak
+arrays before pinning them: `DoSingleSpectrumSearchMultiResults`, both
+`DoSingleSpectrumSearchChimeric` forms and `DoMS1SearchMultiResults`.
+
+- Both arrays must be non-null, `iNumPeaks` must be greater than 0, and both arrays must be at
+  least `iNumPeaks` long. A longer array is accepted, because hosts reuse buffers.
+- Otherwise the call returns `false` with empty, non-null output lists. Before, a null array or a
+  count larger than either array let native code read past the pinned managed array, and an
+  empty array threw `IndexOutOfRangeException` at `&pdMass[0]`.
+- The chimeric list form also requires its candidate arrays to be non-empty and of equal length.
+- A native C++ exception thrown during a call (`std::bad_alloc`, ...) is caught. The call returns
+  `false` with empty outputs instead of the host receiving an `SEHException`. The chimeric calls
+  are the exception: they keep the rows appended before it, as a cancelled call does, set
+  `bIncomplete`, and clear the outputs only if the four vectors are misaligned.
+- `GetLastWrapperError()` returns the reason for the calling thread's last such `false`, or
+  `null` after a normal return. The reason is "invalid peak arrays: ...", "invalid candidate
+  arrays: ...", "native exception: ..." or "no search manager".
+- `RealtimeSearch.exe wrappercheck <database.idx> <fixture.txt> <expected_peptide>`
+  (`WrapperCheck.cs`, test T78) exercises all of this through the real wrapper.
 
 **Key wrapper types (`CometDataWrapper.h`):**
 
@@ -561,6 +674,10 @@ For a new **search or per-spectrum call** that routes through `ICometSearchManag
    - Set `pQuery->tSearchStart` right after preprocessing, then call `CometSearch::RunSearch(pQuery)` (not `RunSearch(ThreadPool*)` or the pre-assigned-slot `RunSearch(Query*, int iSlot)` overload used by the fused batch path).
    - Never write `SearchSession` fields, `g_massRange`, or `g_staticParams` from within the call.
 3. Add a managed wrapper method in `CometWrapper/CometWrapper.cpp` with `pin_ptr` for array parameters.
+   Check every array with `ValidPeakArrays()` (or the equivalent) **before** pinning it. Wrap the native
+   call in `try` / `catch (const std::exception&)` / `catch (...)`. On any failure, set
+   `s_strLastWrapperError` and return `false` with empty, non-null outputs, as the existing RTS
+   calls do.
 4. If new return types are needed, add wrapper structs to `CometDataWrapper.h` (and mirror in `CometData.h`).
 5. Call from `RealtimeSearch/SearchMS1MS2.cs`.
 

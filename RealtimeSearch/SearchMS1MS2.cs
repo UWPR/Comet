@@ -61,10 +61,37 @@ namespace RealTimeSearch
 
       static void Main(string[] args)
       {
+         // "chimericms2" as the first argument selects the chimeric-spectrum harness over an .ms2
+         // file (SearchChimericMS2.cs, docs/20261105_RTSchimeric.md section 6).
+         if (args.Length >= 1 && args[0] == "chimericms2")
+         {
+            SearchChimericMS2.Run(args);
+            return;
+         }
+
+         // "chimericraw" is the same chimeric search over Thermo RAW files: every MS/MS scan at its
+         // precursor m/z over a charge range, the instrument's charge ignored (SearchChimericRaw.cs).
+         if (args.Length >= 1 && args[0] == "chimericraw")
+         {
+            SearchChimericRaw.Run(args);
+            return;
+         }
+
+         // "wrappercheck" runs the CometWrapper input-validation self-check (WrapperCheck.cs, test T78).
+         if (args.Length >= 1 && args[0] == "wrappercheck")
+         {
+            Environment.ExitCode = WrapperCheck.Run(args);
+            return;
+         }
+
          if (args.Length < 2)
          {
             Console.WriteLine(" RTS MS1/MS2\n");
             Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro] [index_search_type]\n",
+               System.AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine("            {0} chimericms2 <spectra.ms2> <database.idx> [options]   (chimeric-spectrum search; run it for the options)\n",
+               System.AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine("            {0} chimericraw <database.idx> <file1.raw> [file2.raw ...] [options]   (chimeric search over RAW files)\n",
                System.AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
             Console.WriteLine("    index_search_type: index type to auto-build when database.idx does not exist yet:");
@@ -623,7 +650,8 @@ namespace RealTimeSearch
          return;
       }
 
-      class SearchSettings
+      // internal: SearchChimericMS2.cs reuses this parameter block.
+      internal class SearchSettings
       {
          public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr,
             ref string sRawFileReference,
@@ -694,7 +722,9 @@ namespace RealTimeSearch
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("precursor_tolerance_type", sTmp, iTmp);
 
-            iTmp = 0; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
+            // 2 since 2026-11-06: on the HeLa benchmark file the plain RTS search reports 42% more
+            // confident PSMs with 0/+1/+2 isotope windows than with none (docs/20261105_RTSchimeric.md 10.4)
+            iTmp = 2; // 0=off, 1=0/1 (C13 error), 2=0/1/2, 3=0/1/2/3, 4=-1/0/1/2/3, 5=-1/0/1
             sTmp = iTmp.ToString();
             SearchMgr.SetParam("isotope_error", sTmp, iTmp);
 

@@ -51,7 +51,7 @@ struct Query  // core/Types.h
 | `vRawFragmentPeakMassIntensity` | Raw peaks as `AScoreProCpp::Centroid` pairs; populated when AScorePro is enabled. |
 | `_pepMassInfo` | Experimental mass and tolerance window (see `PepMassInfo`). |
 | `_spectrumInfoInternal` | Scan number, charge state, RT, array size, nativeID (see `SpectrumInfoInternal`). |
-| `tSearchStart` | Per-query search start time; used to enforce `iMaxIndexRunTime` timeout. |
+| `tSearchStart` | Per-query search start time; used to enforce `iMaxIndexRunTime` timeout. The chimeric RTS search passes its own call start so one budget spans every candidate and iteration. |
 
 **Results:**
 
@@ -527,7 +527,8 @@ These types cross the library boundary into `CometWrapper` and `RealtimeSearch`.
 
 | Type | Purpose |
 |------|---------|
-| `CometScores` | XCorr, dSp, dCn, E-value, mass, matched/total ions, AScorePro -- returned per MS2 search hit. (MS1 spectral-library hits use the separate `CometScoresMS1` struct: dot product, RT, scan number.) |
+| `CometScores` | XCorr, dSp, dCn, E-value, mass, matched/total ions, AScorePro, plus `iCharge` (the precursor charge the PSM was searched at) and `iIteration` (0-based chimeric iteration; always 0 from `DoSingleSpectrumSearchMultiResults`) -- returned per MS2 search hit. (MS1 spectral-library hits use the separate `CometScoresMS1` struct: dot product, RT, scan number.) |
+| `PrecursorCandidate` | `{dMZ, iCharge, dToleranceMZ}`: one precursor hypothesis for `DoSingleSpectrumSearchChimeric`'s explicit-list form (e.g. one deconvolved MS1 envelope or one `Z` line of a multi-Z `.ms2` scan). `dToleranceMZ` 0 = inherit the per-call +/- m/z window, which itself is 0 = the configured `peptide_mass_tolerance`. |
 | `Fragment` | Single fragment ion: mass, intensity, type, number, charge, neutral loss. |
 | `VarMods` | User-facing mod definition (same as internal `VarMods`; shared header). |
 | `EnzymeInfo` | Enzyme parameters surfaced to the wrapper layer. |

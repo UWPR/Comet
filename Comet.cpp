@@ -359,6 +359,7 @@ void LoadParameters(char* pszParamsFile,
       {"equal_I_and_L",                { [&]() { parse_int("equal_I_and_L"); }}},
       {"explicit_deltacn",             { [&]() { parse_int("explicit_deltacn"); }}},
       {"export_additional_pepxml_scores", { [&]() { parse_int("export_additional_pepxml_scores"); }}},
+      {"fragindex_histogram_fill",     { [&]() { parse_int("fragindex_histogram_fill"); }}},
       {"fragindex_min_ions_report",    { [&]() { parse_int("fragindex_min_ions_report"); }}},
       {"fragindex_min_ions_score",     { [&]() { parse_int("fragindex_min_ions_score"); }}},
       {"fragindex_num_spectrumpeaks",  { [&]() { parse_int("fragindex_num_spectrumpeaks"); }}},
@@ -1055,6 +1056,7 @@ use_NL_ions = 0                        # 0=no, 1=yes to consider NH3/H2O neutral
 fragindex_min_ions_score = 3           # minimum number of matched fragment ion index peaks for scoring\n\
 fragindex_min_ions_report = 3          # minimum number of matched fragment ion index peaks for reporting(>= fragindex_min_ions_score)\n\
 fragindex_num_spectrumpeaks = 150      # number of peaks from spectrum to use for fragment ion index matching\n\
+fragindex_histogram_fill = 100         # also score the best-supported candidates below fragindex_min_ions_score, up to this many per spectrum, into the E-value histogram (0 = off)\n\
 fragindex_min_fragmentmass = 200.0     # low mass cutoff for fragment ions\n\
 fragindex_max_fragmentmass = 2000.0    # high mass cutoff for fragment ions\n\
 fragindex_skipreadprecursors = 1       # 0=read precursors to limit fragment ion index, 1=skip reading precursors (default)\n\
@@ -1120,7 +1122,7 @@ mass_offsets =                         # one or more mass offsets to search (val
 #\n\
 # spectral processing\n\
 #\n\
-minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10)\n");
+minimum_peaks = 10                     # required minimum number of peaks in spectrum to search (default 10); counts only peaks at or above the minimum_intensity/percentage_base_peak cutoff\n");
 
 fprintf(fp,
 "minimum_intensity = 0                 # minimum intensity value to read in\n\

@@ -391,6 +391,26 @@ namespace CometWrapper {
             int get() { return (int)pScores->totalIons; }
         }
 
+        // Precursor charge the PSM was searched at.
+        property int Charge
+        {
+            int get() { return pScores->iCharge; }
+        }
+
+        // 0-based chimeric-search iteration that produced the PSM; always 0 from
+        // DoSingleSpectrumSearchMultiResults (docs/20261105_RTSchimeric.md).
+        property int Iteration
+        {
+            int get() { return pScores->iIteration; }
+        }
+
+        // 0-based rank of the PSM within its search (0 = best by xcorr). Always 0 unless the call
+        // asked for more than one row per search (topN > 1).
+        property int Rank
+        {
+            int get() { return pScores->iRank; }
+        }
+
     private:
        CometScores * pScores;
     };

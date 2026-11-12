@@ -121,46 +121,23 @@ bool CometSearchManagerWrapper::DoSearch()
 }
 
 
-bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
-   int topN,
-   int iPrecursorCharge,
-   double dMZ,
-   cli::array<double>^ pdMass,
-   cli::array<double>^ pdInten,
-   int iNumPeaks,
-   [Out] List<String^>^% szPeptide,
-   [Out] List<String^>^% szProtein,
-   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
-   [Out] List<ScoreWrapper^>^% score)
+// -----------------------------------------------------------------
+// Output conversion, shared by the single-spectrum search entry points
+// -----------------------------------------------------------------
+// Optimization principles:
+//   1. Avoid double string conversions.
+//   2. Reuse managed lists if passed preallocated (optional extension).
+//   3. Minimize managed object creation by reserving capacity.
+// -----------------------------------------------------------------
+static void ConvertSingleSpectrumResults(const std::vector<std::string>& stdPeptides,
+                                         const std::vector<std::string>& stdProteins,
+                                         const std::vector<std::vector<Fragment>>& stdMatchedFrags,
+                                         const std::vector<CometScores>& stdScores,
+                                         List<String^>^% szPeptide,
+                                         List<String^>^% szProtein,
+                                         List<List<FragmentWrapper^>^>^% matchingFragments,
+                                         List<ScoreWrapper^>^% score)
 {
-   if (!_pSearchMgr)
-      return false;
-
-   // --- Input pinning (no copies, already optimal) ---
-   pin_ptr<double> ptrMasses = &pdMass[0];
-   pin_ptr<double> ptrInten = &pdInten[0];
-
-   // --- Prepare native output containers ---
-   std::vector<std::string> stdPeptides;
-   std::vector<std::string> stdProteins;
-   std::vector<CometScores> stdScores;
-   std::vector<std::vector<Fragment>> stdMatchedFrags;
-
-   // --- Perform native search ---
-   bool ok = _pSearchMgr->DoSingleSpectrumSearchMultiResults(
-      topN, iPrecursorCharge, dMZ,
-      ptrMasses, ptrInten, iNumPeaks,
-      stdPeptides, stdProteins, stdMatchedFrags, stdScores);
-
-   // -----------------------------------------------------------------
-   // Output conversion section
-   // -----------------------------------------------------------------
-   // Optimization principles:
-   //   1. Avoid double string conversions.
-   //   2. Reuse managed lists if passed preallocated (optional extension).
-   //   3. Minimize managed object creation by reserving capacity.
-   // -----------------------------------------------------------------
-
    // Convert peptides/proteins (1 allocation per string)
    szPeptide = gcnew List<String^>(static_cast<int>(stdPeptides.size()));
    for (const auto& pep : stdPeptides)
@@ -187,7 +164,324 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
 
       matchingFragments->Add(fragList);
    }
+}
 
+
+// Input validation and native-exception containment for the RTS search calls (2026-11-08,
+// branch code review item 11). Every call pins &pdMass[0] / &pdInten[0] and hands native code
+// iNumPeaks, which it reads that many elements of: a null array, an empty array (&a[0] throws
+// IndexOutOfRangeException) or an iNumPeaks larger than either array (a reused buffer with a
+// stale count, or mass/intensity arrays of different lengths -- a read past the pinned managed
+// array) is rejected here with false and empty outputs. A longer array than iNumPeaks is fine:
+// hosts reuse buffers. A native C++ exception (std::bad_alloc, ...) escaping a call would reach
+// the host as an SEHException and can end a real-time acquisition loop, so it is caught and the
+// call returns false; GetLastWrapperError() says why.
+static bool ValidPeakArrays(cli::array<double>^ pdMass, cli::array<double>^ pdInten, int iNumPeaks)
+{
+   return pdMass != nullptr && pdInten != nullptr && iNumPeaks > 0
+      && pdMass->Length >= iNumPeaks && pdInten->Length >= iNumPeaks;
+}
+
+static String^ DescribePeakArrays(cli::array<double>^ pdMass, cli::array<double>^ pdInten, int iNumPeaks)
+{
+   return String::Format("invalid peak arrays: mass {0}, intensity {1}, iNumPeaks {2}",
+      pdMass == nullptr ? "null" : pdMass->Length.ToString(),
+      pdInten == nullptr ? "null" : pdInten->Length.ToString(), iNumPeaks);
+}
+
+static void EmptySingleSpectrumOutputs(List<String^>^% szPeptide,
+   List<String^>^% szProtein,
+   List<List<FragmentWrapper^>^>^% matchingFragments,
+   List<ScoreWrapper^>^% score)
+{
+   szPeptide = gcnew List<String^>();
+   szProtein = gcnew List<String^>();
+   matchingFragments = gcnew List<List<FragmentWrapper^>^>();
+   score = gcnew List<ScoreWrapper^>();
+}
+
+
+// The native calls of the two chimeric overloads, as function objects over the pinned peak
+// arrays (a lambda is not allowed inside a member function of a managed class, C3923).
+struct ChimericListCall
+{
+   ICometSearchManager* pMgr;
+   const std::vector<PrecursorCandidate>* pvPrecursors;
+   double dPrecursorToleranceMZ;
+   double dMaxExpect;
+   int iMaxPeptidesPerSpectrum;
+   int iTopN;
+   double* pdMass;
+   double* pdInten;
+   int iNumPeaks;
+
+   bool operator()(std::vector<std::string>& vPep, std::vector<std::string>& vProt,
+                   std::vector<std::vector<Fragment>>& vFrag, std::vector<CometScores>& vScores,
+                   bool& bNativeIncomplete) const
+   {
+      return pMgr->DoSingleSpectrumSearchChimeric(*pvPrecursors, dPrecursorToleranceMZ, dMaxExpect,
+         iMaxPeptidesPerSpectrum, iTopN, pdMass, pdInten, iNumPeaks, vPep, vProt, vFrag, vScores, bNativeIncomplete);
+   }
+};
+
+struct ChimericRangeCall
+{
+   ICometSearchManager* pMgr;
+   double dMZ;
+   int iMinPrecursorCharge;
+   int iMaxPrecursorCharge;
+   double dPrecursorToleranceMZ;
+   double dMaxExpect;
+   int iMaxPeptidesPerSpectrum;
+   int iTopN;
+   double* pdMass;
+   double* pdInten;
+   int iNumPeaks;
+
+   bool operator()(std::vector<std::string>& vPep, std::vector<std::string>& vProt,
+                   std::vector<std::vector<Fragment>>& vFrag, std::vector<CometScores>& vScores,
+                   bool& bNativeIncomplete) const
+   {
+      return pMgr->DoSingleSpectrumSearchChimeric(dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
+         dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, iTopN, pdMass, pdInten, iNumPeaks,
+         vPep, vProt, vFrag, vScores, bNativeIncomplete);
+   }
+};
+
+// The shared tail of both chimeric overloads: run the native search (fnSearch, one of the
+// function objects above), contain a native exception, and convert the rows. The rows
+// appended before an exception are complete iterations, so they are kept, as a cancelled call
+// keeps them (bIncomplete true, return false), unless an exception mid-row left the four
+// vectors misaligned. strError (nullptr on entry) receives the exception text; the caller
+// stores it for GetLastWrapperError().
+template <typename FnSearch>
+static bool RunChimericSearch(const FnSearch& fnSearch,
+   String^% strError,
+   List<String^>^% szPeptide,
+   List<String^>^% szProtein,
+   List<List<FragmentWrapper^>^>^% matchingFragments,
+   List<ScoreWrapper^>^% score,
+   bool% bIncomplete)
+{
+   std::vector<std::string> stdPeptides;
+   std::vector<std::string> stdProteins;
+   std::vector<CometScores> stdScores;
+   std::vector<std::vector<Fragment>> stdMatchedFrags;
+
+   bool ok = false;
+   bool bNativeIncomplete = false;
+   try
+   {
+      ok = fnSearch(stdPeptides, stdProteins, stdMatchedFrags, stdScores, bNativeIncomplete);
+   }
+   catch (const std::exception& e)
+   {
+      strError = "native exception: " + gcnew String(e.what());
+   }
+   catch (...)
+   {
+      strError = "unknown native exception";
+   }
+   if (strError != nullptr)
+   {
+      bIncomplete = true;
+      const size_t n = stdScores.size();
+      if (stdPeptides.size() == n && stdProteins.size() == n && stdMatchedFrags.size() == n)
+         ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+            szPeptide, szProtein, matchingFragments, score);
+      else
+         EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+   bIncomplete = bNativeIncomplete;
+
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
+   return ok;
+}
+
+
+String^ CometSearchManagerWrapper::GetLastWrapperError()
+{
+   return s_strLastWrapperError;
+}
+
+
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchMultiResults(
+   int topN,
+   int iPrecursorCharge,
+   double dMZ,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score)
+{
+   s_strLastWrapperError = nullptr;
+   if (!_pSearchMgr || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
+   {
+      s_strLastWrapperError = !_pSearchMgr ? "no search manager" : DescribePeakArrays(pdMass, pdInten, iNumPeaks);
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   // --- Input pinning (no copies, already optimal) ---
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+
+   // --- Prepare native output containers ---
+   std::vector<std::string> stdPeptides;
+   std::vector<std::string> stdProteins;
+   std::vector<CometScores> stdScores;
+   std::vector<std::vector<Fragment>> stdMatchedFrags;
+
+   // --- Perform native search ---
+   bool ok = false;
+   try
+   {
+      ok = _pSearchMgr->DoSingleSpectrumSearchMultiResults(
+         topN, iPrecursorCharge, dMZ,
+         ptrMasses, ptrInten, iNumPeaks,
+         stdPeptides, stdProteins, stdMatchedFrags, stdScores);
+   }
+   catch (const std::exception& e)
+   {
+      s_strLastWrapperError = "native exception: " + gcnew String(e.what());
+      ok = false;
+   }
+   catch (...)
+   {
+      s_strLastWrapperError = "unknown native exception";
+      ok = false;
+   }
+   if (s_strLastWrapperError != nullptr)
+   {
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   ConvertSingleSpectrumResults(stdPeptides, stdProteins, stdMatchedFrags, stdScores,
+      szPeptide, szProtein, matchingFragments, score);
+
+   return ok;
+}
+
+
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
+   cli::array<double>^ pdCandidateMZ,
+   cli::array<int>^ piCandidateCharge,
+   cli::array<double>^ pdCandidateToleranceMZ,
+   double dPrecursorToleranceMZ,
+   double dMaxExpect,
+   int iMaxPeptidesPerSpectrum,
+   int iTopN,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   const int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score,
+   [Out] bool% bIncomplete)
+{
+   bIncomplete = false;
+   s_strLastWrapperError = nullptr;
+   if (!_pSearchMgr || pdCandidateMZ == nullptr || piCandidateCharge == nullptr
+      || pdCandidateMZ->Length == 0 || piCandidateCharge->Length != pdCandidateMZ->Length
+      || (pdCandidateToleranceMZ != nullptr && pdCandidateToleranceMZ->Length != pdCandidateMZ->Length)
+      || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
+   {
+      if (!_pSearchMgr)
+         s_strLastWrapperError = "no search manager";
+      else if (!ValidPeakArrays(pdMass, pdInten, iNumPeaks))
+         s_strLastWrapperError = DescribePeakArrays(pdMass, pdInten, iNumPeaks);
+      else
+         s_strLastWrapperError = "invalid candidate arrays: m/z, charge and tolerance arrays must be non-empty and of equal length";
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   // The native candidate list is the only per-candidate allocation; the peak arrays are pinned.
+   // Built inside a try block like the search itself: an allocation failure here (a huge candidate
+   // array) must not escape the managed boundary with the outputs uninitialized.
+   std::vector<PrecursorCandidate> vPrecursors;
+   try
+   {
+      vPrecursors.reserve(pdCandidateMZ->Length);
+      for (int i = 0; i < pdCandidateMZ->Length; ++i)
+      {
+         // Copy out first: a managed array element cannot bind to the native references
+         // emplace_back's forwarding would deduce (C2664).
+         const double dCandMZ = pdCandidateMZ[i];
+         const int iCandCharge = piCandidateCharge[i];
+         const double dCandTol = (pdCandidateToleranceMZ != nullptr) ? pdCandidateToleranceMZ[i] : 0.0;
+         vPrecursors.push_back(PrecursorCandidate(dCandMZ, iCandCharge, dCandTol));
+      }
+   }
+   catch (const std::exception& e)
+   {
+      s_strLastWrapperError = "native exception building the candidate list: " + gcnew String(e.what());
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+   catch (...)
+   {
+      s_strLastWrapperError = "unknown native exception building the candidate list";
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+   ChimericListCall call = { _pSearchMgr, &vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
+                             iMaxPeptidesPerSpectrum, iTopN, ptrMasses, ptrInten, iNumPeaks };
+
+   String^ strError = nullptr;
+   const bool ok = RunChimericSearch(call,
+      strError, szPeptide, szProtein, matchingFragments, score, bIncomplete);
+   s_strLastWrapperError = strError;
+   return ok;
+}
+
+
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
+   double dMZ,
+   int iMinPrecursorCharge,
+   int iMaxPrecursorCharge,
+   double dPrecursorToleranceMZ,
+   double dMaxExpect,
+   int iMaxPeptidesPerSpectrum,
+   int iTopN,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   const int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score,
+   [Out] bool% bIncomplete)
+{
+   bIncomplete = false;
+   s_strLastWrapperError = nullptr;
+   if (!_pSearchMgr || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
+   {
+      s_strLastWrapperError = !_pSearchMgr ? "no search manager" : DescribePeakArrays(pdMass, pdInten, iNumPeaks);
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+   ChimericRangeCall call = { _pSearchMgr, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
+                              dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, iTopN, ptrMasses, ptrInten,
+                              iNumPeaks };
+
+   String^ strError = nullptr;
+   const bool ok = RunChimericSearch(call,
+      strError, szPeptide, szProtein, matchingFragments, score, bIncomplete);
+   s_strLastWrapperError = strError;
    return ok;
 }
 
@@ -201,22 +495,35 @@ bool CometSearchManagerWrapper::DoMS1SearchMultiResults(double dMaxMS1RTDiff,
    int iNumPeaks,
    [Out] List<ScoreWrapperMS1^>^% scoreMS1)
 {
-   if (!_pSearchMgr)
+   s_strLastWrapperError = nullptr;
+   scoreMS1 = gcnew List<ScoreWrapperMS1^>();
+   if (!_pSearchMgr || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
    {
+      s_strLastWrapperError = !_pSearchMgr ? "no search manager" : DescribePeakArrays(pdMass, pdInten, iNumPeaks);
       return false;
    }
    pin_ptr<double> ptrMasses = &pdMass[0];
    pin_ptr<double> ptrInten = &pdInten[0];
-   vector<std::string> stdStringszPeptide;
-   vector<std::string> stdStringszProtein;
 
    vector<CometScoresMS1> scoresMS1;
-   vector<vector<Fragment>> matchedFragments;
 
    // perform the search
-   bool isSuccess = _pSearchMgr->DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, ptrMasses, ptrInten, iNumPeaks, scoresMS1);
+   bool isSuccess = false;
+   try
+   {
+      isSuccess = _pSearchMgr->DoMS1SearchMultiResults(dMaxMS1RTDiff, dMaxQueryRT, topN, dRT, ptrMasses, ptrInten, iNumPeaks, scoresMS1);
+   }
+   catch (const std::exception& e)
+   {
+      s_strLastWrapperError = "native exception: " + gcnew String(e.what());
+   }
+   catch (...)
+   {
+      s_strLastWrapperError = "unknown native exception";
+   }
+   if (s_strLastWrapperError != nullptr)
+      return false;
 
-   scoreMS1 = gcnew List<ScoreWrapperMS1^>();
    for (auto eachScore : scoresMS1)
    {
       scoreMS1->Add(gcnew ScoreWrapperMS1(eachScore));

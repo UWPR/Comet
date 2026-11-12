@@ -61,6 +61,47 @@ namespace CometWrapper {
                                                 [Out] List<String^>^% szProtein,
                                                 [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
                                                 [Out] List<ScoreWrapper^>^% score);
+        // Chimeric-spectrum search (docs/20261105_RTSchimeric.md; ICometSearchManager for the
+        // contract). Explicit-list form: the candidates are three parallel arrays -- m/z, charge
+        // and per-candidate +/- tolerance in m/z (0 = inherit dPrecursorToleranceMZ; the array
+        // may be nullptr) -- rather than a managed candidate type, so a call allocates nothing
+        // per candidate. Rows per reported peptide: its rank-0 PSM, plus up to iTopN - 1 ranked
+        // runner-ups from the same search (ScoreWrapper::Rank; a runner-up may be an empty
+        // placeholder row); ScoreWrapper::Charge / Iteration say where it was found. bIncomplete is
+        // true when the call stopped before its normal end, with the rows already found kept: the
+        // return value is true when max_index_runtime ran out, and false when the search was
+        // cancelled or failed (CometInterfaces.h).
+        bool DoSingleSpectrumSearchChimeric(cli::array<double>^ pdCandidateMZ,
+                                            cli::array<int>^ piCandidateCharge,
+                                            cli::array<double>^ pdCandidateToleranceMZ,
+                                            double dPrecursorToleranceMZ,
+                                            double dMaxExpect,
+                                            int iMaxPeptidesPerSpectrum,
+                                            int iTopN,                       // rows reported per iteration (the winner's ranks 0..iTopN-1)
+                                            cli::array<double>^ pdMass,
+                                            cli::array<double>^ pdInten,
+                                            const int iNumPeaks,
+                                            [Out] List<String^>^% szPeptide,
+                                            [Out] List<String^>^% szProtein,
+                                            [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                            [Out] List<ScoreWrapper^>^% score,
+                                            [Out] bool% bIncomplete);
+        // Charge-range form: one m/z across [iMinPrecursorCharge, iMaxPrecursorCharge].
+        bool DoSingleSpectrumSearchChimeric(double dMZ,
+                                            int iMinPrecursorCharge,
+                                            int iMaxPrecursorCharge,
+                                            double dPrecursorToleranceMZ,
+                                            double dMaxExpect,
+                                            int iMaxPeptidesPerSpectrum,
+                                            int iTopN,                       // rows reported per iteration (the winner's ranks 0..iTopN-1)
+                                            cli::array<double>^ pdMass,
+                                            cli::array<double>^ pdInten,
+                                            const int iNumPeaks,
+                                            [Out] List<String^>^% szPeptide,
+                                            [Out] List<String^>^% szProtein,
+                                            [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                            [Out] List<ScoreWrapper^>^% score,
+                                            [Out] bool% bIncomplete);
         // Need to convert vector to List and back
         bool DoMS1SearchMultiResults(double dVal3,
                                      double dVal4,
@@ -96,8 +137,18 @@ namespace CometWrapper {
         bool ResetSearchStatus();
         String^ GetPeakMemory();
 
+        // Why the last RTS search call (DoSingleSpectrumSearchMultiResults,
+        // DoSingleSpectrumSearchChimeric, DoMS1SearchMultiResults) on the calling thread returned
+        // false for a reason the wrapper detected -- invalid peak arrays, or a native C++ exception
+        // it caught instead of letting it escape into the host -- or nullptr when it returned
+        // normally. Per thread, because RTS hosts call these concurrently.
+        String^ GetLastWrapperError();
+
     private:
         ICometSearchManager *_pSearchMgr;
         msclr::interop::marshal_context _marshalContext;
+
+        [System::ThreadStaticAttribute]
+        static String^ s_strLastWrapperError;
     };
 }
