@@ -60,6 +60,7 @@ bool DoSingleSpectrumSearchChimeric(
     const double dPrecursorToleranceMZ,                   // +/- m/z for candidates with dToleranceMZ 0; 0 = configured tolerance
     const double dMaxExpect,
     const int iMaxPeptidesPerSpectrum,
+    const int iTopN,                                      // rows per iteration: the winner's ranks 0..iTopN-1
     double* dMass, double* dInten, const int iNumPeaks,
     vector<string>& strReturnPeptide, vector<string>& strReturnProtein,
     vector<vector<Fragment>>& matchedFragments, vector<CometScores>& scores,
@@ -68,6 +69,7 @@ bool DoSingleSpectrumSearchChimeric(
 bool DoSingleSpectrumSearchChimeric(
     const double dMZ, const int iMinPrecursorCharge, const int iMaxPrecursorCharge,
     const double dPrecursorToleranceMZ, const double dMaxExpect, const int iMaxPeptidesPerSpectrum,
+    const int iTopN,
     double* dMass, double* dInten, const int iNumPeaks,
     ... same four outputs and bIncomplete ...);
 ```
@@ -125,8 +127,8 @@ search gains 42% confident PSMs on the HeLa benchmark file from `isotope_error =
 
 C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes
 parallel `double[]` m/z, `int[]` charge and optional `double[]` tolerance arrays), driven by
-`RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [options]`
-(`RealtimeSearch/SearchChimeric.cs`; run it without options for the list). The driver reads
+`RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [options]`
+(`RealtimeSearch/SearchChimericMS2.cs`; run it without options for the list). The driver reads
 a multi-`Z`-line `.ms2`: `--zrange zmin zmax` searches each scan's `S`-line m/z across the
 range, `--zlines` turns every `Z` line into one candidate. `tests/rts_repro/rts_repro`'s
 chimeric modes are the Linux equivalent (test T67).

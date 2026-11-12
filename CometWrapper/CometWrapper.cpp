@@ -210,6 +210,7 @@ struct ChimericListCall
    double dPrecursorToleranceMZ;
    double dMaxExpect;
    int iMaxPeptidesPerSpectrum;
+   int iTopN;
    double* pdMass;
    double* pdInten;
    int iNumPeaks;
@@ -219,7 +220,7 @@ struct ChimericListCall
                    bool& bNativeIncomplete) const
    {
       return pMgr->DoSingleSpectrumSearchChimeric(*pvPrecursors, dPrecursorToleranceMZ, dMaxExpect,
-         iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks, vPep, vProt, vFrag, vScores, bNativeIncomplete);
+         iMaxPeptidesPerSpectrum, iTopN, pdMass, pdInten, iNumPeaks, vPep, vProt, vFrag, vScores, bNativeIncomplete);
    }
 };
 
@@ -232,6 +233,7 @@ struct ChimericRangeCall
    double dPrecursorToleranceMZ;
    double dMaxExpect;
    int iMaxPeptidesPerSpectrum;
+   int iTopN;
    double* pdMass;
    double* pdInten;
    int iNumPeaks;
@@ -241,7 +243,7 @@ struct ChimericRangeCall
                    bool& bNativeIncomplete) const
    {
       return pMgr->DoSingleSpectrumSearchChimeric(dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
-         dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, pdMass, pdInten, iNumPeaks,
+         dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, iTopN, pdMass, pdInten, iNumPeaks,
          vPep, vProt, vFrag, vScores, bNativeIncomplete);
    }
 };
@@ -374,6 +376,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    double dPrecursorToleranceMZ,
    double dMaxExpect,
    int iMaxPeptidesPerSpectrum,
+   int iTopN,
    cli::array<double>^ pdMass,
    cli::array<double>^ pdInten,
    const int iNumPeaks,
@@ -416,7 +419,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    pin_ptr<double> ptrMasses = &pdMass[0];
    pin_ptr<double> ptrInten = &pdInten[0];
    ChimericListCall call = { _pSearchMgr, &vPrecursors, dPrecursorToleranceMZ, dMaxExpect,
-                             iMaxPeptidesPerSpectrum, ptrMasses, ptrInten, iNumPeaks };
+                             iMaxPeptidesPerSpectrum, iTopN, ptrMasses, ptrInten, iNumPeaks };
 
    String^ strError = nullptr;
    const bool ok = RunChimericSearch(call,
@@ -433,6 +436,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    double dPrecursorToleranceMZ,
    double dMaxExpect,
    int iMaxPeptidesPerSpectrum,
+   int iTopN,
    cli::array<double>^ pdMass,
    cli::array<double>^ pdInten,
    const int iNumPeaks,
@@ -454,7 +458,7 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    pin_ptr<double> ptrMasses = &pdMass[0];
    pin_ptr<double> ptrInten = &pdInten[0];
    ChimericRangeCall call = { _pSearchMgr, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
-                              dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, ptrMasses, ptrInten,
+                              dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, iTopN, ptrMasses, ptrInten,
                               iNumPeaks };
 
    String^ strError = nullptr;

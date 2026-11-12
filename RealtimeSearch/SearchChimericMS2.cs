@@ -25,11 +25,11 @@ namespace RealTimeSearch
    ///       m/z = (MH+ + (z-1) * proton) / z, searched with the configured (ppm) tolerance unless
    ///       --tol is given -- the multi-Z-line .ms2 that mango_search_wrapper.py consumes and writes.
    ///
-   /// Selected by "chimeric" as the first argument of RealtimeSearch.exe (see Main in
+   /// Selected by "chimericms2" as the first argument of RealtimeSearch.exe (see Main in
    /// SearchMS1MS2.cs). Search parameters come from SearchSettings.ConfigureInputSettings(), the
    /// same block the MS1/MS2 harness uses, plus the chimeric_* knobs set from the options below.
    /// </summary>
-   internal static class SearchChimeric
+   internal static class SearchChimericMS2
    {
       private const double ProtonMass = 1.00727646688;
 
@@ -52,6 +52,7 @@ namespace RealTimeSearch
          public double TolMZ = 0.0;
          public double MaxExpect = 0.1;   // 0.1 since fragindex_histogram_fill calibrated the E-values (docs/20261106_FI_evalue_histogram_fill.md)
          public int MaxPeptides = 5;
+         public int TopN = 1;             // rows reported per iteration (the winner's ranks 0..TopN-1)
          public int Threads = Environment.ProcessorCount;
          public bool AScorePro = false;
          public int Isotopes = 2;
@@ -76,13 +77,14 @@ namespace RealTimeSearch
       private static void Usage()
       {
          Console.WriteLine(" RTS chimeric-spectrum search\n");
-         Console.WriteLine("    USAGE:  {0} chimeric <spectra.ms2> <database.idx> [options]\n",
+         Console.WriteLine("    USAGE:  {0} chimericms2 <spectra.ms2> <database.idx> [options]\n",
             System.AppDomain.CurrentDomain.FriendlyName);
          Console.WriteLine("    --zrange zmin zmax    charge-range form (default): each scan at charges zmin..zmax [2 4]");
          Console.WriteLine("    --zlines              explicit-list form: one candidate per Z line of the scan");
          Console.WriteLine("    --tol mz              +/- precursor window in m/z units; 0 = configured 20 ppm [0]");
          Console.WriteLine("    --max-expect E        report a peptide only if its E-value <= E [0.1]");
          Console.WriteLine("    --max-peptides N      at most N peptides per spectrum [5]");
+         Console.WriteLine("    --topn N              rows reported per peptide: the winner's top N by xcorr [1]");
          Console.WriteLine("    --threads T           search threads [processor count]");
          Console.WriteLine("    --ascorepro 0|1       AScorePro localization [0]");
          Console.WriteLine("    --isotopes N          chimeric_remove_isotopes: +1..+N 13C peaks of matched ions, 0-3 [2]");
@@ -92,7 +94,7 @@ namespace RealTimeSearch
 
       private static bool ParseOptions(string[] args, Options o)
       {
-         // args[0] == "chimeric"
+         // args[0] == "chimericms2"
          if (args.Length < 3)
             return false;
          o.Ms2File = args[1];
@@ -109,6 +111,7 @@ namespace RealTimeSearch
                   case "--tol": o.TolMZ = double.Parse(args[++i], inv); break;
                   case "--max-expect": o.MaxExpect = double.Parse(args[++i], inv); break;
                   case "--max-peptides": o.MaxPeptides = int.Parse(args[++i], inv); break;
+                  case "--topn": o.TopN = int.Parse(args[++i], inv); break;
                   case "--threads": o.Threads = Math.Max(1, int.Parse(args[++i], inv)); break;
                   case "--ascorepro": o.AScorePro = int.Parse(args[++i], inv) != 0; break;
                   case "--isotopes": o.Isotopes = int.Parse(args[++i], inv); break;
@@ -135,6 +138,11 @@ namespace RealTimeSearch
          if (o.MaxPeptides < 1)
          {
             Console.WriteLine(" Error: --max-peptides must be at least 1 (got {0})", o.MaxPeptides);
+            return false;
+         }
+         if (o.TopN < 1)
+         {
+            Console.WriteLine(" Error: --topn must be at least 1 (got {0})", o.TopN);
             return false;
          }
          if (double.IsNaN(o.MaxExpect))
@@ -358,7 +366,7 @@ namespace RealTimeSearch
                            if (n == 0)
                               r.Error = "scan has no Z lines";    // never reaches the wrapper: no stale thread-static message
                            else
-                              r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                              r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(mz, z, null, o.TolMZ, o.MaxExpect, o.MaxPeptides, o.TopN,
                                  s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
                            r.Incomplete = bInc;
                         }
@@ -366,7 +374,7 @@ namespace RealTimeSearch
                         {
                            r.Candidates = o.ZMax - o.ZMin + 1;
                            bool bInc;
-                           r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides,
+                           r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(r.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect, o.MaxPeptides, o.TopN,
                               s.Mass, s.Intensity, s.Mass.Length, out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
                            r.Incomplete = bInc;
                         }
@@ -407,7 +415,7 @@ namespace RealTimeSearch
 
             using (w)
             {
-               w.WriteLine("scan\titeration\tcharge\tprecursor_mz\tcandidates\tcalc_neutral_mass\tpeptide\tprotein\txcorr\tdeltacn\texpect\tions_matched\tions_total\telapsed_ms");
+               w.WriteLine("scan\titeration\tcharge\tprecursor_mz\tcandidates\tcalc_neutral_mass\tpeptide\tprotein\txcorr\tdeltacn\texpect\tions_matched\tions_total\telapsed_ms\trank");
                foreach (ScanOutcome r in ordered)
                {
                   sumMs += r.ElapsedMs;
@@ -420,7 +428,7 @@ namespace RealTimeSearch
                      w.WriteLine(string.Format(inv, "{0}\tERROR\t{1}\t{2:0.0000}\t{3}", r.ScanNumber, OneField(r.Error), r.PrecursorMZ, r.Candidates));
                      continue;
                   }
-                  int n = r.Peptides.Count;
+                  int n = r.Peptides.Count(p => !string.IsNullOrEmpty(p));   // a row past rank 0 may be an empty placeholder
                   histogram[Math.Min(n, 3)] += 1;
                   rows += n;
                   if (r.Incomplete)
@@ -433,14 +441,16 @@ namespace RealTimeSearch
                   var seen = new HashSet<string>();
                   for (int i = 0; i < n; ++i)
                   {
+                     if (string.IsNullOrEmpty(r.Peptides[i]))
+                        continue;
                      ScoreWrapper sc = r.Scores[i];
                      if (sc.Iteration >= 1)
                         ++rowsLater;
                      if (!seen.Add(r.Peptides[i]))
                         ++repeats;
-                     w.WriteLine(string.Format(inv, "{0}\t{1}\t{2}\t{3:0.0000}\t{4}\t{5:0.0000}\t{6}\t{7}\t{8:0.0000}\t{9:0.0000}\t{10:E3}\t{11}\t{12}\t{13:0.00}",
+                     w.WriteLine(string.Format(inv, "{0}\t{1}\t{2}\t{3:0.0000}\t{4}\t{5:0.0000}\t{6}\t{7}\t{8:0.0000}\t{9:0.0000}\t{10:E3}\t{11}\t{12}\t{13:0.00}\t{14}",
                         r.ScanNumber, sc.Iteration, sc.Charge, r.PrecursorMZ, r.Candidates, sc.mass, r.Peptides[i], r.Proteins[i],
-                        sc.xCorr, sc.dCn, sc.dExpect, sc.MatchedIons, sc.TotalIons, r.ElapsedMs));
+                        sc.xCorr, sc.dCn, sc.dExpect, sc.MatchedIons, sc.TotalIons, r.ElapsedMs, sc.Rank));
                   }
                   if (r.Incomplete)
                      w.WriteLine(string.Format(inv, "{0}\tINCOMPLETE\t{1}\t{2:0.0000}\t{3}{4}", r.ScanNumber, r.Ok ? "budget" : "stopped", r.PrecursorMZ, r.Candidates,

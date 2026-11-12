@@ -45,7 +45,7 @@ Output is written to `rts.out` in the working directory.
 ### Chimeric-spectrum RTS (more than one peptide per spectrum)
 
 ```bash
-RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [--zrange zmin zmax | --zlines] [--tol mz]
+RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [--zrange zmin zmax | --zlines] [--tol mz]
                    [--max-expect E] [--max-peptides N] [--threads T] [--out file] ...
 ```
 

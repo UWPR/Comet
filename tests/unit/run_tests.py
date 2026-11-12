@@ -1564,6 +1564,15 @@ def _rts_run(idx_path, fixture_path, num_threads, output_path, ascorepro=0, inde
     return result.returncode, result.stdout + result.stderr
 
 
+def _rts_win_row_key(line):
+    """A RealtimeSearch.exe chimericms2 output row without its elapsed_ms column (field 13, which varies run to
+    run; the columns after it, e.g. rank, are results and stay)."""
+    f = line.split("\t")
+    if len(f) > 13:
+        del f[13]
+    return "\t".join(f)
+
+
 def _rts_sorted_lines(path):
     lines = Path(path).read_text().splitlines()
     return sorted(lines, key=lambda l: int(l.split("\t")[0].split()[1]))
@@ -8289,7 +8298,116 @@ def test_t83_rts_trace_range_topn(comet_exe):
 
 
 # ---------------------------------------------------------------------------
-# T84 -- RealtimeSearch.exe chimeric (SearchChimeric.cs) reports bad input instead of crashing: a
+# T89 -- the plain RTS search and a one-iteration chimeric call are the same search. With one candidate
+# (the scan's own m/z and charge), maxPeptides 1, no E-value cutoff and no time budget,
+# DoSingleSpectrumSearchChimeric(topN = N) must return exactly the rows DoSingleSpectrumSearchMultiResults(topN = N)
+# does: same peptides, xcorr, E-values (and delta-Cn, matched ions) for ranks 0..N-1. Both run the
+# same SearchSingleSpectrumCore(); this keeps the chimeric wrapper (candidate list, working copy, removal
+# bins) from changing a result on that path. topN 5 matters: ranks 1.. are the search's runner-ups, which
+# only a chimeric call that passes topN through to the core reproduces.
+# ---------------------------------------------------------------------------
+
+def _t89_plain_rows(path):
+    """{scan: [(peptide, xcorr, expect), ...]} from rts_repro mode 0 (rank 0 on the scan's first line,
+    ranks 1.. on 'rank r' lines); a NO_MATCH scan maps to []."""
+    rows = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split("\t")
+        scan = int(f[0].split()[1])
+        rows.setdefault(scan, [])
+        if f[1] == "NO_MATCH":
+            continue
+        if f[1].startswith("rank "):
+            rows[scan].append((_strip_flanks(f[2]), float(f[3].split()[1]), float(f[5].split()[1])))
+        else:
+            rows[scan].append((_strip_flanks(f[1]), float(f[2]), float(f[3])))
+    return rows
+
+
+def _t89_chimeric_rows(path):
+    """The same shape from rts_repro's chimeric output (iteration 0 only)."""
+    rows = {}
+    for line in Path(path).read_text().splitlines():
+        f = line.split("\t")
+        scan = int(f[0].split()[1])
+        rows.setdefault(scan, [])
+        if f[1] == "NO_MATCH":
+            continue
+        d = {k: v for k, _, v in (tok.partition(" ") for tok in f[4:])}
+        rows[scan].append((_strip_flanks(f[3]), float(d["xcorr"]), float(d["expect"])))
+    return rows
+
+
+@register("t89_plain_chimeric_equivalence")
+def test_t89_plain_chimeric_equivalence(comet_exe):
+    """T89: DoSingleSpectrumSearchChimeric with one candidate, maxPeptides 1, dMaxExpect +inf and topN 1 or 5 returns
+    the same rows as DoSingleSpectrumSearchMultiResults with the same topN -- peptides, xcorr and E-values, ranks
+    0..topN-1 -- on FI_DB and PI_DB (Linux only: rts_repro)."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            print(r.stdout[-1500:], r.stderr[-1500:])
+            return failures
+        fasta = tmp / "t67_chimeric.fasta"
+        # one block (candidate) per scan: the first block of each scan of the T67 explicit-list fixture
+        blocks, seen = [], set()
+        lines = (tmp / "t67_chimeric_list.txt").read_text().splitlines()
+        i = 0
+        while i < len(lines):
+            head = lines[i].split()
+            n = int(head[4])
+            if head[1] not in seen:
+                seen.add(head[1])
+                blocks.append("\n".join(lines[i:i + 1 + n]))
+            i += 1 + n
+        fixture = tmp / "t89.txt"
+        fixture.write_text("\n".join(blocks) + "\n")
+
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                for topn in (1, 5):
+                    env = {"RTS_REPRO_TOPN": str(topn)}
+                    out_p, out_c = tmp / f"{label}_plain{topn}.out", tmp / f"{label}_chim{topn}.out"
+                    rc_p, log_p = _rts_run(idx, fixture, 1, out_p, 0, ist, env=env)
+                    rc_c, log_c = _rts_run(idx, fixture, 1, out_c, 0, ist, extra_args=["2", "0", "0", "0", "inf", "1"], env=env)
+                    if not check(rc_p == 0 and rc_c == 0 and out_p.exists() and out_c.exists(),
+                                 f"{label} topN {topn}: both runs exit 0 (rc {rc_p}/{rc_c})", failures):
+                        print(log_p[-800:], log_c[-800:])
+                        continue
+                    plain, chim = _t89_plain_rows(out_p), _t89_chimeric_rows(out_c)
+                    check(sorted(plain) == sorted(chim) and len(plain) == len(blocks),
+                          f"{label} topN {topn}: both report the same {len(blocks)} scans", failures)
+                    nrunner = sum(max(len(v) - 1, 0) for v in plain.values())
+                    check(topn == 1 or nrunner > 0,
+                          f"{label} topN {topn}: the fixture has runner-up ranks to compare ({nrunner} rows past rank 0)", failures)
+                    for scan in sorted(plain):
+                        check(plain[scan] == chim.get(scan),
+                              f"{label} topN {topn}: scan {scan} identical rows (plain {plain[scan][:2]}..., chimeric {chim.get(scan, [])[:2]}...)",
+                              failures)
+            finally:
+                idx.unlink(missing_ok=True)
+    return failures
+
+
+# ---------------------------------------------------------------------------
+# T84 -- RealtimeSearch.exe chimericms2 (SearchChimericMS2.cs) reports bad input instead of crashing: a
 # malformed .ms2 line is named by file and line number, an unwritable --out path fails before
 # the search runs, and each of these (and bad usage) exits 1. Before 2026-11-09 a parse error was
 # an unhandled FormatException with a stack trace and no line number, and the output file was
@@ -8298,7 +8416,7 @@ def test_t83_rts_trace_range_topn(comet_exe):
 
 @register("t84_searchchimeric_errors")
 def test_t84_searchchimeric_errors(comet_exe):
-    """T84: RealtimeSearch.exe chimeric exits 0 and writes rows on valid input; a malformed .ms2 peak line is
+    """T84: RealtimeSearch.exe chimericms2 exits 0 and writes rows on valid input; a malformed .ms2 peak line is
     reported with its line number, an unwritable --out path fails before the search, and bad usage is rejected --
     each with exit code 1 and no unhandled exception (Windows build)."""
     failures = []
@@ -8338,7 +8456,7 @@ def test_t84_searchchimeric_errors(comet_exe):
 
         def run(args):
             try:
-                res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric"] + args, capture_output=True, text=True,
+                res = subprocess.run([str(REALTIMESEARCH_EXE), "chimericms2"] + args, capture_output=True, text=True,
                                      timeout=300)
             except OSError as e:
                 raise TestSkipped(f"cannot run {REALTIMESEARCH_EXE} here ({e})")
@@ -8656,14 +8774,14 @@ def test_t86_preprocess_verify(comet_exe):
                         print("\n".join(l for l in log.splitlines() if "COMET_PREPROCESS" in l)[:1500])
 
             elif REALTIMESEARCH_EXE.exists():
-                # --- the Windows RTS path: RealtimeSearch.exe chimeric -> CometWrapper.dll -> the same native
+                # --- the Windows RTS path: RealtimeSearch.exe chimericms2 -> CometWrapper.dll -> the same native
                 # code rts_repro drives on Linux (default settings only; the C# command line sets no others)
                 for form, form_args in (("charge range", ["--zrange", "2", "4"]), ("explicit list", ["--zlines"])):
                     outs = {}
                     for mode in ("", "dense", "verify", "verify-selftest"):
                         out = tmp / f"t86_win_{form.replace(' ', '_')}_{mode or 'unset'}.txt"
                         try:
-                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric", _to_win(ms2), _to_win(idx), "--threads", "2",
+                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimericms2", _to_win(ms2), _to_win(idx), "--threads", "2",
                                                   "--out", _to_win(out)] + form_args,
                                                  capture_output=True, text=True, timeout=300, env=env_with(mode))
                         except OSError as e:
@@ -8675,7 +8793,7 @@ def test_t86_preprocess_verify(comet_exe):
                             print(log[-1200:])
                             continue
                         # two threads reorder the lines; the last column (elapsed_ms) varies run to run
-                        outs[mode] = sorted(ln.rsplit("\t", 1)[0] for ln in out.read_text().splitlines())
+                        outs[mode] = sorted(_rts_win_row_key(ln) for ln in out.read_text().splitlines())
                         summary = _t86_verify_summary(log)
                         if mode in ("", "dense"):
                             check("COMET_PREPROCESS" not in log, f"{tag}: nothing printed", failures)
@@ -8993,7 +9111,7 @@ def test_t87_decoygen_verify(comet_exe):
                             check(autos[2] > autos[3], f"rts {label}, {form}: auto takes the gather for most decoy sets ({autos[2:]})", failures)
 
             elif REALTIMESEARCH_EXE.exists():
-                # --- the Windows RTS path: RealtimeSearch.exe chimeric -> CometWrapper.dll -> the same native code
+                # --- the Windows RTS path: RealtimeSearch.exe chimericms2 -> CometWrapper.dll -> the same native code
                 # rts_repro drives on Linux (default settings only; the C# command line sets no others)
                 for form, form_args in (("charge range", ["--zrange", "2", "5"]), ("explicit list", ["--zlines"])):
                     outs = {}
@@ -9001,7 +9119,7 @@ def test_t87_decoygen_verify(comet_exe):
                     for mode in ("", "scatter", "gather", "verify", "verify-selftest"):
                         out = tmp / f"t87_win_{form.replace(' ', '_')}_{mode or 'unset'}.txt"
                         try:
-                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimeric", _to_win(ms2), _to_win(idx), "--threads", "1",
+                            res = subprocess.run([str(REALTIMESEARCH_EXE), "chimericms2", _to_win(ms2), _to_win(idx), "--threads", "1",
                                                   "--out", _to_win(out)] + form_args,
                                                  capture_output=True, text=True, timeout=300, env=env_with(mode))
                         except OSError as e:
@@ -9012,7 +9130,7 @@ def test_t87_decoygen_verify(comet_exe):
                         if not check(res.returncode == 0 and out.exists(), f"{tag}: RealtimeSearch.exe exits 0 (rc={res.returncode})", failures):
                             print(log[-1200:])
                             continue
-                        outs[mode] = [ln.rsplit("\t", 1)[0] for ln in out.read_text().splitlines()]   # elapsed_ms varies
+                        outs[mode] = [_rts_win_row_key(ln) for ln in out.read_text().splitlines()]   # elapsed_ms varies
                         summary = _t87_summary(log)
                         if mode in ("", "scatter", "gather"):
                             check("COMET_DECOYGEN" not in log, f"{tag}: nothing printed", failures)

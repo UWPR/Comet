@@ -75,6 +75,7 @@ namespace CometWrapper {
                                             double dPrecursorToleranceMZ,
                                             double dMaxExpect,
                                             int iMaxPeptidesPerSpectrum,
+                                            int iTopN,                       // rows reported per iteration (the winner's ranks 0..iTopN-1)
                                             cli::array<double>^ pdMass,
                                             cli::array<double>^ pdInten,
                                             const int iNumPeaks,
@@ -90,6 +91,7 @@ namespace CometWrapper {
                                             double dPrecursorToleranceMZ,
                                             double dMaxExpect,
                                             int iMaxPeptidesPerSpectrum,
+                                            int iTopN,                       // rows reported per iteration (the winner's ranks 0..iTopN-1)
                                             cli::array<double>^ pdMass,
                                             cli::array<double>^ pdInten,
                                             const int iNumPeaks,

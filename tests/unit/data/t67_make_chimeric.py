@@ -6,7 +6,7 @@ Writes, into the directory given as the first argument (default: this script's):
   t67_chimeric.fasta        P1, P2, P3 as tryptic peptides inside small proteins, plus fillers
   t67_chimeric_range.txt    rts_repro SPECTRUM fixture for the charge-range form (one block per scan)
   t67_chimeric_list.txt     the same scans for the explicit-list form (one block per candidate)
-  t67_chimeric.ms2          the same scans as a multi-Z-line .ms2 for RealtimeSearch.exe chimeric
+  t67_chimeric.ms2          the same scans as a multi-Z-line .ms2 for RealtimeSearch.exe chimericms2
                             (S line: P1's 2+ m/z; Z lines: the explicit-list candidates as MH+)
   t67_chimeric.json         the peptides, masses and m/z values the test asserts against
 
@@ -126,7 +126,7 @@ def main():
     write_fixture(os.path.join(outdir, "t67_chimeric_range.txt"), range_blocks)
     write_fixture(os.path.join(outdir, "t67_chimeric_list.txt"), list_blocks)
 
-    # The same scans as a multi-Z-line .ms2 for the C# harness (RealtimeSearch.exe chimeric):
+    # The same scans as a multi-Z-line .ms2 for the C# harness (RealtimeSearch.exe chimericms2):
     # the S line carries P1's 2+ m/z (the charge-range form's precursor), the Z lines the
     # explicit-list candidates as (charge, MH+).
     with open(os.path.join(outdir, "t67_chimeric.ms2"), "w", newline="\r\n") as f:

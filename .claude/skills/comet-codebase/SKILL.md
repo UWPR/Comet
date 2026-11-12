@@ -73,8 +73,8 @@ wrapper around it. `DoSingleSpectrumSearchChimeric` (explicit `(m/z, charge)` li
 m/z over a charge range) loops that core once per candidate per iteration, keeps the best
 PSM by E-value, removes its fragment bins from a thread-local copy of the peaks
 (`RemovePeaksInBins`) and repeats; `CometScores::iCharge` / `iIteration` tag each row. C#
-side: `RealtimeSearch.exe chimeric <spectra.ms2> <database.idx> [options]`
-(`SearchChimeric.cs`); Linux driver: `tests/rts_repro/rts_repro` modes 1 and 2 (test T67).
+side: `RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [options]`
+(`SearchChimericMS2.cs`); Linux driver: `tests/rts_repro/rts_repro` modes 1 and 2 (test T67).
 
 ## Batch search path
 

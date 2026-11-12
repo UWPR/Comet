@@ -404,6 +404,13 @@ namespace CometWrapper {
             int get() { return pScores->iIteration; }
         }
 
+        // 0-based rank of the PSM within its search (0 = best by xcorr). Always 0 unless the call
+        // asked for more than one row per search (topN > 1).
+        property int Rank
+        {
+            int get() { return pScores->iRank; }
+        }
+
     private:
        CometScores * pScores;
     };

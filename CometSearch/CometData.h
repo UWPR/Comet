@@ -135,6 +135,8 @@ struct CometScores
     int iIteration;               // 0-based chimeric-search iteration that produced the PSM
                                   // (always 0 from DoSingleSpectrumSearchMultiResults);
                                   // see docs/20261105_RTSchimeric.md
+    int iRank;                    // 0-based rank of the PSM within its search (0 = best by xcorr); with
+                                  // topN > 1 an iteration reports its winning search's top rows
 
     CometScores() :
         xCorr(0),
@@ -147,7 +149,8 @@ struct CometScores
         totalIons(0),
         sAScoreProSiteScores(""),
         iCharge(0),
-        iIteration(0)
+        iIteration(0),
+        iRank(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
@@ -161,7 +164,8 @@ struct CometScores
         totalIons(totalIons),
         sAScoreProSiteScores(sAScoreProSiteScores),
         iCharge(0),
-        iIteration(0)
+        iIteration(0),
+        iRank(0)
     { }
 
     // Copy and move are the compiler-generated memberwise ones (a hand-written copy

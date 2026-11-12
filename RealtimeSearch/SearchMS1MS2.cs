@@ -61,11 +61,19 @@ namespace RealTimeSearch
 
       static void Main(string[] args)
       {
-         // "chimeric" as the first argument selects the chimeric-spectrum harness over an .ms2
-         // file (SearchChimeric.cs, docs/20261105_RTSchimeric.md section 6).
-         if (args.Length >= 1 && args[0] == "chimeric")
+         // "chimericms2" as the first argument selects the chimeric-spectrum harness over an .ms2
+         // file (SearchChimericMS2.cs, docs/20261105_RTSchimeric.md section 6).
+         if (args.Length >= 1 && args[0] == "chimericms2")
          {
-            SearchChimeric.Run(args);
+            SearchChimericMS2.Run(args);
+            return;
+         }
+
+         // "chimericraw" is the same chimeric search over Thermo RAW files: every MS/MS scan at its
+         // precursor m/z over a charge range, the instrument's charge ignored (SearchChimericRaw.cs).
+         if (args.Length >= 1 && args[0] == "chimericraw")
+         {
+            SearchChimericRaw.Run(args);
             return;
          }
 
@@ -81,7 +89,9 @@ namespace RealTimeSearch
             Console.WriteLine(" RTS MS1/MS2\n");
             Console.WriteLine("    USAGE:  {0} [query.raw] [MS1reference.raw] [database.idx] [num_threads] [ascorepro] [index_search_type]\n",
                System.AppDomain.CurrentDomain.FriendlyName);
-            Console.WriteLine("            {0} chimeric <spectra.ms2> <database.idx> [options]   (chimeric-spectrum search; run it for the options)\n",
+            Console.WriteLine("            {0} chimericms2 <spectra.ms2> <database.idx> [options]   (chimeric-spectrum search; run it for the options)\n",
+               System.AppDomain.CurrentDomain.FriendlyName);
+            Console.WriteLine("            {0} chimericraw <database.idx> <file1.raw> [file2.raw ...] [options]   (chimeric search over RAW files)\n",
                System.AppDomain.CurrentDomain.FriendlyName);
             Console.WriteLine("    ascorepro: 0=off, 1=localize all variable mods (default)\n");
             Console.WriteLine("    index_search_type: index type to auto-build when database.idx does not exist yet:");
@@ -640,7 +650,7 @@ namespace RealTimeSearch
          return;
       }
 
-      // internal: SearchChimeric.cs reuses this parameter block.
+      // internal: SearchChimericMS2.cs reuses this parameter block.
       internal class SearchSettings
       {
          public bool ConfigureInputSettings(CometSearchManagerWrapper SearchMgr,

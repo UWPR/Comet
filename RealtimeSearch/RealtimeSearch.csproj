@@ -75,7 +75,8 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SearchChimeric.cs" />
+    <Compile Include="SearchChimericMS2.cs" />
+    <Compile Include="SearchChimericRaw.cs" />
     <Compile Include="SearchMS1MS2.cs" />
     <Compile Include="WrapperCheck.cs" />
   </ItemGroup>

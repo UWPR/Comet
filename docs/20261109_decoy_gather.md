@@ -88,7 +88,7 @@ sets per fragment-charge limit; the histogram uses the gather's scores), and
   verify and verify-selftest, for `rts_repro` (plain search, both chimeric forms; high resolution, low
   resolution, a/b/y ions at `max_fragment_charge` 4) and batch `comet.exe` on the FASTA, an FI_DB index
   and a PI_DB index. At low resolution auto takes the gather for most sets. A Windows `Comet.exe` runs
-  the batch parts and the RTS path through `RealtimeSearch.exe chimeric`, with the same counts and
+  the batch parts and the RTS path through `RealtimeSearch.exe chimericms2`, with the same counts and
   choices as Linux. T88 covers same-process re-initialization (section 5). Per-test detail:
   `tests/tests.md`.
 

@@ -66,11 +66,15 @@ public:
       //                             (IsCancelSearch()) or an index search failed; the rows are
       //                             the complete iterations before that and are valid;
       //   false, bIncomplete false: invalid arguments; no rows.
-      // Rows are appended to the four output vectors, one complete row per kept iteration.
+      // Rows are appended to the four output vectors: per kept iteration the winning candidate's
+      // rows 0..iTopN-1 (iTopN >= 1; CometScores::iRank says which; a row past rank 0 may be the
+      // empty placeholder the plain search returns). With one candidate, iMaxPeptidesPerSpectrum 1
+      // and dMaxExpect +inf this is DoSingleSpectrumSearchMultiResults(iTopN) (test T89).
       virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
                                                   const double dPrecursorToleranceMZ,
                                                   const double dMaxExpect,
                                                   const int iMaxPeptidesPerSpectrum,
+                                                  const int iTopN,
                                                   double* dMass,
                                                   double* dInten,
                                                   const int iNumPeaks,
@@ -86,6 +90,7 @@ public:
                                                   const double dPrecursorToleranceMZ,
                                                   const double dMaxExpect,
                                                   const int iMaxPeptidesPerSpectrum,
+                                                  const int iTopN,
                                                   double* dMass,
                                                   double* dInten,
                                                   const int iNumPeaks,
