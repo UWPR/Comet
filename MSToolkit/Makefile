@@ -127,7 +127,14 @@ ZLIB_SRC := $(BUILD_EXT)/$(ZLIB_VER)
 ZLIB_SRCB := $(wildcard $(ZLIB_SRC)/*.c)
 ZLIB_DST := $(BUILD_DIR)/libz.a
 ZLIB_DSO := $(patsubst ${ZLIB_SRC}/%.c, ${ZLIB_SRC}/%.lo, $(ZLIB_SRCB))
-ZLIB_PATCH := $(BUILD_EXT)/zlib-1.2.11-apple-fdopen.patch
+
+# zlib 1.2.11's zutil.h defines fdopen(fd,mode) as NULL on Apple platforms, which collides with the
+# macOS SDK's own fdopen prototype and stops the build. Defining fdopen as itself makes zutil.h's
+# "#ifndef fdopen" skip that definition. This replaces patching zutil.h (a CRLF patch file did not apply
+# with macOS's BSD patch): it needs no extra tool and leaves the extracted source untouched.
+ifeq ($(UNAME_S),Darwin)
+ZLIB_ENV := CFLAGS="-O3 -Dfdopen=fdopen"
+endif
 
 .PHONY : zlib zlib-clean zlib-realclean
 
@@ -136,11 +143,8 @@ zlib : $(ZLIB_DST)
 $(ZLIB_SRC)/ :
 	cd $(BUILD_EXT); unzip -o -qq zlib1211.zip
 
-$(ZLIB_DST) : $(ZLIB_PATCH) | $(BUILD_DIR)/ $(ZLIB_SRC)/
-	if ! grep -Fq '#      if !defined(fdopen) && !defined(__APPLE__)' $(ZLIB_SRC)/zutil.h; then \
-		patch -d $(BUILD_EXT) -p1 < $(ZLIB_PATCH); \
-	fi
-	cd $(ZLIB_SRC); ./configure --prefix=$(ABS_DIR)/obj --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
+$(ZLIB_DST) : | $(BUILD_DIR)/ $(ZLIB_SRC)/
+	cd $(ZLIB_SRC); $(ZLIB_ENV) ./configure --prefix=$(ABS_DIR)/obj --includedir $(ABS_DIR)/include --libdir $(ABS_DIR)/obj
 	make -C $(ZLIB_SRC) install
 
 zlib-clean :
