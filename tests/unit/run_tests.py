@@ -6525,14 +6525,17 @@ assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
     "T67 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
 
 
-def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=()):
+def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), fi_index=False):
     """Shared body of the T67 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
     against t67_mango.fasta with mango_search = 1 and check both the .txt rows and the
     .pep.xml spectrum_query elements (spectrum string, charge, scans, precursor mass).
 
     `expected` maps each label that must be reported to (charge, exp_neutral_mass,
     plain_peptide); `expected_order` is the order the rows must appear in (scan, charge, then
-    label); `warnings` are substrings that must appear in Comet's output.
+    label); `warnings` are substrings that must appear in Comet's output. With `fi_index`
+    the FASTA is first built into a plain peptide index (-i) and the search runs against that
+    .idx with fragindex_skipreadprecursors = 0, so ReadPrecursors() prunes the in-memory
+    fragment index to the precursors it reads from the .ms2.
     """
     failures = []
 
@@ -6544,12 +6547,32 @@ def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=()):
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
+    idx = fasta.with_suffix(".fasta.idx")
+
     txt.unlink(missing_ok=True)
     pepxml.unlink(missing_ok=True)
     params = T67_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
         mod1="0.0 X 0 3 -1 0 0 0.0")
     params = _set_param_line(params, "output_pepxmlfile", "1")   # the Mango pipeline reads pepXML
+
+    if fi_index:
+        idx.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as bf:
+            bf.write(params)
+            build_params_file = Path(bf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, ["-i", f"-P{fmt(build_params_file)}"])
+        finally:
+            build_params_file.unlink(missing_ok=True)
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+        params = params.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}")
+        assert f"database_name = {fmt(idx)}" in params
+        params = _set_param_line(params, "fragindex_skipreadprecursors", "0")
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
@@ -6665,6 +6688,8 @@ def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=()):
         params_file.unlink(missing_ok=True)
         txt.unlink(missing_ok=True)
         pepxml.unlink(missing_ok=True)
+        if fi_index:
+            idx.unlink(missing_ok=True)
 
     return failures
 
@@ -6683,6 +6708,20 @@ def test_t67_mango(comet_exe):
                               "001_A": (1, 1262.640765, "LNPQSTVWYR"),
                               "001_B": (1, 1018.454195, "ACDEFGHIK")},
                     expected_order=["001_A", "001_B", "000_A"])
+
+
+@register("t67_mango_fi")
+def test_t67_mango_fi(comet_exe):
+    """T67e: Mango FI_DB search with fragindex_skipreadprecursors = 0. ReadPrecursors() builds
+    the precursor mask that prunes the in-memory fragment index, so a wrong precursor m/z
+    there silently drops the peptide. Z line 0 is 2+ ACDEFGHIK (S-line m/z 0.0, the first-Z-
+    line fallback) and Z line 1 is 2+ LNPQSTVWYR (extra-Z-line path; 2+ so the (z-1)-proton term matters); each peptide has only
+    that one route into the mask, with isotope_error = 0 so no C13 offset can rescue it."""
+    return _run_t67(comet_exe, "t67_mango_fi.ms2", "02404",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"],
+                    fi_index=True)
 
 
 @register("t67_mango_override")

@@ -121,6 +121,7 @@ not exist.
 | **T67b** (`t67_mango_skip`) | Mango input that cannot form a cross-linked pair is skipped with a warning and everything else is still searched: a pair containing a charge-0 `Z` line, an unpaired last `Z` line, and a scan with several m/z values on its `S` line (never produced for Mango). The remaining pair keeps its `001_A`/`001_B` labels. |
 | **T67c** (`t67_mango_override`) | `mango_search = 1` with `override_charge` 1, 2 or 3 (and `precursor_charge = 1 3`) is rejected at startup with a clear error and writes no output; `override_charge = 0` still runs. Each Mango Z line is a separate precursor, so the override would silently drop every Z line after the first. |
 | **T67d** (`t67_mango_warncap`) | Mango scan/pair warnings are capped at 10 per process: 25 generated scans each with an unpaired last `Z` line print exactly 10 warnings and one "further warnings suppressed" line, and every scan is still searched. |
+| **T67e** (`t67_mango_fi`) | Mango FI_DB search of a plain peptide index with `fragindex_skipreadprecursors = 0`, so `ReadPrecursors()` builds the precursor mask that prunes the in-memory fragment index. Each peptide has exactly one route into the mask (Z line 0 at 2+ with S-line m/z 0.0, and an extra 2+ Z line) with `isotope_error = 0`; reverting either `MhToMz` site in `ReadPrecursors()` drops a peptide and fails the test. |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 
