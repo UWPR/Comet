@@ -58,9 +58,8 @@ line and a Z line above `digest_mass_range`) for FI_DB and PI_DB with
 
 ## Real Mango data
 
-Two real Mango `.ms2` files (`020420_3702_TAC_iqPIR_F6_7_mango_2h_1` and `..._4h_1`: 1330
-and 2053 scans, 6418 and 10422 Z lines; S-line m/z 0.0, four Z lines per scan), searched
-against `FR_MouseMitoCarta2_08092016.fasta` with the production-style `comet.params`
+Two real Mango `.ms2` files (a 2 h and a 4 h acquisition of one fraction: 1330 and 2053 scans, 6418 and 10422 Z lines; S-line m/z 0.0, four Z lines per scan), searched
+against a small protein FASTA with the production-style `comet.params`
 (`mango_search = 1`, isotope_error 4, variable mods incl. K 197.03, pepXML output; 8
 threads). The binary built before this change (legacy) was compared with the one built after
 it (fused):
@@ -97,6 +96,17 @@ m/z values (none occur in these files); those are covered by T67b/T67g/T67h only
 
 There is no longer a way to run Mango through the legacy path to diff against, so the
 tests assert the expected rows directly.
+
+## Related Mango changes made alongside
+
+- Mango ignores the S-line m/z: every Z line, the first included, takes its precursor from its
+  own MH+ (`BuildMangoChargeStates()`, and `ReadPrecursors()` for the precursor mask). Real
+  Mango files always write 0.0 there; tests `t67_mango_smz` / `t67_mango_smz_fi` use a wrong
+  non-zero value to pin the behaviour.
+- All MH+ <-> m/z conversions go through the global `MhToMz()` / `MzToMh()` in
+  `core/Constants.h`. The neutral-mass forms ((M + z*PROTON)/z) and the neutral-loss forms
+  are intentionally not folded in: they round differently, so replacing them would not be
+  bit-identical.
 
 ## Build note
 

@@ -5,6 +5,22 @@ precursors from a Mango-generated `.ms2` file become separate searches, how the 
 are labeled on output, and what the code does *not* do today. Written before any Mango
 extension work on the `Mango` branch so the starting point is on record.
 
+## Status update (2026-11-18)
+
+Sections 1-9 are the review as written on 2026-10-29 and describe the code *at that time*;
+they are kept as the record of the starting point. Since then:
+
+| Section | What it describes | Now |
+|---|---|---|
+| 3b, 3c | Three copies of the precursor expansion; `Query::dMangoIndex` | `dMangoIndex`/`compareByMangoIndex()` are gone. Mango scans are built by one helper, `BuildMangoChargeStates()` (`CometPreprocess.cpp`), used by `PreprocessSpectrum()` and `FusedSearchSpectrum()`; every Z line, the first included, takes its precursor from its own MH+ (the S-line m/z is ignored). `ReadPrecursors()` builds its mask the same way. |
+| 4a | Labels assigned after a sort, from the surviving-query position | Labels are set when each `Query` is created, from the Z-line ordinal (`SetMangoLabel()`); `compareByScanNumber` breaks ties on the label so output order is reproducible. |
+| 5 | Mango forced onto the legacy three-sweep path | Mango uses the fused FI_DB/PI_DB path; see `docs/20261118_mango_fused_path.md`. FASTA_DB (no fused path) is unchanged. |
+| 6 | What Comet does not do | Pairs with a charge-0 Z line, an unpaired last Z line and scans with several S-line m/z values are skipped with a warning (capped at 10 per run); `override_charge > 0` with `mango_search = 1` is rejected at startup. |
+| 8 | Files to touch | See the current locations above. |
+
+MH+ <-> m/z conversions throughout Comet now go through the global `MhToMz()` / `MzToMh()` in
+`core/Constants.h`.
+
 ## 1. Purpose of the option
 
 A cleavable cross-linker joins two peptides. After cleavage both peptides are released into
@@ -180,13 +196,13 @@ Cost: Mango runs lose the fused path's speed and the FI batch optimization descr
 - `CometSearch/CometWriteTxt.cpp`, `CometSearch/CometWritePepXML.cpp` -- output.
 - `CometSearch/search/FiStrategy.cpp:165`, `PiStrategy.cpp:84` -- path gating.
 
-## 9. Measured impact on the TAC/SHAM iqPIR search (2026-10-29)
+## 9. Measured impact on a production Mango search (2026-10-29)
 
 Checked the caveats in section 4a against the real run in
-`/data/users/engj/20261016-idxtest/index/` (135 Mango `.ms2` inputs, each with a Comet
+`<production run directory>` (135 Mango `.ms2` inputs, each with a Comet
 `.pep.xml.gz`, `comet.params` with `mango_search = 1`, `digest_mass_range = 600.0 5000.0`,
 `min/max_precursor_charge = 1/6`, `override_charge = 0`). Script:
-`docs/20261029_mango_shift_check.py`; per-file table: `docs/20261029_mango_shift_perfile.tsv`.
+`docs/20261029_mango_shift_check.py`; per-file table: `docs/20261029_mango_shift_perfile.tsv` (file names anonymized to `fileNNN`; the numbers are unchanged).
 
 Method: parse every `S`/`Z` line, apply Comet's precursor filter to each `Z` line, relabel
 the survivors the way `SearchUtils.cpp:229` does, and compare the predicted multiset of
@@ -213,7 +229,7 @@ Notes:
 - Every dropped `Z` line is the B (second, heavier) member of its pair, exceeding 5000 Da.
   The remaining 471 scans with drops but no shift lost only their final `Z` line, leaving an
   orphan A with no shift of earlier labels.
-- The worst file (`092120_3707_TAC_iqPIR_F11_14_mango_4h_2`) has 505 shifted scans and
+- The worst file (`file095`) has 505 shifted scans and
   6,913 mislabeled pairs; the F11_14 fractions dominate because their scans carry the most
   `Z` lines.
 - Relative to the whole run this is 0.5% of pairs, but within an affected scan every pair
@@ -242,7 +258,7 @@ only when its charge is 2 or more. In this run:
 | 3+ | 2,899 |
 | 4+ | 11 |
 
-Example from `020420_3702_TAC_iqPIR_F6_7_mango_2h_1`, scan 6305: input `Z 2 853.388576`;
+Example from `file003`, scan 6305: input `Z 2 853.388576`;
 pepXML reports `precursor_neutral_mass="851.374"` (should be 852.381).
 
 With `isotope_error = 4` (offsets -1..3) and 20 ppm tolerance the 2+ cases are mostly
@@ -265,28 +281,32 @@ the same way the later `Z` lines already did:
 dMZ = (spec.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;
 ```
 
+(Later: that expression is now the global `MhToMz(mh, z)`, and for Mango the S-line m/z is no
+longer consulted at all -- every Z line, the first included, uses its own MH+.)
+
 **A/B label shift** -- `szMango` is now written when the `Query` is created in
 `PreprocessSpectrum()` / `FusedSearchSpectrum()`, from the `Z`-line ordinal
-(`distance(vChargeStates.begin(), iter)`), i.e. `ordinal/2` and `A`/`B` by parity. A `Z` line
+(`distance(vChargeStates.begin(), iter)` at the time; now the ordinal stored alongside each
+entry by `BuildMangoChargeStates()`), i.e. `ordinal/2` and `A`/`B` by parity. A `Z` line
 rejected by the mass/charge filter never creates a `Query`, so it can no longer shift the
 labels of the precursors after it. The old post-hoc relabeling block in
 `SearchUtils.cpp:RunSearchAndPostAnalysis()` (sort by `dMangoIndex`, walk per scan, count
 survivors) is removed, and with it `Query::dMangoIndex` and `compareByMangoIndex()`, whose only
 purpose was that sort. `szMango` is zero-initialised in the `Query` constructor.
 
-Not changed: Mango still forces the legacy (non-fused) batch path in `FiStrategy` /
-`PiStrategy`; the gate is unrelated to labeling and was left for a separate decision. The
-`.txt` writer still emits the Mango column without a header entry.
+At the time of this fix Mango still forced the legacy (non-fused) batch path in `FiStrategy` /
+`PiStrategy`; that gate was removed later (`docs/20261118_mango_fused_path.md`). The `.txt`
+writer still emits the Mango column without a header entry.
 
 ### 10a. Verification
 
 - `t67_mango` passes on the fixed build (both peptides found, labels `000_A`, `001_A`, `001_B`
   with the rejected 6000 Da `Z` line leaving no `000_B` and shifting nothing).
-- Re-searched `092120_3752_TAC_iqPIR_F6_7_mango_4h_1_low.ms2` (3,250 scans, 20,492 `Z` lines,
+- Re-searched `file128.ms2` (3,250 scans, 20,492 `Z` lines,
   23 rejected, 579 first-`Z`-line queries at 2+ or higher) with the fixed build and the run's
   `comet.params`: all 20,469 `spectrum_query` elements carry exactly the label derived from
   their `Z`-line ordinal and the correct MH+-derived neutral mass; zero mismatches.
 
-The 135-file production run in `/data/users/engj/20261016-idxtest/index/` was searched with
+The 135-file production run in `<production run directory>` was searched with
 the old code and still has the section 9 labels and masses; it needs to be re-searched to pick
 up the fixes.

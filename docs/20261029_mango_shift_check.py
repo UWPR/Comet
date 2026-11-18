@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Count Mango A/B label shifts caused by Z lines dropped by Comet's precursor filters.
 
+HISTORICAL (2026-10-29): this script models the PRE-FIX Comet -- survivor-index labels and the
+first Z line converted as mh/z. Run against pepXML produced by a build with the Mango fixes
+(label from the Z-line ordinal, first Z line from its own MH+; see
+docs/20261029_mango_review.md section 10 and docs/20261118_mango_fused_path.md) it reports
+model mismatches by design. It was used to size the damage in the old 135-file production run
+(docs/20261029_mango_shift_perfile.tsv; file names anonymized there).
+
 For each <base>.ms2 / <base>.pep.xml.gz pair:
   - parse S/Z lines; each Z line (z, MH+) is one precursor ordinal k in file order
   - a Z line is "dropped" if MH+ outside [MASS_LO, MASS_HI] or z outside [Z_MIN, Z_MAX]

@@ -125,6 +125,8 @@ not exist.
 | **T67f** (`t67_mango_pi`) | The T67e fixture searched against a PI_DB (peptide index, `-j`): Mango on the fused batch path for PI_DB. |
 | **T67g** (`t67_mango_skip_fi`) | The T67b skipping cases (charge-0 pair, unpaired Z line, multi-m/z scan, and their warnings) on the fused FI_DB path. |
 | **T67h** (`t67_mango_threads`) | Mango on the fused path with `num_threads = 8`: 3000 generated scans of four shapes, FI_DB (T67i `t67_mango_threads_pi` runs the same on a PI_DB index, T67j `t67_mango_threads_fasta` on FASTA_DB, the historical legacy path, with the same expected rows); every `.txt` row (scan, A/B label, charge, mass, peptide) and the global row order (scan, charge, label) are checked against the expected list, and the pepXML `spectrum_query` sequence too. For the index databases a second run with `COMET_PRELOAD_BENCHMARK=1` (honoured only by the fused path) must print `[SEARCH]`, so re-adding a `!bMango` gate fails. See `docs/20261118_mango_fused_path.md`. |
+| **T67k** (`t67_mango_smz`) | A Mango scan whose `S` line carries a non-zero, deliberately wrong m/z: the S-line m/z is ignored and every `Z` line, the first included, takes its precursor from its own MH+, so the rows equal the S-line-m/z-0.0 case. FASTA_DB. |
+| **T67l** (`t67_mango_smz_fi`) | T67k on an FI_DB index with `fragindex_skipreadprecursors = 0`, so `ReadPrecursors()` builds its precursor mask the same way. |
 
 #### Notes on T17/T18, T21 and the big-data tests (T23, T24, T24b, T44)
 

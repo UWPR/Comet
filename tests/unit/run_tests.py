@@ -6525,6 +6525,31 @@ assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
     "T67 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
 
 
+def _t67_txt_layout(header, rows, stem):
+    """Work out the .txt column layout for a Mango run. Returns (col, spec_col, error).
+    `col` maps header names to row positions; `spec_col` is the position of the Mango spectrum
+    string (<base>_<label>.<scan>.<scan>.<z>). The writer currently gives that column no
+    header entry (rows have one field more than the header and every column after `scan`
+    sits one to the right); if the writer starts labelling it, columns map by name and the
+    spectrum string is found by its content. Either layout is accepted."""
+    need = ("charge", "exp_neutral_mass", "plain_peptide")
+    if any(n not in header for n in need):
+        return None, None, f".txt header lacks one of {need}: {header[:6]}..."
+    if not rows:
+        return {}, 1, None
+    width = len(rows[0])
+    if any(len(r) != width for r in rows):
+        return None, None, ".txt data rows have differing field counts"
+    if width == len(header) + 1:
+        return {name: (i if i == 0 else i + 1) for i, name in enumerate(header)}, 1, None
+    if width == len(header):
+        spec = next((i for i, v in enumerate(rows[0]) if v.startswith(stem + "_")), None)
+        if spec is None:
+            return None, None, f"no Mango spectrum-string column found in the first row: {rows[0][:4]}"
+        return {name: i for i, name in enumerate(header)}, spec, None
+    return None, None, f".txt rows have {width} fields but the header has {len(header)}"
+
+
 def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), index_flag=None):
     """Shared body of the T67 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
     against t67_mango.fasta with mango_search = 1 and check both the .txt rows and the
@@ -6593,30 +6618,21 @@ def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), i
         lines = txt.read_text().splitlines()
         rows  = [l.split("\t") for l in lines[2:] if l.strip()]
 
-        # With mango_search = 1 the .txt writer inserts the Mango spectrum string as an
-        # unlabeled column right after `scan` (CometWriteTxt.cpp), so every data row has one
-        # more field than the header and every column after `scan` sits one position to the
-        # right of its header entry. Look columns up by header name and verify that layout
-        # instead of hard-coding offsets, so a change to the writer fails here loudly.
         header = lines[1].split("\t")
-        if header[:2] != ["scan", "num"]:
-            failures.append(f"unexpected .txt header start {header[:2]!r}; expected ['scan', 'num', ...]")
+        col, spec_col, err = _t67_txt_layout(header, rows, ms2.stem)
+        if err:
+            failures.append(err)
             return failures
-        col = {name: (i if i == 0 else i + 1) for i, name in enumerate(header)}
-        for row in rows:
-            if len(row) != len(header) + 1:
-                failures.append(f"data row has {len(row)} fields, expected {len(header) + 1} "
-                                f"(header + the Mango column): {row[:4]!r}")
-                return failures
 
         for w in warnings:
             check(w in out, f"Comet output warns: {w!r}", failures)
 
         seen = {}
         for row in rows:
-            spectrum = row[1]   # the Mango column: <base>_<label>.<scan>.<scan>.<charge>
+            spectrum = row[spec_col]   # <base>_<label>.<scan>.<scan>.<charge>
             check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
-                  f"unexpected Mango spectrum string {spectrum!r}", failures)
+                  f"Mango spectrum string {spectrum!r} has the form {ms2.stem}_<label>.{scan}.{scan}.<z>",
+                  failures)
             label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
             seen[label] = (int(row[col["charge"]]),
                            float(row[col["exp_neutral_mass"]]),
@@ -6625,7 +6641,7 @@ def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), i
         # Rows are written in scan, charge, then label order. The label tie-break matters for
         # 001_A / 001_B (same scan, same charge): their order used to depend on the earlier
         # mass sort and, with threads, on completion order, so output was not reproducible.
-        txt_order = [r[1][len(ms2.stem) + 1:len(ms2.stem) + 6] for r in rows]
+        txt_order = [r[spec_col][len(ms2.stem) + 1:len(ms2.stem) + 6] for r in rows]
         check(txt_order == expected_order,
               f"row order: expected {expected_order}, got {txt_order}", failures)
 
@@ -6666,7 +6682,8 @@ def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), i
         for q in queries:
             spectrum = q.get("spectrum", "")
             check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
-                  f"pepXML: unexpected spectrum attribute {spectrum!r}", failures)
+                  f"pepXML: spectrum attribute {spectrum!r} has the form {ms2.stem}_<label>.{scan}.{scan}.<z>",
+                  failures)
             label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
             xml_seen[label] = q
         check(set(xml_seen) == set(expected),
@@ -6748,6 +6765,28 @@ def test_t67_mango_skip_fi(comet_exe):
                     warnings=("Z lines 0 and 1 include a charge of 0",
                               "Z line 4 has no partner",
                               "scan 2403: Mango scans must have one precursor"),
+                    index_flag="-i")
+
+
+@register("t67_mango_smz")
+def test_t67_mango_smz(comet_exe):
+    """T67k: a Mango scan whose S line carries a non-zero (here deliberately wrong) m/z: the
+    S-line m/z is ignored and every Z line, the first included, takes its precursor from its
+    own MH+, so the rows are the same as with an S-line m/z of 0.0. FASTA_DB."""
+    return _run_t67(comet_exe, "t67_mango_smz.ms2", "02405",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"])
+
+
+@register("t67_mango_smz_fi")
+def test_t67_mango_smz_fi(comet_exe):
+    """T67l: T67k on an FI_DB index with fragindex_skipreadprecursors = 0, so ReadPrecursors()
+    builds the precursor mask the same way (first Z line from its own MH+, not the S line)."""
+    return _run_t67(comet_exe, "t67_mango_smz.ms2", "02405",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"],
                     index_flag="-i")
 
 
@@ -6943,13 +6982,14 @@ def _run_t67_threads(comet_exe, index_flag):
 
         tl = txt.read_text().splitlines()
         header = tl[1].split("\t")
-        col = {name: (i if i == 0 else i + 1) for i, name in enumerate(header)}
+        trows = [l.split("\t") for l in tl[2:] if l.strip()]
+        col, spec_col, err = _t67_txt_layout(header, trows, ms2.stem)
+        if err:
+            failures.append(err)
+            return failures
         got = []
-        for l in tl[2:]:
-            if not l.strip():
-                continue
-            r = l.split("\t")
-            lab = r[1][len("t67_mango_threads_"):][:5]   # <base>_<label>.<scan>.<scan>.<z>
+        for r in trows:
+            lab = r[spec_col][len(ms2.stem) + 1:][:5]   # <base>_<label>.<scan>.<scan>.<z>
             got.append((int(r[0]), int(r[col["charge"]]), lab, r[col["plain_peptide"]],
                         float(r[col["exp_neutral_mass"]])))
         check(len(got) == len(expected), f".txt rows: expected {len(expected)}, got {len(got)}", failures)

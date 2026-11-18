@@ -685,6 +685,11 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
             if (dMZ == 0.0 && iSpectrumCharge != 0)
                dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
+            // Mango: the first Z line's precursor comes from its own MH+, not the S-line m/z
+            // (see BuildMangoChargeStates()), so the precursor mask agrees with the search.
+            if (g_staticParams.options.bMango && iSpectrumCharge > 0)
+               dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);
+
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
             // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
@@ -2548,10 +2553,10 @@ static void MangoWarning(const char *szFormat, ...)
 // Cross-linked peptides need both members, so a pair is searched only if both Z lines are
 // present and have a charge. Fills vChargeStates (charge, m/z) and vZOrdinal (the Z-line
 // ordinal behind each entry, used for the A/B label) for every usable pair and warns once
-// per skipped pair; the pairs that remain are still searched. dMZ0 is the first Z line's
-// m/z as worked out by the caller.
+// per skipped pair; the pairs that remain are still searched. Every Z line, the first
+// included, takes its precursor from its own MH+: the S-line m/z is not a precursor in Mango
+// input (the generator writes 0.0) and is ignored.
 static void BuildMangoChargeStates(Spectrum &spec,
-                                   double dMZ0,
                                    vector<pair<int,double>> &vChargeStates,
                                    vector<int> &vZOrdinal)
 {
@@ -2579,7 +2584,7 @@ static void BuildMangoChargeStates(Spectrum &spec,
 
       int iCharge = spec.atZ(k).z;
 
-      vChargeStates.push_back(make_pair(iCharge, (k == 0) ? dMZ0 : MhToMz(spec.atZ(k).mh, iCharge)));
+      vChargeStates.push_back(make_pair(iCharge, MhToMz(spec.atZ(k).mh, iCharge)));
       vZOrdinal.push_back(k);
    }
 }
@@ -2675,7 +2680,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       {
          // Mango Z lines are separate precursors in A/B pairs, not alternative charges;
          // override_charge > 0 is rejected at startup with mango_search = 1.
-         BuildMangoChargeStates(spec, dMZ, vChargeStates, vZOrdinal);
+         BuildMangoChargeStates(spec, vChargeStates, vZOrdinal);
       }
       else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
@@ -3576,7 +3581,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
       {
          // Mango Z lines are separate precursors in A/B pairs, not alternative charges;
          // override_charge > 0 is rejected at startup with mango_search = 1.
-         BuildMangoChargeStates(spec, dMZ, vChargeStates, vZOrdinal);
+         BuildMangoChargeStates(spec, vChargeStates, vZOrdinal);
       }
       else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
