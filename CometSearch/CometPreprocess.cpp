@@ -2508,6 +2508,17 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 }
 
 
+// Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
+// The ordinal is the precursor's Z-line ordinal, set when the Query is created so a Z line
+// rejected by the mass/charge filter cannot shift the labels of the precursors after it.
+static void SetMangoLabel(Query *pQuery, int iZLineOrdinal)
+{
+   snprintf(pQuery->_spectrumInfoInternal.szMango,
+            sizeof(pQuery->_spectrumInfoInternal.szMango),
+            "%03d_%c", iZLineOrdinal / 2, (iZLineOrdinal % 2) ? 'B' : 'A');
+}
+
+
 bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpRawData,
                                          double *pdTmpFastXcorrData,
@@ -2528,6 +2539,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    {
       double dMZ = 0.0;              // m/z to use for analysis
       vector<pair<int,double>> vChargeStates;   // charge, m/z
+      bool bChargeStatesAreZLines = false;      // true when vChargeStates[k] is Z line k (Mango A/B pair labels)
 
       if (spec.sizeMZ() == spec.sizeZ())
       {
@@ -2636,6 +2648,8 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             // add in any other charge states for the single precursor m/z
             if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
             {
+               bChargeStatesAreZLines = true;
+
                for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
                {
                   vChargeStates.push_back(make_pair(spec.atZ(ii).z, (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z ));
@@ -2683,11 +2697,11 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
             if (g_staticParams.options.bMango)
             {
-               // Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
-               // Label from the Z-line ordinal so a Z line rejected by the mass/charge filter above
-               // cannot shift the labels of the precursors that follow it in the same scan.
-               int iPrecursorIndex = (int)distance(vChargeStates.begin(), iter);
-               sprintf(pScoring->_spectrumInfoInternal.szMango, "%03d_%c", iPrecursorIndex / 2, (iPrecursorIndex % 2) ? 'B' : 'A');
+               // vChargeStates is per precursor (it restarts at 0 for each S line), so its position is a
+               // Z-line ordinal only when it was built from a single S line's Z lines; otherwise (one Z
+               // line per S line, or charges guessed/expanded from a range) every entry belongs to
+               // precursor i and the ordinal is i.
+               SetMangoLabel(pScoring, bChargeStatesAreZLines ? (int)distance(vChargeStates.begin(), iter) : i);
             }
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
@@ -3449,6 +3463,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
    {
       double dMZ = 0.0;
       vector<pair<int,double>> vChargeStates;
+      bool bChargeStatesAreZLines = false;      // true when vChargeStates[k] is Z line k (Mango A/B pair labels)
 
       if (spec.sizeMZ() == spec.sizeZ())
          iSpectrumCharge = spec.atZ(i).z;
@@ -3531,6 +3546,8 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
 
             if (spec.sizeMZ() == 1 && spec.sizeMZ() < spec.sizeZ())
             {
+               bChargeStatesAreZLines = true;
+
                for (int ii = 1; ii < spec.sizeZ(); ++ii)
                {
                   vChargeStates.push_back(make_pair(spec.atZ(ii).z,
@@ -3575,11 +3592,11 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
 
             if (g_staticParams.options.bMango)
             {
-               // Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
-               // Label from the Z-line ordinal so a Z line rejected by the mass/charge filter above
-               // cannot shift the labels of the precursors that follow it in the same scan.
-               int iPrecursorIndex = (int)distance(vChargeStates.begin(), iter);
-               sprintf(pScoring->_spectrumInfoInternal.szMango, "%03d_%c", iPrecursorIndex / 2, (iPrecursorIndex % 2) ? 'B' : 'A');
+               // vChargeStates is per precursor (it restarts at 0 for each S line), so its position is a
+               // Z-line ordinal only when it was built from a single S line's Z lines; otherwise (one Z
+               // line per S line, or charges guessed/expanded from a range) every entry belongs to
+               // precursor i and the ordinal is i.
+               SetMangoLabel(pScoring, bChargeStatesAreZLines ? (int)distance(vChargeStates.begin(), iter) : i);
             }
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;

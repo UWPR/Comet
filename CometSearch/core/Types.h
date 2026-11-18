@@ -1136,7 +1136,6 @@ struct Query
 
    int iMinXcorrHisto;    // min xcorr score for xcorr histogram to address good E-values for poor/sparse spectra
 
-
    unsigned long int  _uliNumMatchedPeptides;  // # of peptides that get scored
    unsigned long int  _uliNumMatchedDecoyPeptides;
 

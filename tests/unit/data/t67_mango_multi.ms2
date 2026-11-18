@@ -1,0 +1,46 @@
+H	CreationDate	synthetic
+H	Comment	Mango regression, several precursors in ONE scan: the S line carries four m/z values
+H	Comment	(multi-precursor .ms2 form) and there is one Z line per precursor, so the charge state
+H	Comment	list is built per precursor and restarts at 0 for each. Same four precursors as
+H	Comment	t67_mango.ms2; the labels must still follow precursor order, not restart at 000_A:
+H	Comment	  0: 2+ ACDEFGHIK -> 000_A;  1: 1+ MH+ 6000 (above digest_mass_range, rejected)
+H	Comment	  2: 1+ LNPQSTVWYR -> 001_A;  3: 1+ ACDEFGHIK -> 001_B
+S	2402	2402	510.234374	6000.000000	1263.648041	1019.461471
+Z	2	1019.461471
+Z	1	6000.000000
+Z	1	1263.648041
+Z	1	1019.461471
+72.0444	100.0
+114.0913	100.0
+147.1128	100.0
+175.0536	100.0
+175.1190	100.0
+228.1343	100.0
+260.1969	100.0
+290.0805	100.0
+325.1870	100.0
+338.1823	100.0
+397.2558	100.0
+419.1231	100.0
+453.2456	100.0
+454.2772	100.0
+524.2616	100.0
+540.2776	100.0
+566.1915	100.0
+601.3456	100.0
+623.2130	100.0
+623.3300	100.0
+641.3253	100.0
+724.3777	100.0
+730.3882	100.0
+740.3937	100.0
+760.2719	100.0
+811.4097	100.0
+845.4152	100.0
+873.3559	100.0
+926.4730	100.0
+939.4683	100.0
+948.4244	100.0
+1036.5211	100.0
+1089.5364	100.0
+1150.5640	100.0

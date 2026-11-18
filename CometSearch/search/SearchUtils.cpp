@@ -226,9 +226,6 @@ bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
                               ThreadPool* tp, SearchSession& session,
                               bool bLogPrePostAnalysis)
 {
-   // Mango A/B pair labels (szMango) are assigned per precursor in CometPreprocess when the
-   // Query is created, from the Z-line ordinal; nothing here depends on file order.
-
    std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
 
    // Only matters for FASTA_DB: g_massRange.dMinMass/dMaxMass are read for candidate

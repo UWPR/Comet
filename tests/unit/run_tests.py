@@ -6519,19 +6519,25 @@ assert "search_enzyme_number = 1" in T67_PARAMS_TEMPLATE, \
 assert "peptide_length_range = 9 10" in T67_PARAMS_TEMPLATE, \
     "T67_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
 assert "mango_search = 1" in T67_PARAMS_TEMPLATE, \
-    "T67_PARAMS_TEMPLATE: override_charge replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+    "T67_PARAMS_TEMPLATE: mango_search replacement didn't fire (the 'override_charge = 0' anchor is gone -- T19_PARAMS_TEMPLATE changed?)"
 assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
     "T67 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
 
 
-@register("t67_mango")
-def test_t67_mango(comet_exe):
-    """T67: Mango regression -- first Z line at 2+ gets the right precursor mass, and
-    a Z line rejected by digest_mass_range does not shift the A/B labels after it."""
+def _run_t67(comet_exe, ms2_name, scan):
+    """Shared body of the T67 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
+    against t67_mango.fasta with mango_search = 1 and check the .txt rows.
+
+    Every fixture carries the same four precursors, in this order:
+      0: 2+ MH+ of ACDEFGHIK   -> 000_A (first Z line at 2+ exercises the mass fix)
+      1: 1+ MH+ 6000, above digest_mass_range -> rejected, no row, must not shift labels
+      2: 1+ MH+ of LNPQSTVWYR  -> 001_A
+      3: 1+ MH+ of ACDEFGHIK   -> 001_B
+    """
     failures = []
 
     fasta = DATA_DIR / "t67_mango.fasta"
-    ms2   = DATA_DIR / "t67_mango.ms2"
+    ms2   = DATA_DIR / ms2_name
     txt   = ms2.with_suffix(".txt")
 
     use_win = _binary_uses_win_paths(comet_exe)
@@ -6558,14 +6564,23 @@ def test_t67_mango(comet_exe):
 
         lines = txt.read_text().splitlines()
         rows  = [l.split("\t") for l in lines[2:] if l.strip()]
-        # With mango_search = 1 the .txt writer inserts the Mango spectrum string as an
-        # unlabeled second column (CometWriteTxt.cpp), so every named column sits one
-        # position to the right of its header entry.
-        header = lines[1].split("\t")
-        col = {name: i + 1 for i, name in enumerate(header)}
 
-        # (label, charge, exp_neutral_mass, plain_peptide) expected for each surviving query.
-        # Z line 1 (MH+ 6000) is rejected and so has no row at all.
+        # With mango_search = 1 the .txt writer inserts the Mango spectrum string as an
+        # unlabeled column right after `scan` (CometWriteTxt.cpp), so every data row has one
+        # more field than the header and every column after `scan` sits one position to the
+        # right of its header entry. Look columns up by header name and verify that layout
+        # instead of hard-coding offsets, so a change to the writer fails here loudly.
+        header = lines[1].split("\t")
+        if header[:2] != ["scan", "num"]:
+            failures.append(f"unexpected .txt header start {header[:2]!r}; expected ['scan', 'num', ...]")
+            return failures
+        col = {name: (i if i == 0 else i + 1) for i, name in enumerate(header)}
+        for row in rows:
+            if len(row) != len(header) + 1:
+                failures.append(f"data row has {len(row)} fields, expected {len(header) + 1} "
+                                f"(header + the Mango column): {row[:4]!r}")
+                return failures
+
         expected = {
             "000_A": (2, 1018.454195, "ACDEFGHIK"),
             "001_A": (1, 1262.640765, "LNPQSTVWYR"),
@@ -6573,14 +6588,17 @@ def test_t67_mango(comet_exe):
         }
         seen = {}
         for row in rows:
-            spectrum = row[1]
-            check(spectrum.startswith("t67_mango_") and ".02401.02401." in spectrum,
+            spectrum = row[1]   # the Mango column: <base>_<label>.<scan>.<scan>.<charge>
+            check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
                   f"unexpected Mango spectrum string {spectrum!r}", failures)
-            label = spectrum[len("t67_mango_"):len("t67_mango_") + 5]
+            label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
             seen[label] = (int(row[col["charge"]]),
                            float(row[col["exp_neutral_mass"]]),
                            row[col["plain_peptide"]])
 
+        # A repeated label collapses in `seen`, so count rows too.
+        check(len(rows) == len(expected),
+              f"expected {len(expected)} rows (one per surviving precursor), got {len(rows)}", failures)
         check(set(seen) == set(expected),
               f"Mango labels: expected {sorted(expected)}, got {sorted(seen)}", failures)
         for label, (z, mass, pep) in expected.items():
@@ -6596,6 +6614,22 @@ def test_t67_mango(comet_exe):
         txt.unlink(missing_ok=True)
 
     return failures
+
+
+@register("t67_mango")
+def test_t67_mango(comet_exe):
+    """T67: Mango regression -- first Z line at 2+ gets the right precursor mass, and
+    a Z line rejected by digest_mass_range does not shift the A/B labels after it.
+    One S line (m/z 0.0), four Z lines."""
+    return _run_t67(comet_exe, "t67_mango.ms2", "02401")
+
+
+@register("t67_mango_multi")
+def test_t67_mango_multi(comet_exe):
+    """T67b: same four precursors as T67 but as four S-line m/z values with one Z line each
+    (the multi-precursor .ms2 form). The per-precursor charge-state list restarts at 0 for
+    each, so labels must come from the precursor index, not that list's position."""
+    return _run_t67(comet_exe, "t67_mango_multi.ms2", "02402")
 
 
 if __name__ == "__main__":
