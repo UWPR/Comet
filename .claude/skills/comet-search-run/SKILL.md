@@ -99,7 +99,7 @@ Output also includes:
 - `minimum_xcorr` — score cutoff
 - `fragindex_min_ions_score` / `fragindex_min_ions_report` (3 / 3) — fragment-ion-index candidate and reporting floors (index hits among the top `fragindex_num_spectrumpeaks` peaks); don't lower them to "rescue" weak hits, the 2-hit winners are junk
 - `fragindex_histogram_fill` (100; 0 = off) — FI searches also score their best-supported sub-floor candidates into the E-value histogram so FI E-values match PI/FASTA E-values; changes E-values of weak hits only, never xcorr, ranking, reported PSMs or `num_matched_peptides`: fill candidates are histogram-only. A `fragindex_min_ions_report` below `fragindex_min_ions_score` has no effect and prints a warning (`docs/20261106_FI_evalue_histogram_fill.md`)
-- `isotope_error` — on the HeLa benchmark file `2` gave +42% confident PSMs over `0` in the RTS example harness (`docs/20261105_RTSchimeric.md` 10.4)
+- `isotope_error` — the RTS example harness and `rts_repro` run `2`: an Orbitrap often isolates a precursor on its M+1 / M+2 peak, so `0` (reported m/z taken as the monoisotopic peak) is not a setting to measure against
 
 ## g_pvProteinNameCache (indexed DB)
 

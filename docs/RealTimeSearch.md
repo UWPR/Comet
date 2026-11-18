@@ -125,9 +125,8 @@ clamped to 0..3 at init with a warning). The removal flank follows `theoretical_
 (a `chimeric_fragindex_min_ions_score` re-search floor existed until `fragindex_histogram_fill`
 -- `docs/20261106_FI_evalue_histogram_fill.md`, default 100 -- made FI E-values honest on
 every query and the floor a no-op). With calibrated E-values the harnesses default
-`dMaxExpect` to 0.1. Also measured in `docs/20261105_RTSchimeric.md`: the plain RTS
-search gains 42% confident PSMs on the HeLa benchmark file from `isotope_error = 2`, which
-`SearchMS1MS2.cs` has set since 2026-11-06.
+`dMaxExpect` to 0.1. `SearchMS1MS2.cs` sets `isotope_error = 2` (since 2026-11-06): an
+Orbitrap often isolates a precursor on its M+1 / M+2 peak.
 `RTS_CHIMERIC_DEBUG=1` in the environment traces every iteration on stderr.
 
 C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes

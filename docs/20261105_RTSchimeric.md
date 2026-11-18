@@ -321,20 +321,20 @@ The defaults are the wrapper's validated ones; section 7.3 confirms them on RTS 
 
 As designed, this followed the wrapper's F10 observation (section 2, "Prior art") that
 second peptides vanish because they fall below `fragindex_min_ions_score` after removal,
-and it had two params (`_score` and `_report`). The measurements (sections 10.2, 10.4,
-10.7) showed the vanishing does not reproduce here and that the benefit is a different
-mechanism entirely, so the design is now:
+and it had two params (`_score` and `_report`). The measurements (section 10.4 and
+`docs/20261106_FI_evalue_histogram_fill.md`) showed the vanishing does not reproduce here and
+that the benefit is a different mechanism entirely, so the design is now:
 
 - For a while one param remained, `chimeric_fragindex_min_ions_score` (re-search passes
   only, carried on the `Query`), whose real effect was to let 2-ion candidates be *scored
   into the E-value histogram* without becoming reportable: on a stripped spectrum only a
   handful of real candidates clear 3 ions and the synthetic decoy padding's tail is steeper
-  than the real one, so weak re-search winners got optimistic E-values (10.7).
+  than the real one, so weak re-search winners got optimistic E-values.
 - That is a property of every fragment-index query, not of chimeric passes, and
   `fragindex_histogram_fill` (`docs/20261106_FI_evalue_histogram_fill.md`, default 100) now
   fixes it for all of them; with it on, the chimeric floor was byte-for-byte a no-op and was
   removed. The reporting floor (`fragindex_min_ions_report`) is never lowered: the few PSMs
-  that a 2-ion report floor lets win are junk (10.7). `dMaxExpect` remains the guard on what
+  that a 2-ion report floor lets win are junk. `dMaxExpect` remains the guard on what
   is reported -- 0.1 by default in the harnesses now that the E-values are calibrated.
 
 ### 4.7 Threading
@@ -487,9 +487,9 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 1 | `SearchSingleSpectrumCore()` holds the moved body; `dToleranceMZ` threaded through `PreprocessSingleSpectrumThreadLocal()` -> `PreprocessSingleSpectrumCore()` -> `AdjustMassTol()` (override branch in place, default 0 = unchanged); `tStart` with the default-constructed sentinel keeping the old "after preprocessing" clock. Regression (7.2): a full-surface dump driver (top-5, every `CometScores` field, every matched fragment; a scratch copy of `tests/rts_repro/rts_repro.cpp`) over the 197-spectrum fixture is byte-identical before and after on FI and PI, each with AScorePro off and on (1220 / 1212 / 4244 / 4231 lines), as is the stock `rts_repro` output. `run_tests.py`: 85/85 unit, T22 RTS FI/PI (+ protein-terminal mod variants) 4/4. Windows: full solution (Release x64) builds clean, `CometWrapper.dll` included. |
 | 2026-11-06 | 2 | `PrecursorCandidate` (`CometData.h`); the four `chimeric_*` params (`core/Params.h`, `SetParam` only); `Query::iFragIndexMinIonsScoreOverride` / `ReportOverride` consulted at the three `CometSearch.cpp` sites; removal-bin collection in the core's Step 6 ion loop (`AddChimericRemovalBins()`: every theoretical ion, flanks per `theoretical_fragment_ions`, observed-peak isotopes), `RemovePeaksInBins()`, both `DoSingleSpectrumSearchChimeric()` overloads, `RTS_CHIMERIC_DEBUG` trace. `rts_repro` gained chimeric modes 1 (charge range) and 2 (candidate list = blocks sharing a scan). Test T67 (`tests/unit/data/t67_make_chimeric.py` + `run_tests.py`): all five fixture scans behave as section 7.1 specifies on FI_DB and PI_DB in both forms, the threshold ends the loop, the trace shows all 18 of P1's peaks removed, 1 vs 4 threads byte-identical. One behaviour the fixture made explicit: in scan 2 the 3+ 14-mer wins iteration 0 on E-value (52 ions vs 18) although it has a third of the intensity -- the loop orders by evidence, not abundance. The pre-existing path stayed byte-identical (same full-surface dump as Phase 1). |
 | 2026-11-06 | 3 | `CometWrapper`: both `DoSingleSpectrumSearchChimeric()` overloads (the list form takes parallel `double[] m/z`, `int[] charge`, `double[] tolerance` arrays -- no managed candidate type, nothing allocated per candidate) with the output conversion factored into one helper shared with `DoSingleSpectrumSearchMultiResults()`. `RealtimeSearch/SearchChimericMS2.cs`: `RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [--zrange zmin zmax \| --zlines] [--tol mz] [--max-expect E] [--max-peptides N] [--threads T] [--ascorepro 0\|1] [--flank -1\|0\|1] [--isotopes N] [--min-ions-score N] [--max-runtime ms] [--out file]` (a `--min-ions-report` option existed until Phase 4b), selected by `chimeric` as the first argument of the existing executable; its own `.ms2` reader (every `Z` line kept), the MS1/MS2 harness's `ConfigureInputSettings()` block reused (`SearchSettings` made `internal`), the same `ConcurrentQueue` worker pattern; one tab-delimited row per reported peptide (scan, iteration, charge, precursor m/z, candidate count, calculated neutral mass, peptide, protein, xcorr, delta-Cn, E-value, ions, elapsed ms) and a run summary (spectra with 0/1/2/3+ peptides, rows at iteration >= 1, same-peptide repeats, errors). `t67_make_chimeric.py` also writes the scans as a multi-`Z`-line `.ms2`. Verified: on the T67 `.ms2` against a Windows-built FI index, both forms reproduce `rts_repro`'s rows exactly (peptides, charges, xcorr, E-values, ion counts); Windows solution builds clean. |
-| 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome: the wrapper's removal model confirmed (isotope removal is what matters); `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (+34% confident later IDs, decoy rate halved); the +/- 1 m/z window, not the charge range, is what finds chimeras (2,914 vs 445 confident later IDs); `isotope_error = 2` is worth +42% on the plain RTS search and is recommended for `SearchMS1MS2.cs` independently; cost 7.0 ms/spectrum/thread vs 0.63 for the plain search. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
-| 2026-11-06 | 4b | Review of the re-search floor (section 10.7): `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's real-candidate count (`RTS_CHIMERIC_CAND`); the E-value fit and raw histogram dump became `COMET_EVALUE_TRACE` in `CalculateEValue()` for every search path (the histogram-fill project's Phase 0); `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
-| 2026-11-06 | 6 | `chimeric_fragindex_min_ions_score` and `Query::iFragIndexMinIonsScoreOverride` removed: `fragindex_histogram_fill` (default 100, the histogram-fill project's Phase 3) makes FI E-values honest on every query and the chimeric floor a byte-for-byte no-op. Harness `dMaxExpect` defaults 0.05 -> 0.1; `rts_repro` and `SearchChimericMS2.cs` lose their min-ions arguments. At the new defaults (fill 100, no floor, gate 0.1) the full-file chimeric run reports 22,930 confident PSMs vs 22,453 for the best Phase 4 configuration. |
+| 2026-11-06 | 4 | Removal validation and cost on `20170103_HelaQC_01` (42,030 HCD scans) against a current-format human canonical target-decoy FI index with the phospho configuration (section 10). Outcome (numbers re-measured 2026-11-17 at the current defaults, section 10): the wrapper's removal model confirmed (isotope removal is what matters); the re-search floor `chimeric_fragindex_min_ions_score/_report` default changed 0 -> 2 (later superseded by `fragindex_histogram_fill`); the +/- 1 m/z window, not the charge range, is what finds chimeras; `isotope_error = 2` set in `SearchMS1MS2.cs`. Tooling: `tests/rts_repro/mzxml_to_fixture.py`, `rts_repro` arguments for the `chimeric_*` knobs and `isotope_error`, `RTS_CHIMERIC_DEBUG=2` bin-level trace, `docs/20261105_rtschimeric_validate.py`. |
+| 2026-11-06 | 4b | Review of the re-search floor: `chimeric_fragindex_min_ions_report` and `Query::iFragIndexMinIonsReportOverride` removed (the reporting floor is never lowered); `chimeric_fragindex_min_ions_score` kept at 2 and re-documented as an E-value histogram-population control with the measured mechanism; `RTS_CHIMERIC_DEBUG=2` now also prints each candidate search's real-candidate count (`RTS_CHIMERIC_CAND`); the E-value fit and raw histogram dump became `COMET_EVALUE_TRACE` in `CalculateEValue()` for every search path (the histogram-fill project's Phase 0); `rts_repro` gained a `globalMinIonsScore` argument. Open item recorded: a better `GenerateXcorrDecoys()` for sparse fragment-index queries. |
+| 2026-11-06 | 6 | `chimeric_fragindex_min_ions_score` and `Query::iFragIndexMinIonsScoreOverride` removed: `fragindex_histogram_fill` (default 100, the histogram-fill project's Phase 3) makes FI E-values honest on every query and the chimeric floor a byte-for-byte no-op. Harness `dMaxExpect` defaults 0.05 -> 0.1; `rts_repro` and `SearchChimericMS2.cs` lose their min-ions arguments. At the current defaults (fill 100, no floor, gate 0.1) the full-file chimeric run reports 23,545 confident PSMs (section 10.4). |
 | 2026-11-09 | cost | Per-stage cost breakdown on 5,000 HeLa scans (section 10.8): index search and preprocessing are nearly all of the time; preprocessing is dense-array work over mostly-zero bins. Of the review's eight speed items, only the batch fill skip was done; the losing-candidate tail, per-candidate re-sort and map rebuild, and a multi-window `isotope_error` fast path were measured and dropped. Sparse preprocessing designed separately (`docs/20261109_sparse_preprocessing.md`). |
 | 2026-11-09 | review | Lower-severity review items. The candidate mass gate is now the one `DoSingleSpectrumSearchMultiResults()` uses, only above `dPeptideMassHigh` (decision 8): a precursor just below the range whose window or isotope offset reaches an in-range peptide used to be skipped. Outside the chimeric loop: `DoSingleSpectrumSearchMultiResults()` returns false for `topN < 1`, `COMET_EVALUE_TRACE`'s `tope` follows the 999 reporting rules, `SearchChimericMS2.cs` reports bad input with exit code 1 instead of an unhandled exception, and the top-level Makefile relinks `comet.exe` after an MSToolkit-only change. Tests T83, T84. Cleanup: `topN` removed from both chimeric overloads (native and wrapper; it was accepted and ignored), the wrapper overloads share one search-and-convert helper, and the synthetic-spectrum helpers moved into `tests/unit/fixture_peptides.py`. |
 | 2026-11-08 | review | Calls that stop early keep their rows, flagged (review item 15). Both `DoSingleSpectrumSearchChimeric()` overloads, native and wrapper, gain a `bIncomplete` output. With the budget out, the call returns `true` with `bIncomplete` and the rows found so far. When cancelled or when a search fails (core -2), it returns `false` with `bIncomplete` and keeps the completed iterations' rows. Invalid arguments give `false` with no rows. A separate output, not a per-row flag, so a call that stops before keeping any PSM is still marked. The wrapper also keeps the rows on a caught native exception when the four vectors are aligned. `SearchChimericMS2.cs` and `rts_repro` write the rows and then an `INCOMPLETE budget|stopped` line; `RealtimeSearch.exe chimericms2 --max-runtime 1` showed it end to end. T82 is a cancel race through `rts_repro`'s `RTS_REPRO_CANCEL_RACE`: 600 calls, about 440 cancelled, over 100 of those returning rows. Every cancelled call kept a prefix of its uncancelled result, every completed call matched it exactly, and no call returned `false` without the flag. T72 checks the budget marker. |
@@ -504,7 +504,12 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 | 2026-11-06 | 5 | Documentation pass: `CLAUDE.md` threading model (chimeric MS2 RTS entry), `docs/DataStructures.md` (`CometScores::iCharge/iIteration`, `PrecursorCandidate`, `Query::iFragIndexMinIonsScoreOverride`), `docs/GlobalVariables.md` (the `chimeric_*` options), `tests/rts_repro/README.md` (chimeric arguments, `RTS_CHIMERIC_DEBUG`, `mzxml_to_fixture.py`), the `comet-codebase` / `comet-search-run` / `comet-benchmark` skills (call path, harness command, measured cost). `docs/RealTimeSearch.md` and `tests/tests.md` were updated in Phases 3-4b. Follow-on project planned separately: `docs/20261106_FI_evalue_histogram_fill.md`. |
 | 2026-11-06 | -- | Build-system side work prompted by Phase 1's baseline capture: root `-j` race (MSToolkit entered twice concurrently) fixed with an order-only `mstoolkit` target; automatic `-MMD -MP` header dependencies in all four Makefiles (previously only four objects wrote `.d` files and none were included); MSToolkit objects now wait for the expat/zlib header install. |
 
-## 10. Phase 4 results: removal validation and cost on real data (2026-11-06)
+## 10. Results on real data (2026-11-06; every number re-measured 2026-11-17 at the current defaults)
+
+Everything in this section was re-measured on 2026-11-17 on master `c990672c` at the current
+defaults; the 2026-11-06 Phase 4 runs were discarded.
+Two 8-thread runs of the chimeric defaults are identical after sorting (`rts_repro` writes rows
+in completion order), so a single run per configuration is reported.
 
 ### 10.1 Setup
 
@@ -514,207 +519,150 @@ passes `run_tests.py` before the next starts. No commits unless asked.
 - **Index**: `comet.exe -i` on `human.canonical.target-decoy.fasta` (40,908 entries, `DECOY_`
   prefix) with `data/comet_phospho.params` (trypsin, M oxidation and STY phospho up to 2 each,
   8-50 residues, 800-5000 MH+): 4.4 M unmodified / 79 M modified peptides, 2.2 B fragment-index
-  entries; 43 s and 862 MB to build; 22 s to load at 8 threads, 79 s at 1 (the per-session
-  fragment-index regeneration parallelises with `num_threads`).
+  entries; 862 MB; 87 s to load single-threaded, roughly half that at 8 threads (the
+  per-session fragment-index regeneration parallelises with `num_threads`).
 - **Searches**: `tests/rts_repro/rts_repro` with its RealtimeSearch-mirroring parameters
   (20 ppm, 0.02 Da bins with flanking peaks, `max_fragment_charge` 3, `minimum_peaks` 10, B/Y,
-  `isotope_error` 0 unless stated). Chimeric runs: charge-range form, charges 2-4, +/- 1.0 m/z,
-  `dMaxExpect` 0.05, up to 5 peptides, `max_index_runtime` 0. Removal / threshold settings are
-  the `chimeric_*` params. 8 worker threads unless stated.
+  `isotope_error` 2, `fragindex_histogram_fill` 100). Chimeric runs: charge-range form, charges
+  2-4, +/- 1.0 m/z, `dMaxExpect` 0.1, up to 5 peptides, `max_index_runtime` 0,
+  `chimeric_remove_isotopes` 2. 8 worker threads unless stated.
 - **FDR**: decoy = protein prefix `DECOY_`; q-values from E-value order (ties xcorr) within the
   set named -- iteration-0 rows, iteration >= 1 rows, or all rows -- with FDR = decoys / targets
   (`tools/qvalue.py`'s convention; `docs/20261105_rtschimeric_validate.py` is the script).
-- **Baseline** (`DoSingleSpectrumSearchMultiResults`, the file's charge, 20 ppm): 27,655 rank-1
-  PSMs (6,704 decoys), **12,808 targets at q <= 0.01**; at E <= 0.05: 13,174 PSMs, 1.2% decoy.
+- **Baseline** (`DoSingleSpectrumSearchMultiResults`, the file's charge, 20 ppm): 31,438 rank-1
+  PSMs (18.0% decoy), **18,513 targets at q <= 0.01**; at E <= 0.05: 17,503 PSMs, 0.3% decoy.
+  The same search on the peptide index (PI) gives 18,332 (`docs/20261106_FI_evalue_histogram_fill.md`).
 
-### 10.2 Removal model and re-search threshold (section 7.3)
+### 10.2 Removal model (section 7.3)
 
-| setting | removal | re-search min ions | spectra with 0/1/2/3+ peptides | rows | rows at iter >= 1 | decoy % iter 0 / iter >= 1 | targets q <= 0.01: iter 0 / iter >= 1 / all |
-|---|---|---|---|---|---|---|---|
-| S_exact | bin only | unchanged (3) | 22,279 / 16,235 / 3,160 / 356 | 23,650 | 3,899 | 1.1 / 5.7 | 19,275 / 1,672 / 21,306 |
-| S_flank | bin +/- 1 | unchanged | 22,279 / 16,149 / 3,226 / 376 | 23,754 | 4,003 | 1.1 / 5.9 | 19,275 / 1,733 / 21,227 |
-| **S_default** | bin +/- 1, +1/+2 isotopes | unchanged | 22,279 / 15,914 / 3,388 / 449 | 24,076 | 4,325 | 1.1 / 4.4 | 19,275 / 2,181 / 21,966 |
-| **S_min2** | bin +/- 1, +1/+2 isotopes | 2 / 2 | 22,279 / 16,456 / 2,962 / 333 | 23,399 | 3,648 | 1.1 / 2.1 | 19,275 / **2,914** / **22,336** |
+The flank always follows `theoretical_fragment_ions` (knob removed 2026-11-08), so the one
+removal setting left is `chimeric_remove_isotopes`:
 
-Per-iteration decoy rates (rows at E <= 0.05): S_default 1.1% / 4.1% / 6.9% / 10.5% for
-iterations 0-3 (19,751 / 3,837 / 449 / 38 rows); S_exact 1.1 / 5.2 / 9.6 / 20.0%; S_min2
-1.1 / 1.9 / 3.9 / 10.0%.
+| removal | spectra with 0/1/2/3+ peptides | rows at iter >= 1 (decoy %) | targets q <= 0.01: iter 0 / iter >= 1 / all |
+|---|---|---|---|
+| bin +/- 1 only (`chimeric_remove_isotopes` 0) | 21,774 / 16,354 / 3,426 / 476 | 4,418 (5.8%) | 20,071 / 2,321 / 22,837 |
+| **bin +/- 1, +1/+2 isotopes (default)** | 21,774 / 16,147 / 3,577 / 532 | 4,686 (4.4%) | 20,071 / **3,121** / **23,545** |
 
-- **The wrapper's removal model is confirmed as the default.** Iteration 0 is identical across
-  settings (removal only affects later passes). Adding the isotope peaks to flank removal both
-  finds more later peptides and makes them cleaner (4.4% vs 5.9% decoy; 2,181 vs 1,733 at
-  q <= 0.01); flanks alone barely differ from bin-exact. `chimeric_remove_flank_bins = -1`,
-  `chimeric_remove_isotopes = 2` stay.
-- **Bin-adjacent ghost re-hits are negligible in every model.** From the `RTS_CHIMERIC_DEBUG=2`
-  traces (first 5,000 scans, single thread; 269 later-iteration PSMs with 2,066 matched ions):
-  98.5% of a later PSM's matched ions lie >= 10 bins (>= 0.2 Da) from any bin removed earlier,
-  1.2% within +/- 2 bins -- 1.3% for bin-exact removal. The isotope benefit above is therefore
-  not visible to an adjacency metric: the +1/+2 isotope peaks sit ~50 bins away, and are what
-  seeds the extra junk when left in place. A kept PSM removes on average 13.9 of 80 peaks (208
-  bins).
-- **Lowering the re-search candidate floor to 2 ions is a clear win here** -- the opposite sign
-  of the wrapper's batch observation. Rows at iteration >= 1 fall (3,648 vs 4,325) but their
-  decoy rate halves (2.1% vs 4.4%) and confident later IDs rise by a third (2,914 vs 2,181):
-  with more candidates scored, the E-value histogram is better populated, the E-values become
-  more conservative, and `dMaxExpect` keeps the junk out. Pending the 20 ppm confirmation in
-  10.4, `chimeric_fragindex_min_ions_score` should default to 2 (section 10.7 then showed the
-  mechanism and that the `_report` floor must stay at 3).
+Per-iteration rows (decoy %) at the default: 20,256 (0.9%) / 4,109 (3.7%) / 532 (9.0%) / 44
+(6.8%) for iterations 0-3; without isotope removal 3,902 (5.1%) / 476 (10.9%) / 40 (12.5%).
+
+- **The wrapper's removal model is confirmed.** Iteration 0 is identical across settings
+  (removal only affects later passes). Removing the +1/+2 isotope peaks of matched ions both
+  finds more later peptides and makes them cleaner (+34% confident later IDs, 4.4% vs 5.8%
+  decoy).
+- **Bin-adjacent ghost re-hits are negligible.** From the `RTS_CHIMERIC_DEBUG=2` trace (first
+  5,000 scans, single thread; 290 later-iteration PSMs): 1.5% of a later PSM's matched bins lie
+  within +/- 2 bins of a bin removed earlier, and no later PSM has half or more of its bins
+  there. The isotope benefit is not visible to an adjacency metric: the +1/+2 isotope peaks sit
+  ~50 bins away, and are what seeds the extra junk when left in place.
 - No spectrum reported the same peptide twice in any setting.
 
-### 10.3 What the charge range and the wide window do to iteration 0
+### 10.3 Charge range vs window
 
-Iteration 0 agrees with the baseline rank-1 peptide on 67.0% of the spectra where both have
-a PSM, and picks the file's charge on 92.5%. The disagreement is dominated by a mass effect,
-not by chimeras: iteration-0 winners sit at an offset of 0 Da from the precursor neutral mass
-in 12,198 rows, **-1 Da in 4,143 and -2 Da in 880** (0.5-0.7% decoy -- real identifications
-whose precursor was isolated on the M+1 / M+2 isotope), +1..+3 Da in ~200 (8-37% decoy),
-and at a non-integer offset in 2,230 (5.0% decoy). The +/- 1 m/z window acts as an
-`isotope_error` the RealtimeSearch configuration (`isotope_error = 0` in
-`SearchMS1MS2.cs`, mirrored by `rts_repro`) does not have; that, not the second peptide,
-is why iteration 0 reaches 19,275 targets at q <= 0.01 against the baseline's 12,808 (13,174
-PSMs at the same E <= 0.05 cut). Of the 5,850 spectra where iteration 0 differs from the
-baseline, the baseline PSMs replaced were 42.8% decoy and only 567 were at q <= 0.01; the
-replacements are 1.5% decoy. Of those 567 confident baseline IDs, **471 are reported at a
-later iteration** (the spectrum held both; the loop ranked the other first on evidence,
-345/567 with the better E-value), so ~96 confident baseline IDs are absent from the chimeric
-output. Section 10.4 separates the charge-range, window and isotope-error contributions.
-
-### 10.4 Charge range vs window vs isotope error
-
-Same file and index; the chimeric runs use the default removal model. `base_iso2` is the plain
-search with `isotope_error = 2`.
-
-| run | charges | window | isotope_error | re-search min ions | dMaxExpect | spectra 0/1/2/3+ | targets q <= 0.01: iter 0 / iter >= 1 / all | iter 0 = baseline |
-|---|---|---|---|---|---|---|---|---|
-| baseline | file's | 20 ppm | 0 | -- | -- | -- | 12,808 / -- / 12,808 | -- |
-| base_iso2 | file's | 20 ppm | 2 | -- | -- | -- | 18,184 / -- / 18,184 | -- |
-| S_tol0 | 2-4 | 20 ppm | 0 | 3 | 0.05 | 28,536 / 13,219 / 271 / 4 | 12,964 / 148 / 13,063 | 98.2% |
-| S_tol0_iso2 | 2-4 | 20 ppm | 2 | 3 | 0.05 | 23,450 / 17,765 / 793 / 22 | 18,304 / 445 / 18,800 | 97.7% of base_iso2 |
-| S_tol0_iso2_min2 | 2-4 | 20 ppm | 2 | 2 | 0.05 | 23,450 / 17,877 / 687 / 16 | 18,304 / 439 / 18,784 | 97.7% of base_iso2 |
-| S_default | 2-4 | +/- 1 m/z | 0 | 3 | 0.05 | 22,279 / 15,914 / 3,388 / 449 | 19,275 / 2,181 / 21,966 | 67.0% |
-| **S_min2** | 2-4 | +/- 1 m/z | 0 | 2 | 0.05 | 22,279 / 16,456 / 2,962 / 333 | 19,275 / **2,914** / **22,336** | 85.6% of base_iso2 |
-| S_wide_min2_e01 | 2-4 | +/- 1 m/z | 0 | 2 | 0.01 | 25,342 / 14,803 / 1,765 / 120 | 16,638 / 2,005 / 18,643 | 68.8% |
-
-Iteration >= 1 decoy rates: S_tol0 10.4%, S_tol0_iso2 6.9%, S_tol0_iso2_min2 5.8%, S_default
-4.4%, S_min2 2.1%, S_wide_min2_e01 0.3% (and 0.3% at iteration 0).
+| run | charges | window | spectra 0/1/2/3+ | targets q <= 0.01: iter 0 / iter >= 1 / all | later-row decoy % | wall, 8 threads incl. load |
+|---|---|---|---|---|---|---|
+| plain RTS (file charge) | file's | 20 ppm | -- | 18,513 / -- / 18,513 | -- | 51 s |
+| chimeric, charge range only | 2-4 | 20 ppm | 23,259 / 17,885 / 860 / 26 | 18,598 / 464 / 19,161 | 8.7% | 53 s |
+| **chimeric, defaults** | 2-4 | +/- 1 m/z | 21,774 / 16,147 / 3,577 / 532 | 20,071 / 3,121 / **23,545** | 4.4% | 87 s |
+| chimeric, wider charge range | 2-6 | +/- 1 m/z | 21,466 / 16,232 / 3,735 / 597 | 19,832 / 2,701 / 22,469 | 6.4% | 152 s |
 
 - **Charge ambiguity alone is worth little on this file.** At 20 ppm, searching charges 2-4
-  instead of the file's charge changes 1.8% of iteration-0 PSMs and adds ~150 confident
-  identifications in either iteration; the instrument's charge assignment is nearly always
-  right, and a second peptide at the *same* m/z (an isobaric co-isolation) is rare -- 271
-  spectra with two peptides, 148 confident later IDs.
-- **`isotope_error` is the single biggest lever and is orthogonal to this project.** The
-  plain RTS search gains 42% (12,808 -> 18,184 targets at q <= 0.01) from `isotope_error = 2`.
-  `RealtimeSearch/SearchMS1MS2.cs` sets 0 (`rts_repro` mirrors it); the batch
-  `comet_phospho.params` also runs 0. That setting, not anything chimeric, is what the +/- 1 m/z
-  runs were recovering at iteration 0 (section 10.3). Recommendation: set `isotope_error = 2`
-  in the RTS harness regardless of the chimeric work.
-- **The +/- 1 m/z window is what finds chimeras.** With isotope error already accounted for
-  (compare against `base_iso2`), the window adds ~1,100 confident PSMs at iteration 0 and
-  raises confident later-iteration IDs from 445 to 2,181 (default threshold) or 2,914
-  (min ions 2): co-isolated precursors at a different m/z inside the isolation window, which
-  no charge or isotope expansion of one m/z can reach. Total at q <= 0.01: 22,336 vs 18,184,
-  +23% over the best plain search.
-- **Re-search min ions 2 is neutral at 20 ppm (439 vs 445) and +34% with the window**, with
-  the decoy rate of later rows halved; it is now the default (section 10.6).
-- **A tighter `dMaxExpect` (0.01) buys purity, not yield**: 0.3% decoy at every iteration, but
-  2,005 confident later IDs instead of 2,914 and 16,638 instead of 19,275 at iteration 0 --
-  the q-value already controls FDR, so 0.05 is the better default for callers that filter
-  downstream; 0.01 suits a caller that wants to use every reported row as is.
+  instead of the file's charge changes 2.4% of iteration-0 PSMs and adds ~650 confident
+  identifications in total (+3.5%); the instrument's charge assignment is nearly always right
+  (iteration 0 picks the file's charge on 97.6% of spectra), and a second peptide at the *same*
+  m/z is rare -- 860 spectra with two peptides, 464 confident later IDs.
+- **The +/- 1 m/z window is what finds chimeras.** It adds ~1,500 confident PSMs at iteration 0
+  and raises confident later-iteration IDs from 464 to 3,121: co-isolated precursors at a
+  different m/z inside the isolation window, which no charge expansion of one m/z can reach.
+  Total at q <= 0.01: 23,545 vs 18,513, **+27%** over the plain search.
+- **Charges 2-6 is worse on every count**: the window at 5+/6+ is 5-6 Da wide, later rows go to
+  6.4% decoy, the total drops to 22,469 and the run takes 1.7x as long. The file has 163 scans
+  called 5+ and 31 confident plain IDs at 5+. Charges 2-4 stays the default.
+- Iteration 0 agrees with the plain search's rank-1 peptide on 84.1% of the spectra where both
+  have a PSM. Of the plain search's 18,513 confident IDs, 751 are outranked at iteration 0 by
+  another peptide, and 637 of those are reported at a later iteration (the spectrum held both;
+  the loop ranked the other first on evidence). Section 10.5 covers the rest.
+
+### 10.4 The E-value gate and the histogram fill
+
+`docs/20261106_FI_evalue_histogram_fill.md` has the fill measurements on the plain search;
+this is the chimeric loop at the default window with the fill on and off and the gate varied:
+
+| run | spectra 0/1/2/3+ | iteration 0 rows (decoy %, q01) | later rows (decoy %, q01) | all q <= 0.01 |
+|---|---|---|---|---|
+| fill 0, gate 0.1 | 20,632 / 16,526 / 4,166 / 706 | 21,398 (1.9%, 19,781) | 5,640 (7.4%, 2,019) | 22,258 |
+| fill 100, gate 0.05 | 23,267 / 15,532 / 2,903 / 328 | 18,763 (0.4%, 18,691) | 3,575 (2.2%, 3,000) | 22,188 |
+| **fill 100, gate 0.1 (defaults)** | 21,774 / 16,147 / 3,577 / 532 | 20,256 (0.9%, 20,071) | 4,686 (4.4%, 3,121) | **23,545** |
+| fill 100, gate 0.2 | 20,087 / 16,470 / 4,493 / 980 | 21,943 (2.0%, 20,165) | 6,583 (9.0%, 3,070) | 23,617 |
+| fill 100, gate 1.0 | 13,530 / 14,641 / 7,818 / 6,041 | 28,500 (9.5%, 20,165) | 23,013 (30.3%, 3,057) | 23,264 |
+
+- **The fill is worth +5.8% in total** (22,258 -> 23,545 at the same gate) and halves the
+  later-row decoy rate (7.4% -> 4.4%): later-iteration winners are weak, so their E-values
+  depend on the histogram's tail, which the fill populates with real candidates. This is the
+  mechanism the (since removed) `chimeric_fragindex_min_ions_score` re-search floor exploited
+  for chimeric passes only; with the fill on, that floor was byte-for-byte a no-op (section 4.6).
+- **Gate 0.1 stays.** 0.05 loses ~1,400 iteration-0 rows the q-value would have kept (22,188
+  in total); 0.2 adds 0.3% in total at twice the later-row decoy rate (9.0% vs 4.4%); 1.0 is
+  worse in total (23,264) because the later rows degrade to 30% decoy. 0.1 suits a caller that
+  filters downstream by q-value; a caller that wants to use every reported row as is should
+  gate at 0.05 (2.2% decoy on later rows).
+
+### 10.5 Confident plain-search IDs missing from the chimeric output: a wide-window E-value bias
+
+**1,293 of the plain search's 18,513 confident IDs (7%) are missing from the chimeric
+output.** 114 are outranked at iteration 0 and not reported later (section 10.3). The other
+1,179 scans get no chimeric row at all: 31 are 5+ (outside the charge range), 254 have a plain
+E-value above the 0.1 gate anyway, and ~900 have a plain E-value at or below 0.1 but the *same
+peptide at the same xcorr* gets an E-value above the gate inside the chimeric call. Ten traced
+(`COMET_EVALUE_TRACE=1`): scan 12587, NSSYVHGGVDASGKPQEAVYGQNDIHHK 4+, xcorr 2.404 in both; the
+plain search scored 59 candidates, slope -0.277, E 0.00075; the chimeric 4+ candidate scored 100
+(the cap) with the same `maxcorr` / `nextcorr` bins (24 / 13), slope -0.176, E 0.139. Scan
+31830, DLKPENILLDEEGHIK 4+, xcorr 2.970: E 7.8e-05 vs 0.126.
+
+The cause is `FRAGINDEX_MAX_NUMSCORED`: `SearchFragmentIndex()` scores the 100 candidates with
+the most index hits. Inside a 20 ppm window (three isotope windows at `isotope_error` 2) that
+is most of the candidates above the floor; inside +/- 1 m/z x charge (2-4 Da) it is the top 100
+of thousands, selected for sharing ions with the spectrum, so the real part of the histogram
+sits high, the fitted slope flattens and the E-value of the same PSM rises 10-1000x. Cap hits on
+the 5,000-scan subset: plain queries at 2+ / 3+ / 4+ 0% / 6% / 32%; chimeric candidates 0% /
+34% / 54%. The plain search shows the same bias in its strongest xcorr deciles (FI 1.3-2.8x PI
+at the top; `docs/20261106_FI_evalue_histogram_fill.md` section 9).
+
+The q-value absorbs part of it (iteration 0 still reaches 20,071 against 18,513) but not all:
+with the gate at 1.0 iteration 0 gains only ~100 at q <= 0.01, because the inflated E-values
+rank those PSMs among junk at the same E. The loss is calibration, not the gate. Open item in
+section 11.
 
 ### 10.6 Defaults set from these measurements
 
-| param | before | after | why |
-|---|---|---|---|
-| `chimeric_remove_flank_bins` | -1 | -1 (confirmed); the knob was removed on 2026-11-08 and the flank always follows `theoretical_fragment_ions` | 10.2 |
-| `chimeric_remove_isotopes` | 2 | 2 (confirmed) | 10.2: 4.4% vs 5.9% decoy, +26% confident later IDs |
-| `chimeric_fragindex_min_ions_score` | 0 (unchanged) | 2, then removed | 10.2 / 10.4 / 10.7: +43% confident later IDs with the window (3,116 vs 2,181 with the report floor kept at 3), neutral without; superseded by `fragindex_histogram_fill` (byte-identical results with the floor on or off once the fill is on) |
-| `chimeric_fragindex_min_ions_report` | 0 (unchanged) | removed | 10.7: the 47 PSMs that only a 2-ion report floor lets win are 31.9% decoy |
-| harness `dMaxExpect` default | 0.05 | 0.1 | with calibrated E-values 0.05 drops ~1,100 iteration-0 rows; 0.1 gives 22,930 confident PSMs in total vs 22,453 for the best fill-0 configuration (`docs/20261106_FI_evalue_histogram_fill.md` Phase 2) |
-| `rts_repro` / `SearchChimericMS2.cs` `--min-ions-*` defaults | 0 | 2 | follow the params |
-| recommended for callers: `isotope_error` | 0 in `SearchMS1MS2.cs` | 2 | 10.4: +42% on the plain search; keeps the chimeric window honest about what it adds |
+| param | default | why |
+|---|---|---|
+| removal flank | follows `theoretical_fragment_ions` (knob removed 2026-11-08) | the bins the scorer credits; a free knob only made it possible to strip every peak |
+| `chimeric_remove_isotopes` | 2 (confirmed) | 10.2: +34% confident later IDs, 4.4% vs 5.8% decoy |
+| charge range (harness `--zrange`) | 2-4 | 10.3: 2-6 is worse on every count |
+| precursor window (harness `--tol`) | +/- 1 m/z for the charge-range form; 0 = ppm for explicit candidates | 10.3: the window is what finds co-isolated precursors |
+| harness `dMaxExpect` default | 0.1 | 10.4 |
+| `chimeric_fragindex_min_ions_score` / `_report` | removed | 10.4 / 4.6: superseded by `fragindex_histogram_fill`; the reporting floor is never lowered |
+| `fragindex_histogram_fill` | 100 (the fill project's default) | 10.4: +5.8% in total on the chimeric loop |
+| callers: `isotope_error` | 2 in `SearchMS1MS2.cs` and `rts_repro` | an Orbitrap often isolates a precursor on its M+1 / M+2 peak |
 
-### 10.5 Cost (section 7.4)
+### 10.7 Cost (section 7.4)
 
-Single thread, first 5,000 scans, index load (79 s) subtracted:
-
-| run | search time | per spectrum | vs plain search |
-|---|---|---|---|
-| plain search (`DoSingleSpectrumSearchMultiResults`, file charge, 20 ppm) | 1.8 s | 0.36 ms | 1x |
-| chimeric, charge 2 only, +/- 1 m/z, <= 5 peptides | 3.6 s | 0.7 ms | 2x |
-| chimeric, charges 2-4, +/- 1 m/z, 1 peptide (one iteration) | 13.8 s | 2.8 ms | ~8x |
-| chimeric, charges 2-4, +/- 1 m/z, <= 5 peptides | 20.5 s | 4.1 ms | ~11x |
-
-Full file (42,030 scans), single thread, load subtracted -- the numbers to quote:
+Full file (42,030 scans), single thread, index load (87 s) subtracted; the per-stage breakdown
+is in 10.8:
 
 | run | search time | per spectrum | vs plain search |
 |---|---|---|---|
-| plain search, file charge, 20 ppm | 26.3 s | 0.63 ms | 1x |
-| chimeric, charges 2-4, +/- 1 m/z, 1 peptide | 198.7 s | 4.7 ms | 7.6x |
-| chimeric, charges 2-4, +/- 1 m/z, <= 5 peptides, min ions 3 | 304.7 s | 7.3 ms | 11.6x |
-| chimeric, charges 2-4, +/- 1 m/z, <= 5 peptides, min ions 2 (default) | 295.7 s | 7.0 ms | 11.2x |
+| plain search, file charge, 20 ppm, fill 0 | 13.5 s | 0.32 ms | -- |
+| plain search, file charge, 20 ppm (fill 100, the default) | 17.1 s | 0.41 ms | 1x |
+| chimeric, charges 2-4, +/- 1 m/z, <= 5 peptides (defaults) | 306 s | 7.3 ms | 18x |
 
-At 8 threads over the full file: 21 s (plain) vs 37 s (charges 2-4 at 20 ppm) vs 63 s
-(charges 2-4 at +/- 1 m/z), after the 22 s load. The cost is not the candidate count but the
-window: the 3+ and 4+ candidates account for ~17 of the 20.5 s on the 5,000-scan subset,
-because +/- 1 m/z is +/- 3 / +/- 4 Da of peptide mass there and those windows are dense; the
-extra iterations add only ~50% on top of the first (most spectra stop after one or two). At
-7 ms/spectrum/thread, a 20-thread RTS host sustains ~2,800 spectra/s on this index, well
-inside real-time budgets; the window width (and the charge ceiling) is the lever if a
-denser index or a smaller machine needs one.
-
-### 10.7 Why the re-search candidate floor works: the E-value histogram on a stripped spectrum
-
-Question raised in review: a peptide that cannot match 3 fragment-index entries is not a
-good identification, so what is a 2-ion floor for -- and with `GenerateXcorrDecoys()`
-padding every histogram to `EXPECT_DECOY_SIZE` (3,000) synthetic scores, how could a few
-real entries move the fit? Measured with `RTS_CHIMERIC_DEBUG=2` and `COMET_EVALUE_TRACE=2` (per-query histogram
-size, `iNextCorr`, slope, intercept, rank-1 xcorr/E-value, and the non-zero histogram
-bins), on the same iteration-1 queries under both floors (identical spectrum state and
-candidate; 5,219 queries for the counts, 102 with full histograms):
-
-- **It is not rescue.** Lowering both floors to 2 let exactly 47 later-iteration PSMs win
-  (of 3,648) that a 3-ion report floor would have blocked, and they were 31.9% decoy. With
-  the report floor kept at 3 the 3,601 shared PSMs have identical xcorr; only their E-values
-  change (larger under floor 2 in 2,574, median x1.31-1.41). Score floor 2 with report
-  floor 3 is the best configuration: 3,116 confident later IDs at 1.9% decoy, against 2,914
-  with both floors at 2 and 2,181 with both at 3.
-- **It is not one entry among thousands: it is ~40 per query.** At floor 3 a re-search
-  query scores a median of **7** real candidates into the histogram (54% of queries fewer
-  than 10): the first peptide's peaks are gone, so few peptides reach 3 index hits among the
-  top peaks. At floor 2 the median is **100** (the `FRAGINDEX_MAX_NUMSCORED` cap, mean 72;
-  +36 median per query), and only 12% of queries stay below 10. Stored results are identical
-  (median 7) because the report floor stays at 3.
-- **The synthetic padding's tail is thin where the fit happens.** The padded histogram
-  holds 3,000 entries, 93% of them synthetic scores at xcorr 0.0-0.3 (per query, mean
-  913 / 304 / 173 / 1510 -- the 0.3 pile is `iMinXcorrHisto`'s lumping of half the zero
-  scores). Per re-search query the entries above that are 53 / 26 / 11 / 5.4 / 2.4 / 0.9 at
-  xcorr 0.4 / 0.5 / 0.6 / 0.7 / 0.8 / 0.9. `LinearRegression()` builds its cumulative
-  distribution downward from the "second-best" bin (`iNextCorr`, median 0.8), so those thin
-  bins are the fit. Floor 2 raises the real entries from a median of 4 to 100 and adds
-  12 / 10 / 5 / 2.4 / 1.2 / 0.3 entries in exactly those bins (+22-50%); the median slope
-  goes -0.457 -> -0.430 and the rank-1 E-value rises x1.41 (in 81% of queries). The
-  re-search winners themselves are weak (median xcorr 0.79, at the edge of that tail), which
-  is why their E-values depend on its shape; iteration-0 winners sit far above it and barely
-  move (the plain search gains only +1.7% from a global score floor of 2). (These are raw
-  per-bin counts from `COMET_EVALUE_TRACE=2`; the first version of this bullet, taken from a
-  dump made after `LinearRegression()` had overwritten the histogram with its cumulative
-  distribution, quoted cumulative values and an "~8,500 entries" total that was their sum.)
-- **Open item (not this project):** whether the synthetic decoys are poor or the stripped
-  spectrum is simply sparse. Random peptides scored against a spectrum with its dominant
-  peptide removed may genuinely score 0.0-0.3, in which case the padding is a correct null
-  and the 2-ion candidates -- real peptides *selected* for sharing >= 2 ions -- are a biased,
-  more conservative one. Target-decoy FDR sides with the conservative fit on these spectra
-  (decoy rate among later rows at E <= 0.05: 1.9% vs 4.4%), but a better
-  `CometPostAnalysis::GenerateXcorrDecoys()` -- synthetic scores that reach the xcorr range
-  where weak hits live, or scoring the next-weakest real candidates into the histogram
-  without storing them, for every sparse fragment-index query -- would remove the need for
-  this knob. Follow-up measured on full spectra: the synthetic entries are already 93% at
-  0.0-0.3 before any subtraction (subtraction only thins the tail further and lowers the
-  winner's xcorr 0.93 -> 0.79), and against PI on the same PSMs the FI E-values are x1.6-2
-  optimistic in every xcorr decile, entirely through the fitted slope -- so the null is
-  wrong for every FI query, not just stripped ones. Its own project, with the Phase 0
-  baseline tables: `docs/20261106_FI_evalue_histogram_fill.md`.
+At 8 threads over the full file, load included: 51 s (plain) vs 53 s (charges 2-4 at 20 ppm) vs
+87 s (defaults) vs 152 s (charges 2-6). The cost is the window, not the iterations: +/- 1 m/z is
++/- 3 / +/- 4 Da of peptide mass at 3+ / 4+ and those windows are dense (10.8). At ~7 ms per
+spectrum per thread a 20-thread RTS host sustains ~2,700 spectra/s on this index, inside
+real-time budgets; the window width and the charge ceiling are the levers if a denser index or
+a smaller machine needs one.
 
 ### 10.8 Where the time goes (2026-11-09)
 
@@ -766,32 +714,18 @@ measurements found; its design is `docs/20261109_sparse_preprocessing.md`.
 | chimeric: the candidate's peak list is re-sorted per candidate | ~1 us/call (the peak-count-driven sub-stage above) | dropped |
 | chimeric: the observed-peak map for the removal bins is rebuilt per candidate | inside result extraction, ~12 us/call | dropped |
 | the FI histogram fill (`fragindex_histogram_fill`) costs time | +17% on the plain search (2.48 vs 2.12 s), +5% chimeric (25.7 vs 24.3 s); RTS always needs the E-values | kept for RTS; batch runs with no E-value output now skip it (2026-11-09, `docs/20261106_FI_evalue_histogram_fill.md` 3.2) |
-| `isotope_error = 2` leaves the FI precursor-window fast path | plain: index search 127 -> 178 us/call; chimeric 615 -> 753 us/call | dropped (below) |
+| a multi-window fast path for the FI precursor walk with `isotope_error = 2` | per plain query: 1,555 posting entries walked, 492 accepted, 2,486 `CheckMassMatch()` calls, 85 us of walk inside a 178 us index search; chimeric: 10,286 walked, 99% accepted, 389 us inside 753 us | dropped (below) |
 
-**`isotope_error = 2` and the FI precursor-window walk.** With `isotope_error = 0` and no
-`mass_offsets` the walk decides each posting entry with two integer compares
-(`bSimpleWindow`, `CometSearch.cpp`); otherwise it walks one key bracket from the lowest isotope
-window to the highest and calls `CheckMassMatch()` per entry. Counters added to the scratch
-build (entries walked / accepted, `CheckMassMatch()` calls, walk time per query):
-
-| run | walked | accepted | `CheckMassMatch()` | walk | index search |
-|---|---|---|---|---|---|
-| plain, `isotope_error` 0 | 249 | 177 (71%) | 2 | 56.6 us | 127 us |
-| plain, `isotope_error` 2 | 1,555 | 492 (32%) | 2,486 | 85.1 us | 178 us |
-| chimeric, `isotope_error` 0 | 7,989 | 7,889 (99%) | 2 | 302 us | 615 us |
-| chimeric, `isotope_error` 2 | 10,286 | 10,144 (99%) | 10,233 | 389 us | 753 us |
-
-Of the plain search's +51 us index-search cost, 28 us is the walk and the rest is scoring the
-extra candidates the isotope windows admit; within the walk, the accepted entries nearly
-triple (177 -> 492), which is real work. Skipping the gaps between windows perfectly would save
-at most ~15-20 us per query, ~3-5% of a plain search. At the chimeric +/- 1 m/z window the
-isotope windows overlap (99% of walked entries are accepted at either setting), so there is
-nothing to skip. And skipping is not free: the ~1,060 rejected entries per query are spread
-over every probed fragment bin, ~10-20 per bin, which the current walk reads sequentially with
-prefetching; a binary search per window per bin costs about as many random reads as it saves.
-The `CheckMassMatch()` calls themselves are cheap (a few us per query in total). A multi-window
-fast path could be slower than today and was not built. The `isotope_error = 2` cost is
-mostly the extra candidates it exists to find (section 10.4: +42% confident PSMs).
+**The FI precursor-window walk with `isotope_error = 2`.** With `mass_offsets` or isotope
+windows the walk covers one key bracket from the lowest window to the highest and calls
+`CheckMassMatch()` per entry (`CometSearch.cpp`). Skipping the gaps between the isotope windows
+perfectly would save at most ~15-20 us per plain query, ~3-5% of a plain search; at the
+chimeric +/- 1 m/z window the isotope windows overlap (99% of walked entries are accepted), so
+there is nothing to skip. And skipping is not free: the ~1,060 rejected entries per plain query
+are spread over every probed fragment bin, ~10-20 per bin, which the current walk reads
+sequentially with prefetching; a binary search per window per bin costs about as many random
+reads as it saves. The `CheckMassMatch()` calls themselves are cheap (a few us per query in
+total). A multi-window fast path could be slower than today and was not built.
 
 ## 11. Out of scope / later
 
@@ -811,6 +745,14 @@ mostly the extra candidates it exists to find (section 10.4: +42% confident PSMs
   not a measured gain.
 - Batch-path (`comet.exe`) exposure of the chimeric loop. The design is RTS-only; a batch
   version would want the fused path's arenas rather than per-call `Query` allocation.
+- E-value calibration inside wide precursor windows (section 10.5). `FRAGINDEX_MAX_NUMSCORED`
+  scores the 100 best-supported candidates; inside a 2-4 Da window that is the top 100 of
+  thousands, a sample selected for sharing ions with the spectrum, so the same PSM's E-value
+  is 10-1000x larger than in a 20 ppm search and 7% of the plain search's confident IDs are
+  lost. Candidates: score a representative sample of the window's candidates into the
+  histogram beside the top 100, raise the cap for wide windows, or correct the fit for the
+  unscored population. Related to the `GenerateXcorrDecoys()` item in
+  `docs/20261106_FI_evalue_histogram_fill.md`.
 
 ## 12. 2026-11-11: `topN` and the single-search equivalence
 

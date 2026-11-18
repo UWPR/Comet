@@ -3,7 +3,7 @@
 Project plan for calibrating E-values on fragment-index (FI_DB) queries by filling the
 xcorr histogram with the next-weakest *real* candidates before `GenerateXcorrDecoys()`
 pads it with synthetic ones. Spun out of the chimeric-search review
-(`docs/20261105_RTSchimeric.md` section 10.7), where this mechanism was measured through a
+(`docs/20261105_RTSchimeric.md` section 4.6), where this mechanism was measured through a
 knob (`chimeric_fragindex_min_ions_score`) that this project is meant to retire. Plan
 only; nothing implemented yet.
 
@@ -24,36 +24,29 @@ Whenever the histogram holds fewer than `EXPECT_DECOY_SIZE` (3,000) entries --
 always, on FI -- `GenerateXcorrDecoys()` tops it up by scoring 3,000 - N fixed, precomputed
 ~30-residue random sequences (`CometDecoys.h`, precomputed b/y bins, scattered per fragment
 charge, no mass or length constraint) against the spectrum. Measured on the HeLa benchmark
-file against a human target-decoy phospho index (`docs/20261105_RTSchimeric.md` 10.7):
+file against a human target-decoy phospho index (section 9, Phase 0):
 
 - The 3,000-entry padded histogram of a **full** spectrum is 93% synthetic entries at xcorr
-  0.0-0.3 (per query, mean 753 / 302 / 248 / 1478 -- the 0.3 pile is `iMinXcorrHisto`'s
-  lumping of half the zero scores) with a tail of 100 / 57 / 28 / 16 / 8 / 5 at 0.4-0.9.
-  (Section 9 has the raw-bin tables; an earlier version of these numbers was read off the
-  histogram *after* `LinearRegression()` had overwritten it with the cumulative
-  distribution, and is corrected there.) This is not an artifact of chimeric subtraction,
-  which only thins the tail further and lowers the winner's xcorr from 0.93 to 0.79; it is
-  what the synthetic decoys are.
+  0.0-0.3 (per query, mean 778 / 322 / 248 / 1507 -- the 0.3 pile is `iMinXcorrHisto`'s
+  lumping of half the zero scores) with a tail of 83 / 38 / 14 / 5.5 / 2.2 / 1.1 at 0.4-0.9.
+  (Section 9 has the raw-bin tables.) This is not an artifact of chimeric subtraction, which
+  only thins the tail further; it is what the synthetic decoys are.
 - The FASTA/PI null is different: real peptides at the right mass, most scoring ~0 too, but
   with a tail of peptides that share one to three ions by chance of composition and tryptic
-  structure. On the spectra where FI identifies something, PI scores ~1,600 real window
-  peptides of which ~68 sit at xcorr >= 0.4 -- a real tail that extends further and flatter
-  than the synthetic one (63 entries >= 0.4 but steeper). FI drops exactly those peptides at
-  the 3-ion candidate floor: its histogram holds a median of **one** real entry, the winner.
-  The regression's cumulative fit starts at the "second-best" bin (`iNextCorr`, xcorr 0.8-0.9)
-  and runs downward, so those tail bins *are* the fit; the intercepts of the FI and PI fits
-  are identical and the whole FI-vs-PI E-value gap (x1.6 on the same PSMs) is the slope.
-- Letting 2-ion candidates be scored on chimeric re-search passes (report floor unchanged,
-  so none can be reported) raises the real entries per query from a median of 4 to 100, adds
-  +22-50% to the 0.4-0.9 bins, flattens the slope (-0.457 -> -0.430) and raises weak
-  winners' E-values x1.41 -- making them honest: the decoy rate among reported rows at
-  E <= 0.05 halves (4.4% -> 1.9%) and confident IDs rise 43% (2,181 -> 3,116). On the plain
-  RTS search the same change is +1.7% confident IDs and a cleaner E <= 0.05 set (0.7% vs
-  1.2% decoy).
+  structure. On the same spectra PI scores a median of ~5,000 real window peptides (three
+  isotope windows at `isotope_error` 2) -- above `EXPECT_DECOY_SIZE`, so PI is not padded at
+  all -- of which ~88 / 44 / 15 / 6 sit at xcorr 0.4 / 0.5 / 0.6 / 0.7. FI drops exactly those
+  peptides at the 3-ion candidate floor: its histogram holds a median of **7** real entries
+  (often only the winner). The regression's cumulative fit starts at the "second-best" bin
+  (`iNextCorr`, xcorr 0.9-1.0) and runs downward, so those tail bins *are* the fit.
+- The chimeric loop's re-search passes were the first symptom: a stripped spectrum leaves a
+  handful of real candidates above the floor, and a knob that let 2-ion candidates be scored
+  into the histogram (`chimeric_fragindex_min_ions_score`, since removed) made the weak
+  re-search winners' E-values honest. That is a property of every fragment-index query.
 
-So FI E-values are optimistic on every FI query, batch or RTS -- x1.6-2 against PI on the
-same PSMs across all xcorr deciles (section 9) -- and the weaker the spectrum the worse. The
-chimeric knob papers over it for one caller.
+So FI E-values are optimistic on every FI query, batch or RTS -- about x2 against PI on the
+same PSMs through the first eight xcorr deciles (section 9) -- and the weaker the spectrum the
+worse. The chimeric knob papered over it for one caller.
 
 ## 2. Goal
 
@@ -164,7 +157,7 @@ never changes which candidates are scored first.
 | `CometSearch/core/Types.h`, `CometSearchManager.cpp/.h` | remove `iFragIndexMinIonsScoreOverride` and the chimeric `iMinIonsScore` plumbing; `chimeric_fragindex_min_ions_score` param removed; `SearchChimericMS2.cs` and `rts_repro` lose their `--min-ions-score` / `minIonsScore` arguments |
 | `CometSearch/CometSearchManager.cpp` (`RTS_CHIMERIC_EVAL/_HIST` trace) | generalise the per-query histogram/fit dump to an env var usable from the plain RTS path (`COMET_EVALUE_TRACE`), so section 5 can see batch and RTS FI queries, not only chimeric ones |
 | `tests/unit/run_tests.py`, `tests/tests.md` | T68 (section 5.1); T67 updated for the removed argument |
-| `docs/RealTimeSearch.md`, `docs/20261105_RTSchimeric.md` 4.6 / 10.6 / 10.7 | point here; knob removed |
+| `docs/RealTimeSearch.md`, `docs/20261105_RTSchimeric.md` 4.6 / 10.6 | point here; knob removed |
 
 ## 5. Validation and measurement
 
@@ -195,12 +188,12 @@ any FDR effect.
 `rts_repro` mode 0 (plain RTS, FI) and `comet.exe` batch FI on the full file, with fill 0 /
 25 / 50 / 100: targets at q <= 0.01 and q <= 0.05, decoy rate at E <= 0.05, and the
 T24-style FI-vs-PI count agreement. Chimeric mode 1 with the fill and *without* the
-chimeric knob must reproduce section 10's 3,116 confident later IDs (or better).
+chimeric knob must not lose confident later-iteration IDs against the knob.
 
 ### 5.4 Cost
 
 `comet-benchmark` skill for batch Hz and the RTS ms/spectrum, fill 0 vs the chosen default,
-single-threaded over the full file as in section 10.5 (index load subtracted).
+single-threaded over the full file as in section 10.7 (index load subtracted).
 
 ### 5.5 Decoy-winner calibration
 
@@ -236,7 +229,7 @@ fill, on FI vs PI. A calibrated FI should match PI.
 
 | Question | Decision |
 |---|---|
-| Default fill | 100 (= `FRAGINDEX_MAX_NUMSCORED`): "always score the 100 best-supported candidates". 2-hit candidates alone reach the cap on 59% of re-search queries; the plain search with a global 2-hit floor cost nothing measurable (43.2 vs 42.9 s at 8 threads). Kept an integer so 25 / 50 can be measured. |
+| Default fill | 100 (= `FRAGINDEX_MAX_NUMSCORED`): "always score the 100 best-supported candidates". Kept an integer so 25 / 50 can be measured. |
 | 1-hit candidates | Included: they fill the ~12% of queries where 2-hit candidates run out -- the sparse spectra where calibration matters most -- and a single shared ion at 0.02 Da is chance-level, the null wanted. `mPeptides` is a `std::unordered_map` keyed by peptide index: one pass splits it into the qualified candidates and the sub-floor ones, only the prefix of the sub-floor bucket that can still be scored is ordered (`std::partial_sort` by hits, then peptide index, so the tie order matches T63), and the large 1-hit bucket is never fully sorted. |
 | Batch FI E-values change | Acceptable: only weak-hit E-values move, upward, toward PI/FASTA; xcorr, ranking and peptides do not. `fragindex_histogram_fill = 0` reproduces today's values; release note and T23/T24 expectations updated. |
 | Unchanged | `fragindex_min_ions_score` 3, `fragindex_min_ions_report` 3 (who may win / be reported), `FRAGINDEX_MAX_NUMSCORED` 100, `EXPECT_DECOY_SIZE` 3,000, the `iMinXcorrHisto` lumping (a cheap pseudo-random spread of half the zero scores into one low bin; it applies to fill candidates like everything else). |
@@ -259,143 +252,151 @@ before, it printed the raw fit, e.g. 1754 for a reported 999 (test T83).
 
 **Setup.** As `docs/20261105_RTSchimeric.md` section 10: the 42,030-scan HeLa fixture;
 FI (`-i`) and PI (`-j`) indexes of `human.canonical.target-decoy.fasta` with
-`comet_phospho.params`; `rts_repro` mode 0 (the file's charge, 20 ppm, `isotope_error` 0),
+`comet_phospho.params`; `rts_repro` mode 0 (the file's charge, 20 ppm, `isotope_error` 2),
 8 threads. Histogram traces: first 1,000 scans, single thread. Decoy = `DECOY_`;
-q-values by E-value order, FDR = decoys / targets.
+q-values by E-value order, FDR = decoys / targets. Every number in this section was
+re-measured on 2026-11-17 on master `c990672c` at the current defaults; the 2026-11-06 runs
+were discarded.
 
-**A. Plain RTS search, FI vs PI (full file).**
+**A. Plain RTS search, FI (fill 0) vs PI (full file).**
 
 | | FI | PI |
 |---|---|---|
-| rank-1 PSMs (decoy %) | 27,655 (24.2%) | 39,461 (31.6%) |
-| PSMs at E <= 0.05 (decoy %) | 13,174 (1.2%) | 12,775 (0.7%) |
-| targets at q <= 0.01 | 12,808 | 12,973 |
-| decoy winners with E <= 0.05 / E <= 0.01 | 2.4% / 0.7% | 0.7% / 0.1% |
+| rank-1 PSMs (decoy %) | 31,438 (18.0%) | 39,511 (24.1%) |
+| PSMs at E <= 0.05 (decoy %) | 18,141 (0.8%) | 17,438 (0.4%) |
+| targets at q <= 0.01 | 18,216 | 18,332 |
+| decoy winners with E <= 0.05 / E <= 0.01 | 2.6% / 0.7% | 0.7% / 0.1% |
 
-**B. Same rank-1 peptide on both (19,598 spectra; xcorr identical on 100%).** Median
+**B. Same rank-1 peptide on both (24,446 spectra; xcorr identical on 100%).** Median
 E(FI) / E(PI) by rank-1 xcorr decile, lowest to highest:
-0.87, 0.69, 0.66, 0.62, 0.60, 0.53, 0.49, 0.50, 0.51, 0.57 -- FI below PI on 66-79% of
-PSMs in every decile. FI is optimistic for strong hits as much as for weak ones.
+0.66, 0.46, 0.49, 0.53, 0.52, 0.51, 0.58, 0.64, 0.87, 1.69 -- FI below PI on 65-83% of
+PSMs in the first eight deciles, and *above* PI in the top decile (the candidate-cap bias,
+section 10.5 of the chimeric doc; see Phase 2).
 
-**C. Paired fits, same spectrum and peptide (107 queries, first 1,000 scans), medians.**
+**C. Paired fits, same spectrum and peptide (24,455 queries, full file), medians.**
 
-| | FI | PI |
+| | FI fill 0 | PI |
 |---|---|---|
-| real entries in the histogram | **1** | 1,644 |
-| real entries at xcorr >= 0.4 | 1 | 68 |
-| padded entries at xcorr >= 0.4 | 63 | 91 |
-| `iNextCorr` (xcorr) | 0.9 | 0.9 |
-| slope (per 0.1 xcorr bin) | -0.474 | -0.443 |
-| intercept (log10 count) | 3.92 | 3.88 |
-| rank-1 xcorr / E(FI)/E(PI) | 1.30 / 0.63 | |
+| real entries in the histogram | **7** | 5,071 (unpadded) |
+| `iNextCorr` (xcorr) | 0.9 | 1.0 |
+| slope (per 0.1 xcorr bin) | -0.389 | -0.385 |
+| intercept (log10 count) | 3.91 | 4.16 |
+| median E | 0.0005 | 0.00102 |
 
-Decomposing log10(E_PI / E_FI) per query: slope term 0.17, intercept term -0.02 (median).
-**The entire gap is the slope; normalisation is not the issue** (so the padding count
-does not need to track the window size, an idea floated during the review and dropped
-here).
+E(FI) / E(PI): median 0.60, FI below PI on 70%. At `isotope_error` 2 the two fits differ
+mainly in the **intercept** (0.25 in log10, x1.8): PI's histogram holds ~5,000 real entries
+and is never padded, FI's is padded to exactly 3,000, so the two cumulative distributions are
+normalised to different populations. The slopes are close in the median, but not per decile:
+FI's is steeper on weak spectra (few real tail entries) and flatter on the strongest ones
+(the 100 scored candidates are the best-supported of a wide three-window set).
 
-**D. Histogram shapes (per query, mean entries per 0.1-xcorr bin; "padded" = what the
-regression fits).**
+**D. Histogram shapes (first 1,000 scans; per query, mean entries per 0.1-xcorr bin;
+"padded" = what the regression fits).**
 
 | xcorr | 0.0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1.0 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| FI plain, real (128 queries; median 1 real entry) | 0 | 0 | 0.1 | 0.2 | 0.3 | 0.3 | 0.4 | 0.4 | 0.4 | 0.3 | 0.2 |
-| FI plain, padded | 763 | 326 | 245 | 1507 | 93 | 41 | 15 | 5.5 | 2.2 | 0.9 | 0.4 |
-| PI plain, real (661 queries; ~1,400 real entries) | 832 | 144 | 127 | 604 | 32 | 17 | 5.8 | 2.3 | 0.9 | 0.4 | 0.1 |
-| chimeric iteration >= 1, floor 3, real (107) | 0 | 0.3 | 1.1 | 3.8 | 4.0 | 4.9 | 3.5 | 2.5 | 1.6 | 0.6 | 0.4 |
-| chimeric iteration >= 1, floor 3, padded | 913 | 304 | 173 | 1510 | 53 | 26 | 11 | 5.4 | 2.4 | 0.9 | 0.5 |
-| chimeric iteration >= 1, floor 2, real (104; median 100) | 0.1 | 2.8 | 6.7 | 19.8 | 15.8 | 14.8 | 8.5 | 4.8 | 2.8 | 0.9 | 0.6 |
-| chimeric iteration >= 1, floor 2, padded | 894 | 301 | 178 | 1498 | 65 | 36 | 16 | 7.8 | 3.6 | 1.2 | 0.7 |
+| FI fill 0, real (171 queries; median 2 real entries) | 0 | 0 | 0.1 | 0.6 | 0.8 | 0.9 | 0.9 | 0.8 | 0.5 | 0.6 | 0.3 |
+| FI fill 0, padded | 778 | 322 | 248 | 1507 | 83 | 38 | 14 | 5.5 | 2.2 | 1.1 | 0.4 |
+| FI fill 100, real (171; median 100) | 0.8 | 8.1 | 16.9 | 28.5 | 13.1 | 10.9 | 5.8 | 3.7 | 1.7 | 1.1 | 0.4 |
+| FI fill 100, padded | 757 | 321 | 258 | 1492 | 93 | 47 | 18 | 8.3 | 3.3 | 1.6 | 0.6 |
+| PI, real (665 queries; median 4,979) | 2467 | 421 | 375 | 1791 | 88 | 44 | 15 | 6.2 | 2.3 | 0.8 | 0.3 |
+| PI, padded (= real: above `EXPECT_DECOY_SIZE`) | 2657 | 451 | 409 | 2054 | 95 | 47 | 16 | 6.5 | 2.4 | 0.9 | 0.3 |
 
 The 0.3 pile in every padded row is `iMinXcorrHisto`'s lumping of half the zero scores
-(real and synthetic alike). Floor 2 on the paired iteration-1 queries: real entries 4 -> 100
-(median), real entries >= 0.4 17 -> 48 (mean), slope -0.457 -> -0.430, E x1.41.
+(real and synthetic alike). The fill supplies the real chance-sharing tail FI lacks (0.4-0.7:
+13 / 11 / 6 / 4 real entries per query against 0.8 / 0.9 / 0.9 / 0.8), and the padded FI tail
+then matches PI's bin for bin (93 / 47 / 18 / 8 vs 88 / 44 / 15 / 6). What it cannot supply is
+PI's population size: PI's histogram is ~5,000 entries, FI's 3,000.
 
-**What this fixes in the premise.** The synthetic tail is not "too low" in count -- on the
-spectra FI identifies it holds about as many entries above 0.4 as PI's real tail (63 vs
-68) -- it is *steeper*: real window peptides that share ions by chance extend further than
-random 30-mers do, and that difference in slope is the whole E-value gap. The fill supplies
-exactly those real entries (what the 2-hit floor did on re-search passes: +31 real entries
->= 0.4 per query), so the expectation for Phase 2 is that FI's slope moves to PI's and the
-decile ratios in B move to ~1. Caveat: the histogram traces are 1,000-scan samples; Phase 2
-repeats C and D on the full file. Note also that PI pads too (its ~1,600 real entries are
-below `EXPECT_DECOY_SIZE`), so PI is the batch-equivalent null, not an absolute truth.
 
-### Phase 2 (2026-11-06): measurements at fill 25 / 50 / 100
+### Phase 2 (2026-11-06; re-measured 2026-11-17): measurements at fill 25 / 50 / 100
 
 Same file, indexes and `rts_repro` settings as Phase 0 (plain RTS: file charge, 20 ppm,
-`isotope_error` 0, 8 threads); PI as the comparator.
+`isotope_error` 2, 8 threads); PI as the comparator.
 
-**5.2 Calibration -- median E(FI) / E(PI) on the 19,598 spectra with the same rank-1
+**5.2 Calibration -- median E(FI) / E(PI) on the 24,446 spectra with the same rank-1
 peptide, by rank-1 xcorr decile (lowest to highest); [% of PSMs with FI below PI]**
 
 | fill | deciles 1-10 |
 |---|---|
-| 0 | 0.87 [66], 0.69 [77], 0.66 [78], 0.62 [78], 0.60 [78], 0.53 [79], 0.49 [79], 0.50 [76], 0.51 [75], 0.57 [69] |
-| 25 | 0.99 [52], 0.88 [65], 0.84 [67], 0.86 [66], 0.87 [65], 0.87 [64], 0.83 [67], 0.80 [64], 0.78 [64], 0.73 [62] |
-| 50 | 1.01 [44], 0.95 [59], 0.93 [60], 0.95 [60], 0.97 [57], 0.96 [57], 0.94 [58], 0.93 [57], 0.91 [57], 0.88 [56] |
-| **100** | **1.04 [37], 1.00 [50], 1.00 [52], 1.00 [52], 1.01 [47], 1.00 [48], 1.01 [49], 1.01 [48], 1.00 [50], 1.03 [48]** |
+| 0 | 0.66 [78], 0.46 [83], 0.49 [82], 0.53 [78], 0.52 [75], 0.51 [73], 0.58 [68], 0.64 [65], 0.87 [54], 1.69 [41] |
+| 25 | 0.81 [68], 0.61 [75], 0.68 [73], 0.76 [66], 0.78 [64], 0.80 [62], 0.85 [57], 0.87 [56], 1.07 [48], 1.88 [38] |
+| 50 | 0.89 [62], 0.72 [68], 0.79 [67], 0.89 [59], 0.92 [56], 0.98 [52], 1.03 [48], 1.13 [45], 1.37 [41], 2.15 [35] |
+| **100** | **0.97 [53], 0.84 [62], 0.90 [59], 0.99 [51], 1.03 [47], 1.10 [43], 1.26 [39], 1.46 [35], 1.77 [33], 2.80 [30]** |
 
-Paired fits over the full file (19,596 spectra with the same rank-1 peptide in all three):
+Paired fits over the full file (24,455 spectra with the same rank-1 peptide in all three):
 
 | | real entries | `iNextCorr` | slope | intercept | median E |
 |---|---|---|---|---|---|
-| FI fill 0 | 4 | 0.9 | -0.397 | 3.93 | 0.00128 |
-| FI fill 100 | 100 | 0.9 | **-0.378** | **3.92** | **0.00263** |
-| PI | 1,513 | 0.9 | -0.379 | 3.93 | 0.00264 |
+| FI fill 0 | 7 | 0.9 | -0.389 | 3.91 | 0.0005 |
+| FI fill 100 | 100 | 1.0 | **-0.369** | 3.90 | **0.00107** |
+| PI | 5,071 | 1.0 | -0.385 | 4.16 | 0.00102 |
 
-E(FI fill 100) / E(PI): median 1.01, FI below PI on 48%. The FI fit lands on PI's slope
-and intercept to the third digit; the Phase 0 premise is confirmed in full.
+E(FI fill 100) / E(PI): median 1.06, FI below PI on 45%. The fill brings the median E-value
+onto PI's and calibrates the weak and middle deciles (0.84-1.10), but not by reproducing PI's
+fit: the FI intercept stays 0.25 below PI's (the 3,000-entry padding against PI's unpadded
+~5,000) and the FI slope goes flatter than PI's (-0.369 vs -0.385), which compensate near the
+median and diverge at the ends -- FI slightly optimistic in the weakest deciles, and 1.3-2.8x
+pessimistic in the strongest three. The flatter slope is the candidate cap: the 100 scored
+candidates are the best-supported of the whole three-window set, a biased sample whose
+histogram sits high (`docs/20261105_RTSchimeric.md` 10.5, where the same effect inside a
++/- 1 m/z window is 10-1000x). Both the normalisation and the cap bias are open items
+(section 10 of the chimeric doc, section 11).
 
 **5.3 / 5.5 FDR, yield and decoy-winner calibration (plain RTS, full file)**
 
 | | rank-1 | at E <= 0.05 (decoy %) | targets q <= 0.01 | q <= 0.05 | decoy winners E <= 0.05 / 0.01 |
 |---|---|---|---|---|---|
-| PI | 39,461 | 12,775 (0.7%) | 12,973 | 14,525 | 0.7% / 0.1% |
-| FI fill 0 | 27,655 | 13,174 (1.2%) | 12,808 | 14,441 | 2.4% / 0.7% |
-| FI fill 25 | 27,655 | 12,926 (0.8%) | 13,014 | 14,501 | 1.5% / 0.4% |
-| FI fill 50 | 27,655 | 12,822 (0.6%) | 13,035 | 14,522 | 1.1% / 0.3% |
-| **FI fill 100** | 27,655 | 12,723 (0.6%) | **13,055** | 14,532 | **1.1% / 0.2%** |
+| PI | 39,511 | 17,438 (0.4%) | 18,332 | 20,520 | 0.7% / 0.1% |
+| FI fill 0 | 31,438 | 18,141 (0.8%) | 18,216 | 20,470 | 2.6% / 0.7% |
+| FI fill 25 | 31,438 | 17,833 (0.5%) | 18,454 | 20,542 | 1.6% / 0.4% |
+| FI fill 50 | 31,430 | 17,677 (0.4%) | 18,448 | 20,528 | 1.3% / 0.2% |
+| **FI fill 100** | 31,438 | 17,503 (0.3%) | **18,513** | 20,556 | **1.1% / 0.2%** |
 
 The rank-1 set is identical across fills (xcorr and ranking never change); only the
-E-values move. Fill 100 yields +1.9% confident targets over fill 0 and passes PI; the
-decoy-winner leakage at E <= 0.05 halves.
+E-values move. Fill 100 yields +1.6% confident targets over fill 0 and passes PI; the
+decoy-winner leakage at E <= 0.05 halves. (Fill 50's rank-1 count differs by 8: a fill
+candidate that clears the store gate on 8 spectra; closed on 2026-11-08, see the progress
+table.)
 
 **Batch FI** (`comet.exe`, fused path, 20 threads, this template's `isotope_error = 2`,
 `tools/qvalue.py`): targets at 1% FDR by E-value 18,168 -> **18,466 (+1.6%)**, by xcorr
 16,189 in both; 28,639 of 31,371 rows differ only in the E-value column. The batch path
 behaves exactly like RTS.
 
-**Chimeric search at fill 100** (charges 2-4, +/- 1 m/z, <= 5 peptides):
+**Chimeric search** (charges 2-4, +/- 1 m/z, <= 5 peptides; `docs/20261105_RTSchimeric.md`
+10.4 has the full table):
 
 | | iteration 0 rows (decoy %, q01) | later rows (decoy %, q01) | all q <= 0.01 |
 |---|---|---|---|
-| fill 0, knob 2, dMaxExpect 0.05 (`docs/20261105_RTSchimeric.md` 10.7 best) | 19,751 (1.1%, 19,275) | 3,614 (1.9%, 3,116) | 22,453 |
-| fill 100, dMaxExpect 0.05 -- knob 0 and knob 2 **byte-identical** | 18,639 (0.5%, 18,549) | 3,524 (1.8%, 3,031) | 22,010 |
-| **fill 100, dMaxExpect 0.1** | 20,057 (1.1%, 19,727) | 4,596 (4.1%, 3,147) | **22,930** |
-| fill 100, dMaxExpect 0.2 | 19,968 (2.0%, 18,388) | 6,222 (8.6%, 3,239) | 21,566 |
+| fill 0, dMaxExpect 0.1 | 21,398 (1.9%, 19,781) | 5,640 (7.4%, 2,019) | 22,258 |
+| fill 100, dMaxExpect 0.05 | 18,763 (0.4%, 18,691) | 3,575 (2.2%, 3,000) | 22,188 |
+| **fill 100, dMaxExpect 0.1** | 20,256 (0.9%, 20,071) | 4,686 (4.4%, 3,121) | **23,545** |
+| fill 100, dMaxExpect 0.2 | 21,943 (2.0%, 20,165) | 6,583 (9.0%, 3,070) | 23,617 |
 
 With the fill, `chimeric_fragindex_min_ions_score` no longer changes anything (the 2-hit
-candidates are scored regardless): it can be retired. The hard `dMaxExpect` gate was tuned
-under optimistic E-values; now that they are honest, 0.05 loses ~1,100 iteration-0 rows and
-0.1 is the better default for the harnesses (+2.1% over the old best in total), while 0.2
-overshoots.
+candidates are scored regardless; byte-identical with and without it): it was retired. The
+hard `dMaxExpect` gate was tuned under optimistic E-values; now that they are honest, 0.05
+loses ~1,400 iteration-0 rows and 0.1 is the better default for the harnesses, while 0.2 adds
+0.3% in total at twice the later-row decoy rate.
 
-**5.4 Cost** (single thread, full file, 75.6 s load subtracted): fill 0 **27.0 s**
-(0.64 ms/spectrum), fill 100 **30.0 s** (0.71 ms/spectrum): +11%. At 8 threads the three
-fill runs took 39.8 / 40.8 / 42.7 s against 42.9 s for fill 0 -- within noise.
+**5.4 Cost** (single thread, full file, 87 s load subtracted): fill 0 **13.5 s**
+(0.32 ms/spectrum), fill 100 **17.1 s** (0.41 ms/spectrum): +27% of a plain search whose
+other stages got cheaper with sparse preprocessing (`docs/20261109_sparse_preprocessing.md`);
+on the chimeric loop the fill is a few percent (`docs/20261105_RTSchimeric.md` 10.8).
+
 
 **Decision**: `fragindex_histogram_fill` default **100**, as proposed in section 8;
 carried out in Phase 3 together with the knob retirement and the chimeric gate change.
 
 | Date | Phase | Result |
 |---|---|---|
-| 2026-11-06 | 0 | `COMET_EVALUE_TRACE` in `CalculateEValue()`; FI-vs-PI baseline tables A-D above; the premise sharpened to "the synthetic tail is steeper than the real one, and the gap is slope-only". |
-| 2026-11-06 | 1 | `fragindex_histogram_fill` (`Params.h` / `Constants.h` default 0, `Comet.cpp` parse table and `comet.params` text, `InitializeStaticParams()` with clamping to 0..`FRAGINDEX_MAX_NUMSCORED`); the fill in `SearchFragmentIndex()`: sub-floor candidates collected in the same map walk, the needed prefix `partial_sort`ed by (hits desc, index asc) and appended after the floor-clearing list, the one scoring loop taking them while `uiNumScored < fill` under the unchanged cap. `rts_repro` `histogramFill` argument. Byte-identical at 0: the full-surface RTS dump of the 197-spectrum fixture matches the original Phase-1 baseline on FI and PI with AScorePro off and on. T68 (`t68_make_histfill.py`: one target, 20 exact-2-hit and 30 exact-1-hit composition-identical fillers): histogram 1 / 51 / 25 entries at fill 0 / 100 / 25, one stored candidate throughout, identical xcorr, E-value 3.1e-11 -> 3.9e-9. Preview on the HeLa 1,000-scan subset, plain RTS at fill 100: real entries median 1 -> 100, stored set unchanged, same rank-1 on all 128 queries, median slope -0.458 -> -0.442 (PI: -0.443), E x1.37. Note for the semantics: `XcorrScoreI()`'s reporting floor is on the full-spectrum matched-ion count, so a fill candidate *can* be stored if it clears the same floor and xcorr threshold as any candidate; in every measurement so far the stored set was unchanged. |
-| 2026-11-06 | 4 | Docs and regression expectations. T23/T24 count PSMs at 1% FDR by **xcorr**, which the fill never changes, so their checks and the pinned-baseline comparison are unaffected (noted in `tests/tests.md`); E-value-ranked FI counts move by about +1.6%. `comet.params` carries the new key; `docs/RealTimeSearch.md`, `GlobalVariables.md` and the `comet-search-run` skill describe it. No release-notes file exists in the repo, so the note for the next release is kept here: *"New parameter `fragindex_histogram_fill` (default 100). Fragment-ion-index searches now also score their 100 best-supported candidates below `fragindex_min_ions_score` into the E-value histogram, which makes FI E-values match peptide-index E-values for the same peptide-spectrum matches (they were optimistic by 1.6-2x on weak and strong hits alike); xcorr, ranking, reported peptides and matched-peptide counts do not change, E-values of weak hits increase, and E-value-based filtering at a fixed cutoff admits fewer decoys. Set `fragindex_histogram_fill = 0` to reproduce previous E-values. Real-time search: `isotope_error = 2` in the example harness; `DoSingleSpectrumSearchChimeric()` for chimeric spectra."* |
-| 2026-11-06 | 3 | Default set to 100 (`Constants.h`, `comet.params` text). `chimeric_fragindex_min_ions_score`, `Query::iFragIndexMinIonsScoreOverride` and the core's `iMinIonsScore` argument removed; `SearchFragmentIndex()` reads the configured floor again. `rts_repro` and `SearchChimericMS2.cs` lose their min-ions arguments and default `dMaxExpect` to 0.1. T68 updated (not sent = 100). Verified: T67/T68, the full suite and T22 at the new defaults; the full-file chimeric run at the defaults byte-identical to Phase 2's fill-100 / gate-0.1 run (22,930 confident PSMs); Windows solution builds clean. Docs: `RealTimeSearch.md`, `GlobalVariables.md`, `DataStructures.md`, `tests.md`, the `rts_repro` README, the chimeric doc (4.6, 10.6, progress). |
+| 2026-11-06 | 0 | `COMET_EVALUE_TRACE` in `CalculateEValue()`; FI-vs-PI baseline tables A-D above (re-measured 2026-11-17 at `isotope_error` 2: the gap is the missing real chance-sharing tail plus, at this setting, the padding's normalisation against an unpadded PI). |
+| 2026-11-06 | 1 | `fragindex_histogram_fill` (`Params.h` / `Constants.h` default 0, `Comet.cpp` parse table and `comet.params` text, `InitializeStaticParams()` with clamping to 0..`FRAGINDEX_MAX_NUMSCORED`); the fill in `SearchFragmentIndex()`: sub-floor candidates collected in the same map walk, the needed prefix `partial_sort`ed by (hits desc, index asc) and appended after the floor-clearing list, the one scoring loop taking them while `uiNumScored < fill` under the unchanged cap. `rts_repro` `histogramFill` argument. Byte-identical at 0: the full-surface RTS dump of the 197-spectrum fixture matches the original Phase-1 baseline on FI and PI with AScorePro off and on. T68 (`t68_make_histfill.py`: one target, 20 exact-2-hit and 30 exact-1-hit composition-identical fillers): histogram 1 / 51 / 25 entries at fill 0 / 100 / 25, one stored candidate throughout, identical xcorr, E-value 3.1e-11 -> 3.9e-9. Note for the semantics: `XcorrScoreI()`'s reporting floor is on the full-spectrum matched-ion count, so a fill candidate *can* be stored if it clears the same floor and xcorr threshold as any candidate; in every measurement so far the stored set was unchanged. |
+| 2026-11-06 | 4 | Docs and regression expectations. T23/T24 count PSMs at 1% FDR by **xcorr**, which the fill never changes, so their checks and the pinned-baseline comparison are unaffected (noted in `tests/tests.md`); E-value-ranked FI counts move by about +1.6%. `comet.params` carries the new key; `docs/RealTimeSearch.md`, `GlobalVariables.md` and the `comet-search-run` skill describe it. No release-notes file exists in the repo, so the note for the next release is kept here: *"New parameter `fragindex_histogram_fill` (default 100). Fragment-ion-index searches now also score their 100 best-supported candidates below `fragindex_min_ions_score` into the E-value histogram, which brings FI E-values to peptide-index E-values for the same weak and mid-strength peptide-spectrum matches (they were optimistic by about 2x); xcorr, ranking, reported peptides and matched-peptide counts do not change, E-values of weak hits increase, and E-value-based filtering at a fixed cutoff admits fewer decoys. Set `fragindex_histogram_fill = 0` to reproduce previous E-values. Real-time search: `isotope_error = 2` in the example harness; `DoSingleSpectrumSearchChimeric()` for chimeric spectra."* |
+| 2026-11-06 | 3 | Default set to 100 (`Constants.h`, `comet.params` text). `chimeric_fragindex_min_ions_score`, `Query::iFragIndexMinIonsScoreOverride` and the core's `iMinIonsScore` argument removed; `SearchFragmentIndex()` reads the configured floor again. `rts_repro` and `SearchChimericMS2.cs` lose their min-ions arguments and default `dMaxExpect` to 0.1. T68 updated (not sent = 100). Verified: T67/T68, the full suite and T22 at the new defaults; the full-file chimeric run at the defaults byte-identical to Phase 2's fill-100 / gate-0.1 run; Windows solution builds clean. Docs: `RealTimeSearch.md`, `GlobalVariables.md`, `DataStructures.md`, `tests.md`, the `rts_repro` README, the chimeric doc (4.6, 10.6, progress). |
 | 2026-11-08 | review | Fill candidates made histogram-only (code review of the branch). Two leaks found: with `fragindex_min_ions_report` below `fragindex_min_ions_score` a fill candidate cleared the store gate and was reported (T68 fixture, score 3 / report 2: 1 PSM became 20, the 2-hit fillers), and every fill candidate counted toward `_uliNumMatchedPeptides` (pepXML `num_matched_peptides` 1 -> 51 at the defaults, moving SQT and Percolator `lnNumSP` too). `XcorrScoreI()` now recognizes a fill candidate by its hit count (FI_DB, below the scoring floor), keeps its histogram entry and skips the store gate and both counters; `InitializeStaticParams()` warns when the report floor is below the score floor and leaves the value as set. T69 (batch, pepXML) covers score 3 / report 3 and 3 / 2 with fill 0 and 100: one stored PSM and `num_matched_peptides` 1 in all four, the warning exactly when report < score, and the fill still moving the E-value. |
-| 2026-11-06 | 2 | Full-file measurements at fill 25 / 50 / 100 (tables above): at 100 the FI E-values match PI's on the same PSMs in every xcorr decile (ratio 1.00-1.04; paired slope/intercept identical to the third digit), decoy-winner leakage at E <= 0.05 halves (2.4% -> 1.1%), confident targets +1.9% (RTS) / +1.6% (batch, fused path), cost +11% single-threaded and within noise at 8 threads. The chimeric knob becomes a no-op (byte-identical with and without it) and the chimeric `dMaxExpect` gate should move 0.05 -> 0.1 (+2.1% total confident PSMs over the Phase 4 best). Default 100 confirmed. |
+| 2026-11-06 | 2 | Full-file measurements at fill 25 / 50 / 100 (tables above, re-measured 2026-11-17 at `isotope_error` 2): at 100 the FI E-values match PI's on the same PSMs through the weak and middle xcorr deciles (0.84-1.10) and the median lands on PI's (1.06); the strongest deciles sit above PI (the candidate-cap bias, open). Decoy-winner leakage at E <= 0.05 halves (2.6% -> 1.1%), confident targets +1.6% on RTS and on batch (fused path), ahead of PI on yield; cost +27% single-threaded on the plain search. The chimeric knob becomes a no-op (byte-identical with and without it) and the chimeric `dMaxExpect` gate should move 0.05 -> 0.1 (+6.1% total confident PSMs). Default 100 confirmed. |
 
 ## 10. Open questions (resolved in section 8)
 
@@ -410,4 +411,4 @@ carried out in Phase 3 together with the knob retirement and the chimeric gate c
 
 **2026-11-10 note.** A query with no candidate at or above `fragindex_min_ions_score` stores no PSM and never
 computes an E-value, so the fill is skipped for it (`SearchFragmentIndex()`); the output is byte-identical and the
-single-threaded cost drops below the +11% quoted above (the review measured 11-15% of FI search time saved).
+single-threaded cost drops below the figure quoted above (the review measured 11-15% of FI search time saved).
