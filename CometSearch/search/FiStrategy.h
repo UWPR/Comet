@@ -22,7 +22,7 @@
 //               builds the in-memory fragment ion index.
 // executeBatch(): uses the fused FI path (FusedLoadAndSearchSpectra) when
 //                possible; falls back to the legacy three-sweep path for
-//                Mango or speclib runs where the fused path is unavailable.
+//                speclib runs where the fused path is unavailable.
 // finalize(): frees the fragment index arrays and memory pools.
 class FiStrategy : public ISearchStrategy
 {

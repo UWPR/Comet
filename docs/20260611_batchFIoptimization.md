@@ -38,8 +38,10 @@ memory, while producing **bit-identical** PSM output to today's batch path.
 - **In scope:** fragment-index search only (`DbType::FI_DB`), the
   non-Mango, non-speclib database-search case - the path the benchmark exercises.
 - **Out of scope, left on the legacy three-sweep path:** the FASTA_DB
-  sequential-database path, the Mango path (relies on global g_pvQuery ordering),
-  and the spectral-library path. The new branch is guarded so these are untouched.
+  sequential-database path and the spectral-library path. The new branch is guarded
+  so these are untouched. (The Mango path was also excluded here, because it relied on
+  global g_pvQuery ordering; that dependency is gone and Mango now uses the fused path
+  -- see `docs/20261118_mango_fused_path.md`.)
 
 ## Confirmed facts the design relies on
 
@@ -120,7 +122,8 @@ memory, while producing **bit-identical** PSM output to today's batch path.
     (2931-2939);
   - **keeps** the by-scan sort (2978), every output writer (2986-3008), and the
     cleanup `delete` loop (3014) unchanged.
-- The existing three-sweep code remains as the `else` path for FASTA/Mango/speclib.
+- The existing three-sweep code remains as the `else` path for FASTA/speclib (and
+  originally Mango; see the 2026-11-18 note in the scope section above).
 - **As actually shipped:** `DoSearch()` was later shrunk from ~4,500 lines to
   ~140 (the Phase-5 refactor, `docs/20260612_architecture_migration.md`), and
   this dispatch logic now lives in `CometSearch/search/FiStrategy.cpp::executeBatch`

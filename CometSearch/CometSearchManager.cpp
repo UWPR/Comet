@@ -1774,7 +1774,7 @@ bool CometSearchManager::InitializeStaticParams()
          }
 
          // This clamp only matters for the legacy load-all-then-search-all path
-         // (PiStrategy falls back to it for Mango/speclib runs; see
+         // (PiStrategy falls back to it for speclib runs; see
          // PiStrategy::executeBatch()) -- the fused path ignores iSpectrumBatchSize
          // entirely in favor of its own thread-scaled flush threshold. Applies to both
          // modes identically; no need to load all spectra into memory for either, since

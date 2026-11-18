@@ -162,9 +162,10 @@ bool FiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
                               ThreadPool* tp, SearchSession& session)
 {
    // Fused path: per-spectrum read+preprocess+search+post-analysis in one pass.
-   // Disabled for Mango or speclib runs (those require the legacy ordering).
+   // Disabled for speclib runs (those require the legacy ordering). Mango runs use it:
+   // the A/B pair label is set on each Query when it is created, so nothing depends on
+   // batch-wide query order (docs/20261118_mango_fused_path.md).
    bool bFused = session.bPerformDatabaseSearch
-                 && !g_staticParams.options.bMango
                  && !session.bPerformSpecLibSearch;
 
    if (bFused)

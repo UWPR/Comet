@@ -409,9 +409,9 @@ class Pipeline         // search/Pipeline.h
 
 | Class | File | DB type | Notes |
 |-------|------|---------|-------|
-| `FiStrategy` | `search/FiStrategy.cpp` | `FI_DB` | Fused load+search path when `bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`; legacy three-sweep otherwise. |
+| `FiStrategy` | `search/FiStrategy.cpp` | `FI_DB` | Fused load+search path when `bPerformDatabaseSearch && !bPerformSpecLibSearch` (Mango runs included since 2026-11-18); legacy three-sweep otherwise. |
 | `FastaStrategy` | `search/FastaStrategy.cpp` | `FASTA_DB` | Classic three-sweep (load -> allocate -> RunSearch -> PostAnalysis). |
-| `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
+| `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
 
 **AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering is required because, for `FI_DB`, `FiStrategy::initialize()`'s call to `CometPeptideIndex::ReadPeptideIndex()` overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header, so `SetAScoreOptions()` must run after that overwrite or it would configure AScore from stale/default mod values. (Phase 0.5, `docs/20260730_PI_reduction.md`, briefly removed variable-mod settings from the `.idx` header entirely, making this ordering non-strict for a window; `docs/20260811_restore_idx_header_mods.md` restored the header-driven overwrite, so the ordering matters again -- and always did for `StaticMod:`, which Phase 0.5 never touched.) (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate AScore setup and was never affected by this.)
 
