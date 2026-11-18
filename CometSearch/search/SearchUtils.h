@@ -15,6 +15,7 @@
 #pragma once
 
 #include "Common.h"
+#include <string.h>
 #include "CometDataInternal.h"
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
@@ -49,9 +50,18 @@ inline bool compareByPeptideMass(Query const* a, Query const* b)
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
 }
 
+// Scan, then charge, then the Mango A/B pair label. The label is the last tie-break so
+// the two members of a Mango pair (same scan, usually the same charge) come out in a fixed
+// order; without it their order depended on thread completion and the earlier mass sort,
+// so output was not reproducible run to run. szMango is "" for every Query when
+// mango_search = 0, so non-Mango ordering is unchanged.
 inline bool compareByScanNumber(Query const* a, Query const* b)
 {
    if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
+   {
+      if (a->_spectrumInfoInternal.usiChargeState == b->_spectrumInfoInternal.usiChargeState)
+         return (strcmp(a->_spectrumInfoInternal.szMango, b->_spectrumInfoInternal.szMango) < 0);
       return (a->_spectrumInfoInternal.usiChargeState < b->_spectrumInfoInternal.usiChargeState);
+   }
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }

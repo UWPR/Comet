@@ -6601,6 +6601,14 @@ def _run_t67(comet_exe, ms2_name, scan):
                            float(row[col["exp_neutral_mass"]]),
                            row[col["plain_peptide"]])
 
+        # Rows are written in scan, charge, then label order. The label tie-break matters for
+        # 001_A / 001_B (same scan, same charge): their order used to depend on the earlier
+        # mass sort and, with threads, on completion order, so output was not reproducible.
+        expected_order = ["001_A", "001_B", "000_A"]
+        txt_order = [r[1][len(ms2.stem) + 1:len(ms2.stem) + 6] for r in rows]
+        check(txt_order == expected_order,
+              f"row order: expected {expected_order}, got {txt_order}", failures)
+
         # A repeated label collapses in `seen`, so count rows too.
         check(len(rows) == len(expected),
               f"expected {len(expected)} rows (one per surviving precursor), got {len(rows)}", failures)
@@ -6629,6 +6637,10 @@ def _run_t67(comet_exe, ms2_name, scan):
         queries = [el for el in tree.iter() if el.tag.rsplit("}", 1)[-1] == "spectrum_query"]
         check(len(queries) == len(expected),
               f"pepXML: expected {len(expected)} spectrum_query elements, got {len(queries)}", failures)
+
+        xml_order = [q.get("spectrum", "")[len(ms2.stem) + 1:len(ms2.stem) + 6] for q in queries]
+        check(xml_order == expected_order,
+              f"pepXML spectrum_query order: expected {expected_order}, got {xml_order}", failures)
 
         xml_seen = {}
         for q in queries:
