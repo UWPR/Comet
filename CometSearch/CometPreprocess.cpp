@@ -42,6 +42,14 @@ float **CometPreprocess::ppfFastXcorrData;
 float **CometPreprocess::ppfFastXcorrDataNL;
 float **CometPreprocess::ppfSpScoreData;
 
+// m/z of a precursor from its MH+ (singly protonated mass, as .ms2 Z lines carry) and charge.
+// Dropping the (z-1) protons gave every 2+ and higher first Z line a ~1 Da/charge-too-light
+// precursor in the Mango path (docs/20261029_mango_review.md), so keep the one formula here.
+static inline double MhToMz(double dMH, int iCharge)
+{
+   return (dMH + PROTON_MASS * (iCharge - 1)) / iCharge;
+}
+
 // The zero-bound formula below (used by both PreprocessSingleSpectrumCore's RTS
 // thread-local-pool path and FusedSearchSpectrum's batch scratch-buffer path -- see
 // docs/20260714_EvalueJitter.md Phase 3) must zero at least as far as any peak
@@ -682,7 +690,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                dMZ = mstSpectrum.getMZ(i);
 
             if (dMZ == 0.0 && iSpectrumCharge != 0)
-               dMZ = (mstSpectrum.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
+               dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
@@ -749,7 +757,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                   {
                      for (int ii = 1 ; ii < mstSpectrum.sizeZ(); ++ii)
                      {
-                        vChargeStates.push_back(make_pair(mstSpectrum.atZ(ii).z, (mstSpectrum.atZ(ii).mh + PROTON_MASS * (mstSpectrum.atZ(ii).z - 1)) / mstSpectrum.atZ(ii).z));
+                        vChargeStates.push_back(make_pair(mstSpectrum.atZ(ii).z, MhToMz(mstSpectrum.atZ(ii).mh, mstSpectrum.atZ(ii).z)));
                      }
                   }
                }
@@ -2583,7 +2591,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = (spec.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
+         dMZ = MhToMz(spec.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
       // 1.  Have spectrum charge from file.  It may be 0.
       // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
@@ -2652,7 +2660,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
 
                for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
                {
-                  vChargeStates.push_back(make_pair(spec.atZ(ii).z, (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z ));
+                  vChargeStates.push_back(make_pair(spec.atZ(ii).z, MhToMz(spec.atZ(ii).mh, spec.atZ(ii).z)));
                }
             }
          }
@@ -3493,7 +3501,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = (spec.atZ(i).mh + PROTON_MASS * (iSpectrumCharge - 1)) / iSpectrumCharge;  // mh is MH+, not neutral mass
+         dMZ = MhToMz(spec.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
       if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
@@ -3551,7 +3559,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                for (int ii = 1; ii < spec.sizeZ(); ++ii)
                {
                   vChargeStates.push_back(make_pair(spec.atZ(ii).z,
-                     (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z));
+                     MhToMz(spec.atZ(ii).mh, spec.atZ(ii).z)));
                }
             }
          }
