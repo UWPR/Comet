@@ -78,6 +78,9 @@ per scan (checked every `.ms2` under `tests/`).
 Also note `override_charge` / `precursor_charge` interactions: if `override_charge = 1` the
 `Z` lines are ignored entirely and `dMZ` (the `S`-line m/z) is expanded over the charge
 range (`:2580-2585`); only the plain `override_charge = 0` branch walks the extra `Z` lines.
+Each `Z` line of a Mango scan is a separate precursor, so `override_charge > 0` would silently
+drop every `Z` line after the first. It is now rejected at startup with `mango_search = 1`
+(`ValidateMangoOverrideCharge()` in `CometSearchManager.cpp`; test `t67_mango_override`).
 
 ### 3c. `dMangoIndex` (`core/Types.h:1139`)
 

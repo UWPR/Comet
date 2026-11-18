@@ -332,6 +332,28 @@ static bool ValidateScanRange()
    return true;
 }
 
+// A Mango scan has one S line and several Z lines, and each Z line is a different precursor
+// (the A and B peptides of a pair), not an alternative charge state. override_charge > 0
+// replaces the file's charge(s) with the precursor_charge range, which only walks the
+// first Z line and silently drops every later one (and labels every charge variant 000_A).
+// There is no meaningful way to apply it per Z line, so refuse the combination.
+static bool ValidateMangoOverrideCharge()
+{
+   if (g_staticParams.options.bMango && g_staticParams.options.iOverrideCharge > 0)
+   {
+      string strErrorMsg = " Error - override_charge = "
+         + std::to_string(g_staticParams.options.iOverrideCharge)
+         + " is not supported with mango_search = 1.\n"
+         + " Each Z line of a Mango scan is a separate precursor, so override_charge would"
+         + " silently drop all but the first.\n Set override_charge = 0.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   return true;
+}
+
 static bool ValidatePeptideLengthRange()
 {
    if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart
@@ -2238,6 +2260,9 @@ bool CometSearchManager::DoSearch()
       return false;
 
    if (!ValidatePeptideLengthRange())
+      return false;
+
+   if (!ValidateMangoOverrideCharge())
       return false;
 
    bool bSucceeded = true;

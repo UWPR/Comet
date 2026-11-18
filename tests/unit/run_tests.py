@@ -6682,6 +6682,50 @@ def test_t67_mango(comet_exe):
     return _run_t67(comet_exe, "t67_mango.ms2", "02401")
 
 
+@register("t67_mango_override")
+def test_t67_mango_override(comet_exe):
+    """T67c: mango_search = 1 with override_charge > 0 is rejected at startup (it would walk
+    only the first Z line of each scan and drop the rest); override_charge = 0 still runs."""
+    failures = []
+
+    fasta = DATA_DIR / "t67_mango.fasta"
+    ms2   = DATA_DIR / "t67_mango.ms2"
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    base = T67_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    outs = [ms2.with_suffix(s) for s in (".txt", ".pep.xml")]
+
+    for override in (1, 2, 3, 0):
+        params = _set_param_line(base, "override_charge", str(override))
+        params = _set_param_line(params, "precursor_charge", "1 3")
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as pf:
+            pf.write(params)
+            params_file = Path(pf.name)
+        try:
+            for o in outs:
+                o.unlink(missing_ok=True)
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if override > 0:
+                check(rc != 0 and "not supported with mango_search" in out,
+                      f"override_charge = {override}: rejected with an error (rc={rc})", failures)
+                check(not outs[0].exists(),
+                      f"override_charge = {override}: no .txt written", failures)
+            else:
+                check(rc == 0 and outs[0].exists(),
+                      f"override_charge = 0: search still runs (rc={rc})", failures)
+        finally:
+            params_file.unlink(missing_ok=True)
+            for o in outs:
+                o.unlink(missing_ok=True)
+
+    return failures
+
+
 @register("t67_mango_multi")
 def test_t67_mango_multi(comet_exe):
     """T67b: same four precursors as T67 but as four S-line m/z values with one Z line each
