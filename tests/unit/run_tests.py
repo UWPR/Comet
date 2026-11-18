@@ -6525,16 +6525,14 @@ assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
     "T67 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
 
 
-def _run_t67(comet_exe, ms2_name, scan):
+def _run_t67(comet_exe, ms2_name, scan, expected, expected_order, warnings=()):
     """Shared body of the T67 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
     against t67_mango.fasta with mango_search = 1 and check both the .txt rows and the
     .pep.xml spectrum_query elements (spectrum string, charge, scans, precursor mass).
 
-    Every fixture carries the same four precursors, in this order:
-      0: 2+ MH+ of ACDEFGHIK   -> 000_A (first Z line at 2+ exercises the mass fix)
-      1: 1+ MH+ 6000, above digest_mass_range -> rejected, no row, must not shift labels
-      2: 1+ MH+ of LNPQSTVWYR  -> 001_A
-      3: 1+ MH+ of ACDEFGHIK   -> 001_B
+    `expected` maps each label that must be reported to (charge, exp_neutral_mass,
+    plain_peptide); `expected_order` is the order the rows must appear in (scan, charge, then
+    label); `warnings` are substrings that must appear in Comet's output.
     """
     failures = []
 
@@ -6586,11 +6584,9 @@ def _run_t67(comet_exe, ms2_name, scan):
                                 f"(header + the Mango column): {row[:4]!r}")
                 return failures
 
-        expected = {
-            "000_A": (2, 1018.454195, "ACDEFGHIK"),
-            "001_A": (1, 1262.640765, "LNPQSTVWYR"),
-            "001_B": (1, 1018.454195, "ACDEFGHIK"),
-        }
+        for w in warnings:
+            check(w in out, f"Comet output warns: {w!r}", failures)
+
         seen = {}
         for row in rows:
             spectrum = row[1]   # the Mango column: <base>_<label>.<scan>.<scan>.<charge>
@@ -6604,7 +6600,6 @@ def _run_t67(comet_exe, ms2_name, scan):
         # Rows are written in scan, charge, then label order. The label tie-break matters for
         # 001_A / 001_B (same scan, same charge): their order used to depend on the earlier
         # mass sort and, with threads, on completion order, so output was not reproducible.
-        expected_order = ["001_A", "001_B", "000_A"]
         txt_order = [r[1][len(ms2.stem) + 1:len(ms2.stem) + 6] for r in rows]
         check(txt_order == expected_order,
               f"row order: expected {expected_order}, got {txt_order}", failures)
@@ -6678,8 +6673,16 @@ def _run_t67(comet_exe, ms2_name, scan):
 def test_t67_mango(comet_exe):
     """T67: Mango regression -- first Z line at 2+ gets the right precursor mass, and
     a Z line rejected by digest_mass_range does not shift the A/B labels after it.
-    One S line (m/z 0.0), four Z lines."""
-    return _run_t67(comet_exe, "t67_mango.ms2", "02401")
+    One S line (m/z 0.0), four Z lines:
+      0: 2+ MH+ of ACDEFGHIK   -> 000_A (first Z line at 2+ exercises the mass fix)
+      1: 1+ MH+ 6000, above digest_mass_range -> rejected, no row, must not shift labels
+      2: 1+ MH+ of LNPQSTVWYR  -> 001_A
+      3: 1+ MH+ of ACDEFGHIK   -> 001_B"""
+    return _run_t67(comet_exe, "t67_mango.ms2", "02401",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "001_A": (1, 1262.640765, "LNPQSTVWYR"),
+                              "001_B": (1, 1018.454195, "ACDEFGHIK")},
+                    expected_order=["001_A", "001_B", "000_A"])
 
 
 @register("t67_mango_override")
@@ -6726,12 +6729,72 @@ def test_t67_mango_override(comet_exe):
     return failures
 
 
-@register("t67_mango_multi")
-def test_t67_mango_multi(comet_exe):
-    """T67b: same four precursors as T67 but as four S-line m/z values with one Z line each
-    (the multi-precursor .ms2 form). The per-precursor charge-state list restarts at 0 for
-    each, so labels must come from the precursor index, not that list's position."""
-    return _run_t67(comet_exe, "t67_mango_multi.ms2", "02402")
+@register("t67_mango_skip")
+def test_t67_mango_skip(comet_exe):
+    """T67b: Mango input that cannot form a cross-linked pair is skipped with a warning and
+    the rest is still searched. Scan 2402 has Z lines 0,1 = charge 0 + 1+ (pair skipped),
+    2,3 = 1+ LNPQSTVWYR / 1+ ACDEFGHIK (001_A / 001_B) and an unpaired 2+ Z line 4
+    (skipped). Scan 2403 has two m/z values on its S line (never produced for Mango) and
+    is skipped entirely."""
+    return _run_t67(comet_exe, "t67_mango_skip.ms2", "02402",
+                    expected={"001_A": (1, 1262.640765, "LNPQSTVWYR"),
+                              "001_B": (1, 1018.454195, "ACDEFGHIK")},
+                    expected_order=["001_A", "001_B"],
+                    warnings=("Z lines 0 and 1 include a charge of 0",
+                              "Z line 4 has no partner",
+                              "scan 2403: Mango scans must have one precursor"))
+
+
+@register("t67_mango_warncap")
+def test_t67_mango_warncap(comet_exe):
+    """T67d: Mango scan/pair warnings are capped at 10 per run, then one 'suppressed' line.
+    The input (written here, 25 scans) has a good pair plus an unpaired last Z line in every
+    scan, i.e. one warning per scan."""
+    failures = []
+
+    fasta = DATA_DIR / "t67_mango.fasta"
+    src = (DATA_DIR / "t67_mango.ms2").read_text().replace("\r\n", "\n").split("\n")
+    peaks = [l for l in src if l and l[0].isdigit()]
+    ms2 = DATA_DIR / "t67_mango_warncap.ms2"
+    txt = ms2.with_suffix(".txt")
+
+    lines = ["H\tCreationDate\tsynthetic"]
+    for scan in range(3000, 3025):
+        lines += [f"S\t{scan}\t{scan}\t0.0", "Z\t1\t1263.648041", "Z\t1\t1019.461471",
+                  "Z\t2\t1019.461471"] + peaks
+    ms2.write_text("\n".join(lines) + "\n")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    params = T67_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+
+    try:
+        txt.unlink(missing_ok=True)
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        check(rc == 0, f"search ran (rc={rc})", failures)
+        n_warn = out.count("Mango Z line 2 has no partner")
+        n_supp = out.count("further Mango scan warnings suppressed")
+        check(n_warn == 10, f"exactly 10 warnings printed, got {n_warn}", failures)
+        check(n_supp == 1, f"one 'suppressed' line printed, got {n_supp}", failures)
+        if txt.exists():
+            n_rows = len([l for l in txt.read_text().splitlines()[2:] if l.strip()])
+            check(n_rows == 50, f"all 25 scans still searched (2 rows each), got {n_rows} rows", failures)
+        else:
+            failures.append(f".txt not created. Comet output:\n{out}")
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        ms2.unlink(missing_ok=True)
+        ms2.with_suffix(".pep.xml").unlink(missing_ok=True)
+
+    return failures
 
 
 if __name__ == "__main__":
