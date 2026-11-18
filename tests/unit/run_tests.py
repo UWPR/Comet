@@ -33,6 +33,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -6526,7 +6527,8 @@ assert "isotope_error = 0" in T67_PARAMS_TEMPLATE, \
 
 def _run_t67(comet_exe, ms2_name, scan):
     """Shared body of the T67 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
-    against t67_mango.fasta with mango_search = 1 and check the .txt rows.
+    against t67_mango.fasta with mango_search = 1 and check both the .txt rows and the
+    .pep.xml spectrum_query elements (spectrum string, charge, scans, precursor mass).
 
     Every fixture carries the same four precursors, in this order:
       0: 2+ MH+ of ACDEFGHIK   -> 000_A (first Z line at 2+ exercises the mass fix)
@@ -6539,14 +6541,17 @@ def _run_t67(comet_exe, ms2_name, scan):
     fasta = DATA_DIR / "t67_mango.fasta"
     ms2   = DATA_DIR / ms2_name
     txt   = ms2.with_suffix(".txt")
+    pepxml = ms2.with_suffix(".pep.xml")
 
     use_win = _binary_uses_win_paths(comet_exe)
     fmt = _to_win if use_win else str
 
     txt.unlink(missing_ok=True)
+    pepxml.unlink(missing_ok=True)
     params = T67_PARAMS_TEMPLATE.format(
         comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
         mod1="0.0 X 0 3 -1 0 0 0.0")
+    params = _set_param_line(params, "output_pepxmlfile", "1")   # the Mango pipeline reads pepXML
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
     ) as pf:
@@ -6609,9 +6614,50 @@ def _run_t67(comet_exe, ms2_name, scan):
             check(abs(got_mass - mass) < 0.001,
                   f"{label}: exp_neutral_mass expected {mass:.6f}, got {got_mass:.6f}", failures)
             check(got_pep == pep, f"{label}: plain_peptide expected {pep}, got {got_pep!r}", failures)
+
+        # ---- pepXML: CometWritePepXML formats the Mango spectrum string, precursor mass and
+        # charge itself (it does not share code with the .txt writer), and the Mango pipeline
+        # consumes this file.
+        if not pepxml.exists():
+            failures.append(f".pep.xml not created. Comet output:\n{out}")
+            return failures
+        try:
+            tree = ET.parse(str(pepxml))
+        except ET.ParseError as e:
+            failures.append(f".pep.xml is not well-formed XML: {e}")
+            return failures
+        queries = [el for el in tree.iter() if el.tag.rsplit("}", 1)[-1] == "spectrum_query"]
+        check(len(queries) == len(expected),
+              f"pepXML: expected {len(expected)} spectrum_query elements, got {len(queries)}", failures)
+
+        xml_seen = {}
+        for q in queries:
+            spectrum = q.get("spectrum", "")
+            check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
+                  f"pepXML: unexpected spectrum attribute {spectrum!r}", failures)
+            label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
+            xml_seen[label] = q
+        check(set(xml_seen) == set(expected),
+              f"pepXML Mango labels: expected {sorted(expected)}, got {sorted(xml_seen)}", failures)
+        for label, (z, mass, _pep) in expected.items():
+            q = xml_seen.get(label)
+            if q is None:
+                continue
+            check(q.get("spectrum", "").endswith(f".{scan}.{scan}.{z}"),
+                  f"pepXML {label}: spectrum attribute should end .{scan}.{scan}.{z}, got {q.get('spectrum')!r}",
+                  failures)
+            check(q.get("assumed_charge") == str(z),
+                  f"pepXML {label}: assumed_charge expected {z}, got {q.get('assumed_charge')!r}", failures)
+            check(q.get("start_scan") == str(int(scan)) and q.get("end_scan") == str(int(scan)),
+                  f"pepXML {label}: start/end_scan expected {int(scan)}, got "
+                  f"{q.get('start_scan')!r}/{q.get('end_scan')!r}", failures)
+            got_pnm = float(q.get("precursor_neutral_mass", "nan"))
+            check(abs(got_pnm - mass) < 0.001,
+                  f"pepXML {label}: precursor_neutral_mass expected {mass:.6f}, got {got_pnm:.6f}", failures)
     finally:
         params_file.unlink(missing_ok=True)
         txt.unlink(missing_ok=True)
+        pepxml.unlink(missing_ok=True)
 
     return failures
 
