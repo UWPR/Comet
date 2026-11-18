@@ -19,6 +19,22 @@
 #define C13_DIFF                    1.00335483
 #define ISOTOPE_ERROR_7_STEP        4.0070995    // isotope_error = 7 searches -2..+2 steps of this size (CheckMassMatch(), mask in ReadPrecursors())
 
+// MH+ (singly protonated mass, the convention Comet uses for experimental and calculated
+// peptide masses and for .ms2 Z lines) <-> m/z at charge iCharge. These are the one place the
+// (z-1) protons are handled: a copy that dropped them was the Mango first-Z-line mass bug.
+// The expressions are kept in exactly this operation order so results are bit-identical to
+// the open-coded forms they replace. Not for neutral masses ((M + z*PROTON_MASS)/z) or the
+// neutral-loss forms ((MH - PROTON_MASS - loss + z*PROTON_MASS)/z), which round differently.
+inline double MhToMz(double dMH, int iCharge)
+{
+   return (dMH + PROTON_MASS * (iCharge - 1)) / iCharge;
+}
+
+inline double MzToMh(double dMZ, int iCharge)
+{
+   return dMZ * iCharge - PROTON_MASS * (iCharge - 1);
+}
+
 #define FLOAT_ZERO                  1e-6     // 0.000001
 
 #define MIN_PEPTIDE_LEN             1        // min # of AA for a petpide

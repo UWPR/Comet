@@ -43,14 +43,6 @@ float **CometPreprocess::ppfFastXcorrData;
 float **CometPreprocess::ppfFastXcorrDataNL;
 float **CometPreprocess::ppfSpScoreData;
 
-// m/z of a precursor from its MH+ (singly protonated mass, as .ms2 Z lines carry) and charge.
-// Dropping the (z-1) protons gave every 2+ and higher first Z line a ~1 Da/charge-too-light
-// precursor in the Mango path (docs/20261029_mango_review.md), so keep the one formula here.
-static inline double MhToMz(double dMH, int iCharge)
-{
-   return (dMH + PROTON_MASS * (iCharge - 1)) / iCharge;
-}
-
 // The zero-bound formula below (used by both PreprocessSingleSpectrumCore's RTS
 // thread-local-pool path and FusedSearchSpectrum's batch scratch-buffer path -- see
 // docs/20260714_EvalueJitter.md Phase 3) must zero at least as far as any peak
@@ -791,7 +783,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
             for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
             {
                int iPrecursorCharge = (*iter).first;
-               double dProtonatedMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+               double dProtonatedMass = MzToMh((*iter).second, iPrecursorCharge);
 
                double dToleranceLow = 0;
                double dToleranceHigh = 0;
@@ -1706,7 +1698,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
    if (iPrecursorCharge < 1 || iPrecursorCharge > MAX_PRECURSOR_CHARGE)
       return nullptr;
 
-   double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+   double dMass = MzToMh(dMZ, iPrecursorCharge);
 
    Query *pScoring = new Query();
 
@@ -1958,18 +1950,18 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    if (iRemovePrec == 1)
    {
-      dPrecMZ_mode1 = (dExpPepMass + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dPrecMZ_mode1 = MhToMz(dExpPepMass, iCharge);
    }
    else if (iRemovePrec == 3)
    {
-      dMZ1_mode3 = (dExpPepMass - 79.9799  + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ2_mode3 = (dExpPepMass - 97.9952  + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dMZ1_mode3 = MhToMz(dExpPepMass - 79.9799, iCharge);
+      dMZ2_mode3 = MhToMz(dExpPepMass - 97.9952, iCharge);
    }
    else if (iRemovePrec == 4)
    {
-      dMZ1_mode4 = (dExpPepMass - 18.010565 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ2_mode4 = (dExpPepMass - 36.021129 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ3_mode4 = (dExpPepMass - 63.997737 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dMZ1_mode4 = MhToMz(dExpPepMass - 18.010565, iCharge);
+      dMZ2_mode4 = MhToMz(dExpPepMass - 36.021129, iCharge);
+      dMZ3_mode4 = MhToMz(dExpPepMass - 63.997737, iCharge);
    }
 
    for (int i = iNumPeaks - 1; i >= 0; --i)
@@ -2011,7 +2003,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                   int bNotPrec = 1;
                   for (int j = 1; j <= iCharge; ++j)
                   {
-                     double dPrecMZ = (dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
+                     double dPrecMZ = MhToMz(dExpPepMass, j);
                      if (fabs(dIon - dPrecMZ) < dRemTol)
                      {
                         bNotPrec = 0;
@@ -2780,7 +2772,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = (*iter).first;
-         double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+         double dMass = MzToMh((*iter).second, iPrecursorCharge);
 
          if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || ((dMass >= g_staticParams.options.dPeptideMassLow)
@@ -2885,7 +2877,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    {
       int iCharge = pScoring->_spectrumInfoInternal.usiChargeState;
 
-      double dMZ = (pScoring->_pepMassInfo.dExpPepMass + (iCharge - 1) * PROTON_MASS) / iCharge;
+      double dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, iCharge);
 
       // calculate lower/upper ppm bounds in m/z
       double dBoundLower = dMZ + (dMZ * g_staticParams.tolerances.dInputToleranceMinus / 1E6); // dInputToleranceMinus typically has negative sign
@@ -3113,9 +3105,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
             {
                if (g_staticParams.options.iRemovePrecursor == 1)
                {
-                  double dMZ = (pScoring->_pepMassInfo.dExpPepMass
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
@@ -3135,7 +3125,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   {
                      double dMZ;
 
-                     dMZ = (pScoring->_pepMassInfo.dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
+                     dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, j);
                      if (fabs(dIon - dMZ) < g_staticParams.options.dRemovePrecursorTol)
                      {
                         bNotPrec = 0;
@@ -3153,12 +3143,8 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                }
                else if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
                {
-                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
-                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ1 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 79.9799, pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 97.9952, pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
@@ -3172,17 +3158,14 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                }
                else if (g_staticParams.options.iRemovePrecursor == 4)  //undocumented TMT
                {
-                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 18.010565    // water
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ1 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 18.010565,   // water
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
-                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 36.021129    // water x2
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 36.021129,   // water x2
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
-                  double dMZ3 = (pScoring->_pepMassInfo.dExpPepMass - 63.997737    // methanesulfenic acid 
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ3 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 63.997737,   // methanesulfenic acid
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol
@@ -3678,7 +3661,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
       for (auto iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = (*iter).first;
-         double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+         double dMass = MzToMh((*iter).second, iPrecursorCharge);
 
          if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || (dMass >= g_staticParams.options.dPeptideMassLow

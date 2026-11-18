@@ -2785,7 +2785,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    if (iNumPeaks == 0)
       return false;
 
-   if (dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS > g_staticParams.options.dPeptideMassHigh)
+   if (MzToMh(dMZ, iPrecursorCharge) > g_staticParams.options.dPeptideMassHigh)
       return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
    if (!InitializeSingleSpectrumSearch())
@@ -3388,7 +3388,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
                   // Add any conversion factor from different ion series (e.g. b -> a, or y -> z)
                   mass += ionMassesRelative[ionSeries];
 
-                  double mz = (mass + (ctCharge - 1) * PROTON_MASS) / ctCharge;
+                  double mz = MhToMz(mass, ctCharge);
                   iTmp = BIN(mz);
                   if (iTmp < g_staticParams.iArraySizeGlobal && pdTmpSpectrum[iTmp] > 0.0)
                   {
