@@ -22,8 +22,9 @@ charge-scaled windows they do not, so:
   with it which candidates were lost, changed between runs.
 
 ppm windows and MH+-type amu/mmu windows are constant offsets from the mass and were always
-correct. FI_DB and PI_DB bracket each query on its own and are not affected (6 repeated runs
-gave one output each; correctness there was not otherwise checked).
+correct. FI_DB and PI_DB bracket each query on its own and are not affected: `t68_window_fi` /
+`t68_window_pi` check a 72-query batch against each query searched alone on an index (plain,
+variable-mod and required-mod searches) and pass on the previous build too.
 
 Found while checking Mango output reproducibility: the Mango `comet.params` use ppm, so Mango
 runs as configured were never affected, but any amu/mmu m/z-type search is.

@@ -7009,7 +7009,11 @@ def _run_t67_threads(comet_exe, index_flag):
 
         if index_flag:
             # Fused-path proof: COMET_PRELOAD_BENCHMARK is read only by the fused batch path.
-            env = dict(os.environ, COMET_PRELOAD_BENCHMARK="1")
+            # WSLENV: WSL does not forward environment variables to a Windows .exe unless they
+            # are listed there; harmless for a native Linux or Windows run.
+            wslenv = os.environ.get("WSLENV", "")
+            env = dict(os.environ, COMET_PRELOAD_BENCHMARK="1",
+                       WSLENV=(wslenv + ":" if wslenv else "") + "COMET_PRELOAD_BENCHMARK")
             res = subprocess.run([str(comet_exe), f"-P{fmt(search_pf)}", fmt(ms2)],
                                  capture_output=True, text=True, timeout=300, env=env)
             check("[SEARCH]" in res.stdout + res.stderr,
@@ -7111,12 +7115,15 @@ def _t68_rows(comet_exe, params, ms2, threads, scan=None):
     return {s: sorted(v) for s, v in by_scan.items()}
 
 
-def _run_t68(comet_exe, mode, units="0", tol="0.25", ttype="1", repeats=3):
-    """Batch vs single-query oracle for one search mode and tolerance setting."""
+def _run_t68(comet_exe, mode, units="0", tol="0.25", ttype="1", repeats=3, index_flag=None):
+    """Batch vs single-query oracle for one search mode and tolerance setting. With index_flag
+    ("-i" fragment-ion index, "-j" peptide index) the FASTA is first built into that index and
+    both the batch and the single-query runs search it (the fused index search)."""
     import random
     failures = []
     fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
-    label = f"{mode} units={units} tol={tol} type={ttype}"
+    dbname = {"-i": " FI_DB", "-j": " PI_DB"}.get(index_flag, "")
+    label = f"{mode}{dbname} units={units} tol={tol} type={ttype}"
 
     with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
         tmp = Path(tmp)
@@ -7162,6 +7169,17 @@ def _run_t68(comet_exe, mode, units="0", tol="0.25", ttype="1", repeats=3):
                      "peptide_mass_tolerance_lower": "-" + tol,
                      "precursor_tolerance_type": ttype, **extra}.items():
             params = _set_param_line(params, k, v)
+
+        if index_flag:
+            build_params_file = tmp / "t68_build.params"
+            build_params_file.write_text(params)
+            rc, out = _run_t19_step(comet_exe, [index_flag, f"-P{fmt(build_params_file)}"])
+            idx = Path(str(db) + ".idx")
+            if rc != 0 or not idx.exists():
+                failures.append(f"{label}: index build failed (rc={rc}):\n{out[-800:]}")
+                return failures
+            params = params.replace(f"database_name = {fmt(db)}", f"database_name = {fmt(idx)}")
+            assert f"database_name = {fmt(idx)}" in params
 
         # ---- the queries: every target is surrounded by the adversarial pattern
         rng = random.Random(68)
@@ -7248,6 +7266,28 @@ def test_t68_window_compound(comet_exe):
 def test_t68_window_peff(comet_exe):
     """T68e: the same on the PEFF path (\\ModResPsi / \\VariantSimple / \\VariantComplex entries)."""
     return _run_t68(comet_exe, "peff")
+
+
+def _t68_index_modes(comet_exe, index_flag, modes):
+    failures = []
+    for mode in modes:
+        failures += _run_t68(comet_exe, mode, index_flag=index_flag)
+    return failures
+
+
+@register("t68_window_fi")
+def test_t68_window_fi(comet_exe):
+    """T68f: the T68 oracle on FI_DB (a fragment-ion index): plain, variable-mod and
+    require_variable_mod searches with charge-scaled amu windows. The index search brackets
+    each query on its own, so it was never affected; this keeps it that way. (Compound mods
+    and PEFF are FASTA_DB-only: index searches do not enumerate them.)"""
+    return _t68_index_modes(comet_exe, "-i", ("plain", "varmod", "reqvarmod"))
+
+
+@register("t68_window_pi")
+def test_t68_window_pi(comet_exe):
+    """T68g: the same on PI_DB (a peptide index)."""
+    return _t68_index_modes(comet_exe, "-j", ("plain", "varmod", "reqvarmod"))
 
 
 if __name__ == "__main__":
