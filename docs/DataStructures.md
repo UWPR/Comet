@@ -430,7 +430,7 @@ struct PepMassInfo          // core/Types.h
 struct SpectrumInfoInternal // core/Types.h
 ```
 
-`PepMassInfo` stores the calculated peptide mass (`dCalcPepMass`), the experimental MH+ mass (`dExpPepMass`), and the tolerance window in two forms: `dPeptideMassToleranceLow`/`dPeptideMassToleranceHigh` (absolute mass bounds) and `dPeptideMassToleranceMinus`/`dPeptideMassTolerancePlus` (bounds including isotope offsets, used for range checks), pre-computed for fast lookups.
+`PepMassInfo` stores the calculated peptide mass (`dCalcPepMass`), the experimental MH+ mass (`dExpPepMass`), and the tolerance window in two forms: `dPeptideMassToleranceLow`/`dPeptideMassToleranceHigh` (absolute mass bounds) and `dPeptideMassToleranceMinus`/`dPeptideMassTolerancePlus` (bounds including isotope offsets, used for range checks), pre-computed for fast lookups. `dSearchMinus`/`dSearchPlus` are monotone envelopes of those two bounds (suffix-min and prefix-max over the mass-sorted query list, built by `BuildMassWindowEnvelope()`): the FASTA_DB candidate search orders by them, because charge-scaled amu/mmu windows make the raw bounds non-monotone along the list; each query's own `Minus`/`Plus` and `Low`/`High` still decide the match (`docs/20261118_charge_scaled_windows.md`).
 
 `SpectrumInfoInternal` stores array size, `iHighestIon` (index of the highest-intensity bin, sizes the XCorr window in `CometPreprocess`'s `MakeCorrData` -- see commit `0c064a2e`), scan number, charge state (`usiChargeState`), `usiMaxFragCharge`, `dTotalIntensity`, retention time, Mango encoding, and the nativeID string from mzML files.
 

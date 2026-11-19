@@ -96,7 +96,7 @@ Also note `override_charge` / `precursor_charge` interactions: if `override_char
 range (`:2580-2585`); only the plain `override_charge = 0` branch walks the extra `Z` lines.
 Each `Z` line of a Mango scan is a separate precursor, so `override_charge > 0` would silently
 drop every `Z` line after the first. It is now rejected at startup with `mango_search = 1`
-(`ValidateMangoOverrideCharge()` in `CometSearchManager.cpp`; test `t67_mango_override`).
+(`ValidateMangoOverrideCharge()` in `CometSearchManager.cpp`; test `t91_mango_override`).
 
 ### 3c. `dMangoIndex` (`core/Types.h:1139`)
 
@@ -271,7 +271,7 @@ The same fallback exists in `ReadPrecursors()` (`:685`) and `FusedSearchSpectrum
 ## 10. Fixes applied (Mango branch, 2026-10-29)
 
 Both section 9 bugs are fixed on the `Mango` branch; `tests/unit/run_tests.py` gained
-`t67_mango` (fixture `tests/unit/data/t67_mango.{fasta,ms2}`) covering both.
+`t91_mango` (fixture `tests/unit/data/t91_mango.{fasta,ms2}`) covering both.
 
 **First `Z` line mass** -- the three `dMZ == 0.0` fallbacks in `CometPreprocess.cpp`
 (`ReadPrecursors()`, `PreprocessSpectrum()`, `FusedSearchSpectrum()`) now convert MH+ to m/z
@@ -300,7 +300,7 @@ writer still emits the Mango column without a header entry.
 
 ### 10a. Verification
 
-- `t67_mango` passes on the fixed build (both peptides found, labels `000_A`, `001_A`, `001_B`
+- `t91_mango` passes on the fixed build (both peptides found, labels `000_A`, `001_A`, `001_B`
   with the rejected 6000 Da `Z` line leaving no `000_B` and shifting nothing).
 - Re-searched `file128.ms2` (3,250 scans, 20,492 `Z` lines,
   23 rejected, 579 first-`Z`-line queries at 2+ or higher) with the fixed build and the run's

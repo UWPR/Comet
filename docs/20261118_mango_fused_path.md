@@ -81,16 +81,16 @@ The pseudo-Mango HeLa timing above (before this was available) remains the only
 large-file measurement.
 
 Not covered by real data: scans with a charge-0 Z line, an unpaired Z line or several S-line
-m/z values (none occur in these files); those are covered by T67b/T67g/T67h only.
+m/z values (none occur in these files); those are covered by T91b/T91g/T91h only.
 
 ## Tests
 
-- `t67_mango_fi` (T67e): FI_DB, `fragindex_skipreadprecursors = 0`.
-- `t67_mango_pi` (T67f): the same for a PI_DB index.
-- `t67_mango_skip_fi` (T67g): the pair/scan skipping and warnings on the fused path.
-- `t67_mango_threads` (T67h): 3000 generated scans of mixed shapes, FI_DB, 8 threads;
-  checks every row and the global row order. `t67_mango_threads_pi` (T67i) and
-  `t67_mango_threads_fasta` (T67j) run the same scans on PI_DB and FASTA_DB, which must give
+- `t91_mango_fi` (T91e): FI_DB, `fragindex_skipreadprecursors = 0`.
+- `t91_mango_pi` (T91f): the same for a PI_DB index.
+- `t91_mango_skip_fi` (T91g): the pair/scan skipping and warnings on the fused path.
+- `t91_mango_threads` (T91h): 3000 generated scans of mixed shapes, FI_DB, 8 threads;
+  checks every row and the global row order. `t91_mango_threads_pi` (T91i) and
+  `t91_mango_threads_fasta` (T91j) run the same scans on PI_DB and FASTA_DB, which must give
   the same rows. Mango supports all three database types; FASTA_DB (the historical Mango
   path) has no fused path and stays three-sweep.
 
@@ -101,7 +101,7 @@ tests assert the expected rows directly.
 
 - Mango ignores the S-line m/z: every Z line, the first included, takes its precursor from its
   own MH+ (`BuildMangoChargeStates()`, and `ReadPrecursors()` for the precursor mask). Real
-  Mango files always write 0.0 there; tests `t67_mango_smz` / `t67_mango_smz_fi` use a wrong
+  Mango files always write 0.0 there; tests `t91_mango_smz` / `t91_mango_smz_fi` use a wrong
   non-zero value to pin the behaviour.
 - All MH+ <-> m/z conversions go through the global `MhToMz()` / `MzToMh()` in
   `core/Constants.h`. The neutral-mass forms ((M + z*PROTON)/z) and the neutral-loss forms
