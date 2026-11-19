@@ -266,7 +266,7 @@ static void InitPrecomputedDecoyBins()
             // including the accumulating behaviour for ctCharge >= 3.
             for (int ctCharge = 1; ctCharge <= s_pdMaxCharge; ++ctCharge)
             {
-               dFragmentIonMass = (dFragmentIonMass + (ctCharge - 1.0) * PROTON_MASS) / ctCharge;
+               dFragmentIonMass = MhToMz(dFragmentIonMass, ctCharge);
                s_preDecoyBins[iBase + ctCharge - 1] = (dFragmentIonMass > 0.0)
                   ? (int)(dFragmentIonMass * dInvBW + dBinOff)
                   : -1;
@@ -1347,7 +1347,7 @@ void CometPostAnalysis::CalculateAScorePro(Query* pQuery,
       return;
 
    precursorCharge = pQuery->_spectrumInfoInternal.usiChargeState;
-   precursorMz = (pQuery->_pResults[0].dPepMass + (precursorCharge - 1) * PROTON_MASS) / precursorCharge;
+   precursorMz = MhToMz(pQuery->_pResults[0].dPepMass, precursorCharge);
 
    // Generate peptide sequence of format "K.M0LAES1DDSGDEES1VSQTDK.T" where the mod char is the mod #
    sequence = pQuery->_pResults[0].cPrevAA + std::string(".");

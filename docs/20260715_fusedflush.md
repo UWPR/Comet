@@ -103,7 +103,7 @@ machines.
   more often, not restructured.
 
 `iSpectrumBatchSize`/`FRAGINDEX_MAX_BATCHSIZE` remain unchanged for the legacy path (still used by
-`executeBatchLegacy`, which `PiStrategy`/`FiStrategy` fall back to for Mango/speclib runs -- finding
+`executeBatchLegacy`, which `PiStrategy`/`FiStrategy` fall back to for speclib runs -- finding
 1's clamp fix still matters there).
 
 ## Modeling/testing writer I/O batching cost

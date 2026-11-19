@@ -222,34 +222,34 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
 }
 
 
+void BuildMassWindowEnvelope(std::vector<Query*>& queries)
+{
+   double dMaxPlus = -(std::numeric_limits<double>::max)();
+
+   for (size_t i = 0; i < queries.size(); ++i)
+   {
+      if (queries[i]->_pepMassInfo.dPeptideMassTolerancePlus > dMaxPlus)   // not std::max: windows.h macro
+         dMaxPlus = queries[i]->_pepMassInfo.dPeptideMassTolerancePlus;
+      queries[i]->_pepMassInfo.dSearchPlus = dMaxPlus;
+   }
+
+   double dMinMinus = (std::numeric_limits<double>::max)();
+
+   for (size_t i = queries.size(); i-- > 0; )
+   {
+      if (queries[i]->_pepMassInfo.dPeptideMassToleranceMinus < dMinMinus)
+         dMinMinus = queries[i]->_pepMassInfo.dPeptideMassToleranceMinus;
+      queries[i]->_pepMassInfo.dSearchMinus = dMinMinus;
+   }
+}
+
+
 bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
                               ThreadPool* tp, SearchSession& session,
                               bool bLogPrePostAnalysis)
 {
-   if (g_staticParams.options.bMango)
-   {
-      int iCurrentScanNumber = 0;
-      int iMangoIndex = 0;
-
-      std::sort(session.queries.begin(), session.queries.end(), compareByMangoIndex);
-
-      for (std::vector<Query*>::iterator it = session.queries.begin(); it != session.queries.end(); ++it)
-      {
-         if ((*it)->_spectrumInfoInternal.iScanNumber != iCurrentScanNumber)
-         {
-            iCurrentScanNumber = (*it)->_spectrumInfoInternal.iScanNumber;
-            iMangoIndex = 0;
-         }
-         else
-         {
-            iMangoIndex++;
-         }
-         sprintf((*it)->_spectrumInfoInternal.szMango, "%03d_%c",
-                 (int)iMangoIndex / 2, (iMangoIndex % 2) ? 'B' : 'A');
-      }
-   }
-
    std::sort(session.queries.begin(), session.queries.end(), compareByPeptideMass);
+   BuildMassWindowEnvelope(session.queries);
 
    // Only matters for FASTA_DB: g_massRange.dMinMass/dMaxMass are read for candidate
    // filtering exclusively by SearchForPeptides() and its digestion-loop siblings
@@ -263,8 +263,10 @@ bool RunSearchAndPostAnalysis(int iPercentStart, int iPercentEnd,
    // there is no FI_DB/PI_DB code path that would read a stale value. See the "MassRange"
    // section of docs/DataStructures.md and item 6 of docs/20260728_CodeUpdates.md for the
    // full trace that established this.
-   g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dPeptideMassToleranceMinus;
-   g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dPeptideMassTolerancePlus;
+   // Not queries.front().Minus / queries.back().Plus: with charge-scaled windows those are not the
+   // extremes. The envelope's first suffix-min and last prefix-max are the true min and max.
+   g_massRange.dMinMass = session.queries.at(0)->_pepMassInfo.dSearchMinus;
+   g_massRange.dMaxMass = session.queries.at(session.queries.size() - 1)->_pepMassInfo.dSearchPlus;
    g_massRange.bNarrowMassRange = (g_massRange.dMaxMass - g_massRange.dMinMass > g_massRange.dMinMass);
 
    bool bSucceeded = !session.statusRef.IsError() && !session.statusRef.IsCancel();

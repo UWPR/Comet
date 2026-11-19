@@ -81,10 +81,9 @@ bool PiStrategy::executeBatch(MSToolkit::MSReader& mstReader,
                               ThreadPool* tp, SearchSession& session)
 {
    // Fused path: per-spectrum read+preprocess+search+post-analysis in one pass,
-   // same as FiStrategy. Disabled for Mango or speclib runs (those require the
-   // legacy ordering), matching FiStrategy's own restriction.
+   // same as FiStrategy. Disabled for speclib runs (those require the legacy
+   // ordering), matching FiStrategy's own restriction. Mango runs use it.
    bool bFused = session.bPerformDatabaseSearch
-                 && !g_staticParams.options.bMango
                  && !session.bPerformSpecLibSearch;
 
    if (bFused)

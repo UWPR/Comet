@@ -29,6 +29,7 @@
 #include <mutex>
 #include <queue>
 #include <atomic>
+#include <cstdarg>
 #include <thread>
 #include <memory>
 #include <unordered_map>
@@ -737,6 +738,89 @@ static void MarkBinRange(double dMassLow, double dMassHigh, int iMaxBin, bool *p
 }
 
 
+// Mango scan/pair warnings are capped so a badly formed input file cannot flood the console
+// (this runs on every preprocessing thread, hence the atomic counter). The count is per
+// process; one final line says that further warnings were suppressed.
+static const int MANGO_WARNING_LIMIT = 10;
+static std::atomic<int> g_iMangoWarnings(0);
+
+static void MangoWarning(const char *szFormat, ...)
+{
+   int iCount = g_iMangoWarnings.fetch_add(1);
+
+   if (iCount < MANGO_WARNING_LIMIT)
+   {
+      va_list args;
+      va_start(args, szFormat);
+      vprintf(szFormat, args);
+      va_end(args);
+   }
+   else if (iCount == MANGO_WARNING_LIMIT)
+   {
+      printf(" Warning, further Mango scan warnings suppressed (limit %d)\n", MANGO_WARNING_LIMIT);
+   }
+}
+
+// Mango scans are one S line (a single precursor m/z) followed by Z lines in A/B pairs: Z
+// lines 0,1 are the first pair, 2,3 the second, and so on, each Z line a separate precursor.
+// Cross-linked peptides need both members, so a pair is searched only if both Z lines are
+// present and have a charge. Fills vChargeStates (charge, m/z) and vZOrdinal (the Z-line
+// ordinal behind each entry, used for the A/B label) for every usable pair and warns once
+// per skipped pair (bWarn = false stays quiet: ReadPrecursors() calls this too, to build the
+// precursor mask the search needs, and the search pass does the reporting); the pairs that
+// remain are still searched. Every Z line, the first
+// included, takes its precursor from its own MH+: the S-line m/z is not a precursor in Mango
+// input (the generator writes 0.0) and is ignored.
+static void BuildMangoChargeStates(Spectrum &spec,
+                                   vector<pair<int,double>> &vChargeStates,
+                                   vector<int> &vZOrdinal,
+                                   bool bWarn = true)
+{
+   int iScanNumber = spec.getScanNumber();
+   int iNumZ = spec.sizeZ();
+
+   for (int k = 0; k < iNumZ; ++k)
+   {
+      int iPairFirst = k - (k % 2);
+
+      if (iPairFirst + 1 >= iNumZ)
+      {
+         if (k % 2 == 0 && bWarn)   // unpaired last Z line: report once
+            MangoWarning(" Warning, scan %d: Mango Z line %d has no partner (A/B pairs need both); skipped\n", iScanNumber, k);
+         continue;
+      }
+
+      if (spec.atZ(iPairFirst).z <= 0 || spec.atZ(iPairFirst + 1).z <= 0)
+      {
+         if (k % 2 == 0 && bWarn)   // report once per pair
+            MangoWarning(" Warning, scan %d: Mango Z lines %d and %d include a charge of 0; pair skipped\n",
+                  iScanNumber, iPairFirst, iPairFirst + 1);
+         continue;
+      }
+
+      int iCharge = spec.atZ(k).z;
+
+      vChargeStates.push_back(make_pair(iCharge, MhToMz(spec.atZ(k).mh, iCharge)));
+      vZOrdinal.push_back(k);
+   }
+}
+
+// Mango input has exactly one precursor per S line. Anything else is unsupported: warn and
+// let the caller skip the scan.
+static bool MangoScanHasSinglePrecursor(Spectrum &spec, bool bWarn = true)
+{
+   if (spec.sizeMZ() > 1)
+   {
+      if (bWarn)
+         MangoWarning(" Warning, scan %d: Mango scans must have one precursor m/z on the S line but this one has %d; scan skipped\n",
+            spec.getScanNumber(), spec.sizeMZ());
+      return false;
+   }
+
+   return true;
+}
+
+
 // Spectrum charge Comet would use for precursor i of a header-only read, or 0 if the file does not
 // supply one (mirrors the charge selection in ReadPrecursors() below, minus the warning message).
 static int PrecursorFileCharge(Spectrum &spec, int i)
@@ -758,6 +842,11 @@ static int PrecursorFileCharge(Spectrum &spec, int i)
 // the peaks, which is why those spectra are re-read with them.
 static bool PrecursorNeedsPeaks(Spectrum &spec)
 {
+   // Mango never guesses a charge (a Z line without one is skipped with its pair), so its
+   // spectra never need the peaks here.
+   if (g_staticParams.options.bMango)
+      return false;
+
    if (g_staticParams.options.iStartCharge > 0
          && (g_staticParams.options.iOverrideCharge == 1 || g_staticParams.options.iOverrideCharge == 2))
    {
@@ -876,6 +965,10 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
 
          for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
          {
+            // Mango scans the search would skip (several S-line m/z values) contribute nothing.
+            if (g_staticParams.options.bMango && !MangoScanHasSinglePrecursor(mstSpectrum, false))
+               continue;
+
             double dMZ = 0.0;              // m/z to use for analysis
             vector<pair<int,double>> vChargeStates;   // charge, m/z
 
@@ -921,12 +1014,22 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                dMZ = mstSpectrum.getMZ(i);
 
             if (dMZ == 0.0 && iSpectrumCharge != 0)
-               dMZ = mstSpectrum.atZ(i).mh / iSpectrumCharge;
+               dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
             // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
-            if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
+            if (g_staticParams.options.bMango)
+            {
+               // Same pair logic as the search (PreprocessSpectrum / FusedSearchSpectrum): every
+               // Z line of a usable pair from its own MH+, a pair with a charge-0 member or an
+               // unpaired last Z line left out, whatever the first Z line's charge. The search
+               // reports the skips; this pass stays quiet. override_charge > 0 is rejected for
+               // Mango at startup.
+               vector<int> vZOrdinal;
+               BuildMangoChargeStates(mstSpectrum, vChargeStates, vZOrdinal, false);
+            }
+            else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
             {
                if (g_staticParams.options.iOverrideCharge == 1)
                {
@@ -988,7 +1091,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
                   {
                      for (int ii = 1 ; ii < mstSpectrum.sizeZ(); ++ii)
                      {
-                        vChargeStates.push_back(make_pair(mstSpectrum.atZ(ii).z, (mstSpectrum.atZ(ii).mh + PROTON_MASS * (mstSpectrum.atZ(ii).z - 1)) / mstSpectrum.atZ(ii).z));
+                        vChargeStates.push_back(make_pair(mstSpectrum.atZ(ii).z, MhToMz(mstSpectrum.atZ(ii).mh, mstSpectrum.atZ(ii).z)));
                      }
                   }
                }
@@ -1021,7 +1124,7 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
             for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
             {
                int iPrecursorCharge = (*iter).first;
-               double dProtonatedMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+               double dProtonatedMass = MzToMh((*iter).second, iPrecursorCharge);
 
                double dToleranceLow = 0;
                double dToleranceHigh = 0;
@@ -2454,7 +2557,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
       return nullptr;
    }
 
-   double dMass = dMZ * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+   double dMass = MzToMh(dMZ, iPrecursorCharge);
 
    // The precursor mass sizes this query's arrays (ComputeClampedArraySize()): a NaN or
    // infinite m/z cast to int is undefined (in practice INT_MIN) and a negative size reached
@@ -2737,18 +2840,18 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
 
    if (iRemovePrec == 1)
    {
-      dPrecMZ_mode1 = (dExpPepMass + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dPrecMZ_mode1 = MhToMz(dExpPepMass, iCharge);
    }
    else if (iRemovePrec == 3)
    {
-      dMZ1_mode3 = (dExpPepMass - 79.9799  + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ2_mode3 = (dExpPepMass - 97.9952  + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dMZ1_mode3 = MhToMz(dExpPepMass - 79.9799, iCharge);
+      dMZ2_mode3 = MhToMz(dExpPepMass - 97.9952, iCharge);
    }
    else if (iRemovePrec == 4)
    {
-      dMZ1_mode4 = (dExpPepMass - 18.010565 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ2_mode4 = (dExpPepMass - 36.021129 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
-      dMZ3_mode4 = (dExpPepMass - 63.997737 + (iCharge - 1.0) * PROTON_MASS) / (double)iCharge;
+      dMZ1_mode4 = MhToMz(dExpPepMass - 18.010565, iCharge);
+      dMZ2_mode4 = MhToMz(dExpPepMass - 36.021129, iCharge);
+      dMZ3_mode4 = MhToMz(dExpPepMass - 63.997737, iCharge);
    }
 
    // the sparse build records each bin the first time it is set (the buffer starts clean)
@@ -2798,7 +2901,7 @@ Query* CometPreprocess::PreprocessSingleSpectrumCore(int iPrecursorCharge,
                   int bNotPrec = 1;
                   for (int j = 1; j <= iCharge; ++j)
                   {
-                     double dPrecMZ = (dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
+                     double dPrecMZ = MhToMz(dExpPepMass, j);
                      if (fabs(dIon - dPrecMZ) < dRemTol)
                      {
                         bNotPrec = 0;
@@ -3352,6 +3455,17 @@ bool CometPreprocess::CheckExit(int iAnalysisType,
 }
 
 
+// Mango pairs consecutive Z lines: ordinals 0,1 -> 000_A/000_B, 2,3 -> 001_A/001_B, etc.
+// The ordinal is the precursor's Z-line ordinal, set when the Query is created so a Z line
+// rejected by the mass/charge filter cannot shift the labels of the precursors after it.
+static void SetMangoLabel(Query *pQuery, int iZLineOrdinal)
+{
+   snprintf(pQuery->_spectrumInfoInternal.szMango,
+            sizeof(pQuery->_spectrumInfoInternal.szMango),
+            "%03d_%c", iZLineOrdinal / 2, (iZLineOrdinal % 2) ? 'B' : 'A');
+}
+
+
 bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
                                          double *pdTmpRawData,
                                          double *pdTmpFastXcorrData,
@@ -3368,10 +3482,14 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
    // all combinations of these for each spectrum, whether there's a known
    // Z for each precursor or if Comet has to guess the 1+ or 2+/3+ charges.
 
+   if (g_staticParams.options.bMango && !MangoScanHasSinglePrecursor(spec))
+      return true;   // unsupported Mango scan, skipped with a warning
+
    for (int i = 0 ; i < spec.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
    {
       double dMZ = 0.0;              // m/z to use for analysis
       vector<pair<int,double>> vChargeStates;   // charge, m/z
+      vector<int> vZOrdinal;                    // Mango only: Z-line ordinal behind each vChargeStates entry
 
       if (spec.sizeMZ() == spec.sizeZ())
       {
@@ -3415,12 +3533,18 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = spec.atZ(i).mh / iSpectrumCharge;
+         dMZ = MhToMz(spec.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
       // 1.  Have spectrum charge from file.  It may be 0.
       // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
       // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
-      if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
+      if (g_staticParams.options.bMango)
+      {
+         // Mango Z lines are separate precursors in A/B pairs, not alternative charges;
+         // override_charge > 0 is rejected at startup with mango_search = 1.
+         BuildMangoChargeStates(spec, vChargeStates, vZOrdinal);
+      }
+      else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
          if (g_staticParams.options.iOverrideCharge == 1)
          {
@@ -3482,7 +3606,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
             {
                for (int ii = 1 ; ii < spec.sizeZ(); ++ii)
                {
-                  vChargeStates.push_back(make_pair(spec.atZ(ii).z, (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z ));
+                  vChargeStates.push_back(make_pair(spec.atZ(ii).z, MhToMz(spec.atZ(ii).mh, spec.atZ(ii).z)));
                }
             }
          }
@@ -3515,7 +3639,7 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
       for (vector<pair<int, double>>::iterator iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = (*iter).first;
-         double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+         double dMass = MzToMh((*iter).second, iPrecursorCharge);
 
          if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || ((dMass >= g_staticParams.options.dPeptideMassLow)
@@ -3525,7 +3649,10 @@ bool CometPreprocess::PreprocessSpectrum(Spectrum &spec,
          {
             Query *pScoring = new Query();
 
-            pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(),iter);  // for Mango; used to sort by this value to get original file order
+            if (g_staticParams.options.bMango)
+            {
+               SetMangoLabel(pScoring, vZOrdinal[distance(vChargeStates.begin(), iter)]);
+            }
 
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
@@ -3628,7 +3755,7 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring,
    {
       int iCharge = pScoring->_spectrumInfoInternal.usiChargeState;
 
-      double dMZ = (pScoring->_pepMassInfo.dExpPepMass + (iCharge - 1) * PROTON_MASS) / iCharge;
+      double dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, iCharge);
 
       // calculate lower/upper ppm bounds in m/z
       double dBoundLower = dMZ + (dMZ * g_staticParams.tolerances.dInputToleranceMinus / 1E6); // dInputToleranceMinus typically has negative sign
@@ -3702,6 +3829,11 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring,
 
    if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   // there should be no reason to have a peptide mass smaller than this
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;    // why not a much larger cutoff??
+
+   // A lone query (RTS) is its own envelope; a sorted batch overwrites these in
+   // BuildMassWindowEnvelope().
+   pScoring->_pepMassInfo.dSearchMinus = pScoring->_pepMassInfo.dPeptideMassToleranceMinus;
+   pScoring->_pepMassInfo.dSearchPlus  = pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
 
    // now set Low/High to mass range around ExpMass
    pScoring->_pepMassInfo.dPeptideMassToleranceLow = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow;
@@ -3853,9 +3985,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
             {
                if (g_staticParams.options.iRemovePrecursor == 1)
                {
-                  double dMZ = (pScoring->_pepMassInfo.dExpPepMass
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ) > g_staticParams.options.dRemovePrecursorTol)
                   {
@@ -3875,7 +4005,7 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                   {
                      double dMZ;
 
-                     dMZ = (pScoring->_pepMassInfo.dExpPepMass + (j - 1.0) * PROTON_MASS) / (double)(j);
+                     dMZ = MhToMz(pScoring->_pepMassInfo.dExpPepMass, j);
                      if (fabs(dIon - dMZ) < g_staticParams.options.dRemovePrecursorTol)
                      {
                         bNotPrec = 0;
@@ -3893,12 +4023,8 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                }
                else if (g_staticParams.options.iRemovePrecursor == 3)  //phosphate neutral loss
                {
-                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 79.9799
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
-                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 97.9952
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ1 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 79.9799, pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 97.9952, pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol)
@@ -3912,17 +4038,14 @@ bool CometPreprocess::LoadIons(struct Query *pScoring,
                }
                else if (g_staticParams.options.iRemovePrecursor == 4)  //undocumented TMT
                {
-                  double dMZ1 = (pScoring->_pepMassInfo.dExpPepMass - 18.010565    // water
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ1 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 18.010565,   // water
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
-                  double dMZ2 = (pScoring->_pepMassInfo.dExpPepMass - 36.021129    // water x2
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ2 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 36.021129,   // water x2
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
-                  double dMZ3 = (pScoring->_pepMassInfo.dExpPepMass - 63.997737    // methanesulfenic acid 
-                        + (pScoring->_spectrumInfoInternal.usiChargeState - 1.0) * PROTON_MASS)
-                     / (double)(pScoring->_spectrumInfoInternal.usiChargeState);
+                  double dMZ3 = MhToMz(pScoring->_pepMassInfo.dExpPepMass - 63.997737,   // methanesulfenic acid
+                        pScoring->_spectrumInfoInternal.usiChargeState);
 
                   if (fabs(dIon - dMZ1) > g_staticParams.options.dRemovePrecursorTol
                         && fabs(dIon - dMZ2) > g_staticParams.options.dRemovePrecursorTol
@@ -4291,10 +4414,14 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
 
    g_rtsScratch.EnsureInitialized();
 
+   if (g_staticParams.options.bMango && !MangoScanHasSinglePrecursor(spec))
+      return;   // unsupported Mango scan, skipped with a warning
+
    for (int i = 0; i < spec.sizeMZ(); ++i)
    {
       double dMZ = 0.0;
       vector<pair<int,double>> vChargeStates;
+      vector<int> vZOrdinal;                    // Mango only: Z-line ordinal behind each vChargeStates entry
 
       if (spec.sizeMZ() == spec.sizeZ())
          iSpectrumCharge = spec.atZ(i).z;
@@ -4324,9 +4451,15 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
          dMZ = spec.getMZ(i);
 
       if (dMZ == 0.0 && iSpectrumCharge != 0)
-         dMZ = spec.atZ(i).mh / iSpectrumCharge;
+         dMZ = MhToMz(spec.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
-      if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
+      if (g_staticParams.options.bMango)
+      {
+         // Mango Z lines are separate precursors in A/B pairs, not alternative charges;
+         // override_charge > 0 is rejected at startup with mango_search = 1.
+         BuildMangoChargeStates(spec, vChargeStates, vZOrdinal);
+      }
+      else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
       {
          if (g_staticParams.options.iOverrideCharge == 1)
          {
@@ -4380,7 +4513,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
                for (int ii = 1; ii < spec.sizeZ(); ++ii)
                {
                   vChargeStates.push_back(make_pair(spec.atZ(ii).z,
-                     (spec.atZ(ii).mh + PROTON_MASS * (spec.atZ(ii).z - 1)) / spec.atZ(ii).z));
+                     MhToMz(spec.atZ(ii).mh, spec.atZ(ii).z)));
                }
             }
          }
@@ -4409,7 +4542,7 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
       for (auto iter = vChargeStates.begin(); iter != vChargeStates.end(); ++iter)
       {
          int iPrecursorCharge = (*iter).first;
-         double dMass = (*iter).second * iPrecursorCharge - PROTON_MASS * (iPrecursorCharge - 1);
+         double dMass = MzToMh((*iter).second, iPrecursorCharge);
 
          if ((isEqual(g_staticParams.options.dPeptideMassLow, 0.0)
                   || (dMass >= g_staticParams.options.dPeptideMassLow
@@ -4419,7 +4552,11 @@ void CometPreprocess::FusedSearchSpectrum(Spectrum spec,
          {
             Query* pScoring = new Query();
 
-            pScoring->dMangoIndex = iScanNumber + 0.0001 * distance(vChargeStates.begin(), iter);
+            if (g_staticParams.options.bMango)
+            {
+               SetMangoLabel(pScoring, vZOrdinal[distance(vChargeStates.begin(), iter)]);
+            }
+
             pScoring->_pepMassInfo.dExpPepMass = dMass;
             pScoring->_spectrumInfoInternal.usiChargeState = iPrecursorCharge;
             pScoring->_spectrumInfoInternal.dTotalIntensity = 0.0;

@@ -335,6 +335,28 @@ static bool ValidateScanRange()
    return true;
 }
 
+// A Mango scan has one S line and several Z lines, and each Z line is a different precursor
+// (the A and B peptides of a pair), not an alternative charge state. override_charge > 0
+// replaces the file's charge(s) with the precursor_charge range, which only walks the
+// first Z line and silently drops every later one (and labels every charge variant 000_A).
+// There is no meaningful way to apply it per Z line, so refuse the combination.
+static bool ValidateMangoOverrideCharge()
+{
+   if (g_staticParams.options.bMango && g_staticParams.options.iOverrideCharge > 0)
+   {
+      string strErrorMsg = " Error - override_charge = "
+         + std::to_string(g_staticParams.options.iOverrideCharge)
+         + " is not supported with mango_search = 1.\n"
+         + " Each Z line of a Mango scan is a separate precursor, so override_charge would"
+         + " silently drop all but the first.\n Set override_charge = 0.\n";
+      g_cometStatus.SetStatus(CometResult_Failed, strErrorMsg);
+      logerr(strErrorMsg);
+      return false;
+   }
+
+   return true;
+}
+
 static bool ValidatePeptideLengthRange()
 {
    if (g_staticParams.options.peptideLengthRange.iEnd < g_staticParams.options.peptideLengthRange.iStart
@@ -1790,7 +1812,7 @@ bool CometSearchManager::InitializeStaticParams()
          }
 
          // This clamp only matters for the legacy load-all-then-search-all path
-         // (PiStrategy falls back to it for Mango/speclib runs; see
+         // (PiStrategy falls back to it for speclib runs; see
          // PiStrategy::executeBatch()) -- the fused path ignores iSpectrumBatchSize
          // entirely in favor of its own thread-scaled flush threshold. Applies to both
          // modes identically; no need to load all spectra into memory for either, since
@@ -2303,6 +2325,9 @@ bool CometSearchManager::DoSearch()
       return false;
 
    if (!ValidatePeptideLengthRange())
+      return false;
+
+   if (!ValidateMangoOverrideCharge())
       return false;
 
    bool bSucceeded = true;
@@ -2853,7 +2878,7 @@ bool CometSearchManager::DoSingleSpectrumSearchMultiResults(const int topN,
    // "x > y" and lets a NaN through, so the negated-comparison idiom is not NaN-safe there.
    // A NaN m/z is rejected here; the preprocess core also rejects a non-finite or non-positive
    // precursor mass.
-   const double dMHGate = dMZ * iPrecursorCharge - (iPrecursorCharge - 1.0) * PROTON_MASS;
+   const double dMHGate = MzToMh(dMZ, iPrecursorCharge);
    if (std::isnan(dMHGate) || dMHGate > g_staticParams.options.dPeptideMassHigh)
       return false;    // this assumes dPeptideMassHigh is set correctly in the calling program
 
@@ -2998,7 +3023,7 @@ static void VisitResultIon(void* pContext,
    {
       Fragment frag;
       frag.intensity = pCtx->pdTmpSpectrum[iBin];
-      frag.mass = dMZ * iCharge - (iCharge - 1) * PROTON_MASS;   // the fragment's 1+ mass (after any loss)
+      frag.mass = MzToMh(dMZ, iCharge);   // the fragment's 1+ mass (after any loss)
       frag.type = iWhichIonSeries;
       frag.number = iLen + 1;
       frag.charge = iCharge;
@@ -3992,7 +4017,7 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
          // above dPeptideMassHigh (decision 8). There is no lower bound: with an isotope error or
          // a wide m/z tolerance a precursor just below dPeptideMassLow can still match a peptide
          // inside the range, and one that cannot simply finds nothing.
-         const double dMH = cand.dMZ * cand.iCharge - (cand.iCharge - 1.0) * PROTON_MASS;
+         const double dMH = MzToMh(cand.dMZ, cand.iCharge);
          if (std::isnan(dMH) || dMH > g_staticParams.options.dPeptideMassHigh)
          {
             ++uiRejected;
@@ -4077,7 +4102,7 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
          char szBuf[32];
          for (const Fragment& frag : vBestFrag[0])
          {
-            snprintf(szBuf, sizeof(szBuf), "%d,", BIN((frag.mass + (frag.charge - 1) * PROTON_MASS) / frag.charge));
+            snprintf(szBuf, sizeof(szBuf), "%d,", BIN(MhToMz(frag.mass, frag.charge)));
             sMatched += szBuf;
          }
          for (int iBin : vBestBins)

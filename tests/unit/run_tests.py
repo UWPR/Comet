@@ -34,6 +34,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -9514,6 +9515,828 @@ def test_t88_reinit_decoy_tables(comet_exe):
         check(edge_rows is not None and any("LONG" in line for line in edge_rows),
               "low resolution, precursor 23 bins below the global array end: the long peptide is found", failures)
     return failures
+
+
+
+# ---------------------------------------------------------------------------
+# T91 -- Mango (mango_search = 1) regression, docs/20261029_mango_review.md section 9.
+# One scan with four Z lines and an S-line m/z of 0.0, as the Mango pipeline writes it.
+#   (a) the first Z line is 2+: pre-fix, Comet derived its m/z as MH+/z (missing a
+#       proton), so with isotope_error = 0 the peptide could not be found at all;
+#   (b) the second Z line is above digest_mass_range and is rejected: pre-fix, the A/B
+#       labels were assigned from the position among surviving queries, so the third
+#       and fourth Z lines came out as 000_B / 001_A instead of 001_A / 001_B.
+# ---------------------------------------------------------------------------
+
+T91_PARAMS_TEMPLATE = (
+    T19_PARAMS_TEMPLATE
+    .replace("search_enzyme_number = 0", "search_enzyme_number = 1")
+    .replace("peptide_length_range = 8 8", "peptide_length_range = 9 10")
+    .replace("override_charge = 0", "override_charge = 0\nmango_search = 1")
+)
+assert "search_enzyme_number = 1" in T91_PARAMS_TEMPLATE, \
+    "T91_PARAMS_TEMPLATE: search_enzyme_number replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "peptide_length_range = 9 10" in T91_PARAMS_TEMPLATE, \
+    "T91_PARAMS_TEMPLATE: peptide_length_range replacement didn't fire -- T19_PARAMS_TEMPLATE changed?"
+assert "mango_search = 1" in T91_PARAMS_TEMPLATE, \
+    "T91_PARAMS_TEMPLATE: mango_search replacement didn't fire (the 'override_charge = 0' anchor is gone -- T19_PARAMS_TEMPLATE changed?)"
+assert "isotope_error = 0" in T91_PARAMS_TEMPLATE, \
+    "T91 needs isotope_error = 0 so the -1 Da first-Z-line mass error cannot be rescued by a C13 offset"
+
+
+def _t91_txt_layout(header, rows, stem):
+    """Work out the .txt column layout for a Mango run. Returns (col, spec_col, error).
+    `col` maps header names to row positions; `spec_col` is the position of the Mango spectrum
+    string (<base>_<label>.<scan>.<scan>.<z>). The writer currently gives that column no
+    header entry (rows have one field more than the header and every column after `scan`
+    sits one to the right); if the writer starts labelling it, columns map by name and the
+    spectrum string is found by its content. Either layout is accepted."""
+    need = ("charge", "exp_neutral_mass", "plain_peptide")
+    if any(n not in header for n in need):
+        return None, None, f".txt header lacks one of {need}: {header[:6]}..."
+    if not rows:
+        return {}, 1, None
+    width = len(rows[0])
+    if any(len(r) != width for r in rows):
+        return None, None, ".txt data rows have differing field counts"
+    if width == len(header) + 1:
+        return {name: (i if i == 0 else i + 1) for i, name in enumerate(header)}, 1, None
+    if width == len(header):
+        spec = next((i for i, v in enumerate(rows[0]) if v.startswith(stem + "_")), None)
+        if spec is None:
+            return None, None, f"no Mango spectrum-string column found in the first row: {rows[0][:4]}"
+        return {name: i for i, name in enumerate(header)}, spec, None
+    return None, None, f".txt rows have {width} fields but the header has {len(header)}"
+
+
+def _run_t91(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), index_flag=None,
+             fasta_name="t91_mango.fasta"):
+    """Shared body of the T91 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
+    against t91_mango.fasta with mango_search = 1 and check both the .txt rows and the
+    .pep.xml spectrum_query elements (spectrum string, charge, scans, precursor mass).
+
+    `expected` maps each label that must be reported to (charge, exp_neutral_mass,
+    plain_peptide); `expected_order` is the order the rows must appear in (scan, charge, then
+    label); `warnings` are substrings that must appear in Comet's output. With `index_flag`
+    ("-i" fragment-ion index, "-j" peptide index) the FASTA is first built into an index and
+    the search runs against that .idx (the fused batch path) with
+    fragindex_skipreadprecursors = 0, so for FI_DB ReadPrecursors() prunes the in-memory
+    fragment index to the precursors it reads from the .ms2. Without it the search is
+    FASTA_DB (the legacy three-sweep path).
+    """
+    failures = []
+
+    fasta = DATA_DIR / fasta_name
+    ms2   = DATA_DIR / ms2_name
+    txt   = ms2.with_suffix(".txt")
+    pepxml = ms2.with_suffix(".pep.xml")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    idx = fasta.with_suffix(".fasta.idx")
+
+    txt.unlink(missing_ok=True)
+    pepxml.unlink(missing_ok=True)
+    params = T91_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    params = _set_param_line(params, "output_pepxmlfile", "1")   # the Mango pipeline reads pepXML
+
+    if index_flag:
+        idx.unlink(missing_ok=True)
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as bf:
+            bf.write(params)
+            build_params_file = Path(bf.name)
+        try:
+            rc, out = _run_t19_step(comet_exe, [index_flag, f"-P{fmt(build_params_file)}"])
+        finally:
+            build_params_file.unlink(missing_ok=True)
+        if rc != 0 or not idx.exists():
+            failures.append(f"index build failed (rc={rc}):\n{out}")
+            return failures
+        params = params.replace(f"database_name = {fmt(fasta)}", f"database_name = {fmt(idx)}")
+        assert f"database_name = {fmt(idx)}" in params
+        params = _set_param_line(params, "fragindex_skipreadprecursors", "0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+
+    try:
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        if rc != 0:
+            failures.append(f"search failed/crashed (rc={rc}):\n{out}")
+            return failures
+        if not txt.exists():
+            failures.append(f".txt not created. Comet output:\n{out}")
+            return failures
+
+        lines = txt.read_text().splitlines()
+        rows  = [l.split("\t") for l in lines[2:] if l.strip()]
+
+        header = lines[1].split("\t")
+        col, spec_col, err = _t91_txt_layout(header, rows, ms2.stem)
+        if err:
+            failures.append(err)
+            return failures
+
+        for w in warnings:
+            # exactly once: with an index the precursor pre-read (ReadPrecursors) builds its
+            # mask through the same helper as the search but must stay quiet
+            check(out.count(w) == 1, f"Comet output warns exactly once: {w!r} (x{out.count(w)})", failures)
+
+        seen = {}
+        for row in rows:
+            spectrum = row[spec_col]   # <base>_<label>.<scan>.<scan>.<charge>
+            check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
+                  f"Mango spectrum string {spectrum!r} has the form {ms2.stem}_<label>.{scan}.{scan}.<z>",
+                  failures)
+            label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
+            seen[label] = (int(row[col["charge"]]),
+                           float(row[col["exp_neutral_mass"]]),
+                           row[col["plain_peptide"]])
+
+        # Rows are written in scan, charge, then label order. The label tie-break matters for
+        # 001_A / 001_B (same scan, same charge): their order used to depend on the earlier
+        # mass sort and, with threads, on completion order, so output was not reproducible.
+        txt_order = [r[spec_col][len(ms2.stem) + 1:len(ms2.stem) + 6] for r in rows]
+        check(txt_order == expected_order,
+              f"row order: expected {expected_order}, got {txt_order}", failures)
+
+        # A repeated label collapses in `seen`, so count rows too.
+        check(len(rows) == len(expected),
+              f"expected {len(expected)} rows (one per surviving precursor), got {len(rows)}", failures)
+        check(set(seen) == set(expected),
+              f"Mango labels: expected {sorted(expected)}, got {sorted(seen)}", failures)
+        for label, (z, mass, pep) in expected.items():
+            if label not in seen:
+                continue
+            got_z, got_mass, got_pep = seen[label]
+            check(got_z == z, f"{label}: charge expected {z}, got {got_z}", failures)
+            check(abs(got_mass - mass) < 0.001,
+                  f"{label}: exp_neutral_mass expected {mass:.6f}, got {got_mass:.6f}", failures)
+            check(got_pep == pep, f"{label}: plain_peptide expected {pep}, got {got_pep!r}", failures)
+
+        # ---- pepXML: CometWritePepXML formats the Mango spectrum string, precursor mass and
+        # charge itself (it does not share code with the .txt writer), and the Mango pipeline
+        # consumes this file.
+        if not pepxml.exists():
+            failures.append(f".pep.xml not created. Comet output:\n{out}")
+            return failures
+        try:
+            tree = ET.parse(str(pepxml))
+        except ET.ParseError as e:
+            failures.append(f".pep.xml is not well-formed XML: {e}")
+            return failures
+        queries = [el for el in tree.iter() if el.tag.rsplit("}", 1)[-1] == "spectrum_query"]
+        check(len(queries) == len(expected),
+              f"pepXML: expected {len(expected)} spectrum_query elements, got {len(queries)}", failures)
+
+        xml_order = [q.get("spectrum", "")[len(ms2.stem) + 1:len(ms2.stem) + 6] for q in queries]
+        check(xml_order == expected_order,
+              f"pepXML spectrum_query order: expected {expected_order}, got {xml_order}", failures)
+
+        xml_seen = {}
+        for q in queries:
+            spectrum = q.get("spectrum", "")
+            check(spectrum.startswith(ms2.stem + "_") and f".{scan}.{scan}." in spectrum,
+                  f"pepXML: spectrum attribute {spectrum!r} has the form {ms2.stem}_<label>.{scan}.{scan}.<z>",
+                  failures)
+            label = spectrum[len(ms2.stem) + 1:len(ms2.stem) + 6]
+            xml_seen[label] = q
+        check(set(xml_seen) == set(expected),
+              f"pepXML Mango labels: expected {sorted(expected)}, got {sorted(xml_seen)}", failures)
+        for label, (z, mass, _pep) in expected.items():
+            q = xml_seen.get(label)
+            if q is None:
+                continue
+            check(q.get("spectrum", "").endswith(f".{scan}.{scan}.{z}"),
+                  f"pepXML {label}: spectrum attribute should end .{scan}.{scan}.{z}, got {q.get('spectrum')!r}",
+                  failures)
+            check(q.get("assumed_charge") == str(z),
+                  f"pepXML {label}: assumed_charge expected {z}, got {q.get('assumed_charge')!r}", failures)
+            check(q.get("start_scan") == str(int(scan)) and q.get("end_scan") == str(int(scan)),
+                  f"pepXML {label}: start/end_scan expected {int(scan)}, got "
+                  f"{q.get('start_scan')!r}/{q.get('end_scan')!r}", failures)
+            got_pnm = float(q.get("precursor_neutral_mass", "nan"))
+            check(abs(got_pnm - mass) < 0.001,
+                  f"pepXML {label}: precursor_neutral_mass expected {mass:.6f}, got {got_pnm:.6f}", failures)
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        pepxml.unlink(missing_ok=True)
+        if index_flag:
+            idx.unlink(missing_ok=True)
+
+    return failures
+
+
+@register("t91_mango")
+def test_t91_mango(comet_exe):
+    """T91: Mango regression -- first Z line at 2+ gets the right precursor mass, and
+    a Z line rejected by digest_mass_range does not shift the A/B labels after it.
+    One S line (m/z 0.0), four Z lines:
+      0: 2+ MH+ of ACDEFGHIK   -> 000_A (first Z line at 2+ exercises the mass fix)
+      1: 1+ MH+ 6000, above digest_mass_range -> rejected, no row, must not shift labels
+      2: 1+ MH+ of LNPQSTVWYR  -> 001_A
+      3: 1+ MH+ of ACDEFGHIK   -> 001_B"""
+    return _run_t91(comet_exe, "t91_mango.ms2", "02401",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "001_A": (1, 1262.640765, "LNPQSTVWYR"),
+                              "001_B": (1, 1018.454195, "ACDEFGHIK")},
+                    expected_order=["001_A", "001_B", "000_A"])
+
+
+@register("t91_mango_fi")
+def test_t91_mango_fi(comet_exe):
+    """T91e: Mango FI_DB search with fragindex_skipreadprecursors = 0. ReadPrecursors() builds
+    the precursor mask that prunes the in-memory fragment index, so a wrong precursor m/z
+    there silently drops the peptide. Z line 0 is 2+ ACDEFGHIK (S-line m/z 0.0, the first-Z-
+    line fallback) and Z line 1 is 2+ LNPQSTVWYR (extra-Z-line path; 2+ so the (z-1)-proton term matters); each peptide has only
+    that one route into the mask, with isotope_error = 0 so no C13 offset can rescue it."""
+    return _run_t91(comet_exe, "t91_mango_fi.ms2", "02404",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"],
+                    index_flag="-i")
+
+
+@register("t91_mango_pi")
+def test_t91_mango_pi(comet_exe):
+    """T91f: the T91e fixture searched against a PI_DB (peptide index): the Mango fused
+    path for PI_DB. Labels, charges, masses and row order as for T91e."""
+    return _run_t91(comet_exe, "t91_mango_fi.ms2", "02404",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"],
+                    index_flag="-j")
+
+
+@register("t91_mango_skip_fi")
+def test_t91_mango_skip_fi(comet_exe):
+    """T91g: the T91b skipping cases (charge-0 pair, unpaired Z line, multi-m/z scan and
+    their warnings) on the fused FI_DB path."""
+    return _run_t91(comet_exe, "t91_mango_skip.ms2", "02402",
+                    expected={"001_A": (1, 1262.640765, "LNPQSTVWYR"),
+                              "001_B": (1, 1018.454195, "ACDEFGHIK")},
+                    expected_order=["001_A", "001_B"],
+                    warnings=("Z lines 0 and 1 include a charge of 0",
+                              "Z line 4 has no partner",
+                              "scan 2403: Mango scans must have one precursor"),
+                    index_flag="-i")
+
+
+@register("t91_mango_smz")
+def test_t91_mango_smz(comet_exe):
+    """T91k: a Mango scan whose S line carries a non-zero (here deliberately wrong) m/z: the
+    S-line m/z is ignored and every Z line, the first included, takes its precursor from its
+    own MH+, so the rows are the same as with an S-line m/z of 0.0. FASTA_DB."""
+    return _run_t91(comet_exe, "t91_mango_smz.ms2", "02405",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"])
+
+
+@register("t91_mango_smz_fi")
+def test_t91_mango_smz_fi(comet_exe):
+    """T91l: T91k on an FI_DB index with fragindex_skipreadprecursors = 0, so ReadPrecursors()
+    builds the precursor mask the same way (first Z line from its own MH+, not the S line)."""
+    return _run_t91(comet_exe, "t91_mango_smz.ms2", "02405",
+                    expected={"000_A": (2, 1018.454195, "ACDEFGHIK"),
+                              "000_B": (2, 1262.640765, "LNPQSTVWYR")},
+                    expected_order=["000_A", "000_B"],
+                    index_flag="-i")
+
+
+@register("t91_mango_mask")
+def test_t91_mango_mask(comet_exe):
+    """T91m: the FI_DB precursor pre-read (ReadPrecursors, fragindex_skipreadprecursors = 0)
+    must build its mask with the same valid-pair logic as the search. The mask decides which
+    peptides enter the in-memory fragment index, so a pair the search runs but the mask omits
+    silently loses its peptides. Each scan's peptide masses occur nowhere else in its file, so
+    only the pre-read can bring them in.
+      A: Z line 0 has charge 0 (the scan used to be treated as a charge-guessing scan using the
+         S-line m/z, and the later Z lines never reached the mask), then a valid pair;
+      B: a valid pair, then a pair whose second Z line has charge 0 (it used to reach
+         MhToMz(mh, 0), a division by zero, in the pre-read)."""
+    failures = []
+    failures += _run_t91(comet_exe, "t91_mango_mask_a.ms2", "02501",
+                         expected={"001_A": (1, 1262.640772, "LNPQSTVWYR"),
+                                   "001_B": (2, 1018.454217, "ACDEFGHIK")},
+                         expected_order=["001_A", "001_B"],
+                         warnings=("Z lines 0 and 1 include a charge of 0",),
+                         index_flag="-i", fasta_name="t91_mango_mask.fasta")
+    failures += _run_t91(comet_exe, "t91_mango_mask_b.ms2", "02502",
+                         expected={"000_B": (1, 1222.573086, "GLWQNPDHEK"),
+                                   "000_A": (2, 1109.506312, "MEDVTPGFSK")},
+                         expected_order=["000_B", "000_A"],
+                         warnings=("Z lines 2 and 3 include a charge of 0",),
+                         index_flag="-i", fasta_name="t91_mango_mask.fasta")
+    return failures
+
+
+@register("t91_mango_override")
+def test_t91_mango_override(comet_exe):
+    """T91c: mango_search = 1 with override_charge > 0 is rejected at startup (it would walk
+    only the first Z line of each scan and drop the rest); override_charge = 0 still runs."""
+    failures = []
+
+    fasta = DATA_DIR / "t91_mango.fasta"
+    ms2   = DATA_DIR / "t91_mango.ms2"
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+
+    base = T91_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    outs = [ms2.with_suffix(s) for s in (".txt", ".pep.xml")]
+
+    for override in (1, 2, 3, 0):
+        params = _set_param_line(base, "override_charge", str(override))
+        params = _set_param_line(params, "precursor_charge", "1 3")
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as pf:
+            pf.write(params)
+            params_file = Path(pf.name)
+        try:
+            for o in outs:
+                o.unlink(missing_ok=True)
+            rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+            if override > 0:
+                check(rc != 0 and "not supported with mango_search" in out,
+                      f"override_charge = {override}: rejected with an error (rc={rc})", failures)
+                check(not outs[0].exists(),
+                      f"override_charge = {override}: no .txt written", failures)
+            else:
+                check(rc == 0 and outs[0].exists(),
+                      f"override_charge = 0: search still runs (rc={rc})", failures)
+        finally:
+            params_file.unlink(missing_ok=True)
+            for o in outs:
+                o.unlink(missing_ok=True)
+
+    return failures
+
+
+@register("t91_mango_skip")
+def test_t91_mango_skip(comet_exe):
+    """T91b: Mango input that cannot form a cross-linked pair is skipped with a warning and
+    the rest is still searched. Scan 2402 has Z lines 0,1 = charge 0 + 1+ (pair skipped),
+    2,3 = 1+ LNPQSTVWYR / 1+ ACDEFGHIK (001_A / 001_B) and an unpaired 2+ Z line 4
+    (skipped). Scan 2403 has two m/z values on its S line (never produced for Mango) and
+    is skipped entirely."""
+    return _run_t91(comet_exe, "t91_mango_skip.ms2", "02402",
+                    expected={"001_A": (1, 1262.640765, "LNPQSTVWYR"),
+                              "001_B": (1, 1018.454195, "ACDEFGHIK")},
+                    expected_order=["001_A", "001_B"],
+                    warnings=("Z lines 0 and 1 include a charge of 0",
+                              "Z line 4 has no partner",
+                              "scan 2403: Mango scans must have one precursor"))
+
+
+@register("t91_mango_warncap")
+def test_t91_mango_warncap(comet_exe):
+    """T91d: Mango scan/pair warnings are capped at 10 per run, then one 'suppressed' line.
+    The input (written here, 25 scans) has a good pair plus an unpaired last Z line in every
+    scan, i.e. one warning per scan."""
+    failures = []
+
+    fasta = DATA_DIR / "t91_mango.fasta"
+    src = (DATA_DIR / "t91_mango.ms2").read_text().replace("\r\n", "\n").split("\n")
+    peaks = [l for l in src if l and l[0].isdigit()]
+    ms2 = DATA_DIR / "t91_mango_warncap.ms2"
+    txt = ms2.with_suffix(".txt")
+
+    lines = ["H\tCreationDate\tsynthetic"]
+    for scan in range(3000, 3025):
+        lines += [f"S\t{scan}\t{scan}\t0.0", "Z\t1\t1263.648041", "Z\t1\t1019.461471",
+                  "Z\t2\t1019.461471"] + peaks
+    ms2.write_text("\n".join(lines) + "\n")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    params = T91_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+    ) as pf:
+        pf.write(params)
+        params_file = Path(pf.name)
+
+    try:
+        txt.unlink(missing_ok=True)
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+        check(rc == 0, f"search ran (rc={rc})", failures)
+        n_warn = out.count("Mango Z line 2 has no partner")
+        n_supp = out.count("further Mango scan warnings suppressed")
+        check(n_warn == 10, f"exactly 10 warnings printed, got {n_warn}", failures)
+        check(n_supp == 1, f"one 'suppressed' line printed, got {n_supp}", failures)
+        if txt.exists():
+            n_rows = len([l for l in txt.read_text().splitlines()[2:] if l.strip()])
+            check(n_rows == 50, f"all 25 scans still searched (2 rows each), got {n_rows} rows", failures)
+        else:
+            failures.append(f".txt not created. Comet output:\n{out}")
+    finally:
+        params_file.unlink(missing_ok=True)
+        txt.unlink(missing_ok=True)
+        ms2.unlink(missing_ok=True)
+        ms2.with_suffix(".pep.xml").unlink(missing_ok=True)
+
+    return failures
+
+
+def _run_t91_threads(comet_exe, index_flag):
+    """Shared body of the T91h tests. 3000 generated Mango scans of mixed shapes are searched
+    with num_threads = 8 against an FI_DB ("-i"), PI_DB ("-j") or FASTA_DB (None) database
+    and every row (scan, A/B label, charge, mass, peptide) and the global row order (scan,
+    charge, label) are checked against the expected list, in both the .txt and the pepXML.
+    For FI_DB/PI_DB a second run with COMET_PRELOAD_BENCHMARK=1 (honoured only by the fused
+    batch path) must print its [SEARCH] line, proving Mango really takes the fused path (a
+    re-added !bMango gate would fail here). FASTA_DB has no fused path."""
+    import random
+    failures = []
+
+    fasta = DATA_DIR / "t91_mango.fasta"
+    src = (DATA_DIR / "t91_mango.ms2").read_text().replace("\r\n", "\n").split("\n")
+    peaks = [l for l in src if l and l[0].isdigit()]
+    ms2 = DATA_DIR / "t91_mango_threads.ms2"
+    txt = ms2.with_suffix(".txt")
+    pepxml = ms2.with_suffix(".pep.xml")
+    idx = fasta.with_suffix(".fasta.idx")
+
+    ACD, LNP = ("ACDEFGHIK", 1018.454195), ("LNPQSTVWYR", 1262.640765)
+    # (Z lines, expected [(label, charge, (peptide, neutral mass))] before ordering)
+    shapes = [
+        (["Z\t2\t1019.461471", "Z\t1\t6000.000000", "Z\t1\t1263.648041", "Z\t1\t1019.461471"],
+         [("000_A", 2, ACD), ("001_A", 1, LNP), ("001_B", 1, ACD)]),
+        (["Z\t1\t1263.648041", "Z\t1\t1019.461471"],
+         [("000_A", 1, LNP), ("000_B", 1, ACD)]),
+        (["Z\t2\t1019.461471", "Z\t2\t1263.648041"],
+         [("000_A", 2, ACD), ("000_B", 2, LNP)]),
+        (["Z\t0\t1019.461471", "Z\t1\t1019.461471", "Z\t1\t1263.648041", "Z\t1\t1019.461471",
+          "Z\t2\t1019.461471"],
+         [("001_A", 1, LNP), ("001_B", 1, ACD)]),
+    ]
+    rng = random.Random(7)
+    lines = ["H\tCreationDate\tsynthetic"]
+    expected = []   # (scan, charge, label, peptide, mass), in output order
+    for scan in range(5000, 8000):
+        zlines, rows = rng.choice(shapes)
+        lines += [f"S\t{scan}\t{scan}\t0.0"] + zlines + peaks
+        for label, z, (pep, mass) in sorted(rows, key=lambda r: (r[1], r[0])):
+            expected.append((scan, z, label, pep, mass))
+    ms2.write_text("\n".join(lines) + "\n")
+
+    use_win = _binary_uses_win_paths(comet_exe)
+    fmt = _to_win if use_win else str
+    params = T91_PARAMS_TEMPLATE.format(
+        comet_version="2026.02 rev. 0", database=fmt(fasta), ascorepro=0,
+        mod1="0.0 X 0 3 -1 0 0 0.0")
+    params = _set_param_line(params, "output_pepxmlfile", "1")
+    params = _set_param_line(params, "num_threads", "8")
+
+    def _params_file(text):
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".params", dir=str(DATA_DIR), delete=False
+        ) as pf:
+            pf.write(text)
+        return Path(pf.name)
+
+    build_pf = search_pf = None
+    try:
+        idx.unlink(missing_ok=True)
+        if index_flag:
+            build_pf = _params_file(params)
+            rc, out = _run_t19_step(comet_exe, [index_flag, f"-P{fmt(build_pf)}"])
+            if rc != 0 or not idx.exists():
+                failures.append(f"index build failed (rc={rc}):\n{out}")
+                return failures
+            search_pf = _params_file(params.replace(f"database_name = {fmt(fasta)}",
+                                                    f"database_name = {fmt(idx)}"))
+        else:
+            search_pf = _params_file(params)
+
+        txt.unlink(missing_ok=True)
+        pepxml.unlink(missing_ok=True)
+        rc, out = _run_t19_step(comet_exe, [f"-P{fmt(search_pf)}", fmt(ms2)], timeout=300)
+        if rc != 0 or not txt.exists() or not pepxml.exists():
+            failures.append(f"search failed/outputs missing (rc={rc}):\n{out}")
+            return failures
+
+        tl = txt.read_text().splitlines()
+        header = tl[1].split("\t")
+        trows = [l.split("\t") for l in tl[2:] if l.strip()]
+        col, spec_col, err = _t91_txt_layout(header, trows, ms2.stem)
+        if err:
+            failures.append(err)
+            return failures
+        got = []
+        for r in trows:
+            lab = r[spec_col][len(ms2.stem) + 1:][:5]   # <base>_<label>.<scan>.<scan>.<z>
+            got.append((int(r[0]), int(r[col["charge"]]), lab, r[col["plain_peptide"]],
+                        float(r[col["exp_neutral_mass"]])))
+        check(len(got) == len(expected), f".txt rows: expected {len(expected)}, got {len(got)}", failures)
+        bad = [(i, e, g) for i, (e, g) in enumerate(zip(expected, got))
+               if e[:4] != g[:4] or abs(e[4] - g[4]) > 0.001]
+        check(not bad, f".txt rows differ from the expected list in order/content at {len(bad)} "
+                       f"positions; first: {bad[:1]}", failures)
+
+        queries = [el for el in ET.parse(str(pepxml)).iter()
+                   if el.tag.rsplit("}", 1)[-1] == "spectrum_query"]
+        xml_got = [q.get("spectrum", "") for q in queries]
+        xml_exp = [f"t91_mango_threads_{lab}.{scan:05d}.{scan:05d}.{z}"
+                   for scan, z, lab, _p, _m in expected]
+        check(xml_got == xml_exp,
+              f"pepXML spectrum_query sequence differs from expected ({len(xml_got)} vs "
+              f"{len(xml_exp)} elements)", failures)
+
+        if index_flag:
+            # Fused-path proof: COMET_PRELOAD_BENCHMARK is read only by the fused batch path.
+            # WSLENV: WSL does not forward environment variables to a Windows .exe unless they
+            # are listed there; harmless for a native Linux or Windows run.
+            wslenv = os.environ.get("WSLENV", "")
+            env = dict(os.environ, COMET_PRELOAD_BENCHMARK="1",
+                       WSLENV=(wslenv + ":" if wslenv else "") + "COMET_PRELOAD_BENCHMARK")
+            res = subprocess.run([str(comet_exe), f"-P{fmt(search_pf)}", fmt(ms2)],
+                                 capture_output=True, text=True, timeout=300, env=env)
+            check("[SEARCH]" in res.stdout + res.stderr,
+                  "Mango search takes the fused batch path ([SEARCH] benchmark line printed)", failures)
+    finally:
+        for f in (build_pf, search_pf):
+            if f is not None:
+                f.unlink(missing_ok=True)
+        for f in (ms2, txt, pepxml, idx):
+            f.unlink(missing_ok=True)
+
+    return failures
+
+
+@register("t91_mango_threads")
+def test_t91_mango_threads(comet_exe):
+    """T91h: multithreaded Mango search, fused FI_DB path."""
+    return _run_t91_threads(comet_exe, "-i")
+
+
+@register("t91_mango_threads_pi")
+def test_t91_mango_threads_pi(comet_exe):
+    """T91i: multithreaded Mango search, fused PI_DB path."""
+    return _run_t91_threads(comet_exe, "-j")
+
+
+@register("t91_mango_threads_fasta")
+def test_t91_mango_threads_fasta(comet_exe):
+    """T91j: multithreaded Mango search, FASTA_DB (legacy three-sweep, the historical Mango
+    path): same expected rows and order as the fused paths."""
+    return _run_t91_threads(comet_exe, None)
+
+
+# ---------------------------------------------------------------------------
+# T92 -- charge-scaled precursor windows (amu/mmu with precursor_tolerance_type = 1)
+# ---------------------------------------------------------------------------
+#
+# The FASTA_DB candidate search finds the queries a peptide could match by bisecting the
+# mass-sorted query list on each query's window edge and breaking out of its walk at the first
+# query whose low edge is above the peptide mass. That is only valid if the edges increase along
+# the list. With charge-scaled windows a 4+ query is far wider than a 1+ query of nearly the
+# same mass, so the edges are not monotone: candidates were missed (deterministically), and with
+# several threads the order of equal-mass queries varied from run to run, so the output did too.
+# The search now orders by a monotone prefix-max / suffix-min envelope (PepMassInfo::dSearchPlus
+# / dSearchMinus); each query's own window still decides the match.
+#
+# Oracle: a query searched ALONE (scan_range = its scan) has no neighbours to confuse the list,
+# so a batch of queries must give, per scan, exactly the rows of its single-query run -- whatever
+# path the candidates take (plain, variable-mod, required-mod, compound-mod, PEFF).
+
+_T92_PLAIN_FASTA = (">p1\nMGGSAKLNPQSTVWYRGGSAGK\n>p2\nMGGSAKACDEFGHIKGGSAGK\n"
+                    ">p3\nMGGSAKMEDVTPGFSKGGSAGK\n>p4\nMGGSAKSLWQNPDHEMKGGSAGK\n")
+_T92_COMPOUND_FASTA = (">p1\nMGGSAKLNJQSTVWYRGGSAGK\n>p2\nMGGSAKACDJFGHIKGGSAGK\n"
+                       ">p3\nMGGSAKMEDVJPGFSKGGSAGK\n>p4\nMGGSAKSLWJNPDHEMKGGSAGK\n")
+_T92_OXIDATION = 15.9949
+_T92_COMPOUND_MASS = 57.521464     # the middle of the three masses in the compound-mods file
+_T92_J_ADD = 1.0                   # add_J_user_amino_acid: the J residue must have a non-zero mass to be searched
+_T92_COMPOUND_FILE = "57.021464\n57.521464\n58.021464\n"
+
+# (z, MH+ offset from the target mass). Two adversarial groups plus a spread:
+#   group A: a wide (4+) window whose experimental mass is just BELOW the target, followed in
+#            mass order by narrow (1+) windows that end below the target -- the old bisection on
+#            the window's high edge lost the wide one;
+#   group B: a narrow window that starts ABOVE the target, followed by wide ones that contain
+#            it -- the old early break on the low edge stopped before reaching them.
+_T92_PATTERN = ((4, -0.85), (1, -0.50), (1, -0.45), (1, -0.40), (2, -0.30), (1, -0.10),
+                (1, 0.40), (4, 0.50), (3, 0.55), (1, 0.60), (2, 0.35), (1, 0.05),
+                (3, -0.60), (4, 0.00), (2, 0.20))
+
+
+def _t92_ladder(pep, mods, jmass):
+    """(MH+, [b/y peak m/z]) for a peptide; 'J' is the compound-mod residue (mass jmass)."""
+    res = [(jmass if aa == "J" else _MONO_RESIDUE_MASS[aa]) + mods.get(i, 0.0)
+           for i, aa in enumerate(pep)]
+    n = len(res)
+    peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
+                   + [sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS for k in range(1, n)])
+    return sum(res) + _H2O_MASS + _PROTON_MASS, peaks
+
+
+def _t92_rows(comet_exe, params, ms2, threads, scan=None):
+    """Search `ms2` and return {scan: sorted row tuples}; None if the search failed."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    params = _set_param_line(params, "num_threads", str(threads))
+    if scan is not None:
+        params = _set_param_line(params, "scan_range", f"{scan} {scan}")
+    params_file = ms2.with_suffix(".params")
+    params_file.write_text(params)
+    # with a scan range Comet names the output <base>.<first>-<last>.txt
+    txt = ms2.with_suffix(f".{scan}-{scan}.txt" if scan is not None else ".txt")
+    txt.unlink(missing_ok=True)
+    rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+    if rc != 0 or not txt.exists():
+        print(out[-1200:])
+        return None
+    by_scan = {}
+    for r in legacy_cases.parse_txt(txt):
+        by_scan.setdefault(int(r["scan"]), []).append(tuple(sorted(r.items())))
+    return {s: sorted(v) for s, v in by_scan.items()}
+
+
+def _run_t92(comet_exe, mode, units="0", tol="0.25", ttype="1", repeats=3, index_flag=None):
+    """Batch vs single-query oracle for one search mode and tolerance setting. With index_flag
+    ("-i" fragment-ion index, "-j" peptide index) the FASTA is first built into that index and
+    both the batch and the single-query runs search it (the fused index search)."""
+    import random
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    dbname = {"-i": " FI_DB", "-j": " PI_DB"}.get(index_flag, "")
+    label = f"{mode}{dbname} units={units} tol={tol} type={ttype}"
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        ms2 = tmp / "t92.ms2"
+        jmass = 0.0
+        mods_param = ()
+        extra = {}
+        n_extra = 3
+
+        if mode == "peff":
+            db = tmp / "t92.peff"
+            _t52_write_peff(db, False)
+            obo = tmp / "t92.obo"
+            obo.write_text(_T52_OBO)
+            targets = [(pep, mods) for pep, mods, _ in _T52_SPECTRA.values()]
+            extra = {"peff_format": "1", "peff_obo": fmt(obo)}
+        else:
+            db = tmp / "t92.fasta"
+            db.write_text(_T92_COMPOUND_FASTA if mode == "compound" else _T92_PLAIN_FASTA)
+            if mode == "plain":
+                targets = [("LNPQSTVWYR", {}), ("ACDEFGHIK", {}), ("MEDVTPGFSK", {}), ("SLWQNPDHEMK", {})]
+            elif mode == "varmod":
+                mods_param = (f"{_T92_OXIDATION} M 0 3 -1 0 0 0.0",)
+                targets = [("LNPQSTVWYR", {}), ("ACDEFGHIK", {}),
+                           ("MEDVTPGFSK", {0: _T92_OXIDATION}), ("SLWQNPDHEMK", {9: _T92_OXIDATION})]
+            elif mode == "reqvarmod":
+                mods_param = (f"{_T92_OXIDATION} M 0 3 -1 0 0 0.0",)
+                extra = {"require_variable_mod": "1"}
+                targets = [("MEDVTPGFSK", {0: _T92_OXIDATION}), ("SLWQNPDHEMK", {9: _T92_OXIDATION})]
+                n_extra = 12
+            elif mode == "compound":
+                cm = tmp / "compound.txt"
+                cm.write_text(_T92_COMPOUND_FILE)
+                jmass = _T92_J_ADD + _T92_COMPOUND_MASS
+                extra = {"compoundmods_file": fmt(cm), "add_J_user_amino_acid": f"{_T92_J_ADD}"}
+                targets = [("LNJQSTVWYR", {}), ("ACDJFGHIK", {}), ("MEDVJPGFSK", {}), ("SLWJNPDHEMK", {})]
+            else:
+                raise ValueError(mode)
+
+        params = legacy_cases.build_params(database=fmt(db), enzyme1=1, static_C=0.0,
+                                           num_output_lines=10, mods=mods_param)
+        for k, v in {"peptide_mass_units": units, "peptide_mass_tolerance_upper": tol,
+                     "peptide_mass_tolerance_lower": "-" + tol,
+                     "precursor_tolerance_type": ttype, **extra}.items():
+            params = _set_param_line(params, k, v)
+
+        if index_flag:
+            build_params_file = tmp / "t92_build.params"
+            build_params_file.write_text(params)
+            rc, out = _run_t19_step(comet_exe, [index_flag, f"-P{fmt(build_params_file)}"])
+            idx = Path(str(db) + ".idx")
+            if rc != 0 or not idx.exists():
+                failures.append(f"{label}: index build failed (rc={rc}):\n{out[-800:]}")
+                return failures
+            params = params.replace(f"database_name = {fmt(db)}", f"database_name = {fmt(idx)}")
+            assert f"database_name = {fmt(idx)}" in params
+
+        # ---- the queries: every target is surrounded by the adversarial pattern
+        rng = random.Random(68)
+        lines, queries = [], []   # queries: (scan, z, MH+, target mass, target peptide)
+        scan = 0
+        for pep, mods in targets:
+            mh_t, peaks = _t92_ladder(pep, mods, jmass)
+            pattern = list(_T92_PATTERN) + [(rng.randint(1, 4), rng.uniform(-0.9, 0.9)) for _ in range(n_extra)]
+            for z, d in pattern:
+                scan += 1
+                mh = mh_t + d
+                queries.append((scan, z, mh, mh_t, pep))
+                lines += [f"S\t{scan}\t{scan}\t{(mh + (z - 1) * _PROTON_MASS) / z:.6f}", f"Z\t{z}\t{mh:.6f}"]
+                lines += [f"{m:.6f}\t100.0" for m in peaks]
+        ms2.write_text("\n".join(lines) + "\n")
+
+        # ---- oracle: each query on its own, one thread
+        oracle = {}
+        for scan, *_ in queries:
+            rows = _t92_rows(comet_exe, params, ms2, 1, scan=scan)
+            if rows is None:
+                failures.append(f"{label}: single-query search of scan {scan} failed")
+                return failures
+            oracle[scan] = rows.get(scan, [])
+
+        # sanity: the scenario must actually exercise the search -- a query whose own window
+        # contains the target must find the target on its own (ppm windows are not checked).
+        if units in ("0", "1"):
+            width = float(tol) * (0.001 if units == "1" else 1.0)
+            n_in, n_found = 0, 0
+            for scan, z, mh, mh_t, pep in queries:
+                half = width * (z if ttype == "1" else 1)
+                if abs(mh - mh_t) < half - 0.02:
+                    n_in += 1
+                    n_found += any(dict(r).get("plain_peptide") == pep for r in oracle[scan])
+            check(n_in >= 20 and n_found == n_in,
+                  f"{label}: {n_found}/{n_in} queries whose window holds the target find it on their own",
+                  failures)
+
+        # ---- the batch, several times with several threads: must equal the oracle
+        bad = []
+        for rep in range(repeats):
+            batch = _t92_rows(comet_exe, params, ms2, 8)
+            if batch is None:
+                failures.append(f"{label}: batch search failed")
+                return failures
+            bad.append(sorted(s for s, *_ in queries if batch.get(s, []) != oracle[s]))
+        check(all(not x for x in bad),
+              f"{label}: batch rows equal the single-query rows for all {len(queries)} scans in "
+              f"{repeats} runs (scans that differed per run: {[x[:6] for x in bad]})", failures)
+
+    return failures
+
+
+@register("t92_window_plain")
+def test_t92_window_plain(comet_exe):
+    """T92: charge-scaled amu/mmu windows, no variable mods. amu and mmu with m/z-type windows
+    are the bug cases; amu with MH+-type windows and ppm are controls that were always correct."""
+    failures = []
+    for units, tol, ttype in (("0", "0.25", "1"), ("1", "250.0", "1"), ("0", "0.25", "0"), ("2", "500.0", "1")):
+        failures += _run_t92(comet_exe, "plain", units, tol, ttype)
+    return failures
+
+
+@register("t92_window_varmod")
+def test_t92_window_varmod(comet_exe):
+    """T92b: the same on the variable-mod search path (methionine oxidation)."""
+    return _run_t92(comet_exe, "varmod")
+
+
+@register("t92_window_reqvarmod")
+def test_t92_window_reqvarmod(comet_exe):
+    """T92c: the same with require_variable_mod = 1 (every peptide must carry a variable mod)."""
+    return _run_t92(comet_exe, "reqvarmod")
+
+
+@register("t92_window_compound")
+def test_t92_window_compound(comet_exe):
+    """T92d: the same on the compound-mod search path (J residues + a compoundmods_file)."""
+    return _run_t92(comet_exe, "compound")
+
+
+@register("t92_window_peff")
+def test_t92_window_peff(comet_exe):
+    """T92e: the same on the PEFF path (\\ModResPsi / \\VariantSimple / \\VariantComplex entries)."""
+    return _run_t92(comet_exe, "peff")
+
+
+def _t92_index_modes(comet_exe, index_flag, modes):
+    failures = []
+    for mode in modes:
+        failures += _run_t92(comet_exe, mode, index_flag=index_flag)
+    return failures
+
+
+@register("t92_window_fi")
+def test_t92_window_fi(comet_exe):
+    """T92f: the T92 oracle on FI_DB (a fragment-ion index): plain, variable-mod and
+    require_variable_mod searches with charge-scaled amu windows. The index search brackets
+    each query on its own, so it was never affected; this keeps it that way. (Compound mods
+    and PEFF are FASTA_DB-only: index searches do not enumerate them.)"""
+    return _t92_index_modes(comet_exe, "-i", ("plain", "varmod", "reqvarmod"))
+
+
+@register("t92_window_pi")
+def test_t92_window_pi(comet_exe):
+    """T92g: the same on PI_DB (a peptide index)."""
+    return _t92_index_modes(comet_exe, "-j", ("plain", "varmod", "reqvarmod"))
 
 
 if __name__ == "__main__":

@@ -34,7 +34,6 @@ struct Query  // core/Types.h
 | `fLowestSpecLibScore` | Current minimum stored speclib score for the MS2 speclib path. |
 | `iMatchPeptideCount` / `iDecoyMatchPeptideCount` | Number of results actually stored. |
 | `_uliNumMatchedPeptides` / `_uliNumMatchedDecoyPeptides` | Total peptides scored (including those below cutoff). |
-| `dMangoIndex` | Decimal scan-number encoding for Mango TMT-precursor searches. |
 
 **Spectrum data (set by CometPreprocess):**
 
@@ -410,9 +409,9 @@ class Pipeline         // search/Pipeline.h
 
 | Class | File | DB type | Notes |
 |-------|------|---------|-------|
-| `FiStrategy` | `search/FiStrategy.cpp` | `FI_DB` | Fused load+search path when `bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`; legacy three-sweep otherwise. |
+| `FiStrategy` | `search/FiStrategy.cpp` | `FI_DB` | Fused load+search path when `bPerformDatabaseSearch && !bPerformSpecLibSearch` (Mango runs included since 2026-11-18); legacy three-sweep otherwise. |
 | `FastaStrategy` | `search/FastaStrategy.cpp` | `FASTA_DB` | Classic three-sweep (load -> allocate -> RunSearch -> PostAnalysis). |
-| `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bMango && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
+| `PiStrategy` | `search/PiStrategy.cpp` | `PI_DB` | Same fused-vs-legacy split as `FiStrategy`, gated by the identical condition (`bPerformDatabaseSearch && !bPerformSpecLibSearch`); legacy three-sweep against the plain peptide index otherwise. |
 
 **AScore lifecycle:** `Pipeline::run()` -- not `DoSearch()` -- owns `SetAScoreOptions()` / `CreateAScoreDllInterface()` / `DeleteAScoreDllInterface()` for the batch path, called immediately after `_strategy->initialize()` succeeds and immediately after `_strategy->finalize()` runs. This ordering is required because, for `FI_DB`, `FiStrategy::initialize()`'s call to `CometPeptideIndex::ReadPeptideIndex()` overwrites `g_staticParams.variableModParameters.varModList[]` from the `.idx` file's `VariableMod:` header, so `SetAScoreOptions()` must run after that overwrite or it would configure AScore from stale/default mod values. (Phase 0.5, `docs/20260730_PI_reduction.md`, briefly removed variable-mod settings from the `.idx` header entirely, making this ordering non-strict for a window; `docs/20260811_restore_idx_header_mods.md` restored the header-driven overwrite, so the ordering matters again -- and always did for `StaticMod:`, which Phase 0.5 never touched.) (The RTS path's `InitializeSingleSpectrumSearch()` has its own, separate AScore setup and was never affected by this.)
 
@@ -431,7 +430,7 @@ struct PepMassInfo          // core/Types.h
 struct SpectrumInfoInternal // core/Types.h
 ```
 
-`PepMassInfo` stores the calculated peptide mass (`dCalcPepMass`), the experimental MH+ mass (`dExpPepMass`), and the tolerance window in two forms: `dPeptideMassToleranceLow`/`dPeptideMassToleranceHigh` (absolute mass bounds) and `dPeptideMassToleranceMinus`/`dPeptideMassTolerancePlus` (bounds including isotope offsets, used for range checks), pre-computed for fast lookups.
+`PepMassInfo` stores the calculated peptide mass (`dCalcPepMass`), the experimental MH+ mass (`dExpPepMass`), and the tolerance window in two forms: `dPeptideMassToleranceLow`/`dPeptideMassToleranceHigh` (absolute mass bounds) and `dPeptideMassToleranceMinus`/`dPeptideMassTolerancePlus` (bounds including isotope offsets, used for range checks), pre-computed for fast lookups. `dSearchMinus`/`dSearchPlus` are monotone envelopes of those two bounds (suffix-min and prefix-max over the mass-sorted query list, built by `BuildMassWindowEnvelope()`): the FASTA_DB candidate search orders by them, because charge-scaled amu/mmu windows make the raw bounds non-monotone along the list; each query's own `Minus`/`Plus` and `Low`/`High` still decide the match (`docs/20261118_charge_scaled_windows.md`).
 
 `SpectrumInfoInternal` stores array size, `iHighestIon` (index of the highest-intensity bin, sizes the XCorr window in `CometPreprocess`'s `MakeCorrData` -- see commit `0c064a2e`), scan number, charge state (`usiChargeState`), `usiMaxFragCharge`, `dTotalIntensity`, retention time, Mango encoding, and the nativeID string from mzML files.
 

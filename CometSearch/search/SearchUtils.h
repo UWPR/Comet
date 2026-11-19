@@ -15,6 +15,9 @@
 #pragma once
 
 #include "Common.h"
+#include <algorithm>
+#include <limits>
+#include <string.h>
 #include "CometDataInternal.h"
 #include "CometSearch.h"
 #include "CometPostAnalysis.h"
@@ -44,19 +47,27 @@ bool executeBatchLegacy(MSToolkit::MSReader& mstReader,
 // -----------------------------------------------------------------------
 // Query sort comparators -- kept inline; single-expression each.
 // -----------------------------------------------------------------------
+// Fills _pepMassInfo.dSearchMinus / dSearchPlus for a query list sorted by compareByPeptideMass;
+// see PepMassInfo in core/Types.h.
+void BuildMassWindowEnvelope(std::vector<Query*>& queries);
+
 inline bool compareByPeptideMass(Query const* a, Query const* b)
 {
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);
 }
 
-inline bool compareByMangoIndex(Query const* a, Query const* b)
-{
-   return (a->dMangoIndex < b->dMangoIndex);
-}
-
+// Scan, then charge, then the Mango A/B pair label. The label is the last tie-break so
+// the two members of a Mango pair (same scan, usually the same charge) come out in a fixed
+// order; without it their order depended on thread completion and the earlier mass sort,
+// so output was not reproducible run to run. szMango is "" for every Query when
+// mango_search = 0, so non-Mango ordering is unchanged.
 inline bool compareByScanNumber(Query const* a, Query const* b)
 {
    if (a->_spectrumInfoInternal.iScanNumber == b->_spectrumInfoInternal.iScanNumber)
+   {
+      if (a->_spectrumInfoInternal.usiChargeState == b->_spectrumInfoInternal.usiChargeState)
+         return (strcmp(a->_spectrumInfoInternal.szMango, b->_spectrumInfoInternal.szMango) < 0);
       return (a->_spectrumInfoInternal.usiChargeState < b->_spectrumInfoInternal.usiChargeState);
+   }
    return (a->_spectrumInfoInternal.iScanNumber < b->_spectrumInfoInternal.iScanNumber);
 }
