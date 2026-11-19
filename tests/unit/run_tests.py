@@ -9569,7 +9569,8 @@ def _t91_txt_layout(header, rows, stem):
     return None, None, f".txt rows have {width} fields but the header has {len(header)}"
 
 
-def _run_t91(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), index_flag=None):
+def _run_t91(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), index_flag=None,
+             fasta_name="t91_mango.fasta"):
     """Shared body of the T91 Mango tests: search DATA_DIR/<ms2_name> (scan number `scan`)
     against t91_mango.fasta with mango_search = 1 and check both the .txt rows and the
     .pep.xml spectrum_query elements (spectrum string, charge, scans, precursor mass).
@@ -9585,7 +9586,7 @@ def _run_t91(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), i
     """
     failures = []
 
-    fasta = DATA_DIR / "t91_mango.fasta"
+    fasta = DATA_DIR / fasta_name
     ms2   = DATA_DIR / ms2_name
     txt   = ms2.with_suffix(".txt")
     pepxml = ms2.with_suffix(".pep.xml")
@@ -9644,7 +9645,9 @@ def _run_t91(comet_exe, ms2_name, scan, expected, expected_order, warnings=(), i
             return failures
 
         for w in warnings:
-            check(w in out, f"Comet output warns: {w!r}", failures)
+            # exactly once: with an index the precursor pre-read (ReadPrecursors) builds its
+            # mask through the same helper as the search but must stay quiet
+            check(out.count(w) == 1, f"Comet output warns exactly once: {w!r} (x{out.count(w)})", failures)
 
         seen = {}
         for row in rows:
@@ -9807,6 +9810,33 @@ def test_t91_mango_smz_fi(comet_exe):
                               "000_B": (2, 1262.640765, "LNPQSTVWYR")},
                     expected_order=["000_A", "000_B"],
                     index_flag="-i")
+
+
+@register("t91_mango_mask")
+def test_t91_mango_mask(comet_exe):
+    """T91m: the FI_DB precursor pre-read (ReadPrecursors, fragindex_skipreadprecursors = 0)
+    must build its mask with the same valid-pair logic as the search. The mask decides which
+    peptides enter the in-memory fragment index, so a pair the search runs but the mask omits
+    silently loses its peptides. Each scan's peptide masses occur nowhere else in its file, so
+    only the pre-read can bring them in.
+      A: Z line 0 has charge 0 (the scan used to be treated as a charge-guessing scan using the
+         S-line m/z, and the later Z lines never reached the mask), then a valid pair;
+      B: a valid pair, then a pair whose second Z line has charge 0 (it used to reach
+         MhToMz(mh, 0), a division by zero, in the pre-read)."""
+    failures = []
+    failures += _run_t91(comet_exe, "t91_mango_mask_a.ms2", "02501",
+                         expected={"001_A": (1, 1262.640772, "LNPQSTVWYR"),
+                                   "001_B": (2, 1018.454217, "ACDEFGHIK")},
+                         expected_order=["001_A", "001_B"],
+                         warnings=("Z lines 0 and 1 include a charge of 0",),
+                         index_flag="-i", fasta_name="t91_mango_mask.fasta")
+    failures += _run_t91(comet_exe, "t91_mango_mask_b.ms2", "02502",
+                         expected={"000_B": (1, 1222.573086, "GLWQNPDHEK"),
+                                   "000_A": (2, 1109.506312, "MEDVTPGFSK")},
+                         expected_order=["000_B", "000_A"],
+                         warnings=("Z lines 2 and 3 include a charge of 0",),
+                         index_flag="-i", fasta_name="t91_mango_mask.fasta")
+    return failures
 
 
 @register("t91_mango_override")

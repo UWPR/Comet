@@ -738,6 +738,89 @@ static void MarkBinRange(double dMassLow, double dMassHigh, int iMaxBin, bool *p
 }
 
 
+// Mango scan/pair warnings are capped so a badly formed input file cannot flood the console
+// (this runs on every preprocessing thread, hence the atomic counter). The count is per
+// process; one final line says that further warnings were suppressed.
+static const int MANGO_WARNING_LIMIT = 10;
+static std::atomic<int> g_iMangoWarnings(0);
+
+static void MangoWarning(const char *szFormat, ...)
+{
+   int iCount = g_iMangoWarnings.fetch_add(1);
+
+   if (iCount < MANGO_WARNING_LIMIT)
+   {
+      va_list args;
+      va_start(args, szFormat);
+      vprintf(szFormat, args);
+      va_end(args);
+   }
+   else if (iCount == MANGO_WARNING_LIMIT)
+   {
+      printf(" Warning, further Mango scan warnings suppressed (limit %d)\n", MANGO_WARNING_LIMIT);
+   }
+}
+
+// Mango scans are one S line (a single precursor m/z) followed by Z lines in A/B pairs: Z
+// lines 0,1 are the first pair, 2,3 the second, and so on, each Z line a separate precursor.
+// Cross-linked peptides need both members, so a pair is searched only if both Z lines are
+// present and have a charge. Fills vChargeStates (charge, m/z) and vZOrdinal (the Z-line
+// ordinal behind each entry, used for the A/B label) for every usable pair and warns once
+// per skipped pair (bWarn = false stays quiet: ReadPrecursors() calls this too, to build the
+// precursor mask the search needs, and the search pass does the reporting); the pairs that
+// remain are still searched. Every Z line, the first
+// included, takes its precursor from its own MH+: the S-line m/z is not a precursor in Mango
+// input (the generator writes 0.0) and is ignored.
+static void BuildMangoChargeStates(Spectrum &spec,
+                                   vector<pair<int,double>> &vChargeStates,
+                                   vector<int> &vZOrdinal,
+                                   bool bWarn = true)
+{
+   int iScanNumber = spec.getScanNumber();
+   int iNumZ = spec.sizeZ();
+
+   for (int k = 0; k < iNumZ; ++k)
+   {
+      int iPairFirst = k - (k % 2);
+
+      if (iPairFirst + 1 >= iNumZ)
+      {
+         if (k % 2 == 0 && bWarn)   // unpaired last Z line: report once
+            MangoWarning(" Warning, scan %d: Mango Z line %d has no partner (A/B pairs need both); skipped\n", iScanNumber, k);
+         continue;
+      }
+
+      if (spec.atZ(iPairFirst).z <= 0 || spec.atZ(iPairFirst + 1).z <= 0)
+      {
+         if (k % 2 == 0 && bWarn)   // report once per pair
+            MangoWarning(" Warning, scan %d: Mango Z lines %d and %d include a charge of 0; pair skipped\n",
+                  iScanNumber, iPairFirst, iPairFirst + 1);
+         continue;
+      }
+
+      int iCharge = spec.atZ(k).z;
+
+      vChargeStates.push_back(make_pair(iCharge, MhToMz(spec.atZ(k).mh, iCharge)));
+      vZOrdinal.push_back(k);
+   }
+}
+
+// Mango input has exactly one precursor per S line. Anything else is unsupported: warn and
+// let the caller skip the scan.
+static bool MangoScanHasSinglePrecursor(Spectrum &spec, bool bWarn = true)
+{
+   if (spec.sizeMZ() > 1)
+   {
+      if (bWarn)
+         MangoWarning(" Warning, scan %d: Mango scans must have one precursor m/z on the S line but this one has %d; scan skipped\n",
+            spec.getScanNumber(), spec.sizeMZ());
+      return false;
+   }
+
+   return true;
+}
+
+
 // Spectrum charge Comet would use for precursor i of a header-only read, or 0 if the file does not
 // supply one (mirrors the charge selection in ReadPrecursors() below, minus the warning message).
 static int PrecursorFileCharge(Spectrum &spec, int i)
@@ -759,6 +842,11 @@ static int PrecursorFileCharge(Spectrum &spec, int i)
 // the peaks, which is why those spectra are re-read with them.
 static bool PrecursorNeedsPeaks(Spectrum &spec)
 {
+   // Mango never guesses a charge (a Z line without one is skipped with its pair), so its
+   // spectra never need the peaks here.
+   if (g_staticParams.options.bMango)
+      return false;
+
    if (g_staticParams.options.iStartCharge > 0
          && (g_staticParams.options.iOverrideCharge == 1 || g_staticParams.options.iOverrideCharge == 2))
    {
@@ -877,6 +965,10 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
 
          for (int i = 0 ; i < mstSpectrum.sizeMZ(); ++i)  // walk through all precursor m/z's; usually just one
          {
+            // Mango scans the search would skip (several S-line m/z values) contribute nothing.
+            if (g_staticParams.options.bMango && !MangoScanHasSinglePrecursor(mstSpectrum, false))
+               continue;
+
             double dMZ = 0.0;              // m/z to use for analysis
             vector<pair<int,double>> vChargeStates;   // charge, m/z
 
@@ -924,15 +1016,20 @@ bool CometPreprocess::ReadPrecursors(MSReader &mstReader,
             if (dMZ == 0.0 && iSpectrumCharge != 0)
                dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);  // mh is MH+, not neutral mass
 
-            // Mango: the first Z line's precursor comes from its own MH+, not the S-line m/z
-            // (see BuildMangoChargeStates()), so the precursor mask agrees with the search.
-            if (g_staticParams.options.bMango && iSpectrumCharge > 0)
-               dMZ = MhToMz(mstSpectrum.atZ(i).mh, iSpectrumCharge);
-
             // 1.  Have spectrum charge from file.  It may be 0.
             // 2.  If the precursor_charge range is set and override_charge is set, then do something look into charge range.
             // 3.  Else just use the spectrum charge (and possibly 1 or 2/3 rule)
-            if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
+            if (g_staticParams.options.bMango)
+            {
+               // Same pair logic as the search (PreprocessSpectrum / FusedSearchSpectrum): every
+               // Z line of a usable pair from its own MH+, a pair with a charge-0 member or an
+               // unpaired last Z line left out, whatever the first Z line's charge. The search
+               // reports the skips; this pass stays quiet. override_charge > 0 is rejected for
+               // Mango at startup.
+               vector<int> vZOrdinal;
+               BuildMangoChargeStates(mstSpectrum, vChargeStates, vZOrdinal, false);
+            }
+            else if (g_staticParams.options.iStartCharge > 0 && g_staticParams.options.iOverrideCharge > 0)
             {
                if (g_staticParams.options.iOverrideCharge == 1)
                {
@@ -3366,85 +3463,6 @@ static void SetMangoLabel(Query *pQuery, int iZLineOrdinal)
    snprintf(pQuery->_spectrumInfoInternal.szMango,
             sizeof(pQuery->_spectrumInfoInternal.szMango),
             "%03d_%c", iZLineOrdinal / 2, (iZLineOrdinal % 2) ? 'B' : 'A');
-}
-
-
-// Mango scan/pair warnings are capped so a badly formed input file cannot flood the console
-// (this runs on every preprocessing thread, hence the atomic counter). The count is per
-// process; one final line says that further warnings were suppressed.
-static const int MANGO_WARNING_LIMIT = 10;
-static std::atomic<int> g_iMangoWarnings(0);
-
-static void MangoWarning(const char *szFormat, ...)
-{
-   int iCount = g_iMangoWarnings.fetch_add(1);
-
-   if (iCount < MANGO_WARNING_LIMIT)
-   {
-      va_list args;
-      va_start(args, szFormat);
-      vprintf(szFormat, args);
-      va_end(args);
-   }
-   else if (iCount == MANGO_WARNING_LIMIT)
-   {
-      printf(" Warning, further Mango scan warnings suppressed (limit %d)\n", MANGO_WARNING_LIMIT);
-   }
-}
-
-// Mango scans are one S line (a single precursor m/z) followed by Z lines in A/B pairs: Z
-// lines 0,1 are the first pair, 2,3 the second, and so on, each Z line a separate precursor.
-// Cross-linked peptides need both members, so a pair is searched only if both Z lines are
-// present and have a charge. Fills vChargeStates (charge, m/z) and vZOrdinal (the Z-line
-// ordinal behind each entry, used for the A/B label) for every usable pair and warns once
-// per skipped pair; the pairs that remain are still searched. Every Z line, the first
-// included, takes its precursor from its own MH+: the S-line m/z is not a precursor in Mango
-// input (the generator writes 0.0) and is ignored.
-static void BuildMangoChargeStates(Spectrum &spec,
-                                   vector<pair<int,double>> &vChargeStates,
-                                   vector<int> &vZOrdinal)
-{
-   int iScanNumber = spec.getScanNumber();
-   int iNumZ = spec.sizeZ();
-
-   for (int k = 0; k < iNumZ; ++k)
-   {
-      int iPairFirst = k - (k % 2);
-
-      if (iPairFirst + 1 >= iNumZ)
-      {
-         if (k % 2 == 0)   // unpaired last Z line: report once
-            MangoWarning(" Warning, scan %d: Mango Z line %d has no partner (A/B pairs need both); skipped\n", iScanNumber, k);
-         continue;
-      }
-
-      if (spec.atZ(iPairFirst).z <= 0 || spec.atZ(iPairFirst + 1).z <= 0)
-      {
-         if (k % 2 == 0)   // report once per pair
-            MangoWarning(" Warning, scan %d: Mango Z lines %d and %d include a charge of 0; pair skipped\n",
-                  iScanNumber, iPairFirst, iPairFirst + 1);
-         continue;
-      }
-
-      int iCharge = spec.atZ(k).z;
-
-      vChargeStates.push_back(make_pair(iCharge, MhToMz(spec.atZ(k).mh, iCharge)));
-      vZOrdinal.push_back(k);
-   }
-}
-
-// Mango input has exactly one precursor per S line. Anything else is unsupported: warn and
-// let the caller skip the scan.
-static bool MangoScanHasSinglePrecursor(Spectrum &spec)
-{
-   if (spec.sizeMZ() > 1)
-   {
-      MangoWarning(" Warning, scan %d: Mango scans must have one precursor m/z on the S line but this one has %d; scan skipped\n",
-            spec.getScanNumber(), spec.sizeMZ());
-      return false;
-   }
-
-   return true;
 }
 
 

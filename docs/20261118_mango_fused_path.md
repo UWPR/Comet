@@ -103,6 +103,12 @@ tests assert the expected rows directly.
   own MH+ (`BuildMangoChargeStates()`, and `ReadPrecursors()` for the precursor mask). Real
   Mango files always write 0.0 there; tests `t91_mango_smz` / `t91_mango_smz_fi` use a wrong
   non-zero value to pin the behaviour.
+- The FI_DB precursor pre-read (`ReadPrecursors()`, used with `fragindex_skipreadprecursors = 0`)
+  builds its mask for a Mango scan through the same `BuildMangoChargeStates()` as the search, so
+  a pair the search runs is never missing from the mask. It used to treat a scan whose first Z
+  line had charge 0 as a charge-guessing scan and drop every later pair, and a later charge-0 Z
+  line reached `MhToMz(mh, 0)`. The pre-read is quiet (`bWarn = false`); the search reports the
+  skips. Test `t91_mango_mask`.
 - All MH+ <-> m/z conversions go through the global `MhToMz()` / `MzToMh()` in
   `core/Constants.h`. The neutral-mass forms ((M + z*PROTON)/z) and the neutral-loss forms
   are intentionally not folded in: they round differently, so replacing them would not be
