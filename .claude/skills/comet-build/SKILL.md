@@ -48,6 +48,25 @@ Confirmed 2026-08-05: this exact command (full solution, no `/t:Clean`) builds
 `RealtimeSearch\bin\x64\Release\` by the solution build itself (byte-identical to
 `x64\Release\CometWrapper.dll` -- see the caveat below on when a manual copy is still needed).
 
+## Fresh checkout: restore the NuGet packages first (once)
+
+A clone that has never been built on Windows fails with ~90 errors all rooted in
+`RAWReader.cpp(1,1): error C1192: #using failed on
+'C:\...\packages\thermofisher.commoncore.data\5.0.0.93\lib\netstandard2.0\ThermoFisher.CommonCore.Data.dll'`
+(followed by `'ThermoFisher': undeclared identifier`, `IRawDataPlus` etc.). The Thermo
+assemblies are vendored as a local NuGet feed (`RealtimeSearch/ThermoNuGet/*.nupkg`,
+registered in `nuget.config`, which also sets `globalPackagesFolder = packages`), and
+`MSToolkit.vcxproj` resolves `ForcedUsingFiles` against `$(SolutionDir)packages\` -- so
+the `packages/` folder (gitignored) must be populated by a restore before the first build.
+No `nuget.exe` on this machine; MSBuild's restore target does it (confirmed 2026-11-06):
+
+```bash
+"/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" \
+  "C:\Work\Comet-booster\Comet.sln" /t:Restore /p:Configuration=Release /p:Platform=x64 /v:minimal
+```
+
+Then build as above. Only needed once per checkout (or after deleting `packages/`).
+
 ## After building: copy the wrapper DLL (only for a targeted/partial build)
 
 A **full solution build** (as above) already copies `CometWrapper.dll` into

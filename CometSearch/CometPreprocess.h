@@ -89,12 +89,15 @@ public:
    static bool DeallocateMemory(int maxNumThreads);
    // Thread-local version: returns Query* without touching g_pvQuery.
    // Caller owns the returned Query* and must delete it when done.
+   // dToleranceMZ > 0 replaces the configured precursor tolerance for this Query
+   // only (see AdjustMassTol); 0 = use peptide_mass_tolerance as configured.
    static Query* PreprocessSingleSpectrumThreadLocal(int iPrecursorCharge,
                                                      double dMZ,
                                                      double *pdMass,
                                                      double *pdInten,
                                                      int iNumPeaks,
-                                                     double *pdTmpSpectrum);
+                                                     double *pdTmpSpectrum,
+                                                     double dToleranceMZ = 0.0);
 
    // Thread-local version: returns QueryMS1* without touching g_pvQueryMS1.
    // Caller owns the returned QueryMS1* and must delete it when done.
@@ -176,7 +179,13 @@ private:
                                   float *pfFastXcorrDataNL,
                                   float *pfSpScoreData,
                                   SearchSession* pSession);
-   static bool AdjustMassTol(struct Query *pScoring);
+   // Sets the Query's precursor mass window from peptide_mass_tolerance / isotope_error.
+   // dToleranceMZ > 0 is a per-Query override of the configured width (RTS chimeric
+   // search, docs/20261105_RTSchimeric.md section 4.3): a symmetric +/- window in m/z
+   // units, scaled by the precursor charge like precursor_tolerance_type = 1. The
+   // isotope_error expansion applies to it unchanged. Never touches g_staticParams.
+   static bool AdjustMassTol(struct Query *pScoring,
+                             double dToleranceMZ = 0.0);
    static bool CheckActivationMethodFilter(MSActivation act);
 
    // Shared by the synchronous and readahead producer loops in
@@ -239,7 +248,8 @@ private:
                                               double *pdInten,
                                               int iNumPeaks,
                                               double *pdTmpSpectrum,
-                                              bool bUseThreadLocalPool = false);
+                                              bool bUseThreadLocalPool = false,
+                                              double dToleranceMZ = 0.0);
 
    // Private member variables
    static Mutex _maxChargeMutex;

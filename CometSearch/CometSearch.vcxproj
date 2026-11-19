@@ -116,6 +116,7 @@
     <ClInclude Include="Threading.h" />
     <ClInclude Include="ThreadPool.h" />
     <ClInclude Include="core\Constants.h" />
+    <ClInclude Include="core\EnvSwitch.h" />
     <ClInclude Include="core\Params.h" />
     <ClInclude Include="core\Types.h" />
     <ClInclude Include="output\IResultWriter.h" />

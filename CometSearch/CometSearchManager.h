@@ -22,6 +22,7 @@
 #include "githubsha.h"           // blank hash that github workflows should populate
 
 #include <atomic>
+#include <chrono>
 #include <errno.h>
 #include <string.h>
 #include <cstdio>
@@ -69,6 +70,34 @@ public:
                                                    vector<string>& strReturnProtein,
                                                    vector<vector<Fragment>>& matchedFragments,
                                                    vector<CometScores>& scores);
+   virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
+                                               const double dPrecursorToleranceMZ,
+                                               const double dMaxExpect,
+                                               const int iMaxPeptidesPerSpectrum,
+                                               const int iTopN,
+                                               double* pdMass,
+                                               double* pdInten,
+                                               const int iNumPeaks,
+                                               vector<string>& strReturnPeptide,
+                                               vector<string>& strReturnProtein,
+                                               vector<vector<Fragment>>& matchedFragments,
+                                               vector<CometScores>& scores,
+                                               bool& bIncomplete);
+   virtual bool DoSingleSpectrumSearchChimeric(const double dMZ,
+                                               const int iMinPrecursorCharge,
+                                               const int iMaxPrecursorCharge,
+                                               const double dPrecursorToleranceMZ,
+                                               const double dMaxExpect,
+                                               const int iMaxPeptidesPerSpectrum,
+                                               const int iTopN,
+                                               double* pdMass,
+                                               double* pdInten,
+                                               const int iNumPeaks,
+                                               vector<string>& strReturnPeptide,
+                                               vector<string>& strReturnProtein,
+                                               vector<vector<Fragment>>& matchedFragments,
+                                               vector<CometScores>& scores,
+                                               bool& bIncomplete);
    virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                         const double dMaxQueryRT,
                                         const int topN,
@@ -112,6 +141,48 @@ public:
 private:
    bool InitializeStaticParams();
    bool ReadProteinVarModFilterFile();
+
+   // One (spectrum, precursor m/z, charge) RTS search: preprocess, index search,
+   // post-analysis and result extraction. The body of DoSingleSpectrumSearchMultiResults(),
+   // shared with the chimeric multi-precursor search (docs/20261105_RTSchimeric.md).
+   // Appends up to takeN rows to the four output vectors; returns the number appended,
+   // -1 when preprocessing produced no Query (input rejected or too few peaks), -2 when
+   // the index search failed or was cancelled. dToleranceMZ > 0 overrides the configured
+   // precursor tolerance for this search; tStart is the
+   // max_index_runtime origin (the caller's call entry). pvRemovalBins, when given, receives the sorted, unique fragment-ion bins
+   // of the rank-1 PSM for the chimeric loop to clear (section 4.5 of the plan).
+   int SearchSingleSpectrumCore(const int takeN,
+                                const int iPrecursorCharge,
+                                const double dMZ,
+                                const double dToleranceMZ,
+                                double* pdMass,
+                                double* pdInten,
+                                const int iNumPeaks,
+                                const std::chrono::high_resolution_clock::time_point tStart,
+                                vector<string>& strReturnPeptide,
+                                vector<string>& strReturnProtein,
+                                vector<vector<Fragment>>& matchedFragments,
+                                vector<CometScores>& scores,
+                                std::vector<int>* pvRemovalBins = nullptr);
+   // The iteration loop behind both DoSingleSpectrumSearchChimeric() (validated candidate list) and
+   // DoSingleSpectrumSearchMultiResults() (one candidate, one iteration, dMaxExpect +inf). Returns the
+   // chimeric return value; bAllRejected: iteration 0 searched nothing because every candidate was
+   // rejected (the plain search returns false for that, the chimeric one true).
+   bool RunChimericLoop(const PrecursorCandidate* pCand,
+                        const size_t uiNumCand,
+                        const double dMaxExpect,
+                        const int iMaxPeptidesPerSpectrum,
+                        const int iTopN,
+                        double* pdMass,
+                        double* pdInten,
+                        const int iNumPeaks,
+                        const std::chrono::high_resolution_clock::time_point tStart,
+                        vector<string>& strReturnPeptide,
+                        vector<string>& strReturnProtein,
+                        vector<vector<Fragment>>& matchedFragments,
+                        vector<CometScores>& scores,
+                        bool& bIncomplete,
+                        bool& bAllRejected);
    std::atomic<bool> singleSearchInitializationComplete;
    std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;

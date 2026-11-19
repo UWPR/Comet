@@ -57,6 +57,7 @@ public:
                            int iSize);
    static bool CalculateEValue(Query* pQuery,
                                bool bTopHitOnly);
+   static bool PrepareDecoyTables();   // build the E-value decoy tables now (RTS init); false if stale
    static void CalculateAScorePro(Query* pQuery,
                                   AScoreProCpp::AScoreDllInterface* ascoreInterface);
    static bool SortFnXcorr(const Results& a,

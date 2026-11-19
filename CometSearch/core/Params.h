@@ -80,8 +80,21 @@ struct Options
    int iMaxIndexRunTime;         // max run time of index search in milliseconds
    int iFragIndexMinIonsScore;   // minimum matched fragment index ions for scoring
    int iFragIndexMinIonsReport;  // minimum matched fragment index ions for reporting
+   int iFragIndexHistogramFill;  // FI_DB: when fewer than this many candidates clear fragindex_min_ions_score, keep
+                                 // scoring the ranked sub-floor candidates (2-hit, then 1-hit) into the E-value
+                                 // histogram up to this count (clamped to FRAGINDEX_MAX_NUMSCORED); they are
+                                 // histogram-only: never stored or reported. 0 = off.
+                                 // docs/20261106_FI_evalue_histogram_fill.md
    int iFragIndexNumSpectrumPeaks;   // # of peaks from spectrum to use for querying fragment index
    int iFragIndexSkipReadPrecursors; // if true, skips reading precursors step
+   // RTS chimeric search only (DoSingleSpectrumSearchChimeric, docs/20261105_RTSchimeric.md
+   // sections 4.5-4.6); set through SetParam, not read from comet.params.
+   // (The flank -- bins removed on each side of a matched fragment's bin -- always follows
+   // theoretical_fragment_ions: 1 when it is 0, else 0. A chimeric_remove_flank_bins knob existed
+   // until 2026-11-08; docs/20261105_RTSchimeric.md section 4.5.)
+   int iChimericRemoveIsotopes;          // also remove the +1..+N 13C peaks of fragments that have a peak; 0 = off
+                                         // (a chimeric_fragindex_min_ions_score re-search floor existed until
+                                         // fragindex_histogram_fill made it a no-op; docs/20261106_FI_evalue_histogram_fill.md)
    int iOverrideCharge;
    long lMaxIterations;          // max # of modification permutations for each iStart position
    double dMinIntensity;         // intensity cutoff for each peak
@@ -99,6 +112,24 @@ struct Options
    DoubleRange clearMzRange;
    char szActivationMethod[24];  // mzXML only
    string sPinProteinDelimiter;  // PIN file protein delimiter; default tab
+
+   // True when some output reports E-values, so a batch search must collect the xcorr
+   // histogram and compute them: print_expect_score (SQT prints the E-value in place of Sp),
+   // pepXML, Percolator, .txt or mzIdentML. The one test for every place that decides this
+   // (the histogram accumulation in the scorers, the E-value calls in post-analysis and the
+   // fused batch path, and whether the FI histogram fill is worth running). mzIdentML was
+   // missing from the four hand-written copies of this test until 2026-11-09, so an
+   // mzIdentML-only search with print_expect_score = 0 wrote E = 999 for every PSM.
+   // The RTS path always computes E-values: InitializeSingleSpectrumSearch() forces
+   // bPrintExpectScore on so this is true there whatever the output flags say.
+   bool OutputsNeedEValues() const
+   {
+      return bPrintExpectScore
+         || bOutputPepXMLFile
+         || bOutputPercolatorFile
+         || bOutputTxtFile
+         || iOutputMzIdentMLFile != 0;
+   }
 };
 
 // The minimum and maximum mass range of all peptides to consider
@@ -420,8 +451,10 @@ struct StaticParams
       options.dFragIndexMaxMass = FRAGINDEX_MAX_MASS;
       options.iFragIndexMinIonsScore = FRAGINDEX_MIN_IONS_SCORE;
       options.iFragIndexMinIonsReport = FRAGINDEX_MIN_IONS_REPORT;
+      options.iFragIndexHistogramFill = FRAGINDEX_HISTOGRAM_FILL;
       options.iFragIndexNumSpectrumPeaks = FRAGINDEX_MAX_NUMPEAKS;
       options.iFragIndexSkipReadPrecursors = 1;   // skip reading precursors by default
+      options.iChimericRemoveIsotopes = 2;
 
       options.dMS1MinMass = MS1_MIN_MASS;
       options.dMS1MaxMass = MS1_MAX_MASS;

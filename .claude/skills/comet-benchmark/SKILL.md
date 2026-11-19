@@ -141,3 +141,14 @@ See `docs/20260819_fablereview.md`'s end-to-end RTS validation section
 Don't average or otherwise combine this table with the 2026-04-28/29 one
 above — different database size, thread count, and Comet version on both
 sides make the absolute numbers non-comparable.
+
+## Chimeric search cost (2026-11-17)
+
+`DoSingleSpectrumSearchChimeric` runs (candidates x iterations) searches per spectrum.
+Measured single-threaded on the full `20170103_HelaQC_01` file (42,030 scans, mzXML via
+`tests/rts_repro/mzxml_to_fixture.py`) against a human canonical target-decoy phospho FI
+index, index load (87 s single-threaded) subtracted: plain search
+0.41 ms/spectrum; chimeric charges 2-4, +/- 1 m/z, up to 5 peptides 7.3 ms/spectrum
+(~18x). The cost is the +/- 1 m/z window at 3+/4+ (dense +/- 3-4 Da mass windows), not the
+iteration count; at 20 ppm the same loop costs about the same as the plain search. Full
+tables and method: `docs/20261105_RTSchimeric.md` sections 10.7 and 10.8.

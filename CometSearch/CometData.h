@@ -96,6 +96,30 @@ struct IntRange
    }
 };
 
+// One precursor hypothesis for the RTS chimeric search (DoSingleSpectrumSearchChimeric,
+// docs/20261105_RTSchimeric.md): an (m/z, charge) pair, e.g. one envelope deconvolved
+// from the MS1 isolation window, or one Z line of a multi-Z-line .ms2 scan.
+struct PrecursorCandidate
+{
+    double dMZ;
+    int iCharge;
+    double dToleranceMZ;   // +/- precursor window in m/z units for this candidate;
+                           // 0 = inherit the per-call value (which may itself be 0 =
+                           // the configured peptide_mass_tolerance)
+
+    PrecursorCandidate() :
+        dMZ(0.0),
+        iCharge(0),
+        dToleranceMZ(0.0)
+    { }
+
+    PrecursorCandidate(double dMZIn, int iChargeIn, double dToleranceMZIn = 0.0) :
+        dMZ(dMZIn),
+        iCharge(iChargeIn),
+        dToleranceMZ(dToleranceMZIn)
+    { }
+};
+
 struct CometScores
 {
     double xCorr;
@@ -107,6 +131,12 @@ struct CometScores
     int matchedIons;
     int totalIons;
     string sAScoreProSiteScores;  // AScore site scores as string
+    int iCharge;                  // precursor charge the PSM was searched at
+    int iIteration;               // 0-based chimeric-search iteration that produced the PSM
+                                  // (always 0 from DoSingleSpectrumSearchMultiResults);
+                                  // see docs/20261105_RTSchimeric.md
+    int iRank;                    // 0-based rank of the PSM within its search (0 = best by xcorr); with
+                                  // topN > 1 an iteration reports its winning search's top rows
 
     CometScores() :
         xCorr(0),
@@ -117,7 +147,10 @@ struct CometScores
         mass(0),
         matchedIons(0),
         totalIons(0),
-        sAScoreProSiteScores("")
+        sAScoreProSiteScores(""),
+        iCharge(0),
+        iIteration(0),
+        iRank(0)
     { }
 
     CometScores(double xCorr, double dSp, double dCn, double dExpect, double dAScorePro, double mass, int matchedIons, int totalIons, string sAScoreProSiteScores) :
@@ -129,34 +162,15 @@ struct CometScores
         mass(mass),
         matchedIons(matchedIons),
         totalIons(totalIons),
-        sAScoreProSiteScores(sAScoreProSiteScores)
+        sAScoreProSiteScores(sAScoreProSiteScores),
+        iCharge(0),
+        iIteration(0),
+        iRank(0)
     { }
 
-    CometScores(const CometScores& a) :
-        xCorr(a.xCorr),
-        dSp(a.dSp),
-        dCn(a.dCn),
-        dExpect(a.dExpect),
-        dAScorePro(a.dAScorePro),
-        mass(a.mass),
-        matchedIons(a.matchedIons),
-        totalIons(a.totalIons),
-        sAScoreProSiteScores(a.sAScoreProSiteScores)
-    { }
-
-    CometScores& operator=(const CometScores& a)
-    {
-        xCorr = a.xCorr;
-        dSp = a.dSp;
-        dCn = a.dCn;
-        dExpect = a.dExpect;
-        dAScorePro = a.dAScorePro;
-        mass = a.mass;
-        matchedIons = a.matchedIons;
-        totalIons = a.totalIons;
-        sAScoreProSiteScores = a.sAScoreProSiteScores;
-        return *this;
-    }
+    // Copy and move are the compiler-generated memberwise ones (a hand-written copy
+    // constructor and assignment, removed 2026-11-09, did the same and suppressed moves,
+    // and every new field had to be added to both).
 };
 
 struct CometScoresMS1

@@ -20,7 +20,7 @@ The batch path (`Comet.exe`) bypasses C# and the wrapper entirely.
 
 | File | Owns |
 |------|------|
-| `CometSearchManager.cpp` | Top-level orchestration; `DoSingleSpectrumSearchMultiResults` (RTS entry point); `DoMS1SearchMultiResults`; parameter loading |
+| `CometSearchManager.cpp` | Top-level orchestration; `DoSingleSpectrumSearchMultiResults` (RTS entry point) and `DoSingleSpectrumSearchChimeric` (multi-peptide RTS, both over the private `SearchSingleSpectrumCore`); `DoMS1SearchMultiResults`; parameter loading |
 | `CometSearch.cpp` | Fragment index query (`SearchFragmentIndex`); XCorr scoring; `AcquirePoolSlot`; `RunSearch` overloads |
 | `CometFragmentIndex.cpp` | Index build (`CreateFragmentIndex`); index write/read (`.idx` file); `g_pvProteinNameCache` population |
 | `CometPeptideIndex.cpp` | Peptide index build/read; also populates `g_pvProteinNameCache` |
@@ -65,6 +65,16 @@ C#: scanDataQueue.TryDequeue(PrereadScan)
     → CalculateSP / CalculateEValue / CalculateDeltaCn         [CometPostAnalysis.cpp]
     → protein name lookup: g_pvProteinNameCache.find(offset)   [in-memory, no I/O]
 ```
+
+Since the chimeric search (`docs/20261105_RTSchimeric.md`) the body of
+`DoSingleSpectrumSearchMultiResults` from preprocessing through result extraction is the
+private `CometSearchManager::SearchSingleSpectrumCore()`; the public function is a thin
+wrapper around it. `DoSingleSpectrumSearchChimeric` (explicit `(m/z, charge)` list, or one
+m/z over a charge range) loops that core once per candidate per iteration, keeps the best
+PSM by E-value, removes its fragment bins from a thread-local copy of the peaks
+(`RemovePeaksInBins`) and repeats; `CometScores::iCharge` / `iIteration` tag each row. C#
+side: `RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [options]`
+(`SearchChimericMS2.cs`); Linux driver: `tests/rts_repro/rts_repro` modes 1 and 2 (test T67).
 
 ## Batch search path
 

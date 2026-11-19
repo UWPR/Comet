@@ -46,6 +46,63 @@ public:
                                                       vector<string>& strReturnProtein,
                                                       vector<vector<Fragment>>& matchedFragments,
                                                       vector<CometScores>& scores) = 0;
+
+      // Chimeric-spectrum search (docs/20261105_RTSchimeric.md): search the spectrum once
+      // per precursor candidate, keep the best PSM (lowest E-value, ties by xcorr), and if
+      // its E-value is <= dMaxExpect report it, remove the fragment peaks it explains and
+      // repeat on the reduced spectrum, up to iMaxPeptidesPerSpectrum iterations. Each
+      // iteration reports its winning candidate's rank-0 PSM (with that iteration's delta-Cn)
+      // and, when iTopN > 1, up to iTopN - 1 ranked runner-ups from the same search (a
+      // runner-up past the stored candidates is absent; one at or below minimum_xcorr is the
+      // empty placeholder row DoSingleSpectrumSearchMultiResults() also returns). The charge a
+      // row was found at, its iteration and its rank are in CometScores::iCharge / iIteration
+      // / iRank. The E-value cutoff, the peak removal and the stop conditions use rank 0 only.
+      // dPrecursorToleranceMZ > 0 replaces the configured precursor tolerance (+/- m/z) for
+      // every candidate whose own dToleranceMZ is 0; 0 = peptide_mass_tolerance as configured.
+      // Return value and bIncomplete (2026-11-08):
+      //   true,  bIncomplete false: a normal end -- no PSM left, the best failed dMaxExpect,
+      //                             iMaxPeptidesPerSpectrum iterations, too few peaks remain, or the
+      //                             reported PSM explained no observed peak (nothing to remove, so
+      //                             the next iteration would repeat it) (zero rows included);
+      //   true,  bIncomplete true:  the max_index_runtime budget ran out; the rows are the
+      //                             PSMs found so far (the spectrum may hold more);
+      //   false, bIncomplete true:  the call stopped early because the search was cancelled
+      //                             (IsCancelSearch()) or an index search failed; the rows are
+      //                             the complete iterations before that and are valid;
+      //   false, bIncomplete false: invalid arguments; no rows.
+      // Rows are appended to the four output vectors: per kept iteration the winning candidate's
+      // rows 0..iTopN-1 (iTopN >= 1; CometScores::iRank says which; a row past rank 0 may be the
+      // empty placeholder the plain search returns). With one candidate, iMaxPeptidesPerSpectrum 1
+      // and dMaxExpect +inf this is DoSingleSpectrumSearchMultiResults(iTopN) (test T89).
+      virtual bool DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
+                                                  const double dPrecursorToleranceMZ,
+                                                  const double dMaxExpect,
+                                                  const int iMaxPeptidesPerSpectrum,
+                                                  const int iTopN,
+                                                  double* dMass,
+                                                  double* dInten,
+                                                  const int iNumPeaks,
+                                                  vector<string>& strReturnPeptide,
+                                                  vector<string>& strReturnProtein,
+                                                  vector<vector<Fragment>>& matchedFragments,
+                                                  vector<CometScores>& scores,
+                                                  bool& bIncomplete) = 0;
+      // Same, with one precursor m/z expanded across [iMinPrecursorCharge, iMaxPrecursorCharge].
+      virtual bool DoSingleSpectrumSearchChimeric(const double dMZ,
+                                                  const int iMinPrecursorCharge,
+                                                  const int iMaxPrecursorCharge,
+                                                  const double dPrecursorToleranceMZ,
+                                                  const double dMaxExpect,
+                                                  const int iMaxPeptidesPerSpectrum,
+                                                  const int iTopN,
+                                                  double* dMass,
+                                                  double* dInten,
+                                                  const int iNumPeaks,
+                                                  vector<string>& strReturnPeptide,
+                                                  vector<string>& strReturnProtein,
+                                                  vector<vector<Fragment>>& matchedFragments,
+                                                  vector<CometScores>& scores,
+                                                  bool& bIncomplete) = 0;
       virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                            const double dMaxQueryRT,
                                            const int topN,
