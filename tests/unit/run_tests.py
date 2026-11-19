@@ -7043,5 +7043,212 @@ def test_t67_mango_threads_fasta(comet_exe):
     return _run_t67_threads(comet_exe, None)
 
 
+# ---------------------------------------------------------------------------
+# T68 -- charge-scaled precursor windows (amu/mmu with precursor_tolerance_type = 1)
+# ---------------------------------------------------------------------------
+#
+# The FASTA_DB candidate search finds the queries a peptide could match by bisecting the
+# mass-sorted query list on each query's window edge and breaking out of its walk at the first
+# query whose low edge is above the peptide mass. That is only valid if the edges increase along
+# the list. With charge-scaled windows a 4+ query is far wider than a 1+ query of nearly the
+# same mass, so the edges are not monotone: candidates were missed (deterministically), and with
+# several threads the order of equal-mass queries varied from run to run, so the output did too.
+# The search now orders by a monotone prefix-max / suffix-min envelope (PepMassInfo::dSearchPlus
+# / dSearchMinus); each query's own window still decides the match.
+#
+# Oracle: a query searched ALONE (scan_range = its scan) has no neighbours to confuse the list,
+# so a batch of queries must give, per scan, exactly the rows of its single-query run -- whatever
+# path the candidates take (plain, variable-mod, required-mod, compound-mod, PEFF).
+
+_T68_PLAIN_FASTA = (">p1\nMGGSAKLNPQSTVWYRGGSAGK\n>p2\nMGGSAKACDEFGHIKGGSAGK\n"
+                    ">p3\nMGGSAKMEDVTPGFSKGGSAGK\n>p4\nMGGSAKSLWQNPDHEMKGGSAGK\n")
+_T68_COMPOUND_FASTA = (">p1\nMGGSAKLNJQSTVWYRGGSAGK\n>p2\nMGGSAKACDJFGHIKGGSAGK\n"
+                       ">p3\nMGGSAKMEDVJPGFSKGGSAGK\n>p4\nMGGSAKSLWJNPDHEMKGGSAGK\n")
+_T68_OXIDATION = 15.9949
+_T68_COMPOUND_MASS = 57.521464     # the middle of the three masses in the compound-mods file
+_T68_J_ADD = 1.0                   # add_J_user_amino_acid: the J residue must have a non-zero mass to be searched
+_T68_COMPOUND_FILE = "57.021464\n57.521464\n58.021464\n"
+
+# (z, MH+ offset from the target mass). Two adversarial groups plus a spread:
+#   group A: a wide (4+) window whose experimental mass is just BELOW the target, followed in
+#            mass order by narrow (1+) windows that end below the target -- the old bisection on
+#            the window's high edge lost the wide one;
+#   group B: a narrow window that starts ABOVE the target, followed by wide ones that contain
+#            it -- the old early break on the low edge stopped before reaching them.
+_T68_PATTERN = ((4, -0.85), (1, -0.50), (1, -0.45), (1, -0.40), (2, -0.30), (1, -0.10),
+                (1, 0.40), (4, 0.50), (3, 0.55), (1, 0.60), (2, 0.35), (1, 0.05),
+                (3, -0.60), (4, 0.00), (2, 0.20))
+
+
+def _t68_ladder(pep, mods, jmass):
+    """(MH+, [b/y peak m/z]) for a peptide; 'J' is the compound-mod residue (mass jmass)."""
+    res = [(jmass if aa == "J" else _MONO_RESIDUE_MASS[aa]) + mods.get(i, 0.0)
+           for i, aa in enumerate(pep)]
+    n = len(res)
+    peaks = sorted([sum(res[:k]) + _PROTON_MASS for k in range(1, n)]
+                   + [sum(res[n - k:]) + _H2O_MASS + _PROTON_MASS for k in range(1, n)])
+    return sum(res) + _H2O_MASS + _PROTON_MASS, peaks
+
+
+def _t68_rows(comet_exe, params, ms2, threads, scan=None):
+    """Search `ms2` and return {scan: sorted row tuples}; None if the search failed."""
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    params = _set_param_line(params, "num_threads", str(threads))
+    if scan is not None:
+        params = _set_param_line(params, "scan_range", f"{scan} {scan}")
+    params_file = ms2.with_suffix(".params")
+    params_file.write_text(params)
+    # with a scan range Comet names the output <base>.<first>-<last>.txt
+    txt = ms2.with_suffix(f".{scan}-{scan}.txt" if scan is not None else ".txt")
+    txt.unlink(missing_ok=True)
+    rc, out = _run_t19_step(comet_exe, [f"-P{fmt(params_file)}", fmt(ms2)])
+    if rc != 0 or not txt.exists():
+        print(out[-1200:])
+        return None
+    by_scan = {}
+    for r in legacy_cases.parse_txt(txt):
+        by_scan.setdefault(int(r["scan"]), []).append(tuple(sorted(r.items())))
+    return {s: sorted(v) for s, v in by_scan.items()}
+
+
+def _run_t68(comet_exe, mode, units="0", tol="0.25", ttype="1", repeats=3):
+    """Batch vs single-query oracle for one search mode and tolerance setting."""
+    import random
+    failures = []
+    fmt = _to_win if _binary_uses_win_paths(comet_exe) else str
+    label = f"{mode} units={units} tol={tol} type={ttype}"
+
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        ms2 = tmp / "t68.ms2"
+        jmass = 0.0
+        mods_param = ()
+        extra = {}
+        n_extra = 3
+
+        if mode == "peff":
+            db = tmp / "t68.peff"
+            _t52_write_peff(db, False)
+            obo = tmp / "t68.obo"
+            obo.write_text(_T52_OBO)
+            targets = [(pep, mods) for pep, mods, _ in _T52_SPECTRA.values()]
+            extra = {"peff_format": "1", "peff_obo": fmt(obo)}
+        else:
+            db = tmp / "t68.fasta"
+            db.write_text(_T68_COMPOUND_FASTA if mode == "compound" else _T68_PLAIN_FASTA)
+            if mode == "plain":
+                targets = [("LNPQSTVWYR", {}), ("ACDEFGHIK", {}), ("MEDVTPGFSK", {}), ("SLWQNPDHEMK", {})]
+            elif mode == "varmod":
+                mods_param = (f"{_T68_OXIDATION} M 0 3 -1 0 0 0.0",)
+                targets = [("LNPQSTVWYR", {}), ("ACDEFGHIK", {}),
+                           ("MEDVTPGFSK", {0: _T68_OXIDATION}), ("SLWQNPDHEMK", {9: _T68_OXIDATION})]
+            elif mode == "reqvarmod":
+                mods_param = (f"{_T68_OXIDATION} M 0 3 -1 0 0 0.0",)
+                extra = {"require_variable_mod": "1"}
+                targets = [("MEDVTPGFSK", {0: _T68_OXIDATION}), ("SLWQNPDHEMK", {9: _T68_OXIDATION})]
+                n_extra = 12
+            elif mode == "compound":
+                cm = tmp / "compound.txt"
+                cm.write_text(_T68_COMPOUND_FILE)
+                jmass = _T68_J_ADD + _T68_COMPOUND_MASS
+                extra = {"compoundmods_file": fmt(cm), "add_J_user_amino_acid": f"{_T68_J_ADD}"}
+                targets = [("LNJQSTVWYR", {}), ("ACDJFGHIK", {}), ("MEDVJPGFSK", {}), ("SLWJNPDHEMK", {})]
+            else:
+                raise ValueError(mode)
+
+        params = legacy_cases.build_params(database=fmt(db), enzyme1=1, static_C=0.0,
+                                           num_output_lines=10, mods=mods_param)
+        for k, v in {"peptide_mass_units": units, "peptide_mass_tolerance_upper": tol,
+                     "peptide_mass_tolerance_lower": "-" + tol,
+                     "precursor_tolerance_type": ttype, **extra}.items():
+            params = _set_param_line(params, k, v)
+
+        # ---- the queries: every target is surrounded by the adversarial pattern
+        rng = random.Random(68)
+        lines, queries = [], []   # queries: (scan, z, MH+, target mass, target peptide)
+        scan = 0
+        for pep, mods in targets:
+            mh_t, peaks = _t68_ladder(pep, mods, jmass)
+            pattern = list(_T68_PATTERN) + [(rng.randint(1, 4), rng.uniform(-0.9, 0.9)) for _ in range(n_extra)]
+            for z, d in pattern:
+                scan += 1
+                mh = mh_t + d
+                queries.append((scan, z, mh, mh_t, pep))
+                lines += [f"S\t{scan}\t{scan}\t{(mh + (z - 1) * _PROTON_MASS) / z:.6f}", f"Z\t{z}\t{mh:.6f}"]
+                lines += [f"{m:.6f}\t100.0" for m in peaks]
+        ms2.write_text("\n".join(lines) + "\n")
+
+        # ---- oracle: each query on its own, one thread
+        oracle = {}
+        for scan, *_ in queries:
+            rows = _t68_rows(comet_exe, params, ms2, 1, scan=scan)
+            if rows is None:
+                failures.append(f"{label}: single-query search of scan {scan} failed")
+                return failures
+            oracle[scan] = rows.get(scan, [])
+
+        # sanity: the scenario must actually exercise the search -- a query whose own window
+        # contains the target must find the target on its own (ppm windows are not checked).
+        if units in ("0", "1"):
+            width = float(tol) * (0.001 if units == "1" else 1.0)
+            n_in, n_found = 0, 0
+            for scan, z, mh, mh_t, pep in queries:
+                half = width * (z if ttype == "1" else 1)
+                if abs(mh - mh_t) < half - 0.02:
+                    n_in += 1
+                    n_found += any(dict(r).get("plain_peptide") == pep for r in oracle[scan])
+            check(n_in >= 20 and n_found == n_in,
+                  f"{label}: {n_found}/{n_in} queries whose window holds the target find it on their own",
+                  failures)
+
+        # ---- the batch, several times with several threads: must equal the oracle
+        bad = []
+        for rep in range(repeats):
+            batch = _t68_rows(comet_exe, params, ms2, 8)
+            if batch is None:
+                failures.append(f"{label}: batch search failed")
+                return failures
+            bad.append(sorted(s for s, *_ in queries if batch.get(s, []) != oracle[s]))
+        check(all(not x for x in bad),
+              f"{label}: batch rows equal the single-query rows for all {len(queries)} scans in "
+              f"{repeats} runs (scans that differed per run: {[x[:6] for x in bad]})", failures)
+
+    return failures
+
+
+@register("t68_window_plain")
+def test_t68_window_plain(comet_exe):
+    """T68: charge-scaled amu/mmu windows, no variable mods. amu and mmu with m/z-type windows
+    are the bug cases; amu with MH+-type windows and ppm are controls that were always correct."""
+    failures = []
+    for units, tol, ttype in (("0", "0.25", "1"), ("1", "250.0", "1"), ("0", "0.25", "0"), ("2", "500.0", "1")):
+        failures += _run_t68(comet_exe, "plain", units, tol, ttype)
+    return failures
+
+
+@register("t68_window_varmod")
+def test_t68_window_varmod(comet_exe):
+    """T68b: the same on the variable-mod search path (methionine oxidation)."""
+    return _run_t68(comet_exe, "varmod")
+
+
+@register("t68_window_reqvarmod")
+def test_t68_window_reqvarmod(comet_exe):
+    """T68c: the same with require_variable_mod = 1 (every peptide must carry a variable mod)."""
+    return _run_t68(comet_exe, "reqvarmod")
+
+
+@register("t68_window_compound")
+def test_t68_window_compound(comet_exe):
+    """T68d: the same on the compound-mod search path (J residues + a compoundmods_file)."""
+    return _run_t68(comet_exe, "compound")
+
+
+@register("t68_window_peff")
+def test_t68_window_peff(comet_exe):
+    """T68e: the same on the PEFF path (\\ModResPsi / \\VariantSimple / \\VariantComplex entries)."""
+    return _run_t68(comet_exe, "peff")
+
+
 if __name__ == "__main__":
     main()

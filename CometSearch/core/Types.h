@@ -22,6 +22,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <limits>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -97,6 +98,17 @@ struct PepMassInfo
    double dPeptideMassToleranceHigh;          // mass tolerance high in amu from experimental mass
    double dPeptideMassToleranceMinus;         // low end of mass tolerance range including isotope offsets
    double dPeptideMassTolerancePlus;          // high end of mass tolerance range including isotope offsets
+
+   // Monotone envelopes of the two edges above over the mass-sorted query list, built by
+   // BuildMassWindowEnvelope() after the sort. The FASTA_DB candidate search (BinarySearchMass,
+   // the walk-back and the early break in its query loops) assumes the edges increase along the
+   // list, which only holds when every query's window is a constant offset from its mass. A
+   // charge-scaled amu/mmu window (precursor_tolerance_type = 1) breaks that, so the search
+   // orders by these instead: dSearchPlus is the prefix-max of dPeptideMassTolerancePlus and
+   // dSearchMinus the suffix-min of dPeptideMassToleranceMinus. They only bound where to look;
+   // CheckMassMatch() still applies each query's own exact window.
+   double dSearchMinus;
+   double dSearchPlus;
 };
 
 struct SpectrumInfoInternal
@@ -1244,6 +1256,8 @@ struct Query
       _pepMassInfo.dPeptideMassToleranceHigh = 0.0;
       _pepMassInfo.dPeptideMassToleranceMinus = 0.0;
       _pepMassInfo.dPeptideMassTolerancePlus = 0.0;
+      _pepMassInfo.dSearchMinus = 0.0;                                    // 0 / DBL_MAX: until the envelope is built,
+      _pepMassInfo.dSearchPlus = std::numeric_limits<double>::max();      // every query is a possible match (slow but correct)
 
       _spectrumInfoInternal.dTotalIntensity = 0.0;
       _spectrumInfoInternal.iArraySize = 0;

@@ -3775,7 +3775,7 @@ bool CometSearch::SearchForPeptides(struct sDBEntry& dbe,
                // Compare calculated fragment ions against all matching query spectra.
                while (iWhichQuery < (int)_pQueries->size())
                {
-                  if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+                  if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dSearchMinus)
                   {
                      // If calculated mass is smaller than low mass range.
                      break;
@@ -4387,7 +4387,7 @@ int CometSearch::WithinMassTolerance(double dCalcPepMass,
 
       // Seek back to first peptide entry that matches mass tolerance in case binary
       // search doesn't hit the first entry.
-      while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass)
+      while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dSearchPlus >= dCalcPepMass)
          iPos--;
 
       if (iPos != -1)
@@ -4449,7 +4449,7 @@ bool CometSearch::WithinMassTolerancePeff(double dCalcPepMass,
 
             // Seek back to first peptide entry that matches mass tolerance in case binary
             // search doesn't hit the first entry.
-            while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dPeptideMassTolerancePlus >= dCalcPepMass + dMassAddition)
+            while (iPos > 0 && _pQueries->at(iPos)->_pepMassInfo.dSearchPlus >= dCalcPepMass + dMassAddition)
                iPos--;
 
             if (iPos != -1)
@@ -4660,19 +4660,31 @@ int CometSearch::BinarySearchMass(int start,
                                   int end,
                                   double dCalcPepMass) const
 {
+   // The queries are sorted by experimental mass, but each one's Minus/Plus window edge is
+   // only monotone along that order when every window is a constant offset from the mass; a
+   // charge-scaled amu/mmu window is not. So bisect on the monotone prefix-max envelope
+   // (dSearchPlus) to find where candidates can start, then walk forward -- the suffix-min
+   // envelope (dSearchMinus) says when to stop -- and return the first query whose own window
+   // contains the mass.
+   const auto last = _pQueries->begin() + end;
+
    auto it = std::lower_bound(
       _pQueries->begin() + start,
-      _pQueries->begin() + end,
+      last,
       dCalcPepMass,
       [](const Query* query, double mass) {
-         return query->_pepMassInfo.dPeptideMassTolerancePlus < mass;
+         return query->_pepMassInfo.dSearchPlus < mass;
       });
 
-   if (it != _pQueries->begin() + end
-      && (*it)->_pepMassInfo.dPeptideMassToleranceMinus <= dCalcPepMass
-      && dCalcPepMass <= (*it)->_pepMassInfo.dPeptideMassTolerancePlus)
+   for ( ; it != last; ++it)
    {
-      return static_cast<int>(std::distance(_pQueries->begin(), it));
+      const PepMassInfo& pmi = (*it)->_pepMassInfo;
+
+      if (dCalcPepMass < pmi.dSearchMinus)
+         break;
+
+      if (pmi.dPeptideMassToleranceMinus <= dCalcPepMass && dCalcPepMass <= pmi.dPeptideMassTolerancePlus)
+         return static_cast<int>(std::distance(_pQueries->begin(), it));
    }
 
    return -1;
@@ -7648,7 +7660,7 @@ bool CometSearch::MergeVarMods(char* szProteinSeq,
                      // pre-PEFF dCalcPepMass -- negative-mass PEFF mods (e.g. amidation, -0.98)
                      // otherwise stop the walk-back early and miss queries between the true
                      // first match and this point. Matches WithinMassTolerancePeff()'s pattern.
-                     while (iWhichQuery > 0 && _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassTolerancePlus >= dTmpCalcPepMass)
+                     while (iWhichQuery > 0 && _pQueries->at(iWhichQuery)->_pepMassInfo.dSearchPlus >= dTmpCalcPepMass)
                         iWhichQuery--;
 
                      // Only if this PEFF mod (plus possible variable mods) is within mass tolerance, continue
@@ -7788,7 +7800,7 @@ bool CometSearch::CalcVarModIons(char* szProteinSeq,
 
    while (iWhichQuery < (int)_pQueries->size())
    {
-      if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+      if (dCalcPepMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dSearchMinus)
       {
          // if calculated mass is smaller than low mass range, it
          // means we reached candidate peptides that are too big
@@ -9530,7 +9542,7 @@ void CometSearch::CompoundModSearch(char *szProteinSeq,
 
          while (iWhichQuery < (int)_pQueries->size())
          {
-            if (dModMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dPeptideMassToleranceMinus)
+            if (dModMass < _pQueries->at(iWhichQuery)->_pepMassInfo.dSearchMinus)
                break;
 
             if (CheckMassMatch(iWhichQuery, dModMass))

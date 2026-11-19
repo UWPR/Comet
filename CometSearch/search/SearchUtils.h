@@ -15,6 +15,8 @@
 #pragma once
 
 #include "Common.h"
+#include <algorithm>
+#include <limits>
 #include <string.h>
 #include "CometDataInternal.h"
 #include "CometSearch.h"
@@ -45,6 +47,10 @@ bool executeBatchLegacy(MSToolkit::MSReader& mstReader,
 // -----------------------------------------------------------------------
 // Query sort comparators -- kept inline; single-expression each.
 // -----------------------------------------------------------------------
+// Fills _pepMassInfo.dSearchMinus / dSearchPlus for a query list sorted by compareByPeptideMass;
+// see PepMassInfo in core/Types.h.
+void BuildMassWindowEnvelope(std::vector<Query*>& queries);
+
 inline bool compareByPeptideMass(Query const* a, Query const* b)
 {
    return (a->_pepMassInfo.dExpPepMass < b->_pepMassInfo.dExpPepMass);

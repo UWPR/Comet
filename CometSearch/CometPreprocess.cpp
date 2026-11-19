@@ -2957,6 +2957,11 @@ bool CometPreprocess::AdjustMassTol(struct Query *pScoring)
    if (pScoring->_pepMassInfo.dPeptideMassToleranceMinus < 100.0)   // there should be no reason to have a peptide mass smaller than this
       pScoring->_pepMassInfo.dPeptideMassToleranceMinus = 100.0;    // why not a much larger cutoff??
 
+   // A lone query (RTS) is its own envelope; a sorted batch overwrites these in
+   // BuildMassWindowEnvelope().
+   pScoring->_pepMassInfo.dSearchMinus = pScoring->_pepMassInfo.dPeptideMassToleranceMinus;
+   pScoring->_pepMassInfo.dSearchPlus  = pScoring->_pepMassInfo.dPeptideMassTolerancePlus;
+
    // now set Low/High to mass range around ExpMass
    pScoring->_pepMassInfo.dPeptideMassToleranceLow = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceLow;
    pScoring->_pepMassInfo.dPeptideMassToleranceHigh = pScoring->_pepMassInfo.dExpPepMass + pScoring->_pepMassInfo.dPeptideMassToleranceHigh;
