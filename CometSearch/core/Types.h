@@ -1257,7 +1257,7 @@ struct Query
       _pepMassInfo.dPeptideMassToleranceMinus = 0.0;
       _pepMassInfo.dPeptideMassTolerancePlus = 0.0;
       _pepMassInfo.dSearchMinus = 0.0;                                    // 0 / DBL_MAX: until the envelope is built,
-      _pepMassInfo.dSearchPlus = std::numeric_limits<double>::max();      // every query is a possible match (slow but correct)
+      _pepMassInfo.dSearchPlus = (std::numeric_limits<double>::max)();      // every query is a possible match (slow but correct)
 
       _spectrumInfoInternal.dTotalIntensity = 0.0;
       _spectrumInfoInternal.iArraySize = 0;

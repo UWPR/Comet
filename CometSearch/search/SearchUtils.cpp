@@ -224,19 +224,21 @@ bool AllocateResultsMem(std::vector<Query*>& queries)
 
 void BuildMassWindowEnvelope(std::vector<Query*>& queries)
 {
-   double dMaxPlus = -std::numeric_limits<double>::max();
+   double dMaxPlus = -(std::numeric_limits<double>::max)();
 
    for (size_t i = 0; i < queries.size(); ++i)
    {
-      dMaxPlus = std::max(dMaxPlus, queries[i]->_pepMassInfo.dPeptideMassTolerancePlus);
+      if (queries[i]->_pepMassInfo.dPeptideMassTolerancePlus > dMaxPlus)   // not std::max: windows.h macro
+         dMaxPlus = queries[i]->_pepMassInfo.dPeptideMassTolerancePlus;
       queries[i]->_pepMassInfo.dSearchPlus = dMaxPlus;
    }
 
-   double dMinMinus = std::numeric_limits<double>::max();
+   double dMinMinus = (std::numeric_limits<double>::max)();
 
    for (size_t i = queries.size(); i-- > 0; )
    {
-      dMinMinus = std::min(dMinMinus, queries[i]->_pepMassInfo.dPeptideMassToleranceMinus);
+      if (queries[i]->_pepMassInfo.dPeptideMassToleranceMinus < dMinMinus)
+         dMinMinus = queries[i]->_pepMassInfo.dPeptideMassToleranceMinus;
       queries[i]->_pepMassInfo.dSearchMinus = dMinMinus;
    }
 }
