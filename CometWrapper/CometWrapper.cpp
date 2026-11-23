@@ -248,6 +248,47 @@ struct ChimericRangeCall
    }
 };
 
+struct ChimericTwoStageCall
+{
+   ICometSearchManager* pMgr;
+   double dMZ;
+   int iCharge;
+   double dIsolationCenterMZ;
+   double dIsolationHalfWidthMZ;
+   int iMinPrecursorCharge;
+   int iMaxPrecursorCharge;
+   double dMaxExpect;
+   double dMaxExpectSecondary;
+   bool bSearchSecondaryWithoutPrimary;
+   int iMaxPeptidesPerSpectrum;
+   int iTopN;
+   double* pdMass;
+   double* pdInten;
+   int iNumPeaks;
+
+   // The candidate lists are built here, inside RunChimericSearch()'s try block.
+   bool operator()(std::vector<std::string>& vPep, std::vector<std::string>& vProt,
+                   std::vector<std::vector<Fragment>>& vFrag, std::vector<CometScores>& vScores,
+                   bool& bNativeIncomplete) const
+   {
+      const int iZmin = (iMinPrecursorCharge < 1) ? 1 : iMinPrecursorCharge;
+      const int iZmax = (iMaxPrecursorCharge > 9) ? 9 : iMaxPrecursorCharge;   // native MAX_PRECURSOR_CHARGE
+      std::vector<PrecursorCandidate> vPrimary;
+      std::vector<PrecursorCandidate> vSecondary;
+      if (iCharge > 0)
+         vPrimary.push_back(PrecursorCandidate(dMZ, iCharge, 0.0));
+      for (int z = iZmin; z <= iZmax; ++z)
+      {
+         if (iCharge <= 0)
+            vPrimary.push_back(PrecursorCandidate(dMZ, z, 0.0));
+         vSecondary.push_back(PrecursorCandidate(dIsolationCenterMZ, z, dIsolationHalfWidthMZ));
+      }
+      return pMgr->DoSingleSpectrumSearchChimericTwoStage(vPrimary, vSecondary, 0.0, dMaxExpect,
+         dMaxExpectSecondary, bSearchSecondaryWithoutPrimary, iMaxPeptidesPerSpectrum, iTopN,
+         pdMass, pdInten, iNumPeaks, vPep, vProt, vFrag, vScores, bNativeIncomplete);
+   }
+};
+
 // The shared tail of both chimeric overloads: run the native search (fnSearch, one of the
 // function objects above), contain a native exception, and convert the rows. The rows
 // appended before an exception are complete iterations, so they are kept, as a cancelled call
@@ -477,6 +518,51 @@ bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimeric(
    ChimericRangeCall call = { _pSearchMgr, dMZ, iMinPrecursorCharge, iMaxPrecursorCharge,
                               dPrecursorToleranceMZ, dMaxExpect, iMaxPeptidesPerSpectrum, iTopN, ptrMasses, ptrInten,
                               iNumPeaks };
+
+   String^ strError = nullptr;
+   const bool ok = RunChimericSearch(call,
+      strError, szPeptide, szProtein, matchingFragments, score, bIncomplete);
+   s_strLastWrapperError = strError;
+   return ok;
+}
+
+
+bool CometSearchManagerWrapper::DoSingleSpectrumSearchChimericTwoStage(
+   double dMZ,
+   int iCharge,
+   double dIsolationCenterMZ,
+   double dIsolationHalfWidthMZ,
+   int iMinPrecursorCharge,
+   int iMaxPrecursorCharge,
+   double dMaxExpect,
+   double dMaxExpectSecondary,
+   bool bSearchSecondaryWithoutPrimary,
+   int iMaxPeptidesPerSpectrum,
+   int iTopN,
+   cli::array<double>^ pdMass,
+   cli::array<double>^ pdInten,
+   const int iNumPeaks,
+   [Out] List<String^>^% szPeptide,
+   [Out] List<String^>^% szProtein,
+   [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+   [Out] List<ScoreWrapper^>^% score,
+   [Out] bool% bIncomplete)
+{
+   bIncomplete = false;
+   s_strLastWrapperError = nullptr;
+   if (!_pSearchMgr || !ValidPeakArrays(pdMass, pdInten, iNumPeaks))
+   {
+      s_strLastWrapperError = !_pSearchMgr ? "no search manager" : DescribePeakArrays(pdMass, pdInten, iNumPeaks);
+      EmptySingleSpectrumOutputs(szPeptide, szProtein, matchingFragments, score);
+      return false;
+   }
+
+   pin_ptr<double> ptrMasses = &pdMass[0];
+   pin_ptr<double> ptrInten = &pdInten[0];
+   ChimericTwoStageCall call = { _pSearchMgr, dMZ, iCharge, dIsolationCenterMZ, dIsolationHalfWidthMZ,
+                                 iMinPrecursorCharge, iMaxPrecursorCharge, dMaxExpect, dMaxExpectSecondary,
+                                 bSearchSecondaryWithoutPrimary, iMaxPeptidesPerSpectrum, iTopN,
+                                 ptrMasses, ptrInten, iNumPeaks };
 
    String^ strError = nullptr;
    const bool ok = RunChimericSearch(call,

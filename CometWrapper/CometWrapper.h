@@ -102,6 +102,31 @@ namespace CometWrapper {
                                             [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
                                             [Out] List<ScoreWrapper^>^% score,
                                             [Out] bool% bIncomplete);
+        // Two-stage form (ICometSearchManager::DoSingleSpectrumSearchChimericTwoStage): the
+        // known precursor (dMZ, iCharge) is searched first at the configured tolerance; once its
+        // peptide passes dMaxExpect and its fragments are removed, the isolation window
+        // (dIsolationCenterMZ +/- dIsolationHalfWidthMZ, each charge in the range) is searched
+        // for further peptides against dMaxExpectSecondary. iCharge <= 0 (unknown): the first
+        // stage tries every charge in the range at dMZ. ScoreWrapper::Iteration 0 = first stage.
+        bool DoSingleSpectrumSearchChimericTwoStage(double dMZ,
+                                                    int iCharge,
+                                                    double dIsolationCenterMZ,
+                                                    double dIsolationHalfWidthMZ,
+                                                    int iMinPrecursorCharge,
+                                                    int iMaxPrecursorCharge,
+                                                    double dMaxExpect,
+                                                    double dMaxExpectSecondary,
+                                                    bool bSearchSecondaryWithoutPrimary,
+                                                    int iMaxPeptidesPerSpectrum,
+                                                    int iTopN,
+                                                    cli::array<double>^ pdMass,
+                                                    cli::array<double>^ pdInten,
+                                                    const int iNumPeaks,
+                                                    [Out] List<String^>^% szPeptide,
+                                                    [Out] List<String^>^% szProtein,
+                                                    [Out] List<List<FragmentWrapper^>^>^% matchingFragments,
+                                                    [Out] List<ScoreWrapper^>^% score,
+                                                    [Out] bool% bIncomplete);
         // Need to convert vector to List and back
         bool DoMS1SearchMultiResults(double dVal3,
                                      double dVal4,

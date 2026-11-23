@@ -10339,5 +10339,191 @@ def test_t92_window_pi(comet_exe):
     return _t92_index_modes(comet_exe, "-j", ("plain", "varmod", "reqvarmod"))
 
 
+# ---------------------------------------------------------------------------
+# T93 -- two-stage chimeric search: DoSingleSpectrumSearchChimericTwoStage() (rts_repro chimeric mode 3).
+# Iteration 0 searches only the primary candidate (the block's own m/z and charge, configured
+# tolerance); once its peptide is reported and removed, later iterations search the secondary list
+# (the same m/z at charges 2-4 with a +/- 2 m/z window). Uses the T67 fixtures.
+# ---------------------------------------------------------------------------
+
+@register("t93_chimeric_twostage")
+def test_t93_chimeric_twostage(comet_exe):
+    """T93: the two-stage chimeric search reports the primary precursor's peptide at iteration 0 even when a
+    co-isolated peptide scores better (T67 scan 2, where the charge-range form reports P2 first), then finds
+    the co-isolated peptide from the wide secondary window; a primary that identifies nothing ends the call
+    with no rows unless secondaryAlways is set, in which case the secondary list is searched on the unchanged
+    spectrum and its rows carry iteration 1; the secondary E-value cutoff is separate; with an empty-handed
+    secondary stage the result equals the plain search; 1 vs 4 threads byte-identical. FI_DB and PI_DB."""
+    failures = []
+    if _binary_uses_win_paths(comet_exe):
+        raise TestSkipped("rts_repro is Linux-only; --comet is a Windows binary")
+    if not _require_rts_repro(failures):
+        return failures
+    if not T67_GENERATOR.exists():
+        failures.append(f"fixture generator missing: {T67_GENERATOR}")
+        return failures
+
+    MAX_EXPECT = 0.01
+    with tempfile.TemporaryDirectory(dir=str(DATA_DIR)) as tmp:
+        tmp = Path(tmp)
+        r = subprocess.run([sys.executable, "-I", str(T67_GENERATOR), str(tmp)], capture_output=True, text=True, timeout=300)
+        if not check(r.returncode == 0, f"fixture generator exits 0 (rc={r.returncode})", failures):
+            return failures
+        info = json.loads((tmp / "t67_chimeric.json").read_text())
+        P1, P2, P3 = info["P1"]["seq"], info["P2"]["seq"], info["P3"]["seq"]
+        fasta = tmp / "t67_chimeric.fasta"
+        fx = tmp / "t67_chimeric_range.txt"
+        # the same scans with a wrong primary charge (3+ at P1's 2+ m/z): the primary stage finds nothing
+        fx_wrong = tmp / "t93_wrong_primary.txt"
+        fx_wrong.write_text(re.sub(r"^SPECTRUM (\d+) 2 ", r"SPECTRUM \1 3 ", fx.read_text(), flags=re.M))
+        params = T35_PARAMS_TEMPLATE.format(comet_version="2026.02 rev. 0", database=str(fasta), ascorepro=0,
+                                            mod1="0.0 X 0 3 -1 0 0 0.0", decoy_search=0, len_min=7, len_max=20)
+
+        def args(secondary_always=0, max_expect2=MAX_EXPECT):
+            # mode 3, charges 2-4, +/- 2 m/z secondary window, max 5 peptides; the slots up to useNLIons at their defaults
+            return ["3", "2", "4", "2.0", str(MAX_EXPECT), "5", "-1", "2", "2", "0", "-1", "-1",
+                    str(secondary_always), str(max_expect2)]
+
+        # scan -> the (peptide, charge) rows in iteration order
+        expected = {1: [(P1, 2)], 2: [(P1, 2), (P2, 3)], 3: [(P1, 2), (P3, 2)], 4: [(P1, 2)], 5: [], 6: [(P1, 2)]}
+
+        for flag, label, ist in (("-i", "FI_DB", 1), ("-j", "PI_DB", 0)):
+            try:
+                idx = _rts_build_index(comet_exe, fasta, params, flag)
+            except RuntimeError as e:
+                failures.append(f"{label}: {e}")
+                continue
+            try:
+                out = tmp / f"{label}_twostage.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=args())
+                if check(rc == 0 and out.exists(), f"{label}: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    for scan, want in expected.items():
+                        got = rows.get(scan, [])
+                        check([(x.get("peptide"), x.get("z")) for x in got] == want,
+                              f"{label}: scan {scan} reports {want} in that order, got {[(x.get('peptide'), x.get('z')) for x in got]}", failures)
+                        check([x.get("iter") for x in got] == list(range(len(got))),
+                              f"{label}: scan {scan} rows carry iterations {list(range(len(got)))}", failures)
+                        check(all(x.get("expect", 1e9) <= MAX_EXPECT for x in got),
+                              f"{label}: scan {scan} every row passes E-value <= {MAX_EXPECT}", failures)
+
+                    # 1 vs 4 threads
+                    out4 = tmp / f"{label}_twostage4.out"
+                    rc, log = _rts_run(idx, fx, 4, out4, 0, ist, extra_args=args())
+                    check(rc == 0 and _rts_sorted_lines(out) == _rts_sorted_lines(out4),
+                          f"{label}: 1-thread and 4-thread two-stage output byte-identical", failures)
+
+                # a secondary cutoff nothing reaches: only the primary rows remain
+                out = tmp / f"{label}_sec_cutoff.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=args(max_expect2=1e-30))
+                if check(rc == 0, f"{label} secondary cutoff: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    check(all([(x["peptide"], x["z"], x["iter"]) for x in rows.get(s, [])] == [(p, z, 0) for p, z in want[:1]]
+                              for s, want in expected.items()),
+                          f"{label}: with maxExpectSecondary = 1e-30 each scan reports only its primary peptide", failures)
+
+                # wrong primary charge: nothing at iteration 0, so no rows at all ...
+                out = tmp / f"{label}_wrong.out"
+                rc, log = _rts_run(idx, fx_wrong, 1, out, 0, ist, extra_args=args())
+                if check(rc == 0, f"{label} wrong primary: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    check(len(rows) == len(expected) and all(len(v) == 0 for v in rows.values()),
+                          f"{label}: a primary candidate that identifies nothing ends the call with no rows", failures)
+
+                # ... unless secondaryAlways: the secondary list on the unchanged spectrum, rows from iteration 1
+                out = tmp / f"{label}_wrong_always.out"
+                rc, log = _rts_run(idx, fx_wrong, 1, out, 0, ist, extra_args=args(secondary_always=1))
+                if check(rc == 0, f"{label} secondaryAlways: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    got1 = rows.get(1, [])
+                    check([(x.get("peptide"), x.get("z"), x.get("iter")) for x in got1] == [(P1, 2, 1)],
+                          f"{label}: secondaryAlways finds {P1}/2+ at iteration 1 for scan 1, got {[(x.get('peptide'), x.get('z'), x.get('iter')) for x in got1]}", failures)
+                    got2 = rows.get(2, [])
+                    check({(x.get("peptide"), x.get("z")) for x in got2} == {(P1, 2), (P2, 3)}
+                          and [x.get("iter") for x in got2] == [1, 2],
+                          f"{label}: secondaryAlways finds both peptides of scan 2 at iterations 1 and 2, got {[(x.get('peptide'), x.get('z'), x.get('iter')) for x in got2]}", failures)
+                    check(len(rows.get(5, [])) == 0, f"{label}: secondaryAlways still reports nothing for the noise scan", failures)
+
+                # invalid arguments: a NaN cutoff in either stage is rejected (ERROR row for every scan)
+                for name, a in (("NaN maxExpect", ["3", "2", "4", "2.0", "nan", "5", "-1", "2", "2", "0", "-1", "-1", "0", "0.01"]),
+                                ("NaN maxExpectSecondary", args(max_expect2="nan"))):
+                    out = tmp / f"{label}_nan.out"
+                    rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=a)
+                    rows = _t67_rows(out) if rc == 0 else {}
+                    check(rc == 0 and len(rows) == len(expected) and all(v == [{"error": True}] for v in rows.values()),
+                          f"{label}: {name} is rejected for every scan (ERROR rows)", failures)
+
+                # an empty secondary list (zmin > zmax): a one-iteration call, the primary peptide only
+                a = args()
+                a[1], a[2] = "5", "4"
+                out = tmp / f"{label}_nosecondary.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=a)
+                if check(rc == 0, f"{label} empty secondary list: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    check(all([(x.get("peptide"), x.get("z"), x.get("iter")) for x in rows.get(s, [])] == [(p, z, 0) for p, z in want[:1]]
+                              for s, want in expected.items()),
+                          f"{label}: with an empty secondary list each scan reports only its primary peptide", failures)
+
+                # a primary charge above the searchable range: no rows, not an error
+                fx_z12 = tmp / "t93_z12.txt"
+                fx_z12.write_text(re.sub(r"^SPECTRUM (\d+) 2 ", r"SPECTRUM \1 12 ", fx.read_text(), flags=re.M))
+                out = tmp / f"{label}_z12.out"
+                rc, log = _rts_run(idx, fx_z12, 1, out, 0, ist, extra_args=args())
+                if check(rc == 0, f"{label} primary charge 12: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    check(len(rows) == len(expected) and all(len(v) == 0 for v in rows.values()),
+                          f"{label}: an unsearchable primary charge gives no rows and no ERROR", failures)
+
+                # topN 3: each reported peptide brings its ranked rows; rank-0 rows are the topN 1 result
+                out = tmp / f"{label}_top3.out"
+                rc, log = _rts_run(idx, fx, 1, out, 0, ist, extra_args=args(), env={"RTS_REPRO_TOPN": "3"})
+                if check(rc == 0, f"{label} topN 3: rts_repro exits 0 (rc={rc})", failures):
+                    rows = _t67_rows(out)
+                    top = {s: [(x.get("peptide"), x.get("z"), x.get("iter")) for x in v if x.get("rank") == "0"] for s, v in rows.items()}
+                    check(all(top.get(s, []) == [(p, z, i) for i, (p, z) in enumerate(want)] for s, want in expected.items()),
+                          f"{label}: with topN 3 the rank-0 rows equal the topN 1 result, got scan 2 {top.get(2)}", failures)
+
+                # time budget (FI_DB): 2000 secondary candidates per charge and a 1 ms budget -- the secondary stage
+                # stops early, the call is marked incomplete (returned true) and the primary row is kept
+                if label == "FI_DB":
+                    fx1 = tmp / "t93_scan1.txt"
+                    text = fx.read_text()
+                    fx1.write_text(text[:text.index("SPECTRUM 2 ")])
+                    def run_budget(tag, budget):
+                        env = {"RTS_CHIMERIC_DEBUG": "1", "RTS_REPRO_SECONDARY_REPEAT": "2000"}
+                        if budget is not None:
+                            env["RTS_REPRO_PARAMS"] = f"i:max_index_runtime={budget}"
+                        o = tmp / f"budget_{tag}.out"
+                        rc, log = _rts_run(idx, fx1, 1, o, 0, ist, extra_args=args(), env=env)
+                        iters = {int(m.group(1)): (int(m.group(2)), m.group(0))
+                                 for m in re.finditer(r"^RTS_CHIMERIC iter=(\d+) candidates=(\d+) .*$", log, re.M)}
+                        return rc, o, iters
+                    rc, o, iters = run_budget("unlimited", None)
+                    # (charges whose mass lies above the index range are not counted as searched)
+                    n_sec = iters.get(1, (0,))[0]
+                    check(rc == 0 and iters.get(0, (0,))[0] == 1 and n_sec >= 2000 and _rts_incomplete(o) == {},
+                          f"budget unlimited: iteration 0 searches 1 candidate, iteration 1 at least 2000, call complete "
+                          f"({ {k: v[0] for k, v in iters.items()} })", failures)
+                    # the smallest budget the primary stage's one search fits in (a cold first search can take > 1 ms)
+                    for budget in (1, 2, 4, 8, 16, 32):
+                        rc, o, iters = run_budget(f"{budget}ms", budget)
+                        if "budget-expired" not in iters.get(0, (None, "budget-expired"))[1]:
+                            break
+                    n1, line1 = iters.get(1, (None, "no iteration 1 trace"))
+                    check(rc == 0 and "budget-expired" not in iters.get(0, (None, "budget-expired"))[1],
+                          f"budget {budget} ms: the primary stage completed within the budget", failures)
+                    check(n1 is not None and n1 < n_sec and line1.endswith("budget-expired"),
+                          f"budget {budget} ms: the secondary stage stopped before the last of {n_sec} candidates ({line1})", failures)
+                    check(sorted(iters) == [0, 1], f"budget {budget} ms: no iteration after the budget ran out ({sorted(iters)})", failures)
+                    check(_rts_incomplete(o) == {1: "budget"},
+                          f"budget {budget} ms: bIncomplete set, returned true (INCOMPLETE budget), got {_rts_incomplete(o)}", failures)
+                    rows = _t67_rows(o)
+                    check([(x.get("peptide"), x.get("iter")) for x in rows.get(1, []) if "peptide" in x][:1] == [(P1, 0)],
+                          f"budget {budget} ms: the primary stage's row ({P1}, iteration 0) is kept", failures)
+            finally:
+                idx.unlink(missing_ok=True)
+    return failures
+
+
 if __name__ == "__main__":
     main()

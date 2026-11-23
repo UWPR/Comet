@@ -3798,41 +3798,13 @@ static int ChimericDebugLevel()
 }
 
 
-// Chimeric-spectrum search over an explicit precursor-candidate list. See
-// docs/20261105_RTSchimeric.md sections 4.4-4.8 for the design; ICometSearchManager for
-// the contract. Each iteration searches the current (reduced) peak list once per
-// candidate through SearchSingleSpectrumCore(), keeps the best rank-1 PSM (lowest
-// E-value, ties by xcorr), reports it if it passes dMaxExpect, removes its fragment bins
-// and goes again. Everything mutable is per call / per thread; g_staticParams is only read.
-bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
-                                                        const double dPrecursorToleranceMZ,
-                                                        const double dMaxExpect,
-                                                        const int iMaxPeptidesPerSpectrum,
-                                                        const int iTopN,
-                                                        double* pdMass,
-                                                        double* pdInten,
-                                                        const int iNumPeaks,
-                                                        vector<string>& strReturnPeptide,
-                                                        vector<string>& strReturnProtein,
-                                                        vector<vector<Fragment>>& matchedFragments,
-                                                        vector<CometScores>& scores,
-                                                        bool& bIncomplete)
+// The validated candidate list of a chimeric call: vCand receives vPrecursors without its
+// invalid entries and exact duplicates, in the caller's order, each with its effective
+// tolerance (its own, else dPrecursorToleranceMZ, else 0 = the configured tolerance).
+static void NormalizeChimericCandidates(const std::vector<PrecursorCandidate>& vPrecursors,
+                                        const double dPrecursorToleranceMZ,
+                                        std::vector<PrecursorCandidate>& vCand)
 {
-   // bIncomplete (CometInterfaces.h): set when the call stops before its normal end -- the
-   // max_index_runtime budget ran out (return true), or the search was cancelled / an index
-   // search failed (return false). Rows already appended are complete iterations and are kept.
-   bIncomplete = false;
-
-   // A NaN dMaxExpect would pass every E-value (each "dExpect > dMaxExpect" is false), so it
-   // is rejected like the other invalid arguments; +inf is allowed and means no cutoff.
-   if (iNumPeaks <= 0 || vPrecursors.empty() || iMaxPeptidesPerSpectrum <= 0 || iTopN < 1 || std::isnan(dMaxExpect))
-      return false;
-
-   if (!InitializeSingleSpectrumSearch())
-      return false;
-
-   const auto tStart = std::chrono::high_resolution_clock::now();
-
    // Candidate list: drop invalid candidates and exact duplicates, keep everything else in
    // the caller's order. Candidates whose mass lies above the index's range are skipped
    // per iteration below (decision 8) rather than here, so the trace can report them.
@@ -3883,13 +3855,53 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
          vbDuplicate[vOrder[k]] = 1;
    }
 
-   std::vector<PrecursorCandidate> vCand;
+   vCand.clear();
    vCand.reserve(vValid.size());
    for (size_t i = 0; i < vValid.size(); ++i)
    {
       if (!vbDuplicate[i])
          vCand.push_back(vValid[i]);
    }
+}
+
+
+// Chimeric-spectrum search over an explicit precursor-candidate list. See
+// docs/20261105_RTSchimeric.md sections 4.4-4.8 for the design; ICometSearchManager for
+// the contract. Each iteration searches the current (reduced) peak list once per
+// candidate through SearchSingleSpectrumCore(), keeps the best rank-1 PSM (lowest
+// E-value, ties by xcorr), reports it if it passes dMaxExpect, removes its fragment bins
+// and goes again. Everything mutable is per call / per thread; g_staticParams is only read.
+bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<PrecursorCandidate>& vPrecursors,
+                                                        const double dPrecursorToleranceMZ,
+                                                        const double dMaxExpect,
+                                                        const int iMaxPeptidesPerSpectrum,
+                                                        const int iTopN,
+                                                        double* pdMass,
+                                                        double* pdInten,
+                                                        const int iNumPeaks,
+                                                        vector<string>& strReturnPeptide,
+                                                        vector<string>& strReturnProtein,
+                                                        vector<vector<Fragment>>& matchedFragments,
+                                                        vector<CometScores>& scores,
+                                                        bool& bIncomplete)
+{
+   // bIncomplete (CometInterfaces.h): set when the call stops before its normal end -- the
+   // max_index_runtime budget ran out (return true), or the search was cancelled / an index
+   // search failed (return false). Rows already appended are complete iterations and are kept.
+   bIncomplete = false;
+
+   // A NaN dMaxExpect would pass every E-value (each "dExpect > dMaxExpect" is false), so it
+   // is rejected like the other invalid arguments; +inf is allowed and means no cutoff.
+   if (iNumPeaks <= 0 || vPrecursors.empty() || iMaxPeptidesPerSpectrum <= 0 || iTopN < 1 || std::isnan(dMaxExpect))
+      return false;
+
+   if (!InitializeSingleSpectrumSearch())
+      return false;
+
+   const auto tStart = std::chrono::high_resolution_clock::now();
+
+   std::vector<PrecursorCandidate> vCand;
+   NormalizeChimericCandidates(vPrecursors, dPrecursorToleranceMZ, vCand);
    if (vCand.empty())
       return false;
 
@@ -3897,6 +3909,65 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
    return RunChimericLoop(vCand.data(), vCand.size(), dMaxExpect, iMaxPeptidesPerSpectrum, iTopN,
       pdMass, pdInten, iNumPeaks, tStart,
       strReturnPeptide, strReturnProtein, matchedFragments, scores, bIncomplete, bAllRejected);
+}
+
+
+// Two-stage chimeric search (after reSpect, Shteynberg et al., J Am Soc Mass Spectrom 2015,
+// 26:1837): iteration 0 searches vPrimary -- normally the instrument's precursor m/z and charge
+// at the configured tolerance -- and, when its best PSM passes dMaxExpect, removes that
+// peptide's fragment bins. Every later iteration searches vSecondary instead: what else was
+// co-isolated has no known precursor m/z or charge, so the caller passes the isolation window
+// (its center m/z, each charge to try, the half-width as the tolerance). Later iterations are
+// held to dMaxExpectSecondary. When iteration 0 reports nothing the call ends, unless
+// bSearchSecondaryWithoutPrimary is set: then vSecondary is searched on the unchanged spectrum
+// (that still counts as iteration 1, so CometScores::iIteration always tells the two stages
+// apart, and at most iMaxPeptidesPerSpectrum - 1 peptides can then be reported).
+bool CometSearchManager::DoSingleSpectrumSearchChimericTwoStage(const std::vector<PrecursorCandidate>& vPrimary,
+                                                                const std::vector<PrecursorCandidate>& vSecondary,
+                                                                const double dPrecursorToleranceMZ,
+                                                                const double dMaxExpect,
+                                                                const double dMaxExpectSecondary,
+                                                                const bool bSearchSecondaryWithoutPrimary,
+                                                                const int iMaxPeptidesPerSpectrum,
+                                                                const int iTopN,
+                                                                double* pdMass,
+                                                                double* pdInten,
+                                                                const int iNumPeaks,
+                                                                vector<string>& strReturnPeptide,
+                                                                vector<string>& strReturnProtein,
+                                                                vector<vector<Fragment>>& matchedFragments,
+                                                                vector<CometScores>& scores,
+                                                                bool& bIncomplete)
+{
+   bIncomplete = false;
+
+   if (iNumPeaks <= 0 || vPrimary.empty() || iMaxPeptidesPerSpectrum <= 0 || iTopN < 1
+      || std::isnan(dMaxExpect) || std::isnan(dMaxExpectSecondary))
+   {
+      return false;
+   }
+
+   if (!InitializeSingleSpectrumSearch())
+      return false;
+
+   const auto tStart = std::chrono::high_resolution_clock::now();
+
+   std::vector<PrecursorCandidate> vCandPrimary;
+   std::vector<PrecursorCandidate> vCandSecondary;
+   NormalizeChimericCandidates(vPrimary, dPrecursorToleranceMZ, vCandPrimary);
+   NormalizeChimericCandidates(vSecondary, dPrecursorToleranceMZ, vCandSecondary);
+   if (vCandPrimary.empty())
+      return false;
+
+   // No usable secondary candidate: only the primary stage can run.
+   const int iMaxIterations = vCandSecondary.empty() ? 1 : iMaxPeptidesPerSpectrum;
+
+   bool bAllRejected = false;
+   return RunChimericLoop(vCandPrimary.data(), vCandPrimary.size(), dMaxExpect, iMaxIterations, iTopN,
+      pdMass, pdInten, iNumPeaks, tStart,
+      strReturnPeptide, strReturnProtein, matchedFragments, scores, bIncomplete, bAllRejected,
+      vCandSecondary.empty() ? nullptr : vCandSecondary.data(), vCandSecondary.size(),
+      dMaxExpectSecondary, bSearchSecondaryWithoutPrimary);
 }
 
 
@@ -3908,6 +3979,11 @@ bool CometSearchManager::DoSingleSpectrumSearchChimeric(const std::vector<Precur
 // bAllRejected is set when iteration 0 searched nothing because every candidate was rejected (mass
 // above the index range, or preprocessing built no Query), which the plain search reports as false
 // and the chimeric one as true with no rows.
+//
+// Two-stage form (DoSingleSpectrumSearchChimericTwoStage()): with pCandLater set, iteration 0
+// searches pCand against dMaxExpect and every later iteration searches pCandLater against
+// dMaxExpectLater; bContinueWithoutFirst lets the later list be searched, on the unchanged
+// spectrum, when iteration 0 reported nothing.
 bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
                                          const size_t uiNumCand,
                                          const double dMaxExpect,
@@ -3922,7 +3998,11 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
                                          vector<vector<Fragment>>& matchedFragments,
                                          vector<CometScores>& scores,
                                          bool& bIncomplete,
-                                         bool& bAllRejected)
+                                         bool& bAllRejected,
+                                         const PrecursorCandidate* pCandLater,
+                                         const size_t uiNumCandLater,
+                                         const double dMaxExpectLater,
+                                         const bool bContinueWithoutFirst)
 {
    bAllRejected = false;
    const int iDebug = ChimericDebugLevel();
@@ -4002,10 +4082,16 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
       if (iDebug >= 2)
          fprintf(stderr, "RTS_CHIMERIC_ITER %d\n", iIteration);
 
+      // Two-stage form: the later list and its cutoff from iteration 1 on.
+      const bool bLaterStage = (iIteration > 0 && pCandLater != nullptr);
+      const PrecursorCandidate* pIterCand = bLaterStage ? pCandLater : pCand;
+      const size_t uiIterNumCand = bLaterStage ? uiNumCandLater : uiNumCand;
+      const double dIterMaxExpect = bLaterStage ? dMaxExpectLater : dMaxExpect;
+
       size_t uiRejected = 0;      // candidates this iteration that were rejected rather than searched
-      for (size_t uiCand = 0; uiCand < uiNumCand; ++uiCand)
+      for (size_t uiCand = 0; uiCand < uiIterNumCand; ++uiCand)
       {
-         const PrecursorCandidate& cand = pCand[uiCand];
+         const PrecursorCandidate& cand = pIterCand[uiCand];
          if (BudgetExpired())
          {
             bBudgetExhausted = true;
@@ -4076,7 +4162,7 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
          return false;
       }
 
-      if (iIteration == 0 && uiRejected == uiNumCand)
+      if (iIteration == 0 && uiRejected == uiIterNumCand)
          bAllRejected = true;          // nothing was searched: the spectrum / precursors were rejected
 
       if (bDebug)
@@ -4085,13 +4171,22 @@ bool CometSearchManager::RunChimericLoop(const PrecursorCandidate* pCand,
             iIteration, iCandidatesSearched, (size_t)iSearchPeaks,
             bHaveBest ? vBestPep[0].c_str() : "-", bHaveBest ? scBest.iCharge : 0,
             bHaveBest ? scBest.dExpect : 0.0, bHaveBest ? scBest.xCorr : 0.0, vBestBins.size(),
-            (!bHaveBest) ? "stop:no-psm" : (std::isnan(scBest.dExpect) || scBest.dExpect > dMaxExpect) ? "stop:expect" : "keep",
+            (!bHaveBest) ? "stop:no-psm" : (std::isnan(scBest.dExpect) || scBest.dExpect > dIterMaxExpect) ? "stop:expect" : "keep",
             bBudgetExhausted ? " budget-expired" : "");
       }
 
       // NaN-safe: a NaN E-value stops the loop instead of being reported.
-      if (!bHaveBest || std::isnan(scBest.dExpect) || scBest.dExpect > dMaxExpect)
+      if (!bHaveBest || std::isnan(scBest.dExpect) || scBest.dExpect > dIterMaxExpect)
+      {
+         // Two-stage form: nothing reported from the first list, so nothing is removed and the
+         // later list is searched on the unchanged spectrum.
+         if (iIteration == 0 && pCandLater != nullptr && bContinueWithoutFirst
+            && !bBudgetExhausted && !bLastIteration)
+         {
+            continue;
+         }
          break;
+      }
 
       if (iDebug >= 2)
       {

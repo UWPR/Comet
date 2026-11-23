@@ -785,3 +785,56 @@ Cost of the equivalence path (what made a one-iteration chimeric call slower tha
 Measured single-threaded on 5,632 HeLa MS/MS scans (FI_DB, `max_index_runtime` 0, five alternating runs): plain
 2150-2169 ms of search time, chimeric (one candidate, `iMaxPeptidesPerSpectrum` 1) 2154-2186 ms, i.e. equal within the
 run-to-run noise of about 1%.
+
+## 13. 2026-11-20: two-stage search (known precursor first, then the isolation window)
+
+**Why.** The two forms above treat every candidate alike in every iteration. In a
+data-dependent scan one precursor is known (the instrument's m/z and charge); whatever else was
+co-isolated has no known m/z or charge. reSpect (Shteynberg et al., J Am Soc Mass Spectrom 2015,
+26:1837) handles that offline: identify the first peptide, attenuate its fragments, and search
+the spectrum again with the precursor tolerance opened to the isolation window and a range of
+charges. `DoSingleSpectrumSearchChimericTwoStage()` does the same inside one real-time call.
+
+**Contract.**
+
+```cpp
+bool DoSingleSpectrumSearchChimericTwoStage(
+   const std::vector<PrecursorCandidate>& vPrimary,     // iteration 0: the known precursor(s)
+   const std::vector<PrecursorCandidate>& vSecondary,   // iterations >= 1: the isolation window
+   double dPrecursorToleranceMZ,                        // for candidates whose own tolerance is 0
+   double dMaxExpect, double dMaxExpectSecondary,
+   bool bSearchSecondaryWithoutPrimary,
+   int iMaxPeptidesPerSpectrum, int iTopN,
+   double* pdMass, double* pdInten, int iNumPeaks,
+   /* outputs as the other forms */ bool& bIncomplete);
+```
+
+- Iteration 0 searches `vPrimary` only and reports its best PSM if E <= `dMaxExpect`; its
+  fragment bins are removed as in section 4.
+- Every later iteration searches `vSecondary` on the reduced spectrum and reports the best PSM
+  if E <= `dMaxExpectSecondary`. The caller builds `vSecondary` as the isolation-window center
+  at each charge to try, with the window half-width as `dToleranceMZ` (m/z units, so the mass
+  window scales with the charge). The wide search has a much larger search space than the
+  primary one, which is why it has its own cutoff.
+- Iteration 0 reports nothing: the call ends with no rows, unless
+  `bSearchSecondaryWithoutPrimary` is set; then `vSecondary` is searched on the unchanged
+  spectrum. That search is still iteration 1, so `CometScores::iIteration` 0 always means the
+  primary stage, and at most `iMaxPeptidesPerSpectrum - 1` peptides can then be reported.
+- An empty (or all-invalid) `vSecondary` leaves a one-iteration call. Both lists go through the
+  same validation and exact-duplicate removal as the list form (`NormalizeChimericCandidates()`).
+- Budget, cancellation, `bIncomplete`, `iTopN` and threading are those of the other forms: the
+  loop is the same `RunChimericLoop()`, which takes an optional later-iteration list and cutoff.
+
+**Differences from reSpect.** Fragment peaks are removed, not scaled by (1 - probability); the
+acceptance test is the E-value of the one search, not a PeptideProphet/iProphet probability; no
+neutral-loss peaks are removed unless the search scores them (section 4); MS1 is not used.
+
+**Wrapper / harness.** `CometSearchManagerWrapper::DoSingleSpectrumSearchChimericTwoStage(dMZ,
+iCharge, dIsolationCenterMZ, dIsolationHalfWidthMZ, zmin, zmax, ...)` builds the two lists
+(`iCharge <= 0`: the primary stage tries every charge in the range at `dMZ`).
+`RealtimeSearch.exe chimericraw ... --twostage [--iso-halfwidth X] [--max-expect2 X]
+[--secondary-always]` reads the isolation center and width from the RAW scan event.
+`rts_repro` chimeric mode 3 is the Linux equivalent. Test: T93.
+
+**Open.** Measurements and the check of the secondary identifications are kept with the paper
+project, not here.

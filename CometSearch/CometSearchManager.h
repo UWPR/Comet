@@ -98,6 +98,22 @@ public:
                                                vector<vector<Fragment>>& matchedFragments,
                                                vector<CometScores>& scores,
                                                bool& bIncomplete);
+   virtual bool DoSingleSpectrumSearchChimericTwoStage(const std::vector<PrecursorCandidate>& vPrimary,
+                                                       const std::vector<PrecursorCandidate>& vSecondary,
+                                                       const double dPrecursorToleranceMZ,
+                                                       const double dMaxExpect,
+                                                       const double dMaxExpectSecondary,
+                                                       const bool bSearchSecondaryWithoutPrimary,
+                                                       const int iMaxPeptidesPerSpectrum,
+                                                       const int iTopN,
+                                                       double* pdMass,
+                                                       double* pdInten,
+                                                       const int iNumPeaks,
+                                                       vector<string>& strReturnPeptide,
+                                                       vector<string>& strReturnProtein,
+                                                       vector<vector<Fragment>>& matchedFragments,
+                                                       vector<CometScores>& scores,
+                                                       bool& bIncomplete);
    virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                         const double dMaxQueryRT,
                                         const int topN,
@@ -182,7 +198,11 @@ private:
                         vector<vector<Fragment>>& matchedFragments,
                         vector<CometScores>& scores,
                         bool& bIncomplete,
-                        bool& bAllRejected);
+                        bool& bAllRejected,
+                        const PrecursorCandidate* pCandLater = nullptr,   // two-stage form: the list for iterations >= 1
+                        const size_t uiNumCandLater = 0,
+                        const double dMaxExpectLater = 0.0,               // E-value cutoff of iterations >= 1 (pCandLater set)
+                        const bool bContinueWithoutFirst = false);
    std::atomic<bool> singleSearchInitializationComplete;
    std::atomic<bool> singleSearchMS1InitializationComplete;
    bool staticParamsInitializationComplete;

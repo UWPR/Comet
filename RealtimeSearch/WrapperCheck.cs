@@ -185,6 +185,28 @@ namespace RealTimeSearch
                iCount = (vPep == null || vProt == null || vFrag == null || vScore == null) ? -1 : vPep.Count + vProt.Count + vFrag.Count + vScore.Count;
                return b;
             };
+            // two-stage form: the known precursor first, then the isolation window (+/- 0.8 m/z) at the same charge
+            SearchCall chimTwoStage = (double[] m, double[] i, int n, out List<string> vPep, out int iCount) =>
+            {
+               List<string> vProt;
+               List<List<FragmentWrapper>> vFrag;
+               List<ScoreWrapper> vScore;
+               bool b = mgr.DoSingleSpectrumSearchChimericTwoStage(dMZ, iCharge, dMZ, 0.8, iCharge, iCharge, 0.01, 0.01, false, 5, 1,
+                  m, i, n, out vPep, out vProt, out vFrag, out vScore, out _);
+               iCount = (vPep == null || vProt == null || vFrag == null || vScore == null) ? -1 : vPep.Count + vProt.Count + vFrag.Count + vScore.Count;
+               return b;
+            };
+            // the same with the instrument's charge unknown (0): the first stage tries every charge in the range
+            SearchCall chimTwoStageNoCharge = (double[] m, double[] i, int n, out List<string> vPep, out int iCount) =>
+            {
+               List<string> vProt;
+               List<List<FragmentWrapper>> vFrag;
+               List<ScoreWrapper> vScore;
+               bool b = mgr.DoSingleSpectrumSearchChimericTwoStage(dMZ, 0, dMZ, 0.8, 1, 4, 0.01, 0.01, false, 5, 1,
+                  m, i, n, out vPep, out vProt, out vFrag, out vScore, out _);
+               iCount = (vPep == null || vProt == null || vFrag == null || vScore == null) ? -1 : vPep.Count + vProt.Count + vFrag.Count + vScore.Count;
+               return b;
+            };
             SearchCall ms1 = (double[] m, double[] i, int n, out List<string> vPep, out int iCount) =>
             {
                List<ScoreWrapperMS1> vScore;
@@ -201,6 +223,8 @@ namespace RealTimeSearch
                new KeyValuePair<string, SearchCall>("DoSingleSpectrumSearchMultiResults", multi),
                new KeyValuePair<string, SearchCall>("DoSingleSpectrumSearchChimeric (list)", chimList),
                new KeyValuePair<string, SearchCall>("DoSingleSpectrumSearchChimeric (charge range)", chimRange),
+               new KeyValuePair<string, SearchCall>("DoSingleSpectrumSearchChimericTwoStage", chimTwoStage),
+               new KeyValuePair<string, SearchCall>("DoSingleSpectrumSearchChimericTwoStage (charge unknown)", chimTwoStageNoCharge),
                new KeyValuePair<string, SearchCall>("DoMS1SearchMultiResults", ms1),
             };
             foreach (var c in calls)
@@ -235,10 +259,47 @@ namespace RealTimeSearch
                   string.Format("DoSingleSpectrumSearchChimeric (list), 2 m/z and 1 charge: rejected (returned {0}, error '{1}')", b, sErr ?? "null"));
             }
 
+            // two-stage form: a NaN cutoff (either stage) and an empty charge range with no known charge are
+            // rejected (false, empty outputs, no exception); the first stage's row carries iteration 0
+            {
+               double[][] cases = { new[] { double.NaN, 0.01, 1.0, 4.0, (double)iCharge }, new[] { 0.01, double.NaN, 1.0, 4.0, (double)iCharge },
+                                    new[] { 0.01, 0.01, 4.0, 1.0, 0.0 } };
+               string[] names = { "NaN dMaxExpect", "NaN dMaxExpectSecondary", "charge unknown and an empty charge range" };
+               for (int c = 0; c < cases.Length; ++c)
+               {
+                  List<string> vPep = null, vProt;
+                  List<List<FragmentWrapper>> vFrag;
+                  List<ScoreWrapper> vScore;
+                  bool b = true;
+                  string sEx = null;
+                  try
+                  {
+                     b = mgr.DoSingleSpectrumSearchChimericTwoStage(dMZ, (int)cases[c][4], dMZ, 0.8, (int)cases[c][2], (int)cases[c][3],
+                        cases[c][0], cases[c][1], false, 5, 1, pdMass, pdInten, L, out vPep, out vProt, out vFrag, out vScore, out _);
+                  }
+                  catch (Exception ex)
+                  {
+                     sEx = ex.Message;
+                  }
+                  Check(sEx == null && !b && vPep != null && vPep.Count == 0,
+                     string.Format("DoSingleSpectrumSearchChimericTwoStage, {0}: rejected (returned {1}, exception {2})", names[c], b, sEx ?? "none"));
+               }
+               {
+                  List<string> vPep, vProt;
+                  List<List<FragmentWrapper>> vFrag;
+                  List<ScoreWrapper> vScore;
+                  bool bInc;
+                  bool b = mgr.DoSingleSpectrumSearchChimericTwoStage(dMZ, iCharge, dMZ, 0.8, 1, 4, 0.01, 0.01, true, 5, 1,
+                     pdMass, pdInten, L, out vPep, out vProt, out vFrag, out vScore, out bInc);
+                  Check(b && !bInc && vScore.Count >= 1 && vScore[0].Iteration == 0 && vScore[0].Charge == iCharge && PlainPeptide(vPep[0]) == sExpected,
+                     string.Format("DoSingleSpectrumSearchChimericTwoStage: first row is {0} at iteration 0, charge {1} (rows {2})", sExpected, iCharge, vScore.Count));
+               }
+            }
+
             // valid calls; a reused buffer longer than iNumPeaks (20 trailing zeros) is accepted
             double[] pdMassPadded = pdMass.Concat(new double[20]).ToArray();
             double[] pdIntenPadded = pdInten.Concat(new double[20]).ToArray();
-            for (int k = 0; k < 3; ++k)
+            for (int k = 0; k < 5; ++k)   // every call but the MS1 one (last in the list)
             {
                ExpectFound(calls[k].Key, "valid arrays", calls[k].Value, pdMass, pdInten, L, mgr, sExpected);
                ExpectFound(calls[k].Key, "buffer 20 longer than iNumPeaks", calls[k].Value, pdMassPadded, pdIntenPadded, L, mgr, sExpected);

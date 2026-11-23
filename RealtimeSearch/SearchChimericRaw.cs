@@ -51,6 +51,15 @@ namespace RealTimeSearch
          public int Isotopes = 2;
          public int MaxRuntimeMs = 0;         // per chimeric call; 0 = unlimited
          public int MaxScans = 0;             // 0 = every MS/MS scan (>0: stop after that many, for quick runs)
+         public bool TwoStage = false;        // --twostage: instrument precursor first, then the isolation window on the reduced spectrum
+         public double IsoHalfWidth = 0.0;    // --iso-halfwidth: secondary window half-width in m/z; 0 = half the RAW file's isolation width
+         public double MaxExpect2 = -1.0;     // --max-expect2: E-value cutoff of the secondary stage; < 0 = --max-expect
+         public bool SecondaryAlways = false; // --secondary-always: search the isolation window even when the first stage reported nothing
+         public double Ms1Window = 0.0;       // --ms1-window X: write the preceding MS1 scan's peaks within isolation center +/- X m/z to <rawname>.ms1win.txt
+         public bool Plain = false;           // --plain: the plain search at the instrument's charge instead of the chimeric loop
+         public double FragmentBinTol = -1.0;     // < 0 = the harness default (0.02)
+         public double FragmentBinOffset = -1.0;  // < 0 = the harness default (0.0)
+         public int TheoreticalFragmentIons = -1; // < 0 = the harness default (0 = flanking peaks)
          public string OutputDir = null;      // default: next to each RAW file
       }
 
@@ -59,7 +68,9 @@ namespace RealTimeSearch
          public int ScanNumber;
          public double RetentionTimeSec;
          public double PrecursorMZ;
-         public int InstrumentCharge;         // as reported by the instrument; not used for the search
+         public int InstrumentCharge;         // as reported by the instrument; searched only by --plain and --twostage
+         public double IsolationMZ;           // isolation window center
+         public double IsolationWidth;        // full isolation width in m/z (0 when the file does not report it)
          public double[] Mass;
          public double[] Intensity;
       }
@@ -93,6 +104,19 @@ namespace RealTimeSearch
          Console.WriteLine("    --isotopes N          chimeric_remove_isotopes, 0-3 [2]");
          Console.WriteLine("    --max-runtime ms      max_index_runtime for one chimeric call; 0 = unlimited [0]");
          Console.WriteLine("    --max-scans N         stop after N MS/MS scans per file; 0 = all [0]");
+         Console.WriteLine("    --plain               plain search (DoSingleSpectrumSearchMultiResults) at the instrument's charge;");
+         Console.WriteLine("                          a scan without an instrument charge is not searched. Same reader, output and timing.");
+         Console.WriteLine("    --twostage            two-stage search: the instrument's precursor m/z and charge first (every charge");
+         Console.WriteLine("                          zmin..zmax when the instrument gave none); once that peptide passes --max-expect and");
+         Console.WriteLine("                          its fragments are removed, the isolation window is searched at charges zmin..zmax");
+         Console.WriteLine("    --iso-halfwidth X     two-stage: secondary window half-width in m/z [half the RAW file's isolation width]");
+         Console.WriteLine("    --max-expect2 X       two-stage: E-value cutoff of the secondary stage [--max-expect]");
+         Console.WriteLine("    --secondary-always    two-stage: search the isolation window even when the first stage reported nothing");
+         Console.WriteLine("    --ms1-window X        also write <rawname>.ms1win.txt: per MS/MS scan, the isolation center and width, the");
+         Console.WriteLine("                          preceding MS1 scan and its centroids within center +/- X m/z (for checking results; 0 = off)");
+         Console.WriteLine("    --fragment-bin-tol X      fragment_bin_tol [0.02]");
+         Console.WriteLine("    --fragment-bin-offset X   fragment_bin_offset [0.0]");
+         Console.WriteLine("    --theoretical-fragment-ions 0|1   0 = flanking peaks, 1 = M peak only [0]");
          Console.WriteLine("    --outdir dir          write <rawname>.chimeric.txt here [next to each RAW file]\n");
       }
 
@@ -124,6 +148,15 @@ namespace RealTimeSearch
                   case "--isotopes": o.Isotopes = int.Parse(args[++i], inv); break;
                   case "--max-runtime": o.MaxRuntimeMs = int.Parse(args[++i], inv); break;
                   case "--max-scans": o.MaxScans = int.Parse(args[++i], inv); break;
+                  case "--plain": o.Plain = true; break;
+                  case "--ms1-window": o.Ms1Window = double.Parse(args[++i], inv); break;
+                  case "--twostage": o.TwoStage = true; break;
+                  case "--iso-halfwidth": o.IsoHalfWidth = double.Parse(args[++i], inv); break;
+                  case "--max-expect2": o.MaxExpect2 = double.Parse(args[++i], inv); break;
+                  case "--secondary-always": o.SecondaryAlways = true; break;
+                  case "--fragment-bin-tol": o.FragmentBinTol = double.Parse(args[++i], inv); break;
+                  case "--fragment-bin-offset": o.FragmentBinOffset = double.Parse(args[++i], inv); break;
+                  case "--theoretical-fragment-ions": o.TheoreticalFragmentIons = int.Parse(args[++i], inv); break;
                   case "--outdir": o.OutputDir = args[++i]; break;
                   default:
                      Console.WriteLine(" Error: unknown option '{0}'", args[i]);
@@ -210,9 +243,13 @@ namespace RealTimeSearch
       }
 
       /// <summary>Precursor m/z (monoisotopic from the trailer when plausible, as SearchMS1MS2.cs) and the instrument's charge.</summary>
-      private static void ReadPrecursor(IRawDataPlus raw, int scanNumber, out double precursorMZ, out int charge)
+      private static void ReadPrecursor(IRawDataPlus raw, int scanNumber, out double precursorMZ, out int charge,
+         out double isolationMZ, out double isolationWidth)
       {
-         precursorMZ = raw.GetScanEventForScanNumber(scanNumber).GetReaction(0).PrecursorMass;
+         var reaction = raw.GetScanEventForScanNumber(scanNumber).GetReaction(0);
+         precursorMZ = reaction.PrecursorMass;
+         isolationMZ = reaction.PrecursorMass;
+         isolationWidth = reaction.IsolationWidth;
          charge = 0;
          var trailer = raw.GetTrailerExtraInformation(scanNumber);
          for (int i = 0; i < trailer.Length; ++i)
@@ -282,7 +319,14 @@ namespace RealTimeSearch
 
          Console.WriteLine("\n RTS chimeric-spectrum search over RAW files\n");
          Console.WriteLine(" index:    {0}", o.Database);
-         Console.WriteLine(" charges:  {0}..{1} for every scan (the instrument's charge is ignored)", o.ZMin, o.ZMax);
+         if (o.Plain)
+            Console.WriteLine(" mode:     PLAIN search at the instrument's charge (--zrange, --tol, --max-expect, --max-peptides unused)");
+         else if (o.TwoStage)
+            Console.WriteLine(" mode:     TWO-STAGE: instrument precursor and charge first, then the isolation window (half-width {0}), charges {1}..{2}; secondary max E-value {3}{4}",
+               (o.IsoHalfWidth > 0.0) ? o.IsoHalfWidth.ToString(CultureInfo.InvariantCulture) : "from the RAW file", o.ZMin, o.ZMax,
+               (o.MaxExpect2 >= 0.0) ? o.MaxExpect2 : o.MaxExpect, o.SecondaryAlways ? "; secondary searched even without a first-stage peptide" : "");
+         else
+            Console.WriteLine(" charges:  {0}..{1} for every scan (the instrument's charge is ignored)", o.ZMin, o.ZMax);
          Console.WriteLine(" tol:      {0} (m/z; 0 = configured ppm)   max E-value: {1}   max peptides: {2}", o.TolMZ, o.MaxExpect, o.MaxPeptides);
          Console.WriteLine(" threads:  {0}   isotopes {1}   max_index_runtime {2} ms\n", o.Threads, o.Isotopes, o.MaxRuntimeMs);
 
@@ -297,6 +341,14 @@ namespace RealTimeSearch
                ref numThreads, true, o.AScorePro, -1);
             searchMgr.SetParam("max_index_runtime", o.MaxRuntimeMs.ToString(), o.MaxRuntimeMs);
             searchMgr.SetParam("chimeric_remove_isotopes", o.Isotopes.ToString(), o.Isotopes);
+            // Fragment binning: the harness defaults are the high-resolution settings; a low-resolution
+            // (ion trap) file needs e.g. 1.0005 / 0.4 / 1.
+            if (o.FragmentBinTol > 0.0)
+               searchMgr.SetParam("fragment_bin_tol", o.FragmentBinTol.ToString(CultureInfo.InvariantCulture), o.FragmentBinTol);
+            if (o.FragmentBinOffset >= 0.0)
+               searchMgr.SetParam("fragment_bin_offset", o.FragmentBinOffset.ToString(CultureInfo.InvariantCulture), o.FragmentBinOffset);
+            if (o.TheoreticalFragmentIons >= 0)
+               searchMgr.SetParam("theoretical_fragment_ions", o.TheoreticalFragmentIons.ToString(), o.TheoreticalFragmentIons);
 
             if (!searchMgr.InitializeSingleSpectrumSearch())
             {
@@ -366,11 +418,36 @@ namespace RealTimeSearch
                      List<string> vPeptide = null, vProtein = null;
                      List<List<FragmentWrapper>> vFrag = null;
                      List<ScoreWrapper> vScores = null;
-                     bool bInc;
-                     // the scan's precursor m/z, searched at every charge zmin..zmax
-                     r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(s.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect,
-                        o.MaxPeptides, o.TopN, s.Mass, s.Intensity, s.Mass.Length,
-                        out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                     bool bInc = false;
+                     if (o.Plain)
+                     {
+                        // the plain search at the instrument's charge; no charge, no search. A false
+                        // return here is "no match" (rejected spectrum or nothing scored), not an error.
+                        r.Ok = true;
+                        if (s.InstrumentCharge > 0)
+                        {
+                           searchMgr.DoSingleSpectrumSearchMultiResults(o.TopN, s.InstrumentCharge, s.PrecursorMZ,
+                              s.Mass, s.Intensity, s.Mass.Length,
+                              out vPeptide, out vProtein, out vFrag, out vScores);
+                        }
+                     }
+                     else if (o.TwoStage)
+                     {
+                        // the instrument's precursor and charge first; then the isolation window on the reduced spectrum
+                        double halfWidth = (o.IsoHalfWidth > 0.0) ? o.IsoHalfWidth : 0.5 * s.IsolationWidth;
+                        r.Ok = searchMgr.DoSingleSpectrumSearchChimericTwoStage(s.PrecursorMZ, s.InstrumentCharge,
+                           s.IsolationMZ, halfWidth, o.ZMin, o.ZMax, o.MaxExpect,
+                           (o.MaxExpect2 >= 0.0) ? o.MaxExpect2 : o.MaxExpect, o.SecondaryAlways,
+                           o.MaxPeptides, o.TopN, s.Mass, s.Intensity, s.Mass.Length,
+                           out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                     }
+                     else
+                     {
+                        // the scan's precursor m/z, searched at every charge zmin..zmax
+                        r.Ok = searchMgr.DoSingleSpectrumSearchChimeric(s.PrecursorMZ, o.ZMin, o.ZMax, o.TolMZ, o.MaxExpect,
+                           o.MaxPeptides, o.TopN, s.Mass, s.Intensity, s.Mass.Length,
+                           out vPeptide, out vProtein, out vFrag, out vScores, out bInc);
+                     }
                      r.Incomplete = bInc;
                      watch.Stop();
                      r.ElapsedMs = watch.Elapsed.TotalMilliseconds;
@@ -397,6 +474,12 @@ namespace RealTimeSearch
          }
 
          // Producer: this thread reads the RAW file (single-threaded: the file handle is shared).
+         StreamWriter ms1Writer = null;
+         if (o.Ms1Window > 0.0)
+         {
+            ms1Writer = new StreamWriter(outFile.Substring(0, outFile.Length - ".chimeric.txt".Length) + ".ms1win.txt");
+            ms1Writer.WriteLine("scan\tisolation_mz\tisolation_width\tms1_scan\tms1_peaks");
+         }
          try
          {
             using (IRawDataPlus raw = RawFileReaderAdapter.FileFactory(rawPath))
@@ -405,9 +488,27 @@ namespace RealTimeSearch
                   throw new IOException("unable to access the RAW file using the RawFileReader class");
                raw.SelectInstrument(Device.MS, 1);
                int first = raw.RunHeaderEx.FirstSpectrum, last = raw.RunHeaderEx.LastSpectrum;
+               int ms1Scan = 0;               // --ms1-window: the most recent MS1 scan and its centroids
+               double[] ms1Mass = null, ms1Inten = null;
                for (int scan = first; scan <= last; ++scan)
                {
-                  if (raw.GetFilterForScanNumber(scan).MSOrder != MSOrderType.Ms2)
+                  MSOrderType order = raw.GetFilterForScanNumber(scan).MSOrder;
+                  if (order == MSOrderType.Ms && ms1Writer != null)
+                  {
+                     var c = raw.GetCentroidStream(scan, false);
+                     if (c != null && c.Length > 0)
+                     {
+                        ms1Mass = c.Masses;
+                        ms1Inten = c.Intensities;
+                     }
+                     else
+                     {
+                        int n1;
+                        ReadPeaks(raw, scan, out ms1Mass, out ms1Inten, out n1);
+                     }
+                     ms1Scan = scan;
+                  }
+                  if (order != MSOrderType.Ms2)
                      continue;
                   double[] mass, inten;
                   int n;
@@ -421,13 +522,30 @@ namespace RealTimeSearch
                   }
                   double mz;
                   int z;
-                  ReadPrecursor(raw, scan, out mz, out z);
+                  double isoMz, isoWidth;
+                  ReadPrecursor(raw, scan, out mz, out z, out isoMz, out isoWidth);
+                  if (ms1Writer != null)
+                  {
+                     var sb = new System.Text.StringBuilder();
+                     sb.AppendFormat(inv, "{0}\t{1:0.00000}\t{2:0.###}\t{3}\t", scan, isoMz, isoWidth, ms1Scan);
+                     if (ms1Mass != null)
+                     {
+                        int k = Array.BinarySearch(ms1Mass, isoMz - o.Ms1Window);
+                        if (k < 0)
+                           k = ~k;
+                        for (; k < ms1Mass.Length && ms1Mass[k] <= isoMz + o.Ms1Window; ++k)
+                           sb.AppendFormat(inv, "{0:0.00000}:{1:0};", ms1Mass[k], ms1Inten[k]);
+                     }
+                     ms1Writer.WriteLine(sb.ToString());
+                  }
                   queue.Add(new ScanItem
                   {
                      ScanNumber = scan,
                      RetentionTimeSec = 60.0 * raw.RetentionTimeFromScanNumber(scan),
                      PrecursorMZ = mz,
                      InstrumentCharge = z,
+                     IsolationMZ = isoMz,
+                     IsolationWidth = isoWidth,
                      Mass = mass,
                      Intensity = inten
                   });
@@ -446,6 +564,8 @@ namespace RealTimeSearch
          finally
          {
             queue.CompleteAdding();
+            if (ms1Writer != null)
+               ms1Writer.Dispose();
          }
          Task.WaitAll(tasks);
          watchAll.Stop();
@@ -463,7 +583,7 @@ namespace RealTimeSearch
          using (w)
          {
             w.WriteLine("scan\titeration\tcharge\tprecursor_mz\tcandidates\tcalc_neutral_mass\tpeptide\tprotein\txcorr\tdeltacn\texpect\tions_matched\tions_total\telapsed_ms\trt_sec\tinstrument_charge\trank");
-            int nCand = Math.Max(0, Math.Min(o.ZMax, MaxPrecursorCharge) - o.ZMin + 1);
+            int nCand = o.Plain ? 1 : Math.Max(0, Math.Min(o.ZMax, MaxPrecursorCharge) - o.ZMin + 1);
             foreach (ScanOutcome r in ordered)
             {
                ScanItem s = r.Scan;

@@ -277,13 +277,18 @@ int main(int argc, char** argv)
    if (argc < 5)
    {
       fprintf(stderr, "usage: %s <database.idx> <fixture_file> <num_threads> <output_file> [ascorepro:0|1] [index_search_type:0=PI_DB|1=FI_DB]\n"
-                      "          [chimeric:0|1|2] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
+                      "          [chimeric:0|1|2|3] [zmin] [zmax] [tolMZ] [maxExpect] [maxPeptides]\n"
                       "          [flankBins] [isotopes] [isotopeError] [globalMinIonsScore] [histogramFill] [useNLIons]\n"
+                      "          [secondaryAlways] [maxExpectSecondary]\n"
                       "  chimeric 0 (default): DoSingleSpectrumSearchMultiResults, one line per SPECTRUM block\n"
                       "  chimeric 1: DoSingleSpectrumSearchChimeric charge-range form -- each SPECTRUM block searched at\n"
                       "              charges zmin..zmax with +/- tolMZ (m/z units; 0 = configured tolerance)\n"
                       "  chimeric 2: DoSingleSpectrumSearchChimeric explicit-list form -- all SPECTRUM blocks that share\n"
                       "              a scan number are the (m/z, charge) candidates of one spectrum (first block's peaks)\n"
+                      "  chimeric 3: DoSingleSpectrumSearchChimericTwoStage -- each SPECTRUM block's own (m/z, charge) is the\n"
+                      "              primary candidate (configured tolerance); the secondary candidates are the same m/z at\n"
+                      "              charges zmin..zmax with +/- tolMZ (the isolation half-width). secondaryAlways 1 searches\n"
+                      "              them even when the primary reported nothing; maxExpectSecondary defaults to maxExpect\n"
                       "  defaults: zmin 2, zmax 4, tolMZ 0, maxExpect 0.1, maxPeptides 5; chimeric modes set\n"
                       "  max_index_runtime = 0 (unlimited) since one call runs many searches\n"
                       "  flankBins: ignored (kept so later arguments keep their positions); the removal flank follows\n"
@@ -298,6 +303,7 @@ int main(int argc, char** argv)
                       "              RTS_REPRO_FRAGMENTS=1 adds a FRAG line per matched fragment after each result line\n"
                       "              RTS_REPRO_CANCEL_RACE=<us> cancels/resets the search at random intervals (test T82)\n"
                       "              RTS_REPRO_TOPN=<n> sets mode 0's topN (default 1; test T83)\n"
+                      "              RTS_REPRO_SECONDARY_REPEAT=<n> chimeric 3: n secondary candidates per charge (test T93)\n"
                       "  chimeric output: a call that stopped early keeps its rows and adds 'INCOMPLETE budget' (budget ran out)\n"
                       "              or 'INCOMPLETE stopped' (cancelled or a search failed); ERROR = invalid arguments\n", argv[0]);
       return 1;
@@ -323,6 +329,11 @@ int main(int argc, char** argv)
    int iGlobalMinIonsScore = (argc > 16) ? atoi(argv[16]) : 0;   // > 0 sets fragindex_min_ions_score itself (every pass, every mode)
    int iHistogramFill = (argc > 17) ? atoi(argv[17]) : -1;      // >= 0 sets fragindex_histogram_fill (every mode); -1 = not sent
    int iUseNLIons = (argc > 18) ? atoi(argv[18]) : -1;          // >= 0 sets use_NL_ions (every mode); -1 = not sent
+   bool bSecondaryAlways = (argc > 19) && (atoi(argv[19]) != 0); // chimeric 3: search the secondary list without a primary peptide
+   double dMaxExpectSecondary = (argc > 20) ? atof(argv[20]) : dMaxExpect;   // chimeric 3
+   int iSecondaryRepeat = (getenv("RTS_REPRO_SECONDARY_REPEAT") != nullptr) ? atoi(getenv("RTS_REPRO_SECONDARY_REPEAT")) : 1;
+   if (iSecondaryRepeat < 1)
+      iSecondaryRepeat = 1;
 
    if (numThreads < 1)
       numThreads = 1;
@@ -498,6 +509,21 @@ int main(int argc, char** argv)
          if (iChimeric == 1)
          {
             ok = mgr->DoSingleSpectrumSearchChimeric(s.mz, iZmin, iZmax, dTolMZ, dMaxExpect, iMaxPeptides, iTopN,
+               const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
+               vPeptide, vProtein, vFrag, vScores, bIncomplete);
+         }
+         else if (iChimeric == 3)
+         {
+            vector<PrecursorCandidate> vPrimary;
+            vector<PrecursorCandidate> vSecondary;
+            vPrimary.emplace_back(s.mz, s.charge, 0.0);
+            // RTS_REPRO_SECONDARY_REPEAT=<n>: n secondary candidates per charge, 0.001 m/z apart (test T93's
+            // budget case needs a secondary stage that outlasts max_index_runtime)
+            for (int z = iZmin; z <= iZmax; ++z)
+               for (int k = 0; k < iSecondaryRepeat; ++k)
+                  vSecondary.emplace_back(s.mz + 0.001 * k, z, dTolMZ);
+            ok = mgr->DoSingleSpectrumSearchChimericTwoStage(vPrimary, vSecondary, 0.0, dMaxExpect,
+               dMaxExpectSecondary, bSecondaryAlways, iMaxPeptides, iTopN,
                const_cast<double*>(s.mass.data()), const_cast<double*>(s.inten.data()), (int)s.mass.size(),
                vPeptide, vProtein, vFrag, vScores, bIncomplete);
          }

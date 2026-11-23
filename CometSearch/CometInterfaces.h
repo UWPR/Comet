@@ -103,6 +103,28 @@ public:
                                                   vector<vector<Fragment>>& matchedFragments,
                                                   vector<CometScores>& scores,
                                                   bool& bIncomplete) = 0;
+      // Two-stage form (after reSpect): iteration 0 searches vPrimary (the known precursor m/z
+      // and charge) against dMaxExpect; once its peptide's fragments are removed, every later
+      // iteration searches vSecondary (the isolation window: center m/z, each charge to try,
+      // half-width as tolerance) against dMaxExpectSecondary. With
+      // bSearchSecondaryWithoutPrimary, vSecondary is also searched, on the unchanged spectrum,
+      // when vPrimary reported nothing. CometScores::iIteration 0 = primary, >= 1 = secondary.
+      virtual bool DoSingleSpectrumSearchChimericTwoStage(const std::vector<PrecursorCandidate>& vPrimary,
+                                                          const std::vector<PrecursorCandidate>& vSecondary,
+                                                          const double dPrecursorToleranceMZ,
+                                                          const double dMaxExpect,
+                                                          const double dMaxExpectSecondary,
+                                                          const bool bSearchSecondaryWithoutPrimary,
+                                                          const int iMaxPeptidesPerSpectrum,
+                                                          const int iTopN,
+                                                          double* pdMass,
+                                                          double* pdInten,
+                                                          const int iNumPeaks,
+                                                          vector<string>& strReturnPeptide,
+                                                          vector<string>& strReturnProtein,
+                                                          vector<vector<Fragment>>& matchedFragments,
+                                                          vector<CometScores>& scores,
+                                                          bool& bIncomplete) = 0;
       virtual bool DoMS1SearchMultiResults(const double dMaxMS1RTDiff,
                                            const double dMaxQueryRT,
                                            const int topN,

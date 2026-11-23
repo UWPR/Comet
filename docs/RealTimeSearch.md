@@ -129,6 +129,15 @@ every query and the floor a no-op). With calibrated E-values the harnesses defau
 Orbitrap often isolates a precursor on its M+1 / M+2 peak.
 `RTS_CHIMERIC_DEBUG=1` in the environment traces every iteration on stderr.
 
+**Two-stage form** (`DoSingleSpectrumSearchChimericTwoStage`, 2026-11-20;
+`docs/20261105_RTSchimeric.md` section 13): iteration 0 searches a primary candidate list (the
+instrument's precursor m/z and charge) against `dMaxExpect`; once that peptide's fragments are
+removed, every later iteration searches a secondary list -- the isolation-window center at each
+charge to try, with the half-width as the tolerance -- against `dMaxExpectSecondary`.
+`bSearchSecondaryWithoutPrimary` searches the secondary list even when the primary stage
+reported nothing. `CometScores::iIteration` 0 = primary stage. Harness: `chimericraw --twostage`;
+`rts_repro` mode 3; test T93.
+
 C# side: `CometSearchManagerWrapper.DoSingleSpectrumSearchChimeric()` (the list form takes
 parallel `double[]` m/z, `int[]` charge and optional `double[]` tolerance arrays), driven by
 `RealtimeSearch.exe chimericms2 <spectra.ms2> <database.idx> [options]`
